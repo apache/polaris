@@ -52,8 +52,8 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
@@ -103,6 +103,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
   @Inject ResolverFactory resolverFactory;
+  @Inject ResolutionManifestFactory resolutionManifestFactory;
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
@@ -112,7 +113,6 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
-  private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
   private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
@@ -156,8 +156,6 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             configurationStore,
             Clock.systemDefaultZone());
 
-    entityManager = new PolarisEntityManager(metaStoreManager, resolverFactory);
-
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     authenticatedRoot = new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
@@ -171,7 +169,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     adminService =
         new PolarisAdminService(
             polarisContext,
-            entityManager,
+            resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             securityContext,
@@ -208,7 +206,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, entityManager, securityContext, CATALOG_NAME);
+            polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 

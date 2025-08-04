@@ -46,10 +46,11 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -64,7 +65,6 @@ import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.events.PolarisEventListener;
@@ -125,6 +125,12 @@ public class QuarkusProducers {
           entityCache,
           referenceCatalogName);
     };
+  }
+
+  @Produces
+  @ApplicationScoped
+  public ResolutionManifestFactory resolutionManifestFactory(ResolverFactory resolverFactory) {
+    return new ResolutionManifestFactoryImpl(resolverFactory);
   }
 
   @Produces
@@ -384,13 +390,6 @@ public class QuarkusProducers {
   public BasePersistence polarisMetaStoreSession(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateSession(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
-  public PolarisEntityManager polarisEntityManager(
-      RealmContext realmContext, RealmEntityManagerFactory factory) {
-    return factory.getOrCreateEntityManager(realmContext);
   }
 
   @Produces

@@ -35,9 +35,9 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyType;
@@ -61,12 +61,12 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
   public PolicyCatalogHandler(
       CallContext callContext,
-      PolarisEntityManager entityManager,
+      ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       SecurityContext securityContext,
       String catalogName,
       PolarisAuthorizer authorizer) {
-    super(callContext, entityManager, securityContext, catalogName, authorizer);
+    super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
   }
 
@@ -151,7 +151,8 @@ public class PolicyCatalogHandler extends CatalogHandler {
   private void authorizeBasicPolicyOperationOrThrow(
       PolarisAuthorizableOperation op, PolicyIdentifier identifier) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, catalogName);
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
@@ -201,7 +202,8 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
   private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, catalogName);
     resolutionManifest.resolveAll();
 
     PolarisResolvedPathWrapper targetCatalog =
@@ -223,7 +225,8 @@ public class PolicyCatalogHandler extends CatalogHandler {
   private void authorizePolicyMappingOperationOrThrow(
       PolicyIdentifier identifier, PolicyAttachmentTarget target, boolean isAttach) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
+        resolutionManifestFactory.createResolutionManifest(
+            callContext, securityContext, catalogName);
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
