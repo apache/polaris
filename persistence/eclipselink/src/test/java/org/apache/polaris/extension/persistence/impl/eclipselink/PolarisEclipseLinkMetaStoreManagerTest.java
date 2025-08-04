@@ -86,17 +86,18 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
     RealmContext realmContext = () -> "realm";
-    PolarisEclipseLinkMetaStoreSessionImpl session =
+    PolarisEclipseLinkMetaStoreSessionImpl metaStore =
         new PolarisEclipseLinkMetaStoreSessionImpl(
             store, Mockito.mock(), realmContext, null, "polaris", RANDOM_SECRETS);
-    return new PolarisTestMetaStoreManager(
-        new TransactionalMetaStoreManagerImpl(),
+    TransactionalMetaStoreManagerImpl metaStoreManager =
+        new TransactionalMetaStoreManagerImpl(() -> metaStore);
+    PolarisCallContext callCtx =
         new PolarisCallContext(
             realmContext,
-            session,
             diagServices,
             new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault())));
+            timeSource.withZone(ZoneId.systemDefault()));
+    return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 
   @ParameterizedTest

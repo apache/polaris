@@ -83,11 +83,7 @@ class TableCleanupTaskHandlerTest {
 
     callContext =
         new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
-            configurationStore,
-            Clock.systemDefaultZone());
+            realmContext, diagServices, configurationStore, Clock.systemDefaultZone());
   }
 
   @Test

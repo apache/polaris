@@ -173,11 +173,7 @@ public abstract class AbstractPolicyCatalogTest {
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     polarisContext =
         new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
-            configurationStore,
-            Clock.systemDefaultZone());
+            realmContext, diagServices, configurationStore, Clock.systemDefaultZone());
 
     callContext = polarisContext;
 

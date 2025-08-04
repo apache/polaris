@@ -63,20 +63,21 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     }
 
     RealmContext realmContext = () -> "REALM";
-    JdbcBasePersistenceImpl basePersistence =
+    JdbcBasePersistenceImpl metaStore =
         new JdbcBasePersistenceImpl(
             datasourceOperations,
             RANDOM_SECRETS,
             Mockito.mock(),
             realmContext.getRealmIdentifier());
-    return new PolarisTestMetaStoreManager(
-        new AtomicOperationMetaStoreManager(),
+    AtomicOperationMetaStoreManager metaStoreManager =
+        new AtomicOperationMetaStoreManager(() -> metaStore);
+    PolarisCallContext callCtx =
         new PolarisCallContext(
             realmContext,
-            basePersistence,
             diagServices,
             new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault())));
+            timeSource.withZone(ZoneId.systemDefault()));
+    return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 
   private static class H2JdbcConfiguration implements RelationalJdbcConfiguration {

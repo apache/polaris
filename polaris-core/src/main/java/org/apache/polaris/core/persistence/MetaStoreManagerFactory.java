@@ -32,8 +32,6 @@ public interface MetaStoreManagerFactory {
 
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
 
-  BasePersistence getOrCreateSession(RealmContext realmContext);
-
   EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
