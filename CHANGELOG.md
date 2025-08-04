@@ -55,9 +55,7 @@ at locations that better optimize for object storage.
 
 ### Deprecations
 
-* The property `polaris.active-roles-provider.type` is deprecated in favor of
-  `polaris.authentication.active-roles-provider.type`. The old property is still supported, but will be removed in a
-  future release.
+* The property `polaris.active-roles-provider.type` is deprecated and has no effect anymore.
 
 ### Fixes
 
