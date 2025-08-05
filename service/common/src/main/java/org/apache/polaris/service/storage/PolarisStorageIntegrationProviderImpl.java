@@ -38,9 +38,12 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 @ApplicationScoped
@@ -50,6 +53,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
 
+  @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
   public PolarisStorageIntegrationProviderImpl(
       StorageConfiguration storageConfiguration, StsClientProvider stsClientProvider, Clock clock) {
@@ -81,27 +85,32 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case S3:
         storageIntegration =
             (PolarisStorageIntegration<T>)
-                new AwsCredentialsStorageIntegration(stsClientProvider, stsCredentials);
+                new AwsCredentialsStorageIntegration(
+                    (AwsStorageConfigurationInfo) polarisStorageConfigurationInfo,
+                    stsClientProvider,
+                    stsCredentials);
         break;
       case GCS:
         storageIntegration =
             (PolarisStorageIntegration<T>)
                 new GcpCredentialsStorageIntegration(
+                    (GcpStorageConfigurationInfo) polarisStorageConfigurationInfo,
                     gcpCredsProvider.get(),
                     ServiceOptions.getFromServiceLoader(
                         HttpTransportFactory.class, NetHttpTransport::new));
         break;
       case AZURE:
         storageIntegration =
-            (PolarisStorageIntegration<T>) new AzureCredentialsStorageIntegration();
+            (PolarisStorageIntegration<T>)
+                new AzureCredentialsStorageIntegration(
+                    (AzureStorageConfigurationInfo) polarisStorageConfigurationInfo);
         break;
       case FILE:
         storageIntegration =
-            new PolarisStorageIntegration<>("file") {
+            new PolarisStorageIntegration<>((T) polarisStorageConfigurationInfo, "file") {
               @Override
               public AccessConfig getSubscopedCreds(
                   @Nonnull RealmConfig realmConfig,
-                  @Nonnull T storageConfig,
                   boolean allowListOperation,
                   @Nonnull Set<String> allowedReadLocations,
                   @Nonnull Set<String> allowedWriteLocations) {

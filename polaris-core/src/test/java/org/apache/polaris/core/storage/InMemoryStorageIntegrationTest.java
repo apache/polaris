@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 
 class InMemoryStorageIntegrationTest {
 
@@ -203,13 +204,14 @@ class InMemoryStorageIntegrationTest {
   private static final class MockInMemoryStorageIntegration
       extends InMemoryStorageIntegration<PolarisStorageConfigurationInfo> {
     public MockInMemoryStorageIntegration() {
-      super(MockInMemoryStorageIntegration.class.getName());
+      super(
+          Mockito.mock(PolarisStorageConfigurationInfo.class),
+          MockInMemoryStorageIntegration.class.getName());
     }
 
     @Override
     public AccessConfig getSubscopedCreds(
         @Nonnull RealmConfig realmConfig,
-        @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowListOperation,
         @Nonnull Set<String> allowedReadLocations,
         @Nonnull Set<String> allowedWriteLocations) {
