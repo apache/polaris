@@ -130,20 +130,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .isNotNull()
         .hasSize(2)
         .containsExactly(
-            new EntityNameLookupRecord(
-                task1.getCatalogId(),
-                task1.getId(),
-                task1.getParentId(),
-                task1.getName(),
-                task1.getTypeCode(),
-                task1.getSubTypeCode()),
-            new EntityNameLookupRecord(
-                task2.getCatalogId(),
-                task2.getId(),
-                task2.getParentId(),
-                task2.getName(),
-                task2.getTypeCode(),
-                task2.getSubTypeCode()));
+            EntityNameLookupRecord.fromEntity(task1), EntityNameLookupRecord.fromEntity(task2));
   }
 
   @Test

@@ -105,7 +105,8 @@ public class PolarisEclipseLinkStore {
 
     ModelEntityActive model = lookupEntityActive(session, new PolarisEntitiesActiveKey(entity));
     if (model == null) {
-      session.persist(ModelEntityActive.fromEntityActive(new EntityNameLookupRecord(entity)));
+      session.persist(
+          ModelEntityActive.fromEntityActive(EntityNameLookupRecord.fromEntity(entity)));
     }
   }
 

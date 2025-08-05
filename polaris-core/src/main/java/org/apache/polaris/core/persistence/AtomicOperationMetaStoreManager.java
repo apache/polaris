@@ -709,7 +709,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             : entity -> true;
 
     Page<EntityNameLookupRecord> resultPage =
-        ms.listEntities(callCtx, catalogId, parentId, entityType, filter, pageToken);
+        ms.listEntities(
+            callCtx,
+            catalogId,
+            parentId,
+            entityType,
+            filter,
+            EntityNameLookupRecord::fromEntity,
+            pageToken);
 
     // TODO: Use post-validation to enforce consistent view against catalogPath. In the
     // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency

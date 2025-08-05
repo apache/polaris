@@ -354,37 +354,6 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
-    return runInReadTransaction(
-        callCtx,
-        () -> this.listEntitiesInCurrentTxn(callCtx, catalogId, parentId, entityType, pageToken));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  @Nonnull
-  public Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
-    return runInReadTransaction(
-        callCtx,
-        () ->
-            this.listEntitiesInCurrentTxn(
-                callCtx, catalogId, parentId, entityType, entityFilter, pageToken));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  @Nonnull
   public <T> Page<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
