@@ -40,7 +40,6 @@ dependencies {
     api(project(":polaris-config-docs-generator"))
 
     api(project(":polaris-core"))
-    api(project(":polaris-service-common"))
 
     api(project(":polaris-eclipselink"))
     api(project(":polaris-relational-jdbc"))
