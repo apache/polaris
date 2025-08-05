@@ -18,14 +18,9 @@
  */
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
-
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired before the list of principal roles assigned to a principal is retrieved in Polaris.
+ *
+ * @param principalName the name of the principal
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record BeforePrincipalRolesAssignedListEvent(String principalName) implements PolarisEvent {}

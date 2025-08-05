@@ -16,16 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
+import org.apache.polaris.core.admin.model.PrincipalRole;
 
 /**
- * Represents an event emitted by Polaris. Currently there's no common data across events so this is
- * just a marker interface. *
+ * Event fired after a principal role is assigned to a principal in Polaris.
+ *
+ * @param principalName the name of the principal
+ * @param principalRole the principal role assigned
  */
-public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
-}
+public record AfterAssignPrincipalRoleEvent(String principalName, PrincipalRole principalRole)
+    implements PolarisEvent {}
