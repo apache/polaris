@@ -25,6 +25,7 @@ import io.opentelemetry.context.Scope;
 import io.quarkus.runtime.Startup;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.List;
@@ -62,7 +63,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final TaskFileIOSupplier fileIOSupplier;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
   private final PolarisEventListener polarisEventListener;
-  private final Tracer tracer;
+  @Nullable private final Tracer tracer;
 
   @SuppressWarnings("unused") // Required by CDI
   public TaskExecutorImpl() {
@@ -74,13 +75,13 @@ public class TaskExecutorImpl implements TaskExecutor {
       @Identifier("task-executor") Executor executor,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
-      Tracer tracer,
-      PolarisEventListener polarisEventListener) {
+      PolarisEventListener polarisEventListener,
+      @Nullable Tracer tracer) {
     this.executor = executor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
-    this.tracer = tracer;
     this.polarisEventListener = polarisEventListener;
+    this.tracer = tracer;
   }
 
   @Startup
@@ -187,20 +188,24 @@ public class TaskExecutorImpl implements TaskExecutor {
   }
 
   protected void handleTaskWithTracing(long taskEntityId, CallContext callContext, int attempt) {
-    Span span =
-        tracer
-            .spanBuilder("polaris.task")
-            .setParent(Context.current())
-            .setAttribute(
-                TracingFilter.REALM_ID_ATTRIBUTE,
-                callContext.getRealmContext().getRealmIdentifier())
-            .setAttribute("polaris.task.entity.id", taskEntityId)
-            .setAttribute("polaris.task.attempt", attempt)
-            .startSpan();
-    try (Scope ignored = span.makeCurrent()) {
+    if (tracer == null) {
       handleTask(taskEntityId, callContext, attempt);
-    } finally {
-      span.end();
+    } else {
+      Span span =
+          tracer
+              .spanBuilder("polaris.task")
+              .setParent(Context.current())
+              .setAttribute(
+                  TracingFilter.REALM_ID_ATTRIBUTE,
+                  callContext.getRealmContext().getRealmIdentifier())
+              .setAttribute("polaris.task.entity.id", taskEntityId)
+              .setAttribute("polaris.task.attempt", attempt)
+              .startSpan();
+      try (Scope ignored = span.makeCurrent()) {
+        handleTask(taskEntityId, callContext, attempt);
+      } finally {
+        span.end();
+      }
     }
   }
 }

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.task;
 
-import io.opentelemetry.api.trace.TracerProvider;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -69,8 +68,9 @@ public class TaskExecutorImplTest {
             Runnable::run,
             testServices.metaStoreManagerFactory(),
             new TaskFileIOSupplier(testServices.fileIOFactory()),
-            TracerProvider.noop().get("test"),
-            testServices.polarisEventListener());
+            testServices.polarisEventListener(),
+            null);
+
     executor.addTaskHandler(
         new TaskHandler() {
           @Override
