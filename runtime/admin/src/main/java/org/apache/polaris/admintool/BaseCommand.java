@@ -29,6 +29,7 @@ public abstract class BaseCommand implements Callable<Integer> {
   public static final int EXIT_CODE_USAGE = 2;
   public static final int EXIT_CODE_BOOTSTRAP_ERROR = 3;
   public static final int EXIT_CODE_PURGE_ERROR = 4;
+  public static final int EXIT_CODE_SCHEMA_ERROR = 5;
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
 

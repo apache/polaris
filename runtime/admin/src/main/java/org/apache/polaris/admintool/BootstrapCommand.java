@@ -81,6 +81,12 @@ public class BootstrapCommand extends BaseCommand {
 
     static class SchemaInputOptions {
       @CommandLine.Option(
+          names = {"--setup-schema"},
+          description = "If true, initializes the schema at startup (default: true).",
+          defaultValue = "true")
+      boolean setupSchema;
+
+      @CommandLine.Option(
           names = {"-v", "--schema-version"},
           paramLabel = "<schema version>",
           description = "The version of the schema to load in [1, 2, LATEST].")
