@@ -51,6 +51,7 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalRoles;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
+import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
@@ -268,6 +269,16 @@ public class PolarisServiceImpl
     PrincipalWithCredentials createdPrincipal = adminService.createPrincipal(principal);
     LOGGER.info("Created new principal {}", createdPrincipal);
     return Response.status(Response.Status.CREATED).entity(createdPrincipal).build();
+  }
+
+  @Override
+  public Response resetCredentials(
+      String principalName,
+      ResetPrincipalRequest resetPrincipalRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+    return Response.ok(adminService.resetCredentials(principalName, resetPrincipalRequest)).build();
   }
 
   /** From PolarisPrincipalsApiService */

@@ -44,4 +44,6 @@ public interface PolarisAuthorizer {
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries);
+
+  void authorizeOrThrow(@Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal);
 }
