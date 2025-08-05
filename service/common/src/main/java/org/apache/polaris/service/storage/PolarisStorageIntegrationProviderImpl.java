@@ -31,7 +31,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -100,7 +99,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             new PolarisStorageIntegration<>("file") {
               @Override
               public AccessConfig getSubscopedCreds(
-                  @Nonnull CallContext callContext,
+                  @Nonnull RealmConfig realmConfig,
                   @Nonnull T storageConfig,
                   boolean allowListOperation,
                   @Nonnull Set<String> allowedReadLocations,

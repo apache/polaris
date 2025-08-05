@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -70,7 +70,7 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   public AccessConfig getSubscopedCreds(
-      @Nonnull CallContext callContext,
+      @Nonnull RealmConfig realmConfig,
       @Nonnull GcpStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,

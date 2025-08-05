@@ -88,7 +88,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     AccessConfig accessConfig =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                newCallContext(),
+                EMPTY_REALM_CONFIG,
                 new AwsStorageConfigurationInfo(
                     S3, List.of(warehouseDir), roleARN, externalId, null),
                 true,
@@ -232,7 +232,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
-                            newCallContext(),
+                            EMPTY_REALM_CONFIG,
                             new AwsStorageConfigurationInfo(
                                 storageType,
                                 List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -249,7 +249,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         AccessConfig accessConfig =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
-                    newCallContext(),
+                    EMPTY_REALM_CONFIG,
                     new AwsStorageConfigurationInfo(
                         storageType,
                         List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -350,7 +350,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     AccessConfig accessConfig =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                newCallContext(),
+                EMPTY_REALM_CONFIG,
                 new AwsStorageConfigurationInfo(
                     S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -445,7 +445,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     AccessConfig accessConfig =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                newCallContext(),
+                EMPTY_REALM_CONFIG,
                 new AwsStorageConfigurationInfo(
                     storageType,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -510,7 +510,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     AccessConfig accessConfig =
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
-                newCallContext(),
+                EMPTY_REALM_CONFIG,
                 new AwsStorageConfigurationInfo(
                     S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -550,7 +550,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
-                            newCallContext(),
+                            EMPTY_REALM_CONFIG,
                             new AwsStorageConfigurationInfo(
                                 PolarisStorageConfigurationInfo.StorageType.S3,
                                 List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -567,7 +567,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         AccessConfig accessConfig =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
-                    newCallContext(),
+                    EMPTY_REALM_CONFIG,
                     new AwsStorageConfigurationInfo(
                         S3,
                         List.of(s3Path(bucket, warehouseKeyPrefix)),
@@ -605,7 +605,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         AccessConfig accessConfig =
             new AwsCredentialsStorageIntegration(stsClient)
                 .getSubscopedCreds(
-                    newCallContext(),
+                    EMPTY_REALM_CONFIG,
                     new AwsStorageConfigurationInfo(
                         S3, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, null),
                     true, /* allowList = true */
@@ -621,7 +621,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 () ->
                     new AwsCredentialsStorageIntegration(stsClient)
                         .getSubscopedCreds(
-                            newCallContext(),
+                            EMPTY_REALM_CONFIG,
                             new AwsStorageConfigurationInfo(
                                 PolarisStorageConfigurationInfo.StorageType.S3,
                                 List.of(s3Path(bucket, warehouseKeyPrefix)),

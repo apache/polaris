@@ -169,7 +169,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             GoogleCredentials.getApplicationDefault(),
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     return gcpCredsIntegration.getSubscopedCreds(
-        newCallContext(),
+        EMPTY_REALM_CONFIG,
         gcpConfig,
         allowListAction,
         new HashSet<>(allowedReadLoc),
