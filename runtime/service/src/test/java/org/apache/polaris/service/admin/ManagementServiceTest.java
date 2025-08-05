@@ -42,7 +42,6 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -310,8 +309,8 @@ public class ManagementServiceTest {
         .when(metaStoreManager)
         .loadEntity(Mockito.any(), Mockito.anyLong(), Mockito.anyLong(), Mockito.any());
 
-    List<PolarisEntity> catalogs = polarisAdminService.listCatalogs();
+    List<Catalog> catalogs = polarisAdminService.listCatalogs();
     assertThat(catalogs.size()).isEqualTo(1);
-    assertThat(catalogs.getFirst().getId()).isEqualTo(catalog2.getCatalog().getId());
+    assertThat(catalogs.getFirst().getName()).isEqualTo(catalog2.getCatalog().getName());
   }
 }
