@@ -183,11 +183,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   entity.getParentId(),
                   entity.getTypeCode(),
                   entity.getName());
-          throw new EntityAlreadyExistsException(existingEntity, e);
-        } else {
-          throw new RuntimeException(
-              String.format("Failed to write entity due to %s", e.getMessage()), e);
+          // This happens in two scenarios:
+          // 1. PRIMARY KEY violated
+          // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
+          // With SERIALIZABLE isolation, the conflicting entity may _not_ be visible and
+          // existingEntity can be null, which would cause an NPE in
+          // EntityAlreadyExistsException.message().
+          throw new EntityAlreadyExistsException(
+              existingEntity != null ? existingEntity : entity, e);
         }
+        throw new RuntimeException(
+            String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
     } else {
       Map<String, Object> params =
