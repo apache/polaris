@@ -168,7 +168,7 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public RealmConfig realmContext(CallContext callContext) {
+  public RealmConfig realmConfig(CallContext callContext) {
     return callContext.getRealmConfig();
   }
 
@@ -199,6 +199,13 @@ public class QuarkusProducers {
       QuarkusPersistenceConfiguration config,
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
     return metaStoreManagerFactories.select(Identifier.Literal.of(config.type())).get();
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisMetaStoreManager polarisMetaStoreManager(
+      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
+    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
   }
 
   @Produces
@@ -373,23 +380,9 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public PolarisMetaStoreManager polarisMetaStoreManager(
-      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
   public UserSecretsManager userSecretsManager(
       RealmContext realmContext, UserSecretsManagerFactory userSecretsManagerFactory) {
     return userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
-  public BasePersistence polarisMetaStoreSession(
-      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    return metaStoreManagerFactory.getOrCreateSession(realmContext);
   }
 
   @Produces
