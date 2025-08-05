@@ -213,6 +213,34 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
     return null;
   }
 
+  @Nonnull
+  @Override
+  public EntityResult retryUpdateEntityProperties(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity,
+      Map<String, String> properties,
+      int numOfRetries) {
+    callCtx
+        .getDiagServices()
+        .fail("illegal_method_in_transaction_workspace", "updateEntityPropertiesWithRetry");
+    return null;
+  }
+
+  @Nonnull
+  @Override
+  public EntityResult retryRemoveEntityProperties(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity,
+      Set<String> keys,
+      int numOfRetries) {
+    callCtx
+        .getDiagServices()
+        .fail("illegal_method_in_transaction_workspace", "updateEntityPropertiesWithRetry");
+    return null;
+  }
+
   @Override
   public EntityResult renameEntity(
       @Nonnull PolarisCallContext callCtx,

@@ -23,6 +23,8 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import javax.validation.constraints.NotNull;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
@@ -219,8 +221,10 @@ public interface PolarisMetaStoreManager
 
   /**
    * Update some properties of this entity assuming it can still be resolved the same way and itself
-   * has not changed. If this is not the case we will return false. Else we will update both the
-   * internal and visible properties and return true
+   * has not changed. If this is not the case we will return an {@link EntityResult} with an empty
+   * entity and error code {@link BaseResult.ReturnStatus} TARGET_ENTITY_CONCURRENTLY_MODIFIED. Else
+   * we will update both the internal and visible properties and return an {@link EntityResult} with
+   * the updated entity
    *
    * @param callCtx call context
    * @param catalogPath path to that entity. Could be null if this entity is top-level
@@ -246,6 +250,48 @@ public interface PolarisMetaStoreManager
   @Nonnull
   EntitiesResult updateEntitiesPropertiesIfNotChanged(
       @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities);
+
+  /**
+   * Update some properties of this entity, and we will retry the update up to {@code numOfRetries}
+   * times, assuming it can still be resolved the same way and itself has not changed. If this is
+   * not the case the last update wins, and it will update both the internal and visible properties
+   * and return {@link EntityResult}. if everything fails we will return {@link EntityResult} with
+   * an empty entity and an error code {@link BaseResult.ReturnStatus}
+   * TARGET_ENTITY_CONCURRENTLY_MODIFIED.
+   *
+   * @param callCtx call context
+   * @param catalogPath path to that entity. Could be null if this entity is top-level
+   * @param entity entity to update, cannot be null
+   * @return the entity we updated or null if the client should retry
+   */
+  @Nonnull
+  EntityResult retryUpdateEntityProperties(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity,
+      @NotNull Map<String, String> properties,
+      int numOfRetries);
+
+  /**
+   * Remove some properties of this entity,and we will retry the update up to {@code numOfRetries}
+   * times, assuming it can still be resolved the same way and itself has not changed. If this is
+   * not the case the last update wins, and it will update both the internal and visible properties
+   * and return {@link EntityResult}. if everything fails we will return {@link EntityResult} with
+   * an empty entity and an error code {@link BaseResult.ReturnStatus}
+   * TARGET_ENTITY_CONCURRENTLY_MODIFIED.
+   *
+   * @param callCtx call context
+   * @param catalogPath path to that entity. Could be null if this entity is top-level
+   * @param entity entity to update, cannot be null
+   * @return the entity we updated or null if the client should retry
+   */
+  @Nonnull
+  EntityResult retryRemoveEntityProperties(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity,
+      @NotNull Set<String> keys,
+      int numOfRetries);
 
   /**
    * Rename an entity, potentially re-parenting it.

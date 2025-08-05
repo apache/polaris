@@ -1017,6 +1017,28 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     return new EntitiesResult(Page.fromItems(updatedEntities));
   }
 
+  @Nonnull
+  @Override
+  public EntityResult retryUpdateEntityProperties(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity,
+      Map<String, String> properties,
+      int numOfRetries) {
+    return updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
+  }
+
+  @Nonnull
+  @Override
+  public EntityResult retryRemoveEntityProperties(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity,
+      Set<String> keys,
+      int numOfRetries) {
+    return updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
+  }
+
   /** {@inheritDoc} */
   @Override
   public @Nonnull EntityResult renameEntity(
