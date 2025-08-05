@@ -26,8 +26,10 @@ import static org.mockito.Mockito.when;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
@@ -135,8 +137,9 @@ public class StorageConfigurationTest {
 
   @Test
   public void testCreateGcpCredentialsFromStaticToken() {
+    Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
     Supplier<GoogleCredentials> supplier =
-        configWithAwsCredentialsAndGcpToken().gcpCredentialsSupplier();
+        configWithAwsCredentialsAndGcpToken().gcpCredentialsSupplier(clock);
 
     GoogleCredentials credentials = supplier.get();
     assertThat(credentials).isNotNull();
@@ -144,9 +147,8 @@ public class StorageConfigurationTest {
     AccessToken accessToken = credentials.getAccessToken();
     assertThat(accessToken).isNotNull();
     assertThat(accessToken.getTokenValue()).isEqualTo(TEST_GCP_TOKEN);
-    long expectedExpiry = Instant.now().plus(Duration.ofMinutes(20)).toEpochMilli();
-    long actualExpiry = accessToken.getExpirationTime().getTime();
-    assertThat(actualExpiry).isBetween(expectedExpiry - 500, expectedExpiry + 500);
+    assertThat(accessToken.getExpirationTime())
+        .isEqualTo(clock.instant().plus(Duration.ofMinutes(20)));
   }
 
   @Test
@@ -158,7 +160,8 @@ public class StorageConfigurationTest {
 
       mockedStatic.when(GoogleCredentials::getApplicationDefault).thenReturn(mockDefaultCreds);
 
-      Supplier<GoogleCredentials> supplier = configWithoutGcpToken().gcpCredentialsSupplier();
+      Supplier<GoogleCredentials> supplier =
+          configWithoutGcpToken().gcpCredentialsSupplier(Clock.systemUTC());
       GoogleCredentials result = supplier.get();
 
       assertThat(result).isSameAs(mockDefaultCreds);
