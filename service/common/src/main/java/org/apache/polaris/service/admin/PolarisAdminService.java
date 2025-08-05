@@ -1141,10 +1141,18 @@ public class PolarisAdminService {
     return rotateOrResetCredentialsHelper(principalName, true);
   }
 
+  /**
+   * List all principals after checking for permission. Nulls due to non-atomic list-then-get are
+   * filtered out.
+   */
   public List<PolarisEntity> listPrincipals() {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPALS;
     authorizeBasicRootOperationOrThrow(op);
 
+    // loadEntity may return null due to multiple non-atomic
+    // API calls to the persistence layer. Specifically, this can happen when a PolarisEntity is
+    // returned by listEntities, but cannot be loaded afterward because it was purged by another
+    // process before it could be loaded.
     return metaStoreManager
         .listEntities(
             getCurrentPolarisContext(),
@@ -1159,6 +1167,7 @@ public class PolarisAdminService {
                 PolarisEntity.of(
                     metaStoreManager.loadEntity(
                         getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
+        .filter(Objects::nonNull)
         .toList();
   }
 
@@ -1254,10 +1263,18 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
+  /**
+   * List all principal roles after checking for permission. Nulls due to non-atomic list-then-get
+   * are filtered out.
+   */
   public List<PolarisEntity> listPrincipalRoles() {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
     authorizeBasicRootOperationOrThrow(op);
 
+    // loadEntity may return null due to multiple non-atomic
+    // API calls to the persistence layer. Specifically, this can happen when a PolarisEntity is
+    // returned by listEntities, but cannot be loaded afterward because it was purged by another
+    // process before it could be loaded.
     return metaStoreManager
         .listEntities(
             getCurrentPolarisContext(),
@@ -1272,6 +1289,7 @@ public class PolarisAdminService {
                 PolarisEntity.of(
                     metaStoreManager.loadEntity(
                         getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
+        .filter(Objects::nonNull)
         .toList();
   }
 

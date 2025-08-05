@@ -315,4 +315,81 @@ public class ManagementServiceTest {
     assertThat(catalogs.size()).isEqualTo(1);
     assertThat(catalogs.getFirst().getId()).isEqualTo(catalog2.getCatalog().getId());
   }
+
+  /**
+   * Simulates the case when a principal is dropped after being found while listing all principals.
+   */
+  @Test
+  public void testPrincipalNotReturnedWhenDeletedAfterListBeforeGet() {
+    PolarisMetaStoreManager metaStoreManager = Mockito.spy(setupMetaStoreManager());
+    PolarisCallContext callContext = setupCallContext();
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    int initialPrincipalCount = polarisAdminService.listPrincipals().size();
+
+    PrincipalEntity principal1 = createPrincipal(metaStoreManager, callContext, "my-principal-1");
+    metaStoreManager.createPrincipal(callContext, principal1);
+
+    PrincipalEntity principal2 = createPrincipal(metaStoreManager, callContext, "my-principal-2");
+    metaStoreManager.createPrincipal(callContext, principal2);
+
+    Mockito.doAnswer(
+            invocation -> {
+              Object entityId = invocation.getArgument(2);
+              if (entityId.equals(principal1.getId())) {
+                return new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "");
+              }
+              return invocation.callRealMethod();
+            })
+        .when(metaStoreManager)
+        .loadEntity(Mockito.any(), Mockito.anyLong(), Mockito.anyLong(), Mockito.any());
+
+    List<PolarisEntity> principals = polarisAdminService.listPrincipals();
+
+    assertThat(principals.size())
+        .isEqualTo(initialPrincipalCount + 1); // initial + 2 created - 1 filtered
+    assertThat(principals.stream().anyMatch(p -> p.getId() == principal2.getId()))
+        .isTrue(); // principal2 survived
+    assertThat(principals.stream().noneMatch(p -> p.getId() == principal1.getId()))
+        .isTrue(); // principal1 filtered out
+  }
+
+  /**
+   * Simulates the case when a principal role is dropped after being found while listing all
+   * principal roles.
+   */
+  @Test
+  public void testPrincipalRoleNotReturnedWhenDeletedAfterListBeforeGet() {
+    PolarisMetaStoreManager metaStoreManager = Mockito.spy(setupMetaStoreManager());
+    PolarisCallContext callContext = setupCallContext();
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    int initialRoleCount = polarisAdminService.listPrincipalRoles().size();
+
+    PrincipalRoleEntity role1 = createRole(metaStoreManager, callContext, "my-role-1", false);
+    EntityResult createResult1 = metaStoreManager.createEntityIfNotExists(callContext, null, role1);
+    assertThat(createResult1.isSuccess()).isTrue();
+
+    PrincipalRoleEntity role2 = createRole(metaStoreManager, callContext, "my-role-2", false);
+    EntityResult createResult2 = metaStoreManager.createEntityIfNotExists(callContext, null, role2);
+    assertThat(createResult2.isSuccess()).isTrue();
+
+    Mockito.doAnswer(
+            invocation -> {
+              Object entityId = invocation.getArgument(2);
+              if (entityId.equals(role1.getId())) {
+                return new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "");
+              }
+              return invocation.callRealMethod();
+            })
+        .when(metaStoreManager)
+        .loadEntity(Mockito.any(), Mockito.anyLong(), Mockito.anyLong(), Mockito.any());
+
+    List<PolarisEntity> principalRoles = polarisAdminService.listPrincipalRoles();
+    assertThat(principalRoles.size()).isEqualTo(initialRoleCount + 1);
+    assertThat(principalRoles.stream().anyMatch(r -> r.getId() == role2.getId())).isTrue();
+    assertThat(principalRoles.stream().noneMatch(r -> r.getId() == role1.getId())).isTrue();
+  }
 }
