@@ -21,6 +21,25 @@
 
 This directory contains scripts to automate the Apache Polaris release process, following the [official release guide](https://github.com/apache/polaris/blob/main/docs/release-guide.md).
 
+## Prerequisites
+### General Prerequisites
+Before using these scripts, ensure:
+
+1. **GPG Setup**: Configure signing key in `~/.gradle/gradle.properties`
+2. **Apache Credentials**: Set `apacheUsername` and `apachePassword` in gradle.properties or environment variables
+3. **Git Remote**: Apache remote configured as "apache" pointing to https://github.com/apache/polaris.git
+4. **GitHub Token**: Set `GITHUB_TOKEN` environment variable with a personal access token for CI status verification
+5. **Permissions**: Write access to dist.apache.org (not verified by scripts)
+6. **Docker Setup** (for step 6): Docker with buildx support and DockerHub credentials configured
+
+### GitHub Token Setup
+
+The release scripts require a GitHub personal access token to verify that all tests have been run. Create a token with the following permissions:
+- `repo:status` - to read commit status
+- `public_repo` - to access public repository information
+
+Set the token as the `GITHUB_TOKEN` environment variable.
+
 ## Release Scripts
 
 These scripts are used to perform actual releases:
@@ -37,7 +56,7 @@ Verifies that your environment is ready for releases:
 
 ### 2. Create Release Branch
 ```bash
-./02-create-release-branch.sh --version 1.0.0-incubating [--commit HEAD] [--recreate]
+./02-create-release-branch.sh --version 1.0.0-incubating-rc1 [--commit HEAD] [--recreate]
 ```
 Creates a release branch and sets the target release version:
 - Creates `release/x.y.z` branch from specified commit
@@ -110,22 +129,3 @@ Example:
 - ...
 
 See the content of `libs/_constants.sh` for the list of all environment variables and their default values.
-
-## Prerequisites
-
-Before using these scripts, ensure:
-
-1. **GPG Setup**: Configure signing key in `~/.gradle/gradle.properties`
-2. **Apache Credentials**: Set `apacheUsername` and `apachePassword` in gradle.properties or environment variables
-3. **Git Remote**: Apache remote configured as "apache" pointing to https://github.com/apache/polaris.git
-4. **GitHub Token**: Set `GITHUB_TOKEN` environment variable with a personal access token for CI status verification
-5. **Permissions**: Write access to dist.apache.org (not verified by scripts)
-6. **Docker Setup** (for step 6): Docker with buildx support and DockerHub credentials configured
-
-### GitHub Token Setup
-
-The release scripts require a GitHub personal access token to verify that all tests have been run. Create a token with the following permissions:
-- `repo:status` - to read commit status
-- `public_repo` - to access public repository information
-
-Set the token as the `GITHUB_TOKEN` environment variable.
