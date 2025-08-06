@@ -53,7 +53,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
@@ -61,9 +60,6 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntity;
 import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityActive;
 import org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityChangeTracking;
@@ -93,21 +89,18 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
 
   private final PolarisEclipseLinkStore store;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final PrincipalSecretsGenerator secretsGenerator;
 
   /**
    * Create a meta store session against provided realm. Each realm has its own database.
    *
    * @param store Backing store of EclipseLink implementation
-   * @param storageIntegrationProvider Storage integration provider
    * @param realmContext Realm context used to communicate with different database.
    * @param confFile Optional EclipseLink configuration file. Default to 'META-INF/persistence.xml'.
    * @param persistenceUnitName Optional persistence-unit name in confFile. Default to 'polaris'.
    */
   public PolarisEclipseLinkMetaStoreSessionImpl(
       @Nonnull PolarisEclipseLinkStore store,
-      @Nonnull PolarisStorageIntegrationProvider storageIntegrationProvider,
       @Nonnull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName,
@@ -121,7 +114,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     try (EntityManager session = emf.createEntityManager()) {
       this.store.initialize(session);
     }
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.secretsGenerator = secretsGenerator;
   }
 
@@ -274,16 +266,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   public void writeToEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     this.store.writeToEntities(localSession.get(), entity);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      void persistStorageIntegrationIfNeededInCurrentTxn(
-          @Nonnull PolarisCallContext callContext,
-          @Nonnull PolarisBaseEntity entity,
-          @Nullable PolarisStorageIntegration<T> storageIntegration) {
-    // not implemented for eclipselink store
   }
 
   /** {@inheritDoc} */
@@ -659,28 +641,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
     // delete these secrets
     this.store.deletePrincipalSecrets(localSession.get(), clientId);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegrationForConfig(
-        polarisStorageConfigurationInfo);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx.getDiagServices(), entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 
   /** {@inheritDoc} */

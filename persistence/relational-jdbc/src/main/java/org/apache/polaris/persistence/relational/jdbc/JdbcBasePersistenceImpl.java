@@ -47,7 +47,6 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
@@ -60,9 +59,6 @@ import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
@@ -78,7 +74,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   private final DatasourceOperations datasourceOperations;
   private final PrincipalSecretsGenerator secretsGenerator;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
   private final int schemaVersion;
 
@@ -88,12 +83,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public JdbcBasePersistenceImpl(
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
       String realmId,
       int schemaVersion) {
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
   }
@@ -1101,34 +1094,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format("Failed to retrieve policy mapping records %s", e.getMessage()), e);
     }
-  }
-
-  @Nullable
-  @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegration(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegrationForConfig(
-        polarisStorageConfigurationInfo);
-  }
-
-  @Override
-  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration) {}
-
-  @Nullable
-  @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity) {
-    PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callContext.getDiagServices(), entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 
   @FunctionalInterface

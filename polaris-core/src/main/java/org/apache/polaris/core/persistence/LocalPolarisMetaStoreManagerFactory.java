@@ -38,6 +38,7 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,17 +54,20 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, StoreType> backingStoreMap = new HashMap<>();
   final Map<String, Supplier<TransactionalPersistence>> sessionSupplierMap = new HashMap<>();
+  protected final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final Clock clock;
+  private final PolarisDiagnostics diagnostics;
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
-  private final Clock clock;
-  private final PolarisDiagnostics diagnostics;
-
   protected LocalPolarisMetaStoreManagerFactory(
-      @Nonnull Clock clock, @Nonnull PolarisDiagnostics diagnostics) {
+      @Nonnull Clock clock,
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull PolarisStorageIntegrationProvider storageIntegrationProvider) {
     this.clock = clock;
     this.diagnostics = diagnostics;
+    this.storageIntegrationProvider = storageIntegrationProvider;
   }
 
   protected abstract StoreType createBackingStore(@Nonnull PolarisDiagnostics diagnostics);
@@ -89,7 +93,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
    * into the existing realm-based setup flow.
    */
   protected PolarisMetaStoreManager createNewMetaStoreManager(Clock clock) {
-    return new TransactionalMetaStoreManagerImpl(clock);
+    return new TransactionalMetaStoreManagerImpl(clock, storageIntegrationProvider);
   }
 
   private void initializeForRealm(

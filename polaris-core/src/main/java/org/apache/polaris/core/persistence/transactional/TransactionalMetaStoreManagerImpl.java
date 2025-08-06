@@ -69,16 +69,13 @@ import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,7 +90,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   private final Clock clock;
 
-  public TransactionalMetaStoreManagerImpl(Clock clock) {
+  public TransactionalMetaStoreManagerImpl(
+      Clock clock, PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    super(storageIntegrationProvider);
     this.clock = clock;
   }
 
@@ -416,8 +415,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
    * @param callCtx call context
    * @param ms meta store in read/write mode
    * @param catalog the catalog entity to create
-   * @param integration the storage integration that should be attached to the catalog. If null, do
-   *     nothing, otherwise persist the integration.
    * @param principalRoles once the catalog has been created, list of principal roles to grant its
    *     catalog_admin role to. If no principal role is specified, we will grant the catalog_admin
    *     role of the newly created catalog to the service admin role.
@@ -428,7 +425,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity catalog,
-      @Nullable PolarisStorageIntegration<?> integration,
       @Nonnull List<PolarisEntityCore> principalRoles) {
     // validate input
     callCtx.getDiagServices().checkNotNull(catalog, "unexpected_null_catalog");
@@ -479,8 +475,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         != null) {
       return new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
     }
-
-    ms.persistStorageIntegrationIfNeededInCurrentTxn(callCtx, catalog, integration);
 
     // now create and persist new catalog entity
     this.persistNewEntity(callCtx, ms, catalog);
@@ -968,27 +962,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
-    Map<String, String> internalProp = getInternalPropertyMap(catalog);
-    String integrationIdentifierOrId =
-        internalProp.get(PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName());
-    String storageConfigInfoStr =
-        internalProp.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    PolarisStorageIntegration<?> integration;
-    // storageConfigInfo's presence is needed to create a storage integration
-    // and the catalog should not have an internal property of storage identifier or id yet
-    if (storageConfigInfoStr != null && integrationIdentifierOrId == null) {
-      integration =
-          ms.createStorageIntegrationInCurrentTxn(
-              callCtx,
-              catalog.getCatalogId(),
-              catalog.getId(),
-              PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr));
-    } else {
-      integration = null;
-    }
     // need to run inside a read/write transaction
     return ms.runInTransaction(
-        callCtx, () -> this.createCatalog(callCtx, ms, catalog, integration, principalRoles));
+        callCtx, () -> this.createCatalog(callCtx, ms, catalog, principalRoles));
   }
 
   /** {@link #createEntityIfNotExists(PolarisCallContext, List, PolarisBaseEntity)} */
@@ -2018,60 +1994,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
     return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, pageToken));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nonnull ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisEntityType entityType,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
-
-    // get meta store session we should be using
-    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
-    callCtx
-        .getDiagServices()
-        .check(
-            !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
-            "allowed_locations_to_subscope_is_required");
-
-    // reload the entity, error out if not found
-    EntityResult reloadedEntity = loadEntity(callCtx, catalogId, entityId, entityType);
-    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return new ScopedCredentialsResult(
-          reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
-    }
-
-    // get storage integration
-    PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
-        ms.loadPolarisStorageIntegrationInCurrentTxn(callCtx, reloadedEntity.getEntity());
-
-    // cannot be null
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            storageIntegration,
-            "storage_integration_not_exists",
-            "catalogId={}, entityId={}",
-            catalogId,
-            entityId);
-
-    try {
-      AccessConfig accessConfig =
-          storageIntegration.getSubscopedCreds(
-              callCtx.getRealmConfig(),
-              allowListOperation,
-              allowedReadLocations,
-              allowedWriteLocations);
-      return new ScopedCredentialsResult(accessConfig);
-    } catch (Exception ex) {
-      return new ScopedCredentialsResult(
-          BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
-    }
   }
 
   /**

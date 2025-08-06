@@ -23,19 +23,87 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
 public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
   /** mapper, allows to serialize/deserialize properties to/from JSON */
   private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+
+  public BaseMetaStoreManager(PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    this.storageIntegrationProvider = storageIntegrationProvider;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull ScopedCredentialsResult getSubscopedCredsForEntity(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisEntityType entityType,
+      boolean allowListOperation,
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations) {
+
+    // get meta store session we should be using
+    callCtx
+        .getDiagServices()
+        .check(
+            !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
+            "allowed_locations_to_subscope_is_required");
+
+    // reload the entity, error out if not found
+    EntityResult reloadedEntity = loadEntity(callCtx, catalogId, entityId, entityType);
+    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return new ScopedCredentialsResult(
+          reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
+    }
+
+    // get storage integration
+    PolarisBaseEntity entity = reloadedEntity.getEntity();
+    PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
+        storageIntegrationProvider.getStorageIntegrationForConfig(
+            BaseMetaStoreManager.extractStorageConfiguration(callCtx.getDiagServices(), entity));
+
+    // cannot be null
+    callCtx
+        .getDiagServices()
+        .checkNotNull(
+            storageIntegration,
+            "storage_integration_not_exists",
+            "catalogId={}, entityId={}",
+            catalogId,
+            entityId);
+
+    try {
+      AccessConfig accessConfig =
+          storageIntegration.getSubscopedCreds(
+              callCtx.getRealmConfig(),
+              allowListOperation,
+              allowedReadLocations,
+              allowedWriteLocations);
+      return new ScopedCredentialsResult(accessConfig);
+    } catch (Exception ex) {
+      return new ScopedCredentialsResult(
+          BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
+    }
+  }
 
   public static PolarisStorageConfigurationInfo extractStorageConfiguration(
       @Nonnull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {

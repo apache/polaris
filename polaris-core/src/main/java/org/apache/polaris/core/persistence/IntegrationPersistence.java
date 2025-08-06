@@ -21,10 +21,7 @@ package org.apache.polaris.core.persistence;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
 
 /**
  * Interface for the necessary "peripheral integration" objects that are logically attached to core
@@ -90,44 +87,4 @@ public interface IntegrationPersistence {
    */
   void deletePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
-
-  /**
-   * Create an in-memory storage integration
-   *
-   * @param callCtx the polaris calllctx
-   * @param catalogId the catalog id
-   * @param entityId the entity id
-   * @param polarisStorageConfigurationInfo the storage configuration information
-   * @return a storage integration object
-   */
-  @Nullable
-  <T extends PolarisStorageConfigurationInfo> PolarisStorageIntegration<T> createStorageIntegration(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
-
-  /**
-   * Persist a storage integration in the metastore
-   *
-   * @param callContext the polaris call context
-   * @param entity the entity of the object
-   * @param storageIntegration the storage integration to persist
-   */
-  <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration);
-
-  /**
-   * Load the polaris storage integration for a polaris entity (Catalog,Namespace,Table,View)
-   *
-   * @param callContext the polaris call context
-   * @param entity the polaris entity
-   * @return a polaris storage integration
-   */
-  @Nullable
-  <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity);
 }
