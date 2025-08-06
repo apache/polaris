@@ -58,6 +58,7 @@ public class TaskExecutorImplTest {
         new TaskEntity.Builder()
             .setName("mytask")
             .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
+            .setCreateTimestamp(polarisCallCtx.getClock().millis())
             .build();
     metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
 

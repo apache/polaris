@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -118,6 +119,7 @@ public record TestServices(
   }
 
   public static class Builder {
+    private PolarisDiagnostics polarisDiagnostics = new PolarisDefaultDiagServiceImpl();
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient = Mockito.mock(StsClient.class);
@@ -147,7 +149,6 @@ public record TestServices(
 
     public TestServices build() {
       PolarisConfigurationStore configurationStore = new MockedConfigurationStore(config);
-      PolarisDiagnostics polarisDiagnostics = Mockito.mock(PolarisDiagnostics.class);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
 
       // Application level
