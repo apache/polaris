@@ -526,7 +526,11 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper tableLikeWrapper =
         resolutionManifest.getResolvedPath(
             identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
-    if (!resolutionManifest.getIsPassthroughFacade()
+    boolean rbacForFederatedCatalogsEnabled =
+        getCurrentPolarisContext()
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS);
+    if (!(resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled)
         && !subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
       CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
@@ -1697,7 +1701,11 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
     if (resolvedPathWrapper == null
         || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
-      if (resolutionManifest.getIsPassthroughFacade()) {
+      boolean rbacForFederatedCatalogsEnabled =
+          getCurrentPolarisContext()
+              .getRealmConfig()
+              .getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS);
+      if (resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled) {
         resolvedPathWrapper =
             createSyntheticNamespaceEntities(catalogEntity, namespace, resolvedPathWrapper);
         if (resolvedPathWrapper == null
@@ -1773,26 +1781,25 @@ public class PolarisAdminService {
     PolarisEntity currentParent = existingPath.getRawLeafEntity();
 
     String[] allNamespaceLevels = namespace.levels();
-    int matchingLevel = -1;
+    int numMatchingLevels = 0;
     for (PolarisEntity entity : completePath.subList(1, completePath.size())) {
-      if (entity.getName().equals(allNamespaceLevels[matchingLevel + 1])) {
-        matchingLevel++;
-      } else {
+      if (!entity.getName().equals(allNamespaceLevels[numMatchingLevels])) {
         break;
       }
+      numMatchingLevels++;
     }
 
-    for (int i = matchingLevel + 1; i < allNamespaceLevels.length; i++) {
-      String namespacePart = allNamespaceLevels[i];
+    for (int i = numMatchingLevels; i < allNamespaceLevels.length; i++) {
+      String[] namespacePart = Arrays.copyOfRange(allNamespaceLevels, 0, i + 1);
+      String leafNamespace = namespacePart[namespacePart.length - 1];
+      Namespace currentNamespace = Namespace.of(namespacePart);
 
       // TODO: Instead of creating synthetic entitties, rely on external catalog mediated backfill.
       PolarisEntity syntheticNamespace =
-          new PolarisEntity.Builder()
+          new NamespaceEntity.Builder(currentNamespace)
               .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
               .setCatalogId(catalogEntity.getId())
               .setParentId(currentParent.getId())
-              .setType(PolarisEntityType.NAMESPACE)
-              .setName(namespacePart)
               .setCreateTimestamp(System.currentTimeMillis())
               .build();
 
@@ -1810,12 +1817,12 @@ public class PolarisAdminService {
             resolutionManifest.getResolvedPath(partialNamespace);
         PolarisEntity partialLeafEntity = partialPath.getRawLeafEntity();
         if (partialLeafEntity == null
-            || !(partialLeafEntity.getName().equals(namespacePart)
+            || !(partialLeafEntity.getName().equals(leafNamespace)
                 && partialLeafEntity.getType() == PolarisEntityType.NAMESPACE)) {
           throw new RuntimeException(
               String.format(
                   "Failed to create or find namespace entity '%s' in federated catalog '%s'",
-                  namespacePart, catalogEntity.getName()));
+                  leafNamespace, catalogEntity.getName()));
         }
         syntheticNamespace = partialLeafEntity;
       }
@@ -2115,7 +2122,11 @@ public class PolarisAdminService {
             identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedPathWrapper == null
         || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
-      if (resolutionManifest.getIsPassthroughFacade()) {
+      boolean rbacForFederatedCatalogsEnabled =
+          getCurrentPolarisContext()
+              .getRealmConfig()
+              .getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS);
+      if (resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled) {
         resolvedPathWrapper =
             createSyntheticTableLikeEntities(
                 catalogEntity, identifier, subTypes, resolvedPathWrapper);
@@ -2175,17 +2186,20 @@ public class PolarisAdminService {
               namespace.toString(), catalogEntity.getName()));
     }
 
-    // TODO: Instead of creating a synthetic table-like entity, rely on external catalog mediated
-    // backfill.
     PolarisEntity parentNamespaceEntity = resolvedNamespacePathWrapper.getRawLeafEntity();
+
+    // TODO: Once we support GENERIC_TABLE federation, select the intended type depending on the
+    // callsite; if it is instantiated via an Iceberg RESTCatalog factory or a different factory
+    // for GenericCatalogs.
+    PolarisEntitySubType syntheticEntitySubType = selectEntitySubType(subTypes);
+
+    // TODO: Instead of creating a synthetic table-like entity, rely on external catalog mediated
+    // backfill and use the metadata location from the external catalog.
     PolarisEntity syntheticTableEntity =
-        new PolarisEntity.Builder()
+        new IcebergTableLikeEntity.Builder(identifier, "")
             .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
             .setCatalogId(parentNamespaceEntity.getCatalogId())
-            .setParentId(parentNamespaceEntity.getId())
-            .setType(PolarisEntityType.TABLE_LIKE)
-            .setSubType(subTypes.get(0))
-            .setName(identifier.name())
+            .setSubType(syntheticEntitySubType)
             .setCreateTimestamp(System.currentTimeMillis())
             .build();
 
@@ -2305,5 +2319,26 @@ public class PolarisAdminService {
             policyEntity,
             privilege)
         .isSuccess();
+  }
+
+  /**
+   * Selects the appropriate entity subtype for synthetic entities in external catalogs.
+   *
+   * @param subTypes list of candidate subtypes
+   * @return the selected subtype for the synthetic entity
+   * @throws IllegalStateException if no supported subtype is found
+   */
+  private static PolarisEntitySubType selectEntitySubType(List<PolarisEntitySubType> subTypes) {
+    if (subTypes.contains(PolarisEntitySubType.ICEBERG_TABLE)) {
+      return PolarisEntitySubType.ICEBERG_TABLE;
+    } else if (subTypes.contains(PolarisEntitySubType.ICEBERG_VIEW)) {
+      return PolarisEntitySubType.ICEBERG_VIEW;
+    } else {
+      throw new IllegalStateException(
+          String.format(
+              "No supported subtype found in %s. Only ICEBERG_TABLE and ICEBERG_VIEW are"
+                  + " supported for synthetic entities in external catalogs.",
+              subTypes));
+    }
   }
 }

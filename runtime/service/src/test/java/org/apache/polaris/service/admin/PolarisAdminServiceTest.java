@@ -29,16 +29,21 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -68,6 +73,7 @@ public class PolarisAdminServiceTest {
   @Mock private AuthenticatedPolarisPrincipal authenticatedPrincipal;
   @Mock private PolarisResolutionManifest resolutionManifest;
   @Mock private PolarisResolvedPathWrapper resolvedPathWrapper;
+  @Mock private RealmConfig realmConfig;
 
   private PolarisAdminService adminService;
 
@@ -77,6 +83,11 @@ public class PolarisAdminServiceTest {
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedPrincipal);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
     when(polarisCallContext.getDiagServices()).thenReturn(polarisDiagnostics);
+    when(polarisCallContext.getRealmConfig()).thenReturn(realmConfig);
+
+    // Default feature configuration - enabled by default
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
+        .thenReturn(true);
 
     when(resolutionManifestFactory.createResolutionManifest(any(), any(), any()))
         .thenReturn(resolutionManifest);
@@ -175,7 +186,7 @@ public class PolarisAdminServiceTest {
         .thenReturn(
             List.of(
                 createEntity("test-catalog", PolarisEntityType.CATALOG),
-                createEntity("complete-ns", PolarisEntityType.NAMESPACE, 3L, 1L)));
+                createNamespaceEntity(Namespace.of("complete-ns"), 3L, 1L)));
     when(resolvedPathWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
         .thenReturn(false);
 
@@ -286,7 +297,7 @@ public class PolarisAdminServiceTest {
     when(catalogRoleWrapper.getRawLeafEntity()).thenReturn(catalogRoleEntity);
     when(resolutionManifest.getResolvedPath(eq(catalogRoleName))).thenReturn(catalogRoleWrapper);
 
-    PolarisEntity orgNsEntity = createEntity("org-ns", PolarisEntityType.NAMESPACE, 3L, 1L);
+    PolarisEntity orgNsEntity = createNamespaceEntity(Namespace.of("org-ns"), 3L, 1L);
     when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(resolvedPathWrapper);
     when(resolvedPathWrapper.getRawFullPath()).thenReturn(List.of(catalogEntity, orgNsEntity));
     when(resolvedPathWrapper.getRawLeafEntity()).thenReturn(orgNsEntity);
@@ -300,13 +311,14 @@ public class PolarisAdminServiceTest {
     when(teamNsCreateResult.isSuccess()).thenReturn(true);
     when(projectNsCreateResult.isSuccess()).thenReturn(true);
 
-    PolarisEntity teamNsEntity = createEntity("team-ns", PolarisEntityType.NAMESPACE, 4L, 3L);
+    PolarisEntity teamNsEntity = createNamespaceEntity(Namespace.of("org-ns", "team-ns"), 4L, 3L);
     when(teamNsCreateResult.getEntity()).thenReturn(teamNsEntity);
 
     // Mock creation of project-ns.
     when(idResult.getId()).thenReturn(5L);
     when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
-    PolarisEntity projectNsEntity = createEntity("project-ns", PolarisEntityType.NAMESPACE, 5L, 4L);
+    PolarisEntity projectNsEntity =
+        createNamespaceEntity(Namespace.of("org-ns", "team-ns", "project-ns"), 5L, 4L);
     when(projectNsCreateResult.getEntity()).thenReturn(projectNsEntity);
 
     when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
@@ -330,6 +342,44 @@ public class PolarisAdminServiceTest {
   }
 
   @Test
+  void testGrantPrivilegeOnNamespaceToRole_PassthroughFacade_FeatureDisabled() throws Exception {
+    String catalogName = "test-catalog";
+    String catalogRoleName = "test-role";
+    Namespace namespace = Namespace.of("org-ns", "team-ns", "project-ns");
+    PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
+
+    // Disable the feature configuration
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
+        .thenReturn(false);
+
+    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
+    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
+    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
+    when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
+
+    PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisEntity catalogRoleEntity =
+        createEntity(catalogRoleName, PolarisEntityType.CATALOG_ROLE, 2L);
+    when(catalogRoleWrapper.getRawLeafEntity()).thenReturn(catalogRoleEntity);
+    when(resolutionManifest.getResolvedPath(eq(catalogRoleName))).thenReturn(catalogRoleWrapper);
+
+    // Create a mock resolved path that returns null initially and is not fully resolved
+    PolarisResolvedPathWrapper unresolvedWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(unresolvedWrapper.isFullyResolvedNamespace(eq(catalogName), eq(namespace)))
+        .thenReturn(false);
+    when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(unresolvedWrapper);
+
+    // Should throw NotFoundException because feature is disabled and it's passthrough facade
+    assertThatThrownBy(
+            () ->
+                adminService.grantPrivilegeOnNamespaceToRole(
+                    catalogName, catalogRoleName, namespace, privilege))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessageContaining("Namespace " + namespace + " not found");
+  }
+
+  @Test
   void testGrantPrivilegeOnNamespaceToRole_SyntheticEntityCreationFails() throws Exception {
     String catalogName = "test-catalog";
     String catalogRoleName = "test-role";
@@ -348,7 +398,7 @@ public class PolarisAdminServiceTest {
     when(catalogRoleWrapper.getRawLeafEntity()).thenReturn(catalogRoleEntity);
     when(resolutionManifest.getResolvedPath(eq(catalogRoleName))).thenReturn(catalogRoleWrapper);
 
-    PolarisEntity orgNsEntity = createEntity("org-ns", PolarisEntityType.NAMESPACE, 3L, 1L);
+    PolarisEntity orgNsEntity = createNamespaceEntity(Namespace.of("org-ns"), 3L, 1L);
     when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(resolvedPathWrapper);
     when(resolvedPathWrapper.getRawFullPath()).thenReturn(List.of(catalogEntity, orgNsEntity));
     when(resolvedPathWrapper.getRawLeafEntity()).thenReturn(orgNsEntity);
@@ -397,8 +447,8 @@ public class PolarisAdminServiceTest {
     when(catalogRoleWrapper.getRawLeafEntity()).thenReturn(catalogRoleEntity);
     when(resolutionManifest.getResolvedPath(eq(catalogRoleName))).thenReturn(catalogRoleWrapper);
 
-    PolarisEntity orgNsEntity = createEntity("org-ns", PolarisEntityType.NAMESPACE, 3L, 1L);
-    PolarisEntity teamNsEntity = createEntity("team-ns", PolarisEntityType.NAMESPACE, 4L, 3L);
+    PolarisEntity orgNsEntity = createNamespaceEntity(Namespace.of("org-ns"), 3L, 1L);
+    PolarisEntity teamNsEntity = createNamespaceEntity(Namespace.of("org-ns", "team-ns"), 4L, 3L);
 
     PolarisResolvedPathWrapper existingPathWrapper = mock(PolarisResolvedPathWrapper.class);
     when(existingPathWrapper.getRawFullPath())
@@ -412,7 +462,8 @@ public class PolarisAdminServiceTest {
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
     when(idResult.getId()).thenReturn(5L);
     when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
-    PolarisEntity projectNsEntity = createEntity("project-ns", PolarisEntityType.NAMESPACE, 5L, 4L);
+    PolarisEntity projectNsEntity =
+        createNamespaceEntity(Namespace.of("org-ns", "team-ns", "project-ns"), 5L, 4L);
     EntityResult projectNsCreateResult = mock(EntityResult.class);
     when(projectNsCreateResult.isSuccess()).thenReturn(true);
     when(projectNsCreateResult.getEntity()).thenReturn(projectNsEntity);
@@ -430,8 +481,7 @@ public class PolarisAdminServiceTest {
     when(idResult.getId()).thenReturn(6L);
     when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
     PolarisEntity tableEntity =
-        createEntity(
-            "test-table", PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, 6L, 5L);
+        createTableEntity(identifier, PolarisEntitySubType.ICEBERG_TABLE, 6L, 5L);
     EntityResult tableCreateResult = mock(EntityResult.class);
     when(tableCreateResult.isSuccess()).thenReturn(true);
     when(tableCreateResult.getEntity()).thenReturn(tableEntity);
@@ -453,6 +503,59 @@ public class PolarisAdminServiceTest {
         adminService.grantPrivilegeOnTableToRole(
             catalogName, catalogRoleName, identifier, privilege);
     assertThat(result).isTrue();
+  }
+
+  @Test
+  void testGrantPrivilegeOnTableLikeToRole_PassthroughFacade_FeatureDisabled() throws Exception {
+    String catalogName = "test-catalog";
+    String catalogRoleName = "test-role";
+    Namespace namespace = Namespace.of("org-ns", "team-ns", "project-ns");
+    TableIdentifier identifier = TableIdentifier.of(namespace, "test-table");
+    PolarisPrivilege privilege = PolarisPrivilege.TABLE_WRITE_DATA;
+
+    // Disable the feature configuration
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
+        .thenReturn(false);
+
+    PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
+    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
+    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
+    when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
+
+    PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
+    PolarisEntity catalogRoleEntity =
+        createEntity(catalogRoleName, PolarisEntityType.CATALOG_ROLE, 2L);
+    when(catalogRoleWrapper.getRawLeafEntity()).thenReturn(catalogRoleEntity);
+    when(resolutionManifest.getResolvedPath(eq(catalogRoleName))).thenReturn(catalogRoleWrapper);
+
+    // Create a table entity for authorization but later it should not be found
+    PolarisEntity tableEntity =
+        createEntity(
+            "test-table", PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, 5L, 4L);
+    PolarisResolvedPathWrapper tableWrapper = mock(PolarisResolvedPathWrapper.class);
+    when(tableWrapper.getRawLeafEntity()).thenReturn(tableEntity);
+
+    // Mock authorization path with table
+    when(resolutionManifest.getResolvedPath(
+            eq(identifier),
+            eq(PolarisEntityType.TABLE_LIKE),
+            eq(PolarisEntitySubType.ANY_SUBTYPE),
+            eq(true)))
+        .thenReturn(tableWrapper);
+
+    // Mock the main resolution to return null (table not found in main logic)
+    when(resolutionManifest.getResolvedPath(
+            eq(identifier), eq(PolarisEntityType.TABLE_LIKE), eq(PolarisEntitySubType.ANY_SUBTYPE)))
+        .thenReturn(null);
+
+    // Should throw NoSuchTableException because feature is disabled
+    assertThatThrownBy(
+            () ->
+                adminService.grantPrivilegeOnTableToRole(
+                    catalogName, catalogRoleName, identifier, privilege))
+        .isInstanceOf(NoSuchTableException.class)
+        .hasMessageContaining("Table does not exist");
   }
 
   @Test
@@ -544,6 +647,26 @@ public class PolarisAdminServiceTest {
         .build();
   }
 
+  private PolarisEntity createNamespaceEntity(Namespace namespace, long id, long parentId) {
+    return new NamespaceEntity.Builder(namespace)
+        .setId(id)
+        .setCatalogId(1L)
+        .setParentId(parentId)
+        .setCreateTimestamp(System.currentTimeMillis())
+        .build();
+  }
+
+  private PolarisEntity createTableEntity(
+      TableIdentifier identifier, PolarisEntitySubType subType, long id, long parentId) {
+    return new IcebergTableLikeEntity.Builder(identifier, "")
+        .setId(id)
+        .setCatalogId(1L)
+        .setParentId(parentId)
+        .setSubType(subType)
+        .setCreateTimestamp(System.currentTimeMillis())
+        .build();
+  }
+
   private ResolverStatus createSuccessfulResolverStatus() {
     return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
   }
@@ -568,7 +691,7 @@ public class PolarisAdminServiceTest {
     when(resolutionManifest.getResolvedPath(eq(catalogRoleName))).thenReturn(catalogRoleWrapper);
 
     PolarisEntity namespaceEntity =
-        createEntity(namespace.levels()[0], PolarisEntityType.NAMESPACE, 3L, 1L);
+        createNamespaceEntity(Namespace.of(namespace.levels()[0]), 3L, 1L);
     List<PolarisEntity> fullPath = List.of(catalogEntity, namespaceEntity);
     when(resolvedPathWrapper.getRawFullPath()).thenReturn(fullPath);
     when(resolvedPathWrapper.getRawParentPath()).thenReturn(List.of(catalogEntity));
