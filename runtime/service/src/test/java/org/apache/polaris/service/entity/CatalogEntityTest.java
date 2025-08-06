@@ -53,14 +53,13 @@ public class CatalogEntityTest {
 
   @BeforeEach
   public void setup() {
-    MetaStoreManagerFactory metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
+    PolarisDefaultDiagServiceImpl diagnostics = new PolarisDefaultDiagServiceImpl();
+    MetaStoreManagerFactory metaStoreManagerFactory =
+        new InMemoryPolarisMetaStoreManagerFactory(null, diagnostics);
     RealmContext realmContext = () -> "realm";
-    PolarisCallContext polarisCallContext =
+    this.callContext =
         new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            new PolarisDefaultDiagServiceImpl());
-    this.callContext = polarisCallContext;
+            realmContext, metaStoreManagerFactory.getOrCreateSession(realmContext), diagnostics);
   }
 
   @ParameterizedTest

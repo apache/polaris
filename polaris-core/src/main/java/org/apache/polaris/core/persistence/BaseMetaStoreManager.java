@@ -208,6 +208,6 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
-    return new GenerateEntityIdResult(ms.generateNewId(callCtx));
+    return new GenerateEntityIdResult(ms.generateNewId());
   }
 }
