@@ -22,7 +22,6 @@ import jakarta.annotation.Nonnull;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 
 /**
  * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
@@ -33,9 +32,15 @@ import org.apache.polaris.core.context.CallContext;
 public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigurationInfo> {
 
   private final String integrationIdentifierOrId;
+  private final T config;
 
-  public PolarisStorageIntegration(String identifierOrId) {
+  public PolarisStorageIntegration(T config, String identifierOrId) {
+    this.config = config;
     this.integrationIdentifierOrId = identifierOrId;
+  }
+
+  protected T config() {
+    return config;
   }
 
   public String getStorageIdentifierOrId() {
@@ -45,8 +50,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
   /**
    * Subscope the creds against the allowed read and write locations.
    *
-   * @param callContext the call context
-   * @param storageConfig storage configuration
+   * @param realmConfig the call context
    * @param allowListOperation whether to allow LIST on all the provided allowed read/write
    *     locations
    * @param allowedReadLocations a set of allowed to read locations
@@ -54,8 +58,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * @return An enum map including the scoped credentials
    */
   public abstract AccessConfig getSubscopedCreds(
-      @Nonnull CallContext callContext,
-      @Nonnull T storageConfig,
+      @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations);

@@ -18,9 +18,8 @@
  */
 
 plugins {
-  alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
-  id("polaris-runtime")
+  id("polaris-server")
 }
 
 dependencies {
