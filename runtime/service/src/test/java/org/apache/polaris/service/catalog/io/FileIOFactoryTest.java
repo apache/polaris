@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
-import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.Schema;
@@ -35,7 +34,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.types.Types;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -136,13 +134,7 @@ public class FileIOFactoryTest {
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
 
-    callContext =
-        new PolarisCallContext(
-            realmContext,
-            testServices.metaStoreManagerFactory().getOrCreateSession(realmContext),
-            testServices.polarisDiagnostics(),
-            testServices.configurationStore(),
-            Clock.systemUTC());
+    callContext = testServices.newCallContext();
   }
 
   @AfterEach

@@ -170,15 +170,6 @@ public class ManagementServiceTest {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
   }
 
-  private PolarisCallContext setupCallContext() {
-    MetaStoreManagerFactory metaStoreManagerFactory = services.metaStoreManagerFactory();
-    RealmContext realmContext = services.realmContext();
-    return new PolarisCallContext(
-        realmContext,
-        metaStoreManagerFactory.getOrCreateSession(realmContext),
-        services.polarisDiagnostics());
-  }
-
   private PolarisAdminService setupPolarisAdminService(
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
     return new PolarisAdminService(
@@ -252,7 +243,7 @@ public class ManagementServiceTest {
   @Test
   public void testCannotAssignFederatedEntities() {
     PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
-    PolarisCallContext callContext = setupCallContext();
+    PolarisCallContext callContext = services.newCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
 
@@ -272,7 +263,7 @@ public class ManagementServiceTest {
   @Test
   public void testCatalogNotReturnedWhenDeletedAfterListBeforeGet() {
     PolarisMetaStoreManager metaStoreManager = Mockito.spy(setupMetaStoreManager());
-    PolarisCallContext callContext = setupCallContext();
+    PolarisCallContext callContext = services.newCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
 
