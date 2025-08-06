@@ -52,6 +52,14 @@ testing {
       }
       sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
     }
+    register<JvmTestSuite>("cloudTest") {
+      targets.all {
+        tasks.named("compileCloudTestJava").configure {
+          dependsOn(tasks.named("compileQuarkusTestGeneratedSourcesJava"))
+        }
+      }
+      sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
+    }
   }
 }
 
@@ -78,7 +86,14 @@ configurations.named("intTestImplementation").configure {
   extendsFrom(configurations.getByName("testImplementation"))
 }
 
-dependencies { add("intTestImplementation", java.sourceSets.getByName("test").output.dirs) }
+configurations.named("cloudTestImplementation").configure {
+  extendsFrom(configurations.getByName("testImplementation"))
+}
+
+dependencies {
+  add("intTestImplementation", java.sourceSets.getByName("test").output.dirs)
+  add("cloudTestImplementation", java.sourceSets.getByName("test").output.dirs)
+}
 
 configurations.named("intTestRuntimeOnly").configure {
   extendsFrom(configurations.getByName("testRuntimeOnly"))
