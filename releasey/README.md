@@ -19,7 +19,7 @@
 
 # Polaris Release Automation Scripts
 
-This directory contains scripts to automate the Apache Polaris release process, following the [official release guide](https://github.com/apache/polaris/blob/main/docs/release-guide.md).
+This directory contains scripts to automate the Apache Polaris release process, following the [official release guide](https://github.com/apache/polaris/blob/main/site/content/release-guide.md).
 
 ## Prerequisites
 ### General Prerequisites
