@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -49,17 +49,21 @@ public class AwsCredentialsStorageIntegration
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
 
-  public AwsCredentialsStorageIntegration(StsClient fixedClient) {
-    this((destination) -> fixedClient);
-  }
-
-  public AwsCredentialsStorageIntegration(StsClientProvider stsClientProvider) {
-    this(stsClientProvider, Optional.empty());
+  public AwsCredentialsStorageIntegration(
+      AwsStorageConfigurationInfo config, StsClient fixedClient) {
+    this(config, (destination) -> fixedClient);
   }
 
   public AwsCredentialsStorageIntegration(
-      StsClientProvider stsClientProvider, Optional<AwsCredentialsProvider> credentialsProvider) {
-    super(AwsCredentialsStorageIntegration.class.getName());
+      AwsStorageConfigurationInfo config, StsClientProvider stsClientProvider) {
+    this(config, stsClientProvider, Optional.empty());
+  }
+
+  public AwsCredentialsStorageIntegration(
+      AwsStorageConfigurationInfo config,
+      StsClientProvider stsClientProvider,
+      Optional<AwsCredentialsProvider> credentialsProvider) {
+    super(config, AwsCredentialsStorageIntegration.class.getName());
     this.stsClientProvider = stsClientProvider;
     this.credentialsProvider = credentialsProvider;
   }
@@ -67,13 +71,13 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public AccessConfig getSubscopedCreds(
-      @Nonnull CallContext callContext,
-      @Nonnull AwsStorageConfigurationInfo storageConfig,
+      @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
     int storageCredentialDurationSeconds =
-        callContext.getRealmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+        realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+    AwsStorageConfigurationInfo storageConfig = config();
     AssumeRoleRequest.Builder request =
         AssumeRoleRequest.builder()
             .externalId(storageConfig.getExternalId())
@@ -119,6 +123,11 @@ public class AwsCredentialsStorageIntegration
     URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {
       accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
+    }
+    URI internalEndpointUri = storageConfig.getInternalEndpointUri();
+    if (internalEndpointUri != null) {
+      accessConfig.putInternalProperty(
+          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
     }
 
     if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {

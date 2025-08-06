@@ -247,7 +247,7 @@ public class StorageCredentialCacheTest {
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity)
-              .internalProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap))
+              .internalProperties(PolarisObjectMapperUtil.serializeProperties(internalMap))
               .build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
@@ -287,7 +287,7 @@ public class StorageCredentialCacheTest {
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity)
-              .internalProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap))
+              .internalProperties(PolarisObjectMapperUtil.serializeProperties(internalMap))
               .build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,

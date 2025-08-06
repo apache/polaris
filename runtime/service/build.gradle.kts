@@ -21,16 +21,20 @@ plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
   id("polaris-runtime")
+  id("java-test-fixtures")
 }
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
 
-  implementation(project(":polaris-service-common"))
+  runtimeOnly(project(":polaris-relational-jdbc"))
+
   implementation(project(":polaris-runtime-defaults"))
+  implementation(project(":polaris-runtime-common"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
@@ -40,7 +44,6 @@ dependencies {
   implementation(platform(libs.opentelemetry.bom))
 
   implementation(platform(libs.quarkus.bom))
-  implementation(project(":polaris-runtime-common"))
   implementation("io.quarkus:quarkus-logging-json")
   implementation("io.quarkus:quarkus-rest-jackson")
   implementation("io.quarkus:quarkus-reactive-routes")
@@ -53,6 +56,7 @@ dependencies {
   implementation("io.quarkus:quarkus-security")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
   implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
+  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
 
   implementation(libs.jakarta.enterprise.cdi.api)
   implementation(libs.jakarta.inject.api)
@@ -63,12 +67,30 @@ dependencies {
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
-  implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
-
   implementation(libs.hadoop.client.api)
   implementation(libs.hadoop.client.runtime)
 
   implementation(libs.auth0.jwt)
+
+  implementation(libs.hadoop.common) {
+    exclude("org.slf4j", "slf4j-reload4j")
+    exclude("org.slf4j", "slf4j-log4j12")
+    exclude("ch.qos.reload4j", "reload4j")
+    exclude("log4j", "log4j")
+    exclude("org.apache.zookeeper", "zookeeper")
+    exclude("org.apache.hadoop.thirdparty", "hadoop-shaded-protobuf_3_25")
+    exclude("com.github.pjfanning", "jersey-json")
+    exclude("com.sun.jersey", "jersey-core")
+    exclude("com.sun.jersey", "jersey-server")
+    exclude("com.sun.jersey", "jersey-servlet")
+    exclude("com.sun.jersey", "jersey-servlet")
+    exclude("io.dropwizard.metrics", "metrics-core")
+  }
+  implementation(libs.hadoop.hdfs.client)
+
+  implementation(libs.smallrye.common.annotation)
+  implementation(libs.swagger.jaxrs)
+  implementation(libs.microprofile.fault.tolerance.api)
 
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.spotbugs.annotations)
@@ -84,6 +106,8 @@ dependencies {
   }
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
+  implementation("com.azure:azure-storage-blob")
+  implementation("com.azure:azure-storage-file-datalake")
 
   compileOnly(libs.swagger.annotations)
 
@@ -102,7 +126,6 @@ dependencies {
   }
 
   testImplementation(project(":polaris-api-management-model"))
-  testImplementation(testFixtures(project(":polaris-service-common")))
 
   testImplementation(project(":polaris-minio-testcontainer"))
 
@@ -113,12 +136,6 @@ dependencies {
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
 
-  runtimeOnly(project(":polaris-relational-jdbc"))
-  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql") {
-    exclude(group = "org.antlr", module = "antlr4-runtime")
-    exclude(group = "org.scala-lang", module = "scala-library")
-    exclude(group = "org.scala-lang", module = "scala-reflect")
-  }
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation("io.quarkus:quarkus-junit5-mockito")
@@ -130,22 +147,55 @@ dependencies {
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
   testImplementation(project(":polaris-runtime-test-common"))
+
   testImplementation("io.quarkus:quarkus-junit5")
-  implementation(libs.awaitility)
+  testImplementation(libs.awaitility)
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:postgresql")
   testImplementation("org.postgresql:postgresql")
+
+  testFixturesImplementation(project(":polaris-core"))
+  testFixturesImplementation(project(":polaris-api-management-model"))
+  testFixturesImplementation(project(":polaris-api-management-service"))
+  testFixturesImplementation(project(":polaris-api-iceberg-service"))
+  testFixturesImplementation(project(":polaris-api-catalog-service"))
+
+  testFixturesImplementation(libs.jakarta.enterprise.cdi.api)
+  testFixturesImplementation(libs.jakarta.annotation.api)
+  testFixturesImplementation(libs.jakarta.ws.rs.api)
+
+  testFixturesImplementation(platform(libs.quarkus.bom))
+  testFixturesImplementation("io.quarkus:quarkus-rest-client")
+  testFixturesImplementation("io.quarkus:quarkus-rest-client-jackson")
+
+  testFixturesImplementation(platform(libs.iceberg.bom))
+  testFixturesImplementation("org.apache.iceberg:iceberg-api")
+  testFixturesImplementation("org.apache.iceberg:iceberg-core")
+  testFixturesImplementation("org.apache.iceberg:iceberg-aws")
+
+  testFixturesImplementation(platform(libs.google.cloud.storage.bom))
+  testFixturesImplementation("com.google.cloud:google-cloud-storage")
+  testFixturesImplementation(platform(libs.awssdk.bom))
+  testFixturesImplementation("software.amazon.awssdk:sts")
+  testFixturesImplementation("software.amazon.awssdk:iam-policy-builder")
+  testFixturesImplementation("software.amazon.awssdk:s3")
+
+  testFixturesImplementation(platform(libs.azuresdk.bom))
+  testFixturesImplementation("com.azure:azure-core")
+  testFixturesImplementation("com.azure:azure-storage-blob")
+  testFixturesImplementation("com.azure:azure-storage-file-datalake")
 }
+
+tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.withType(Test::class.java).configureEach {
   forkEvery = 1
-  systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
   // Note: the test secrets are referenced in
-  // org.apache.polaris.service.quarkus.it.QuarkusServerManager
+  // org.apache.polaris.service.it.ServerManager
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work

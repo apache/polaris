@@ -21,7 +21,7 @@ services:
 
   polaris:
     # IMPORTANT: the image MUST contain the Postgres JDBC driver and EclipseLink dependencies, see README for instructions
-    image: apache/polaris:postgres-latest
+    image: apache/polaris:latest
     ports:
       # API port
       - "8181:8181"

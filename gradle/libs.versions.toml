@@ -21,8 +21,8 @@
 checkstyle = "10.25.0"
 hadoop = "3.4.1"
 iceberg = "1.9.2" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
-quarkus = "3.24.5"
-immutables = "2.11.1"
+quarkus = "3.25.0"
+immutables = "2.11.2"
 picocli = "4.7.7"
 scala212 = "2.12.19"
 spark35 = "3.5.6"
@@ -40,16 +40,16 @@ swagger = "1.6.16"
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.32.4" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.32.14" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
-azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.36" }
+azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.37" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
 commons-codec1 = { module = "commons-codec:commons-codec", version = "1.19.0" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.18.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.14.0" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.7" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.41.0" }
-google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.53.3" }
+google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.54.0" }
 guava = { module = "com.google.guava:guava", version = "33.4.8-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }
 dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
@@ -88,7 +88,7 @@ scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref =
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
 s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.7.0" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
-smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.13.7" }
+smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.13.8" }
 smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.13.4" }
 spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark35" }
 spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version = "4.9.3" }
@@ -102,4 +102,4 @@ jandex = { id = "org.kordamp.gradle.jandex", version = "2.2.0" }
 openapi-generator = { id = "org.openapi.generator", version = "7.12.0" }
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }
-jetbrains-changelog = { id = "org.jetbrains.changelog",  version = "2.2.1"}
+jetbrains-changelog = { id = "org.jetbrains.changelog",  version = "2.4.0"}
