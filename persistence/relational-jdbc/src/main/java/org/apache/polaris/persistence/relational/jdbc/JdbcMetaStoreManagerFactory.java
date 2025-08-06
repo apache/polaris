@@ -87,7 +87,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   protected PolarisMetaStoreManager createNewMetaStoreManager() {
-    return new AtomicOperationMetaStoreManager(clock);
+    return new AtomicOperationMetaStoreManager(clock, storageIntegrationProvider);
   }
 
   private void initializeForRealm(
@@ -105,7 +105,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
             new JdbcBasePersistenceImpl(
                 datasourceOperations,
                 secretsGenerator(realmId, rootCredentialsSet),
-                storageIntegrationProvider,
                 realmId,
                 schemaVersion));
 

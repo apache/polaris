@@ -41,8 +41,6 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
 
 /**
  * Extends BasePersistence to express a more "transaction-oriented" control flow for backing stores
@@ -511,45 +509,6 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     runActionInTransaction(
         callCtx, () -> this.deletePrincipalSecretsInCurrentTxn(callCtx, clientId, principalId));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  @Nullable
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegration(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return runInTransaction(
-        callCtx,
-        () ->
-            this.createStorageIntegrationInCurrentTxn(
-                callCtx, catalogId, entityId, polarisStorageConfigurationInfo));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration) {
-    runActionInTransaction(
-        callCtx,
-        () ->
-            this.persistStorageIntegrationIfNeededInCurrentTxn(
-                callCtx, entity, storageIntegration));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  @Nullable
-  public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    return runInReadTransaction(
-        callCtx, () -> this.loadPolarisStorageIntegrationInCurrentTxn(callCtx, entity));
   }
 
   //

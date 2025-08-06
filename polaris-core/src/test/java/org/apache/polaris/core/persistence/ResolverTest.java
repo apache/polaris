@@ -41,7 +41,7 @@ public class ResolverTest extends BaseResolverTest {
       PolarisDefaultDiagServiceImpl diagServices = new PolarisDefaultDiagServiceImpl();
       TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
       TreeMapTransactionalPersistenceImpl metaStore =
-          new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
+          new TreeMapTransactionalPersistenceImpl(store, RANDOM_SECRETS);
       callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
     }
     return callCtx;
@@ -50,7 +50,7 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisMetaStoreManager metaStoreManager() {
     if (metaStoreManager == null) {
-      metaStoreManager = new TransactionalMetaStoreManagerImpl(clock);
+      metaStoreManager = new TransactionalMetaStoreManagerImpl(clock, Mockito.mock());
     }
     return metaStoreManager;
   }
