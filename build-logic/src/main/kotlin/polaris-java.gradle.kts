@@ -140,6 +140,8 @@ testing {
   }
 }
 
+val mockitoAgent = configurations.create("mockitoAgent")
+
 dependencies {
   val libs = versionCatalogs.named("libs")
   testFixturesImplementation(
@@ -155,11 +157,14 @@ dependencies {
       GradleException("assertj-core not declared in libs.versions.toml")
     }
   )
-  testFixturesImplementation(
+  val mockitoCoreLib =
     libs.findLibrary("mockito-core").orElseThrow {
       GradleException("mockito-core not declared in libs.versions.toml")
     }
-  )
+
+  testFixturesImplementation(mockitoCoreLib)
+
+  mockitoAgent(mockitoCoreLib) { isTransitive = false }
 }
 
 tasks.withType<Test>().configureEach {
@@ -167,6 +172,9 @@ tasks.withType<Test>().configureEach {
   systemProperty("user.language", "en")
   systemProperty("user.country", "US")
   systemProperty("user.variant", "")
+  jvmArgumentProviders.add(
+    CommandLineArgumentProvider { listOf("-javaagent:${mockitoAgent.asPath}") }
+  )
 }
 
 tasks.withType<Jar>().configureEach {
