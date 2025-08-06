@@ -18,11 +18,12 @@
  */
 package org.apache.polaris.service.exception;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.classic.spi.IThrowableProxy;
-import ch.qos.logback.core.read.ListAppender;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.ws.rs.core.Response;
@@ -32,50 +33,62 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.assertj.core.api.Assertions;
+import org.jboss.logmanager.Level;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.slf4j.LoggerFactory;
+import org.mockito.Mockito;
+import org.slf4j.Logger;
+import org.slf4j.impl.Slf4jLogger;
 
 /** Unit tests for exception mappers */
+@SuppressWarnings("resource")
 public class ExceptionMapperTest {
   private static final String MESSAGE = "this is the exception message";
   private static final String CAUSE = "this is the exception cause";
+
+  private static final org.jboss.logmanager.Logger JBOSS_LOGGER =
+      Mockito.mock(org.jboss.logmanager.Logger.class);
+
+  @BeforeEach
+  void setUp() {
+    reset(JBOSS_LOGGER);
+    when(JBOSS_LOGGER.isLoggable(any())).thenReturn(true);
+  }
 
   @ParameterizedTest
   @MethodSource("testFullExceptionIsLogged")
   public void testFullExceptionIsLogged(
       ExceptionMapper<Exception> mapper, Exception exception, Level level) {
-    Logger logger = (Logger) LoggerFactory.getLogger(mapper.getClass());
-    logger.setLevel(level);
-    ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
-    listAppender.start();
-    logger.addAppender(listAppender);
 
     mapper.toResponse(exception);
 
-    Assertions.assertThat(
-            listAppender.list.stream()
-                .anyMatch(
-                    log -> {
-                      if (log.getLevel() != level) {
-                        return false;
-                      }
+    verify(JBOSS_LOGGER)
+        .logRaw(
+            argThat(
+                record -> {
+                  if (record.getLevel() != level) {
+                    return false;
+                  }
 
-                      IThrowableProxy proxy = log.getThrowableProxy();
-                      if (proxy == null) {
-                        return false;
-                      }
+                  String message = record.getMessage();
+                  if (message == null) {
+                    return false;
+                  }
 
-                      return proxy.getMessage().contains(CAUSE)
-                          || Optional.ofNullable(proxy.getCause())
-                              .map(IThrowableProxy::getMessage)
-                              .orElse("")
-                              .contains(CAUSE);
-                    }))
-        .as("The exception cause should be logged")
-        .isTrue();
+                  Throwable error = record.getThrown();
+                  if (error == null) {
+                    return false;
+                  }
+
+                  return message.contains(CAUSE)
+                      || Optional.ofNullable(error.getCause())
+                          .map(Throwable::getMessage)
+                          .orElse("")
+                          .contains(CAUSE);
+                }));
   }
 
   @Test
@@ -90,15 +103,30 @@ public class ExceptionMapperTest {
     // inherited Exception
     return Stream.of(
         Arguments.of(
-            new IcebergExceptionMapper(),
+            new IcebergExceptionMapper() {
+              @Override
+              Logger getLogger() {
+                return new Slf4jLogger(JBOSS_LOGGER);
+              }
+            },
             new RuntimeException(MESSAGE, new RuntimeException(CAUSE)),
             Level.ERROR),
         Arguments.of(
-            new IcebergJsonProcessingExceptionMapper(),
+            new IcebergJsonProcessingExceptionMapper() {
+              @Override
+              Logger getLogger() {
+                return new Slf4jLogger(JBOSS_LOGGER);
+              }
+            },
             new TestJsonProcessingException(MESSAGE, null, new RuntimeException(CAUSE)),
             Level.DEBUG),
         Arguments.of(
-            new PolarisExceptionMapper(),
+            new PolarisExceptionMapper() {
+              @Override
+              Logger getLogger() {
+                return new Slf4jLogger(JBOSS_LOGGER);
+              }
+            },
             new AlreadyExistsException(MESSAGE, new RuntimeException(CAUSE)),
             Level.DEBUG));
   }

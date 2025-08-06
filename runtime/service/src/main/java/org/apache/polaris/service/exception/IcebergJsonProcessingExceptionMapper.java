@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -40,7 +41,7 @@ import org.slf4j.LoggerFactory;
 
 /** See Dropwizard's {@code io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper} */
 @Provider
-public final class IcebergJsonProcessingExceptionMapper
+public class IcebergJsonProcessingExceptionMapper
     implements ExceptionMapper<JsonProcessingException> {
 
   private static final Logger LOGGER =
@@ -60,7 +61,8 @@ public final class IcebergJsonProcessingExceptionMapper
     if (exception instanceof JsonGenerationException
         || exception instanceof InvalidDefinitionException) {
       long id = ThreadLocalRandom.current().nextLong();
-      LOGGER.error(String.format(Locale.ROOT, "Error handling a request: %016x", id), exception);
+      getLogger()
+          .error(String.format(Locale.ROOT, "Error handling a request: %016x", id), exception);
       String message =
           String.format(
               Locale.ROOT,
@@ -75,8 +77,8 @@ public final class IcebergJsonProcessingExceptionMapper
     /*
      * Otherwise, it's those pesky users.
      */
-    LOGGER.info("Unable to process JSON: {}", exception.getMessage());
-    LOGGER.debug("Full JsonProcessingException", exception);
+    getLogger().info("Unable to process JSON: {}", exception.getMessage());
+    getLogger().debug("Full JsonProcessingException", exception);
 
     String messagePrefix =
         switch (exception) {
@@ -95,5 +97,10 @@ public final class IcebergJsonProcessingExceptionMapper
         .type(MediaType.APPLICATION_JSON_TYPE)
         .entity(icebergErrorResponse)
         .build();
+  }
+
+  @VisibleForTesting
+  Logger getLogger() {
+    return LOGGER;
   }
 }

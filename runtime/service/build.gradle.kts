@@ -67,8 +67,6 @@ dependencies {
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
-  implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
-
   implementation(libs.hadoop.client.api)
   implementation(libs.hadoop.client.runtime)
 
@@ -148,9 +146,8 @@ dependencies {
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
-  testImplementation(libs.logback.classic)
-
   testImplementation(project(":polaris-runtime-test-common"))
+
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation(libs.awaitility)
   testImplementation(platform(libs.testcontainers.bom))
@@ -194,7 +191,6 @@ tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.withType(Test::class.java).configureEach {
   forkEvery = 1
-  systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }

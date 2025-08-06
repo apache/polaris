@@ -87,19 +87,17 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   private static final Set<String> ACCESS_DENIED_HINTS =
       Set.of("access denied", "not authorized", "forbidden");
 
-  public IcebergExceptionMapper() {}
-
   @Override
   public Response toResponse(RuntimeException runtimeException) {
-    LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
+    getLogger().info("Handling runtimeException {}", runtimeException.getMessage());
 
     int responseCode = mapExceptionToResponseCode(runtimeException);
-    LOGGER
+    getLogger()
         .atLevel(responseCode >= 500 ? Level.INFO : Level.DEBUG)
         .log("Full RuntimeException", runtimeException);
 
     if (responseCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
-      LOGGER.error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
+      getLogger().error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
     }
 
     ErrorResponse icebergErrorResponse =
@@ -113,7 +111,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
             .entity(icebergErrorResponse)
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
-    LOGGER.debug("Mapped exception to errorResp: {}", errorResp);
+    getLogger().debug("Mapped exception to errorResp: {}", errorResp);
     return errorResp;
   }
 
@@ -261,5 +259,10 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     }
 
     return Optional.of(Status.INTERNAL_SERVER_ERROR.getStatusCode());
+  }
+
+  @VisibleForTesting
+  Logger getLogger() {
+    return LOGGER;
   }
 }

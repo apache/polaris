@@ -107,11 +107,13 @@ testing {
       dependencies {
         implementation(project())
         implementation(testFixtures(project()))
-        runtimeOnly(
-          libs.findLibrary("logback-classic").orElseThrow {
-            GradleException("logback-classic not declared in libs.versions.toml")
-          }
-        )
+        if (!plugins.hasPlugin("io.quarkus")) {
+          implementation(
+            libs.findLibrary("logback-classic").orElseThrow {
+              GradleException("logback-classic not declared in libs.versions.toml")
+            }
+          )
+        }
         implementation(
           libs.findLibrary("assertj-core").orElseThrow {
             GradleException("assertj-core not declared in libs.versions.toml")

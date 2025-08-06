@@ -43,7 +43,6 @@ dependencies {
   implementation("io.quarkus:quarkus-container-image-docker")
 
   implementation(project(":polaris-runtime-common"))
-  implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
   testImplementation(project(":polaris-runtime-test-common"))
   testFixturesApi(project(":polaris-core"))
@@ -92,7 +91,6 @@ artifacts {
 tasks.withType(Test::class.java).configureEach {
   maxParallelForks = 4
   forkEvery = 1
-  systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
 }
 
 tasks.named<Test>("test").configure {

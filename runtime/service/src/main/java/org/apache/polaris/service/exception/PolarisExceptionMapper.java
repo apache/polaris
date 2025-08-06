@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.exception;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
@@ -64,7 +65,7 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
   @Override
   public Response toResponse(PolarisException exception) {
     Response.Status status = getStatus(exception);
-    LOGGER
+    getLogger()
         .atLevel(
             status.getFamily() == Response.Status.Family.SERVER_ERROR ? Level.INFO : Level.DEBUG)
         .log("Full PolarisException", exception);
@@ -79,5 +80,10 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
         .entity(errorResponse)
         .type(MediaType.APPLICATION_JSON_TYPE)
         .build();
+  }
+
+  @VisibleForTesting
+  Logger getLogger() {
+    return LOGGER;
   }
 }
