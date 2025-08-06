@@ -29,6 +29,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.slf4j.Logger;
@@ -81,7 +82,7 @@ public class FileIOUtil {
       TableIdentifier tableIdentifier,
       Set<String> tableLocations,
       Set<PolarisStorageActions> storageActions,
-      PolarisEntity entity) {
+      PolarisStorageConfigurationInfo storageConfigurationInfo) {
 
     boolean skipCredentialSubscopingIndirection =
         callContext
@@ -108,7 +109,7 @@ public class FileIOUtil {
         storageCredentialCache.getOrGenerateSubScopeCreds(
             credentialVendor,
             callContext.getPolarisCallContext(),
-            entity,
+            storageConfigurationInfo,
             allowList,
             tableLocations,
             writeLocations);

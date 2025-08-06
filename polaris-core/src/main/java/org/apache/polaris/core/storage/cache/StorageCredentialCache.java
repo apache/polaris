@@ -18,26 +18,24 @@
  */
 package org.apache.polaris.core.storage.cache;
 
+import static java.util.Objects.requireNonNull;
+
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.time.Duration;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,7 +91,7 @@ public class StorageCredentialCache {
    *
    * @param credentialVendor the credential vendor used to generate a new scoped creds if needed
    * @param callCtx the call context
-   * @param polarisEntity the polaris entity that is going to scoped creds
+   * @param storageConfigurationInfo storage configuration
    * @param allowListOperation whether allow list action on the provided read and write locations
    * @param allowedReadLocations a set of allowed to read locations
    * @param allowedWriteLocations a set of allowed to write locations.
@@ -102,19 +100,14 @@ public class StorageCredentialCache {
   public AccessConfig getOrGenerateSubScopeCreds(
       @Nonnull PolarisCredentialVendor credentialVendor,
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntity polarisEntity,
+      @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
-    if (!isTypeSupported(polarisEntity.getType())) {
-      callCtx
-          .getDiagServices()
-          .fail("entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
-    }
     StorageCredentialCacheKey key =
         StorageCredentialCacheKey.of(
             callCtx.getRealmContext().getRealmIdentifier(),
-            polarisEntity,
+            storageConfigurationInfo,
             allowListOperation,
             allowedReadLocations,
             allowedWriteLocations);
@@ -125,9 +118,7 @@ public class StorageCredentialCache {
           ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
                   callCtx,
-                  k.catalogId(),
-                  polarisEntity.getId(),
-                  polarisEntity.getType(),
+                  storageConfigurationInfo,
                   k.allowedListAction(),
                   k.allowedReadLocations(),
                   k.allowedWriteLocations());
@@ -144,30 +135,16 @@ public class StorageCredentialCache {
               "Failed to get subscoped credentials: %s",
               scopedCredentialsResult.getExtraInformation());
         };
-    return cache.get(key, loader).toAccessConfig();
+    return requireNonNull(cache.get(key, loader)).toAccessConfig();
   }
 
   @VisibleForTesting
-  @Nullable
-  Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
-    return getAccessConfig(key).map(AccessConfig::credentials).orElse(null);
+  boolean isPresent(StorageCredentialCacheKey key) {
+    return cache.getIfPresent(key) != null;
   }
 
   @VisibleForTesting
-  Optional<AccessConfig> getAccessConfig(StorageCredentialCacheKey key) {
-    return Optional.ofNullable(cache.getIfPresent(key))
-        .map(StorageCredentialCacheEntry::toAccessConfig);
-  }
-
-  private boolean isTypeSupported(PolarisEntityType type) {
-    return type == PolarisEntityType.CATALOG
-        || type == PolarisEntityType.NAMESPACE
-        || type == PolarisEntityType.TABLE_LIKE
-        || type == PolarisEntityType.TASK;
-  }
-
-  @VisibleForTesting
-  public long getEstimatedSize() {
+  long getEstimatedSize() {
     return this.cache.estimatedSize();
   }
 

@@ -21,12 +21,13 @@ package org.apache.polaris.service.catalog.io;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /**
  * Interface for providing a way to construct FileIO objects, such as for reading/writing S3.
@@ -47,7 +48,7 @@ public interface FileIOFactory {
    * @param identifier the table identifier.
    * @param tableLocations locations associated with the table.
    * @param storageActions storage actions allowed for the table.
-   * @param resolvedEntityPath resolved paths for the entities.
+   * @param storageConfigurationInfo storage configuration
    * @return a configured FileIO instance.
    */
   FileIO loadFileIO(
@@ -57,5 +58,5 @@ public interface FileIOFactory {
       @Nonnull TableIdentifier identifier,
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath);
+      Optional<PolarisStorageConfigurationInfo> storageConfigurationInfo);
 }

@@ -21,12 +21,13 @@ package org.apache.polaris.service;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 
 /** A FileIOFactory that always returns the same FileIO instance. */
@@ -46,7 +47,7 @@ public class TestFileIOFactory implements FileIOFactory {
       @Nonnull TableIdentifier identifier,
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
+      Optional<PolarisStorageConfigurationInfo> storageConfigurationInfo) {
     return fileIO;
   }
 }

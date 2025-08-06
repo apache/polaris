@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -102,13 +103,13 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -121,6 +122,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -1820,13 +1822,15 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
+    String storageConfigInfoStr =
+        taskEntity
+            .getInternalPropertiesAsMap()
+            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     Map<String, String> credentials =
         metaStoreManager
             .getSubscopedCredsForEntity(
                 polarisContext,
-                0,
-                taskEntity.getId(),
-                taskEntity.getType(),
+                PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr),
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()))
@@ -2016,7 +2020,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                   @Nonnull TableIdentifier identifier,
                   @Nonnull Set<String> tableLocations,
                   @Nonnull Set<PolarisStorageActions> storageActions,
-                  @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
+                  Optional<PolarisStorageConfigurationInfo> storageConfigurationInfo) {
                 return measured.loadFileIO(
                     callContext,
                     "org.apache.iceberg.inmemory.InMemoryFileIO",
@@ -2024,7 +2028,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     TABLE,
                     Set.of(table.location()),
                     Set.of(PolarisStorageActions.ALL),
-                    Mockito.mock());
+                    storageConfigurationInfo);
               }
             });
 

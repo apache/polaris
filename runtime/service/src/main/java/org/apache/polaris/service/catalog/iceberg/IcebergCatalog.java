@@ -98,6 +98,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -857,22 +858,30 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions) {
-    Optional<PolarisEntity> storageInfo = findStorageInfo(tableIdentifier);
-    if (storageInfo.isEmpty()) {
-      LOGGER
-          .atWarn()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log("Table entity has no storage configuration in its hierarchy");
-      return AccessConfig.builder().build();
-    }
-    return FileIOUtil.refreshAccessConfig(
-        callContext,
-        storageCredentialCache,
-        getCredentialVendor(),
-        tableIdentifier,
-        getLocationsAllowedToBeAccessed(tableMetadata),
-        storageActions,
-        storageInfo.get());
+    return findStorageInfo(tableIdentifier)
+        .map(
+            e ->
+                e.getInternalPropertiesAsMap()
+                    .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+        .map(PolarisStorageConfigurationInfo::deserialize)
+        .map(
+            storageConfigInfo ->
+                FileIOUtil.refreshAccessConfig(
+                    callContext,
+                    storageCredentialCache,
+                    getCredentialVendor(),
+                    tableIdentifier,
+                    getLocationsAllowedToBeAccessed(tableMetadata),
+                    storageActions,
+                    storageConfigInfo))
+        .orElseGet(
+            () -> {
+              LOGGER
+                  .atWarn()
+                  .addKeyValue("tableIdentifier", tableIdentifier)
+                  .log("Table entity has no storage configuration in its hierarchy");
+              return AccessConfig.builder().build();
+            });
   }
 
   private String buildPrefixedLocation(TableIdentifier tableIdentifier) {
@@ -2087,6 +2096,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedStorageEntity,
       Map<String, String> tableProperties,
       Set<PolarisStorageActions> storageActions) {
+
+    PolarisEntity entity =
+        FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity).orElseThrow();
+
     // Reload fileIO based on table specific context
     FileIO fileIO =
         fileIOFactory.loadFileIO(
@@ -2096,7 +2109,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             identifier,
             readLocations,
             storageActions,
-            resolvedStorageEntity);
+            polarisStorageConfigurationInfoFromEntity(entity));
     // ensure the new fileIO is closed when the catalog is closed
     closeableGroup.addCloseable(fileIO);
     return fileIO;
@@ -2611,19 +2624,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         new ResolvedPolarisEntity(catalogEntity, List.of(), List.of());
     PolarisResolvedPathWrapper resolvedPath =
         new PolarisResolvedPathWrapper(List.of(resolvedCatalogEntity));
+    PolarisBaseEntity entity = FileIOUtil.findStorageInfoFromHierarchy(resolvedPath).orElseThrow();
     Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
     return fileIOFactory.loadFileIO(
-        callContext, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
+        callContext,
+        ioImpl,
+        properties,
+        identifier,
+        locations,
+        storageActions,
+        polarisStorageConfigurationInfoFromEntity(entity));
   }
 
-  private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {
-    if (properties != null
-        && (properties.containsKey(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)
-            || properties.containsKey(
-                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))) {
-      throw new ForbiddenException(
-          "Delegate access to table with user-specified write location is temporarily not supported.");
-    }
+  private static Optional<PolarisStorageConfigurationInfo>
+      polarisStorageConfigurationInfoFromEntity(PolarisBaseEntity entity) {
+    return Optional.ofNullable(
+            entity
+                .getInternalPropertiesAsMap()
+                .get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+        .map(PolarisStorageConfigurationInfo::deserialize);
   }
 
   private int getMaxMetadataRefreshRetries() {

@@ -23,13 +23,14 @@ import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
@@ -55,7 +56,7 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
       @Nonnull TableIdentifier identifier,
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
+      Optional<PolarisStorageConfigurationInfo> storageConfigurationInfo) {
     return new WasbTranslatingFileIO(
         defaultFileIOFactory.loadFileIO(
             callContext,
@@ -64,6 +65,6 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
             identifier,
             tableLocations,
             storageActions,
-            resolvedEntityPath));
+            storageConfigurationInfo));
   }
 }

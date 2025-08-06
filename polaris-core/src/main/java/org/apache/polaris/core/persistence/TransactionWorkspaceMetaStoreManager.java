@@ -55,6 +55,7 @@ import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /**
  * Wraps an existing impl of PolarisMetaStoreManager and delegates expected "read" operations
@@ -332,17 +333,13 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   @Override
   public ScopedCredentialsResult getSubscopedCredsForEntity(
       @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisEntityType entityType,
+      @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
     return delegate.getSubscopedCredsForEntity(
         callCtx,
-        catalogId,
-        entityId,
-        entityType,
+        storageConfigurationInfo,
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations);
