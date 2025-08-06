@@ -19,9 +19,6 @@
 
 # Getting Started with Apache Polaris
 
-If you prefer not to use Docker, you can get started with Polaris by downloading and running the official binary distribution.  
-See [Getting Started with the Polaris Binary Distribution](getting-started-binary.md) for step-by-step instructions on installing and running Polaris directly as a standalone application.
-
 You can quickly get started with Polaris by playing with the docker-compose examples provided in
 this directory. Each example has detailed instructions.
 
