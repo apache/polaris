@@ -170,7 +170,9 @@ tasks.withType<Test>().configureEach {
   systemProperty("user.language", "en")
   systemProperty("user.country", "US")
   systemProperty("user.variant", "")
-  jvmArgs("-javaagent:${mockitoAgent.asPath}")
+  jvmArgumentProviders.add(
+    CommandLineArgumentProvider { listOf("-javaagent:${mockitoAgent.asPath}") }
+  )
 }
 
 tasks.withType<Jar>().configureEach {
