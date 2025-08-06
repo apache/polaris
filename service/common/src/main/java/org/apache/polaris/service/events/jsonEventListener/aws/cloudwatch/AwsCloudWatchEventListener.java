@@ -220,6 +220,10 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
       if (future.isDone()) {
         Future.State currFutureState = future.state();
         EventWithRetry currValue = futures.remove(future);
+        if (currValue == null) {
+          // This future was removed by some other thread and will be processed in that thread.
+          continue;
+        }
         if (currFutureState.equals(Future.State.FAILED)
             || currFutureState.equals(Future.State.CANCELLED)) {
           if (currValue.retryCount >= 3) {
