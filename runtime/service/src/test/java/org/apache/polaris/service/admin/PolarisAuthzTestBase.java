@@ -461,8 +461,9 @@ public abstract class PolarisAuthzTestBase {
   public static class TestPolarisCallContextCatalogFactory
       extends PolarisCallContextCatalogFactory {
 
-    public TestPolarisCallContextCatalogFactory() {
-      super(null, null, null, null, null, null);
+    @SuppressWarnings("unused") // Required by CDI
+    protected TestPolarisCallContextCatalogFactory() {
+      this(null, null, null, null, null, null);
     }
 
     @Inject

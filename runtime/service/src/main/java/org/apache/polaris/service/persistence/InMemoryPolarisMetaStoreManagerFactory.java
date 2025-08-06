@@ -46,7 +46,8 @@ public class InMemoryPolarisMetaStoreManagerFactory
   private final PolarisStorageIntegrationProvider storageIntegration;
   private final Set<String> bootstrappedRealms = new HashSet<>();
 
-  public InMemoryPolarisMetaStoreManagerFactory() {
+  @SuppressWarnings("unused") // Required by CDI
+  protected InMemoryPolarisMetaStoreManagerFactory() {
     this(null, null);
   }
 
