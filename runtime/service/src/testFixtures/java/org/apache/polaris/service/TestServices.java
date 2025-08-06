@@ -160,12 +160,11 @@ public record TestServices(
               Optional.empty(),
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-          new InMemoryPolarisMetaStoreManagerFactory(
-              clock, polarisDiagnostics, storageIntegrationProvider);
+          new InMemoryPolarisMetaStoreManagerFactory(clock, polarisDiagnostics);
 
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
       StorageCredentialCache storageCredentialCache =
-          new StorageCredentialCache(storageCredentialCacheConfig);
+          new StorageCredentialCache(storageCredentialCacheConfig, storageIntegrationProvider);
 
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();

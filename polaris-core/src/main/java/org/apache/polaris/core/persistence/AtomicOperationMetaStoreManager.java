@@ -70,7 +70,6 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,9 +83,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   private final Clock clock;
 
-  public AtomicOperationMetaStoreManager(
-      Clock clock, PolarisStorageIntegrationProvider storageIntegrationProvider) {
-    super(storageIntegrationProvider);
+  public AtomicOperationMetaStoreManager(Clock clock) {
     this.clock = clock;
   }
 

@@ -122,7 +122,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -866,10 +865,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         .map(PolarisStorageConfigurationInfo::deserialize)
         .map(
             storageConfigInfo ->
-                FileIOUtil.refreshAccessConfig(
+                FileIOUtil.getAccessConfig(
                     callContext,
                     storageCredentialCache,
-                    getCredentialVendor(),
                     tableIdentifier,
                     getLocationsAllowedToBeAccessed(tableMetadata),
                     storageActions,
@@ -2120,10 +2118,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private PolarisMetaStoreManager getMetaStoreManager() {
-    return metaStoreManager;
-  }
-
-  private PolarisCredentialVendor getCredentialVendor() {
     return metaStoreManager;
   }
 

@@ -25,7 +25,6 @@ import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /**
  * Uses a PolarisTreeMapStore for the underlying persistence layer but uses it to initialize an
@@ -38,19 +37,17 @@ public class InMemoryAtomicOperationMetaStoreManagerFactory
 
   @SuppressWarnings("unused") // Required by CDI
   protected InMemoryAtomicOperationMetaStoreManagerFactory() {
-    this(null, null, null);
+    this(null, null);
   }
 
   @Inject
   public InMemoryAtomicOperationMetaStoreManagerFactory(
-      Clock clock,
-      PolarisDiagnostics diagnostics,
-      PolarisStorageIntegrationProvider storageIntegration) {
-    super(clock, diagnostics, storageIntegration);
+      Clock clock, PolarisDiagnostics diagnostics) {
+    super(clock, diagnostics);
   }
 
   @Override
   protected PolarisMetaStoreManager createNewMetaStoreManager(Clock clock) {
-    return new AtomicOperationMetaStoreManager(clock, storageIntegrationProvider);
+    return new AtomicOperationMetaStoreManager(clock);
   }
 }

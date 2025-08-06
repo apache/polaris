@@ -35,7 +35,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -77,13 +76,10 @@ public class DefaultFileIOFactory implements FileIOFactory {
     storageConfigurationInfo.ifPresent(
         config -> {
           RealmContext realmContext = callContext.getRealmContext();
-          PolarisCredentialVendor credentialVendor =
-              metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
           AccessConfig accessConfig =
-              FileIOUtil.refreshAccessConfig(
+              FileIOUtil.getAccessConfig(
                   callContext,
                   storageCredentialCache,
-                  credentialVendor,
                   identifier,
                   tableLocations,
                   storageActions,

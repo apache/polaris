@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.cache;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -29,13 +30,13 @@ import java.time.Duration;
 import java.util.Set;
 import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +46,14 @@ public class StorageCredentialCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache(StorageCredentialCacheConfig cacheConfig) {
-    cache =
+  public StorageCredentialCache(
+      StorageCredentialCacheConfig cacheConfig,
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    this.storageIntegrationProvider = storageIntegrationProvider;
+    this.cache =
         Caffeine.newBuilder()
             .maximumSize(cacheConfig.maxEntries())
             .expireAfter(
@@ -89,8 +94,7 @@ public class StorageCredentialCache {
   /**
    * Either get from the cache or generate a new entry for a scoped creds
    *
-   * @param credentialVendor the credential vendor used to generate a new scoped creds if needed
-   * @param callCtx the call context
+   * @param callContext the call context
    * @param storageConfigurationInfo storage configuration
    * @param allowListOperation whether allow list action on the provided read and write locations
    * @param allowedReadLocations a set of allowed to read locations
@@ -98,15 +102,14 @@ public class StorageCredentialCache {
    * @return the a map of string containing the scoped creds information
    */
   public AccessConfig getOrGenerateSubScopeCreds(
-      @Nonnull PolarisCredentialVendor credentialVendor,
-      @Nonnull PolarisCallContext callCtx,
+      @Nonnull CallContext callContext,
       @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
     StorageCredentialCacheKey key =
         StorageCredentialCacheKey.of(
-            callCtx.getRealmContext().getRealmIdentifier(),
+            callContext.getRealmContext().getRealmIdentifier(),
             storageConfigurationInfo,
             allowListOperation,
             allowedReadLocations,
@@ -115,27 +118,51 @@ public class StorageCredentialCache {
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
-          ScopedCredentialsResult scopedCredentialsResult =
-              credentialVendor.getSubscopedCredsForEntity(
-                  callCtx,
-                  storageConfigurationInfo,
-                  k.allowedListAction(),
-                  k.allowedReadLocations(),
-                  k.allowedWriteLocations());
-          if (scopedCredentialsResult.isSuccess()) {
-            long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmConfig());
-            return new StorageCredentialCacheEntry(
-                scopedCredentialsResult.getAccessConfig(), maxCacheDurationMs);
-          }
-          LOGGER
-              .atDebug()
-              .addKeyValue("errorMessage", scopedCredentialsResult.getExtraInformation())
-              .log("Failed to get subscoped credentials");
-          throw new UnprocessableEntityException(
-              "Failed to get subscoped credentials: %s",
-              scopedCredentialsResult.getExtraInformation());
+          checkArgument(
+              !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
+              "allowed_locations_to_subscope_is_required");
+
+          // get storage integration
+          var storageIntegration = getStorageIntegrationForConfig(storageConfigurationInfo);
+
+          return buildSubscopedCacheEntry(
+              callContext,
+              allowListOperation,
+              allowedReadLocations,
+              allowedWriteLocations,
+              storageIntegration);
         };
     return requireNonNull(cache.get(key, loader)).toAccessConfig();
+  }
+
+  @VisibleForTesting
+  StorageCredentialCacheEntry buildSubscopedCacheEntry(
+      CallContext callContext,
+      boolean allowListOperation,
+      Set<String> allowedReadLocations,
+      Set<String> allowedWriteLocations,
+      PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration) {
+    try {
+      var realmConfig = callContext.getRealmConfig();
+      var accessConfig =
+          storageIntegration.getSubscopedCreds(
+              realmConfig, allowListOperation, allowedReadLocations, allowedWriteLocations);
+      long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
+      return new StorageCredentialCacheEntry(accessConfig, maxCacheDurationMs);
+    } catch (Exception ex) {
+      LOGGER
+          .atDebug()
+          .addKeyValue("errorMessage", ex.getMessage())
+          .log("Failed to get subscoped credentials");
+      throw new UnprocessableEntityException(
+          "Failed to get subscoped credentials: %s", ex.getMessage());
+    }
+  }
+
+  @VisibleForTesting
+  PolarisStorageIntegration<PolarisStorageConfigurationInfo> getStorageIntegrationForConfig(
+      PolarisStorageConfigurationInfo storageConfigurationInfo) {
+    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfigurationInfo);
   }
 
   @VisibleForTesting

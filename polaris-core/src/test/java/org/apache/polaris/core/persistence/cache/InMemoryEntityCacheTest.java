@@ -43,7 +43,6 @@ import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 /** Unit testing of the entity cache */
 public class InMemoryEntityCacheTest {
@@ -80,7 +79,7 @@ public class InMemoryEntityCacheTest {
     TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
     TransactionalPersistence metaStore =
         new TreeMapTransactionalPersistenceImpl(store, RANDOM_SECRETS);
-    metaStoreManager = new TransactionalMetaStoreManagerImpl(Clock.systemUTC(), Mockito.mock());
+    metaStoreManager = new TransactionalMetaStoreManagerImpl(Clock.systemUTC());
     callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
 
     // bootstrap the meta store with our test schema

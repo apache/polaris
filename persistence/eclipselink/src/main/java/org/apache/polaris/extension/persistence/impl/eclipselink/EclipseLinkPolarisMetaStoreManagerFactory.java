@@ -31,7 +31,6 @@ import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /**
  * The implementation of Configuration interface for configuring the {@link PolarisMetaStoreManager}
@@ -47,16 +46,15 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
 
   @SuppressWarnings("unused") // Required by CDI
   protected EclipseLinkPolarisMetaStoreManagerFactory() {
-    this(null, null, null, null);
+    this(null, null, null);
   }
 
   @Inject
   protected EclipseLinkPolarisMetaStoreManagerFactory(
       Clock clock,
       PolarisDiagnostics diagnostics,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
       EclipseLinkConfiguration eclipseLinkConfiguration) {
-    super(clock, diagnostics, storageIntegrationProvider);
+    super(clock, diagnostics);
     this.eclipseLinkConfiguration = eclipseLinkConfiguration;
   }
 

@@ -1827,14 +1827,13 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     Map<String, String> credentials =
-        metaStoreManager
-            .getSubscopedCredsForEntity(
+        storageCredentialCache
+            .getOrGenerateSubScopeCreds(
                 polarisContext,
                 PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr),
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()))
-            .getAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()

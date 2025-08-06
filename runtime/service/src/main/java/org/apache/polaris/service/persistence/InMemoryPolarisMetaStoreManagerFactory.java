@@ -37,7 +37,6 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 @ApplicationScoped
 @Identifier("in-memory")
@@ -48,15 +47,12 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   @SuppressWarnings("unused") // Required by CDI
   protected InMemoryPolarisMetaStoreManagerFactory() {
-    this(null, null, null);
+    this(null, null);
   }
 
   @Inject
-  public InMemoryPolarisMetaStoreManagerFactory(
-      Clock clock,
-      PolarisDiagnostics diagnostics,
-      PolarisStorageIntegrationProvider storageIntegration) {
-    super(clock, diagnostics, storageIntegration);
+  public InMemoryPolarisMetaStoreManagerFactory(Clock clock, PolarisDiagnostics diagnostics) {
+    super(clock, diagnostics);
   }
 
   @Override
