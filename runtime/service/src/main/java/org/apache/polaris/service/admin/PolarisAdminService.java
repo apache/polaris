@@ -1779,6 +1779,8 @@ public class PolarisAdminService {
 
     String[] allNamespaceLevels = namespace.levels();
     int numMatchingLevels = 0;
+    // Find parts of the complete path that match the namespace levels.
+    // We skip index 0 because it is the CatalogEntity.
     for (PolarisEntity entity : completePath.subList(1, completePath.size())) {
       if (!entity.getName().equals(allNamespaceLevels[numMatchingLevels])) {
         break;
