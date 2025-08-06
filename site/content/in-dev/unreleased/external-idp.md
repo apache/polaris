@@ -110,7 +110,7 @@ For example, if the principal has the roles `service_admin` and `catalog_admin` 
 scope=PRINCIPAL_ROLE:service_admin PRINCIPAL_ROLE:catalog_admin
 ```
 
-Hee is an example of a full request to the Polaris token endpoint using internal authentication: 
+Here is an example of a full request to the Polaris token endpoint using internal authentication: 
 
 ```http request
 POST /api/catalog/v1/oauth/tokens HTTP/1.1
