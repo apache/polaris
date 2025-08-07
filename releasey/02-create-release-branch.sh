@@ -197,5 +197,4 @@ echo
 print_success "🎉 Release branch ${release_branch} created successfully!"
 echo
 print_info "Next steps:"
-print_info "* Submit a PR on main branch to propagate CHANGELOG updates from the release branch to main (https://github.com/${APACHE_REMOTE_NAME}/polaris/pull/new/${release_branch})."
 print_info "* Use the script 03-create-release-candidate-tag.sh to create a release candidate tag."

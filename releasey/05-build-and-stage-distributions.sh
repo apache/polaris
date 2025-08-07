@@ -135,6 +135,7 @@ exec_process svn commit -m "Stage Apache Polaris ${polaris_version} RC${rc_numbe
 print_info "Updating Helm index..."
 exec_process cd "${dist_dev_dir}/helm-chart"
 exec_process helm repo index .
+exec_process svn add index.yaml
 exec_process cd "${releasey_dir}/.."
 
 # Publish Maven artifacts

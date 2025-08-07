@@ -105,7 +105,7 @@ echo
 # If we're creating RC2 or later, verify previous RC tag exists
 if [[ ${rc_number} -gt 1 ]]; then
   previous_rc=$((rc_number - 1))
-  previous_tag="apache-polaris-${version%-rc*}-rc${previous_rc}"
+  previous_tag="apache-polaris-${polaris_version}-rc${previous_rc}"
   
   print_info "Checking for previous RC tag: ${previous_tag}"
   if ! git tag -l "${previous_tag}" | grep -q "^${previous_tag}$"; then
