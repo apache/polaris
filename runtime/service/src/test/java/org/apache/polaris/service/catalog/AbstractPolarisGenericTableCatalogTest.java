@@ -28,7 +28,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -152,8 +151,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
-            configurationStore,
-            Clock.systemDefaultZone());
+            configurationStore);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

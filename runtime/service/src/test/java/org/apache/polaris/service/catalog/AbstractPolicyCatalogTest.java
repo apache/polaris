@@ -34,7 +34,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -175,8 +174,7 @@ public abstract class AbstractPolicyCatalogTest {
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
-            configurationStore,
-            Clock.systemDefaultZone());
+            configurationStore);
 
     callContext = polarisContext;
 
