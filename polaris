@@ -59,6 +59,7 @@ if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
     echo "First time setup complete."
   else
     echo "Dependencies repaired."
+    exit 0
   fi
 fi
 
