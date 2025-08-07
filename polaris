@@ -73,4 +73,4 @@ if [ -z "$VIRTUAL_ENV" ] || [ "$(realpath "$VIRTUAL_ENV")" != "$(realpath "${dir
 fi
 
 export SCRIPT_DIR="${dir}"
-exec polaris "$@"
+exec poetry -C "${dir}/client/python" run polaris "$@"

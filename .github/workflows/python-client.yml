@@ -79,3 +79,7 @@ jobs:
         working-directory: client/python
         run: |
           make test-integration
+
+      - name: CLI Script Sanity Check
+        run: |
+          ./polaris --help
