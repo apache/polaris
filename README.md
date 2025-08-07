@@ -40,7 +40,7 @@ for contribution guidelines.
 Click [here](https://polaris.apache.org/in-dev/unreleased/) for a quick overview of Polaris.
 
 ## Quickstart
-Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/install-dependencies/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
+Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
 
 ## Building and Running 
 
