@@ -451,14 +451,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
         parentId,
         entityType,
         entityFilter,
-        entity ->
-            new EntityNameLookupRecord(
-                entity.getCatalogId(),
-                entity.getId(),
-                entity.getParentId(),
-                entity.getName(),
-                entity.getTypeCode(),
-                entity.getSubTypeCode()),
+        EntityNameLookupRecord::new,
         pageToken);
   }
 

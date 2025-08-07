@@ -37,7 +37,6 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -188,16 +187,13 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    List<PolarisEntity.NameAndId> entities =
-        PolarisEntity.toNameAndIdList(
-            this.metaStoreManager
-                .listEntities(
-                    this.callContext.getPolarisCallContext(),
-                    PolarisEntity.toCoreList(catalogPath),
-                    PolarisEntityType.TABLE_LIKE,
-                    PolarisEntitySubType.GENERIC_TABLE,
-                    PageToken.readEverything())
-                .getEntities());
-    return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
+    List<PolarisEntity> entities =
+        this.metaStoreManager.listAllEntities(
+            this.callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.GENERIC_TABLE,
+            PolarisEntity::of);
+    return PolarisCatalogHelpers.entitiesToTableIdentifiers(catalogPath, entities);
   }
 }
