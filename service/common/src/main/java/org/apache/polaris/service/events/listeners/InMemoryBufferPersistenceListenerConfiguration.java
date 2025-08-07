@@ -33,10 +33,10 @@ public interface InMemoryBufferPersistenceListenerConfiguration {
   /**
    * @return the buffer time in milliseconds
    */
-  Optional<Duration> bufferTime();
+  Duration bufferTime();
 
   /**
    * @return the maximum number of cached entries
    */
-  Optional<Integer> maxBufferSize();
+  int maxBufferSize();
 }

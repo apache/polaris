@@ -76,9 +76,8 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
       InMemoryBufferPersistenceListenerConfiguration eventListenerConfiguration) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.clock = clock;
-    this.timeToFlush =
-        eventListenerConfiguration.bufferTime().orElse(Duration.of(30, ChronoUnit.SECONDS));
-    this.maxBufferSize = eventListenerConfiguration.maxBufferSize().orElse(5); // 5 events default
+    this.timeToFlush = eventListenerConfiguration.bufferTime();
+    this.maxBufferSize = eventListenerConfiguration.maxBufferSize();
 
     executor = Executors.newSingleThreadScheduledExecutor();
   }

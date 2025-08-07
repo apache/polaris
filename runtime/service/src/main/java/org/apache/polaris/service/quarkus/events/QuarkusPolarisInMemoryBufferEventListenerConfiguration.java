@@ -19,26 +19,27 @@
 
 package org.apache.polaris.service.quarkus.events;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Duration;
-import java.util.Optional;
 
 import org.apache.polaris.service.events.listeners.InMemoryBufferPersistenceListenerConfiguration;
 
-@ConfigMapping(prefix = "polaris.event-listener.persistence-in-memory-buffer")
+@StaticInitSafe
 @ApplicationScoped
+@ConfigMapping(prefix = "polaris.event-listener.persistence-in-memory-buffer")
 public interface QuarkusPolarisInMemoryBufferEventListenerConfiguration
-    extends InMemoryBufferPersistenceListenerConfiguration {
+        extends InMemoryBufferPersistenceListenerConfiguration {
   /**
    * @return the buffer time in milliseconds
    */
   @Override
   @WithName("buffer-time")
   @WithDefault("5000ms")
-  Optional<Duration> bufferTime();
+  Duration bufferTime();
 
   /**
    * @return the maximum number of cached entries
@@ -46,5 +47,6 @@ public interface QuarkusPolarisInMemoryBufferEventListenerConfiguration
   @Override
   @WithName("max-buffer-size")
   @WithDefault("5")
-  Optional<Integer> maxBufferSize();
+  int maxBufferSize();
 }
+

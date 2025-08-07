@@ -70,10 +70,8 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
 
     InMemoryBufferPersistenceListenerConfiguration eventListenerConfiguration =
         Mockito.mock(InMemoryBufferPersistenceListenerConfiguration.class);
-    when(eventListenerConfiguration.maxBufferSize())
-        .thenReturn(Optional.of(CONFIG_MAX_BUFFER_SIZE));
-    when(eventListenerConfiguration.bufferTime())
-        .thenReturn(Optional.of(CONFIG_TIME_TO_FLUSH_IN_MS));
+    when(eventListenerConfiguration.maxBufferSize()).thenReturn(CONFIG_MAX_BUFFER_SIZE);
+    when(eventListenerConfiguration.bufferTime()).thenReturn(CONFIG_TIME_TO_FLUSH_IN_MS);
 
 
     clock =
