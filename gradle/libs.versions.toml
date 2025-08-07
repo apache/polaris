@@ -38,7 +38,7 @@ swagger = "1.6.16"
 # (aka mention of the dependency removed).
 #
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
-assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
+assertj-core = { module = "org.assertj:assertj-core", version = "3.27.4" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.32.14" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
