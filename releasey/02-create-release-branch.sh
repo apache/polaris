@@ -126,9 +126,7 @@ if ! validate_and_extract_rc_version "${version}"; then
   exit 1
 fi
 
-# Define polaris_version from extracted components
-polaris_version="${major}.${minor}.${patch}-incubating"
-release_branch="release/${polaris_version}"
+release_branch="release/${version_without_rc}"
 
 # Handle RC > 1 scenarios
 if [[ ${rc_number} -gt 1 ]]; then
@@ -145,7 +143,7 @@ fi
 
 print_info "Starting release branch creation..."
 print_info "Version: ${version}"
-print_info "Polaris version: ${polaris_version}"
+print_info "Polaris version: ${version_without_rc}"
 print_info "From commit: ${commit}"
 echo
 
@@ -176,12 +174,12 @@ exec_process git push "${APACHE_REMOTE_NAME}" "${release_branch}" --set-upstream
 print_info "Checking out release branch"
 exec_process git checkout "${release_branch}"
 
-print_info "Setting version to ${polaris_version} in version.txt"
-update_version "${polaris_version}"
+print_info "Setting version to ${version_without_rc} in version.txt"
+update_version "${version_without_rc}"
 
 print_info "Committing and pushing version change"
 exec_process git add "$VERSION_FILE" "$HELM_CHART_YAML_FILE" "$HELM_README_FILE" "$HELM_VALUES_FILE"
-exec_process git commit -m "[chore] Bump version to ${polaris_version} for release"
+exec_process git commit -m "[chore] Bump version to ${version_without_rc} for release"
 exec_process git push
 
 print_info "Updating CHANGELOG.md"

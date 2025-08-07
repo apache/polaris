@@ -93,19 +93,16 @@ if ! validate_and_extract_rc_version "${version}"; then
   exit 1
 fi
 
-# Define polaris_version from extracted components
-polaris_version="${major}.${minor}.${patch}-incubating"
-
 print_info "Starting release candidate tag creation..."
 print_info "Version: ${version}"
-print_info "Polaris version: ${polaris_version}"
+print_info "Polaris version: ${version_without_rc}"
 print_info "RC number: ${rc_number}"
 echo
 
 # If we're creating RC2 or later, verify previous RC tag exists
 if [[ ${rc_number} -gt 1 ]]; then
   previous_rc=$((rc_number - 1))
-  previous_tag="apache-polaris-${polaris_version}-rc${previous_rc}"
+  previous_tag="apache-polaris-${version_without_rc}-rc${previous_rc}"
   
   print_info "Checking for previous RC tag: ${previous_tag}"
   if ! git tag -l "${previous_tag}" | grep -q "^${previous_tag}$"; then

@@ -85,10 +85,8 @@ if ! validate_and_extract_git_tag_version "${git_tag}"; then
   exit 1
 fi
 
-polaris_version="${major}.${minor}.${patch}-incubating"
-
 print_info "Starting build and stage distributions process..."
-print_info "Version: ${polaris_version}"
+print_info "Version: ${version_without_rc}"
 print_info "RC number: ${rc_number}"
 echo
 
@@ -101,11 +99,11 @@ exec_process ./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x in
 print_info "Creating Helm package..."
 exec_process cd "${releasey_dir}/../helm"
 exec_process helm package polaris
-exec_process helm gpg sign polaris-${polaris_version}.tgz
-calculate_sha512 polaris-${polaris_version}.tgz polaris-${polaris_version}.tgz.sha512
-exec_process gpg --armor --output polaris-${polaris_version}.tgz.asc --detach-sig polaris-${polaris_version}.tgz
-calculate_sha512 polaris-${polaris_version}.tgz.prov polaris-${polaris_version}.tgz.prov.sha512
-exec_process gpg --armor --output polaris-${polaris_version}.tgz.prov.asc --detach-sig polaris-${polaris_version}.tgz.prov
+exec_process helm gpg sign polaris-${version_without_rc}.tgz
+calculate_sha512 polaris-${version_without_rc}.tgz polaris-${version_without_rc}.tgz.sha512
+exec_process gpg --armor --output polaris-${version_without_rc}.tgz.asc --detach-sig polaris-${version_without_rc}.tgz
+calculate_sha512 polaris-${version_without_rc}.tgz.prov polaris-${version_without_rc}.tgz.prov.sha512
+exec_process gpg --armor --output polaris-${version_without_rc}.tgz.prov.asc --detach-sig polaris-${version_without_rc}.tgz.prov
 
 # Stage to Apache dist dev repository
 print_info "Staging artifacts to Apache dist dev repository..."
@@ -115,22 +113,22 @@ print_info "Checking out ${APACHE_DIST_URL}${APACHE_DIST_PATH} to ${dist_dev_dir
 exec_process svn co "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
 print_info "Copying files to destination directory..."
-version_dir="${dist_dev_dir}/${polaris_version}"
-helm_chart_version_dir="${dist_dev_dir}/helm-chart/${polaris_version}"
+version_dir="${dist_dev_dir}/${version_without_rc}"
+helm_chart_version_dir="${dist_dev_dir}/helm-chart/${version_without_rc}"
 exec_process mkdir -p "${version_dir}"
 exec_process mkdir -p "${helm_chart_version_dir}"
-exec_process cp ${releasey_dir}/../build/distributions/apache-polaris-${polaris_version}.tar.gz* "${version_dir}/"
+exec_process cp ${releasey_dir}/../build/distributions/apache-polaris-${version_without_rc}.tar.gz* "${version_dir}/"
 exec_process cp ${releasey_dir}/../runtime/distribution/build/distributions/* "${version_dir}/"
 
 print_info "Copying Helm package files..."
-exec_process cp ${releasey_dir}/../helm/polaris-${polaris_version}.tgz* "${helm_chart_version_dir}/"
+exec_process cp ${releasey_dir}/../helm/polaris-${version_without_rc}.tgz* "${helm_chart_version_dir}/"
 
 print_info "Adding files to SVN..."
 exec_process svn add "${version_dir}"
 exec_process svn add "${helm_chart_version_dir}"
 
 print_info "Committing changes..."
-exec_process svn commit -m "Stage Apache Polaris ${polaris_version} RC${rc_number}"
+exec_process svn commit -m "Stage Apache Polaris ${version_without_rc} RC${rc_number}"
 
 print_info "Updating Helm index..."
 exec_process cd "${dist_dev_dir}/helm-chart"
