@@ -1,0 +1,150 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: Create Release Branch
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  create-release-branch:
+    name: Create Release Branch
+    runs-on: ubuntu-latest
+    # Only run for pre-releases so that until the release succeeds, it is not considered production-ready
+    if: github.event.release.prerelease == true
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          # Fetch full history for proper branch operations
+          fetch-depth: 0
+          # Use the target commit specified in the release
+          ref: ${{ github.event.release.target_commitish }}
+          # Use a token with write permissions
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Parse DRY_RUN from release description
+        run: |
+          # Extract release description and search for DRY_RUN= line
+          release_body="${{ github.event.release.body }}"
+          dry_run_line=$(echo "$release_body" | grep "^DRY_RUN=" || true)
+
+          if [[ -n "$dry_run_line" ]]; then
+            echo "$dry_run_line" >> $GITHUB_ENV
+          fi
+
+      - name: Validate release parameters
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_version.sh"
+
+          # Extract release parameters: tag and commit
+          release_tag="${{ github.event.release.tag_name }}"
+          commit="${{ github.event.release.target_commitish }}"
+          if [[ -z "$commit" ]]; then
+            commit="HEAD"
+          fi
+
+          print_info "Validating release parameters..."
+
+          # Validate that the commit exists
+          if ! git rev-parse --verify "${commit}" >/dev/null 2>&1; then
+            print_error "Invalid Git commit: ${commit}"
+            exit 1
+          fi
+
+          # Validate tag format: x.y.z-incubating-rcN
+          if ! validate_and_extract_git_tag_version "${release_tag}"; then
+            print_error "Invalid tag format. Expected: x.y.z-incubating-rcN where N>0, got: ${release_tag}"
+            exit 1
+          fi
+
+          # Export extracted version components for next step
+          echo "commit=${commit}" >> $GITHUB_ENV
+          echo "major=${major}" >> $GITHUB_ENV
+          echo "minor=${minor}" >> $GITHUB_ENV
+          echo "patch=${patch}" >> $GITHUB_ENV
+          echo "rc_number=${rc_number}" >> $GITHUB_ENV
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
+
+      - name: Create release branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          release_branch="release/${version_without_rc}"
+
+          print_info "Starting release branch creation..."
+          print_info "Polaris version: ${version_without_rc}"
+          print_info "From commit: ${commit}"
+          print_info "Release branch: ${release_branch}"
+          echo
+
+          # Handle RC > 1 scenarios
+          if [[ ${rc_number} -gt 1 ]]; then
+            # Check if release branch already exists
+            if git show-ref --verify --quiet "refs/remotes/origin/${release_branch}"; then
+              print_info "RC${rc_number} detected and release branch ${release_branch} already exists."
+              print_info "This workflow only creates release branches for RC1. Nothing to do."
+              exit 0
+            else
+              print_error "RC${rc_number} detected but release branch ${release_branch} does not exist."
+              exit 1
+            fi
+          fi
+
+          # Check if release branch already exists for RC1
+          if git show-ref --verify --quiet "refs/remotes/origin/${release_branch}"; then
+            print_error "Release branch ${release_branch} already exists."
+            print_error "Delete the existing branch manually if you want to recreate it."
+            exit 1
+          fi
+
+          print_info "Checking out commit: ${commit}"
+          exec_process git checkout "${commit}"
+
+          print_info "Creating release branch: ${release_branch}"
+          exec_process git branch "${release_branch}"
+
+          print_info "Pushing release branch to origin remote"
+          exec_process git push origin "${release_branch}" --set-upstream
+
+          print_info "Updating release name to version without RC"
+          exec_process gh release edit "${{ github.event.release.tag_name }}" --title "Release ${version_without_rc}"
+
+          print_success "🎉 Release branch ${release_branch} created successfully!"
