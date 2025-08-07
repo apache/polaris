@@ -19,7 +19,9 @@
 package org.apache.polaris.service.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisRestCatalogGcpIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogGcpIntegrationTestBase;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @QuarkusIntegrationTest
-public class RestCatalogGcpIT extends PolarisRestCatalogGcpIntegrationTest {}
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_GCS_PATH", matches = ".+")
+public class RestCatalogGcpIT extends PolarisRestCatalogGcpIntegrationTestBase {}

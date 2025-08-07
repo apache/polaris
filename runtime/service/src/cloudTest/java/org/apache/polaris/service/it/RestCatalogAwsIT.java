@@ -19,7 +19,9 @@
 package org.apache.polaris.service.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisRestCatalogAwsIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogAwsIntegrationTestBase;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @QuarkusIntegrationTest
-public class RestCatalogAwsIT extends PolarisRestCatalogAwsIntegrationTest {}
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_S3_PATH", matches = ".+")
+public class RestCatalogAwsIT extends PolarisRestCatalogAwsIntegrationTestBase {}

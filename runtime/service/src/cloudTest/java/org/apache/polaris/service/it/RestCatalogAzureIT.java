@@ -19,7 +19,9 @@
 package org.apache.polaris.service.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisRestCatalogAzureIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogAzureIntegrationTestBase;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @QuarkusIntegrationTest
-public class RestCatalogAzureIT extends PolarisRestCatalogAzureIntegrationTest {}
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_AZURE_PATH", matches = ".+")
+public class RestCatalogAzureIT extends PolarisRestCatalogAzureIntegrationTestBase {}

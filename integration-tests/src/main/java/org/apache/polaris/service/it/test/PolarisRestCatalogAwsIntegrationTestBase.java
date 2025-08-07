@@ -19,27 +19,25 @@
 package org.apache.polaris.service.it.test;
 
 import java.util.List;
-import java.util.stream.Stream;
-import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
+import java.util.Optional;
+import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.assertj.core.util.Strings;
 
-/** Runs PolarisRestCatalogIntegrationBase test on Azure. */
-public class PolarisRestCatalogAzureIntegrationTest extends PolarisRestCatalogIntegrationBase {
-  public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_AZURE_TENANT_ID");
-  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_AZURE_PATH");
+/** Runs PolarisRestCatalogIntegrationBase test on AWS. */
+public abstract class PolarisRestCatalogAwsIntegrationTestBase
+    extends PolarisRestCatalogIntegrationBase {
+  public static final String ROLE_ARN =
+      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
+          .or(() -> Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_ROLE_ARN")))
+          .orElse("arn:aws:iam::123456789012:role/my-role");
+  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_S3_PATH");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
-    return AzureStorageConfigInfo.builder()
-        .setTenantId(TENANT_ID)
-        .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+    return AwsStorageConfigInfo.builder()
+        .setRoleArn(ROLE_ARN)
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
         .setAllowedLocations(List.of(BASE_LOCATION))
         .build();
-  }
-
-  @Override
-  protected boolean shouldSkip() {
-    return Stream.of(BASE_LOCATION, TENANT_ID).anyMatch(Strings::isNullOrEmpty);
   }
 }

@@ -24,9 +24,11 @@ import java.nio.file.Path;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.service.it.test.PolarisRestCatalogViewAzureIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_AZURE_PATH", matches = ".+")
 public class RestCatalogViewAzureIT extends PolarisRestCatalogViewAzureIntegrationTest {
 
   @BeforeEach
