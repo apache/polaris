@@ -124,7 +124,9 @@ public class PolarisManagementServiceIntegrationTest {
 
   @AfterAll
   public static void close() throws Exception {
-    client.close();
+    if (client != null) {
+      client.close();
+    }
   }
 
   @AfterEach
@@ -1728,7 +1730,7 @@ public class PolarisManagementServiceIntegrationTest {
             .managementApi(catalogAdminToken)
             .request(
                 "v1/principal-roles/"
-                    + principalRoleName
+                    + principalRoleName2
                     + "/catalog-roles/"
                     + catalogName
                     + "/"
@@ -1743,13 +1745,31 @@ public class PolarisManagementServiceIntegrationTest {
         managementApi
             .request(
                 "v1/principal-roles/"
-                    + principalRoleName
+                    + principalRoleName2
                     + "/catalog-roles/"
                     + catalogName
                     + "/"
                     + catalogRoleName)
             .delete()) {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+
+    // trigger an internal error by using "principalRoleName" instead of "principalRoleName2"
+    try (Response response =
+        managementApi
+            .request(
+                "v1/principal-roles/"
+                    + principalRoleName
+                    + "/catalog-roles/"
+                    + catalogName
+                    + "/"
+                    + catalogRoleName)
+            .delete()) {
+      assertThat(response)
+          .returns(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), Response::getStatus);
+      assertThat(response.hasEntity()).isTrue();
+      ErrorResponse errorResponse = response.readEntity(ErrorResponse.class);
+      assertThat(errorResponse.message()).contains("Operation failed: GRANT_NOT_FOUND");
     }
   }
 
