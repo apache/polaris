@@ -18,21 +18,18 @@ Catalogs created successfully
 spark-sql ()> use polaris;
 spark-sql ()> create namespace if not exists ns1;
 spark-sql ()> create table if not exists ns1.test_table (id int, name string);
-spark-sql ()> insert into ns1.test_table values (1, 'Alice'), (2, 'Bob');
+spark-sql ()> insert into ns1.test_table values (1, 'Alice');
+spark-sql ()> insert into ns1.test_table values (2, 'Bob');
 spark-sql ()> create namespace if not exists ns2;
 spark-sql ()> create table if not exists ns2.test_table (id int, name string);
-spark-sql ()> insert into ns2.test_table values (1, 'Apache Spark'), (2, 'Apache Iceberg');
+spark-sql ()> insert into ns2.test_table values (1, 'Apache Spark');
+spark-sql ()> insert into ns2.test_table values (2, 'Apache Iceberg');
 spark-sql ()> 
 === Accessing data via EXTERNAL catalog ===
 spark-sql ()> use polaris;
 spark-sql ()> show namespaces;
 ns1
 ns2
-spark-sql ()> describe namespace ns1;
-Catalog Name	polaris
-Namespace Name	ns1
-Location	file:///tmp/warehouse/ns1/
-Owner	pnilangekar
 spark-sql ()> select * from ns1.test_table order by id;
 1	Alice
 2	Bob

@@ -24,13 +24,7 @@
 set -e
 
 
-export POLARIS_TOKEN=$(curl -s http://localhost:8181/api/catalog/v1/oauth/tokens \
-    --user root:s3cr3t \
-    -d 'grant_type=client_credentials' \
-    -d 'scope=PRINCIPAL_ROLE:ALL' | jq -r .access_token)
-
-
-SPARK_BEARER_TOKEN="${POLARIS_TOKEN}"
+SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 
 echo "=== Setting up Catalog Federation Test ==="
 
@@ -149,10 +143,12 @@ cat << EOF | ${SPARK_HOME}/bin/spark-sql -S --conf spark.sql.catalog.polaris.tok
 use polaris;
 create namespace if not exists ns1;
 create table if not exists ns1.test_table (id int, name string);
-insert into ns1.test_table values (1, 'Alice'), (2, 'Bob');
+insert into ns1.test_table values (1, 'Alice');
+insert into ns1.test_table values (2, 'Bob');
 create namespace if not exists ns2;
 create table if not exists ns2.test_table (id int, name string);
-insert into ns2.test_table values (1, 'Apache Spark'), (2, 'Apache Iceberg');
+insert into ns2.test_table values (1, 'Apache Spark');
+insert into ns2.test_table values (2, 'Apache Iceberg');
 EOF
 
 echo ""
@@ -160,7 +156,6 @@ echo "=== Accessing data via EXTERNAL catalog ==="
 cat << EOF | ${SPARK_HOME}/bin/spark-sql -S --conf spark.sql.catalog.polaris.token="${SPARK_BEARER_TOKEN}" --conf spark.sql.catalog.polaris.warehouse=test-catalog-external --conf spark.sql.defaultCatalog=polaris --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions
 use polaris;
 show namespaces;
-describe namespace ns1;
 select * from ns1.test_table order by id;
 insert into ns1.test_table values (3, 'Charlie');
 select * from ns2.test_table order by id;
