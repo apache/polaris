@@ -19,6 +19,8 @@
 package org.apache.polaris.core.policy.validator;
 
 import com.google.common.base.Preconditions;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
@@ -84,7 +86,8 @@ public class PolicyValidators {
    * @param targetEntity the target Polaris entity to attach the policy to
    * @return {@code true} if the policy is attachable to the target entity; {@code false} otherwise
    */
-  public static boolean canAttach(PolicyEntity policy, PolarisEntity targetEntity) {
+  public static boolean canAttach(
+      CallContext callContext, PolicyEntity policy, PolarisEntity targetEntity) {
     Preconditions.checkNotNull(policy, "Policy must not be null");
     Preconditions.checkNotNull(targetEntity, "Target entity must not be null");
 
@@ -103,8 +106,9 @@ public class PolicyValidators {
         return BaseMaintenancePolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
 
       case ACCESS_CONTROL:
-        // TODO: Add validator for attaching this only to table
-        return true;
+        return callContext
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.ALLOW_ATTACHING_FINE_GRAINED_POLICIES_TO_ENTITIES);
 
       default:
         LOGGER.warn("Attachment not supported for policy type: {}", policyType.getName());
@@ -112,8 +116,9 @@ public class PolicyValidators {
     }
   }
 
-  public static void validateAttach(PolicyEntity policy, PolarisEntity targetEntity) {
-    if (!canAttach(policy, targetEntity)) {
+  public static void validateAttach(
+      CallContext callContext, PolicyEntity policy, PolarisEntity targetEntity) {
+    if (!canAttach(callContext, policy, targetEntity)) {
       throw new PolicyAttachException(
           "Cannot attach policy '%s' to target entity '%s'",
           policy.getName(), targetEntity.getName());

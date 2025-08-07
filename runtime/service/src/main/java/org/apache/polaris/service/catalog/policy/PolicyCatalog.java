@@ -304,7 +304,7 @@ public class PolicyCatalog {
     var targetCatalogPath = PolarisEntity.toCoreList(resolvedTargetPath.getRawParentPath());
     var targetEntity = resolvedTargetPath.getRawLeafEntity();
 
-    PolicyValidators.validateAttach(policyEntity, targetEntity);
+    PolicyValidators.validateAttach(callContext, policyEntity, targetEntity);
 
     var result =
         metaStoreManager.attachPolicyToEntity(

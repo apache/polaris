@@ -349,4 +349,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "it is still possible to enforce the uniqueness of table locations within a catalog.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean>
+      ALLOW_ATTACHING_FINE_GRAINED_POLICIES_TO_ENTITIES =
+          PolarisConfiguration.<Boolean>builder()
+              .key("ALLOW_ATTACHING_FINE_GRAINED_POLICIES_TO_ENTITIES_ENABLED")
+              .catalogConfig(
+                  "polaris.config.allow-attaching-fine-grained-policies-to-entities.enabled")
+              .description(
+                  "If set to true, fine grained access control policies can be attached to entities.")
+              .defaultValue(false)
+              .buildFeatureConfiguration();
 }

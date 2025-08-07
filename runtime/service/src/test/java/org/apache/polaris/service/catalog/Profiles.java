@@ -38,6 +38,8 @@ public final class Profiles {
           "polaris.event-listener.type",
           "test",
           "polaris.readiness.ignore-severe-issues",
+          "true",
+          "polaris.features.\"ALLOW_ATTACHING_FINE_GRAINED_POLICIES_TO_ENTITIES_ENABLED\"",
           "true");
     }
   }
