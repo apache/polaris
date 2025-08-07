@@ -219,14 +219,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(2)
           .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> LIST_PAGINATION_ENABLED =
-      PolarisConfiguration.<Boolean>builder()
-          .key("LIST_PAGINATION_ENABLED")
-          .catalogConfig("polaris.config.list-pagination-enabled")
-          .description("If set to true, pagination for APIs like listTables is enabled.")
-          .defaultValue(false)
-          .buildFeatureConfiguration();
-
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_GENERIC_TABLES")
