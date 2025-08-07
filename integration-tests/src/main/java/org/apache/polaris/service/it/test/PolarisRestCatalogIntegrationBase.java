@@ -1895,6 +1895,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
             .build("GET");
 
     try (Response originalEtagTestResponse = originalEtagTestInvocation.invoke()) {
+      // Should return 200 OK because it's a completely different table
       assertThat(originalEtagTestResponse.getStatus())
           .isEqualTo(Response.Status.OK.getStatusCode());
       assertThat(originalEtagTestResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
