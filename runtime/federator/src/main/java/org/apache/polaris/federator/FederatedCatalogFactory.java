@@ -52,8 +52,6 @@ public class FederatedCatalogFactory {
     ConnectionType connectionType =
         ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
 
-    LOGGER.info("Creating federated catalog for connection type: {}", connectionType);
-
     Catalog federatedCatalog;
 
     switch (connectionType) {
@@ -89,10 +87,6 @@ public class FederatedCatalogFactory {
         icebergRestConfig.getRemoteCatalogName(),
         connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
 
-    LOGGER.info(
-        "Initialized Iceberg REST catalog for remote catalog: {}",
-        icebergRestConfig.getRemoteCatalogName());
-
     return restCatalog;
   }
 
@@ -106,8 +100,6 @@ public class FederatedCatalogFactory {
     hadoopCatalog.initialize(
         hadoopConfig.getWarehouse(),
         connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
-
-    LOGGER.info("Initialized Hadoop catalog for warehouse: {}", hadoopConfig.getWarehouse());
 
     return hadoopCatalog;
   }
