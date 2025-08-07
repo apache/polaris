@@ -39,14 +39,15 @@ if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
   rm -f "${dir}"/poetry.lock
   rm -f "${dir}/client/python/poetry.lock"
 
+  is_first_time=false
   if [ ! -d "${dir}/polaris-venv" ]; then
+    is_first_time=true
     echo "Performing first-time setup for the Python client..."
     python3 -m venv "${dir}"/polaris-venv
   else
     echo "Repair dependencies for the Python client..."
   fi
 
-  rm -f "${dir}"/poetry.lock
   . "${dir}"/polaris-venv/bin/activate
   pip install --upgrade pip
   pip install --upgrade -r regtests/requirements.txt
@@ -55,10 +56,13 @@ if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
 
   deactivate
 
-  if [ ! -d ${dir}/polaris-venv ]; then
+  if [ "$is_first_time" == true ]; then
     echo "First time setup complete."
   else
     echo "Dependencies repaired."
+  fi
+
+  if [ "$repair" == true ]; then
     exit 0
   fi
 fi
