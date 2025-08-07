@@ -37,6 +37,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -56,11 +58,13 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
 
   private final ConcurrentHashMap<String, ConcurrentLinkedQueue<EventAndContext>> buffer =
       new ConcurrentHashMap<>();
-  private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+  private final ScheduledExecutorService executor;
   private final ConcurrentHashMap<Future<?>, Integer> futures = new ConcurrentHashMap<>();
   private final Duration timeToFlush;
   private final int maxBufferSize;
 
+  @Inject CallContext callContext;
+  @Context SecurityContext securityContext;
   @Context ContainerRequestContext containerRequestContext;
 
   private record EventAndContext(PolarisEvent polarisEvent, PolarisCallContext callContext) {}
@@ -75,20 +79,21 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
     this.timeToFlush =
         eventListenerConfiguration.bufferTime().orElse(Duration.of(30, ChronoUnit.SECONDS));
     this.maxBufferSize = eventListenerConfiguration.maxBufferSize().orElse(5); // 5 events default
+
+    executor = Executors.newSingleThreadScheduledExecutor();
   }
 
   @PostConstruct
   void start() {
     futures.put(
         executor.scheduleAtFixedRate(
-            this::runCleanup, 0, timeToFlush.toMillis(), TimeUnit.MILLISECONDS),
-        1);
+            this::runCleanup, 0, timeToFlush.toMillis(), TimeUnit.MILLISECONDS), 1);
   }
 
   void runCleanup() {
     for (String realmId : buffer.keySet()) {
       try {
-        checkAndFlushBufferIfNecessary(realmId);
+        checkAndFlushBufferIfNecessary(realmId, false);
       } catch (Exception e) {
         LOGGER.debug("Buffer checking task failed for realm ({}): {}", realmId, e);
       }
@@ -105,6 +110,18 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   void shutdown() {
     futures.keySet().forEach(future -> future.cancel(false));
     executor.shutdownNow();
+
+    try {
+      if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+        LOGGER.warn("Executor did not shut down cleanly");
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } finally {
+      for (String realmId : buffer.keySet()) {
+        checkAndFlushBufferIfNecessary(realmId, true);
+      }
+    }
   }
 
   @Override
@@ -116,51 +133,49 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   }
 
   @Override
-  void addToBuffer(PolarisEvent polarisEvent, CallContext callCtx) {
-    String realmId = callCtx.getRealmContext().getRealmIdentifier();
+  void addToBuffer(PolarisEvent polarisEvent) {
+    String realmId = callContext.getRealmContext().getRealmIdentifier();
 
     buffer
         .computeIfAbsent(realmId, k -> new ConcurrentLinkedQueue<>())
-        .add(new EventAndContext(polarisEvent, callCtx.getPolarisCallContext().copy()));
-    futures.put(executor.submit(() -> checkAndFlushBufferIfNecessary(realmId)), 1);
+        .add(new EventAndContext(polarisEvent, callContext.getPolarisCallContext().copy()));
+    if (buffer.get(realmId).size() >= maxBufferSize) {
+      futures.put(executor.submit(() -> checkAndFlushBufferIfNecessary(realmId, true)), 1);
+    }
   }
 
   @VisibleForTesting
-  public void checkAndFlushBufferIfNecessary(String realmId) {
+  void checkAndFlushBufferIfNecessary(String realmId, boolean forceFlush) {
     ConcurrentLinkedQueue<EventAndContext> queue = buffer.get(realmId);
     if (queue == null || queue.isEmpty()) {
       return;
     }
 
-    // Given that we are using a ConcurrentLinkedQueue, this should not lock any calls to `add` on
-    // the queue.
-    synchronized (queue) {
-      // Double-check inside synchronized block
-      if (queue.isEmpty()) {
-        return;
-      }
-
-      EventAndContext head = queue.peek();
-      if (head == null) {
-        return;
-      }
-
-      Duration elapsed = Duration.ofMillis(clock.millis() - head.polarisEvent.getTimestampMs());
-
-      if (elapsed.compareTo(timeToFlush) > 0 || queue.size() >= maxBufferSize) {
-        // Atomically replace old queue with new queue
-        boolean replaced = buffer.replace(realmId, queue, new ConcurrentLinkedQueue<>());
-        if (!replaced) {
-          // Another thread concurrently modified the buffer, so do not continue
-          return;
-        }
-
-        metaStoreManagerFactory
-            .getOrCreateMetaStoreManager(() -> realmId)
-            .writeEvents(
-                head.callContext(),
-                new ArrayList<>(queue.stream().map(EventAndContext::polarisEvent).toList()));
-      }
+    EventAndContext head = queue.peek();
+    if (head == null) {
+      return;
     }
+
+    Duration elapsed = Duration.ofMillis(clock.millis() - head.polarisEvent.getTimestampMs());
+
+    if (elapsed.compareTo(timeToFlush) > 0 || queue.size() >= maxBufferSize || forceFlush) {
+      // Atomically replace old queue with new queue
+      boolean replaced = buffer.replace(realmId, queue, new ConcurrentLinkedQueue<>());
+      if (!replaced) {
+        // Another thread concurrently modified the buffer, so do not continue
+        return;
+      }
+
+      metaStoreManagerFactory
+          .getOrCreateMetaStoreManager(() -> realmId)
+          .writeEvents(
+              head.callContext(),
+              new ArrayList<>(queue.stream().map(EventAndContext::polarisEvent).toList()));
+    }
+  }
+
+  @Override
+  ContextSpecificInformation getContextSpecificInformation() {
+    return new ContextSpecificInformation(callContext.getPolarisCallContext().getClock().millis(), securityContext.getUserPrincipal() == null ? null : securityContext.getUserPrincipal().getName());
   }
 }

@@ -1422,9 +1422,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         disableRefresh();
       } else {
         polarisEventListener.onBeforeTableRefreshed(
-            new BeforeTableRefreshedEvent(PolarisEvent.createEventId(), tableIdentifier),
-            callContext,
-            securityContext);
+            new BeforeTableRefreshedEvent(PolarisEvent.createEventId(), tableIdentifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1445,18 +1443,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
         polarisEventListener.onAfterTableRefreshed(
-            new AfterTableRefreshedEvent(PolarisEvent.createEventId(), tableIdentifier),
-            callContext,
-            securityContext);
+            new AfterTableRefreshedEvent(PolarisEvent.createEventId(), tableIdentifier));
       }
     }
 
     public void doCommit(TableMetadata base, TableMetadata metadata) {
       polarisEventListener.onBeforeTableCommited(
-          new BeforeTableCommitedEvent(
-              PolarisEvent.createEventId(), tableIdentifier, base, metadata),
-          callContext,
-          securityContext);
+          new BeforeTableCommitedEvent(PolarisEvent.createEventId(), tableIdentifier, base, metadata));
 
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
@@ -1615,9 +1608,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       polarisEventListener.onAfterTableCommited(
           new AfterTableCommitedEvent(
-              PolarisEvent.createEventId(), tableIdentifier, base, metadata),
-          callContext,
-          securityContext);
+              PolarisEvent.createEventId(), tableIdentifier, base, metadata));
     }
 
     @Override
@@ -1809,9 +1800,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         disableRefresh();
       } else {
         polarisEventListener.onBeforeViewRefreshed(
-            new BeforeViewRefreshedEvent(PolarisEvent.createEventId(), identifier),
-            callContext,
-            securityContext);
+            new BeforeViewRefreshedEvent(PolarisEvent.createEventId(), identifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1834,17 +1823,13 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
         polarisEventListener.onAfterViewRefreshed(
-            new AfterViewRefreshedEvent(PolarisEvent.createEventId(), identifier),
-            callContext,
-            securityContext);
+            new AfterViewRefreshedEvent(PolarisEvent.createEventId(), identifier));
       }
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
       polarisEventListener.onBeforeViewCommited(
-          new BeforeViewCommitedEvent(PolarisEvent.createEventId(), identifier, base, metadata),
-          callContext,
-          securityContext);
+          new BeforeViewCommitedEvent(PolarisEvent.createEventId(), identifier, base, metadata));
 
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
@@ -1941,9 +1926,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
 
       polarisEventListener.onAfterViewCommited(
-          new AfterViewCommitedEvent(PolarisEvent.createEventId(), identifier, base, metadata),
-          callContext,
-          securityContext);
+          new AfterViewCommitedEvent(PolarisEvent.createEventId(), identifier, base, metadata));
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {

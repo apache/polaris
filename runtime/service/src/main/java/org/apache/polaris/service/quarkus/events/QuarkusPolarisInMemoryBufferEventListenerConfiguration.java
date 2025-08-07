@@ -19,16 +19,15 @@
 
 package org.apache.polaris.service.quarkus.events;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Duration;
 import java.util.Optional;
+
 import org.apache.polaris.service.events.listeners.InMemoryBufferPersistenceListenerConfiguration;
 
-@StaticInitSafe
 @ConfigMapping(prefix = "polaris.event-listener.persistence-in-memory-buffer")
 @ApplicationScoped
 public interface QuarkusPolarisInMemoryBufferEventListenerConfiguration

@@ -151,9 +151,7 @@ public class PolarisServiceImpl
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     polarisEventListener.onAfterCatalogCreated(
-        new AfterCatalogCreatedEvent(PolarisEvent.createEventId(), newCatalog.getName()),
-        callContext,
-        securityContext);
+        new AfterCatalogCreatedEvent(PolarisEvent.createEventId(), newCatalog.getName()));
     return Response.status(Response.Status.CREATED).build();
   }
 

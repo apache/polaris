@@ -59,8 +59,7 @@ public class RateLimiterFilter implements ContainerRequestFilter {
           new BeforeRequestRateLimitedEvent(
               PolarisEvent.createEventId(),
               ctx.getMethod(),
-              ctx.getUriInfo().getAbsolutePath().toString()),
-          ctx.getSecurityContext());
+              ctx.getUriInfo().getAbsolutePath().toString()));
       ctx.abortWith(Response.status(Response.Status.TOO_MANY_REQUESTS).build());
       LOGGER.atDebug().log("Rate limiting request");
     }

@@ -403,9 +403,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         catalogHandlerUtils.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
     polarisEventListener.onAfterTableCreated(
         new AfterTableCreatedEvent(
-            PolarisEvent.createEventId(), catalogName, resp.tableMetadata(), identifier),
-        callContext,
-        securityContext);
+            PolarisEvent.createEventId(), catalogName, resp.tableMetadata(), identifier));
     return resp;
   }
 
@@ -466,9 +464,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               .build();
       polarisEventListener.onAfterTableCreated(
           new AfterTableCreatedEvent(
-              PolarisEvent.createEventId(), catalogName, resp.tableMetadata(), tableIdentifier),
-          callContext,
-          securityContext);
+              PolarisEvent.createEventId(), catalogName, resp.tableMetadata(), tableIdentifier));
       return resp;
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now

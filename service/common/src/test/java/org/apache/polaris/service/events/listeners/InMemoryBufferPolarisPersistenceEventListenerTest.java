@@ -75,6 +75,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     when(eventListenerConfiguration.bufferTime())
         .thenReturn(Optional.of(CONFIG_TIME_TO_FLUSH_IN_MS));
 
+
     clock =
         MutableClock.of(
             Instant.ofEpochSecond(0), ZoneOffset.UTC); // Use 0 Epoch Time to make it easier to test
@@ -82,6 +83,15 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     eventListener =
         new InMemoryBufferPolarisPersistenceEventListener(
             metaStoreManagerFactory, clock, eventListenerConfiguration);
+
+    // Use reflection to set the callContext field
+    try {
+      java.lang.reflect.Field field = InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField("callContext");
+      field.setAccessible(true);
+      field.set(eventListener, callContext);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to set callContext field", e);
+    }
   }
 
   @Test
@@ -91,7 +101,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
 
     // Push clock forwards to flush the buffer
     clock.add(CONFIG_TIME_TO_FLUSH_IN_MS.multipliedBy(2));
-    eventListener.checkAndFlushBufferIfNecessary(realmId);
+    eventListener.checkAndFlushBufferIfNecessary(realmId, false);
     verify(polarisMetaStoreManager, times(1))
         .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBuffer));
   }
@@ -106,12 +116,12 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     PolarisEvent triggeringEvent = createSampleEvent();
     RealmContext realmContext = () -> realm1;
     when(callContext.getRealmContext()).thenReturn(realmContext);
-    eventListener.addToBuffer(triggeringEvent, callContext);
+    eventListener.addToBuffer(triggeringEvent);
     eventsAddedToBuffer.add(triggeringEvent);
 
     // Calling checkAndFlushBufferIfNecessary manually to replicate the behavior of the executor
     // service
-    eventListener.checkAndFlushBufferIfNecessary(realm1);
+    eventListener.checkAndFlushBufferIfNecessary(realm1, false);
     verify(polarisMetaStoreManager, times(1))
         .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBuffer));
     verify(polarisMetaStoreManager, times(0))
@@ -137,7 +147,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
           new Thread(
               () -> {
                 try {
-                  eventListener.checkAndFlushBufferIfNecessary(realmId);
+                  eventListener.checkAndFlushBufferIfNecessary(realmId, false);
                 } catch (Exception e) {
                   exceptions.add(e);
                 }
@@ -253,7 +263,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     RealmContext realmContext = () -> realmId;
     when(callContext.getRealmContext()).thenReturn(realmContext);
     for (PolarisEvent realmEvent : realmEvents) {
-      eventListener.addToBuffer(realmEvent, callContext);
+      eventListener.addToBuffer(realmEvent);
     }
     verify(polarisMetaStoreManager, times(0)).writeEvents(Mockito.any(), Mockito.any());
     return realmEvents;
