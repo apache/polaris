@@ -24,10 +24,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
-import org.apache.polaris.core.context.RealmContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +49,7 @@ public class TestRealmContextResolver implements RealmContextResolver {
   }
 
   @Override
-  public CompletionStage<RealmContext> resolveRealmContext(
+  public String resolveRealmId(
       String requestURL, String method, String path, Function<String, String> headers) {
     // Since this default resolver is strictly for use in test/dev environments, we'll consider
     // it safe to log all contents. Any "real" resolver used in a prod environment should make
@@ -73,8 +70,7 @@ public class TestRealmContextResolver implements RealmContextResolver {
           configuration.defaultRealm());
       parsedProperties.put(REALM_PROPERTY_KEY, configuration.defaultRealm());
     }
-    String realmId = parsedProperties.get(REALM_PROPERTY_KEY);
-    return CompletableFuture.completedFuture(() -> realmId);
+    return parsedProperties.get(REALM_PROPERTY_KEY);
   }
 
   /**
