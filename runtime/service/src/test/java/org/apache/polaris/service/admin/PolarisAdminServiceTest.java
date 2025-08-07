@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.admin;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -39,12 +38,14 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -85,6 +86,10 @@ public class PolarisAdminServiceTest {
             reservedProperties);
   }
 
+  protected static void assertSuccess(BaseResult result) {
+    Assertions.assertThat(result.isSuccess()).isTrue();
+  }
+
   @Test
   void testGrantPrivilegeOnNamespaceToRole() throws Exception {
     String catalogName = "test-catalog";
@@ -99,11 +104,11 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any(), any()))
         .thenReturn(successResult);
 
-    boolean result =
+    PrivilegeResult result =
         adminService.grantPrivilegeOnNamespaceToRole(
             catalogName, catalogRoleName, namespace, privilege);
 
-    assertThat(result).isTrue();
+    assertSuccess(result);
   }
 
   @Test
@@ -180,11 +185,11 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.revokePrivilegeOnSecurableFromRole(any(), any(), any(), any(), any()))
         .thenReturn(successResult);
 
-    boolean result =
+    PrivilegeResult result =
         adminService.revokePrivilegeOnNamespaceFromRole(
             catalogName, catalogRoleName, namespace, privilege);
 
-    assertThat(result).isTrue();
+    assertSuccess(result);
   }
 
   @Test
