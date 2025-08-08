@@ -253,6 +253,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS")
+          .description(
+              "When enabled, allows RBAC operations to create synthetic entities for"
+                  + " entities in federated catalogs that don't exist in the local metastore.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_POLICY_STORE =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_POLICY_STORE")
