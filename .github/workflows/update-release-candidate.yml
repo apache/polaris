@@ -111,7 +111,31 @@ jobs:
           print_info "  Version without RC: ${version_without_rc}"
           print_info "  RC number: ${rc_number}"
 
-      - name: Checkout release branch and verify GitHub checks
+      - name: Verify current branch matches release branch
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+
+          # Get the current branch name
+          current_branch=$(git branch --show-current)
+
+          print_info "Verifying current branch matches expected release branch"
+          print_info "  Current branch: ${current_branch}"
+          print_info "  Expected release branch: ${release_branch}"
+
+          # Check if current branch matches the expected release branch
+          if [[ "${current_branch}" != "${release_branch}" ]]; then
+            print_error "Current branch '${current_branch}' does not match expected release branch '${release_branch}'"
+            print_error "This workflow must be run from the release branch that corresponds to the release tag"
+            print_error "Please switch to branch '${release_branch}' and run the workflow again"
+            exit 1
+          fi
+
+          print_success "Current branch matches expected release branch: ${release_branch}"
+
+      - name: Verify GitHub checks are passing
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -123,11 +147,10 @@ jobs:
           source "${LIBS_DIR}/_exec.sh"
           source "${LIBS_DIR}/_github.sh"
 
-          print_info "Checking out release branch: ${release_branch}"
-          git checkout "${release_branch}"
-
           # Get the current HEAD commit SHA
           current_commit=$(git rev-parse HEAD)
+
+          print_info "Verifying GitHub checks for commit: ${current_commit}"
 
           # Verify all GitHub checks are passing
           if ! check_github_checks_passed "${current_commit}"; then
