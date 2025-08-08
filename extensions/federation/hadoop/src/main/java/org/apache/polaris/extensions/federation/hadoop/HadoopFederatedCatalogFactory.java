@@ -20,21 +20,16 @@ package org.apache.polaris.extensions.federation.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.catalog.Catalog;
-import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.hadoop.HadoopCatalog;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
-import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
-import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Factory class for creating federated hadoop catalogs based on connection configuration.
- */
+/** Factory class for creating federated hadoop catalogs based on connection configuration. */
 public class HadoopFederatedCatalogFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(HadoopFederatedCatalogFactory.class);
 
@@ -54,16 +49,13 @@ public class HadoopFederatedCatalogFactory {
         connectionConfigInfoDpo.getAuthenticationParameters();
     if (authenticationParametersDpo.getAuthenticationTypeCode()
         != AuthenticationType.IMPLICIT.getCode()) {
-      throw new IllegalStateException(
-          "Hadoop federation only supports IMPLICIT authentication.");
+      throw new IllegalStateException("Hadoop federation only supports IMPLICIT authentication.");
     }
     Configuration conf = new Configuration();
-    String warehouse =
-        ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
+    String warehouse = ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
     HadoopCatalog hadoopCatalog = new HadoopCatalog(conf, warehouse);
     hadoopCatalog.initialize(
-        warehouse,
-        connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
+        warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
     return hadoopCatalog;
   }
 }
