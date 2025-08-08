@@ -30,11 +30,6 @@ for arg in "$@"; do
   fi
 done
 
-# Check if the python client needs regeneration
-if [ "$repair" == true ] || [ ! -f "${dir}/client/python/polaris/catalog/__init__.py" ]; then
-  "${dir}/gradlew" regeneratePythonClient
-fi
-
 if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
   rm -f "${dir}"/poetry.lock
   rm -f "${dir}/client/python/poetry.lock"
