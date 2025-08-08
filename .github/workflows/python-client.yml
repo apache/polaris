@@ -59,14 +59,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Lint
-        working-directory: client/python
         run: |
-          make lint
+          make client-lint
 
       - name: Generated Client Tests
-        working-directory: client/python
         run: |
-          make test-client
+          make client-unit-test
 
       - name: Image build
         run: |
@@ -76,6 +74,5 @@ jobs:
             -Dquarkus.container-image.build=true
 
       - name: Integration Tests
-        working-directory: client/python
         run: |
-          make test-integration
+          make client-integration-test
