@@ -18,5 +18,5 @@
 # under the License.
 #
 
-./gradlew regeneratePythonClient
+make client-regenerate
 docker-compose -f getting-started/spark/docker-compose.yml up
