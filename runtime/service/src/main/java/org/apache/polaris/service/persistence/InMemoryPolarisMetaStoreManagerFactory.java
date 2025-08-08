@@ -44,7 +44,6 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<TreeMapMetaStore> {
 
-  private final PolarisStorageIntegrationProvider storageIntegration;
   private final Set<String> bootstrappedRealms = new HashSet<>();
 
   @SuppressWarnings("unused") // Required by CDI
@@ -57,8 +56,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
       Clock clock,
       PolarisDiagnostics diagnostics,
       PolarisStorageIntegrationProvider storageIntegration) {
-    super(clock, diagnostics);
-    this.storageIntegration = storageIntegration;
+    super(clock, diagnostics, storageIntegration);
   }
 
   @Override
@@ -73,7 +71,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
       @Nullable RootCredentialsSet rootCredentialsSet,
       @Nonnull PolarisDiagnostics diagnostics) {
     return new TreeMapTransactionalPersistenceImpl(
-        store, storageIntegration, secretsGenerator(realmContext, rootCredentialsSet));
+        store, secretsGenerator(realmContext, rootCredentialsSet));
   }
 
   @Override

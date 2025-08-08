@@ -51,6 +51,6 @@ public class InMemoryAtomicOperationMetaStoreManagerFactory
 
   @Override
   protected PolarisMetaStoreManager createNewMetaStoreManager(Clock clock) {
-    return new AtomicOperationMetaStoreManager(clock);
+    return new AtomicOperationMetaStoreManager(clock, storageIntegrationProvider);
   }
 }

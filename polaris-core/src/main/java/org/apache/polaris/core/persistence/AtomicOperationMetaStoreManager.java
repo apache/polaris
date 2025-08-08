@@ -64,16 +64,13 @@ import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,7 +84,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   private final Clock clock;
 
-  public AtomicOperationMetaStoreManager(Clock clock) {
+  public AtomicOperationMetaStoreManager(
+      Clock clock, PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    super(storageIntegrationProvider);
     this.clock = clock;
   }
 
@@ -433,26 +432,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // validate input
     callCtx.getDiagServices().checkNotNull(catalog, "unexpected_null_catalog");
 
-    Map<String, String> internalProp = getInternalPropertyMap(catalog);
-    String integrationIdentifierOrId =
-        internalProp.get(PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName());
-    String storageConfigInfoStr =
-        internalProp.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-    PolarisStorageIntegration<?> integration;
-    // storageConfigInfo's presence is needed to create a storage integration
-    // and the catalog should not have an internal property of storage identifier or id yet
-    if (storageConfigInfoStr != null && integrationIdentifierOrId == null) {
-      integration =
-          ((IntegrationPersistence) ms)
-              .createStorageIntegration(
-                  callCtx,
-                  catalog.getCatalogId(),
-                  catalog.getId(),
-                  PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr));
-    } else {
-      integration = null;
-    }
-
     // check if that catalog has already been created
     // This can be done safely as a separate atomic operation before trying to create the catalog
     // because same-id idempotent-retry collisions of this sort are necessarily sequential, so
@@ -489,7 +468,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // done, return the existing catalog
       return new CreateCatalogResult(refreshCatalog, catalogAdminRole);
     }
-    ((IntegrationPersistence) ms).persistStorageIntegrationIfNeeded(callCtx, catalog, integration);
 
     // now create and persist new catalog entity
     EntityResult lowLevelResult = this.persistNewEntity(callCtx, ms, catalog);
@@ -1566,65 +1544,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
           "Failed to lease any of %s tasks due to concurrent leases", failedLeaseCount.get());
     }
     return EntitiesResult.fromPage(Page.fromItems(loadedTasks));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nonnull ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisEntityType entityType,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
-
-    // get meta store session we should be using
-    BasePersistence ms = callCtx.getMetaStore();
-    callCtx
-        .getDiagServices()
-        .check(
-            !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
-            "allowed_locations_to_subscope_is_required");
-
-    // reload the entity, error out if not found
-    EntityResult reloadedEntity = loadEntity(callCtx, catalogId, entityId, entityType);
-    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return new ScopedCredentialsResult(
-          reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
-    }
-
-    // TODO: Consider whether this independent lookup is safe for the model already or whether
-    // we need better atomicity semantics between the base entity and the embedded storage
-    // integration.
-
-    // get storage integration
-    PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
-        ((IntegrationPersistence) ms)
-            .loadPolarisStorageIntegration(callCtx, reloadedEntity.getEntity());
-
-    // cannot be null
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            storageIntegration,
-            "storage_integration_not_exists",
-            "catalogId={}, entityId={}",
-            catalogId,
-            entityId);
-
-    try {
-      AccessConfig accessConfig =
-          storageIntegration.getSubscopedCreds(
-              callCtx.getRealmConfig(),
-              allowListOperation,
-              allowedReadLocations,
-              allowedWriteLocations);
-      return new ScopedCredentialsResult(accessConfig);
-    } catch (Exception ex) {
-      return new ScopedCredentialsResult(
-          BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
-    }
   }
 
   /**
