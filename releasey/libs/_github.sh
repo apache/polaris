@@ -92,10 +92,9 @@ function check_github_checks_passed() {
   if [ ${DRY_RUN} -eq 1 ]; then
     print_info "DRY_RUN is enabled, skipping GitHub check verification"
     print_command "${num_invalid_checks_retrieval_command}"
-    return 0
     num_invalid_checks=0
   else
-    num_invalid_checks=$(num_invalid_checks_retrieval_command)
+    num_invalid_checks=$(${num_invalid_checks_retrieval_command})
   fi
 
   if [[ $? -ne 0 ]]; then
