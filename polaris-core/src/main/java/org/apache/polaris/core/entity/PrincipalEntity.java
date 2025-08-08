@@ -18,15 +18,19 @@
  */
 package org.apache.polaris.core.entity;
 
+import com.google.common.base.Preconditions;
+import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.Principal;
 
 /** Wrapper for translating between the REST Principal object and the base PolarisEntity type. */
 public class PrincipalEntity extends PolarisEntity {
   public PrincipalEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.PRINCIPAL, "Invalid entity type: %s", getType());
   }
 
-  public static PrincipalEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable PrincipalEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new PrincipalEntity(sourceEntity);
     }
