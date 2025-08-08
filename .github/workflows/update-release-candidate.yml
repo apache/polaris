@@ -197,7 +197,7 @@ jobs:
 
           print_info "Changes committed and pushed. New commit: ${new_tag_ref}"
 
-      - name: Update RC tag to new commit
+      - name: Create RC tag at new commit
         run: |
           releasey_dir="$(pwd)/releasey"
           LIBS_DIR="${releasey_dir}/libs"
@@ -205,39 +205,51 @@ jobs:
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Updating RC tag ${release_tag} to point to new commit ${new_tag_ref}"
+          print_info "Creating RC tag ${release_tag} at commit ${new_tag_ref}"
 
-          # IMPORTANT: Why we need to update the RC tag
-          # When a release manager creates a GitHub Release, a tag is automatically created
-          # pointing to the commit that was selected at release creation time. However,
-          # this is not the exact SHA that will be released, since we need to update
-          # the project version and changelog after the tag is created. Therefore, we
-          # must update the tag reference to point to the commit that contains the
-          # version updates and will actually be released.
+          # Create the tag at the new commit
+          exec_process git tag "${release_tag}" "${new_tag_ref}"
+          exec_process git push origin "${release_tag}"
 
-          # Force update the existing tag to point to the new commit
-          exec_process git tag -f "${release_tag}" "${new_tag_ref}"
-          exec_process git push -f origin "${release_tag}"
+          print_success "🎉 RC tag ${release_tag} created successfully at commit ${new_tag_ref}!"
 
-          print_success "🎉 RC tag ${release_tag} updated successfully to commit ${new_tag_ref}!"
-
-      - name: Summary
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           releasey_dir="$(pwd)/releasey"
           LIBS_DIR="${releasey_dir}/libs"
 
           source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
 
-          echo
-          print_success "🎉 Release candidate update completed successfully!"
-          echo
-          print_info "Summary:"
-          print_info "  Release tag: ${release_tag}"
-          print_info "  Release branch: ${release_branch}"
-          print_info "  Updated to commit: ${new_tag_ref}"
-          print_info "  Project version: ${version_without_rc}"
-          echo
-          print_info "Next steps:"
-          print_info "  1. Verify the updated release candidate"
-          print_info "  2. Run build and test scripts if needed"
-          print_info "  3. Proceed with the release process"
+          release_title="Release ${version_without_rc}"
+
+          if [[ ${rc_number} -eq 1 ]]; then
+            print_info "Creating new GitHub release: ${release_title}"
+            exec_process gh release create "${release_tag}" \
+              --title "${release_title}" \
+              --prerelease \
+              --target "${new_tag_ref}"
+
+            print_success "🎉 GitHub release created: ${release_title}"
+          else
+            print_info "Updating existing GitHub release to point to new RC tag: ${release_tag}"
+
+            existing_release_tag=$(gh release list | grep "${release_title}" | head -1 | cut -f3)
+
+            if [[ -z "${existing_release_tag}" ]]; then
+              print_error "Could not find existing release with title: ${release_title}"
+              print_error "Expected to find a release that was created for RC1"
+              exit 1
+            fi
+
+            print_info "Found existing release with tag: ${existing_release_tag}"
+
+            # Update the release to point to the new tag
+            exec_process gh release edit "${existing_release_tag}" \
+              --tag "${release_tag}" \
+              --target "${new_tag_ref}"
+
+            print_success "🎉 GitHub release updated to point to tag: ${release_tag}"
+          fi

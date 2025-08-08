@@ -27,6 +27,25 @@ LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$LIBS_DIR/_constants.sh"
 source "$LIBS_DIR/_log.sh"
 
+function validate_and_extract_branch_version {
+  # This function validates the format of a release branch version and extracts its components (major.minor.patch).
+  # It returns 0 if the version is valid and sets the global variables major, minor, patch.
+  # It also sets the global variable version_without_rc to the "x.y.z-incubating" format without the rc number.
+  # Otherwise, it returns 1.
+  local version="$1"
+
+  if [[ ! ${version} =~ ${VERSION_REGEX} ]]; then
+    return 1
+  fi
+
+  major="${BASH_REMATCH[1]}"
+  minor="${BASH_REMATCH[2]}"
+  patch="${BASH_REMATCH[3]}"
+  version_without_rc="${major}.${minor}.${patch}-incubating"
+
+  return 0
+}
+
 function validate_and_extract_rc_version {
   # This function validates the format of a release candidate version and extracts its components (major.minor.patch and rc number).
   # It returns 0 if the version is valid and sets the global variables major, minor, patch, and rc_number.
