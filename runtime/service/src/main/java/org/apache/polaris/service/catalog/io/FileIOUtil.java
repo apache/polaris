@@ -27,8 +27,8 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.slf4j.Logger;
@@ -74,14 +74,13 @@ public class FileIOUtil {
    *       and read/write metadata JSON files.
    * </ul>
    */
-  public static AccessConfig refreshAccessConfig(
+  public static AccessConfig getAccessConfig(
       CallContext callContext,
       StorageCredentialCache storageCredentialCache,
-      PolarisCredentialVendor credentialVendor,
       TableIdentifier tableIdentifier,
       Set<String> tableLocations,
       Set<PolarisStorageActions> storageActions,
-      PolarisEntity entity) {
+      PolarisStorageConfigurationInfo storageConfigurationInfo) {
 
     boolean skipCredentialSubscopingIndirection =
         callContext
@@ -106,12 +105,7 @@ public class FileIOUtil {
             : Set.of();
     AccessConfig accessConfig =
         storageCredentialCache.getOrGenerateSubScopeCreds(
-            credentialVendor,
-            callContext.getPolarisCallContext(),
-            entity,
-            allowList,
-            tableLocations,
-            writeLocations);
+            callContext, storageConfigurationInfo, allowList, tableLocations, writeLocations);
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)

@@ -18,10 +18,8 @@
  */
 package org.apache.polaris.core.storage.cache;
 
-import jakarta.annotation.Nullable;
 import java.util.Set;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
@@ -32,35 +30,26 @@ public interface StorageCredentialCacheKey {
   String realmId();
 
   @Value.Parameter(order = 2)
-  long catalogId();
+  PolarisStorageConfigurationInfo storageConfigurationInfo();
 
   @Value.Parameter(order = 3)
-  @Nullable
-  String storageConfigSerializedStr();
-
-  @Value.Parameter(order = 4)
   boolean allowedListAction();
 
-  @Value.Parameter(order = 5)
+  @Value.Parameter(order = 4)
   Set<String> allowedReadLocations();
 
-  @Value.Parameter(order = 6)
+  @Value.Parameter(order = 5)
   Set<String> allowedWriteLocations();
 
   static StorageCredentialCacheKey of(
       String realmId,
-      PolarisEntity entity,
+      PolarisStorageConfigurationInfo storageConfigurationInfo,
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations) {
-    String storageConfigSerializedStr =
-        entity
-            .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     return ImmutableStorageCredentialCacheKey.of(
         realmId,
-        entity.getCatalogId(),
-        storageConfigSerializedStr,
+        storageConfigurationInfo,
         allowedListAction,
         allowedReadLocations,
         allowedWriteLocations);

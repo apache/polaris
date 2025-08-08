@@ -24,34 +24,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
 public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
   /** mapper, allows to serialize/deserialize properties to/from JSON */
   private static final ObjectMapper MAPPER = new ObjectMapper();
-
-  public static PolarisStorageConfigurationInfo extractStorageConfiguration(
-      @Nonnull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {
-    Map<String, String> propMap =
-        PolarisObjectMapperUtil.deserializeProperties(reloadedEntity.getInternalProperties());
-    String storageConfigInfoStr =
-        propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-
-    diagnostics.check(
-        storageConfigInfoStr != null,
-        "missing_storage_configuration_info",
-        "catalogId={}, entityId={}",
-        reloadedEntity.getCatalogId(),
-        reloadedEntity.getId());
-    return PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr);
-  }
 
   /**
    * Given the internal property as a map of key/value pairs, serialize it to a String

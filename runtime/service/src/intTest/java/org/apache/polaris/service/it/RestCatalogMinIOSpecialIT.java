@@ -230,6 +230,15 @@ public class RestCatalogMinIOSpecialIT {
             Optional.of(endpoint),
             false,
             Optional.of(endpoint))) {
+      StorageConfigInfo storageConfig =
+          managementApi.getCatalog(catalogName).getStorageConfigInfo();
+      assertThat((AwsStorageConfigInfo) storageConfig)
+          .extracting(
+              AwsStorageConfigInfo::getEndpoint,
+              AwsStorageConfigInfo::getStsEndpoint,
+              AwsStorageConfigInfo::getEndpointInternal,
+              AwsStorageConfigInfo::getPathStyleAccess)
+          .containsExactly("http://s3.example.com", endpoint, endpoint, false);
       LoadTableResponse loadTableResponse = doTestCreateTable(restCatalog);
       assertThat(loadTableResponse.config()).containsEntry("s3.endpoint", "http://s3.example.com");
     }

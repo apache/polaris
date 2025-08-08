@@ -55,6 +55,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
@@ -105,8 +106,9 @@ public class ServiceProducers {
   @Produces
   @ApplicationScoped
   public StorageCredentialCache storageCredentialCache(
-      StorageCredentialCacheConfig storageCredentialCacheConfig) {
-    return new StorageCredentialCache(storageCredentialCacheConfig);
+      StorageCredentialCacheConfig storageCredentialCacheConfig,
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    return new StorageCredentialCache(storageCredentialCacheConfig, storageIntegrationProvider);
   }
 
   @Produces

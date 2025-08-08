@@ -141,6 +141,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
             .setPathStyleAccess(awsConfig.getPathStyleAccess())
+            .setEndpointInternal(awsConfig.getEndpointInternal())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {

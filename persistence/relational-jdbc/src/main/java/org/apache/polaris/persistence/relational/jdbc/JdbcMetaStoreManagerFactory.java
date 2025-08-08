@@ -105,7 +105,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
             new JdbcBasePersistenceImpl(
                 datasourceOperations,
                 secretsGenerator(realmId, rootCredentialsSet),
-                storageIntegrationProvider,
                 realmId,
                 schemaVersion));
 

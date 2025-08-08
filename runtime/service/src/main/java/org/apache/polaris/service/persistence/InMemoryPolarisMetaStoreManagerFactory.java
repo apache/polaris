@@ -37,28 +37,22 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 @ApplicationScoped
 @Identifier("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<TreeMapMetaStore> {
 
-  private final PolarisStorageIntegrationProvider storageIntegration;
   private final Set<String> bootstrappedRealms = new HashSet<>();
 
   @SuppressWarnings("unused") // Required by CDI
   protected InMemoryPolarisMetaStoreManagerFactory() {
-    this(null, null, null);
+    this(null, null);
   }
 
   @Inject
-  public InMemoryPolarisMetaStoreManagerFactory(
-      Clock clock,
-      PolarisDiagnostics diagnostics,
-      PolarisStorageIntegrationProvider storageIntegration) {
+  public InMemoryPolarisMetaStoreManagerFactory(Clock clock, PolarisDiagnostics diagnostics) {
     super(clock, diagnostics);
-    this.storageIntegration = storageIntegration;
   }
 
   @Override
@@ -73,7 +67,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
       @Nullable RootCredentialsSet rootCredentialsSet,
       @Nonnull PolarisDiagnostics diagnostics) {
     return new TreeMapTransactionalPersistenceImpl(
-        store, storageIntegration, secretsGenerator(realmContext, rootCredentialsSet));
+        store, secretsGenerator(realmContext, rootCredentialsSet));
   }
 
   @Override
