@@ -78,6 +78,7 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,7 +104,8 @@ public class PolarisServiceImpl
       UserSecretsManagerFactory userSecretsManagerFactory,
       PolarisAuthorizer polarisAuthorizer,
       CallContext callContext,
-      ReservedProperties reservedProperties) {
+      ReservedProperties reservedProperties,
+      PolarisEventListener polarisEventListener) {
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.userSecretsManagerFactory = userSecretsManagerFactory;
