@@ -30,7 +30,6 @@ import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
-import java.time.Clock;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -184,7 +183,6 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject protected PolarisDiagnostics diagServices;
-  @Inject protected Clock clock;
   @Inject protected FileIOFactory fileIOFactory;
   @Inject protected PolarisEventListener polarisEventListener;
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
@@ -233,8 +231,7 @@ public abstract class PolarisAuthzTestBase {
             realmContext,
             managerFactory.getOrCreateSession(realmContext),
             diagServices,
-            configurationStore,
-            clock);
+            configurationStore);
 
     callContext = polarisContext;
 
@@ -461,8 +458,9 @@ public abstract class PolarisAuthzTestBase {
   public static class TestPolarisCallContextCatalogFactory
       extends PolarisCallContextCatalogFactory {
 
-    public TestPolarisCallContextCatalogFactory() {
-      super(null, null, null, null, null, null);
+    @SuppressWarnings("unused") // Required by CDI
+    protected TestPolarisCallContextCatalogFactory() {
+      this(null, null, null, null, null, null);
     }
 
     @Inject

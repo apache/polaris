@@ -55,7 +55,7 @@ public class TaskExecutorImplTest {
         new TaskEntity.Builder()
             .setName("mytask")
             .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
-            .setCreateTimestamp(polarisCallCtx.getClock().millis())
+            .setCreateTimestamp(testServices.clock().millis())
             .build();
     metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
 
@@ -64,6 +64,7 @@ public class TaskExecutorImplTest {
     TaskExecutorImpl executor =
         new TaskExecutorImpl(
             Runnable::run,
+            testServices.clock(),
             testServices.metaStoreManagerFactory(),
             new TaskFileIOSupplier(testServices.fileIOFactory()),
             testServices.polarisEventListener(),

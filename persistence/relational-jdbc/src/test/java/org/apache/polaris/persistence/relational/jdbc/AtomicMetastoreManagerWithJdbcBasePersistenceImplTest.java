@@ -22,13 +22,11 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import java.io.InputStream;
 import java.sql.SQLException;
-import java.time.ZoneId;
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
@@ -71,14 +69,10 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             Mockito.mock(),
             realmContext.getRealmIdentifier(),
             schemaVersion);
-    return new PolarisTestMetaStoreManager(
-        new AtomicOperationMetaStoreManager(),
-        new PolarisCallContext(
-            realmContext,
-            basePersistence,
-            diagServices,
-            new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault())));
+    AtomicOperationMetaStoreManager metaStoreManager = new AtomicOperationMetaStoreManager(clock);
+    PolarisCallContext callCtx =
+        new PolarisCallContext(realmContext, basePersistence, diagServices);
+    return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 
   private static class H2JdbcConfiguration implements RelationalJdbcConfiguration {

@@ -28,6 +28,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -59,6 +60,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   private static final long TASK_RETRY_DELAY = 1000;
 
   private final Executor executor;
+  private final Clock clock;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
@@ -66,18 +68,20 @@ public class TaskExecutorImpl implements TaskExecutor {
   @Nullable private final Tracer tracer;
 
   @SuppressWarnings("unused") // Required by CDI
-  public TaskExecutorImpl() {
-    this(null, null, null, null, null);
+  protected TaskExecutorImpl() {
+    this(null, null, null, null, null, null);
   }
 
   @Inject
   public TaskExecutorImpl(
       @Identifier("task-executor") Executor executor,
+      Clock clock,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
       PolarisEventListener polarisEventListener,
       @Nullable Tracer tracer) {
     this.executor = executor;
+    this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
     this.polarisEventListener = polarisEventListener;
@@ -86,7 +90,8 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   @Startup
   public void init() {
-    addTaskHandler(new TableCleanupTaskHandler(this, metaStoreManagerFactory, fileIOSupplier));
+    addTaskHandler(
+        new TableCleanupTaskHandler(this, clock, metaStoreManagerFactory, fileIOSupplier));
     addTaskHandler(
         new ManifestFileCleanupTaskHandler(
             fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));

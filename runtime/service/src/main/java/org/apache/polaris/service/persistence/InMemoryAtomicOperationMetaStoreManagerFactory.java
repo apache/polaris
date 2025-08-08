@@ -21,6 +21,7 @@ package org.apache.polaris.service.persistence;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -35,18 +36,21 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 public class InMemoryAtomicOperationMetaStoreManagerFactory
     extends InMemoryPolarisMetaStoreManagerFactory {
 
-  public InMemoryAtomicOperationMetaStoreManagerFactory() {
-    super(null, null);
+  @SuppressWarnings("unused") // Required by CDI
+  protected InMemoryAtomicOperationMetaStoreManagerFactory() {
+    this(null, null, null);
   }
 
   @Inject
   public InMemoryAtomicOperationMetaStoreManagerFactory(
-      PolarisStorageIntegrationProvider storageIntegration, PolarisDiagnostics diagnostics) {
-    super(storageIntegration, diagnostics);
+      Clock clock,
+      PolarisDiagnostics diagnostics,
+      PolarisStorageIntegrationProvider storageIntegration) {
+    super(clock, diagnostics, storageIntegration);
   }
 
   @Override
-  protected PolarisMetaStoreManager createNewMetaStoreManager() {
-    return new AtomicOperationMetaStoreManager();
+  protected PolarisMetaStoreManager createNewMetaStoreManager(Clock clock) {
+    return new AtomicOperationMetaStoreManager(clock);
   }
 }

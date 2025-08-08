@@ -221,6 +221,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
           CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key4",
           "catalog-override-key4");
 
+  @Inject Clock clock;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject StorageCredentialCache storageCredentialCache;
@@ -277,8 +278,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
-            configurationStore,
-            Clock.systemDefaultZone());
+            configurationStore);
 
     EntityCache entityCache = createEntityCache(polarisContext.getRealmConfig(), metaStoreManager);
     resolverFactory =
@@ -2029,7 +2029,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             });
 
     TableCleanupTaskHandler handler =
-        new TableCleanupTaskHandler(Mockito.mock(), metaStoreManagerFactory, taskFileIOSupplier);
+        new TableCleanupTaskHandler(
+            Mockito.mock(), clock, metaStoreManagerFactory, taskFileIOSupplier);
     handler.handleTask(taskEntity, polarisContext);
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
   }

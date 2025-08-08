@@ -36,6 +36,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -51,6 +52,7 @@ import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
+import org.apache.polaris.core.admin.model.CatalogRole;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
@@ -60,6 +62,8 @@ import org.apache.polaris.core.admin.model.NamespacePrivilege;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolicyGrant;
 import org.apache.polaris.core.admin.model.PolicyPrivilege;
+import org.apache.polaris.core.admin.model.Principal;
+import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.TableGrant;
@@ -82,6 +86,7 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -198,6 +203,43 @@ public class PolarisAdminService {
   private Optional<CatalogRoleEntity> findCatalogRoleByName(String catalogName, String name) {
     return Optional.ofNullable(resolutionManifest.getResolvedPath(name))
         .map(path -> CatalogRoleEntity.of(path.getRawLeafEntity()));
+  }
+
+  private <T> Stream<T> loadEntities(
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nullable PolarisEntity catalogEntity,
+      @Nonnull Function<PolarisBaseEntity, T> transformer) {
+    List<PolarisEntityCore> catalogPath;
+    long catalogId;
+    if (catalogEntity == null) {
+      catalogPath = null;
+      catalogId = 0;
+    } else {
+      catalogPath = PolarisEntity.toCoreList(List.of(catalogEntity));
+      catalogId = catalogEntity.getId();
+    }
+    // TODO: add loadEntities method to PolarisMetaStoreManager
+    // loadEntity may return null due to multiple non-atomic API calls to the persistence layer.
+    // Specifically, this can happen when a PolarisEntity is returned by listEntities, but cannot be
+    // loaded afterward because it was purged by another process before it could be loaded.
+    return metaStoreManager
+        .listEntities(
+            getCurrentPolarisContext(),
+            catalogPath,
+            entityType,
+            entitySubType,
+            PageToken.readEverything())
+        .getEntities()
+        .stream()
+        .map(
+            nameAndId ->
+                metaStoreManager.loadEntity(
+                    getCurrentPolarisContext(), catalogId, nameAndId.getId(), nameAndId.getType()))
+        .map(PolarisEntity::of)
+        .filter(Objects::nonNull)
+        .map(transformer)
+        .filter(Objects::nonNull);
   }
 
   private void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
@@ -618,8 +660,7 @@ public class PolarisAdminService {
     }
 
     Set<String> newCatalogLocations = getCatalogLocations(catalogEntity);
-    return listCatalogsUnsafe().stream()
-        .map(CatalogEntity::new)
+    return listCatalogsUnsafe()
         .anyMatch(
             existingCatalog -> {
               if (existingCatalog.getName().equals(catalogEntity.getName())) {
@@ -944,40 +985,16 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
-  /**
-   * List all catalogs after checking for permission. Nulls due to non-atomic list-then-get are
-   * filtered out.
-   */
-  public List<PolarisEntity> listCatalogs() {
+  /** List all catalogs after checking for permission. */
+  public List<Catalog> listCatalogs() {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
-    return listCatalogsUnsafe();
+    return listCatalogsUnsafe().map(CatalogEntity::asCatalog).toList();
   }
 
-  /**
-   * List all catalogs without checking for permission. Nulls due to non-atomic list-then-get are
-   * filtered out.
-   */
-  private List<PolarisEntity> listCatalogsUnsafe() {
-    // loadEntity may return null due to multiple non-atomic
-    // API calls to the persistence layer. Specifically, this can happen when a PolarisEntity is
-    // returned by listCatalogs, but cannot be loaded afterward because it was purged by another
-    // process before it could be loaded.
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            null,
-            PolarisEntityType.CATALOG,
-            PolarisEntitySubType.ANY_SUBTYPE,
-            PageToken.readEverything())
-        .getEntities()
-        .stream()
-        .map(
-            nameAndId ->
-                PolarisEntity.of(
-                    metaStoreManager.loadEntity(
-                        getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
-        .filter(Objects::nonNull)
-        .toList();
+  /** List all catalogs without checking for permission. */
+  private Stream<CatalogEntity> listCatalogsUnsafe() {
+    return loadEntities(
+        PolarisEntityType.CATALOG, PolarisEntitySubType.ANY_SUBTYPE, null, CatalogEntity::of);
   }
 
   public PrincipalWithCredentials createPrincipal(PolarisEntity entity) {
@@ -1141,24 +1158,16 @@ public class PolarisAdminService {
     return rotateOrResetCredentialsHelper(principalName, true);
   }
 
-  public List<PolarisEntity> listPrincipals() {
+  public List<Principal> listPrincipals() {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPALS;
     authorizeBasicRootOperationOrThrow(op);
 
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            null,
+    return loadEntities(
             PolarisEntityType.PRINCIPAL,
             PolarisEntitySubType.NULL_SUBTYPE,
-            PageToken.readEverything())
-        .getEntities()
-        .stream()
-        .map(
-            nameAndId ->
-                PolarisEntity.of(
-                    metaStoreManager.loadEntity(
-                        getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
+            null,
+            PrincipalEntity::of)
+        .map(PrincipalEntity::asPrincipal)
         .toList();
   }
 
@@ -1254,24 +1263,16 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
-  public List<PolarisEntity> listPrincipalRoles() {
+  public List<PrincipalRole> listPrincipalRoles() {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
     authorizeBasicRootOperationOrThrow(op);
 
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            null,
+    return loadEntities(
             PolarisEntityType.PRINCIPAL_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,
-            PageToken.readEverything())
-        .getEntities()
-        .stream()
-        .map(
-            nameAndId ->
-                PolarisEntity.of(
-                    metaStoreManager.loadEntity(
-                        getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
+            null,
+            PrincipalRoleEntity::of)
+        .map(PrincipalRoleEntity::asPrincipalRole)
         .toList();
   }
 
@@ -1383,30 +1384,19 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
-  public List<PolarisEntity> listCatalogRoles(String catalogName) {
+  public List<CatalogRole> listCatalogRoles(String catalogName) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOG_ROLES;
     authorizeBasicTopLevelEntityOperationOrThrow(op, catalogName, PolarisEntityType.CATALOG);
 
     PolarisEntity catalogEntity =
         findCatalogByName(catalogName)
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            PolarisEntity.toCoreList(List.of(catalogEntity)),
+    return loadEntities(
             PolarisEntityType.CATALOG_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,
-            PageToken.readEverything())
-        .getEntities()
-        .stream()
-        .map(
-            nameAndId ->
-                PolarisEntity.of(
-                    metaStoreManager.loadEntity(
-                        getCurrentPolarisContext(),
-                        catalogEntity.getId(),
-                        nameAndId.getId(),
-                        nameAndId.getType())))
+            catalogEntity,
+            CatalogRoleEntity::of)
+        .map(CatalogRoleEntity::asCatalogRole)
         .toList();
   }
 

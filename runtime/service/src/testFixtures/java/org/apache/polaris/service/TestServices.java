@@ -76,6 +76,7 @@ import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 
 public record TestServices(
+    Clock clock,
     PolarisCatalogsApi catalogsApi,
     IcebergRestCatalogApi restApi,
     IcebergRestConfigurationApi restConfigurationApi,
@@ -119,6 +120,7 @@ public record TestServices(
   }
 
   public static class Builder {
+    private Clock clock = Clock.systemUTC();
     private PolarisDiagnostics polarisDiagnostics = new PolarisDefaultDiagServiceImpl();
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
@@ -159,7 +161,7 @@ public record TestServices(
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
-              storageIntegrationProvider, polarisDiagnostics);
+              clock, polarisDiagnostics, storageIntegrationProvider);
 
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
       StorageCredentialCache storageCredentialCache =
@@ -171,11 +173,7 @@ public record TestServices(
       BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
       CallContext callContext =
           new PolarisCallContext(
-              realmContext,
-              metaStoreSession,
-              polarisDiagnostics,
-              configurationStore,
-              Clock.systemUTC());
+              realmContext, metaStoreSession, polarisDiagnostics, configurationStore);
 
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -281,6 +279,7 @@ public record TestServices(
                   reservedProperties));
 
       return new TestServices(
+          clock,
           catalogsApi,
           restApi,
           restConfigurationApi,
@@ -301,7 +300,6 @@ public record TestServices(
 
   public PolarisCallContext newCallContext() {
     BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(
-        realmContext, metaStore, polarisDiagnostics, configurationStore, Clock.systemUTC());
+    return new PolarisCallContext(realmContext, metaStore, polarisDiagnostics, configurationStore);
   }
 }

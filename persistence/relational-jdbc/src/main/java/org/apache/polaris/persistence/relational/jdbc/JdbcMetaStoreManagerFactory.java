@@ -24,13 +24,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
@@ -68,8 +68,9 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
-  protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
 
+  @Inject Clock clock;
+  @Inject PolarisDiagnostics diagnostics;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
@@ -86,7 +87,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   protected PolarisMetaStoreManager createNewMetaStoreManager() {
-    return new AtomicOperationMetaStoreManager();
+    return new AtomicOperationMetaStoreManager(clock);
   }
 
   private void initializeForRealm(
@@ -176,7 +177,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       BasePersistence session = getOrCreateSession(realmContext);
 
-      PolarisCallContext callContext = new PolarisCallContext(realmContext, session, diagServices);
+      PolarisCallContext callContext = new PolarisCallContext(realmContext, session, diagnostics);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
@@ -233,7 +234,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
     BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
     PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStore, diagServices);
+        new PolarisCallContext(realmContext, metaStore, diagnostics);
 
     Optional<PrincipalEntity> preliminaryRootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext);
@@ -268,7 +269,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
     BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
     PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStore, diagServices);
+        new PolarisCallContext(realmContext, metaStore, diagnostics);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);
     if (rootPrincipal.isEmpty()) {
