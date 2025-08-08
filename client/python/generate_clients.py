@@ -124,7 +124,6 @@ def generate_polaris_management_client() -> None:
         [
             "openapi-generator-cli",
             "generate",
-            "--global-property apiDocs=false modelDocs=false",            
             "-i",
             POLARIS_MANAGEMENT_SPEC,
             "-g",
@@ -148,7 +147,6 @@ def generate_polaris_catalog_client() -> None:
         [
             "openapi-generator-cli",
             "generate",
-            "--global-property apiDocs=false modelDocs=false",            
             "-i",
             POLARIS_CATALOG_SPEC,
             "-g",
@@ -172,7 +170,6 @@ def generate_iceberg_catalog_client() -> None:
         [
             "openapi-generator-cli",
             "generate",
-            "--global-property apiDocs=false modelDocs=false",  
             "-i",
             ICEBERG_CATALOG_SPEC,
             "-g",
