@@ -679,7 +679,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(callCtx.getDiagServices(), entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

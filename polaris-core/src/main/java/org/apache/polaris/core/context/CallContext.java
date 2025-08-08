@@ -30,21 +30,6 @@ import org.apache.polaris.core.config.RealmConfig;
  * underlying nature of the persistence layer may differ between different realms.
  */
 public interface CallContext {
-  InheritableThreadLocal<CallContext> CURRENT_CONTEXT = new InheritableThreadLocal<>();
-
-  static CallContext setCurrentContext(CallContext context) {
-    CURRENT_CONTEXT.set(context);
-    return context;
-  }
-
-  static CallContext getCurrentContext() {
-    return CURRENT_CONTEXT.get();
-  }
-
-  static void unsetCurrentContext() {
-    CURRENT_CONTEXT.remove();
-  }
-
   /** Copy the {@link CallContext}. */
   CallContext copy();
 

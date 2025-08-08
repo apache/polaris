@@ -35,7 +35,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -64,7 +63,7 @@ import org.threeten.extra.MutableClock;
  */
 public abstract class BasePolarisMetaStoreManagerTest {
 
-  protected final MutableClock timeSource = MutableClock.of(Instant.now(), ZoneOffset.UTC);
+  protected final MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
   private PolarisTestMetaStoreManager polarisTestMetaStoreManager;
 
@@ -104,9 +103,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testCreateEntities() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(polarisTestMetaStoreManager.polarisCallContext);
-    }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
     List<PolarisBaseEntity> createdEntities =
@@ -153,9 +149,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testCreateEntitiesAlreadyExisting() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(polarisTestMetaStoreManager.polarisCallContext);
-    }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
     List<PolarisBaseEntity> createdEntities =
@@ -190,9 +183,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testCreateEntitiesWithConflict() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    if (CallContext.getCurrentContext() == null) {
-      CallContext.setCurrentContext(polarisTestMetaStoreManager.polarisCallContext);
-    }
     TaskEntity task1 = createTask("task1", 100L);
     TaskEntity task2 = createTask("task2", 101L);
     TaskEntity task3 = createTask("task3", 103L);
@@ -301,9 +291,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
             entry ->
                 Assertions.assertThat(entry)
                     .extracting(
-                        e ->
-                            PolarisObjectMapperUtil.deserializeProperties(
-                                callCtx, e.getProperties()))
+                        e -> PolarisObjectMapperUtil.deserializeProperties(e.getProperties()))
                     .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
                     .containsEntry("lastAttemptExecutorId", executorId)
                     .containsEntry("attemptCount", "1"));
@@ -344,7 +332,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
     Assertions.assertThat(emtpyList).isNotNull().isEmpty();
 
-    timeSource.add(Duration.ofMinutes(10));
+    clock.add(Duration.ofMinutes(10));
 
     // all the tasks are unassigned. Fetch them all
     List<PolarisBaseEntity> allTasks =
@@ -360,7 +348,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
     // drop all the tasks. Skip the clock forward and fetch. empty list expected
     allTasks.forEach(
         entity -> metaStoreManager.dropEntityIfExists(callCtx, null, entity, Map.of(), false));
-    timeSource.add(Duration.ofMinutes(10));
+    clock.add(Duration.ofMinutes(10));
 
     List<PolarisBaseEntity> finalList =
         metaStoreManager.loadTasks(callCtx, executorId, PageToken.fromLimit(20)).getEntities();

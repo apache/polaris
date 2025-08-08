@@ -22,7 +22,6 @@ import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeE
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,7 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -195,8 +193,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     String configStr =
         getInternalPropertiesAsMap().get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     if (configStr != null) {
-      return PolarisStorageConfigurationInfo.deserialize(
-          new PolarisDefaultDiagServiceImpl(), configStr);
+      return PolarisStorageConfigurationInfo.deserialize(configStr);
     }
     return null;
   }
@@ -217,7 +214,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
     if (configStr != null) {
-      return ConnectionConfigInfoDpo.deserialize(new PolarisDefaultDiagServiceImpl(), configStr);
+      return ConnectionConfigInfoDpo.deserialize(configStr);
     }
     return null;
   }
@@ -271,36 +268,40 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
             AwsStorageConfigurationInfo awsConfig =
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    new ArrayList<>(allowedLocations),
-                    awsConfigModel.getRoleArn(),
-                    awsConfigModel.getExternalId(),
-                    awsConfigModel.getRegion(),
-                    awsConfigModel.getEndpoint(),
-                    awsConfigModel.getStsEndpoint(),
-                    awsConfigModel.getPathStyleAccess());
+                AwsStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .roleARN(awsConfigModel.getRoleArn())
+                    .externalId(awsConfigModel.getExternalId())
+                    .region(awsConfigModel.getRegion())
+                    .endpoint(awsConfigModel.getEndpoint())
+                    .stsEndpoint(awsConfigModel.getStsEndpoint())
+                    .pathStyleAccess(awsConfigModel.getPathStyleAccess())
+                    .endpointInternal(awsConfigModel.getEndpointInternal())
+                    .build();
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            AzureStorageConfigurationInfo azureConfigInfo =
-                new AzureStorageConfigurationInfo(
-                    new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
-            azureConfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
-            azureConfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
-            config = azureConfigInfo;
+            config =
+                AzureStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .tenantId(azureConfigModel.getTenantId())
+                    .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
+                    .consentUrl(azureConfigModel.getConsentUrl())
+                    .build();
             break;
           case GCS:
-            GcpStorageConfigurationInfo gcpConfig =
-                new GcpStorageConfigurationInfo(new ArrayList<>(allowedLocations));
-            gcpConfig.setGcpServiceAccount(
-                ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount());
-            config = gcpConfig;
+            config =
+                GcpStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .gcpServiceAccount(
+                        ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
+                    .build();
             break;
           case FILE:
-            config = new FileStorageConfigurationInfo(new ArrayList<>(allowedLocations));
+            config =
+                FileStorageConfigurationInfo.builder().allowedLocations(allowedLocations).build();
             break;
           default:
             throw new IllegalStateException(
