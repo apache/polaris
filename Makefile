@@ -134,13 +134,13 @@ client-lint: client-setup-env ## Run linting checks for Polaris client
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code
 	@echo "--- Regenerating client code ---"
-	@client/templates/regenerate.sh
+	@$(ACTIVATE_AND_CD) && SCRIPT_DIR="non-existing-mock-directory" poetry run pytest test/
 	@echo "--- Client code regeneration complete ---"
 
 .PHONY: client-unit-test
 client-unit-test: client-setup-env ## Run client unit tests
 	@echo "--- Running client unit tests ---"
-	@$(ACTIVATE_AND_CD) && SCRIPT_DIR="non-existing-mock-directory" poetry run pytest test/
+	@$(ACTIVATE_AND_CD) && python3 generate_clients.py
 	@echo "--- Client unit tests complete ---"
 
 .PHONY: client-integration-test
