@@ -74,9 +74,9 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
@@ -139,7 +139,7 @@ public class PolarisAdminService {
   private final CallContext callContext;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final SecurityContext securityContext;
-  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
+  private final PolarisPrincipal polarisPrincipal;
   private final PolarisAuthorizer authorizer;
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
@@ -164,12 +164,11 @@ public class PolarisAdminService {
     diagServices.checkNotNull(securityContext, "null_security_context");
     diagServices.checkNotNull(securityContext.getUserPrincipal(), "null_security_context");
     diagServices.check(
-        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
         "unexpected_principal_type",
         "class={}",
         securityContext.getUserPrincipal().getClass().getName());
-    this.authenticatedPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+    this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
     this.userSecretsManager = userSecretsManager;
     this.reservedProperties = reservedProperties;
@@ -251,7 +250,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedRootContainerEntityAsPath();
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedPrincipalRoleEntities(),
         op,
         rootContainerWrapper,
@@ -286,7 +285,7 @@ public class PolarisAdminService {
     // TODO: If we do add more "self" privilege operations for PRINCIPAL targets this should
     // be extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
     if (topLevelEntityWrapper.getResolvedLeafEntity().getEntity().getId()
-            == authenticatedPrincipal.getPrincipalEntity().getId()
+            == polarisPrincipal.getId()
         && (op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS)
             || op.equals(PolarisAuthorizableOperation.RESET_CREDENTIALS))) {
       LOGGER
@@ -297,7 +296,7 @@ public class PolarisAdminService {
     }
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         topLevelEntityWrapper,
@@ -319,7 +318,7 @@ public class PolarisAdminService {
     }
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
@@ -350,7 +349,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         rootContainerWrapper,
@@ -387,7 +386,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         topLevelEntityWrapper,
@@ -418,7 +417,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         principalRoleWrapper,
@@ -458,7 +457,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         catalogRoleWrapper,
@@ -489,7 +488,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         catalogWrapper,
@@ -530,7 +529,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         namespaceWrapper,
@@ -577,7 +576,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         tableLikeWrapper,
@@ -617,7 +616,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         policyWrapper,

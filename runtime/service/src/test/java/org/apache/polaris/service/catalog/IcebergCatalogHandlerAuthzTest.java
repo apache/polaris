@@ -54,7 +54,7 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -89,14 +89,14 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   private IcebergCatalogHandler newWrapper(
       Set<String> activatedPrincipalRoles, String catalogName, CallContextCatalogFactory factory) {
-    final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     return new IcebergCatalogHandler(
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
-        securityContext(authenticatedPrincipal, activatedPrincipalRoles),
+        securityContext(authenticatedPrincipal),
         factory,
         catalogName,
         polarisAuthorizer,
@@ -227,8 +227,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     adminService.assignPrincipalRole(principalName, PRINCIPAL_ROLE1);
     adminService.assignPrincipalRole(principalName, PRINCIPAL_ROLE2);
 
-    final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(
             PrincipalEntity.of(newPrincipal.getPrincipal()),
             Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     IcebergCatalogHandler wrapper =
@@ -237,7 +237,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
-            securityContext(authenticatedPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
+            securityContext(authenticatedPrincipal),
             callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer,
@@ -263,8 +263,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     PrincipalEntity refreshPrincipal =
         rotateAndRefreshPrincipal(
             metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
-    final AuthenticatedPolarisPrincipal authenticatedPrincipal1 =
-        new AuthenticatedPolarisPrincipal(
+    PolarisPrincipal authenticatedPrincipal1 =
+        PolarisPrincipal.of(
             PrincipalEntity.of(refreshPrincipal), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     IcebergCatalogHandler refreshedWrapper =
         new IcebergCatalogHandler(
@@ -272,7 +272,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
-            securityContext(authenticatedPrincipal1, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
+            securityContext(authenticatedPrincipal1),
             callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer,
@@ -1797,12 +1797,12 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
           @Override
           public Catalog createCallContextCatalog(
               CallContext context,
-              AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+              PolarisPrincipal polarisPrincipal,
               SecurityContext securityContext,
               PolarisResolutionManifest resolvedManifest) {
             Catalog catalog =
                 super.createCallContextCatalog(
-                    context, authenticatedPolarisPrincipal, securityContext, resolvedManifest);
+                    context, polarisPrincipal, securityContext, resolvedManifest);
             String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));

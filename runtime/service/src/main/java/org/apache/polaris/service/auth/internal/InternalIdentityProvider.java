@@ -22,12 +22,12 @@ import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.IdentityProvider;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.TokenAuthenticationRequest;
+import io.quarkus.security.runtime.QuarkusPrincipal;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.quarkus.vertx.http.runtime.security.HttpSecurityUtils;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.security.Principal;
 
 /** A custom {@link IdentityProvider} that handles internal token authentication requests. */
 @ApplicationScoped
@@ -42,20 +42,17 @@ class InternalIdentityProvider implements IdentityProvider<TokenAuthenticationRe
   public Uni<SecurityIdentity> authenticate(
       TokenAuthenticationRequest request, AuthenticationRequestContext context) {
     if (!(request.getToken()
-        instanceof InternalAuthenticationMechanism.InternalPrincipalAuthInfo credential)) {
+        instanceof InternalAuthenticationMechanism.InternalPolarisCredential credential)) {
       return Uni.createFrom().nullItem();
     }
-    InternalTokenPrincipal principal = new InternalTokenPrincipal(credential.getPrincipalName());
     return Uni.createFrom()
         .item(
             QuarkusSecurityIdentity.builder()
-                .setPrincipal(principal)
+                .setPrincipal(new QuarkusPrincipal(credential.getPrincipalName()))
                 .addCredential(credential)
                 .addAttribute(
                     RoutingContext.class.getName(),
                     HttpSecurityUtils.getRoutingContextAttribute(request))
                 .build());
   }
-
-  private record InternalTokenPrincipal(String getName) implements Principal {}
 }

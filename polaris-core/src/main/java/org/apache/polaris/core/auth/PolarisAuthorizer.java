@@ -31,7 +31,7 @@ public interface PolarisAuthorizer {
 
   void authorizeOrThrow(
       @Nonnull CallContext callContext,
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
@@ -39,7 +39,7 @@ public interface PolarisAuthorizer {
 
   void authorizeOrThrow(
       @Nonnull CallContext callContext,
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
