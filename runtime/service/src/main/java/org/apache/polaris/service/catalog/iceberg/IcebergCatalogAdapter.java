@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
@@ -34,6 +35,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -63,7 +65,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -323,11 +325,13 @@ public class IcebergCatalogAdapter
         catalog -> Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest)).build());
   }
 
-  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
+  private static Set<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
     EnumSet<AccessDelegationMode> delegationModes =
         AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
     Preconditions.checkArgument(
-        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
+        delegationModes.isEmpty()
+            || delegationModes.contains(VENDED_CREDENTIALS)
+            || delegationModes.contains(REMOTE_SIGNING),
         "Unsupported access delegation mode: %s",
         accessDelegationMode);
     return delegationModes;
@@ -342,8 +346,7 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     validateIcebergProperties(callContext, createTableRequest.properties());
-    EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+    Set<AccessDelegationMode> delegationModes = parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
     return withCatalog(
         securityContext,
@@ -354,7 +357,8 @@ public class IcebergCatalogAdapter
               return Response.ok(catalog.createTableStaged(ns, createTableRequest)).build();
             } else {
               return Response.ok(
-                      catalog.createTableStagedWithWriteDelegation(ns, createTableRequest))
+                      catalog.createTableStagedWithWriteDelegation(
+                          ns, createTableRequest, delegationModes))
                   .build();
             }
           } else if (delegationModes.isEmpty()) {
@@ -364,7 +368,8 @@ public class IcebergCatalogAdapter
                 .build();
           } else {
             LoadTableResponse response =
-                catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
+                catalog.createTableDirectWithWriteDelegation(
+                    ns, createTableRequest, delegationModes);
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
@@ -397,8 +402,7 @@ public class IcebergCatalogAdapter
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+    Set<AccessDelegationMode> delegationModes = parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
@@ -422,7 +426,8 @@ public class IcebergCatalogAdapter
           } else {
             response =
                 catalog
-                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                    .loadTableWithAccessDelegationIfStale(
+                        tableIdentifier, ifNoneMatch, delegationModes)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           }
 
@@ -588,8 +593,7 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(tableIdentifier, "all");
+          LoadTableResponse loadTableResponse = catalog.loadTable(tableIdentifier, "all");
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
                       .credentials(loadTableResponse.credentials())
@@ -778,8 +782,9 @@ public class IcebergCatalogAdapter
       throw new NotFoundException("Unable to find warehouse %s", warehouse);
     }
     ResolvedPolarisEntity resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
-    Map<String, String> properties =
-        PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
+    CatalogEntity catalogEntity =
+        CatalogEntity.of(Objects.requireNonNull(resolvedReferenceCatalog).getEntity());
+    Map<String, String> properties = catalogEntity.getPropertiesAsMap();
 
     String prefix = prefixParser.catalogNameToPrefix(realmContext, warehouse);
     return Response.ok(
@@ -793,6 +798,9 @@ public class IcebergCatalogAdapter
                         .addAll(COMMIT_ENDPOINT)
                         .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(callContext))
                         .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(callContext))
+                        .addAll(
+                            PolarisEndpoints.getSupportedRemoteSigningEndpoints(
+                                callContext, catalogEntity))
                         .build())
                 .build())
         .build();

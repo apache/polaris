@@ -51,6 +51,7 @@ Apache Polaris is organized into the following modules:
   - `polaris-api-management-model` - The Polaris management model
   - `polaris-api-management-service` - The Polaris management service
   - `polaris-api-iceberg-service` - The Iceberg REST service
+  - `polaris-api-iceberg-aws-sign-service` - The Iceberg REST service for S3 remote signing
 - Runtime modules:
   - `polaris-runtime-service` - The runtime components of the Polaris server
   - `polaris-runtime-defaults` - The runtime configuration defaults

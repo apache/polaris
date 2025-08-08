@@ -102,6 +102,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject PolarisDiagnostics diagServices;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject CatalogPrefixParser prefixParser;
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
@@ -240,7 +241,10 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             securityContext,
             taskExecutor,
             fileIOFactory,
-            new NoOpPolarisEventListener());
+            new NoOpPolarisEventListener(),
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock());
     this.icebergCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

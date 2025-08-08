@@ -42,6 +42,10 @@ public class PolarisResourcePaths {
       "/polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings";
   public static final String V1_APPLICABLE_POLICIES = "/polaris/v1/{prefix}/applicable-policies";
 
+  // S3 Remote Signing endpoint
+  public static final String V1_S3_REMOTE_SIGNING =
+      "/catalog/v1/{prefix}/namespaces/{namespace}/tables/{table}/s3-sign";
+
   private final String prefix;
 
   public PolarisResourcePaths(String prefix) {
@@ -66,5 +70,17 @@ public class PolarisResourcePaths {
         RESTUtil.encodeNamespace(ident.namespace()),
         "generic-tables",
         RESTUtil.encodeString(ident.name()));
+  }
+
+  public String s3RemoteSigning(TableIdentifier ident) {
+    return SLASH.join(
+        "catalog",
+        "v1",
+        prefix,
+        "namespaces",
+        RESTUtil.encodeNamespace(ident.namespace()),
+        "tables",
+        RESTUtil.encodeString(ident.name()),
+        "s3-sign");
   }
 }

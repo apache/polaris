@@ -26,6 +26,7 @@ dependencies {
     api(rootProject)
     api(project(":polaris-api-catalog-service"))
     api(project(":polaris-api-iceberg-service"))
+    api(project(":polaris-api-iceberg-aws-sign-service"))
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
 

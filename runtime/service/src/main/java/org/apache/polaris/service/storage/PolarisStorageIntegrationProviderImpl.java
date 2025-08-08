@@ -59,7 +59,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       StorageConfiguration storageConfiguration, StsClientProvider stsClientProvider, Clock clock) {
     this(
         stsClientProvider,
-        Optional.ofNullable(storageConfiguration.stsCredentials()),
+        Optional.ofNullable(storageConfiguration.awsSystemCredentials()),
         storageConfiguration.gcpCredentialsSupplier(clock));
   }
 

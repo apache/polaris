@@ -20,30 +20,44 @@ package org.apache.polaris.service.it.test;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.assertj.core.util.Strings;
 
 /** Runs PolarisRestCatalogIntegrationBase test on AWS. */
 public class PolarisRestCatalogAwsIntegrationTest extends PolarisRestCatalogIntegrationBase {
+
   public static final String ROLE_ARN =
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
           .or(() -> Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_ROLE_ARN")))
           .orElse("arn:aws:iam::123456789012:role/my-role");
+
   public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_S3_PATH");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
     return AwsStorageConfigInfo.builder()
-        .setRoleArn(ROLE_ARN)
+        .setRoleArn(roleArn())
         .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-        .setAllowedLocations(List.of(BASE_LOCATION))
+        .setAllowedLocations(allowedLocations())
+        .setEndpoint(endpoint().orElse(null))
         .build();
+  }
+
+  protected List<String> allowedLocations() {
+    return Strings.isNullOrEmpty(BASE_LOCATION) ? List.of() : List.of(BASE_LOCATION);
+  }
+
+  protected String roleArn() {
+    return ROLE_ARN;
+  }
+
+  protected Optional<String> endpoint() {
+    return Optional.empty();
   }
 
   @Override
   protected boolean shouldSkip() {
-    return Stream.of(BASE_LOCATION, ROLE_ARN).anyMatch(Strings::isNullOrEmpty);
+    return allowedLocations().isEmpty() || Strings.isNullOrEmpty(roleArn());
   }
 }

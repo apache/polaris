@@ -229,6 +229,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
+  @Inject CatalogPrefixParser prefixParser;
 
   private IcebergCatalog catalog;
   private String realmName;
@@ -444,7 +445,10 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         securityContext,
         taskExecutor,
         fileIOFactory,
-        polarisEventListener);
+        polarisEventListener,
+        storageIntegrationProvider,
+        prefixParser,
+        Mockito.mock());
   }
 
   @Test

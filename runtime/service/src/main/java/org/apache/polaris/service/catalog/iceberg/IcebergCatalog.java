@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.deserialize;
 import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -28,8 +29,10 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -119,14 +122,19 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.LocationUtils;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -149,7 +157,11 @@ import org.slf4j.LoggerFactory;
 
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
 public class IcebergCatalog extends BaseMetastoreViewCatalog
-    implements SupportsNamespaces, SupportsNotifications, Closeable, SupportsCredentialDelegation {
+    implements SupportsNamespaces,
+        SupportsNotifications,
+        Closeable,
+        SupportsCredentialDelegation,
+        SupportsRemoteSigning {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
@@ -176,6 +188,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final TaskExecutor taskExecutor;
   private final SecurityContext securityContext;
   private final PolarisEventListener polarisEventListener;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final CatalogPrefixParser prefixParser;
+  private final UriInfo uriInfo;
+
   private final AtomicBoolean loggedPrefixOverlapWarning = new AtomicBoolean(false);
 
   private String ioImplClassName;
@@ -205,7 +221,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
-      PolarisEventListener polarisEventListener) {
+      PolarisEventListener polarisEventListener,
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      CatalogPrefixParser prefixParser,
+      UriInfo uriInfo) {
     this.storageCredentialCache = storageCredentialCache;
     this.resolverFactory = resolverFactory;
     this.callContext = callContext;
@@ -214,6 +233,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
     this.securityContext = securityContext;
     this.taskExecutor = taskExecutor;
+    this.storageIntegrationProvider = storageIntegrationProvider;
+    this.prefixParser = prefixParser;
+    this.uriInfo = uriInfo;
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
     this.fileIOFactory = fileIOFactory;
@@ -853,7 +875,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
-  public AccessConfig getAccessConfig(
+  public AccessConfig getAccessConfigForCredentialDelegation(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions) {
@@ -873,6 +895,44 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         getLocationsAllowedToBeAccessed(tableMetadata),
         storageActions,
         storageInfo.get());
+  }
+
+  @Override
+  public AccessConfig getAccessConfigForRemoteSigning(TableIdentifier tableIdentifier) {
+
+    Optional<PolarisStorageConfigurationInfo> configurationInfo =
+        findStorageInfo(tableIdentifier)
+            .map(
+                info ->
+                    deserialize(
+                        info.getInternalPropertiesAsMap()
+                            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName())));
+
+    if (configurationInfo.isEmpty()) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Remote signing: table entity has no storage configuration in its hierarchy");
+      return AccessConfig.builder().build();
+    }
+
+    PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
+        storageIntegrationProvider.getStorageIntegrationForConfig(configurationInfo.get());
+
+    if (!(storageIntegration instanceof AwsCredentialsStorageIntegration)) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Table entity storage integration is not an AWS credentials storage integration");
+      return AccessConfig.builder().build();
+    }
+
+    String prefix = prefixParser.catalogNameToPrefix(callContext.getRealmContext(), catalogName);
+    URI signerUri = uriInfo.getBaseUri().resolve("api/");
+    String signerEndpoint = new PolarisResourcePaths(prefix).s3RemoteSigning(tableIdentifier);
+
+    return ((AwsCredentialsStorageIntegration) storageIntegration)
+        .getRemoteSigningAccessConfig(signerUri, signerEndpoint);
   }
 
   private String buildPrefixedLocation(TableIdentifier tableIdentifier) {

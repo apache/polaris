@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
@@ -113,6 +114,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject PolarisEventListener polarisEventListener;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject CatalogPrefixParser prefixParser;
 
   private IcebergCatalog catalog;
 
@@ -216,7 +219,10 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             securityContext,
             Mockito.mock(),
             fileIOFactory,
-            polarisEventListener);
+            polarisEventListener,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock());
     Map<String, String> properties =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
