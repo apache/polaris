@@ -18,9 +18,12 @@
  */
 package org.apache.polaris.extensions.federation.hadoop;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.hadoop.HadoopCatalog;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
@@ -44,15 +47,23 @@ public class HadoopFederatedCatalogFactory {
    */
   public static Catalog createHadoopCatalog(
       ConnectionConfigInfoDpo connectionConfigInfoDpo, UserSecretsManager userSecretsManager) {
-    HadoopCatalog hadoopCatalog = new HadoopCatalog();
-
-    HadoopConnectionConfigInfoDpo hadoopConfig =
-        (HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo;
-
+    // Currently, Polaris supports Hadoop federation only via IMPLICIT authentication.
+    // Hence, prior to initializing the configuration, ensure that the catalog uses
+    // IMPLICIT authentication.
+    AuthenticationParametersDpo authenticationParametersDpo =
+        connectionConfigInfoDpo.getAuthenticationParameters();
+    if (authenticationParametersDpo.getAuthenticationTypeCode()
+        != AuthenticationType.IMPLICIT.getCode()) {
+      throw new IllegalStateException(
+          "Hadoop federation only supports IMPLICIT authentication.");
+    }
+    Configuration conf = new Configuration();
+    String warehouse =
+        ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
+    HadoopCatalog hadoopCatalog = new HadoopCatalog(conf, warehouse);
     hadoopCatalog.initialize(
-        hadoopConfig.getWarehouse(),
+        warehouse,
         connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
-
     return hadoopCatalog;
   }
 }
