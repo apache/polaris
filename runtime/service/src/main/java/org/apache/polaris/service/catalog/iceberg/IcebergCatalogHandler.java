@@ -45,6 +45,7 @@ import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
@@ -53,6 +54,8 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.rest.HTTPClient;
+import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -73,6 +76,8 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.ConnectionType;
+import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -88,7 +93,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.federator.FederatedCatalogFactory;
+import org.apache.polaris.extensions.federation.hadoop.HadoopFederatedCatalogFactory;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -206,10 +211,31 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
           callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
-
-      this.baseCatalog =
-          FederatedCatalogFactory.createFederatedCatalog(
-              connectionConfigInfoDpo, getUserSecretsManager());
+      
+      Catalog federatedCatalog;
+      ConnectionType connectionType =
+          ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
+      switch (connectionType) {
+        case ICEBERG_REST:
+          SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
+          federatedCatalog =
+              new RESTCatalog(
+                  context,
+                  (config) ->
+                      HTTPClient.builder(config)
+                          .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
+                          .build());
+          federatedCatalog.initialize(
+              ((IcebergRestConnectionConfigInfoDpo) connectionConfigInfoDpo).getRemoteCatalogName(),
+              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
+          break;
+        case HADOOP:
+          federatedCatalog = HadoopFederatedCatalogFactory.createHadoopCatalog(connectionConfigInfoDpo, getUserSecretsManager());
+          break;
+        default:
+          throw new UnsupportedOperationException("Unsupported connection type: " + connectionType);
+      }
+      this.baseCatalog = federatedCatalog;
     } else {
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.baseCatalog =
