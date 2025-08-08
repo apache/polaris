@@ -1051,6 +1051,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       IcebergTableLikeEntity virtualEntity =
           IcebergTableLikeEntity.of(
               new PolarisEntity.Builder()
+                  .setType(PolarisEntityType.TABLE_LIKE)
                   .setParentId(resolvedNamespace.getLast().getId())
                   .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
                   .build());

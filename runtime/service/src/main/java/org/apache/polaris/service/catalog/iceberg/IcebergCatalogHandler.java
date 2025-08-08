@@ -24,6 +24,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
@@ -81,7 +82,9 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -579,12 +582,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * Fetch the metastore table entity for the given table identifier
    *
    * @param tableIdentifier The identifier of the table
-   * @return the Polaris table entity for the table
+   * @return the Polaris table entity for the table or null for external catalogs
    */
-  private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
+  private @Nullable IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(tableIdentifier);
-
-    return IcebergTableLikeEntity.of(target.getRawLeafEntity());
+    PolarisEntity rawLeafEntity = target.getRawLeafEntity();
+    if (rawLeafEntity.getType() == PolarisEntityType.TABLE_LIKE) {
+      return IcebergTableLikeEntity.of(rawLeafEntity);
+    }
+    return null; // could be an external catalog
   }
 
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
