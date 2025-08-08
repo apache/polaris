@@ -86,7 +86,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
     return clientSecretReference;
   }
 
-  public @Nonnull List<String> getScopes() {
+  public @Nullable List<String> getScopes() {
     return scopes;
   }
 
@@ -115,7 +115,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
   }
 
   @Override
-  public AuthenticationParameters asAuthenticationParametersModel() {
+  public @Nonnull AuthenticationParameters asAuthenticationParametersModel() {
     return OAuthClientCredentialsParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
         .setTokenUri(getTokenUri())
