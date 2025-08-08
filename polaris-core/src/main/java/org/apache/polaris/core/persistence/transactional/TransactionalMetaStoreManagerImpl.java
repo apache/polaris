@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence.transactional;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -89,6 +90,12 @@ import org.slf4j.LoggerFactory;
 public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TransactionalMetaStoreManagerImpl.class);
+
+  private final Clock clock;
+
+  public TransactionalMetaStoreManagerImpl(Clock clock) {
+    this.clock = clock;
+  }
 
   /**
    * A version of BaseMetaStoreManager::persistNewEntity but instead of calling the one-shot
@@ -1437,7 +1444,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               .name("entityCleanup_" + entityToDrop.getId())
               .typeCode(PolarisEntityType.TASK.getCode())
               .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
-              .createTimestamp(callCtx.getClock().millis())
+              .createTimestamp(clock.millis())
               .properties(PolarisObjectMapperUtil.serializeProperties(properties));
       if (cleanupProperties != null) {
         taskEntityBuilder.internalProperties(
@@ -1964,7 +1971,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null
                   || taskState.executor == null
-                  || callCtx.getClock().millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
+                  || clock.millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
             },
             Function.identity(),
             pageToken);
@@ -1978,8 +1985,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                       PolarisObjectMapperUtil.deserializeProperties(task.getProperties());
                   properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
                   properties.put(
-                      PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
-                      String.valueOf(callCtx.getClock().millis()));
+                      PolarisTaskConstants.LAST_ATTEMPT_START_TIME, String.valueOf(clock.millis()));
                   properties.put(
                       PolarisTaskConstants.ATTEMPT_COUNT,
                       String.valueOf(
@@ -2054,14 +2060,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             catalogId,
             entityId);
 
-    PolarisStorageConfigurationInfo storageConfigurationInfo =
-        BaseMetaStoreManager.extractStorageConfiguration(
-            callCtx.getDiagServices(), reloadedEntity.getEntity());
     try {
       AccessConfig accessConfig =
           storageIntegration.getSubscopedCreds(
-              callCtx,
-              storageConfigurationInfo,
+              callCtx.getRealmConfig(),
               allowListOperation,
               allowedReadLocations,
               allowedWriteLocations);

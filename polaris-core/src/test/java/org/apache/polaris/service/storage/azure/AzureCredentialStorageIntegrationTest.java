@@ -340,16 +340,16 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
 
   private AccessConfig subscopedCredsForOperations(
       List<String> allowedReadLoc, List<String> allowedWriteLoc, boolean allowListAction) {
-    List<String> allowedLoc = new ArrayList<>();
-    allowedLoc.addAll(allowedReadLoc);
-    allowedLoc.addAll(allowedWriteLoc);
     AzureStorageConfigurationInfo azureConfig =
-        new AzureStorageConfigurationInfo(allowedLoc, tenantId);
+        AzureStorageConfigurationInfo.builder()
+            .addAllAllowedLocations(allowedReadLoc)
+            .addAllAllowedLocations(allowedWriteLoc)
+            .tenantId(tenantId)
+            .build();
     AzureCredentialsStorageIntegration azureCredsIntegration =
-        new AzureCredentialsStorageIntegration();
+        new AzureCredentialsStorageIntegration(azureConfig);
     return azureCredsIntegration.getSubscopedCreds(
-        newCallContext(),
-        azureConfig,
+        EMPTY_REALM_CONFIG,
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc));

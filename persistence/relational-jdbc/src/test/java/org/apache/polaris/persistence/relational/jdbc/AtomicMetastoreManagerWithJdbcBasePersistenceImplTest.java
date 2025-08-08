@@ -22,13 +22,11 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import java.io.InputStream;
 import java.sql.SQLException;
-import java.time.ZoneId;
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
@@ -45,6 +43,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
 
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
+    int schemaVersion = 2;
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     DatasourceOperations datasourceOperations;
     try {
@@ -53,7 +52,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
       ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
       InputStream scriptStream =
           classLoader.getResourceAsStream(
-              String.format("%s/schema-v2.sql", DatabaseType.H2.getDisplayName()));
+              String.format("%s/schema-v%s.sql", DatabaseType.H2.getDisplayName(), schemaVersion));
       datasourceOperations.executeScript(scriptStream);
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -68,15 +67,12 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             datasourceOperations,
             RANDOM_SECRETS,
             Mockito.mock(),
-            realmContext.getRealmIdentifier());
-    return new PolarisTestMetaStoreManager(
-        new AtomicOperationMetaStoreManager(),
-        new PolarisCallContext(
-            realmContext,
-            basePersistence,
-            diagServices,
-            new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault())));
+            realmContext.getRealmIdentifier(),
+            schemaVersion);
+    AtomicOperationMetaStoreManager metaStoreManager = new AtomicOperationMetaStoreManager(clock);
+    PolarisCallContext callCtx =
+        new PolarisCallContext(realmContext, basePersistence, diagServices);
+    return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 
   private static class H2JdbcConfiguration implements RelationalJdbcConfiguration {

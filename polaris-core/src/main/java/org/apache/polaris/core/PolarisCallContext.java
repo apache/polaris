@@ -19,8 +19,6 @@
 package org.apache.polaris.core;
 
 import jakarta.annotation.Nonnull;
-import java.time.Clock;
-import java.time.ZoneId;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
@@ -36,29 +34,20 @@ public class PolarisCallContext implements CallContext {
 
   // meta store which is used to persist Polaris entity metadata
   private final BasePersistence metaStore;
-
-  // diag services
   private final PolarisDiagnostics diagServices;
-
   private final PolarisConfigurationStore configurationStore;
-
-  private final Clock clock;
-
   private final RealmContext realmContext;
-
   private final RealmConfig realmConfig;
 
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
       @Nonnull BasePersistence metaStore,
       @Nonnull PolarisDiagnostics diagServices,
-      @Nonnull PolarisConfigurationStore configurationStore,
-      @Nonnull Clock clock) {
+      @Nonnull PolarisConfigurationStore configurationStore) {
     this.realmContext = realmContext;
     this.metaStore = metaStore;
     this.diagServices = diagServices;
     this.configurationStore = configurationStore;
-    this.clock = clock;
     this.realmConfig = new RealmConfigImpl(this.configurationStore, this.realmContext);
   }
 
@@ -66,12 +55,7 @@ public class PolarisCallContext implements CallContext {
       @Nonnull RealmContext realmContext,
       @Nonnull BasePersistence metaStore,
       @Nonnull PolarisDiagnostics diagServices) {
-    this(
-        realmContext,
-        metaStore,
-        diagServices,
-        new PolarisConfigurationStore() {},
-        Clock.system(ZoneId.systemDefault()));
+    this(realmContext, metaStore, diagServices, new PolarisConfigurationStore() {});
   }
 
   public BasePersistence getMetaStore() {
@@ -80,10 +64,6 @@ public class PolarisCallContext implements CallContext {
 
   public PolarisDiagnostics getDiagServices() {
     return diagServices;
-  }
-
-  public Clock getClock() {
-    return clock;
   }
 
   @Override
@@ -111,6 +91,6 @@ public class PolarisCallContext implements CallContext {
     String realmId = this.realmContext.getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
     return new PolarisCallContext(
-        realmContext, this.metaStore, this.diagServices, this.configurationStore, this.clock);
+        realmContext, this.metaStore, this.diagServices, this.configurationStore);
   }
 }
