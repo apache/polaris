@@ -30,6 +30,7 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.LanceHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
@@ -72,6 +73,7 @@ public class SparkCatalog
   @VisibleForTesting protected org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
   @VisibleForTesting protected PolarisSparkCatalog polarisSparkCatalog = null;
   @VisibleForTesting protected DeltaHelper deltaHelper = null;
+  @VisibleForTesting protected LanceHelper lanceHelper = null;
 
   @Override
   public String name() {
@@ -133,6 +135,7 @@ public class SparkCatalog
     this.catalogName = name;
     initRESTCatalog(name, options);
     this.deltaHelper = new DeltaHelper(options);
+    this.lanceHelper = new LanceHelper(options);
   }
 
   @Override
@@ -162,6 +165,9 @@ public class SparkCatalog
         // delta log creation.
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
         return deltaCatalog.createTable(ident, schema, transforms, properties);
+      } else if (PolarisCatalogUtils.useLance(provider)) {
+        TableCatalog lanceCatalog = lanceHelper.loadLanceCatalog(this.polarisSparkCatalog);
+        return lanceCatalog.createTable(ident, schema, transforms, properties);
       } else {
         return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
       }
@@ -182,6 +188,9 @@ public class SparkCatalog
         //     using ALTER TABLE ...SET LOCATION, and ALTER TABLE ... SET FILEFORMAT.
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
         return deltaCatalog.alterTable(ident, changes);
+      } else if (PolarisCatalogUtils.useLance(provider)) {
+        TableCatalog lanceCatalog = lanceHelper.loadLanceCatalog(this.polarisSparkCatalog);
+        return lanceCatalog.alterTable(ident, changes);
       }
       return this.polarisSparkCatalog.alterTable(ident);
     }
