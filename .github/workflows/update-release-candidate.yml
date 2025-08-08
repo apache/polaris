@@ -1,0 +1,243 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: Update version and Changelog for Release Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g., apache-polaris-1.0.0-incubating-rc2)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run mode (check to enable, uncheck to perform actual operations)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  update-release-candidate:
+    name: Update Release Candidate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          # Fetch full history for proper branch operations
+          fetch-depth: 0
+          # Use a token with write permissions
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set DRY_RUN environment variable
+        run: |
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+            echo "DRY_RUN mode enabled - no actual changes will be made"
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+            echo "DRY_RUN mode disabled - actual changes will be made"
+          fi
+
+      - name: Validate release tag and extract version components
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_version.sh"
+
+          release_tag="${{ github.event.inputs.release_tag }}"
+
+          print_info "Validating release tag: ${release_tag}"
+
+          # Validate tag format: apache-polaris-x.y.z-incubating-rcN
+          if ! validate_and_extract_git_tag_version "${release_tag}"; then
+            print_error "Invalid tag format. Expected: apache-polaris-x.y.z-incubating-rcN where N>0, got: ${release_tag}"
+            exit 1
+          fi
+
+          # Build release branch name
+          release_branch="release/${version_without_rc}"
+
+          print_info "Checking if release branch exists: ${release_branch}"
+
+          # Check if release branch exists in remote repository
+          if ! git show-ref --verify --quiet "refs/remotes/origin/${release_branch}"; then
+            print_error "Release branch ${release_branch} does not exist in remote repository."
+            print_error "Please create the release branch first using the create-release-branch workflow."
+            exit 1
+          fi
+
+          print_success "Release branch ${release_branch} exists in remote repository"
+
+          # Export extracted version components and release branch for next steps
+          echo "release_tag=${release_tag}" >> $GITHUB_ENV
+          echo "major=${major}" >> $GITHUB_ENV
+          echo "minor=${minor}" >> $GITHUB_ENV
+          echo "patch=${patch}" >> $GITHUB_ENV
+          echo "rc_number=${rc_number}" >> $GITHUB_ENV
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
+          echo "release_branch=${release_branch}" >> $GITHUB_ENV
+
+          print_info "Parsed version components:"
+          print_info "  Release branch: ${release_branch}"
+          print_info "  Release tag: ${release_tag}"
+          print_info "  Version without RC: ${version_without_rc}"
+          print_info "  RC number: ${rc_number}"
+
+      - name: Checkout release branch and verify GitHub checks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+          source "${LIBS_DIR}/_github.sh"
+
+          print_info "Checking out release branch: ${release_branch}"
+          git checkout "${release_branch}"
+
+          # Get the current HEAD commit SHA
+          current_commit=$(git rev-parse HEAD)
+
+          # Verify all GitHub checks are passing
+          if ! check_github_checks_passed "${current_commit}"; then
+            print_error "GitHub checks are not all passing for commit ${current_commit}"
+            print_error "Please ensure all checks pass before updating the release candidate"
+            exit 1
+          fi
+
+          print_success "All GitHub checks are passing for commit ${current_commit}"
+
+      - name: Set up Java
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Update project versions
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+          source "${LIBS_DIR}/_version.sh"
+
+          print_info "Updating project version to ${version_without_rc}"
+          update_version "${version_without_rc}"
+
+          print_success "Project version updated to ${version_without_rc}"
+
+      - name: Update changelog
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Updating CHANGELOG.md"
+          exec_process ./gradlew patchChangelog
+
+          print_success "Changelog updated successfully"
+
+      - name: Commit and push changes
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Committing version and changelog changes"
+
+          # Commit version files and changelog
+          exec_process git add "$VERSION_FILE" "$HELM_CHART_YAML_FILE" "$HELM_README_FILE" "$HELM_VALUES_FILE"
+          exec_process git add "$CHANGELOG_FILE"
+          exec_process git commit -m "[chore] Bump version to ${version_without_rc} for release candidate ${rc_number}"
+
+          # Push the changes
+          exec_process git push origin "${release_branch}"
+
+          # Get the new commit SHA after our changes
+          new_tag_ref=$(git rev-parse HEAD)
+          echo "new_tag_ref=${new_tag_ref}" >> $GITHUB_ENV
+
+          print_info "Changes committed and pushed. New commit: ${new_tag_ref}"
+
+      - name: Update RC tag to new commit
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Updating RC tag ${release_tag} to point to new commit ${new_tag_ref}"
+
+          # IMPORTANT: Why we need to update the RC tag
+          # When a release manager creates a GitHub Release, a tag is automatically created
+          # pointing to the commit that was selected at release creation time. However,
+          # this is not the exact SHA that will be released, since we need to update
+          # the project version and changelog after the tag is created. Therefore, we
+          # must update the tag reference to point to the commit that contains the
+          # version updates and will actually be released.
+
+          # Force update the existing tag to point to the new commit
+          exec_process git tag -f "${release_tag}" "${new_tag_ref}"
+          exec_process git push -f origin "${release_tag}"
+
+          print_success "🎉 RC tag ${release_tag} updated successfully to commit ${new_tag_ref}!"
+
+      - name: Summary
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+
+          echo
+          print_success "🎉 Release candidate update completed successfully!"
+          echo
+          print_info "Summary:"
+          print_info "  Release tag: ${release_tag}"
+          print_info "  Release branch: ${release_branch}"
+          print_info "  Updated to commit: ${new_tag_ref}"
+          print_info "  Project version: ${version_without_rc}"
+          echo
+          print_info "Next steps:"
+          print_info "  1. Verify the updated release candidate"
+          print_info "  2. Run build and test scripts if needed"
+          print_info "  3. Proceed with the release process"
