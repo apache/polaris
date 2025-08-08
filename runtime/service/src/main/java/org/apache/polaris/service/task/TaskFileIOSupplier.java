@@ -24,21 +24,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
+import org.apache.commons.lang3.function.TriFunction;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 
 @ApplicationScoped
-public class TaskFileIOSupplier implements BiFunction<TaskEntity, CallContext, FileIO> {
+public class TaskFileIOSupplier
+    implements TriFunction<TaskEntity, TableIdentifier, CallContext, FileIO> {
   private final FileIOFactory fileIOFactory;
 
   @Inject
@@ -47,12 +47,10 @@ public class TaskFileIOSupplier implements BiFunction<TaskEntity, CallContext, F
   }
 
   @Override
-  public FileIO apply(TaskEntity task, CallContext callContext) {
+  public FileIO apply(TaskEntity task, TableIdentifier identifier, CallContext callContext) {
     Map<String, String> internalProperties = task.getInternalPropertiesAsMap();
     Map<String, String> properties = new HashMap<>(internalProperties);
 
-    IcebergTableLikeEntity tableEntity = IcebergTableLikeEntity.of(task);
-    TableIdentifier identifier = tableEntity.getTableIdentifier();
     String location = properties.get(PolarisTaskConstants.STORAGE_LOCATION);
     Set<String> locations = Set.of(location);
     Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
