@@ -22,10 +22,6 @@ name: Update version and Changelog for Release Candidate
 on:
   workflow_dispatch:
     inputs:
-      release_tag:
-        description: 'Release tag (e.g., apache-polaris-1.0.0-incubating-rc2)'
-        required: true
-        type: string
       dry_run:
         description: 'Dry run mode (check to enable, uncheck to perform actual operations)'
         required: false
@@ -63,7 +59,7 @@ jobs:
             echo "DRY_RUN mode disabled - actual changes will be made"
           fi
 
-      - name: Validate release tag and extract version components
+      - name: Auto-determine release branch and next RC number
         run: |
           releasey_dir="$(pwd)/releasey"
           LIBS_DIR="${releasey_dir}/libs"
@@ -72,68 +68,55 @@ jobs:
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
 
-          release_tag="${{ github.event.inputs.release_tag }}"
+          # Get the current branch name
+          current_branch=$(git branch --show-current)
+          print_info "Current branch: ${current_branch}"
 
-          print_info "Validating release tag: ${release_tag}"
-
-          # Validate tag format: apache-polaris-x.y.z-incubating-rcN
-          if ! validate_and_extract_git_tag_version "${release_tag}"; then
-            print_error "Invalid tag format. Expected: apache-polaris-x.y.z-incubating-rcN where N>0, got: ${release_tag}"
+          # Validate that we're on a release branch
+          if [[ ! "${current_branch}" =~ ^release/(.+)$ ]]; then
+            print_error "This workflow must be run from a release branch (release/x.y.z-incubating)"
+            print_error "Current branch: ${current_branch}"
             exit 1
           fi
 
-          # Build release branch name
-          release_branch="release/${version_without_rc}"
+          # Extract version from release branch name
+          branch_version="${BASH_REMATCH[1]}"
+          print_info "Extracted version from branch: ${branch_version}"
 
-          print_info "Checking if release branch exists: ${release_branch}"
-
-          # Check if release branch exists in remote repository
-          if ! git show-ref --verify --quiet "refs/remotes/origin/${release_branch}"; then
-            print_error "Release branch ${release_branch} does not exist in remote repository."
-            print_error "Please create the release branch first using the create-release-branch workflow."
+          # Validate branch version format and extract components
+          if ! validate_and_extract_branch_version "${branch_version}"; then
+            print_error "Invalid release branch version format: ${branch_version}"
+            print_error "Expected format: x.y.z-incubating"
             exit 1
           fi
 
-          print_success "Release branch ${release_branch} exists in remote repository"
+          print_info "Parsed version components from branch:"
+          print_info "  Major: ${major}"
+          print_info "  Minor: ${minor}"
+          print_info "  Patch: ${patch}"
+          print_info "  Version without RC: ${version_without_rc}"
 
-          # Export extracted version components and release branch for next steps
+          # Find the next available RC number by checking existing tags
+          find_next_rc_number "${version_without_rc}"
+          print_info "Next RC number: ${rc_number}"
+
+          # Build the new release tag
+          release_tag="apache-polaris-${version_without_rc}-rc${rc_number}"
+
+          # Export all variables for next steps
           echo "release_tag=${release_tag}" >> $GITHUB_ENV
           echo "major=${major}" >> $GITHUB_ENV
           echo "minor=${minor}" >> $GITHUB_ENV
           echo "patch=${patch}" >> $GITHUB_ENV
           echo "rc_number=${rc_number}" >> $GITHUB_ENV
           echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
-          echo "release_branch=${release_branch}" >> $GITHUB_ENV
+          echo "release_branch=${current_branch}" >> $GITHUB_ENV
 
-          print_info "Parsed version components:"
-          print_info "  Release branch: ${release_branch}"
+          print_success "Determined release candidate details:"
+          print_info "  Release branch: ${current_branch}"
           print_info "  Release tag: ${release_tag}"
           print_info "  Version without RC: ${version_without_rc}"
           print_info "  RC number: ${rc_number}"
-
-      - name: Verify current branch matches release branch
-        run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
-          source "${LIBS_DIR}/_log.sh"
-
-          # Get the current branch name
-          current_branch=$(git branch --show-current)
-
-          print_info "Verifying current branch matches expected release branch"
-          print_info "  Current branch: ${current_branch}"
-          print_info "  Expected release branch: ${release_branch}"
-
-          # Check if current branch matches the expected release branch
-          if [[ "${current_branch}" != "${release_branch}" ]]; then
-            print_error "Current branch '${current_branch}' does not match expected release branch '${release_branch}'"
-            print_error "This workflow must be run from the release branch that corresponds to the release tag"
-            print_error "Please switch to branch '${release_branch}' and run the workflow again"
-            exit 1
-          fi
-
-          print_success "Current branch matches expected release branch: ${release_branch}"
 
       - name: Verify GitHub checks are passing
         env:

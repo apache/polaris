@@ -118,3 +118,27 @@ function update_helm_version {
   local version_with_dash=$(echo "$version" | sed 's/-/--/g')
   exec_process sed -i~ "s/${current_version_with_dash}/${version_with_dash}/" "$HELM_README_FILE"
 }
+
+function find_next_rc_number {
+  # This function finds the next available RC number for a given version.
+  # It returns 0 and sets the global variable rc_number to the next available RC number.
+  # It takes the version_without_rc as input (e.g., "1.0.0-incubating").
+  local version_without_rc="$1"
+
+  # Get all existing RC tags for this version
+  local tag_pattern="apache-polaris-${version_without_rc}-rc*"
+  local existing_tags
+  existing_tags=$(git tag -l "${tag_pattern}" | sort -V)
+
+  if [[ -z "${existing_tags}" ]]; then
+    # No existing RC tags, start with RC1
+    rc_number=1
+  else
+    # Extract the highest RC number and increment
+    local highest_rc
+    highest_rc=$(echo "${existing_tags}" | sed "s/apache-polaris-${version_without_rc}-rc//" | sort -n | tail -1)
+    rc_number=$((highest_rc + 1))
+  fi
+
+  return 0
+}
