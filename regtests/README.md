@@ -89,7 +89,7 @@ The catalog federation tests rely on the following configurations in `applicatio
 be set in order to succeed.
 
 ```
-polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"=["S3","GCS","AZURE", "FILE"]
+polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"=["S3","GCS","AZURE","FILE"]
 polaris.features."ENABLE_CATALOG_FEDERATION"=true
 polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS"=true
 ```
