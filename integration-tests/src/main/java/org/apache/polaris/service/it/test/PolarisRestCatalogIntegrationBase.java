@@ -198,13 +198,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     fileIO.initialize(Map.of());
   }
 
-  /**
-   * Determine whether the test should be skipped based on the environment or configuration.
-   *
-   * @return true if the test should be skipped, false otherwise
-   */
-  protected abstract boolean shouldSkip();
-
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
     adminCredentials = credentials;
@@ -224,7 +217,6 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    Assumptions.assumeThat(shouldSkip()).isFalse();
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);

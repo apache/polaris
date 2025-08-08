@@ -70,11 +70,6 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
   }
 
   @Override
-  protected boolean shouldSkip() {
-    return false;
-  }
-
-  @Override
   protected void initializeClientFileIO(FileIO fileIO) {
     fileIO.initialize(
         ImmutableMap.<String, String>builder()
