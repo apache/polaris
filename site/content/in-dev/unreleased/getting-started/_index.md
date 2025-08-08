@@ -50,9 +50,7 @@ java -version
 2. Download the latest binary archive file, for example:
 
 ```bash
-apache-polaris-<version>-bin.tar.gz
-```
-
+curl -L https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz | tar xz```
 ---
 
 ## Step 2: Extract the Archive
