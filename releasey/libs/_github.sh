@@ -1,0 +1,154 @@
+#!/bin/bash
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+#
+# Git Remote Setup Script
+#
+# This script ensures that the Git repository has the proper remote configuration for Apache Polaris releases:
+# 1. Checks whether there is a Git remote named 'apache' pointing to https://github.com/apache/polaris.git
+# 2. If the remote doesn't exist, it will be added
+# 3. If the remote exists but points to the wrong URL, error out
+#
+# Returns non-zero exit code if any verification fails.
+#
+
+set -euo pipefail
+
+LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source common logging functions and constants
+source "${LIBS_DIR}/_log.sh"
+source "${LIBS_DIR}/_constants.sh"
+source "${LIBS_DIR}/_exec.sh"
+
+function check_remote_exists() {
+  # Check if a remote exists, return 0 if it exists, 1 if not
+  local remote_name="$1"
+  git remote | grep -q "^${remote_name}$"
+}
+
+function get_remote_url() {
+  # Get the URL for a given remote, return non-zero if remote doesn't exist
+  local remote_name="$1"
+  git remote get-url "${remote_name}" 2>/dev/null || return 1
+}
+
+function ensure_no_uncommitted_change() {
+  if [[ -n $(git status --porcelain) ]]; then
+    print_error "There are uncommitted changes in the repository."
+    print_error "A release can only be performed from a clean state."
+    return 1
+  fi
+}
+
+function add_apache_remote() {
+  # Add the apache remote to the current repository, return non-zero if it fails
+  print_info "Adding remote '${APACHE_REMOTE_NAME}' with URL '${APACHE_REMOTE_URL}'..."
+  if exec_process git remote add "${APACHE_REMOTE_NAME}" "${APACHE_REMOTE_URL}"; then
+    print_success "Successfully added remote '${APACHE_REMOTE_NAME}'"
+    return 0
+  else
+    print_error "Failed to add remote '${APACHE_REMOTE_NAME}'"
+    return 1
+  fi
+}
+
+function check_github_token() {
+  # Check if GitHub token is available, return 0 if available, 1 if not
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function check_github_checks_passed() {
+  # Check that all GitHub checks have passed for a specific commit SHA.
+  # More specifically, we check that all check runs have a conclusion of "success" or "skipped".
+  # Returns 0 if all checks are "success" or "skipped", 1 otherwise
+  local commit_sha="$1"
+
+  print_info "Checking that all Github checks have passed for commit ${commit_sha}..."
+
+  local num_invalid_checks
+  local num_invalid_checks_retrieval_command="curl -s -H \"Authorization: Bearer ${GITHUB_TOKEN}\" -H \"Accept: application/vnd.github+json\" -H \"X-GitHub-Api-Version: 2022-11-28\" https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/commits/${commit_sha}/check-runs | jq -r '[.check_runs[].conclusion | select(. != \"success\" and . != \"skipped\")] | length'"
+  if [ ${DRY_RUN} -eq 1 ]; then
+    print_info "DRY_RUN is enabled, skipping GitHub check verification"
+    print_command "${num_invalid_checks_retrieval_command}"
+    return 0
+    num_invalid_checks=0
+  else
+    num_invalid_checks=$(num_invalid_checks_retrieval_command)
+  fi
+
+  if [[ $? -ne 0 ]]; then
+    print_error "Failed to fetch GitHub check runs for commit ${commit_sha}"
+    return 1
+  fi
+
+  if [[ ${num_invalid_checks} -ne 0 ]]; then
+    print_error "Found ${num_invalid_checks} failed or in-progress GitHub checks for commit ${commit_sha}"
+    return 1
+  fi
+
+  print_info "All GitHub checks passed for commit ${commit_sha}"
+  return 0
+}
+
+function ensure_github_token_is_configured() {
+  # Ensure that GitHub token is configured, return non-zero if not
+  print_info "Checking GitHub token configuration..."
+
+  if check_github_token; then
+    print_success "GitHub token is configured"
+    return 0
+  else
+    print_error "GITHUB_TOKEN environment variable is not set"
+    print_error "A GitHub token is required to check CI status for releases"
+    print_error "Please set GITHUB_TOKEN environment variable with a valid GitHub personal access token"
+    return 1
+  fi
+}
+
+function ensure_github_setup_is_done() {
+  print_info "Checking Git remote configuration for '${APACHE_REMOTE_NAME}'..."
+
+  if ! check_remote_exists "${APACHE_REMOTE_NAME}"; then
+    print_info "Remote '${APACHE_REMOTE_NAME}' does not exist, creating it..."
+    if ! add_apache_remote; then
+      return 1
+    fi
+  else
+    print_info "Remote '${APACHE_REMOTE_NAME}' already exists, checking URL..."
+    local current_url
+    current_url=$(get_remote_url "${APACHE_REMOTE_NAME}")
+    if [[ "${current_url}" != "${APACHE_REMOTE_URL}" ]]; then
+      print_error "Remote '${APACHE_REMOTE_NAME}' exists but points to wrong URL: ${current_url}"
+      return 1
+    fi
+  fi
+
+  print_success "All Git remote setup checks passed! Your Git repository is properly configured for releases."
+}
+
+# Run main function if script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  ensure_github_setup_is_done "$@"
+fi
