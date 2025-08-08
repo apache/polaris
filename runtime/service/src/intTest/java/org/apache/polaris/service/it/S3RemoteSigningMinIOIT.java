@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.test.PolarisS3RemoteSigningIntegrationTest;
 import org.apache.polaris.test.minio.Minio;
 import org.apache.polaris.test.minio.MinioAccess;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @QuarkusTest
 @TestProfile(S3RemoteSigningMinIOIT.Profile.class)
 @ExtendWith(MinioExtension.class)
+@ExtendWith(PolarisIntegrationTestExtension.class)
 public class S3RemoteSigningMinIOIT extends PolarisS3RemoteSigningIntegrationTest {
 
   private static final String BUCKET_URI_PREFIX = "/minio-test";
