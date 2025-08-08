@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 
 /**
@@ -61,8 +62,8 @@ public class PolarisCatalogHelpers {
     return Namespace.of(parentLevels);
   }
 
-  public static Namespace nameAndIdToNamespace(
-      List<PolarisEntity> catalogPath, PolarisEntity.NameAndId entity) {
+  public static Namespace entityToNamespace(
+      List<PolarisEntity> catalogPath, PolarisBaseEntity entity) {
     // Skip element 0 which is the catalog entity
     String[] fullName = new String[catalogPath.size()];
     for (int i = 0; i < fullName.length - 1; ++i) {
@@ -86,11 +87,11 @@ public class PolarisCatalogHelpers {
   }
 
   /**
-   * Given the shortnames/ids of entities that all live under the given catalogPath, reconstructs
-   * TableIdentifier objects for each that all hold the catalogPath excluding the catalog entity.
+   * Given the entities that all live under the given catalogPath, reconstructs TableIdentifier
+   * objects for each that all hold the catalogPath excluding the catalog entity.
    */
-  public static List<TableIdentifier> nameAndIdToTableIdentifiers(
-      List<PolarisEntity> catalogPath, List<PolarisEntity.NameAndId> entities) {
+  public static List<TableIdentifier> entitiesToTableIdentifiers(
+      List<PolarisEntity> catalogPath, List<PolarisEntity> entities) {
     // Skip element 0 which is the catalog entity
     String[] parentNamespaces = new String[catalogPath.size() - 1];
     for (int i = 0; i < parentNamespaces.length; ++i) {

@@ -62,7 +62,6 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
-import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
@@ -693,50 +692,52 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /**
    * See {@link PolarisMetaStoreManager#listEntities(PolarisCallContext, List, PolarisEntityType,
-   * PolarisEntitySubType, PageToken)}
+   * PolarisEntitySubType, Predicate, Function, PageToken)}
    */
-  private @Nonnull ListEntitiesResult listEntities(
+  private @Nonnull <T> Page<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
     // first resolve again the catalogPath to that entity
     PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
-      return new ListEntitiesResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
+      throw new IllegalArgumentException("Failed to resolve catalogPath: " + catalogPath);
     }
 
-    Predicate<PolarisBaseEntity> filter = entity -> true;
-    // prune the returned list with only entities matching the entity subtype
-    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
-      filter = e -> e.getSubTypeCode() == entitySubType.getCode();
+    Predicate<PolarisBaseEntity> filter;
+    if (entitySubType == PolarisEntitySubType.ANY_SUBTYPE) {
+      filter = entityFilter;
+    } else {
+      filter = e -> e.getSubTypeCode() == entitySubType.getCode() && entityFilter.test(e);
     }
 
     // return list of active entities
-    Page<EntityNameLookupRecord> resultPage =
-        ms.listEntitiesInCurrentTxn(
-            callCtx,
-            resolver.getCatalogIdOrNull(),
-            resolver.getParentId(),
-            entityType,
-            filter,
-            pageToken);
-
-    // done
-    return ListEntitiesResult.fromPage(resultPage);
+    return ms.listEntitiesInCurrentTxn(
+        callCtx,
+        resolver.getCatalogIdOrNull(),
+        resolver.getParentId(),
+        entityType,
+        filter,
+        transformer,
+        pageToken);
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull ListEntitiesResult listEntities(
+  public @Nonnull <T> Page<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
     // get meta store we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
@@ -744,7 +745,16 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // run operation in a read transaction
     return ms.runInReadTransaction(
         callCtx,
-        () -> listEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
+        () ->
+            listEntities(
+                callCtx,
+                ms,
+                catalogPath,
+                entityType,
+                entitySubType,
+                entityFilter,
+                transformer,
+                pageToken));
   }
 
   /** {@link #createPrincipal(PolarisCallContext, PolarisBaseEntity)} */

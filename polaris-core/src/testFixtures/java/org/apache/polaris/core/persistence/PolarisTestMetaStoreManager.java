@@ -31,7 +31,6 @@ import java.util.Map;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -44,6 +43,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
@@ -53,7 +54,6 @@ import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -770,37 +770,31 @@ public class PolarisTestMetaStoreManager {
         path.add(entityToDrop);
 
         // get all children, cannot be null
-        List<EntityNameLookupRecord> children =
-            polarisMetaStoreManager
-                .listEntities(
-                    this.polarisCallContext,
-                    path,
-                    PolarisEntityType.NAMESPACE,
-                    PolarisEntitySubType.NULL_SUBTYPE,
-                    PageToken.readEverything())
-                .getEntities();
+        List<PolarisEntity> children =
+            polarisMetaStoreManager.listAllEntities(
+                this.polarisCallContext,
+                path,
+                PolarisEntityType.NAMESPACE,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PolarisEntity::of);
         Assertions.assertThat(children).isNotNull();
         if (children.isEmpty() && entity.getType() == PolarisEntityType.NAMESPACE) {
           children =
-              polarisMetaStoreManager
-                  .listEntities(
-                      this.polarisCallContext,
-                      path,
-                      PolarisEntityType.TABLE_LIKE,
-                      PolarisEntitySubType.ANY_SUBTYPE,
-                      PageToken.readEverything())
-                  .getEntities();
+              polarisMetaStoreManager.listAllEntities(
+                  this.polarisCallContext,
+                  path,
+                  PolarisEntityType.TABLE_LIKE,
+                  PolarisEntitySubType.ANY_SUBTYPE,
+                  PolarisEntity::of);
           Assertions.assertThat(children).isNotNull();
         } else if (children.isEmpty()) {
           children =
-              polarisMetaStoreManager
-                  .listEntities(
-                      this.polarisCallContext,
-                      path,
-                      PolarisEntityType.CATALOG_ROLE,
-                      PolarisEntitySubType.ANY_SUBTYPE,
-                      PageToken.readEverything())
-                  .getEntities();
+              polarisMetaStoreManager.listAllEntities(
+                  this.polarisCallContext,
+                  path,
+                  PolarisEntityType.CATALOG_ROLE,
+                  PolarisEntitySubType.ANY_SUBTYPE,
+                  PolarisEntity::of);
           Assertions.assertThat(children).isNotNull();
           // if only one left, it can be dropped.
           if (children.size() == 1) {
@@ -1572,15 +1566,9 @@ public class PolarisTestMetaStoreManager {
       List<ImmutablePair<String, PolarisEntitySubType>> expectedResult) {
 
     // list the entities under the specified path
-    List<EntityNameLookupRecord> result =
-        polarisMetaStoreManager
-            .listEntities(
-                this.polarisCallContext,
-                path,
-                entityType,
-                entitySubType,
-                PageToken.readEverything())
-            .getEntities();
+    List<PolarisEntity> result =
+        polarisMetaStoreManager.listAllEntities(
+            this.polarisCallContext, path, entityType, entitySubType, PolarisEntity::of);
     Assertions.assertThat(result).isNotNull();
 
     // now validate the result
@@ -1589,7 +1577,7 @@ public class PolarisTestMetaStoreManager {
     // ensure all elements are found
     for (Pair<String, PolarisEntitySubType> expected : expectedResult) {
       boolean found = false;
-      for (EntityNameLookupRecord res : result) {
+      for (PolarisEntity res : result) {
         if (res.getName().equals(expected.getLeft())
             && expected.getRight().getCode() == res.getSubTypeCode()) {
           found = true;
@@ -1890,21 +1878,19 @@ public class PolarisTestMetaStoreManager {
   /** validate that the root catalog was properly constructed */
   void validateBootstrap() {
     // load all principals
-    List<EntityNameLookupRecord> principals =
-        polarisMetaStoreManager
-            .listEntities(
-                this.polarisCallContext,
-                null,
-                PolarisEntityType.PRINCIPAL,
-                PolarisEntitySubType.NULL_SUBTYPE,
-                PageToken.readEverything())
-            .getEntities();
+    List<PrincipalEntity> principals =
+        polarisMetaStoreManager.listAllEntities(
+            this.polarisCallContext,
+            null,
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PrincipalEntity::of);
 
     // ensure not null, one element only
     Assertions.assertThat(principals).isNotNull().hasSize(1);
 
     // get catalog list information
-    EntityNameLookupRecord principalListInfo = principals.get(0);
+    PrincipalEntity principalListInfo = principals.get(0);
 
     // now make sure this principal was properly persisted
     PolarisBaseEntity principal =
@@ -1917,21 +1903,19 @@ public class PolarisTestMetaStoreManager {
             PolarisEntitySubType.NULL_SUBTYPE);
 
     // load all principal roles
-    List<EntityNameLookupRecord> principalRoles =
-        polarisMetaStoreManager
-            .listEntities(
-                this.polarisCallContext,
-                null,
-                PolarisEntityType.PRINCIPAL_ROLE,
-                PolarisEntitySubType.NULL_SUBTYPE,
-                PageToken.readEverything())
-            .getEntities();
+    List<PrincipalRoleEntity> principalRoles =
+        polarisMetaStoreManager.listAllEntities(
+            this.polarisCallContext,
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PrincipalRoleEntity::of);
 
     // ensure not null, one element only
     Assertions.assertThat(principalRoles).isNotNull().hasSize(1);
 
     // get catalog list information
-    EntityNameLookupRecord roleListInfo = principalRoles.get(0);
+    PrincipalRoleEntity roleListInfo = principalRoles.get(0);
 
     // now make sure this principal role was properly persisted
     PolarisBaseEntity principalRole =
@@ -2658,21 +2642,19 @@ public class PolarisTestMetaStoreManager {
   /** Play with looking up entities */
   public void testLookup() {
     // load all principals
-    List<EntityNameLookupRecord> principals =
-        polarisMetaStoreManager
-            .listEntities(
-                this.polarisCallContext,
-                null,
-                PolarisEntityType.PRINCIPAL,
-                PolarisEntitySubType.NULL_SUBTYPE,
-                PageToken.readEverything())
-            .getEntities();
+    List<PrincipalEntity> principals =
+        polarisMetaStoreManager.listAllEntities(
+            this.polarisCallContext,
+            null,
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PrincipalEntity::of);
 
     // ensure not null, one element only
     Assertions.assertThat(principals).isNotNull().hasSize(1);
 
     // get catalog list information
-    EntityNameLookupRecord principalListInfo = principals.get(0);
+    PrincipalEntity principalListInfo = principals.get(0);
 
     PolarisBaseEntity principal =
         this.ensureExistsById(

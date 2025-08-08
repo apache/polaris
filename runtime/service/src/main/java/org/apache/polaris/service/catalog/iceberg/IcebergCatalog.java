@@ -111,7 +111,6 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -788,20 +787,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    ListEntitiesResult listResult =
-        getMetaStoreManager()
-            .listEntities(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                PolarisEntityType.NAMESPACE,
-                PolarisEntitySubType.NULL_SUBTYPE,
-                pageToken);
-    return listResult
-        .getPage()
-        .map(
-            record ->
-                PolarisCatalogHelpers.nameAndIdToNamespace(
-                    catalogPath, new PolarisEntity.NameAndId(record.getName(), record.getId())));
+    return getMetaStoreManager()
+        .listEntities(
+            getCurrentPolarisContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            e -> true,
+            e -> PolarisCatalogHelpers.entityToNamespace(catalogPath, e),
+            pageToken);
   }
 
   @Override
@@ -1157,56 +1151,38 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             : Optional.empty();
 
     // Fall through by listing everything:
-    ListEntitiesResult siblingNamespacesResult =
+    List<Namespace> siblingNamespaces =
         getMetaStoreManager()
-            .listEntities(
+            .listAllEntities(
                 callContext.getPolarisCallContext(),
                 parentPath.stream().map(PolarisEntity::toCore).collect(Collectors.toList()),
                 PolarisEntityType.NAMESPACE,
                 PolarisEntitySubType.ANY_SUBTYPE,
-                PageToken.readEverything());
-    if (!siblingNamespacesResult.isSuccess()) {
-      throw new IllegalStateException(
-          "Unable to resolve siblings entities to validate location - could not list namespaces");
-    }
-
-    List<TableIdentifier> siblingTables =
-        parentNamespace
-            .map(
-                ns -> {
-                  ListEntitiesResult siblingTablesResult =
-                      getMetaStoreManager()
-                          .listEntities(
-                              callContext.getPolarisCallContext(),
-                              parentPath.stream()
-                                  .map(PolarisEntity::toCore)
-                                  .collect(Collectors.toList()),
-                              PolarisEntityType.TABLE_LIKE,
-                              PolarisEntitySubType.ANY_SUBTYPE,
-                              PageToken.readEverything());
-                  if (!siblingTablesResult.isSuccess()) {
-                    throw new IllegalStateException(
-                        "Unable to resolve siblings entities to validate location - could not list tables");
-                  }
-                  return siblingTablesResult.getEntities().stream()
-                      .map(tbl -> TableIdentifier.of(ns.asNamespace(), tbl.getName()))
-                      .collect(Collectors.toList());
-                })
-            .orElse(List.of());
-
-    List<Namespace> siblingNamespaces =
-        siblingNamespacesResult.getEntities().stream()
-            .map(
-                ns -> {
+                e -> {
                   String[] nsLevels =
                       parentNamespace
                           .map(parent -> parent.asNamespace().levels())
                           .orElse(new String[0]);
                   String[] newLevels = Arrays.copyOf(nsLevels, nsLevels.length + 1);
-                  newLevels[nsLevels.length] = ns.getName();
+                  newLevels[nsLevels.length] = e.getName();
                   return Namespace.of(newLevels);
-                })
-            .toList();
+                });
+
+    List<TableIdentifier> siblingTables =
+        parentNamespace
+            .map(
+                ns ->
+                    getMetaStoreManager()
+                        .listAllEntities(
+                            callContext.getPolarisCallContext(),
+                            parentPath.stream()
+                                .map(PolarisEntity::toCore)
+                                .collect(Collectors.toList()),
+                            PolarisEntityType.TABLE_LIKE,
+                            PolarisEntitySubType.ANY_SUBTYPE,
+                            e -> TableIdentifier.of(ns.asNamespace(), e.getName())))
+            .orElse(List.of());
+
     LOGGER.debug(
         "Resolving {} sibling entities to validate location",
         siblingTables.size() + siblingNamespaces.size());
@@ -2581,19 +2557,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    ListEntitiesResult listResult =
-        getMetaStoreManager()
-            .listEntities(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                PolarisEntityType.TABLE_LIKE,
-                subType,
-                pageToken);
-
     Namespace parentNamespace = PolarisCatalogHelpers.parentNamespace(catalogPath);
-    return listResult
-        .getPage()
-        .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
+    return getMetaStoreManager()
+        .listEntities(
+            getCurrentPolarisContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            PolarisEntityType.TABLE_LIKE,
+            subType,
+            e -> true,
+            e -> TableIdentifier.of(parentNamespace, e.getName()),
+            pageToken);
   }
 
   /**

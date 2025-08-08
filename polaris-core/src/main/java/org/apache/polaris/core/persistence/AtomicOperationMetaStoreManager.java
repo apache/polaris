@@ -57,7 +57,6 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
-import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
@@ -692,11 +691,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull ListEntitiesResult listEntities(
+  public @Nonnull <T> Page<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
@@ -709,14 +710,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             ? 0L
             : catalogPath.get(catalogPath.size() - 1).getId();
 
-    // prune the returned list with only entities matching the entity subtype
-    Predicate<PolarisBaseEntity> filter =
-        entitySubType != PolarisEntitySubType.ANY_SUBTYPE
-            ? e -> e.getSubTypeCode() == entitySubType.getCode()
-            : entity -> true;
-
-    Page<EntityNameLookupRecord> resultPage =
-        ms.listEntities(callCtx, catalogId, parentId, entityType, filter, pageToken);
+    Predicate<PolarisBaseEntity> filter;
+    if (entitySubType == PolarisEntitySubType.ANY_SUBTYPE) {
+      filter = entityFilter;
+    } else {
+      filter = e -> e.getSubTypeCode() == entitySubType.getCode() && entityFilter.test(e);
+    }
 
     // TODO: Use post-validation to enforce consistent view against catalogPath. In the
     // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency
@@ -725,7 +724,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // in-flight request (the cache-based resolution follows a different path entirely).
 
     // done
-    return ListEntitiesResult.fromPage(resultPage);
+    return ms.listEntities(
+        callCtx, catalogId, parentId, entityType, filter, transformer, pageToken);
   }
 
   /** {@inheritDoc} */

@@ -23,6 +23,8 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
@@ -45,8 +47,8 @@ import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
-import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
@@ -110,24 +112,56 @@ public interface PolarisMetaStoreManager
       @Nonnull String name);
 
   /**
-   * List all entities of the specified type under the specified catalogPath. If the catalogPath is
-   * null, listed entities will be top-level entities like catalogs.
+   * List entities where some predicate returns true and transform the entities with a function
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
    *     like catalogs
-   * @param entityType entity type
-   * @param entitySubType entity subtype. Can be the special value ANY_SUBTYPE to match any subtype.
-   *     Else exact match will be performed.
-   * @return all entities name, ids and subtype under the specified namespace.
+   * @param entityType type of entities to list
+   * @param entityFilter the filter to be applied to each entity. Only entities where the predicate
+   *     returns true are returned in the list
+   * @param transformer the transformation function applied to the {@link PolarisBaseEntity} before
+   *     returning
+   * @return the paged list of entities for which the predicate returns true
    */
   @Nonnull
-  ListEntitiesResult listEntities(
+  <T> Page<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken);
+
+  /**
+   * List all entities and transform the entities with a function
+   *
+   * @param callCtx call context
+   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
+   *     like catalogs
+   * @param entityType type of entities to list
+   * @param transformer the transformation function applied to the {@link PolarisBaseEntity} before
+   *     returning
+   * @return the full list of entities
+   */
+  @Nonnull
+  default <T> List<T> listAllEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Function<PolarisBaseEntity, T> transformer) {
+    return listEntities(
+            callCtx,
+            catalogPath,
+            entityType,
+            entitySubType,
+            e -> true,
+            transformer,
+            PageToken.readEverything())
+        .items();
+  }
 
   /**
    * Generate a new unique id that can be used by the Polaris client when it needs to create a new

@@ -44,48 +44,6 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
  */
 public class PolarisEntity extends PolarisBaseEntity {
 
-  public static class NameAndId {
-    private final String name;
-    private final long id;
-
-    public NameAndId(String name, long id) {
-      this.name = name;
-      this.id = id;
-    }
-
-    public String getName() {
-      return name;
-    }
-
-    public long getId() {
-      return id;
-    }
-  }
-
-  public static class TypeSubTypeAndName {
-    private final PolarisEntityType type;
-    private final PolarisEntitySubType subType;
-    private final String name;
-
-    public TypeSubTypeAndName(PolarisEntityType type, PolarisEntitySubType subType, String name) {
-      this.type = type;
-      this.subType = subType;
-      this.name = name;
-    }
-
-    public PolarisEntityType getType() {
-      return type;
-    }
-
-    public PolarisEntitySubType getSubType() {
-      return subType;
-    }
-
-    public String getName() {
-      return name;
-    }
-  }
-
   @JsonCreator
   private PolarisEntity(
       @JsonProperty("catalogId") long catalogId,
@@ -183,16 +141,6 @@ public class PolarisEntity extends PolarisBaseEntity {
         .orElse(null);
   }
 
-  public static List<NameAndId> toNameAndIdList(List<EntityNameLookupRecord> entities) {
-    return Optional.ofNullable(entities)
-        .map(
-            list ->
-                list.stream()
-                    .map(record -> new NameAndId(record.getName(), record.getId()))
-                    .collect(Collectors.toList()))
-        .orElse(null);
-  }
-
   public PolarisEntity(@Nonnull PolarisBaseEntity sourceEntity) {
     super(
         sourceEntity.getCatalogId(),
@@ -221,11 +169,6 @@ public class PolarisEntity extends PolarisBaseEntity {
   @Override
   public PolarisEntitySubType getSubType() {
     return PolarisEntitySubType.fromCode(getSubTypeCode());
-  }
-
-  @JsonIgnore
-  public NameAndId nameAndId() {
-    return new NameAndId(name, id);
   }
 
   @Override
