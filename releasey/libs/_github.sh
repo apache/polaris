@@ -70,6 +70,32 @@ function add_apache_remote() {
   fi
 }
 
+function get_github_repo_info() {
+  # Extract GitHub repository owner and name from the origin remote URL
+  # Returns the info in format "owner/repo", or exits with error if not a GitHub repo
+  local origin_url
+  origin_url=$(get_remote_url "origin" 2>/dev/null) || {
+    print_error "Failed to get origin remote URL"
+    return 1
+  }
+
+  # Parse GitHub URL patterns:
+  # - https://github.com/owner/repo.git
+  # - git@github.com:owner/repo.git
+  # - https://github.com/owner/repo (without .git)
+  local repo_info
+  if [[ "$origin_url" =~ ^https://github\.com/([^/]+)/([^/]+)(\.git)?/?$ ]]; then
+    repo_info="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+  elif [[ "$origin_url" =~ ^git@github\.com:([^/]+)/([^/]+)(\.git)?/?$ ]]; then
+    repo_info="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+  else
+    print_error "Origin remote URL is not a GitHub repository: ${origin_url}"
+    return 1
+  fi
+
+  echo "$repo_info"
+}
+
 function check_github_token() {
   # Check if GitHub token is available, return 0 if available, 1 if not
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
@@ -87,8 +113,15 @@ function check_github_checks_passed() {
 
   print_info "Checking that all Github checks have passed for commit ${commit_sha}..."
 
+  # Get repository information from the current Git repository
+  local repo_info
+  repo_info=$(get_github_repo_info) || {
+    print_error "Failed to determine GitHub repository information"
+    return 1
+  }
+
   local num_invalid_checks
-  local num_invalid_checks_retrieval_command="curl -s -H \"Authorization: Bearer ${GITHUB_TOKEN}\" -H \"Accept: application/vnd.github+json\" -H \"X-GitHub-Api-Version: 2022-11-28\" https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/commits/${commit_sha}/check-runs | jq -r '[.check_runs[].conclusion | select(. != \"success\" and . != \"skipped\")] | length'"
+  local num_invalid_checks_retrieval_command="curl -s -H \"Authorization: Bearer ${GITHUB_TOKEN}\" -H \"Accept: application/vnd.github+json\" -H \"X-GitHub-Api-Version: 2022-11-28\" https://api.github.com/repos/${repo_info}/commits/${commit_sha}/check-runs | jq -r '[.check_runs[].conclusion | select(. != \"success\" and . != \"skipped\")] | length'"
   if [ ${DRY_RUN} -eq 1 ]; then
     print_info "DRY_RUN is enabled, skipping GitHub check verification"
     print_command "${num_invalid_checks_retrieval_command}"
