@@ -1728,7 +1728,7 @@ public class PolarisManagementServiceIntegrationTest {
             .managementApi(catalogAdminToken)
             .request(
                 "v1/principal-roles/"
-                    + principalRoleName
+                    + principalRoleName2
                     + "/catalog-roles/"
                     + catalogName
                     + "/"
@@ -1743,7 +1743,7 @@ public class PolarisManagementServiceIntegrationTest {
         managementApi
             .request(
                 "v1/principal-roles/"
-                    + principalRoleName
+                    + principalRoleName2
                     + "/catalog-roles/"
                     + catalogName
                     + "/"
