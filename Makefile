@@ -147,10 +147,10 @@ client-unit-test: client-setup-env ## Run client unit tests
 client-integration-test: client-setup-env ## Run client integration tests
 	@echo "--- Starting client integration tests ---"
 	@echo "Ensuring Docker Compose services are stopped and removed..."
-	@$(CONTAINER_TOOL) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml kill || true # `|| true` prevents make from failing if containers don't exist
-	@$(CONTAINER_TOOL) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml rm -f || true # `|| true` prevents make from failing if containers don't exist
+	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml kill || true # `|| true` prevents make from failing if containers don't exist
+	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml rm -f || true # `|| true` prevents make from failing if containers don't exist
 	@echo "Bringing up Docker Compose services in detached mode..."
-	@$(CONTAINER_TOOL) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml up -d
+	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml up -d
 	@echo "Waiting for Polaris HTTP health check to pass..."
 	@until curl -s -f http://localhost:8182/q/health > /dev/null; do \
 		echo "Still waiting for HTTP 200 from /q/health (sleeping 2s)..."; \
@@ -160,7 +160,7 @@ client-integration-test: client-setup-env ## Run client integration tests
 	@$(ACTIVATE_AND_CD) && poetry run pytest integration_tests/
 	@echo "--- Client integration tests complete ---"
 	@echo "Tearing down Docker Compose services..."
-	@$(CONTAINER_TOOL) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
+	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
 
 .PHONY: client-cleanup
 client-cleanup: ## Cleanup virtual environment and Python cache files
