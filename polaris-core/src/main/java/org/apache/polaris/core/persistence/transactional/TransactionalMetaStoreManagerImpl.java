@@ -724,6 +724,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             resolver.getParentId(),
             entityType,
             filter,
+            EntityNameLookupRecord::fromEntity,
             pageToken);
 
     // done

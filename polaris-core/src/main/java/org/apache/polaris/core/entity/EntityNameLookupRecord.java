@@ -89,14 +89,14 @@ public class EntityNameLookupRecord {
     this.subTypeCode = subTypeCode;
   }
 
-  /** Constructor to create the object with provided entity */
-  public EntityNameLookupRecord(PolarisBaseEntity entity) {
-    this.catalogId = entity.getCatalogId();
-    this.id = entity.getId();
-    this.parentId = entity.getParentId();
-    this.typeCode = entity.getTypeCode();
-    this.name = entity.getName();
-    this.subTypeCode = entity.getSubTypeCode();
+  public static EntityNameLookupRecord fromEntity(PolarisBaseEntity entity) {
+    return new EntityNameLookupRecord(
+        entity.getCatalogId(),
+        entity.getId(),
+        entity.getParentId(),
+        entity.getName(),
+        entity.getTypeCode(),
+        entity.getSubTypeCode());
   }
 
   @Override
@@ -119,7 +119,7 @@ public class EntityNameLookupRecord {
 
   @Override
   public String toString() {
-    return "PolarisEntitiesActiveRecord{"
+    return "EntityNameLookupRecord{"
         + "catalogId="
         + catalogId
         + ", id="

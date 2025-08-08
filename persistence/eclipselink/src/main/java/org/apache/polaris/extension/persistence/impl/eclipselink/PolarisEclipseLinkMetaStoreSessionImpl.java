@@ -19,7 +19,6 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.EntityManager;
@@ -422,44 +421,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     return entityActiveKeys.stream()
         .map(entityActiveKey -> this.lookupEntityActiveInCurrentTxn(callCtx, entityActiveKey))
         .collect(Collectors.toList());
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
-    return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
-  }
-
-  @Override
-  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
-    // full range scan under the parent for that type
-    return this.listEntitiesInCurrentTxn(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        entityFilter,
-        entity ->
-            new EntityNameLookupRecord(
-                entity.getCatalogId(),
-                entity.getId(),
-                entity.getParentId(),
-                entity.getName(),
-                entity.getTypeCode(),
-                entity.getSubTypeCode()),
-        pageToken);
   }
 
   @Override

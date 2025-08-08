@@ -241,7 +241,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
     if (baseEntity == null) {
       return null;
     }
-    return new EntityNameLookupRecord(baseEntity);
+    return EntityNameLookupRecord.fromEntity(baseEntity);
   }
 
   /**
@@ -267,45 +267,6 @@ public interface BasePersistence extends PolicyMappingPersistence {
   @Nonnull
   List<PolarisChangeTrackingVersions> lookupEntityVersions(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
-
-  /**
-   * List all entities of the specified type which are child entities of the specified parent
-   *
-   * @param callCtx call context
-   * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
-   * @param parentId id of the parent, can be the special 0 value representing the root entity
-   * @param entityType type of entities to list
-   * @param pageToken the token to start listing after
-   * @return the list of entities for the specified list operation
-   */
-  @Nonnull
-  Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken);
-
-  /**
-   * List entities where some predicate returns true
-   *
-   * @param callCtx call context
-   * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
-   * @param parentId id of the parent, can be the special 0 value representing the root entity
-   * @param entityType type of entities to list
-   * @param entityFilter the filter to be applied to each entity. Only entities where the predicate
-   *     returns true are returned in the list
-   * @param pageToken the token to start listing after
-   * @return the list of entities for which the predicate returns true
-   */
-  @Nonnull
-  Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken);
 
   /**
    * List entities where some predicate returns true and transform the entities with a function
