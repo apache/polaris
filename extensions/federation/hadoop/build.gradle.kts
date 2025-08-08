@@ -48,6 +48,10 @@ dependencies {
   implementation(libs.hadoop.client.api)
   implementation(libs.hadoop.client.runtime)
 
+  // CDI dependencies for runtime discovery
+  implementation(libs.jakarta.enterprise.cdi.api)
+  implementation(libs.smallrye.common.annotation)
+
   // Logging
   implementation(libs.slf4j.api)
 }

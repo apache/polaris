@@ -20,7 +20,9 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.time.OffsetDateTime;
@@ -74,6 +76,7 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.catalog.NonRESTCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
@@ -93,7 +96,6 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.extensions.federation.hadoop.HadoopFederatedCatalogFactory;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -128,6 +130,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
 
+  private final Instance<NonRESTCatalogFactory> nonRESTCatalogFactories;
+
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
   protected Catalog baseCatalog = null;
@@ -147,13 +151,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       String catalogName,
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties,
-      CatalogHandlerUtils catalogHandlerUtils) {
+      CatalogHandlerUtils catalogHandlerUtils,
+      Instance<NonRESTCatalogFactory> nonRESTCatalogFactories) {
     super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
+    this.nonRESTCatalogFactories = nonRESTCatalogFactories;
   }
 
   /**
@@ -230,9 +236,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
           break;
         case HADOOP:
-          federatedCatalog =
-              HadoopFederatedCatalogFactory.createHadoopCatalog(
-                  connectionConfigInfoDpo, getUserSecretsManager());
+          // Use CDI to select the Hadoop federation factory at runtime
+          Instance<NonRESTCatalogFactory> hadoopFactory =
+              nonRESTCatalogFactories.select(Identifier.Literal.of("hadoop"));
+          if (!hadoopFactory.isUnsatisfied()) {
+            federatedCatalog =
+                hadoopFactory.get().createCatalog(connectionConfigInfoDpo, getUserSecretsManager());
+          } else {
+            throw new UnsupportedOperationException("Hadoop federation factory unavailable.");
+          }
           break;
         default:
           throw new UnsupportedOperationException("Unsupported connection type: " + connectionType);

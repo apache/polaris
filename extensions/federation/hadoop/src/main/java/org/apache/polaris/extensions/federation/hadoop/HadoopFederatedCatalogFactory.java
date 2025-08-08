@@ -18,9 +18,12 @@
  */
 package org.apache.polaris.extensions.federation.hadoop;
 
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.hadoop.HadoopCatalog;
+import org.apache.polaris.core.catalog.NonRESTCatalogFactory;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -29,18 +32,14 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Factory class for creating federated hadoop catalogs based on connection configuration. */
-public class HadoopFederatedCatalogFactory {
+/** Factory class for creating a Hadoop catalog handle based on connection configuration. */
+@ApplicationScoped
+@Identifier("hadoop")
+public class HadoopFederatedCatalogFactory implements NonRESTCatalogFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(HadoopFederatedCatalogFactory.class);
 
-  /**
-   * Creates a federated catalog based on the provided connection configuration.
-   *
-   * @param connectionConfigInfoDpo The connection configuration
-   * @param userSecretsManager The user secrets manager for handling credentials
-   * @return The initialized hadoop catalog
-   */
-  public static Catalog createHadoopCatalog(
+  @Override
+  public Catalog createCatalog(
       ConnectionConfigInfoDpo connectionConfigInfoDpo, UserSecretsManager userSecretsManager) {
     // Currently, Polaris supports Hadoop federation only via IMPLICIT authentication.
     // Hence, prior to initializing the configuration, ensure that the catalog uses

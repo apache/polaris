@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.List;
@@ -55,6 +56,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.catalog.NonRESTCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -79,6 +81,14 @@ import org.mockito.Mockito;
 @TestProfile(PolarisAuthzTestBase.Profile.class)
 public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
+  @SuppressWarnings("unchecked")
+  private static Instance<NonRESTCatalogFactory> emptyNonRESTCatalogFactory() {
+    Instance<NonRESTCatalogFactory> mock = Mockito.mock(Instance.class);
+    Mockito.when(mock.select(Mockito.any())).thenReturn(mock);
+    Mockito.when(mock.isUnsatisfied()).thenReturn(true);
+    return mock;
+  }
+
   private IcebergCatalogHandler newWrapper() {
     return newWrapper(Set.of());
   }
@@ -101,7 +111,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         catalogName,
         polarisAuthorizer,
         reservedProperties,
-        catalogHandlerUtils);
+        catalogHandlerUtils,
+        emptyNonRESTCatalogFactory());
   }
 
   /**
@@ -242,7 +253,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             CATALOG_NAME,
             polarisAuthorizer,
             reservedProperties,
-            catalogHandlerUtils);
+            catalogHandlerUtils,
+            emptyNonRESTCatalogFactory());
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -277,7 +289,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             CATALOG_NAME,
             polarisAuthorizer,
             reservedProperties,
-            catalogHandlerUtils);
+            catalogHandlerUtils,
+            emptyNonRESTCatalogFactory());
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),
