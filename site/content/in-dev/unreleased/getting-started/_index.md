@@ -58,7 +58,6 @@ curl -L https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-
 Extract the downloaded tar.gz file to your desired directory:
 
 ```bash
-tar -xzvf apache-polaris-<version>-bin.tar.gz
 cd apache-polaris-<version>
 ```
 
