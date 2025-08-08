@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import org.apache.polaris.core.context.RealmContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,18 +42,22 @@ class DefaultRealmContextResolverTest {
     when(config.defaultRealm()).thenCallRealMethod();
   }
 
+  static Function<String, String> realmHeader(String realmId) {
+    return (key) -> "Polaris-Header".equalsIgnoreCase(key) ? realmId : null;
+  }
+
   @Test
   void headerPresentSuccess() {
     DefaultRealmContextResolver resolver = new DefaultRealmContextResolver(config);
     RealmContext RealmContext1 =
         resolver
-            .resolveRealmContext("requestURL", "method", "path", Map.of("Polaris-Header", "realm1"))
+            .resolveRealmContext("requestURL", "method", "path", realmHeader("realm1"))
             .toCompletableFuture()
             .join();
     assertThat(RealmContext1.getRealmIdentifier()).isEqualTo("realm1");
     RealmContext RealmContext2 =
         resolver
-            .resolveRealmContext("requestURL", "method", "path", Map.of("Polaris-Header", "realm2"))
+            .resolveRealmContext("requestURL", "method", "path", realmHeader("realm2"))
             .toCompletableFuture()
             .join();
     assertThat(RealmContext2.getRealmIdentifier()).isEqualTo("realm2");
@@ -64,11 +69,9 @@ class DefaultRealmContextResolverTest {
     assertThatThrownBy(
             () ->
                 resolver
-                    .resolveRealmContext(
-                        "requestURL", "method", "path", Map.of("Polaris-Header", "realm3"))
+                    .resolveRealmContext("requestURL", "method", "path", realmHeader("realm3"))
                     .toCompletableFuture()
                     .join())
-        .rootCause()
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unknown realm: realm3");
   }
@@ -79,7 +82,7 @@ class DefaultRealmContextResolverTest {
     DefaultRealmContextResolver resolver = new DefaultRealmContextResolver(config);
     RealmContext RealmContext1 =
         resolver
-            .resolveRealmContext("requestURL", "method", "path", Map.of())
+            .resolveRealmContext("requestURL", "method", "path", k -> null)
             .toCompletableFuture()
             .join();
     assertThat(RealmContext1.getRealmIdentifier()).isEqualTo("realm1");
@@ -92,14 +95,15 @@ class DefaultRealmContextResolverTest {
     assertThatThrownBy(
             () ->
                 resolver
-                    .resolveRealmContext("requestURL", "method", "path", Map.of())
+                    .resolveRealmContext("requestURL", "method", "path", k -> null)
                     .toCompletableFuture()
                     .join())
-        .rootCause()
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Missing required realm header: Polaris-Header");
   }
 
+  @SuppressWarnings("removal")
+  @Deprecated(forRemoval = true)
   @Test
   void headerCaseInsensitive() {
     DefaultRealmContextResolver resolver = new DefaultRealmContextResolver(config);
