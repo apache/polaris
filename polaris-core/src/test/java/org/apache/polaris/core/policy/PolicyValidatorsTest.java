@@ -23,9 +23,14 @@ import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_VIEW;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -38,6 +43,7 @@ public class PolicyValidatorsTest {
   Namespace ns = Namespace.of("NS1");
   TableIdentifier tableIdentifier = TableIdentifier.of(ns, "table1");
   PolicyEntity policyEntity = new PolicyEntity.Builder(ns, "pn", DATA_COMPACTION).build();
+  CallContext callContext = mock(CallContext.class);
 
   @Test
   public void testInvalidPolicy() {
@@ -92,14 +98,14 @@ public class PolicyValidatorsTest {
   @Test
   public void testCanAttachReturnsTrueForCatalogType() {
     var targetEntity = new CatalogEntity.Builder().build();
-    var result = PolicyValidators.canAttach(policyEntity, targetEntity);
+    var result = PolicyValidators.canAttach(callContext, policyEntity, targetEntity);
     assertThat(result).isTrue().as("Expected canAttach() to return true for CATALOG type");
   }
 
   @Test
   public void testCanAttachReturnsTrueForNamespaceType() {
     var targetEntity = new NamespaceEntity.Builder(ns).build();
-    var result = PolicyValidators.canAttach(policyEntity, targetEntity);
+    var result = PolicyValidators.canAttach(callContext, policyEntity, targetEntity);
     assertThat(result).isTrue().as("Expected canAttach() to return true for CATALOG type");
   }
 
@@ -107,7 +113,7 @@ public class PolicyValidatorsTest {
   public void testCanAttachReturnsTrueForIcebergTableLikeWithTableSubtype() {
     var targetEntity =
         new IcebergTableLikeEntity.Builder(tableIdentifier, "").setSubType(ICEBERG_TABLE).build();
-    var result = PolicyValidators.canAttach(policyEntity, targetEntity);
+    var result = PolicyValidators.canAttach(callContext, policyEntity, targetEntity);
     assertThat(result)
         .isTrue()
         .as("Expected canAttach() to return true for ICEBERG_TABLE_LIKE with TABLE subtype");
@@ -117,7 +123,7 @@ public class PolicyValidatorsTest {
   public void testCanAttachReturnsFalseForIcebergTableLikeWithNonTableSubtype() {
     var targetEntity =
         new IcebergTableLikeEntity.Builder(tableIdentifier, "").setSubType(ICEBERG_VIEW).build();
-    var result = PolicyValidators.canAttach(policyEntity, targetEntity);
+    var result = PolicyValidators.canAttach(callContext, policyEntity, targetEntity);
     assertThat(result)
         .isFalse()
         .as("Expected canAttach() to return false for ICEBERG_TABLE_LIKE with non-TABLE subtype");
@@ -126,7 +132,36 @@ public class PolicyValidatorsTest {
   @Test
   public void testCanAttachReturnsFalseForUnattachableType() {
     var targetEntity = new PrincipalEntity.Builder().build();
-    var result = PolicyValidators.canAttach(policyEntity, targetEntity);
+    var result = PolicyValidators.canAttach(callContext, policyEntity, targetEntity);
     assertThat(result).isFalse().as("Expected canAttach() to return false for null");
+  }
+
+  @Test
+  public void testCanAttachAccessControlPolicy() {
+    // Arrange
+    Namespace ns = Namespace.of("NS1");
+    TableIdentifier tableId = TableIdentifier.of(ns, "table1");
+    PolicyEntity policy =
+        new PolicyEntity.Builder(ns, "acp", PredefinedPolicyTypes.ACCESS_CONTROL)
+            .setContent("{\"columnProjections\":[\"col1\"],\"rowFilters\":[]}")
+            .build();
+
+    // Mock CallContext and RealmConfiguration
+    var realmConfig = mock(RealmConfig.class);
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
+    when(realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_ATTACHING_FINE_GRAINED_POLICIES_TO_ENTITIES))
+        .thenReturn(true);
+
+    // Use a valid table entity
+    var tableEntity =
+        new IcebergTableLikeEntity.Builder(tableId, "")
+            .setSubType(org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE)
+            .build();
+    boolean canAttach =
+        org.apache.polaris.core.policy.validator.PolicyValidators.canAttach(
+            callContext, policy, tableEntity);
+
+    assertThat(canAttach).isTrue();
   }
 }

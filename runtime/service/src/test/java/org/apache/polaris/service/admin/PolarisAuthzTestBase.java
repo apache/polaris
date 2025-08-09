@@ -450,7 +450,8 @@ public abstract class PolarisAuthzTestBase {
     this.genericTableCatalog =
         new PolarisGenericTableCatalog(metaStoreManager, callContext, passthroughView);
     this.genericTableCatalog.initialize(CATALOG_NAME, ImmutableMap.of());
-    this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
+    this.policyCatalog =
+        new PolicyCatalog(metaStoreManager, securityContext, callContext, passthroughView);
   }
 
   @Alternative
