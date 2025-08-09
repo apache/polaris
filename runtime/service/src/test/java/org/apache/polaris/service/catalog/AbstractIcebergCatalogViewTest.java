@@ -90,7 +90,6 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
           .putAll(super.getConfigOverrides())
           .put("polaris.features.\"ALLOW_WILDCARD_LOCATION\"", "true")
           .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true")
-          .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
           .build();
     }
   }
