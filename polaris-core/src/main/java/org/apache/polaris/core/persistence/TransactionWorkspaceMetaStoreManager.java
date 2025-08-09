@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.LocationBasedEntity;
@@ -53,6 +55,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -119,13 +122,26 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public ListEntitiesResult listEntities(
+  public @Nonnull ListEntitiesResult listEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "listEntities");
+    return null;
+  }
+
+  @Override
+  public @Nonnull <T> Page<T> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
+    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "loadEntities");
     return null;
   }
 

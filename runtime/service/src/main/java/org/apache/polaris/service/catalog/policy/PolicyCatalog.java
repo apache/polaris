@@ -50,7 +50,6 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -162,34 +161,15 @@ public class PolicyCatalog {
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    List<PolicyEntity> policyEntities =
-        metaStoreManager
-            .listEntities(
-                callContext.getPolarisCallContext(),
-                PolarisEntity.toCoreList(catalogPath),
-                PolarisEntityType.POLICY,
-                PolarisEntitySubType.NULL_SUBTYPE,
-                PageToken.readEverything())
-            .getEntities()
-            .stream()
-            .map(
-                polarisEntityActiveRecord ->
-                    PolicyEntity.of(
-                        metaStoreManager
-                            .loadEntity(
-                                callContext.getPolarisCallContext(),
-                                polarisEntityActiveRecord.getCatalogId(),
-                                polarisEntityActiveRecord.getId(),
-                                polarisEntityActiveRecord.getType())
-                            .getEntity()))
-            .filter(
-                policyEntity -> policyType == null || policyEntity.getPolicyType() == policyType)
-            .toList();
-
-    List<PolarisEntity.NameAndId> entities =
-        policyEntities.stream().map(PolarisEntity::nameAndId).toList();
-
-    return entities.stream()
+    return metaStoreManager
+        .loadEntitiesAll(
+            callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            PolarisEntityType.POLICY,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolicyEntity::of)
+        .stream()
+        .filter(policyEntity -> policyType == null || policyEntity.getPolicyType() == policyType)
         .map(
             entity ->
                 PolicyIdentifier.builder()

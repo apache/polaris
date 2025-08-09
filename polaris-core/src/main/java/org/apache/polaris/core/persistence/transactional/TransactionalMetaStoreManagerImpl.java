@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -699,7 +700,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             entitySubType,
             pageToken);
 
-    // done
     return ListEntitiesResult.fromPage(resultPage);
   }
 
@@ -718,6 +718,67 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     return ms.runInReadTransaction(
         callCtx,
         () -> listEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
+  }
+
+  /**
+   * See {@link PolarisMetaStoreManager#loadEntities(PolarisCallContext, List, PolarisEntityType,
+   * PolarisEntitySubType, Predicate, Function, PageToken)}
+   */
+  private @Nonnull <T> Page<T> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
+    // first resolve again the catalogPath to that entity
+    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
+
+    // throw if we failed to resolve
+    if (resolver.isFailure()) {
+      throw new IllegalArgumentException("Failed to resolve catalogPath: " + catalogPath);
+    }
+
+    // return list of active entities
+    return ms.loadEntitiesInCurrentTxn(
+        callCtx,
+        resolver.getCatalogIdOrNull(),
+        resolver.getParentId(),
+        entityType,
+        entitySubType,
+        entityFilter,
+        transformer,
+        pageToken);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull <T> Page<T> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
+    // get meta store we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // run operation in a read transaction
+    return ms.runInReadTransaction(
+        callCtx,
+        () ->
+            loadEntities(
+                callCtx,
+                ms,
+                catalogPath,
+                entityType,
+                entitySubType,
+                entityFilter,
+                transformer,
+                pageToken));
   }
 
   /** {@link #createPrincipal(PolarisCallContext, PolarisBaseEntity)} */
@@ -1335,7 +1396,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
-          ms.listEntitiesInCurrentTxn(
+          ms.loadEntitiesInCurrentTxn(
                   callCtx,
                   catalogId,
                   catalogId,
@@ -1901,7 +1962,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // find all available tasks
     Page<PolarisBaseEntity> availableTasks =
-        ms.listEntitiesInCurrentTxn(
+        ms.loadEntitiesInCurrentTxn(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
