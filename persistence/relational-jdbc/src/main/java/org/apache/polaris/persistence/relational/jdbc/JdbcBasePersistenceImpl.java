@@ -431,7 +431,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
     // TODO: only fetch the properties required for creating an EntityNameLookupRecord
-    return listEntities(
+    return loadEntities(
         callCtx,
         catalogId,
         parentId,
@@ -444,7 +444,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nonnull
   @Override
-  public <T> Page<T> listEntities(
+  public <T> Page<T> loadEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
