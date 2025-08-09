@@ -30,10 +30,7 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
-  if (
-    (project.findProperty("NonRESTCatalogs") as String?)
-      ?.contains("HADOOP") == true
-  ) {
+  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HADOOP") == true) {
     runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   }
 
