@@ -49,7 +49,7 @@ This example requires `jq` to be installed on your machine.
     ```
 
 4. Then, use the access token in the Authorization header when accessing Polaris; you can also test
-   the `Polairs-Request-Id` header; you should see it in all logs and traces:
+   the `Polaris-Request-Id` header; you should see it in all logs and traces:
 
     ```shell
     curl -v 'http://localhost:8181/api/management/v1/principal-roles' \

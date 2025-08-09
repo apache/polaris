@@ -273,6 +273,7 @@ This product includes code from Project Nessie.
 * build-logic/src/main/kotlin/Utilities.kt
 * build-logic/src/main/kotlin/polaris-shadow-jar.gradle.kts
 * build-logic/src/main/kotlin/polaris-runtime.gradle.kts
+* getting-started/assets/keycloak/iceberg-realm.json
 * tools/config-docs/annotations/src/main/java/org/apache/polaris/docs/ConfigDocs.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/DocGenDoclet.java
 * tools/config-docs/generator/src/main/java/org/apache/polaris/docs/generator/MarkdownFormatter.java

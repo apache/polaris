@@ -21,14 +21,21 @@ set -e
 
 apk add --no-cache jq
 
-token=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
-  --user ${CLIENT_ID}:${CLIENT_SECRET} \
-  -d grant_type=client_credentials \
-  -d scope=PRINCIPAL_ROLE:ALL | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+realm=${1:-"POLARIS"}
 
-if [ -z "${token}" ]; then
-  echo "Failed to obtain access token."
-  exit 1
+token=${2:-""}
+
+if [ -z "$token" ]; then
+  token=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
+    --user ${CLIENT_ID}:${CLIENT_SECRET} \
+    -H "Polaris-Realm: $realm" \
+    -d grant_type=client_credentials \
+    -d scope=PRINCIPAL_ROLE:ALL | jq -r .access_token)
+
+  if [ -z "${token}" ]; then
+    echo "Failed to obtain access token."
+    exit 1
+  fi
 fi
 
 echo
@@ -59,7 +66,7 @@ elif [[ "$STORAGE_TYPE" == "AZURE" ]]; then
 fi
 
 echo
-echo Creating a catalog named quickstart_catalog...
+echo Creating a catalog named quickstart_catalog in realm $realm...
 
 PAYLOAD='{
    "catalog": {
@@ -78,6 +85,7 @@ echo $PAYLOAD
 curl -s -H "Authorization: Bearer ${token}" \
    -H 'Accept: application/json' \
    -H 'Content-Type: application/json' \
+   -H "Polaris-Realm: $realm" \
    http://polaris:8181/api/management/v1/catalogs \
    -d "$PAYLOAD" -v
 
