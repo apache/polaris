@@ -38,8 +38,6 @@ Quickly start Apache Polaris by running the pre-built binary, no build needed.
 java -version
 ```
 
-- Basic familiarity with running commands in your operating system terminal.
-
 ---
 
 ## Step 1: Download the Apache Polaris Binary
@@ -58,10 +56,8 @@ curl -L https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-
 Extract the downloaded tar.gz file to your desired directory:
 
 ```bash
-cd apache-polaris-<version>
+cd apache-polaris-1.0.0-incubating-bin
 ```
-
-*Replace `<version>` with the actual version number.*
 
 ---
 
@@ -117,20 +113,11 @@ To stop the server, run:
 
 ## Additional Resources
 
-- See the official Apache Polaris documentation for details.
-- Use ./bin/polaris-admin in the binary for admin and maintenance tasks.
-
+- See the [official Apache Polaris documentation](https://polaris.apache.org/docs/) for comprehensive information on configuration, deployment, and usage.
+- Use `./bin/polaris-admin` in the binary distribution for administrative and maintenance tasks.
+  
 ---
 
-Get started with Apache Polaris binaries. See repo for containers and more.
-
----
-
-*Happy data cataloging with Apache Polaris!*
-
----
-
-**Want to build or run Polaris from source?**  
-See the [Quickstart guide](https://polaris.apache.org/in-dev/unreleased/getting-started/quickstart/) for developer instructions and advanced setup.
+Get started with Apache Polaris binaries. See the [repository](https://github.com/apache/polaris) for container images and more resources, or check out the [Quickstart guide](https://polaris.apache.org/in-dev/unreleased/getting-started/quickstart/) for developer instructions and advanced setup.
 
 ---
