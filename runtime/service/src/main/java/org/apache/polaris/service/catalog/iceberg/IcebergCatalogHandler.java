@@ -20,7 +20,9 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.time.OffsetDateTime;
@@ -33,7 +35,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.MetadataUpdate;
@@ -55,7 +56,6 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.hadoop.HadoopCatalog;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
@@ -76,12 +76,10 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.catalog.NonRESTCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.connection.AuthenticationParametersDpo;
-import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -132,6 +130,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
 
+  private final Instance<NonRESTCatalogFactory> nonRESTCatalogFactories;
+
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
   protected Catalog baseCatalog = null;
@@ -151,13 +151,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       String catalogName,
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties,
-      CatalogHandlerUtils catalogHandlerUtils) {
+      CatalogHandlerUtils catalogHandlerUtils,
+      Instance<NonRESTCatalogFactory> nonRESTCatalogFactories) {
     super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
+    this.nonRESTCatalogFactories = nonRESTCatalogFactories;
   }
 
   /**
@@ -219,7 +221,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Catalog federatedCatalog;
       ConnectionType connectionType =
           ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
-
       switch (connectionType) {
         case ICEBERG_REST:
           SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
@@ -235,27 +236,18 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
           break;
         case HADOOP:
-          // Currently, Polaris supports Hadoop federation only via IMPLICIT authentication.
-          // Hence, prior to initializing the configuration, ensure that the catalog uses
-          // IMPLICIT authentication.
-          AuthenticationParametersDpo authenticationParametersDpo =
-              connectionConfigInfoDpo.getAuthenticationParameters();
-          if (authenticationParametersDpo.getAuthenticationTypeCode()
-              != AuthenticationType.IMPLICIT.getCode()) {
-            throw new IllegalStateException(
-                "Hadoop federation only supports IMPLICIT authentication.");
+          // Use CDI to select the Hadoop federation factory at runtime
+          Instance<NonRESTCatalogFactory> hadoopFactory =
+              nonRESTCatalogFactories.select(Identifier.Literal.of("hadoop"));
+          if (!hadoopFactory.isUnsatisfied()) {
+            federatedCatalog =
+                hadoopFactory.get().createCatalog(connectionConfigInfoDpo, getUserSecretsManager());
+          } else {
+            throw new UnsupportedOperationException("Hadoop federation factory unavailable.");
           }
-          Configuration conf = new Configuration();
-          String warehouse =
-              ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
-          federatedCatalog = new HadoopCatalog(conf, warehouse);
-          federatedCatalog.initialize(
-              warehouse,
-              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
           break;
         default:
-          throw new UnsupportedOperationException(
-              "Connection type not supported: " + connectionType);
+          throw new UnsupportedOperationException("Unsupported connection type: " + connectionType);
       }
       this.baseCatalog = federatedCatalog;
     } else {
