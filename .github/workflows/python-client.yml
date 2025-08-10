@@ -73,3 +73,7 @@ jobs:
       - name: Integration Tests
         run: |
           make client-integration-test
+
+      - name: Run Polaris Client help maual
+        run: |
+          ./polaris --help
