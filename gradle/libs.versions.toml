@@ -38,7 +38,7 @@ swagger = "1.6.16"
 # (aka mention of the dependency removed).
 #
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
-assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
+assertj-core = { module = "org.assertj:assertj-core", version = "3.27.4" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.32.14" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
@@ -77,7 +77,7 @@ micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.2" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.18.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.18.0" }
-opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.52.0" }
+opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.53.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.34.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
