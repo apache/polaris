@@ -52,5 +52,4 @@ git_push.sh
 setup.cfg
 tox.ini
 README.md
-
-
+pyproject.toml
