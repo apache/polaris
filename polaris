@@ -72,5 +72,12 @@ if [ -z "$VIRTUAL_ENV" ] || [ "$(realpath "$VIRTUAL_ENV")" != "$(realpath "${dir
   source "${dir}/polaris-venv/bin/activate"
 fi
 
+# If polaris is not found after activating the venv, it's likely the venv is old and needs a repair
+if ! command -v polaris &> /dev/null; then
+  echo "Polaris executable not found. Forcing a repair..." >&2
+  "${dir}/polaris" --repair
+  source "${dir}/polaris-venv/bin/activate"
+fi
+
 export SCRIPT_DIR="${dir}"
 exec polaris "$@"
