@@ -31,6 +31,7 @@ import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
@@ -359,27 +360,13 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
-    return runInReadTransaction(
-        callCtx,
-        () -> this.listEntitiesInCurrentTxn(callCtx, catalogId, parentId, entityType, pageToken));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  @Nonnull
-  public Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
     return runInReadTransaction(
         callCtx,
         () ->
             this.listEntitiesInCurrentTxn(
-                callCtx, catalogId, parentId, entityType, entityFilter, pageToken));
+                callCtx, catalogId, parentId, entityType, entitySubType, pageToken));
   }
 
   /** {@inheritDoc} */
@@ -390,6 +377,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
@@ -397,7 +385,14 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
         callCtx,
         () ->
             this.listEntitiesInCurrentTxn(
-                callCtx, catalogId, parentId, entityType, entityFilter, transformer, pageToken));
+                callCtx,
+                catalogId,
+                parentId,
+                entityType,
+                entitySubType,
+                entityFilter,
+                transformer,
+                pageToken));
   }
 
   /** {@inheritDoc} */

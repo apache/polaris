@@ -31,7 +31,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -709,14 +708,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             ? 0L
             : catalogPath.get(catalogPath.size() - 1).getId();
 
-    // prune the returned list with only entities matching the entity subtype
-    Predicate<PolarisBaseEntity> filter =
-        entitySubType != PolarisEntitySubType.ANY_SUBTYPE
-            ? e -> e.getSubTypeCode() == entitySubType.getCode()
-            : entity -> true;
-
     Page<EntityNameLookupRecord> resultPage =
-        ms.listEntities(callCtx, catalogId, parentId, entityType, filter, pageToken);
+        ms.listEntities(callCtx, catalogId, parentId, entityType, entitySubType, pageToken);
 
     // TODO: Use post-validation to enforce consistent view against catalogPath. In the
     // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency
@@ -1183,6 +1176,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                   catalogId,
                   catalogId,
                   PolarisEntityType.CATALOG_ROLE,
+                  PolarisEntitySubType.ANY_SUBTYPE,
                   entity -> true,
                   Function.identity(),
                   PageToken.fromLimit(2))
@@ -1504,6 +1498,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityType.TASK,
+            PolarisEntitySubType.ANY_SUBTYPE,
             entity -> {
               PolarisObjectMapperUtil.TaskExecutionState taskState =
                   PolarisObjectMapperUtil.parseTaskState(entity);
