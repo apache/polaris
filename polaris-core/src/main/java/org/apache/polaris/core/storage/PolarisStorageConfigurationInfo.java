@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.core.storage;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -42,6 +43,7 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,40 +63,28 @@ import org.slf4j.LoggerFactory;
   @JsonSubTypes.Type(value = GcpStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = FileStorageConfigurationInfo.class),
 })
+@JsonIgnoreProperties(ignoreUnknown = true)
 public abstract class PolarisStorageConfigurationInfo {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisStorageConfigurationInfo.class);
 
-  // a list of allowed locations
-  private final List<String> allowedLocations;
-
-  // storage type
-  private final StorageType storageType;
-
-  public PolarisStorageConfigurationInfo(
-      @JsonProperty(value = "storageType", required = true) @Nonnull StorageType storageType,
-      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
-          List<String> allowedLocations) {
-    this(storageType, allowedLocations, true);
-  }
-
-  protected PolarisStorageConfigurationInfo(
-      StorageType storageType, List<String> allowedLocations, boolean validatePrefix) {
-    this.allowedLocations = allowedLocations;
-    this.storageType = storageType;
-    if (validatePrefix) {
-      allowedLocations.forEach(this::validatePrefixForStorageType);
+  @Value.Check
+  protected void check() {
+    if (validatePrefix()) {
+      getAllowedLocations().forEach(this::validatePrefixForStorageType);
     }
   }
 
-  public List<String> getAllowedLocations() {
-    return allowedLocations;
+  @JsonIgnore
+  @Value.Auxiliary
+  public boolean validatePrefix() {
+    return true;
   }
 
-  public StorageType getStorageType() {
-    return storageType;
-  }
+  public abstract List<String> getAllowedLocations();
+
+  public abstract StorageType getStorageType();
 
   private static final ObjectMapper DEFAULT_MAPPER;
 
@@ -198,11 +188,12 @@ public abstract class PolarisStorageConfigurationInfo {
 
   /** Validate if the provided allowed locations are valid for the storage type */
   protected void validatePrefixForStorageType(String loc) {
-    if (storageType.prefixes.stream().noneMatch(p -> loc.toLowerCase(Locale.ROOT).startsWith(p))) {
+    if (getStorageType().prefixes.stream()
+        .noneMatch(p -> loc.toLowerCase(Locale.ROOT).startsWith(p))) {
       throw new IllegalArgumentException(
           String.format(
               "Location prefix not allowed: '%s', expected prefixes: '%s'",
-              loc, String.join(",", storageType.prefixes)));
+              loc, String.join(",", getStorageType().prefixes)));
     }
   }
 

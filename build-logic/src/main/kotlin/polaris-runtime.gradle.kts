@@ -24,7 +24,18 @@ testing {
   suites {
     withType<JvmTestSuite> {
       targets.all {
-        if (testTask.name != "test") {
+        testTask.configure {
+          systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
+          // Enable automatic extension detection to execute GradleDuplicateLoggingWorkaround
+          // automatically.
+          // See https://github.com/quarkusio/quarkus/issues/22844
+          systemProperty("junit.jupiter.extensions.autodetection.enabled", "true")
+        }
+      }
+    }
+    fun intTestSuiteConfigure(testSuite: JvmTestSuite) =
+      testSuite.run {
+        targets.all {
           testTask.configure {
             // For Quarkus...
             //
@@ -34,26 +45,42 @@ testing {
             dependsOn(tasks.named("quarkusBuild"))
           }
         }
-      }
-    }
-    register<JvmTestSuite>("intTest") {
-      targets.all {
-        tasks.named("compileIntTestJava").configure {
-          dependsOn(tasks.named("compileQuarkusTestGeneratedSourcesJava"))
+        tasks.named(sources.compileJavaTaskName).configure {
+          dependsOn("compileQuarkusTestGeneratedSourcesJava")
         }
+        configurations.named(sources.runtimeOnlyConfigurationName).configure {
+          extendsFrom(configurations.getByName("testRuntimeOnly"))
+        }
+        configurations.named(sources.implementationConfigurationName).configure {
+          // Let the test's implementation config extend testImplementation, so it also inherits the
+          // project's "main" implementation dependencies (not just the "api" configuration)
+          extendsFrom(configurations.getByName("testImplementation"))
+        }
+        sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
       }
-      sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
+
+    listOf("intTest", "cloudTest").forEach {
+      register<JvmTestSuite>(it).configure { intTestSuiteConfigure(this) }
     }
   }
 }
 
-// Let the test's implementation config extend testImplementation, so it also inherits the
-// project's "main" implementation dependencies (not just the "api" configuration)
-configurations.named("intTestImplementation").configure {
-  extendsFrom(configurations.getByName("testImplementation"))
+dependencies {
+  // All Quarkus projects should use JBoss LogManager with SLF4J, instead of Logback
+  implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 }
 
-dependencies { add("intTestImplementation", java.sourceSets.getByName("test").output.dirs) }
+configurations.all {
+  // Validate that Logback dependencies are not used in Quarkus modules.
+  dependencies.configureEach {
+    if (group == "ch.qos.logback") {
+      throw GradleException(
+        "Logback dependencies are not allowed in Quarkus modules. " +
+          "Found $group:$name in ${project.name}."
+      )
+    }
+  }
+}
 
 configurations.named("intTestRuntimeOnly").configure {
   extendsFrom(configurations.getByName("testRuntimeOnly"))

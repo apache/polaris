@@ -51,8 +51,6 @@ Apache Polaris is organized into the following modules:
   - `polaris-api-management-model` - The Polaris management model
   - `polaris-api-management-service` - The Polaris management service
   - `polaris-api-iceberg-service` - The Iceberg REST service
-- Service modules:
-  - `polaris-service-common` - The main components of the Polaris server
 - Runtime modules:
   - `polaris-runtime-service` - The runtime components of the Polaris server
   - `polaris-runtime-defaults` - The runtime configuration defaults
@@ -89,6 +87,7 @@ To streamline the developer experience, especially for common setup and build ta
   - Managing development clusters: e.g., `make minikube-start-cluster, make minikube-cleanup`
   - Automating Helm tasks: e.g., `make helm-doc-generate, make helm-unittest`
   - Handling dependencies: e.g., `make install-dependencies-brew`
+  - Managing client operations: e.g., `make client-lint, make client-regenerate`
 
 To see available commands:
 ```bash

@@ -46,7 +46,7 @@ This ensures that each realm's data is stored separately.
 
 **RealmContext:**  It is a key concept used to identify and resolve the context in which operations are performed. For example `DefaultRealmContextResolver`, a realm is resolved from request headers, and operations are performed based on the resolved realm identifier.
 
-**Authentication and Authorization:** For example, in `BasePolarisAuthenticator`, `RealmContext` is used to provide context about the current security domain, which is used to retrieve the correct `PolarisMetastoreManager` that manages all Polaris entities and associated grant records metadata for
+**Authentication and Authorization:** For example, in `DefaultAuthenticator`, `RealmContext` is used to provide context about the current security domain, which is used to retrieve the correct `PolarisMetastoreManager` that manages all Polaris entities and associated grant records metadata for
 authorization.
 
 **Isolation:** In methods like `createEntityManagerFactory(@Nonnull RealmContext realmContext)` from `PolarisEclipseLinkPersistenceUnit` interface, the realm context influence how resources are created or managed based on the security policies of that realm.
