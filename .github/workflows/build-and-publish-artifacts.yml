@@ -1,0 +1,207 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: Build and Publish Release Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (check to enable, uncheck to perform actual operations)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  build-and-publish-artifacts:
+    name: Build and Publish Artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set DRY_RUN environment variable
+        run: |
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+            echo "DRY_RUN mode enabled - no actual changes will be made"
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+            echo "DRY_RUN mode disabled - actual changes will be made"
+          fi
+
+      - name: Validate release candidate tag
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_version.sh"
+
+          print_info "Determining version from current git tag..."
+
+          if ! git_tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
+            print_error "Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first."
+            exit 1
+          fi
+          print_info "Found git tag: ${git_tag}"
+
+          # Validate git tag format and extract version components
+          if ! validate_and_extract_git_tag_version "${git_tag}"; then
+            print_error "Invalid git tag format: ${git_tag}"
+            print_error "Expected format: apache-polaris-x.y.z-incubating-rcN"
+            exit 1
+          fi
+
+          print_info "Validated release candidate tag: ${git_tag}"
+          print_info "Version: ${version_without_rc}"
+          print_info "RC number: ${rc_number}"
+
+          # Export variables for next steps
+          echo "git_tag=${git_tag}" >> $GITHUB_ENV
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
+          echo "rc_number=${rc_number}" >> $GITHUB_ENV
+
+      - name: Set up Java
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Import GPG key
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          gpg-connect-agent reloadagent /bye
+
+          # Test that GPG can sign (this will cache the passphrase)
+          echo "test" | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" --pinentry-mode loopback --armor --detach-sign
+
+          mkdir -p ~/.gradle
+          echo "signing.gnupg.keyName=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | sed 's/.*\/\([A-F0-9]*\).*/\1/')" >> ~/.gradle/gradle.properties
+
+      - name: Build source and binary distributions
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Building source and binary distributions..."
+          exec_process ./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
+
+          print_success "Source and binary distributions built successfully"
+
+      - name: Stage artifacts to Apache dist dev repository
+        env:
+          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Staging artifacts to Apache dist dev repository..."
+
+          dist_dev_dir=${releasey_dir}/polaris-dist-dev
+          print_info "Checking out ${APACHE_DIST_URL}${APACHE_DIST_PATH} to ${dist_dev_dir}..."
+          exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
+
+          print_info "Copying files to destination directory..."
+          version_dir="${dist_dev_dir}/${version_without_rc}"
+          exec_process mkdir -p "${version_dir}"
+          exec_process cp build/distributions/* "${version_dir}/"
+          exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
+
+          print_info "Adding files to SVN..."
+          cd "${dist_dev_dir}"
+          exec_process svn add "${version_without_rc}"
+
+          print_info "Committing changes..."
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris ${version_without_rc} RC${rc_number}"
+
+          print_success "Artifacts staged to Apache dist dev repository successfully"
+
+      - name: Publish artifacts to Apache Nexus staging repository
+        env:
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Publishing artifacts to Apache Nexus staging repository..."
+          exec_process ./gradlew publishToApache -Prelease -PuseGpgAgent
+
+          print_success "Artifacts published to Apache staging repository successfully"
+
+      - name: Close Nexus staging repository
+        env:
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Closing Apache staging repository..."
+          exec_process ./gradlew closeApacheStagingRepository
+
+          print_success "Apache staging repository closed successfully"
+
+      - name: Summary
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+
+          echo
+          print_success "🎉 Release artifacts built and published successfully!"
+          echo
+          print_info "Completed tasks:"
+          print_info "✅ Built source and binary distributions"
+          print_info "✅ Created and signed Helm packages"
+          print_info "✅ Staged artifacts to Apache dist dev repository"
+          print_info "✅ Published Maven artifacts to Apache staging repository"
+          print_info "✅ Closed Apache staging repository"
