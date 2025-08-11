@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.MetadataUpdate;
@@ -76,6 +77,8 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
@@ -232,9 +235,22 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
           break;
         case HADOOP:
-          federatedCatalog = new HadoopCatalog();
+          // Currently, Polaris supports Hadoop federation only via IMPLICIT authentication.
+          // Hence, prior to initializing the configuration, ensure that the catalog uses
+          // IMPLICIT authentication.
+          AuthenticationParametersDpo authenticationParametersDpo =
+              connectionConfigInfoDpo.getAuthenticationParameters();
+          if (authenticationParametersDpo.getAuthenticationTypeCode()
+              != AuthenticationType.IMPLICIT.getCode()) {
+            throw new IllegalStateException(
+                "Hadoop federation only supports IMPLICIT authentication.");
+          }
+          Configuration conf = new Configuration();
+          String warehouse =
+              ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
+          federatedCatalog = new HadoopCatalog(conf, warehouse);
           federatedCatalog.initialize(
-              ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse(),
+              warehouse,
               connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
           break;
         default:
