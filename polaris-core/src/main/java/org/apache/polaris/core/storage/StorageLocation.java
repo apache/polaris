@@ -28,8 +28,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An abstraction over a storage location. This type may be used for a generic string-based location, but
- * child classes might be used where behavior specific to a storage provider is needed.
+ * An abstraction over a storage location. This type may be used for a generic string-based
+ * location, but child classes might be used where behavior specific to a storage provider is
+ * needed.
  */
 public class StorageLocation {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageLocation.class);
@@ -89,7 +90,8 @@ public class StorageLocation {
   /**
    * Checks if two StorageLocations represent the same physical location.
    *
-   * <p>Child classes should override this behavior if a check other than basic string-matching should be done.
+   * <p>Child classes should override this behavior if a check other than basic string-matching
+   * should be done.
    */
   @Override
   public boolean equals(Object obj) {
@@ -109,8 +111,8 @@ public class StorageLocation {
    * Returns true if this StorageLocation's location string starts with the other StorageLocation's
    * location string.
    *
-   * <p>Child classes should override this behavior if a check other than basic string-matching should
-   * be done.
+   * <p>Child classes should override this behavior if a check other than basic string-matching
+   * should be done.
    */
   public boolean isChildOf(StorageLocation potentialParent) {
     if (this.location == null || potentialParent.location == null) {
