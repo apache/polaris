@@ -47,7 +47,6 @@ import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
@@ -56,8 +55,6 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.rest.HTTPClient;
-import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -76,11 +73,10 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.catalog.NonRESTCatalogFactory;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -130,7 +126,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
 
-  private final Instance<NonRESTCatalogFactory> nonRESTCatalogFactories;
+  private final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -152,14 +148,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
-      Instance<NonRESTCatalogFactory> nonRESTCatalogFactories) {
+      Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
-    this.nonRESTCatalogFactories = nonRESTCatalogFactories;
+    this.externalCatalogFactories = externalCatalogFactories;
   }
 
   /**
@@ -221,33 +217,30 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Catalog federatedCatalog;
       ConnectionType connectionType =
           ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
+
+      // Use the unified factory pattern for all external catalog types
+      String factoryIdentifier;
       switch (connectionType) {
         case ICEBERG_REST:
-          SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
-          federatedCatalog =
-              new RESTCatalog(
-                  context,
-                  (config) ->
-                      HTTPClient.builder(config)
-                          .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
-                          .build());
-          federatedCatalog.initialize(
-              ((IcebergRestConnectionConfigInfoDpo) connectionConfigInfoDpo).getRemoteCatalogName(),
-              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
+          factoryIdentifier = "iceberg-rest";
           break;
         case HADOOP:
-          // Use CDI to select the Hadoop federation factory at runtime
-          Instance<NonRESTCatalogFactory> hadoopFactory =
-              nonRESTCatalogFactories.select(Identifier.Literal.of("hadoop"));
-          if (!hadoopFactory.isUnsatisfied()) {
-            federatedCatalog =
-                hadoopFactory.get().createCatalog(connectionConfigInfoDpo, getUserSecretsManager());
-          } else {
-            throw new UnsupportedOperationException("Hadoop federation factory unavailable.");
-          }
+          factoryIdentifier = "hadoop";
           break;
         default:
           throw new UnsupportedOperationException("Unsupported connection type: " + connectionType);
+      }
+
+      Instance<ExternalCatalogFactory> externalCatalogFactory =
+          externalCatalogFactories.select(Identifier.Literal.of(factoryIdentifier));
+      if (!externalCatalogFactory.isUnsatisfied()) {
+        federatedCatalog =
+            externalCatalogFactory
+                .get()
+                .createCatalog(connectionConfigInfoDpo, getUserSecretsManager());
+      } else {
+        throw new UnsupportedOperationException(
+            "External catalog factory for type '" + connectionType + "' is unavailable.");
       }
       this.baseCatalog = federatedCatalog;
     } else {

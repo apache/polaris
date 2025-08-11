@@ -37,7 +37,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.catalog.NonRESTCatalogFactory;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -217,9 +217,10 @@ public record TestServices(
       CatalogHandlerUtils catalogHandlerUtils =
           new CatalogHandlerUtils(callContext.getRealmConfig());
 
-      Instance<NonRESTCatalogFactory> nonRESTCatalogFactory = Mockito.mock(Instance.class);
-      Mockito.when(nonRESTCatalogFactory.select(Mockito.any())).thenReturn(nonRESTCatalogFactory);
-      Mockito.when(nonRESTCatalogFactory.isUnsatisfied()).thenReturn(true);
+      @SuppressWarnings("unchecked")
+      Instance<ExternalCatalogFactory> externalCatalogFactory = Mockito.mock(Instance.class);
+      Mockito.when(externalCatalogFactory.select(Mockito.any())).thenReturn(externalCatalogFactory);
+      Mockito.when(externalCatalogFactory.isUnsatisfied()).thenReturn(true);
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
@@ -234,7 +235,7 @@ public record TestServices(
               new DefaultCatalogPrefixParser(),
               reservedProperties,
               catalogHandlerUtils,
-              nonRESTCatalogFactory);
+              externalCatalogFactory);
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
       IcebergRestConfigurationApi restConfigurationApi =

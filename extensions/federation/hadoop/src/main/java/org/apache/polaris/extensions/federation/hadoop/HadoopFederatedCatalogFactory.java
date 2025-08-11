@@ -23,7 +23,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.hadoop.HadoopCatalog;
-import org.apache.polaris.core.catalog.NonRESTCatalogFactory;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 /** Factory class for creating a Hadoop catalog handle based on connection configuration. */
 @ApplicationScoped
 @Identifier("hadoop")
-public class HadoopFederatedCatalogFactory implements NonRESTCatalogFactory {
+public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(HadoopFederatedCatalogFactory.class);
 
   @Override

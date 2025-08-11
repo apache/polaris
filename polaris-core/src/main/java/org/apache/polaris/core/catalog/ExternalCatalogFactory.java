@@ -23,15 +23,15 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
- * Factory interface for creating non-REST catalog handles based on connection configuration.
+ * Factory interface for creating external catalog handles based on connection configuration.
  *
  * <p>Implementations should be annotated with CDI annotations and use the @Identifier annotation to
  * specify which connection type they support.
  */
-public interface NonRESTCatalogFactory {
+public interface ExternalCatalogFactory {
 
   /**
-   * Creates a catalog hadnle for the given non-REST connection configuration.
+   * Creates a catalog handle for the given connection configuration.
    *
    * @param connectionConfig the connection configuration
    * @param userSecretsManager the user secrets manager for handling credentials

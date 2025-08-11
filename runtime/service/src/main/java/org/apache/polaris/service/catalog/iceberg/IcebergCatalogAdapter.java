@@ -63,7 +63,7 @@ import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.catalog.NonRESTCatalogFactory;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -147,7 +147,7 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
-  private final Instance<NonRESTCatalogFactory> nonRESTCatalogFactories;
+  private final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -162,7 +162,7 @@ public class IcebergCatalogAdapter
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
-      @Any Instance<NonRESTCatalogFactory> nonRESTCatalogFactories) {
+      @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;
@@ -174,7 +174,7 @@ public class IcebergCatalogAdapter
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
-    this.nonRESTCatalogFactories = nonRESTCatalogFactories;
+    this.externalCatalogFactories = externalCatalogFactories;
   }
 
   /**
@@ -212,7 +212,7 @@ public class IcebergCatalogAdapter
         polarisAuthorizer,
         reservedProperties,
         catalogHandlerUtils,
-        nonRESTCatalogFactories);
+        externalCatalogFactories);
   }
 
   @Override

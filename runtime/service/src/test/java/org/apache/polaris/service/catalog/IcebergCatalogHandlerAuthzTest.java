@@ -56,7 +56,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.catalog.NonRESTCatalogFactory;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -82,8 +82,8 @@ import org.mockito.Mockito;
 public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @SuppressWarnings("unchecked")
-  private static Instance<NonRESTCatalogFactory> emptyNonRESTCatalogFactory() {
-    Instance<NonRESTCatalogFactory> mock = Mockito.mock(Instance.class);
+  private static Instance<ExternalCatalogFactory> emptyExternalCatalogFactory() {
+    Instance<ExternalCatalogFactory> mock = Mockito.mock(Instance.class);
     Mockito.when(mock.select(Mockito.any())).thenReturn(mock);
     Mockito.when(mock.isUnsatisfied()).thenReturn(true);
     return mock;
@@ -112,7 +112,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         polarisAuthorizer,
         reservedProperties,
         catalogHandlerUtils,
-        emptyNonRESTCatalogFactory());
+        emptyExternalCatalogFactory());
   }
 
   /**
@@ -254,7 +254,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             polarisAuthorizer,
             reservedProperties,
             catalogHandlerUtils,
-            emptyNonRESTCatalogFactory());
+            emptyExternalCatalogFactory());
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -290,7 +290,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             polarisAuthorizer,
             reservedProperties,
             catalogHandlerUtils,
-            emptyNonRESTCatalogFactory());
+            emptyExternalCatalogFactory());
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),
