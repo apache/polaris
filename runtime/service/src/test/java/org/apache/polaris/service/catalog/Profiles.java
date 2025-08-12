@@ -39,6 +39,8 @@ public final class Profiles {
           "test",
           "polaris.readiness.ignore-severe-issues",
           "true",
+          "polaris.features.\"FINE_GRAINED_ACCESS_CONTROL_POLICIES\"",
+          "true",
           "polaris.features.\"ALLOW_ATTACHING_FINE_GRAINED_POLICIES_TO_ENTITIES_ENABLED\"",
           "true");
     }

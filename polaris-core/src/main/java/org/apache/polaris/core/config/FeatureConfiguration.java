@@ -350,6 +350,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> FINE_GRAINED_ACCESS_CONTROL_POLICIES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("FINE_GRAINED_ACCESS_CONTROL_POLICIES")
+          .catalogConfig("polaris.config.fine-grained-access-control-policies.enabled")
+          .description(
+              "If set to true, fine grained access control policies can be created, updated, deleted.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean>
       ALLOW_ATTACHING_FINE_GRAINED_POLICIES_TO_ENTITIES =
           PolarisConfiguration.<Boolean>builder()

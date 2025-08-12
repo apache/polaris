@@ -42,6 +42,7 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -57,6 +58,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.apache.polaris.core.policy.AccessControlPolicyUtil;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
@@ -78,6 +80,7 @@ public class PolicyCatalog {
   private final CatalogEntity catalogEntity;
   private long catalogId = -1;
   private PolarisMetaStoreManager metaStoreManager;
+  private final boolean isFineGrainedAccessControlEnabled;
 
   public PolicyCatalog(
       PolarisMetaStoreManager metaStoreManager,
@@ -92,10 +95,19 @@ public class PolicyCatalog {
         CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
     this.catalogId = catalogEntity.getId();
     this.metaStoreManager = metaStoreManager;
+    this.isFineGrainedAccessControlEnabled =
+        callContext
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.FINE_GRAINED_ACCESS_CONTROL_POLICIES);
   }
 
   public Policy createPolicy(
       PolicyIdentifier policyIdentifier, String type, String description, String content) {
+    if (PredefinedPolicyTypes.fromName(type) == PredefinedPolicyTypes.ACCESS_CONTROL
+        && !isFineGrainedAccessControlEnabled) {
+      throw new IllegalStateException("Fine-grained access control policies are not enabled.");
+    }
+
     PolarisResolvedPathWrapper resolvedParent =
         resolvedEntityView.getResolvedPath(policyIdentifier.getNamespace());
     if (resolvedParent == null) {
@@ -193,6 +205,9 @@ public class PolicyCatalog {
                 policyEntity -> policyType == null || policyEntity.getPolicyType() == policyType)
             .toList();
 
+    // validate all policies before returning.
+    policyEntities.forEach(this::validate);
+
     List<PolarisEntity.NameAndId> entities =
         policyEntities.stream().map(PolarisEntity::nameAndId).toList();
 
@@ -219,6 +234,8 @@ public class PolicyCatalog {
       int currentPolicyVersion) {
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
     var policy = PolicyEntity.of(resolvedPolicyPath.getRawLeafEntity());
+
+    validate(policy);
 
     // Verify that the current version of the policy matches the version that the user is trying to
     // update
@@ -269,6 +286,10 @@ public class PolicyCatalog {
     var catalogPath = resolvedPolicyPath.getRawParentPath();
     var policyEntity = resolvedPolicyPath.getRawLeafEntity();
 
+    if (policyEntity instanceof PolicyEntity) {
+      validate((PolicyEntity) policyEntity);
+    }
+
     var result =
         metaStoreManager.dropEntityIfExists(
             callContext.getPolarisCallContext(),
@@ -299,6 +320,8 @@ public class PolicyCatalog {
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
     var policyCatalogPath = PolarisEntity.toCoreList(resolvedPolicyPath.getRawParentPath());
     var policyEntity = PolicyEntity.of(resolvedPolicyPath.getRawLeafEntity());
+
+    validate(policyEntity);
 
     var resolvedTargetPath = getResolvedPathWrapper(target);
     var targetCatalogPath = PolarisEntity.toCoreList(resolvedTargetPath.getRawParentPath());
@@ -335,6 +358,7 @@ public class PolicyCatalog {
     var resolvedPolicyPath = getResolvedPathWrapper(policyIdentifier);
     var policyCatalogPath = PolarisEntity.toCoreList(resolvedPolicyPath.getRawParentPath());
     var policyEntity = PolicyEntity.of(resolvedPolicyPath.getRawLeafEntity());
+    validate(policyEntity);
 
     var resolvedTargetPath = getResolvedPathWrapper(target);
     var targetCatalogPath = PolarisEntity.toCoreList(resolvedTargetPath.getRawParentPath());
@@ -526,7 +550,8 @@ public class PolicyCatalog {
     };
   }
 
-  private static Policy constructPolicy(PolicyEntity policyEntity) {
+  private Policy constructPolicy(PolicyEntity policyEntity) {
+    validate(policyEntity);
     return Policy.builder()
         .setPolicyType(policyEntity.getPolicyType().getName())
         .setInheritable(policyEntity.getPolicyType().isInheritable())
@@ -538,6 +563,7 @@ public class PolicyCatalog {
   }
 
   private ApplicablePolicy constructApplicablePolicy(PolicyEntity policyEntity, boolean inherited) {
+    validate(policyEntity);
     Namespace parentNamespace = policyEntity.getParentNamespace();
 
     return ApplicablePolicy.builder()
@@ -552,5 +578,12 @@ public class PolicyCatalog {
         .setInherited(inherited)
         .setNamespace(Arrays.asList(parentNamespace.levels()))
         .build();
+  }
+
+  private void validate(PolicyEntity policyEntity) {
+    if (policyEntity.getPolicyType() == PredefinedPolicyTypes.ACCESS_CONTROL
+        && !isFineGrainedAccessControlEnabled) {
+      throw new IllegalStateException("Fine-grained access control policies are not enabled.");
+    }
   }
 }

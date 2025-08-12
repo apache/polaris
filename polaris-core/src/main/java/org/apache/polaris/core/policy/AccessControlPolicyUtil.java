@@ -29,9 +29,14 @@ import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.expressions.UnboundPredicate;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.policy.content.AccessControlPolicyContent;
+import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 
 public class AccessControlPolicyUtil {
   private AccessControlPolicyUtil() {}
+
+  // context variables used in access control policies
+  public static final String CURRENT_PRINCIPAL_ROLE = "$current_principal_role";
+  public static final String CURRENT_PRINCIPAL = "$current_principal";
 
   public static String replaceContextVariable(
       String content, PolicyType policyType, AuthenticatedPolarisPrincipal authenticatedPrincipal) {
@@ -53,7 +58,8 @@ public class AccessControlPolicyUtil {
         policyContent.setRowFilters(evaluatedRowFilterExpressions);
         return AccessControlPolicyContent.toString(policyContent);
       } catch (Exception e) {
-        return content;
+        throw new InvalidPolicyException(
+            "Invalid access control policy content: " + e.getMessage(), e);
       }
     }
     return content;
@@ -88,9 +94,9 @@ public class AccessControlPolicyUtil {
     public <T> Expression predicate(UnboundPredicate<T> pred) {
       String refName = pred.ref().name();
 
-      if ("$current_principal_role".equals(refName)) {
+      if (CURRENT_PRINCIPAL_ROLE.equals(refName)) {
         return evaluateCurrentPrincipalRole(pred);
-      } else if ("$current_principal".equals(refName)) {
+      } else if (CURRENT_PRINCIPAL.equals(refName)) {
         return evaluateCurrentPrincipal(pred);
       }
 
