@@ -1073,8 +1073,6 @@ components:
                 Whether S3 requests to files in this catalog should use 'path-style addressing for buckets'.
               example: true
               default: false
-          required:
-            - roleArn
 
     AzureStorageConfigInfo:
       type: object
