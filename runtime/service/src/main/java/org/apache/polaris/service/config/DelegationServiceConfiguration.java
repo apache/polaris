@@ -68,7 +68,7 @@ public class DelegationServiceConfiguration {
    * @throws IllegalArgumentException if configuration is invalid
    */
   public void validate() {
-    if (enabled && baseUrl == null || baseUrl.trim().isEmpty()) {
+    if (enabled && (baseUrl == null || baseUrl.trim().isEmpty())) {
       throw new IllegalArgumentException("Delegation service baseUrl must be provided when enabled");
     }
 
