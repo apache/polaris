@@ -21,8 +21,8 @@
 
 ## Overview
 
-This example uses Keycloak as the identity provider for Polaris. The "iceberg" realm is automatically created and
-configured from the `iceberg-realm.json` file. 
+This example uses Keycloak as an **external** identity provider for Polaris. The "iceberg" realm is automatically
+created and configured from the `iceberg-realm.json` file.
 
 This Keycloak realm contains 1 client definition: `client1:s3cr3t`. It is configured to return tokens with the following
 fixed claims:
