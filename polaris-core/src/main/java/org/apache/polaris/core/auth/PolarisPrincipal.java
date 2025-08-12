@@ -68,7 +68,7 @@ public interface PolarisPrincipal extends Principal {
   /**
    * Returns the unique identifier of the principal.
    *
-   * <p>This identifier is used to uniquely identify the principal within the Polaris system.
+   * <p>This identifier is used to uniquely identify the principal within a Polaris realm.
    */
   long getId();
 
