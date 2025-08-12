@@ -37,6 +37,8 @@ import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 
 public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
+
+  // TODO: Ensure all events (except RateLimiter ones call `addToBuffer`)
   @Override
   public final void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {}
 
