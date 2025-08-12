@@ -34,7 +34,8 @@ dependencies {
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
 
-  implementation(libs.smallrye.common.annotation) // @Identifier
+  compileOnly(libs.smallrye.common.annotation) // @Identifier
+  compileOnly(libs.smallrye.config.core) // @ConfigMapping
 
   testImplementation(libs.mockito.junit.jupiter)
   testImplementation(libs.h2)

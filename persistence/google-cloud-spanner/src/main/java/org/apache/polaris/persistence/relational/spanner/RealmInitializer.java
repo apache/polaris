@@ -19,19 +19,7 @@
 
 package org.apache.polaris.persistence.relational.spanner;
 
-import io.smallrye.config.ConfigMapping;
-import java.util.Optional;
+import java.util.function.Consumer;
+import org.apache.polaris.core.context.RealmContext;
 
-@ConfigMapping(prefix = "polaris.persistence.spanner")
-public interface GoogleCloudSpannerConfiguration {
-
-  public Optional<String> quotaProjectId();
-
-  public Optional<String> projectId();
-
-  public Optional<String> instanceId();
-
-  public Optional<String> databaseId();
-
-  public Optional<String> emulatorHost();
-}
+public interface RealmInitializer extends Consumer<RealmContext> {}

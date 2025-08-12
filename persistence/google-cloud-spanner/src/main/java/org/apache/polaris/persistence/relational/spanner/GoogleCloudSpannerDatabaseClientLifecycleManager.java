@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.relational.spanner;
 
 import com.google.cloud.spanner.Database;
 import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Spanner;
@@ -30,7 +29,6 @@ import com.google.common.collect.ImmutableList;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
-import jakarta.inject.Inject;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,7 +37,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 import org.apache.polaris.persistence.relational.spanner.model.Realm;
@@ -53,7 +50,12 @@ public class GoogleCloudSpannerDatabaseClientLifecycleManager {
   private static Logger LOGGER =
       LoggerFactory.getLogger(GoogleCloudSpannerDatabaseClientLifecycleManager.class);
 
-  @Inject GoogleCloudSpannerConfiguration spannerConfiguration;
+  protected final GoogleCloudSpannerConfiguration spannerConfiguration;
+
+  public GoogleCloudSpannerDatabaseClientLifecycleManager(
+      GoogleCloudSpannerConfiguration spannerConfiguration) {
+    this.spannerConfiguration = spannerConfiguration;
+  }
 
   protected Spanner spanner;
   protected DatabaseId databaseId;
@@ -97,7 +99,7 @@ public class GoogleCloudSpannerDatabaseClientLifecycleManager {
   }
 
   @Produces
-  public Consumer<SchemaOptions> getSchemaInitializer() {
+  public SchemaInitializer getSchemaInitializer() {
     return (options) -> {
       List<String> ddlStatements = getSpannerDatabaseDdl(options);
       LOGGER.info(
@@ -132,12 +134,12 @@ public class GoogleCloudSpannerDatabaseClientLifecycleManager {
   }
 
   @Produces
-  public Supplier<DatabaseClient> getDatabaseClientSupplier() {
+  public DatabaseClientSupplier getDatabaseClientSupplier() {
     return () -> spanner.getDatabaseClient(databaseId);
   }
 
   @Produces
-  public Supplier<DatabaseAdminClient> getDatabaseAdminClientSupplier() {
+  public DatabaseAdminClientSupplier getDatabaseAdminClientSupplier() {
     return () -> spanner.getDatabaseAdminClient();
   }
 }

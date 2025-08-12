@@ -19,19 +19,7 @@
 
 package org.apache.polaris.persistence.relational.spanner;
 
-import io.smallrye.config.ConfigMapping;
-import java.util.Optional;
+import com.google.cloud.spanner.DatabaseClient;
+import java.util.function.Supplier;
 
-@ConfigMapping(prefix = "polaris.persistence.spanner")
-public interface GoogleCloudSpannerConfiguration {
-
-  public Optional<String> quotaProjectId();
-
-  public Optional<String> projectId();
-
-  public Optional<String> instanceId();
-
-  public Optional<String> databaseId();
-
-  public Optional<String> emulatorHost();
-}
+public interface DatabaseClientSupplier extends Supplier<DatabaseClient> {}

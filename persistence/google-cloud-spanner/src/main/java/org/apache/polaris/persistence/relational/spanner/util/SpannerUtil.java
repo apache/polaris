@@ -96,6 +96,11 @@ public final class SpannerUtil {
   }
 
   public static Optional<String> projectFromConfiguration(GoogleCloudSpannerConfiguration config) {
+    // If the quota project is set use that.
+    if (config.quotaProjectId().isPresent()) {
+      return config.quotaProjectId();
+    }
+
     if (config.databaseId().isPresent()) {
       String databaseId = config.databaseId().get();
       if (databaseId.startsWith("project")) {
