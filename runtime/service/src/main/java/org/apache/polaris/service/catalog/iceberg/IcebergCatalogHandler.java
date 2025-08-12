@@ -222,7 +222,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Instance<ExternalCatalogFactory> externalCatalogFactory =
           externalCatalogFactories.select(
               Identifier.Literal.of(connectionType.getFactoryIdentifier()));
-      if (!externalCatalogFactory.isUnsatisfied()) {
+      if (externalCatalogFactory.isResolvable()) {
         federatedCatalog =
             externalCatalogFactory
                 .get()
