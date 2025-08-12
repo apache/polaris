@@ -1766,7 +1766,7 @@ public class PolarisManagementServiceIntegrationTest {
                     + catalogRoleName)
             .delete()) {
       assertThat(response)
-          .returns(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), Response::getStatus);
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
       assertThat(response.hasEntity()).isTrue();
       ErrorResponse errorResponse = response.readEntity(ErrorResponse.class);
       assertThat(errorResponse.message()).contains("Operation failed: GRANT_NOT_FOUND");

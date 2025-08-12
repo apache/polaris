@@ -142,11 +142,11 @@ public class PolarisServiceImpl
     if (!result.isSuccess()) {
       ErrorResponse icebergErrorResponse =
           ErrorResponse.builder()
-              .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+              .responseCode(Response.Status.BAD_REQUEST.getStatusCode())
               .withType(result.getReturnStatus().toString())
               .withMessage("Operation failed: " + result.getReturnStatus().toString())
               .build();
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+      return Response.status(Response.Status.BAD_REQUEST)
           .type(MediaType.APPLICATION_JSON_TYPE)
           .entity(icebergErrorResponse)
           .build();
