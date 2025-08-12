@@ -49,6 +49,10 @@ dependencies {
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
 
+  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HADOOP") == true) {
+    runtimeOnly(project(":polaris-extensions-federation-hadoop"))
+  }
+
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
