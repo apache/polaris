@@ -222,10 +222,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       String factoryIdentifier;
       switch (connectionType) {
         case ICEBERG_REST:
-          factoryIdentifier = "iceberg-rest";
-          break;
         case HADOOP:
-          factoryIdentifier = "hadoop";
+          factoryIdentifier = connectionType.getFactoryIdentifier();
           break;
         default:
           throw new UnsupportedOperationException("Unsupported connection type: " + connectionType);

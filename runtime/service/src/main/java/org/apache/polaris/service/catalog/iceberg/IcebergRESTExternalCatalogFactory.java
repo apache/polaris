@@ -26,12 +26,13 @@ import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /** Factory class for creating an Iceberg REST catalog handle based on connection configuration. */
 @ApplicationScoped
-@Identifier("iceberg-rest")
+@Identifier(ConnectionType.ICEBERG_REST_FACTORY_IDENTIFIER)
 public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory {
 
   @Override

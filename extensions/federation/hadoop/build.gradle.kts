@@ -55,9 +55,3 @@ dependencies {
   // Logging
   implementation(libs.slf4j.api)
 }
-
-java { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } }
-
-tasks.withType<JavaCompile> { options.encoding = "UTF-8" }
-
-tasks.test { useJUnitPlatform() }

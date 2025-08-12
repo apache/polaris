@@ -27,6 +27,7 @@ import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.slf4j.Logger;
@@ -34,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 /** Factory class for creating a Hadoop catalog handle based on connection configuration. */
 @ApplicationScoped
-@Identifier("hadoop")
+@Identifier(ConnectionType.HADOOP_FACTORY_IDENTIFIER)
 public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(HadoopFederatedCatalogFactory.class);
 
