@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.delegation;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
@@ -28,7 +27,6 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -66,7 +64,7 @@ public class DelegationClientImpl implements DelegationClient {
     this.httpClient = httpClient;
     this.objectMapper = objectMapper;
     this.config = config;
-    
+
     try {
       config.validate();
     } catch (IllegalArgumentException e) {
@@ -128,12 +126,15 @@ public class DelegationClientImpl implements DelegationClient {
     }
 
     try {
-      HttpRequest request = HttpRequest.newBuilder()
-          .uri(URI.create(config.getBaseUrl() + "/health"))
-          .timeout(Duration.ofSeconds(5))
-          .GET().build();
-      
-      HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create(config.getBaseUrl() + "/health"))
+              .timeout(Duration.ofSeconds(5))
+              .GET()
+              .build();
+
+      HttpResponse<String> response =
+          httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       return response.statusCode() == 200;
     } catch (Exception e) {
       return false;

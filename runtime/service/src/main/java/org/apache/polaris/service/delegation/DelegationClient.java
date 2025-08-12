@@ -49,8 +49,8 @@ public interface DelegationClient {
   /**
    * Delegates table data file cleanup to the delegation service.
    *
-   * Note: This only handles data file deletion from storage. Metadata drop from the catalog
-   * is still handled by Polaris after successful delegation.
+   * <p>Note: This only handles data file deletion from storage. Metadata drop from the catalog is
+   * still handled by Polaris after successful delegation.
    *
    * @param catalogName the name of the catalog
    * @param tableIdentifier the identifier of the table to purge
