@@ -219,18 +219,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
 
       // Use the unified factory pattern for all external catalog types
-      String factoryIdentifier;
-      switch (connectionType) {
-        case ICEBERG_REST:
-        case HADOOP:
-          factoryIdentifier = connectionType.getFactoryIdentifier();
-          break;
-        default:
-          throw new UnsupportedOperationException("Unsupported connection type: " + connectionType);
-      }
-
       Instance<ExternalCatalogFactory> externalCatalogFactory =
-          externalCatalogFactories.select(Identifier.Literal.of(factoryIdentifier));
+          externalCatalogFactories.select(
+              Identifier.Literal.of(connectionType.getFactoryIdentifier()));
       if (!externalCatalogFactory.isUnsatisfied()) {
         federatedCatalog =
             externalCatalogFactory
