@@ -757,6 +757,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       boolean reset,
       String customClientId,
       String customClientSecret) {
-    return null;
+    throw new UnsupportedOperationException("This method is not supported for EclipseLink as metastore");
   }
 }

@@ -275,7 +275,7 @@ paths:
           pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
     post:
       operationId: resetCredentials
-      description: >
+      description: >-
         Reset a principal's credentials to a new set. By default, the system generates random credentials unless
         explicitly allowed to accept user-provided credentials via configuration.  
         This API is *not* idempotent and will return the newly created credentials.
