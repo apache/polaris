@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
@@ -37,6 +38,7 @@ import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
+import org.apache.polaris.core.admin.model.HadoopStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
@@ -48,6 +50,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.hadoop.HadoopStorageConfigurationInfo;
 
 /**
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
@@ -165,6 +168,14 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         FileStorageConfigurationInfo fileConfigModel = (FileStorageConfigurationInfo) configInfo;
         return new FileStorageConfigInfo(
             StorageConfigInfo.StorageTypeEnum.FILE, fileConfigModel.getAllowedLocations());
+      }
+      if (configInfo instanceof HadoopStorageConfigurationInfo) {
+        HadoopStorageConfigurationInfo hdfsConfigModel = (HadoopStorageConfigurationInfo) configInfo;
+        return HadoopStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.HDFS)
+            .setAllowedLocations(hdfsConfigModel.getAllowedLocations())
+            .setResources(hdfsConfigModel.getResources())
+            .build();
       }
       return null;
     }
@@ -302,6 +313,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           case FILE:
             config =
                 FileStorageConfigurationInfo.builder().allowedLocations(allowedLocations).build();
+            break;
+          case HDFS:
+            HadoopStorageConfigInfo hadoopConfigModel = (HadoopStorageConfigInfo) storageConfigModel;
+            config =
+                  HadoopStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .resources(hadoopConfigModel.getResources())
+                    .username(hadoopConfigModel.getUsername())
+                    .build();
             break;
           default:
             throw new IllegalStateException(

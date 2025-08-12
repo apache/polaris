@@ -27,7 +27,7 @@ from cli.constants import StorageType, CatalogType, CatalogConnectionType, Subco
 from cli.options.option_tree import Argument
 from polaris.management import PolarisDefaultApi, CreateCatalogRequest, UpdateCatalogRequest, \
     StorageConfigInfo, ExternalCatalog, AwsStorageConfigInfo, AzureStorageConfigInfo, GcpStorageConfigInfo, \
-    PolarisCatalog, CatalogProperties, BearerAuthenticationParameters, ImplicitAuthenticationParameters, \
+    HadoopStorageConfigInfo, PolarisCatalog, CatalogProperties, BearerAuthenticationParameters, ImplicitAuthenticationParameters, \
     OAuthClientCredentialsParameters, SigV4AuthenticationParameters, HadoopConnectionConfigInfo, \
     IcebergRestConnectionConfigInfo, AwsIamServiceIdentityInfo
 
@@ -82,6 +82,8 @@ class CatalogsCommand(Command):
     catalog_external_id: str
     catalog_signing_region: str
     catalog_signing_name: str
+    hadoop_resources: str = None
+    hadoop_username: str = None
 
     def validate(self):
         if self.catalogs_subcommand == Subcommands.CREATE:
@@ -158,9 +160,25 @@ class CatalogsCommand(Command):
                 self._has_aws_storage_info()
                 or self._has_azure_storage_info()
                 or self._has_gcs_storage_info()
+                or self._has_hdfs_storage_info()
             ):
                 raise Exception(
                     "Storage type 'file' does not support any storage credentials"
+                )
+        elif self.storage_type == StorageType.HDFS.value:
+            if not self.hadoop_resources:
+                raise Exception(
+                    f"Missing required argument for storage type 'hdfs':"
+                    f" {Argument.to_flag_name(Arguments.HADOOP_RESOURCES)}"
+                )
+            if (
+                self._has_aws_storage_info()
+                or self._has_azure_storage_info()
+                or self._has_gcs_storage_info()
+            ):
+                raise Exception(
+                    "Storage type 'hdfs' supports the storage credential"
+                    f" {Argument.to_flag_name(Arguments.HADOOP_RESOURCES)}"
                 )
 
     def _has_aws_storage_info(self):
@@ -171,6 +189,9 @@ class CatalogsCommand(Command):
 
     def _has_gcs_storage_info(self):
         return self.service_account
+
+    def _has_hdfs_storage_info(self):
+        return self.hadoop_resources or self.hadoop_username
 
     def _build_storage_config_info(self):
         config = None
@@ -204,6 +225,13 @@ class CatalogsCommand(Command):
             config = StorageConfigInfo(
                 storage_type=self.storage_type.upper(),
                 allowed_locations=self.allowed_locations,
+            )
+        elif self.storage_type == StorageType.HDFS.value:
+            config = HadoopStorageConfigInfo(
+                storage_type=self.storage_type.upper(),
+                allowed_locations=self.allowed_locations,
+                resources=self.hadoop_resources,
+                username=self.hadoop_username,
             )
         return config
 

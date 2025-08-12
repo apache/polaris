@@ -79,7 +79,7 @@ tasks.named<QuarkusRun>("quarkusRun") {
       "-Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t",
       "-Dquarkus.console.color=true",
       "-Dpolaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"=true",
-      "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",
+      "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\",\"HDFS\"]",
       "-Dpolaris.readiness.ignore-severe-issues=true",
     )
 }

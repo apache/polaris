@@ -44,6 +44,8 @@ import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.hadoop.HadoopCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.hadoop.HadoopStorageConfigurationInfo;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 @ApplicationScoped
@@ -104,6 +106,12 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             (PolarisStorageIntegration<T>)
                 new AzureCredentialsStorageIntegration(
                     (AzureStorageConfigurationInfo) polarisStorageConfigurationInfo);
+        break;
+      case HDFS:
+        storageIntegration =
+                (PolarisStorageIntegration<T>)
+                        new HadoopCredentialsStorageIntegration(
+                                (HadoopStorageConfigurationInfo) polarisStorageConfigurationInfo);
         break;
       case FILE:
         storageIntegration =

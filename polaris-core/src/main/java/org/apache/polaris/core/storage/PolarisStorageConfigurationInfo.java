@@ -47,6 +47,7 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.hadoop.HadoopStorageConfigurationInfo;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,7 @@ import org.slf4j.LoggerFactory;
   @JsonSubTypes.Type(value = AzureStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = GcpStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = FileStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = HadoopStorageConfigurationInfo.class),
 })
 @JsonIgnoreProperties(ignoreUnknown = true)
 public abstract class PolarisStorageConfigurationInfo {
@@ -218,6 +220,7 @@ public abstract class PolarisStorageConfigurationInfo {
     AZURE(List.of("abfs://", "wasb://", "abfss://", "wasbs://")),
     GCS("gs://"),
     FILE("file://"),
+    HDFS("hdfs://"),
     ;
 
     private final List<String> prefixes;

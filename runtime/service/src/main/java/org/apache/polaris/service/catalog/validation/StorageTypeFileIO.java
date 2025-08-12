@@ -32,6 +32,8 @@ enum StorageTypeFileIO {
 
   FILE("org.apache.iceberg.hadoop.HadoopFileIO", false),
 
+  HDFS("org.apache.iceberg.hadoop.HadoopFileIO", false),
+
   // Iceberg tests
   IN_MEMORY("org.apache.iceberg.inmemory.InMemoryFileIO", false, false),
   ;

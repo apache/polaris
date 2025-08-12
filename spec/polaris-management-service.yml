@@ -1010,12 +1010,13 @@ components:
             - GCS
             - AZURE
             - FILE
-          description: The cloud provider type this storage is built on. FILE is supported for testing purposes only
+            - HDFS
+          description: The provider type this storage is built on. FILE is supported for testing purposes only
         allowedLocations:
           type: array
           items:
             type: string
-          example: "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/]"
+          example: "For AWS [s3://bucketname/prefix/], for AZURE [abfss://container@storageaccount.blob.core.windows.net/prefix/], for GCP [gs://bucketname/prefix/], for HDFS [hdfs://nameservice/prefix/]"
       required:
         - storageType
       discriminator:
@@ -1025,6 +1026,7 @@ components:
           AZURE: "#/components/schemas/AzureStorageConfigInfo"
           GCS: "#/components/schemas/GcpStorageConfigInfo"
           FILE: "#/components/schemas/FileStorageConfigInfo"
+          HDFS: "#/components/schemas/HadoopStorageConfigInfo"
 
     AwsStorageConfigInfo:
       type: object
@@ -1140,6 +1142,19 @@ components:
           example: "arn:aws:iam::111122223333:user/polaris-service-user"
       required:
         - iamArn
+    HadoopStorageConfigInfo:
+      type: object
+      description: hadoop storage configuration info
+      allOf:
+        - $ref: '#/components/schemas/StorageConfigInfo'
+        - type: object
+          properties:
+            resources:
+              type: string
+              description: an optional comma-separated list of Hadoop configuration files
+            username:
+              type: string
+              description: an optional username for HDFS operations
 
     UpdateCatalogRequest:
       description: Updates to apply to a Catalog. Any fields which are required in the Catalog
@@ -1602,3 +1617,4 @@ components:
             $ref: "#/components/schemas/GrantResource"
       required:
         - grants
+
