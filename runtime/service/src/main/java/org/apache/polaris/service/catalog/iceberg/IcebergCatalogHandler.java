@@ -20,7 +20,9 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.time.OffsetDateTime;
@@ -46,7 +48,6 @@ import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
@@ -55,9 +56,6 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.hadoop.HadoopCatalog;
-import org.apache.iceberg.rest.HTTPClient;
-import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -76,13 +74,10 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.connection.AuthenticationParametersDpo;
-import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
-import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -132,6 +127,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
 
+  private final Instance<ExternalCatalogFactory> externalCatalogFactories;
+
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
   protected Catalog baseCatalog = null;
@@ -151,13 +148,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       String catalogName,
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties,
-      CatalogHandlerUtils catalogHandlerUtils) {
+      CatalogHandlerUtils catalogHandlerUtils,
+      Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer);
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
+    this.externalCatalogFactories = externalCatalogFactories;
   }
 
   /**
@@ -220,42 +219,18 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       ConnectionType connectionType =
           ConnectionType.fromCode(connectionConfigInfoDpo.getConnectionTypeCode());
 
-      switch (connectionType) {
-        case ICEBERG_REST:
-          SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
-          federatedCatalog =
-              new RESTCatalog(
-                  context,
-                  (config) ->
-                      HTTPClient.builder(config)
-                          .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
-                          .build());
-          federatedCatalog.initialize(
-              ((IcebergRestConnectionConfigInfoDpo) connectionConfigInfoDpo).getRemoteCatalogName(),
-              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
-          break;
-        case HADOOP:
-          // Currently, Polaris supports Hadoop federation only via IMPLICIT authentication.
-          // Hence, prior to initializing the configuration, ensure that the catalog uses
-          // IMPLICIT authentication.
-          AuthenticationParametersDpo authenticationParametersDpo =
-              connectionConfigInfoDpo.getAuthenticationParameters();
-          if (authenticationParametersDpo.getAuthenticationTypeCode()
-              != AuthenticationType.IMPLICIT.getCode()) {
-            throw new IllegalStateException(
-                "Hadoop federation only supports IMPLICIT authentication.");
-          }
-          Configuration conf = new Configuration();
-          String warehouse =
-              ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
-          federatedCatalog = new HadoopCatalog(conf, warehouse);
-          federatedCatalog.initialize(
-              warehouse,
-              connectionConfigInfoDpo.asIcebergCatalogProperties(getUserSecretsManager()));
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              "Connection type not supported: " + connectionType);
+      // Use the unified factory pattern for all external catalog types
+      Instance<ExternalCatalogFactory> externalCatalogFactory =
+          externalCatalogFactories.select(
+              Identifier.Literal.of(connectionType.getFactoryIdentifier()));
+      if (!externalCatalogFactory.isUnsatisfied()) {
+        federatedCatalog =
+            externalCatalogFactory
+                .get()
+                .createCatalog(connectionConfigInfoDpo, getUserSecretsManager());
+      } else {
+        throw new UnsupportedOperationException(
+            "External catalog factory for type '" + connectionType + "' is unavailable.");
       }
       this.baseCatalog = federatedCatalog;
     } else {
