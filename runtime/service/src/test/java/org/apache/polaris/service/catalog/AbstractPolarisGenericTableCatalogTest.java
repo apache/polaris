@@ -45,6 +45,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -110,6 +111,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
+  private RealmConfig realmConfig;
   private PolarisAdminService adminService;
   private FileIOFactory fileIOFactory;
   private AuthenticatedPolarisPrincipal authenticatedRoot;
@@ -152,6 +154,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore);
+    realmConfig = polarisContext.getRealmConfig();
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -196,8 +199,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(
-                        polarisContext, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 

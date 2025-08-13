@@ -1722,7 +1722,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             new CatalogEntity.Builder()
                 .setName(externalCatalog)
                 .setDefaultBaseLocation(storageLocation)
-                .setStorageConfigurationInfo(callContext, storageConfigModel, storageLocation)
+                .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                 .setCatalogType("EXTERNAL")
                 .build()
                 .asCatalog()));
