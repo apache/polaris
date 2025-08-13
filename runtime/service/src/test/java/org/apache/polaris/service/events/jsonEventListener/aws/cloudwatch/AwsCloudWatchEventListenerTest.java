@@ -82,6 +82,7 @@ class AwsCloudWatchEventListenerTest {
   private static final String LOG_STREAM = "test-log-stream";
   private static final String REALM = "test-realm";
   private static final String TEST_USER = "test-user";
+  private static final Clock clock = Clock.systemUTC();
 
   @Mock private AwsCloudWatchConfiguration config;
 
@@ -172,7 +173,7 @@ class AwsCloudWatchEventListenerTest {
 
   private AwsCloudWatchEventListener createListener(CloudWatchLogsAsyncClient client) {
     AwsCloudWatchEventListener listener =
-        new AwsCloudWatchEventListener(config) {
+        new AwsCloudWatchEventListener(config, clock) {
           @Override
           protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
             return client;
@@ -187,7 +188,6 @@ class AwsCloudWatchEventListenerTest {
     Principal principal = Mockito.mock(Principal.class);
     when(callContext.getRealmContext()).thenReturn(realmContext);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.getClock()).thenReturn(Clock.systemUTC());
     when(realmContext.getRealmIdentifier()).thenReturn(REALM);
     when(securityContext.getUserPrincipal()).thenReturn(principal);
     when(principal.getName()).thenReturn(TEST_USER);
@@ -348,7 +348,28 @@ class AwsCloudWatchEventListenerTest {
 
     if (mode == TestMode.LOCALSTACK) {
       // Verify both events were sent to CloudWatch
-      GetLogEventsResponse logEvents =
+      GetLogEventsResponse logEvents;
+      int eventCount = 0;
+      long startTime = System.currentTimeMillis();
+      while (eventCount == 0) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          fail("Thread interrupted waiting for event");
+        }
+        if (System.currentTimeMillis() - startTime > 30_000) {
+          fail("Timeout exceeded while waiting for event to arrive");
+        }
+        logEvents =
+                client.getLogEvents(
+                        GetLogEventsRequest.builder()
+                                .logGroupName(LOG_GROUP)
+                                .logStreamName(LOG_STREAM)
+                                .build()).join();
+        eventCount = logEvents.events().size();
+      }
+
+      logEvents =
           client.getLogEvents(
               GetLogEventsRequest.builder()
                   .logGroupName(LOG_GROUP)

@@ -28,6 +28,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
+
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -59,13 +61,14 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
   private final String logStream;
   private final Region region;
   private final boolean synchronousMode;
+  private final Clock clock;
 
   @Inject CallContext callContext;
 
   @Context SecurityContext securityContext;
 
   @Inject
-  public AwsCloudWatchEventListener(AwsCloudWatchConfiguration config) {
+  public AwsCloudWatchEventListener(AwsCloudWatchConfiguration config, Clock clock) {
     this.logStream =
         config
             .awsCloudwatchlogStream()
@@ -84,6 +87,7 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
                     () ->
                         new IllegalArgumentException("AWS CloudWatch region must be configured")));
     this.synchronousMode = config.synchronousMode();
+    this.clock = clock;
   }
 
   @PostConstruct
@@ -140,7 +144,7 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
       LOGGER.error("Error processing event into JSON string: {}", e.getMessage());
       return;
     }
-    InputLogEvent inputLogEvent = createLogEvent(eventAsJson, getCurrentTimestamp(callContext));
+    InputLogEvent inputLogEvent = createLogEvent(eventAsJson, getCurrentTimestamp());
     PutLogEventsRequest.Builder requestBuilder =
             PutLogEventsRequest.builder()
                     .logGroupName(logGroup)
@@ -156,8 +160,8 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
     }
   }
 
-  private long getCurrentTimestamp(CallContext callContext) {
-    return callContext.getPolarisCallContext().getClock().millis();
+  private long getCurrentTimestamp() {
+    return clock.millis();
   }
 
   private InputLogEvent createLogEvent(String eventAsJson, long timestamp) {
