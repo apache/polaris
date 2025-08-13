@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., 1.0.0-incubating)'
+        description: 'Release version without RC number (e.g., 1.0.0-incubating)'
         required: true
         type: string
       dry_run:
@@ -77,9 +77,9 @@ jobs:
 
           print_info "Validating release parameters..."
 
-          # Validate version format: x.y.z-incubating-rcN
+          # Validate version format: x.y.z-incubating
           if ! validate_and_extract_branch_version "${version}"; then
-            print_error "Invalid version format. Expected: x.y.z-incubating-rcN where N>0, got: ${version}"
+            print_error "Invalid version format. Expected: x.y.z-incubating where N>0, got: ${version}"
             exit 1
           fi
 
