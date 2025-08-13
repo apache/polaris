@@ -250,7 +250,6 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper rootContainerWrapper =
         resolutionManifest.getResolvedRootContainerEntityAsPath();
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedPrincipalRoleEntities(),
         op,
@@ -296,7 +295,6 @@ public class PolarisAdminService {
       return;
     }
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -318,7 +316,6 @@ public class PolarisAdminService {
       throw new NotFoundException("CatalogRole does not exist: %s", catalogRoleName);
     }
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -349,7 +346,6 @@ public class PolarisAdminService {
             principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
 
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -386,7 +382,6 @@ public class PolarisAdminService {
             principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
 
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -417,7 +412,6 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedTopLevelEntity(principalName, PolarisEntityType.PRINCIPAL);
 
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -457,7 +451,6 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -488,7 +481,6 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(catalogRoleName, true);
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -529,7 +521,6 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -576,7 +567,6 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -616,7 +606,6 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,

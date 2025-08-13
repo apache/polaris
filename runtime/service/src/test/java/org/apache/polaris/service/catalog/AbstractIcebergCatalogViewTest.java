@@ -179,7 +179,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(),
+            new PolarisAuthorizerImpl(polarisContext.getRealmConfig()),
             reservedProperties);
     adminService.createCatalog(
         new CreateCatalogRequest(

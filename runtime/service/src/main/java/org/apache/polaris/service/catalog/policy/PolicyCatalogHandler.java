@@ -167,7 +167,6 @@ public class PolicyCatalogHandler extends CatalogHandler {
     }
 
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -212,7 +211,6 @@ public class PolicyCatalogHandler extends CatalogHandler {
       throw new NotFoundException("Catalog not found");
     }
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -272,7 +270,6 @@ public class PolicyCatalogHandler extends CatalogHandler {
         determinePolicyMappingOperation(target, targetWrapper, isAttach);
 
     authorizer.authorizeOrThrow(
-        callContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,

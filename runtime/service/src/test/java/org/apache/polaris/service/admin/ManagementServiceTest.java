@@ -201,7 +201,7 @@ public class ManagementServiceTest {
             return "";
           }
         },
-        new PolarisAuthorizerImpl(),
+        new PolarisAuthorizerImpl(callContext.getRealmConfig()),
         new ReservedProperties() {
           @Override
           public List<String> prefixes() {
