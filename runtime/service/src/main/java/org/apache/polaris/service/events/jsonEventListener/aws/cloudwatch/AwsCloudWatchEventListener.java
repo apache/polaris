@@ -32,6 +32,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -41,9 +42,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsAsyncClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.DataAlreadyAcceptedException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsResponse;
@@ -61,14 +65,9 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.UnrecognizedClientEx
 public class AwsCloudWatchEventListener extends JsonEventListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(AwsCloudWatchEventListener.class);
   private final ObjectMapper objectMapper = new ObjectMapper();
-  private final ConcurrentHashMap<Future<?>, EventWithRetry> futures = new ConcurrentHashMap<>();
 
-  record EventWithRetry(InputLogEvent inputLogEvent, int retryCount) {}
-
-  private CloudWatchLogsClient client;
-  private volatile String sequenceToken;
-
-  ExecutorService executorService;
+  private CloudWatchLogsAsyncClient client;
+//  private volatile String sequenceToken;
 
   private final String logGroup;
   private final String logStream;
@@ -80,10 +79,7 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
   @Context SecurityContext securityContext;
 
   @Inject
-  public AwsCloudWatchEventListener(
-      AwsCloudWatchConfiguration config, ExecutorService executorService) {
-    this.executorService = executorService;
-
+  public AwsCloudWatchEventListener(AwsCloudWatchConfiguration config) {
     this.logStream =
         config
             .awsCloudwatchlogStream()
@@ -101,144 +97,112 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
                 .orElseThrow(
                     () ->
                         new IllegalArgumentException("AWS CloudWatch region must be configured")));
-    this.synchronousMode = Boolean.parseBoolean(config.synchronousMode());
+    this.synchronousMode = config.synchronousMode();
   }
 
   @PostConstruct
   void start() {
-    this.client = createCloudWatchClient();
+    this.client = createCloudWatchAsyncClient();
     ensureLogGroupAndStream();
   }
 
-  protected CloudWatchLogsClient createCloudWatchClient() {
-    return CloudWatchLogsClient.builder().region(region).build();
+  protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
+    return CloudWatchLogsAsyncClient.builder().region(region).build();
   }
 
   private void ensureLogGroupAndStream() {
     try {
-      client.createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroup).build());
+      CompletableFuture<CreateLogGroupResponse> future = client.createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroup).build());
+      future.join();
     } catch (ResourceAlreadyExistsException ignored) {
       LOGGER.debug("Log group {} already exists", logGroup);
     }
 
     try {
-      client.createLogStream(
+      CompletableFuture<CreateLogStreamResponse> future = client.createLogStream(
           CreateLogStreamRequest.builder().logGroupName(logGroup).logStreamName(logStream).build());
+      future.join();
     } catch (ResourceAlreadyExistsException ignored) {
       LOGGER.debug("Log stream {} already exists", logStream);
     }
 
-    sequenceToken = getSequenceToken();
+//    sequenceToken = getSequenceToken();
   }
 
-  private String getSequenceToken() {
-    DescribeLogStreamsResponse response =
-        client.describeLogStreams(
-            DescribeLogStreamsRequest.builder()
-                .logGroupName(logGroup)
-                .logStreamNamePrefix(logStream)
-                .build());
-
-    return response.logStreams().stream()
-        .filter(s -> logStream.equals(s.logStreamName()))
-        .map(LogStream::uploadSequenceToken)
-        .filter(Objects::nonNull)
-        .findFirst()
-        .orElse(null);
-  }
+//  private String getSequenceToken() {
+//    DescribeLogStreamsResponse response =
+//        client.describeLogStreams(
+//            DescribeLogStreamsRequest.builder()
+//                .logGroupName(logGroup)
+//                .logStreamNamePrefix(logStream)
+//                .build());
+//
+//    return response.logStreams().stream()
+//        .filter(s -> logStream.equals(s.logStreamName()))
+//        .map(LogStream::uploadSequenceToken)
+//        .filter(Objects::nonNull)
+//        .findFirst()
+//        .orElse(null);
+//  }
 
   @PreDestroy
   void shutdown() {
-    for (Future<?> future : futures.keySet()) {
-      if (!future.state().equals(Future.State.SUCCESS)) {
-        LOGGER.debug(
-            "Event not emitted to AWS CloudWatch due to being in state {}: {}",
-            future.state(),
-            futures.get(future).inputLogEvent);
-        future.cancel(true);
-      }
-    }
     if (client != null) {
       client.close();
     }
   }
 
-  private void sendAndHandleCloudWatchCall(InputLogEvent event) {
-    try {
-      sendToCloudWatch(event);
-    } catch (DataAlreadyAcceptedException e) {
-      LOGGER.debug("Data already accepted: {}", e.getMessage());
-    } catch (RuntimeException e) {
-      if (e instanceof SdkClientException
-          || e instanceof InvalidParameterException
-          || e instanceof UnrecognizedClientException) {
-        LOGGER.error(
-            "Error writing logs to CloudWatch - client-side error. Please adjust Polaris configurations: {}",
-            e.getMessage());
-      } else {
-        LOGGER.error("Error writing logs to CloudWatch - server-side error: {}", e.getMessage());
-      }
-      throw e;
-    } finally {
-      try {
-        reapFuturesMap();
-      } catch (Exception e) {
-        LOGGER.debug("Futures map could not be reaped: {}", e.getMessage());
-      }
-    }
-  }
+//  private void sendAndHandleCloudWatchCall(InputLogEvent event) {
+//    try {
+//      sendToCloudWatch(event);
+//    } catch (DataAlreadyAcceptedException e) {
+//      LOGGER.debug("Data already accepted: {}", e.getMessage());
+//    } catch (RuntimeException e) {
+//      if (e instanceof SdkClientException
+//          || e instanceof InvalidParameterException
+//          || e instanceof UnrecognizedClientException) {
+//        LOGGER.error(
+//            "Error writing logs to CloudWatch - client-side error. Please adjust Polaris configurations. Event: {}, error: {}",
+//            event, e.getMessage());
+//      } else {
+//        LOGGER.error("Error writing logs to CloudWatch - server-side error. Event: {}, error: {}", event, e.getMessage());
+//      }
+//      throw e;
+//    } finally {
+//      try {
+//        reapFuturesMap();
+//      } catch (Exception e) {
+//        LOGGER.debug("Futures map could not be reaped: {}", e.getMessage());
+//      }
+//    }
+//  }
 
-  private void sendToCloudWatch(InputLogEvent event) {
-    PutLogEventsRequest.Builder requestBuilder =
-        PutLogEventsRequest.builder()
-            .logGroupName(logGroup)
-            .logStreamName(logStream)
-            .logEvents(List.of(event));
+//  private void sendToCloudWatch(InputLogEvent event) {
+//    PutLogEventsRequest.Builder requestBuilder =
+//        PutLogEventsRequest.builder()
+//            .logGroupName(logGroup)
+//            .logStreamName(logStream)
+//            .logEvents(List.of(event));
+//
+//    synchronized (this) {
+//      if (sequenceToken != null) {
+//        requestBuilder.sequenceToken(sequenceToken);
+//      }
+//
+//      try {
+//        executePutLogEvents(requestBuilder);
+//      } catch (InvalidSequenceTokenException e) {
+//        sequenceToken = getSequenceToken();
+//        requestBuilder.sequenceToken(sequenceToken);
+//        executePutLogEvents(requestBuilder);
+//      }
+//    }
+//  }
 
-    synchronized (this) {
-      if (sequenceToken != null) {
-        requestBuilder.sequenceToken(sequenceToken);
-      }
-
-      try {
-        executePutLogEvents(requestBuilder);
-      } catch (InvalidSequenceTokenException e) {
-        sequenceToken = getSequenceToken();
-        requestBuilder.sequenceToken(sequenceToken);
-        executePutLogEvents(requestBuilder);
-      }
-    }
-  }
-
-  private void executePutLogEvents(PutLogEventsRequest.Builder requestBuilder) {
-    PutLogEventsResponse response = client.putLogEvents(requestBuilder.build());
-    sequenceToken = response.nextSequenceToken();
-  }
-
-  private void reapFuturesMap() {
-    for (Future<?> future : futures.keySet()) {
-      if (future.isDone()) {
-        Future.State currFutureState = future.state();
-        EventWithRetry currValue = futures.remove(future);
-        if (currValue == null) {
-          // This future was removed by some other thread and will be processed in that thread.
-          continue;
-        }
-        if (currFutureState.equals(Future.State.FAILED)
-            || currFutureState.equals(Future.State.CANCELLED)) {
-          if (currValue.retryCount >= 3) {
-            LOGGER.error("Event retries failed. Event dropped: {}", currValue.inputLogEvent);
-          } else {
-            EventWithRetry newValue =
-                new EventWithRetry(currValue.inputLogEvent, currValue.retryCount + 1);
-            future =
-                executorService.submit(() -> sendAndHandleCloudWatchCall(newValue.inputLogEvent));
-            futures.put(future, newValue);
-          }
-        }
-      }
-    }
-  }
+//  private void executePutLogEvents(PutLogEventsRequest.Builder requestBuilder) {
+//    PutLogEventsResponse response = client.putLogEvents(requestBuilder.build());
+//    sequenceToken = response.nextSequenceToken();
+//  }
 
   @Override
   protected void transformAndSendEvent(HashMap<String, Object> properties) {
@@ -253,11 +217,18 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
       return;
     }
     InputLogEvent inputLogEvent = createLogEvent(eventAsJson, getCurrentTimestamp(callContext));
-    if (!synchronousMode) {
-      Future<?> future = executorService.submit(() -> sendAndHandleCloudWatchCall(inputLogEvent));
-      futures.put(future, new EventWithRetry(inputLogEvent, 0));
-    } else {
-      sendAndHandleCloudWatchCall(inputLogEvent);
+    PutLogEventsRequest.Builder requestBuilder =
+            PutLogEventsRequest.builder()
+                    .logGroupName(logGroup)
+                    .logStreamName(logStream)
+                    .logEvents(List.of(inputLogEvent));
+    CompletableFuture<PutLogEventsResponse> future = client.putLogEvents(requestBuilder.build()).whenComplete((resp, err) -> {
+      if (err != null) {
+        LOGGER.error("Error writing log to CloudWatch. Event: {}, Error: {}", inputLogEvent, err.getMessage());
+      }
+    });
+    if (synchronousMode) {
+      future.join();
     }
   }
 
@@ -267,10 +238,5 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
 
   private InputLogEvent createLogEvent(String eventAsJson, long timestamp) {
     return InputLogEvent.builder().message(eventAsJson).timestamp(timestamp).build();
-  }
-
-  @VisibleForTesting
-  ConcurrentHashMap<Future<?>, EventWithRetry> getFutures() {
-    return futures;
   }
 }

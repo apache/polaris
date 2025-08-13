@@ -104,8 +104,7 @@ public class PolarisServiceImpl
       UserSecretsManagerFactory userSecretsManagerFactory,
       PolarisAuthorizer polarisAuthorizer,
       CallContext callContext,
-      ReservedProperties reservedProperties,
-      PolarisEventListener polarisEventListener) {
+      ReservedProperties reservedProperties) {
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.userSecretsManagerFactory = userSecretsManagerFactory;

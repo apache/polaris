@@ -29,5 +29,5 @@ public interface AwsCloudWatchConfiguration {
 
   Optional<String> awsCloudwatchRegion();
 
-  String synchronousMode();
+  boolean synchronousMode();
 }

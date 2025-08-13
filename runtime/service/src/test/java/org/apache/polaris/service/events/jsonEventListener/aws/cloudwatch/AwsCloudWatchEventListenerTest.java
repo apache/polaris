@@ -33,6 +33,7 @@ import java.security.Principal;
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -57,6 +58,7 @@ import org.testcontainers.containers.localstack.LocalStackContainer;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsAsyncClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
@@ -108,7 +110,7 @@ class AwsCloudWatchEventListenerTest {
     when(config.awsCloudwatchlogGroup()).thenReturn(Optional.of(LOG_GROUP));
     when(config.awsCloudwatchlogStream()).thenReturn(Optional.of(LOG_STREAM));
     when(config.awsCloudwatchRegion()).thenReturn(Optional.of("us-east-1"));
-    when(config.synchronousMode()).thenReturn("false"); // Default to async mode
+    when(config.synchronousMode()).thenReturn(false); // Default to async mode
   }
 
   @AfterEach
@@ -127,13 +129,13 @@ class AwsCloudWatchEventListenerTest {
     }
   }
 
-  private CloudWatchLogsClient createCloudWatchClient(TestMode mode) {
+  private CloudWatchLogsAsyncClient createCloudWatchAsyncClient(TestMode mode) {
     switch (mode) {
       case LOCALSTACK:
         if (!localStack.isRunning()) {
           localStack.start();
         }
-        return CloudWatchLogsClient.builder()
+        return CloudWatchLogsAsyncClient.builder()
             .endpointOverride(localStack.getEndpoint())
             .credentialsProvider(
                 StaticCredentialsProvider.create(
@@ -142,11 +144,11 @@ class AwsCloudWatchEventListenerTest {
             .region(Region.of(localStack.getRegion()))
             .build();
       case MOCKED:
-        CloudWatchLogsClient mockClient = Mockito.mock(CloudWatchLogsClient.class);
+        CloudWatchLogsAsyncClient mockClient = Mockito.mock(CloudWatchLogsAsyncClient.class);
 
         // Mock the responses for log group and stream creation
-        when(mockClient.createLogGroup(any(CreateLogGroupRequest.class))).thenReturn(null);
-        when(mockClient.createLogStream(any(CreateLogStreamRequest.class))).thenReturn(null);
+        when(mockClient.createLogGroup(any(CreateLogGroupRequest.class))).thenReturn(CompletableFuture.completedFuture(null));
+        when(mockClient.createLogStream(any(CreateLogStreamRequest.class))).thenReturn(CompletableFuture.completedFuture(null));
 
         // Mock the describe log streams response for getting sequence token
         DescribeLogStreamsResponse mockStreamsResponse =
@@ -158,12 +160,12 @@ class AwsCloudWatchEventListenerTest {
                         .build())
                 .build();
         when(mockClient.describeLogStreams(any(DescribeLogStreamsRequest.class)))
-            .thenReturn(mockStreamsResponse);
+            .thenReturn(CompletableFuture.completedFuture(mockStreamsResponse));
 
         // Mock the putLogEvents response
         PutLogEventsResponse mockPutResponse =
             PutLogEventsResponse.builder().nextSequenceToken("mock-sequence-token-123").build();
-        when(mockClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(mockPutResponse);
+        when(mockClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(CompletableFuture.completedFuture(mockPutResponse));
 
         return mockClient;
       default:
@@ -171,11 +173,11 @@ class AwsCloudWatchEventListenerTest {
     }
   }
 
-  private AwsCloudWatchEventListener createListener(CloudWatchLogsClient client) {
+  private AwsCloudWatchEventListener createListener(CloudWatchLogsAsyncClient client) {
     AwsCloudWatchEventListener listener =
-        new AwsCloudWatchEventListener(config, executorService) {
+        new AwsCloudWatchEventListener(config) {
           @Override
-          protected CloudWatchLogsClient createCloudWatchClient() {
+          protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
             return client;
           }
         };
@@ -198,24 +200,24 @@ class AwsCloudWatchEventListenerTest {
     return listener;
   }
 
-  private void waitForFuture(Future<?> future, long timeoutMs) {
-    try {
-      long start = System.currentTimeMillis();
-      while (!future.isDone()) {
-        if (System.currentTimeMillis() - start > timeoutMs) {
-          fail("Future did not complete in time");
-        }
-        Thread.sleep(100);
-      }
-    } catch (InterruptedException e) {
-      fail("Future was interrupted");
-    }
-  }
+//  private void waitForFuture(Future<?> future, long timeoutMs) {
+//    try {
+//      long start = System.currentTimeMillis();
+//      while (!future.isDone()) {
+//        if (System.currentTimeMillis() - start > timeoutMs) {
+//          fail("Future did not complete in time");
+//        }
+//        Thread.sleep(100);
+//      }
+//    } catch (InterruptedException e) {
+//      fail("Future was interrupted");
+//    }
+//  }
 
   @ParameterizedTest
   @MethodSource("testModeProvider")
   void shouldCreateLogGroupAndStream(TestMode mode) {
-    CloudWatchLogsClient client = createCloudWatchClient(mode);
+    CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient(mode);
     AwsCloudWatchEventListener listener = createListener(client);
 
     // Start the listener which should create the log group and stream
@@ -225,7 +227,7 @@ class AwsCloudWatchEventListenerTest {
       // Verify log group exists
       DescribeLogGroupsResponse groups =
           client.describeLogGroups(
-              DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build());
+              DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build()).join();
       assertThat(groups.logGroups())
           .hasSize(1)
           .first()
@@ -237,7 +239,7 @@ class AwsCloudWatchEventListenerTest {
               DescribeLogStreamsRequest.builder()
                   .logGroupName(LOG_GROUP)
                   .logStreamNamePrefix(LOG_STREAM)
-                  .build());
+                  .build()).join();
       assertThat(streams.logStreams())
           .hasSize(1)
           .first()
@@ -253,12 +255,12 @@ class AwsCloudWatchEventListenerTest {
                   (CreateLogStreamRequest request) ->
                       request.logGroupName().equals(LOG_GROUP)
                           && request.logStreamName().equals(LOG_STREAM)));
-      verify(client, times(1))
-          .describeLogStreams(
-              argThat(
-                  (DescribeLogStreamsRequest request) ->
-                      request.logGroupName().equals(LOG_GROUP)
-                          && request.logStreamNamePrefix().equals(LOG_STREAM)));
+//      verify(client, times(1))
+//          .describeLogStreams(
+//              argThat(
+//                  (DescribeLogStreamsRequest request) ->
+//                      request.logGroupName().equals(LOG_GROUP)
+//                          && request.logStreamNamePrefix().equals(LOG_STREAM)));
     }
 
     // Clean up
@@ -271,7 +273,7 @@ class AwsCloudWatchEventListenerTest {
   @ParameterizedTest
   @MethodSource("testModeProvider")
   void shouldSendEventToCloudWatch(TestMode mode) {
-    CloudWatchLogsClient client = createCloudWatchClient(mode);
+    CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient(mode);
     AwsCloudWatchEventListener listener = createListener(client);
 
     // Start the listener
@@ -282,26 +284,35 @@ class AwsCloudWatchEventListenerTest {
     AfterTableRefreshedEvent event = new AfterTableRefreshedEvent(testTable);
     listener.onAfterTableRefreshed(event);
 
-    // Wait for the future to complete
-    List<Future<?>> activeFutures = listener.getFutures().keySet().stream().toList();
-    assertThat(activeFutures).hasSize(1);
-    Future<?> eventFuture = activeFutures.getFirst();
-
-    long timeout = mode == TestMode.MOCKED ? 5000L : 30000L; // Shorter timeout for mocked tests
-    waitForFuture(eventFuture, timeout);
-
-    // Verify the future completed successfully
-    assertThat(eventFuture.isDone()).isTrue();
-    assertThat(eventFuture.state()).isEqualTo(Future.State.SUCCESS);
-
     if (mode == TestMode.LOCALSTACK) {
       // Verify the event was sent to CloudWatch by reading the actual logs
-      GetLogEventsResponse logEvents =
-          client.getLogEvents(
-              GetLogEventsRequest.builder()
-                  .logGroupName(LOG_GROUP)
-                  .logStreamName(LOG_STREAM)
-                  .build());
+      GetLogEventsResponse logEvents;
+      int eventCount = 0;
+      long startTime = System.currentTimeMillis();
+      while (eventCount == 0) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          fail("Thread interrupted waiting for event");
+        }
+        if (System.currentTimeMillis() - startTime > 30_000) {
+          fail("Timeout exceeded while waiting for event to arrive");
+        }
+         logEvents =
+                client.getLogEvents(
+                        GetLogEventsRequest.builder()
+                                .logGroupName(LOG_GROUP)
+                                .logStreamName(LOG_STREAM)
+                                .build()).join();
+        eventCount = logEvents.events().size();
+      }
+
+      logEvents =
+              client.getLogEvents(
+                      GetLogEventsRequest.builder()
+                              .logGroupName(LOG_GROUP)
+                              .logStreamName(LOG_STREAM)
+                              .build()).join();
 
       assertThat(logEvents.events())
           .hasSize(1)
@@ -346,10 +357,10 @@ class AwsCloudWatchEventListenerTest {
   @ParameterizedTest
   @MethodSource("testModeProvider")
   void handleSynchronousModeCorrectly(TestMode mode) {
-    CloudWatchLogsClient client = createCloudWatchClient(mode);
+    CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient(mode);
 
     // Test synchronous mode
-    when(config.synchronousMode()).thenReturn("true");
+    when(config.synchronousMode()).thenReturn(true);
     AwsCloudWatchEventListener syncListener = createListener(client);
     syncListener.start();
 
@@ -357,7 +368,6 @@ class AwsCloudWatchEventListenerTest {
     TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
     AfterTableRefreshedEvent syncEvent = new AfterTableRefreshedEvent(syncTestTable);
     syncListener.onAfterTableRefreshed(syncEvent);
-    assertThat(syncListener.getFutures()).isEmpty(); // No futures should be created in sync mode
 
     if (mode == TestMode.LOCALSTACK) {
       // Verify both events were sent to CloudWatch
@@ -366,7 +376,7 @@ class AwsCloudWatchEventListenerTest {
               GetLogEventsRequest.builder()
                   .logGroupName(LOG_GROUP)
                   .logStreamName(LOG_STREAM)
-                  .build());
+                  .build()).join();
 
       assertThat(logEvents.events()).hasSize(1);
 

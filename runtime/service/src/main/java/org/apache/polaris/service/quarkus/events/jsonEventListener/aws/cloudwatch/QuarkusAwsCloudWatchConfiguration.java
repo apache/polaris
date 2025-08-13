@@ -91,10 +91,10 @@ public interface QuarkusAwsCloudWatchConfiguration extends AwsCloudWatchConfigur
    *
    * <p>Configuration property: {@code polaris.event-listener.aws-cloudwatch.synchronous-mode}
    *
-   * @return a String value ("true" or "false") indicating the synchronous mode setting
+   * @return a boolean value indicating the synchronous mode setting
    */
   @WithName("synchronous-mode")
   @WithDefault("false")
   @Override
-  String synchronousMode();
+  boolean synchronousMode();
 }

@@ -81,8 +81,7 @@ public class PolarisServiceImplTest {
             userSecretsManagerFactory,
             polarisAuthorizer,
             callContext,
-            reservedProperties,
-            new NoOpPolarisEventListener());
+            reservedProperties);
   }
 
   @Test
