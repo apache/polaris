@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -51,7 +50,6 @@ import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -327,25 +325,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
     callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "loadTasks");
     return null;
-  }
-
-  @Override
-  public ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisEntityType entityType,
-      boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
-    return delegate.getSubscopedCredsForEntity(
-        callCtx,
-        catalogId,
-        entityId,
-        entityType,
-        allowListOperation,
-        allowedReadLocations,
-        allowedWriteLocations);
   }
 
   @Override

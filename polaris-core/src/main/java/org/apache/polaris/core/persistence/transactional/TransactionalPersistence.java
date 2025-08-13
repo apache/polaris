@@ -39,8 +39,6 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.TransactionalPolicyMappingPersistence;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
 
 /**
  * Extends BasePersistence to express a more "transaction-oriented" control flow for backing stores
@@ -297,33 +295,4 @@ public interface TransactionalPersistence
    */
   void deletePrincipalSecretsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
-
-  /**
-   * See {@link org.apache.polaris.core.persistence.IntegrationPersistence#createStorageIntegration}
-   */
-  @Nullable
-  <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
-
-  /**
-   * See {@link
-   * org.apache.polaris.core.persistence.IntegrationPersistence#persistStorageIntegrationIfNeeded}
-   */
-  <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeededInCurrentTxn(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration);
-
-  /**
-   * See {@link
-   * org.apache.polaris.core.persistence.IntegrationPersistence#loadPolarisStorageIntegration}
-   */
-  @Nullable
-  <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity);
 }

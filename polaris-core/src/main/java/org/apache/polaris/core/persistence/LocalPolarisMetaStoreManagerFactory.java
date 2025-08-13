@@ -53,12 +53,11 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, StoreType> backingStoreMap = new HashMap<>();
   final Map<String, Supplier<TransactionalPersistence>> sessionSupplierMap = new HashMap<>();
+  private final Clock clock;
+  private final PolarisDiagnostics diagnostics;
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
-
-  private final Clock clock;
-  private final PolarisDiagnostics diagnostics;
 
   protected LocalPolarisMetaStoreManagerFactory(
       @Nonnull Clock clock, @Nonnull PolarisDiagnostics diagnostics) {

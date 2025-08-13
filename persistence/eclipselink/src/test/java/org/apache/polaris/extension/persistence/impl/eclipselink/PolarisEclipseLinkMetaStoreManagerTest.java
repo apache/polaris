@@ -48,7 +48,6 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mockito;
 
 /**
  * Integration test for EclipseLink based metastore implementation
@@ -86,7 +85,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     RealmContext realmContext = () -> "realm";
     PolarisEclipseLinkMetaStoreSessionImpl session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
-            store, Mockito.mock(), realmContext, null, "polaris", RANDOM_SECRETS);
+            store, realmContext, null, "polaris", RANDOM_SECRETS);
     TransactionalMetaStoreManagerImpl metaStoreManager =
         new TransactionalMetaStoreManagerImpl(clock);
     PolarisCallContext callCtx = new PolarisCallContext(realmContext, session, diagServices);
@@ -104,7 +103,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     try {
       var session =
           new PolarisEclipseLinkMetaStoreSessionImpl(
-              store, Mockito.mock(), () -> "realm", confFile, "polaris", RANDOM_SECRETS);
+              store, () -> "realm", confFile, "polaris", RANDOM_SECRETS);
       assertNotNull(session);
       assertTrue(success);
     } catch (Exception e) {

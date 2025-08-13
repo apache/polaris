@@ -31,8 +31,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
@@ -67,7 +67,7 @@ public class MeasuredFileIOFactory implements FileIOFactory {
       @Nonnull TableIdentifier identifier,
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
+      Optional<PolarisStorageConfigurationInfo> storageConfigurationInfo) {
     loadFileIOExceptionSupplier.ifPresent(
         s -> {
           throw s.get();
@@ -82,7 +82,7 @@ public class MeasuredFileIOFactory implements FileIOFactory {
                 identifier,
                 tableLocations,
                 storageActions,
-                resolvedEntityPath),
+                storageConfigurationInfo),
             newInputFileExceptionSupplier,
             newOutputFileExceptionSupplier,
             getLengthExceptionSupplier);

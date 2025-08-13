@@ -43,33 +43,23 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 
 public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPersistence {
 
   // the TreeMap store to use
   private final TreeMapMetaStore store;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final PrincipalSecretsGenerator secretsGenerator;
 
   public TreeMapTransactionalPersistenceImpl(
-      @Nonnull TreeMapMetaStore store,
-      @Nonnull PolarisStorageIntegrationProvider storageIntegrationProvider,
-      @Nonnull PrincipalSecretsGenerator secretsGenerator) {
-
-    // init store
+      @Nonnull TreeMapMetaStore store, @Nonnull PrincipalSecretsGenerator secretsGenerator) {
     this.store = store;
-    this.storageIntegrationProvider = storageIntegrationProvider;
     this.secretsGenerator = secretsGenerator;
   }
 
@@ -122,16 +112,6 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.getSliceEntities().write(entity);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      void persistStorageIntegrationIfNeededInCurrentTxn(
-          @Nonnull PolarisCallContext callContext,
-          @Nonnull PolarisBaseEntity entity,
-          @Nullable PolarisStorageIntegration<T> storageIntegration) {
-    // not implemented for in-memory store
   }
 
   /** {@inheritDoc} */
@@ -557,28 +537,6 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
     // delete these secrets
     this.store.getSlicePrincipalSecrets().delete(clientId);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegrationForConfig(
-        polarisStorageConfigurationInfo);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx.getDiagServices(), entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 
   @Override

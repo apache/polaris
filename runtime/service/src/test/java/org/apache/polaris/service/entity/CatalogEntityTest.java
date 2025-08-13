@@ -60,7 +60,7 @@ public class CatalogEntityTest {
   public void setup() {
     RealmContext realmContext = () -> "realm";
     MetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory(clock, diagnostics, null);
+        new InMemoryPolarisMetaStoreManagerFactory(clock, diagnostics);
     BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
     this.callContext = new PolarisCallContext(realmContext, metaStore, diagnostics);
   }

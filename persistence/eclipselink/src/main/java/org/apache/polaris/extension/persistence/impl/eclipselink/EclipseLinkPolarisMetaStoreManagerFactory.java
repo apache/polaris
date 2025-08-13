@@ -31,7 +31,6 @@ import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /**
  * The implementation of Configuration interface for configuring the {@link PolarisMetaStoreManager}
@@ -43,17 +42,20 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 public class EclipseLinkPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
 
-  @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
-  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final EclipseLinkConfiguration eclipseLinkConfiguration;
 
   @SuppressWarnings("unused") // Required by CDI
   protected EclipseLinkPolarisMetaStoreManagerFactory() {
-    this(null, null);
+    this(null, null, null);
   }
 
   @Inject
-  protected EclipseLinkPolarisMetaStoreManagerFactory(Clock clock, PolarisDiagnostics diagnostics) {
+  protected EclipseLinkPolarisMetaStoreManagerFactory(
+      Clock clock,
+      PolarisDiagnostics diagnostics,
+      EclipseLinkConfiguration eclipseLinkConfiguration) {
     super(clock, diagnostics);
+    this.eclipseLinkConfiguration = eclipseLinkConfiguration;
   }
 
   @Override
@@ -69,7 +71,6 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
       @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
         store,
-        storageIntegrationProvider,
         realmContext,
         configurationFile(),
         persistenceUnitName(),
