@@ -19,16 +19,6 @@
 
 package org.apache.polaris.persistence.relational.spanner;
 
-import com.google.cloud.spanner.Database;
-import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.DatabaseId;
-import com.google.cloud.spanner.Dialect;
-import com.google.cloud.spanner.Spanner;
-import com.google.cloud.spanner.SpannerException;
-import com.google.common.collect.ImmutableList;
-import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Produces;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,35 +26,41 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
-import org.apache.polaris.core.context.RealmContext;
+
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
-import org.apache.polaris.persistence.relational.spanner.model.Realm;
 import org.apache.polaris.persistence.relational.spanner.util.SpannerUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.cloud.spanner.Database;
+import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.Spanner;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
+
 @ApplicationScoped
 public class GoogleCloudSpannerDatabaseClientLifecycleManager {
 
-  private static Logger LOGGER =
+  private final static Logger LOGGER =
       LoggerFactory.getLogger(GoogleCloudSpannerDatabaseClientLifecycleManager.class);
 
   protected final GoogleCloudSpannerConfiguration spannerConfiguration;
+  protected final Spanner spanner;
+  protected final DatabaseId databaseId;
 
   public GoogleCloudSpannerDatabaseClientLifecycleManager(
       GoogleCloudSpannerConfiguration spannerConfiguration) {
     this.spannerConfiguration = spannerConfiguration;
-  }
-
-  protected Spanner spanner;
-  protected DatabaseId databaseId;
-
-  @PostConstruct
-  protected void init() {
     spanner = SpannerUtil.spannerFromConfiguration(spannerConfiguration);
     databaseId = SpannerUtil.databaseFromConfiguration(spannerConfiguration);
+
   }
+
+
+ 
 
   protected List<String> getSpannerDatabaseDdl(SchemaOptions options) {
     final InputStream schemaStream;
@@ -109,26 +105,12 @@ public class GoogleCloudSpannerDatabaseClientLifecycleManager {
       Database dbInfo =
           client.newDatabaseBuilder(databaseId).setDialect(Dialect.GOOGLE_STANDARD_SQL).build();
       try {
-        spanner.getDatabaseAdminClient().updateDatabaseDdl(dbInfo, ddlStatements, null).get();
+        client.updateDatabaseDdl(dbInfo, ddlStatements, null).get();
         LOGGER.info("Successfully applied DDL update.");
       } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("Unable to update Spanner DDL.", e);
         throw new RuntimeException(
             "Unable to update Spanner DDL. Please disable this option for this database configuration.",
             e);
-      }
-    };
-  }
-
-  @Produces
-  public Consumer<RealmContext> getRealmInitializer() {
-    return (realmContext) -> {
-      try {
-        spanner
-            .getDatabaseClient(databaseId)
-            .write(ImmutableList.of(Realm.upsert(realmContext.getRealmIdentifier())));
-      } catch (SpannerException e) {
-        LOGGER.error("Unable to initialize realm " + realmContext.getRealmIdentifier(), e);
       }
     };
   }

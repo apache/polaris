@@ -148,7 +148,6 @@ public final class SpannerUtil {
   }
 
   public static Stream<StructReader> asStream(final ResultSet resultSet) {
-
     return StreamSupport.stream(
         Spliterators.spliteratorUnknownSize(asIterator(resultSet), Spliterator.ORDERED), false);
   }

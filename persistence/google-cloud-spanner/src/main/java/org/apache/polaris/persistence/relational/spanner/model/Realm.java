@@ -24,7 +24,7 @@ import com.google.cloud.spanner.Mutation;
 
 public final class Realm {
 
-  public static String TABLE_NAME = "Realms";
+  public final static String TABLE_NAME = "Realms";
 
   public static Mutation upsert(String realmId) {
     return Mutation.newInsertOrUpdateBuilder(TABLE_NAME).set("RealmId").to(realmId).build();
