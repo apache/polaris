@@ -19,6 +19,13 @@
 
 package org.apache.polaris.persistence.relational.spanner;
 
+import com.google.cloud.spanner.Database;
+import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.Spanner;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,25 +33,15 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 import org.apache.polaris.persistence.relational.spanner.util.SpannerUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.cloud.spanner.Database;
-import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.DatabaseId;
-import com.google.cloud.spanner.Dialect;
-import com.google.cloud.spanner.Spanner;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Produces;
-
 @ApplicationScoped
 public class GoogleCloudSpannerDatabaseClientLifecycleManager {
 
-  private final static Logger LOGGER =
+  private static final Logger LOGGER =
       LoggerFactory.getLogger(GoogleCloudSpannerDatabaseClientLifecycleManager.class);
 
   protected final GoogleCloudSpannerConfiguration spannerConfiguration;
@@ -56,11 +53,7 @@ public class GoogleCloudSpannerDatabaseClientLifecycleManager {
     this.spannerConfiguration = spannerConfiguration;
     spanner = SpannerUtil.spannerFromConfiguration(spannerConfiguration);
     databaseId = SpannerUtil.databaseFromConfiguration(spannerConfiguration);
-
   }
-
-
- 
 
   protected List<String> getSpannerDatabaseDdl(SchemaOptions options) {
     final InputStream schemaStream;
