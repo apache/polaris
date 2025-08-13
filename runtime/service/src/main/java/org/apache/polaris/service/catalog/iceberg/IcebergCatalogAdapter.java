@@ -61,6 +61,7 @@ import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -135,6 +136,7 @@ public class IcebergCatalogAdapter
 
   private final RealmContext realmContext;
   private final CallContext callContext;
+  private final RealmConfig realmConfig;
   private final CallContextCatalogFactory catalogFactory;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final ResolverFactory resolverFactory;
@@ -160,6 +162,7 @@ public class IcebergCatalogAdapter
       CatalogHandlerUtils catalogHandlerUtils) {
     this.realmContext = realmContext;
     this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.catalogFactory = catalogFactory;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.resolverFactory = resolverFactory;
@@ -214,7 +217,7 @@ public class IcebergCatalogAdapter
       CreateNamespaceRequest createNamespaceRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    validateIcebergProperties(callContext, createNamespaceRequest.properties());
+    validateIcebergProperties(realmConfig, createNamespaceRequest.properties());
     return withCatalog(
         securityContext,
         prefix,
@@ -306,7 +309,7 @@ public class IcebergCatalogAdapter
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    validateIcebergProperties(callContext, updateNamespacePropertiesRequest.updates());
+    validateIcebergProperties(realmConfig, updateNamespacePropertiesRequest.updates());
     Namespace ns = decodeNamespace(namespace);
     UpdateNamespacePropertiesRequest revisedRequest =
         UpdateNamespacePropertiesRequest.builder()
@@ -341,7 +344,7 @@ public class IcebergCatalogAdapter
       String accessDelegationMode,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    validateIcebergProperties(callContext, createTableRequest.properties());
+    validateIcebergProperties(realmConfig, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
@@ -516,7 +519,7 @@ public class IcebergCatalogAdapter
     commitTableRequest.updates().stream()
         .filter(MetadataUpdate.SetProperties.class::isInstance)
         .map(MetadataUpdate.SetProperties.class::cast)
-        .forEach(setProperties -> validateIcebergProperties(callContext, setProperties.updated()));
+        .forEach(setProperties -> validateIcebergProperties(realmConfig, setProperties.updated()));
 
     UpdateTableRequest revisedRequest =
         UpdateTableRequest.create(
@@ -547,7 +550,7 @@ public class IcebergCatalogAdapter
       CreateViewRequest createViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    validateIcebergProperties(callContext, createViewRequest.properties());
+    validateIcebergProperties(realmConfig, createViewRequest.properties());
 
     CreateViewRequest revisedRequest =
         ImmutableCreateViewRequest.copyOf(createViewRequest)
@@ -695,7 +698,7 @@ public class IcebergCatalogAdapter
         .flatMap(updateTableRequest -> updateTableRequest.updates().stream())
         .filter(MetadataUpdate.SetProperties.class::isInstance)
         .map(MetadataUpdate.SetProperties.class::cast)
-        .forEach(setProperties -> validateIcebergProperties(callContext, setProperties.updated()));
+        .forEach(setProperties -> validateIcebergProperties(realmConfig, setProperties.updated()));
 
     CommitTransactionRequest revisedRequest =
         new CommitTransactionRequest(
@@ -791,8 +794,8 @@ public class IcebergCatalogAdapter
                         .addAll(DEFAULT_ENDPOINTS)
                         .addAll(VIEW_ENDPOINTS)
                         .addAll(COMMIT_ENDPOINT)
-                        .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(callContext))
-                        .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(callContext))
+                        .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig))
+                        .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig))
                         .build())
                 .build())
         .build();

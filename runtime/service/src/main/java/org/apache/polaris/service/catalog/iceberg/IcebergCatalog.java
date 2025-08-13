@@ -256,7 +256,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     var storageConfigurationInfo = catalogEntity.getStorageConfigurationInfo();
     ioImplClassName =
         IcebergPropertiesValidation.determineFileIOClassName(
-            callContext, properties, storageConfigurationInfo);
+            callContext.getRealmConfig(), properties, storageConfigurationInfo);
 
     if (ioImplClassName == null) {
       LOGGER.warn(
