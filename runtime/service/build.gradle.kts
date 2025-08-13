@@ -185,6 +185,11 @@ dependencies {
   testFixturesImplementation("com.azure:azure-core")
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
+
+  intTestImplementation(project(":polaris-tests"))
+  intTestImplementation("org.scala-lang:scala-library:2.12.20")
+  intTestImplementation("org.scala-lang:scala-reflect:2.12.20")
+  intTestImplementation("org.scala-lang.modules:scala-collection-compat_2.12:2.13.0")
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
@@ -217,6 +222,12 @@ listOf("intTest", "cloudTest")
   .forEach {
     it.configure {
       maxParallelForks = 1
+      jvmArgs(
+        "--add-opens",
+        "java.base/java.nio=ALL-UNNAMED",
+        "--add-opens",
+        "java.base/sun.nio.ch=ALL-UNNAMED",
+      )
 
       val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
 
@@ -265,3 +276,12 @@ listOf("intTest", "cloudTest")
       }
     }
   }
+
+configurations.named("intTestRuntimeClasspath").configure {
+  resolutionStrategy {
+    force("org.scala-lang:scala-library:2.12.20")
+    force("org.scala-lang:scala-reflect:2.12.20")
+    force("org.antlr:antlr4-runtime:4.9.3")
+  }
+  exclude(group = "org.antlr", module = "antlr-runtime")
+}
