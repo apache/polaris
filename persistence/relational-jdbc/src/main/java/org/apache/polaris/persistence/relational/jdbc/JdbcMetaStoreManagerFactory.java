@@ -86,8 +86,9 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
   }
 
-  protected PolarisMetaStoreManager createNewMetaStoreManager() {
-    return new AtomicOperationMetaStoreManager(clock);
+  protected PolarisMetaStoreManager createNewMetaStoreManager(
+      Supplier<BasePersistence> metaStoreSupplier) {
+    return new AtomicOperationMetaStoreManager(clock, metaStoreSupplier);
   }
 
   private void initializeForRealm(
@@ -99,17 +100,17 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     String realmId = realmContext.getRealmIdentifier();
     // determine schemaVersion once per realm
     final int schemaVersion = JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations);
-    sessionSupplierMap.put(
-        realmId,
+    Supplier<BasePersistence> metaStoreSupplier =
         () ->
             new JdbcBasePersistenceImpl(
                 datasourceOperations,
                 secretsGenerator(realmId, rootCredentialsSet),
                 storageIntegrationProvider,
                 realmId,
-                schemaVersion));
+                schemaVersion);
+    sessionSupplierMap.put(realmId, metaStoreSupplier);
 
-    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
+    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager(metaStoreSupplier);
     metaStoreManagerMap.put(realmId, metaStoreManager);
   }
 
@@ -175,9 +176,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
-      BasePersistence session = getOrCreateSession(realmContext);
 
-      PolarisCallContext callContext = new PolarisCallContext(realmContext, session, diagnostics);
+      PolarisCallContext callContext = new PolarisCallContext(realmContext, diagnostics);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
@@ -197,16 +197,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       checkPolarisServiceBootstrappedForRealm(realmContext);
     }
     return metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-  }
-
-  @Override
-  public synchronized BasePersistence getOrCreateSession(RealmContext realmContext) {
-    if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
-      DatasourceOperations datasourceOperations = getDatasourceOperations();
-      initializeForRealm(datasourceOperations, realmContext, null);
-    }
-    checkPolarisServiceBootstrappedForRealm(realmContext);
-    return sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
   }
 
   @Override
@@ -232,9 +222,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     // CallContext may not have been resolved yet.
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStore, diagnostics);
+    PolarisCallContext polarisContext = new PolarisCallContext(realmContext, diagnostics);
 
     Optional<PrincipalEntity> preliminaryRootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext);
@@ -267,9 +255,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStore, diagnostics);
+    PolarisCallContext polarisContext = new PolarisCallContext(realmContext, diagnostics);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);
     if (rootPrincipal.isEmpty()) {

@@ -63,10 +63,7 @@ import org.assertj.core.api.Assertions;
 /** Test the Polaris persistence layer */
 public class PolarisTestMetaStoreManager {
 
-  // call context
   final PolarisCallContext polarisCallContext;
-
-  // call metastore manager
   final PolarisMetaStoreManager polarisMetaStoreManager;
 
   // the start time
@@ -2903,9 +2900,10 @@ public class PolarisTestMetaStoreManager {
     // Drop N1_N2_T1, the corresponding policy mapping should be cleaned-up
     this.dropEntity(List.of(catalog, N1, N1_N2), N1_N2_T3);
 
-    BasePersistence ms = polarisCallContext.getMetaStore();
+    // hackish way to inspect internal metastore
+    BasePersistence metaStore = ((BaseMetaStoreManager<?>) polarisMetaStoreManager).getMetaStore();
     Assertions.assertThat(
-            ms.loadAllTargetsOnPolicy(
+            metaStore.loadAllTargetsOnPolicy(
                 polarisCallContext, N1_P1.getCatalogId(), N1_P1.getId(), N1_P1.getPolicyTypeCode()))
         .isEmpty();
 

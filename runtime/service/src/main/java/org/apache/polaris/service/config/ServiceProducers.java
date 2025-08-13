@@ -44,7 +44,6 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -157,11 +156,9 @@ public class ServiceProducers {
   @RequestScoped
   public CallContext polarisCallContext(
       RealmContext realmContext,
-      PolarisDiagnostics diagServices,
-      PolarisConfigurationStore configurationStore,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStoreSession, diagServices, configurationStore);
+      PolarisDiagnostics diagnostics,
+      PolarisConfigurationStore configurationStore) {
+    return new PolarisCallContext(realmContext, diagnostics, configurationStore);
   }
 
   @Produces

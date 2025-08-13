@@ -86,15 +86,6 @@ public class InMemoryPolarisMetaStoreManagerFactory
     return super.getOrCreateMetaStoreManager(realmContext);
   }
 
-  @Override
-  public synchronized TransactionalPersistence getOrCreateSession(RealmContext realmContext) {
-    String realmId = realmContext.getRealmIdentifier();
-    if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsFromEnvironment(List.of(realmId));
-    }
-    return super.getOrCreateSession(realmContext);
-  }
-
   private void bootstrapRealmsFromEnvironment(List<String> realms) {
     RootCredentialsSet rootCredentialsSet = RootCredentialsSet.fromEnvironment();
     this.bootstrapRealms(realms, rootCredentialsSet);

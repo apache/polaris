@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Clock;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
@@ -38,9 +37,6 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,17 +48,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class CatalogEntityTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  private final Clock clock = Clock.systemUTC();
   private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
   private CallContext callContext;
 
   @BeforeEach
   public void setup() {
     RealmContext realmContext = () -> "realm";
-    MetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory(clock, diagnostics, null);
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    this.callContext = new PolarisCallContext(realmContext, metaStore, diagnostics);
+    this.callContext = new PolarisCallContext(realmContext, diagnostics);
   }
 
   @ParameterizedTest
