@@ -145,8 +145,10 @@ class AwsCloudWatchEventListenerTest {
         CloudWatchLogsAsyncClient mockClient = Mockito.mock(CloudWatchLogsAsyncClient.class);
 
         // Mock the responses for log group and stream creation
-        when(mockClient.createLogGroup(any(CreateLogGroupRequest.class))).thenReturn(CompletableFuture.completedFuture(null));
-        when(mockClient.createLogStream(any(CreateLogStreamRequest.class))).thenReturn(CompletableFuture.completedFuture(null));
+        when(mockClient.createLogGroup(any(CreateLogGroupRequest.class)))
+            .thenReturn(CompletableFuture.completedFuture(null));
+        when(mockClient.createLogStream(any(CreateLogStreamRequest.class)))
+            .thenReturn(CompletableFuture.completedFuture(null));
 
         // Mock the describe log streams response for getting sequence token
         DescribeLogStreamsResponse mockStreamsResponse =
@@ -163,7 +165,8 @@ class AwsCloudWatchEventListenerTest {
         // Mock the putLogEvents response
         PutLogEventsResponse mockPutResponse =
             PutLogEventsResponse.builder().nextSequenceToken("mock-sequence-token-123").build();
-        when(mockClient.putLogEvents(any(PutLogEventsRequest.class))).thenReturn(CompletableFuture.completedFuture(mockPutResponse));
+        when(mockClient.putLogEvents(any(PutLogEventsRequest.class)))
+            .thenReturn(CompletableFuture.completedFuture(mockPutResponse));
 
         return mockClient;
       default:
@@ -209,8 +212,10 @@ class AwsCloudWatchEventListenerTest {
     if (mode == TestMode.LOCALSTACK) {
       // Verify log group exists
       DescribeLogGroupsResponse groups =
-          client.describeLogGroups(
-              DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build()).join();
+          client
+              .describeLogGroups(
+                  DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
+              .join();
       assertThat(groups.logGroups())
           .hasSize(1)
           .first()
@@ -218,11 +223,13 @@ class AwsCloudWatchEventListenerTest {
 
       // Verify log stream exists
       DescribeLogStreamsResponse streams =
-          client.describeLogStreams(
-              DescribeLogStreamsRequest.builder()
-                  .logGroupName(LOG_GROUP)
-                  .logStreamNamePrefix(LOG_STREAM)
-                  .build()).join();
+          client
+              .describeLogStreams(
+                  DescribeLogStreamsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamNamePrefix(LOG_STREAM)
+                      .build())
+              .join();
       assertThat(streams.logStreams())
           .hasSize(1)
           .first()
@@ -275,21 +282,25 @@ class AwsCloudWatchEventListenerTest {
         if (System.currentTimeMillis() - startTime > 30_000) {
           fail("Timeout exceeded while waiting for event to arrive");
         }
-         logEvents =
-                client.getLogEvents(
-                        GetLogEventsRequest.builder()
-                                .logGroupName(LOG_GROUP)
-                                .logStreamName(LOG_STREAM)
-                                .build()).join();
+        logEvents =
+            client
+                .getLogEvents(
+                    GetLogEventsRequest.builder()
+                        .logGroupName(LOG_GROUP)
+                        .logStreamName(LOG_STREAM)
+                        .build())
+                .join();
         eventCount = logEvents.events().size();
       }
 
       logEvents =
-              client.getLogEvents(
-                      GetLogEventsRequest.builder()
-                              .logGroupName(LOG_GROUP)
-                              .logStreamName(LOG_STREAM)
-                              .build()).join();
+          client
+              .getLogEvents(
+                  GetLogEventsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamName(LOG_STREAM)
+                      .build())
+              .join();
 
       assertThat(logEvents.events())
           .hasSize(1)
@@ -361,20 +372,24 @@ class AwsCloudWatchEventListenerTest {
           fail("Timeout exceeded while waiting for event to arrive");
         }
         logEvents =
-                client.getLogEvents(
-                        GetLogEventsRequest.builder()
-                                .logGroupName(LOG_GROUP)
-                                .logStreamName(LOG_STREAM)
-                                .build()).join();
+            client
+                .getLogEvents(
+                    GetLogEventsRequest.builder()
+                        .logGroupName(LOG_GROUP)
+                        .logStreamName(LOG_STREAM)
+                        .build())
+                .join();
         eventCount = logEvents.events().size();
       }
 
       logEvents =
-          client.getLogEvents(
-              GetLogEventsRequest.builder()
-                  .logGroupName(LOG_GROUP)
-                  .logStreamName(LOG_STREAM)
-                  .build()).join();
+          client
+              .getLogEvents(
+                  GetLogEventsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamName(LOG_STREAM)
+                      .build())
+              .join();
 
       assertThat(logEvents.events()).hasSize(1);
 

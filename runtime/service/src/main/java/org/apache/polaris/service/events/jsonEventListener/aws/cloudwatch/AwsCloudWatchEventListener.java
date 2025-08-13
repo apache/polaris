@@ -28,7 +28,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
-
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
@@ -102,7 +101,8 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
 
   private void ensureLogGroupAndStream() {
     try {
-      CompletableFuture<CreateLogGroupResponse> future = client.createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroup).build());
+      CompletableFuture<CreateLogGroupResponse> future =
+          client.createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroup).build());
       future.join();
     } catch (CompletionException e) {
       if (e.getCause() instanceof ResourceAlreadyExistsException) {
@@ -113,8 +113,12 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
     }
 
     try {
-      CompletableFuture<CreateLogStreamResponse> future = client.createLogStream(
-              CreateLogStreamRequest.builder().logGroupName(logGroup).logStreamName(logStream).build());
+      CompletableFuture<CreateLogStreamResponse> future =
+          client.createLogStream(
+              CreateLogStreamRequest.builder()
+                  .logGroupName(logGroup)
+                  .logStreamName(logStream)
+                  .build());
       future.join();
     } catch (CompletionException e) {
       if (e.getCause() instanceof ResourceAlreadyExistsException) {
@@ -146,15 +150,22 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
     }
     InputLogEvent inputLogEvent = createLogEvent(eventAsJson, getCurrentTimestamp());
     PutLogEventsRequest.Builder requestBuilder =
-            PutLogEventsRequest.builder()
-                    .logGroupName(logGroup)
-                    .logStreamName(logStream)
-                    .logEvents(List.of(inputLogEvent));
-    CompletableFuture<PutLogEventsResponse> future = client.putLogEvents(requestBuilder.build()).whenComplete((resp, err) -> {
-      if (err != null) {
-        LOGGER.error("Error writing log to CloudWatch. Event: {}, Error: {}", inputLogEvent, err.getMessage());
-      }
-    });
+        PutLogEventsRequest.builder()
+            .logGroupName(logGroup)
+            .logStreamName(logStream)
+            .logEvents(List.of(inputLogEvent));
+    CompletableFuture<PutLogEventsResponse> future =
+        client
+            .putLogEvents(requestBuilder.build())
+            .whenComplete(
+                (resp, err) -> {
+                  if (err != null) {
+                    LOGGER.error(
+                        "Error writing log to CloudWatch. Event: {}, Error: {}",
+                        inputLogEvent,
+                        err.getMessage());
+                  }
+                });
     if (synchronousMode) {
       future.join();
     }
