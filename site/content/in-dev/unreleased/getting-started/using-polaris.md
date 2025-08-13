@@ -285,6 +285,51 @@ SELECT * FROM iceberg.quickstart_schema.quickstart_table;
 org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```
 
+### Connecting with PyIceberg
+
+#### Using Credentials
+
+```python
+from pyiceberg.catalog import load_catalog
+
+catalog = load_catalog(
+    type='rest',
+    uri='http://localhost:8181/api/catalog',
+    warehouse='quickstart_catalog',
+    scope="PRINCIPAL_ROLE:ALL",
+    credential=f"{CLIENT_ID}:{CLIENT_SECRET}",
+)
+```
+
+If the `load_catalog` function is used with credentials, then PyIceberg will automatically request an authorization token from the `v1/oauth/tokens` endpoint, and will later use this token to prove its identity to the Polaris Catalog.
+
+#### Using a Token
+
+```python
+from pyiceberg.catalog import load_catalog
+import requests
+
+# Step 1: Get OAuth token
+response = requests.post(
+    "http://localhost:8181/api/catalog/v1/oauth/tokens",
+    auth =(CLIENT_ID, CLIENT_SECRET),
+    data = {
+        "grant_type": "client_credentials",
+        "scope": "PRINCIPAL_ROLE:ALL"
+    })
+token = response.json()["access_token"]
+
+# Step 2: Load the catalog using the token
+catalog = load_catalog(
+    type='rest',
+    uri='http://localhost:8181/api/catalog',
+    warehouse='quickstart_catalog',
+    token=token,
+)
+```
+
+It is possible to use `load_catalog` function by providing an authorization token directly. This method is useful when using an external identity provider (e.g. Google Identity).
+
 ### Connecting Using REST APIs
 
 To access Polaris from the host machine, first request an access token:
