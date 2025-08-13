@@ -43,10 +43,9 @@ dependencies {
 
   implementation(libs.caffeine)
   implementation(libs.commons.lang3)
-  implementation(libs.commons.codec1)
+  implementation(libs.commons.codec)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
-  compileOnly(libs.spotbugs.annotations)
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))

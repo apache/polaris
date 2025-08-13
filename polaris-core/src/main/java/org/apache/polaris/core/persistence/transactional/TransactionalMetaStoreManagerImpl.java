@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.Clock;
@@ -86,7 +85,6 @@ import org.slf4j.LoggerFactory;
  * Default implementation of the Polaris Meta Store Manager. Uses the underlying meta store to store
  * and retrieve all Polaris metadata
  */
-@SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
 public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TransactionalMetaStoreManagerImpl.class);
