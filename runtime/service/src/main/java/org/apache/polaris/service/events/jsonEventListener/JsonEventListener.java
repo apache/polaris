@@ -23,6 +23,15 @@ import java.util.HashMap;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 
+/**
+ * Abstract base class from which all event sinks that output events in JSON format can extend.
+ * <p>
+ * This class provides a common framework for transforming Polaris events into JSON format
+ * and sending them to various destinations. Concrete implementations should override the
+ * {@link #transformAndSendEvent(HashMap)} method to define how the JSON event data should
+ * be transmitted or stored.
+ * </p>
+ */
 public abstract class JsonEventListener extends PolarisEventListener {
   protected abstract void transformAndSendEvent(HashMap<String, Object> properties);
 
