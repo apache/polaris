@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -56,9 +57,12 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
+  private final Clock clock;
   private final PolarisDiagnostics diagnostics;
 
-  protected LocalPolarisMetaStoreManagerFactory(@Nonnull PolarisDiagnostics diagnostics) {
+  protected LocalPolarisMetaStoreManagerFactory(
+      @Nonnull Clock clock, @Nonnull PolarisDiagnostics diagnostics) {
+    this.clock = clock;
     this.diagnostics = diagnostics;
   }
 
@@ -84,8 +88,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
    * Subclasses can override this to inject different implementations of PolarisMetaStoreManager
    * into the existing realm-based setup flow.
    */
-  protected PolarisMetaStoreManager createNewMetaStoreManager() {
-    return new TransactionalMetaStoreManagerImpl();
+  protected PolarisMetaStoreManager createNewMetaStoreManager(Clock clock) {
+    return new TransactionalMetaStoreManagerImpl(clock);
   }
 
   private void initializeForRealm(
@@ -95,7 +99,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         realmContext.getRealmIdentifier(),
         () -> createMetaStoreSession(backingStore, realmContext, rootCredentialsSet, diagnostics));
 
-    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
+    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager(clock);
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 

@@ -21,7 +21,6 @@ package org.apache.polaris.service.test;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -36,7 +35,6 @@ public class PolarisIntegrationTestHelper {
   @Inject ObjectMapper objectMapper;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject Clock clock;
 
   public PolarisIntegrationTestFixture createFixture(TestEnvironment testEnv, TestInfo testInfo) {
     return new PolarisIntegrationTestFixture(this, testEnv, testInfo);

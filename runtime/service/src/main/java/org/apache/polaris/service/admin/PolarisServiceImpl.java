@@ -240,11 +240,7 @@ public class PolarisServiceImpl
   @Override
   public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    List<Catalog> catalogList =
-        adminService.listCatalogs().stream()
-            .map(CatalogEntity::new)
-            .map(CatalogEntity::asCatalog)
-            .toList();
+    List<Catalog> catalogList = adminService.listCatalogs();
     Catalogs catalogs = new Catalogs(catalogList);
     LOGGER.debug("listCatalogs returning: {}", catalogs);
     return Response.ok(catalogs).build();
@@ -312,11 +308,7 @@ public class PolarisServiceImpl
   @Override
   public Response listPrincipals(RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    List<Principal> principalList =
-        adminService.listPrincipals().stream()
-            .map(PrincipalEntity::new)
-            .map(PrincipalEntity::asPrincipal)
-            .toList();
+    List<Principal> principalList = adminService.listPrincipals();
     Principals principals = new Principals(principalList);
     LOGGER.debug("listPrincipals returning: {}", principals);
     return Response.ok(principals).build();
@@ -376,11 +368,7 @@ public class PolarisServiceImpl
   @Override
   public Response listPrincipalRoles(RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    List<PrincipalRole> principalRoleList =
-        adminService.listPrincipalRoles().stream()
-            .map(PrincipalRoleEntity::new)
-            .map(PrincipalRoleEntity::asPrincipalRole)
-            .toList();
+    List<PrincipalRole> principalRoleList = adminService.listPrincipalRoles();
     PrincipalRoles principalRoles = new PrincipalRoles(principalRoleList);
     LOGGER.debug("listPrincipalRoles returning: {}", principalRoles);
     return Response.ok(principalRoles).build();
@@ -452,11 +440,7 @@ public class PolarisServiceImpl
   public Response listCatalogRoles(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-    List<CatalogRole> catalogRoleList =
-        adminService.listCatalogRoles(catalogName).stream()
-            .map(CatalogRoleEntity::new)
-            .map(CatalogRoleEntity::asCatalogRole)
-            .toList();
+    List<CatalogRole> catalogRoleList = adminService.listCatalogRoles(catalogName);
     CatalogRoles catalogRoles = new CatalogRoles(catalogRoleList);
     LOGGER.debug("listCatalogRoles returning: {}", catalogRoles);
     return Response.ok(catalogRoles).build();
