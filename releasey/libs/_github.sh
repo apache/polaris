@@ -86,7 +86,7 @@ function get_github_repo_info() {
   local repo_info
   if [[ "$origin_url" =~ ^https://github\.com/([^/]+)/([^/]+)(\.git)?/?$ ]]; then
     repo_info="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
-  elif [[ "$origin_url" =~ ^git@github\.com:([^/]+)/([^/]+)(\.git)?/?$ ]]; then
+  elif [[ "$origin_url" =~ ^git@github\.com:([^/]+)/([^/]+)\.git/?$ ]]; then
     repo_info="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
   else
     print_error "Origin remote URL is not a GitHub repository: ${origin_url}"
