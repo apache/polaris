@@ -16,12 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.ext;
+package org.apache.polaris.test.commons.keycloak;
 
-import org.apache.polaris.service.it.env.ClientCredentials;
-import org.apache.polaris.service.it.env.PolarisApiEndpoints;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.List;
+import java.util.Map;
 
-public interface PolarisAccessManager {
+public class KeycloakProfile implements QuarkusTestProfile {
 
-  String obtainAccessToken(PolarisApiEndpoints endpoints, ClientCredentials credentials);
+  @Override
+  public Map<String, String> getConfigOverrides() {
+    return Map.of(
+        "quarkus.oidc.tenant-enabled",
+        "true",
+        "quarkus.oidc.client-id",
+        "polaris",
+        "polaris.authentication.type",
+        "external",
+        "polaris.oidc.principal-mapper.name-claim-path",
+        KeycloakAccess.PRINCIPAL_NAME_CLAIM,
+        "polaris.oidc.principal-roles-mapper.filter",
+        "PRINCIPAL_ROLE:.*");
+  }
+
+  @Override
+  public List<TestResourceEntry> testResources() {
+    return List.of(new TestResourceEntry(KeycloakLifecycleManager.class, Map.of()));
+  }
 }

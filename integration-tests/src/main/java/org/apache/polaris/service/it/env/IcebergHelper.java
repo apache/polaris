@@ -22,18 +22,15 @@ import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
-import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 
 public final class IcebergHelper {
   private IcebergHelper() {}
 
   public static RESTCatalog restCatalog(
-      PolarisClient client,
       PolarisApiEndpoints endpoints,
-      PrincipalWithCredentials credentials,
       String catalog,
-      Map<String, String> extraProperties) {
-    String authToken = client.obtainToken(credentials);
+      Map<String, String> extraProperties,
+      String authToken) {
     RESTCatalog restCatalog = new RESTCatalog();
 
     ImmutableMap.Builder<String, String> propertiesBuilder =
