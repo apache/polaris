@@ -19,15 +19,13 @@
 
 package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
-import java.util.Optional;
-
 /** Configuration interface for AWS CloudWatch event listener settings. */
 public interface AwsCloudWatchConfiguration {
-  Optional<String> awsCloudwatchlogGroup();
+  String awsCloudwatchlogGroup();
 
-  Optional<String> awsCloudwatchlogStream();
+  String awsCloudwatchlogStream();
 
-  Optional<String> awsCloudwatchRegion();
+  String awsCloudwatchRegion();
 
   boolean synchronousMode();
 }

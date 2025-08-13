@@ -31,7 +31,6 @@ import static org.mockito.Mockito.when;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -105,9 +104,9 @@ class AwsCloudWatchEventListenerTest {
     executorService = Executors.newSingleThreadExecutor();
 
     // Configure the mocks
-    when(config.awsCloudwatchlogGroup()).thenReturn(Optional.of(LOG_GROUP));
-    when(config.awsCloudwatchlogStream()).thenReturn(Optional.of(LOG_STREAM));
-    when(config.awsCloudwatchRegion()).thenReturn(Optional.of("us-east-1"));
+    when(config.awsCloudwatchlogGroup()).thenReturn(LOG_GROUP);
+    when(config.awsCloudwatchlogStream()).thenReturn(LOG_STREAM);
+    when(config.awsCloudwatchRegion()).thenReturn("us-east-1");
     when(config.synchronousMode()).thenReturn(false); // Default to async mode
   }
 

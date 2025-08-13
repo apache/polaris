@@ -68,23 +68,9 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
 
   @Inject
   public AwsCloudWatchEventListener(AwsCloudWatchConfiguration config, Clock clock) {
-    this.logStream =
-        config
-            .awsCloudwatchlogStream()
-            .orElseThrow(
-                () -> new IllegalArgumentException("AWS CloudWatch log stream must be configured"));
-    this.logGroup =
-        config
-            .awsCloudwatchlogGroup()
-            .orElseThrow(
-                () -> new IllegalArgumentException("AWS CloudWatch log group must be configured"));
-    this.region =
-        Region.of(
-            config
-                .awsCloudwatchRegion()
-                .orElseThrow(
-                    () ->
-                        new IllegalArgumentException("AWS CloudWatch region must be configured")));
+    this.logStream = config.awsCloudwatchlogStream();
+    this.logGroup = config.awsCloudwatchlogGroup();
+    this.region = Region.of(config.awsCloudwatchRegion());
     this.synchronousMode = config.synchronousMode();
     this.clock = clock;
   }
@@ -145,7 +131,7 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
     try {
       eventAsJson = objectMapper.writeValueAsString(properties);
     } catch (JsonProcessingException e) {
-      LOGGER.error("Error processing event into JSON string: {}", e.getMessage());
+      LOGGER.error("Error processing event into JSON string: ", e);
       return;
     }
     InputLogEvent inputLogEvent = createLogEvent(eventAsJson, getCurrentTimestamp());
@@ -161,9 +147,7 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
                 (resp, err) -> {
                   if (err != null) {
                     LOGGER.error(
-                        "Error writing log to CloudWatch. Event: {}, Error: {}",
-                        inputLogEvent,
-                        err.getMessage());
+                        "Error writing log to CloudWatch. Event: {}, Error: ", inputLogEvent, err);
                   }
                 });
     if (synchronousMode) {

@@ -23,7 +23,6 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.util.Optional;
 import org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch.AwsCloudWatchConfiguration;
 
 /**
@@ -50,7 +49,7 @@ public interface QuarkusAwsCloudWatchConfiguration extends AwsCloudWatchConfigur
   @WithName("log-group")
   @WithDefault("polaris-cloudwatch-default-group")
   @Override
-  Optional<String> awsCloudwatchlogGroup();
+  String awsCloudwatchlogGroup();
 
   /**
    * Returns the AWS CloudWatch log stream name for event logging.
@@ -65,7 +64,7 @@ public interface QuarkusAwsCloudWatchConfiguration extends AwsCloudWatchConfigur
   @WithName("log-stream")
   @WithDefault("polaris-cloudwatch-default-stream")
   @Override
-  Optional<String> awsCloudwatchlogStream();
+  String awsCloudwatchlogStream();
 
   /**
    * Returns the AWS region where CloudWatch logs should be sent.
@@ -80,7 +79,7 @@ public interface QuarkusAwsCloudWatchConfiguration extends AwsCloudWatchConfigur
   @WithName("region")
   @WithDefault("us-east-1")
   @Override
-  Optional<String> awsCloudwatchRegion();
+  String awsCloudwatchRegion();
 
   /**
    * Returns the synchronous mode setting for CloudWatch logging.
