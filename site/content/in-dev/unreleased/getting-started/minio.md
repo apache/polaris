@@ -17,9 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Using MinIO
+Title: Deploying on MinIO
 type: docs
-weight: 500
+weight: 350
 ---
 
 In this guide we walk through setting up a simple Polaris Server with local [MinIO](https://www.min.io/) storage.
