@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
-import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Comparator;
@@ -311,50 +310,13 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         .collect(Collectors.toList());
   }
 
-  /** {@inheritDoc} */
-  @Override
-  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
-    return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
-  }
-
-  @Override
-  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
-    // full range scan under the parent for that type
-    return this.listEntitiesInCurrentTxn(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        entityFilter,
-        entity ->
-            new EntityNameLookupRecord(
-                entity.getCatalogId(),
-                entity.getId(),
-                entity.getParentId(),
-                entity.getName(),
-                entity.getTypeCode(),
-                entity.getSubTypeCode()),
-        pageToken);
-  }
-
   @Override
   public @Nonnull <T> Page<T> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
@@ -381,6 +343,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             .orElse(e -> true);
 
     data = data.sorted(Comparator.comparingLong(PolarisEntityCore::getId)).filter(tokenFilter);
+
+    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
+      data = data.filter(e -> e.getSubTypeCode() == entitySubType.getCode());
+    }
 
     data = data.filter(entityFilter);
 

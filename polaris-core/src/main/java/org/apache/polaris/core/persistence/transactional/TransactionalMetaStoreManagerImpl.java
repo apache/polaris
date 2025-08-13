@@ -30,7 +30,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -708,12 +707,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       return new ListEntitiesResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
     }
 
-    Predicate<PolarisBaseEntity> filter = entity -> true;
-    // prune the returned list with only entities matching the entity subtype
-    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
-      filter = e -> e.getSubTypeCode() == entitySubType.getCode();
-    }
-
     // return list of active entities
     Page<EntityNameLookupRecord> resultPage =
         ms.listEntitiesInCurrentTxn(
@@ -721,7 +714,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             resolver.getCatalogIdOrNull(),
             resolver.getParentId(),
             entityType,
-            filter,
+            entitySubType,
             pageToken);
 
     // done
@@ -1385,6 +1378,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                   catalogId,
                   catalogId,
                   PolarisEntityType.CATALOG_ROLE,
+                  PolarisEntitySubType.ANY_SUBTYPE,
                   entity -> true,
                   Function.identity(),
                   PageToken.fromLimit(2))
@@ -1958,6 +1952,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityType.TASK,
+            PolarisEntitySubType.ANY_SUBTYPE,
             entity -> {
               PolarisObjectMapperUtil.TaskExecutionState taskState =
                   PolarisObjectMapperUtil.parseTaskState(entity);
