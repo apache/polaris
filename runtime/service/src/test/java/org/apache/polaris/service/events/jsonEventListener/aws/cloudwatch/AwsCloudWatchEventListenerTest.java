@@ -31,12 +31,10 @@ import static org.mockito.Mockito.when;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -59,7 +57,6 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsAsyncClient;
-import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogGroupsRequest;
@@ -200,20 +197,6 @@ class AwsCloudWatchEventListenerTest {
     return listener;
   }
 
-//  private void waitForFuture(Future<?> future, long timeoutMs) {
-//    try {
-//      long start = System.currentTimeMillis();
-//      while (!future.isDone()) {
-//        if (System.currentTimeMillis() - start > timeoutMs) {
-//          fail("Future did not complete in time");
-//        }
-//        Thread.sleep(100);
-//      }
-//    } catch (InterruptedException e) {
-//      fail("Future was interrupted");
-//    }
-//  }
-
   @ParameterizedTest
   @MethodSource("testModeProvider")
   void shouldCreateLogGroupAndStream(TestMode mode) {
@@ -255,12 +238,6 @@ class AwsCloudWatchEventListenerTest {
                   (CreateLogStreamRequest request) ->
                       request.logGroupName().equals(LOG_GROUP)
                           && request.logStreamName().equals(LOG_STREAM)));
-//      verify(client, times(1))
-//          .describeLogStreams(
-//              argThat(
-//                  (DescribeLogStreamsRequest request) ->
-//                      request.logGroupName().equals(LOG_GROUP)
-//                          && request.logStreamNamePrefix().equals(LOG_STREAM)));
     }
 
     // Clean up
