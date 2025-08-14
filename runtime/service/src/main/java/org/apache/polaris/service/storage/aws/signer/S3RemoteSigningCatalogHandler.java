@@ -70,8 +70,6 @@ public class S3RemoteSigningCatalogHandler extends CatalogHandler implements Aut
 
     LOGGER.debug("Requesting s3 signing for {}: {}", tableIdentifier, s3SignRequest);
 
-    throwIfRemoteSigningNotEnabled(callContext.getRealmConfig(), catalogEntity);
-
     // TODO authorize based on the request's method?
 
     try {
@@ -84,6 +82,9 @@ public class S3RemoteSigningCatalogHandler extends CatalogHandler implements Aut
       authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
           PolarisAuthorizableOperation.SIGN_S3_REQUEST, tableIdentifier);
     }
+
+    // Must be done after the authorization check, as the auth check creates the catalog entity
+    throwIfRemoteSigningNotEnabled(callContext.getRealmConfig(), catalogEntity);
 
     PolarisS3SignResponse s3SignResponse = s3RequestSigner.signRequest(s3SignRequest);
     LOGGER.debug("S3 signing response: {}", s3SignResponse);
