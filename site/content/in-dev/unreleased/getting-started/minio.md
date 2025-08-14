@@ -44,7 +44,7 @@ docker compose -f getting-started/minio/docker-compose.yml up
 The compose script will start MinIO on default ports (API on 9000, UI on 9001)
 plus a Polaris Server pre-configured to that MinIO instance. 
 
-In this example the `root` Polaris uses the password set to `s3cr3t`.
+In this example the `root` principal has its password set to `s3cr3t`.
 
 # Connecting from Spark
 
