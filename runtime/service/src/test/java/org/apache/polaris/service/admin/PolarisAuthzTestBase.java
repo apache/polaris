@@ -55,6 +55,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -199,6 +200,7 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisBaseEntity catalogEntity;
   protected PrincipalEntity principalEntity;
   protected CallContext callContext;
+  protected RealmConfig realmConfig;
   protected AuthenticatedPolarisPrincipal authenticatedRoot;
   protected PolarisAuthorizer polarisAuthorizer;
 
@@ -234,6 +236,7 @@ public abstract class PolarisAuthzTestBase {
             configurationStore);
 
     callContext = polarisContext;
+    realmConfig = polarisContext.getRealmConfig();
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -262,7 +265,7 @@ public abstract class PolarisAuthzTestBase {
                     .setName(CATALOG_NAME)
                     .setCatalogType("INTERNAL")
                     .setDefaultBaseLocation(storageLocation)
-                    .setStorageConfigurationInfo(callContext, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 

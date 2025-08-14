@@ -235,6 +235,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
+  private RealmConfig realmConfig;
   private PolarisAdminService adminService;
   private ResolverFactory resolverFactory;
   private ResolutionManifestFactory resolutionManifestFactory;
@@ -279,8 +280,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore);
+    realmConfig = polarisContext.getRealmConfig();
 
-    EntityCache entityCache = createEntityCache(polarisContext.getRealmConfig(), metaStoreManager);
+    EntityCache entityCache = createEntityCache(realmConfig, metaStoreManager);
     resolverFactory =
         (callContext, securityContext, referenceCatalogName) ->
             new Resolver(
@@ -337,8 +339,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(
-                        polarisContext, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 
@@ -1327,8 +1328,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         metadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    if (!polarisContext
-        .getRealmConfig()
+    if (!realmConfig
         .getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
         .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
@@ -1380,8 +1380,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         metadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    if (!polarisContext
-        .getRealmConfig()
+    if (!realmConfig
         .getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
         .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
@@ -1871,7 +1870,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
                 .setStorageConfigurationInfo(
-                    polarisContext, noPurgeStorageConfigModel, storageLocation)
+                    realmConfig, noPurgeStorageConfigModel, storageLocation)
                 .build()
                 .asCatalog()));
     IcebergCatalog noPurgeCatalog =
