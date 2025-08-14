@@ -20,17 +20,15 @@ package org.apache.polaris.service.auth.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import io.quarkus.security.credential.TokenCredential;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.SecurityIdentity;
-import io.quarkus.security.identity.request.TokenAuthenticationRequest;
 import io.quarkus.vertx.http.runtime.security.HttpSecurityUtils;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import java.security.Principal;
-import org.apache.polaris.service.auth.internal.InternalAuthenticationMechanism.InternalPolarisCredential;
+import java.util.Set;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -46,25 +44,12 @@ public class InternalIdentityProviderTest {
   }
 
   @Test
-  public void testAuthenticateWithWrongCredential() {
-    TokenCredential nonInternalCredential = mock(TokenCredential.class);
-    TokenAuthenticationRequest request = new TokenAuthenticationRequest(nonInternalCredential);
-
-    Uni<SecurityIdentity> result = provider.authenticate(request, context);
-
-    assertThat(result.await().indefinitely()).isNull();
-  }
-
-  @Test
   public void testAuthenticateWithValidCredential() {
-    // Create a mock InternalPolarisCredential
-    InternalAuthenticationMechanism.InternalPolarisCredential credential =
-        mock(InternalAuthenticationMechanism.InternalPolarisCredential.class);
-    when(credential.getPrincipalName()).thenReturn("testUser");
+    PolarisCredential credential = PolarisCredential.of(1L, "testUser", Set.of());
+    InternalAuthenticationRequest request = new InternalAuthenticationRequest(credential);
 
     // Create a request with the credential and a routing context attribute
     RoutingContext routingContext = mock(RoutingContext.class);
-    TokenAuthenticationRequest request = new TokenAuthenticationRequest(credential);
     HttpSecurityUtils.setRoutingContextAttribute(request, routingContext);
 
     // Authenticate the request
@@ -80,7 +65,7 @@ public class InternalIdentityProviderTest {
     assertThat(principal.getName()).isEqualTo("testUser");
 
     // Verify the credential is set
-    assertThat(identity.getCredential(InternalPolarisCredential.class)).isSameAs(credential);
+    assertThat(identity.getCredential(PolarisCredential.class)).isSameAs(credential);
 
     // Verify the routing context attribute is set
     assertThat((RoutingContext) identity.getAttribute(RoutingContext.class.getName()))
