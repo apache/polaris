@@ -37,7 +37,7 @@ import org.immutables.value.Value;
 public interface PolarisS3SignRequest extends S3SignRequest {
 
   @Value.Default
-  @Nullable // Replace javax.annotation.Nullable with jakarta.annotation.Nullable
+  @Nullable // Replace javax.annotation.Nullable from S3SignRequest with jakarta.annotation.Nullable
   @Override
   default String body() {
     return null;

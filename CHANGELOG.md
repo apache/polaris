@@ -29,6 +29,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
+- Support for S3 request signing has been added, allowing Polaris to work with S3-compatible object storage systems.
+  *Remote signing is currently experimental and not enabled by default*. To enable it, either set the system-wide property
+  `REMOTE_SIGNING_ENABLED` to `true`, or the catalog-level `polaris.request-signing.enabled` property to `true`.
+
 ### Upgrade notes
 
 ### Breaking changes

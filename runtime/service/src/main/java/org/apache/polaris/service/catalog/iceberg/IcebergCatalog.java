@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.deserialize;
 import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -130,9 +129,9 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
@@ -877,11 +876,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
     Optional<PolarisStorageConfigurationInfo> configurationInfo =
         findStorageInfo(tableIdentifier)
-            .map(
-                info ->
-                    deserialize(
-                        info.getInternalPropertiesAsMap()
-                            .get(PolarisEntityConstants.getStorageConfigInfoPropertyName())));
+            .map(PolarisEntity::getInternalPropertiesAsMap)
+            .map(info -> info.get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+            .map(PolarisStorageConfigurationInfo::deserialize);
 
     if (configurationInfo.isEmpty()) {
       LOGGER

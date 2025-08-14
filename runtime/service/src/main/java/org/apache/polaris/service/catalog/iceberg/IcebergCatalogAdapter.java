@@ -803,7 +803,7 @@ public class IcebergCatalogAdapter
                         .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig))
                         .addAll(
                             PolarisEndpoints.getSupportedRemoteSigningEndpoints(
-                                callContext, catalogEntity))
+                                callContext.getRealmConfig(), catalogEntity))
                         .build())
                 .build())
         .build();

@@ -701,17 +701,16 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     if (delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
 
-      LOGGER.info(
-          "allow external catalog credential vending: {}",
+      boolean allowExternalCatalogCredentialVending =
           callContext
               .getRealmConfig()
               .getConfig(
-                  FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
-      if (catalogEntity.isExternal()
-          && !callContext
-              .getRealmConfig()
-              .getConfig(
-                  FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
+                  FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity);
+
+      LOGGER.info(
+          "allow external catalog credential vending: {}", allowExternalCatalogCredentialVending);
+
+      if (catalogEntity.isExternal() && !allowExternalCatalogCredentialVending) {
         throw new ForbiddenException(
             "Access Delegation is not enabled for this catalog. Please consult applicable "
                 + "documentation for the catalog config property '%s' to enable this feature",
@@ -776,6 +775,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CatalogEntity catalogEntity) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
+    AccessConfig accessConfig = null;
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation
         && delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
       LOGGER
@@ -783,19 +783,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .addKeyValue("tableIdentifier", tableIdentifier)
           .addKeyValue("tableLocation", tableMetadata.location())
           .log("Fetching client credentials for table");
-      AccessConfig accessConfig =
+      accessConfig =
           credentialDelegation.getAccessConfigForCredentialDelegation(
               tableIdentifier, tableMetadata, actions);
-      Map<String, String> credentialConfig = accessConfig.credentials();
-      responseBuilder.addAllConfig(credentialConfig);
-      responseBuilder.addAllConfig(accessConfig.extraProperties());
-      if (!credentialConfig.isEmpty()) {
-        responseBuilder.addCredential(
-            ImmutableCredential.builder()
-                .prefix(tableMetadata.location())
-                .config(credentialConfig)
-                .build());
-      }
     } else if (baseCatalog instanceof SupportsRemoteSigning remoteSigning
         && delegationModes.contains(AccessDelegationMode.REMOTE_SIGNING)) {
       S3RemoteSigningCatalogHandler.throwIfRemoteSigningNotEnabled(
@@ -805,7 +795,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .addKeyValue("tableIdentifier", tableIdentifier)
           .addKeyValue("tableLocation", tableMetadata.location())
           .log("Enabling remote signing for table");
-      AccessConfig accessConfig = remoteSigning.getAccessConfigForRemoteSigning(tableIdentifier);
+      accessConfig = remoteSigning.getAccessConfigForRemoteSigning(tableIdentifier);
+    }
+    if (accessConfig != null) {
       Map<String, String> credentialConfig = accessConfig.credentials();
       responseBuilder.addAllConfig(credentialConfig);
       responseBuilder.addAllConfig(accessConfig.extraProperties());

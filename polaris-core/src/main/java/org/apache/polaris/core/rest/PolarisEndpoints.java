@@ -106,11 +106,9 @@ public class PolarisEndpoints {
    * remote signing; otherwise, returns an empty set.
    */
   public static Set<Endpoint> getSupportedRemoteSigningEndpoints(
-      CallContext callContext, CatalogEntity catalogEntity) {
+      RealmConfig realmConfig, CatalogEntity catalogEntity) {
     boolean remoteSigningEnabled =
-        callContext
-            .getRealmConfig()
-            .getConfig(FeatureConfiguration.REMOTE_SIGNING_ENABLED, catalogEntity);
+        realmConfig.getConfig(FeatureConfiguration.REMOTE_SIGNING_ENABLED, catalogEntity);
     return remoteSigningEnabled ? REMOTE_SIGNING_ENDPOINTS : ImmutableSet.of();
   }
 }
