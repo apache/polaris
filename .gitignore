@@ -100,8 +100,3 @@ hs_err_pid*
 
 # macOS
 *.DS_Store
-
-# Act to test Github Workflows
-.actrc
-.secrets
-.env
