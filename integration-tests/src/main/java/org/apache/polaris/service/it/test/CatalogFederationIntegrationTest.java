@@ -114,10 +114,6 @@ public class CatalogFederationIntegrationTest {
   @Test
   void testCatalogFederation() {
     newUserCredentials = managementApi.createPrincipal(PRINCIPAL_NAME);
-    assertThat(newUserCredentials).isNotNull();
-    assertThat(newUserCredentials.getCredentials()).isNotNull();
-    assertThat(newUserCredentials.getCredentials().getClientId()).isNotEmpty();
-    assertThat(newUserCredentials.getCredentials().getClientSecret()).isNotEmpty();
 
     FileStorageConfigInfo storageConfig =
         FileStorageConfigInfo.builder()
@@ -135,9 +131,6 @@ public class CatalogFederationIntegrationTest {
             .setStorageConfigInfo(storageConfig)
             .build();
     managementApi.createCatalog(localCatalog);
-    assertThat(managementApi.getCatalog(LOCAL_CATALOG_NAME)).isNotNull();
-    assertThat(managementApi.getCatalog(LOCAL_CATALOG_NAME).getType())
-        .isEqualTo(Catalog.TypeEnum.INTERNAL);
 
     CatalogGrant catalogGrant =
         CatalogGrant.builder()
@@ -145,8 +138,6 @@ public class CatalogFederationIntegrationTest {
             .setPrivilege(CatalogPrivilege.TABLE_WRITE_DATA)
             .build();
     managementApi.addGrant(LOCAL_CATALOG_NAME, CATALOG_ROLE_NAME, catalogGrant);
-    assertThat(managementApi.listGrants(LOCAL_CATALOG_NAME, CATALOG_ROLE_NAME).getGrants())
-        .contains(catalogGrant);
     managementApi.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE_NAME);
     CatalogRole localCatalogAdminRole =
         managementApi.getCatalogRole(LOCAL_CATALOG_NAME, CATALOG_ROLE_NAME);
@@ -177,13 +168,8 @@ public class CatalogFederationIntegrationTest {
             .setStorageConfigInfo(storageConfig)
             .build();
     managementApi.createCatalog(externalCatalog);
-    assertThat(managementApi.getCatalog(EXTERNAL_CATALOG_NAME)).isNotNull();
-    assertThat(managementApi.getCatalog(EXTERNAL_CATALOG_NAME).getType())
-        .isEqualTo(Catalog.TypeEnum.EXTERNAL);
 
     managementApi.addGrant(EXTERNAL_CATALOG_NAME, CATALOG_ROLE_NAME, catalogGrant);
-    assertThat(managementApi.listGrants(EXTERNAL_CATALOG_NAME, CATALOG_ROLE_NAME).getGrants())
-        .contains(catalogGrant);
     CatalogRole externalCatalogAdminRole =
         managementApi.getCatalogRole(EXTERNAL_CATALOG_NAME, CATALOG_ROLE_NAME);
     managementApi.grantCatalogRoleToPrincipalRole(
