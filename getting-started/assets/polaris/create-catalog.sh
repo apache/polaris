@@ -23,23 +23,16 @@ apk add --no-cache jq
 
 realm=${1:-"POLARIS"}
 
-token=${2:-""}
+TOKEN=${2:-""}
 
-if [ -z "$token" ]; then
-  token=$(curl -s http://polaris:8181/api/catalog/v1/oauth/tokens \
-    --user ${CLIENT_ID}:${CLIENT_SECRET} \
-    -H "Polaris-Realm: $realm" \
-    -d grant_type=client_credentials \
-    -d scope=PRINCIPAL_ROLE:ALL | jq -r .access_token)
+BASEDIR=$(dirname $0)
 
-  if [ -z "${token}" ]; then
-    echo "Failed to obtain access token."
-    exit 1
-  fi
+if [ -z "$TOKEN" ]; then
+  source $BASEDIR/obtain-token.sh
 fi
 
 echo
-echo "Obtained access token: ${token}"
+echo "Obtained access token: ${TOKEN}"
 
 STORAGE_TYPE="FILE"
 if [ -z "${STORAGE_LOCATION}" ]; then
@@ -84,7 +77,7 @@ PAYLOAD='{
 
 echo $PAYLOAD
 
-curl -s -H "Authorization: Bearer ${token}" \
+curl -s -H "Authorization: Bearer ${TOKEN}" \
    -H 'Accept: application/json' \
    -H 'Content-Type: application/json' \
    -H "Polaris-Realm: $realm" \
