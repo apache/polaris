@@ -205,9 +205,17 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         .orElse(null);
   }
 
+  public boolean isExternal() {
+    return getCatalogType() == Catalog.TypeEnum.EXTERNAL;
+  }
+
   public boolean isPassthroughFacade() {
     return getInternalPropertiesAsMap()
         .containsKey(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
+  }
+
+  public boolean isStaticFacade() {
+    return isExternal() && !isPassthroughFacade();
   }
 
   public ConnectionConfigInfoDpo getConnectionConfigInfoDpo() {

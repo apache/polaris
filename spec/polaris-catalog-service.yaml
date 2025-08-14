@@ -159,6 +159,12 @@ paths:
   /polaris/v1/{prefix}/applicable-policies:
     $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1applicable-policies'
 
+  ##################################
+  # Iceberg AWS S3 Request Signing #
+  ##################################
+
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/s3-sign:
+    $ref: './polaris-s3-signer-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1s3-sign'
 
 components:
   securitySchemes:

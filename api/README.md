@@ -33,6 +33,8 @@ This directory contains the API modules for Apache Polaris.
   Iceberg REST API.
 - [`polaris-api-catalog-service`](polaris-catalog-service): contains the service classes for the Polaris
   native Catalog REST API.
+- [`polaris-api-iceberg-aws-sign-service`](iceberg-aws-sign-service): contains the service classes 
+  for AWS S3 remote signing.
 
 The classes in these modules are generated from the OpenAPI specification files in the
 [`spec`](../spec) directory.
