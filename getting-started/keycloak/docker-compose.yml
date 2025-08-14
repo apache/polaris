@@ -67,13 +67,16 @@ services:
       - CLIENT_SECRET=s3cr3t
     volumes:
       - ../assets/polaris/:/polaris
-    entrypoint: |
-      /bin/sh -c "apk add --no-cache jq && \
-        chmod +x /polaris/create-catalog.sh && \
-        token=$$(curl http://keycloak:8080/realms/iceberg/protocol/openid-connect/token --user client1:s3cr3t -d 'grant_type=client_credentials' -d 'scope=catalog' | jq -r .access_token) && \
-        /polaris/create-catalog.sh realm-internal && \
-        /polaris/create-catalog.sh realm-external $$token && \
-        /polaris/create-catalog.sh realm-mixed $$token"
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        apk add --no-cache jq && 
+        chmod +x /polaris/create-catalog.sh && 
+        token=$$(curl http://keycloak:8080/realms/iceberg/protocol/openid-connect/token --user client1:s3cr3t -d 'grant_type=client_credentials' | jq -r .access_token) && 
+        /polaris/create-catalog.sh realm-internal && 
+        /polaris/create-catalog.sh realm-external $$token && 
+        /polaris/create-catalog.sh realm-mixed $$token
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3.2
