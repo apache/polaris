@@ -39,10 +39,7 @@ public class RestCatalogKeycloakFileIT extends PolarisRestCatalogFileIntegration
       PolarisClient client, String principalName, String principalRole) {
     ClientPrincipal principal = super.createTestPrincipal(client, principalName, principalRole);
     keycloak.createRole(principalRole);
-    keycloak.createUser(
-        principalName,
-        // Use the same password as the client secret
-        principal.credentials().clientSecret());
+    keycloak.createUser(principalName);
     keycloak.assignRoleToUser(principalRole, principalName);
     keycloak.createServiceAccount(
         principal.credentials().clientId(), principal.credentials().clientSecret());
@@ -59,7 +56,7 @@ public class RestCatalogKeycloakFileIT extends PolarisRestCatalogFileIntegration
             "client_id", principal.credentials().clientId(),
             "client_secret", principal.credentials().clientSecret(),
             "username", principal.principalName(),
-            "password", principal.credentials().clientSecret());
+            "password", KeycloakAccess.USER_PASSWORD);
     return client.obtainToken(keycloak.getIssuerUrl(), keycloak.getTokenPath(), request);
   }
 

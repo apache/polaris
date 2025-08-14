@@ -24,7 +24,11 @@ import java.net.URI;
 /** A facade interface for accessing Keycloak server functionalities. */
 public interface KeycloakAccess {
 
+  /** The claim name used to identify the principal in Keycloak tokens. */
   String PRINCIPAL_NAME_CLAIM = "preferred_username";
+
+  /** The password used for all users in Keycloak. */
+  String USER_PASSWORD = "s3cr3t";
 
   /**
    * Returns the URL of the Keycloak issuer. This is typically {@code
@@ -52,11 +56,8 @@ public interface KeycloakAccess {
    */
   void createRole(String name);
 
-  /**
-   * Creates a new user in Keycloak with the specified name, password, and assigns the given role to
-   * them.
-   */
-  void createUser(String name, String password);
+  /** Creates a new user in Keycloak. The password is always {@value #USER_PASSWORD} */
+  void createUser(String name);
 
   /**
    * Assigns a role to a user in Keycloak. The role should not have the {@code PRINCIPAL_ROLE:}

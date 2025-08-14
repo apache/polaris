@@ -65,13 +65,11 @@ public class KeycloakContainer extends ExtendableKeycloakContainer<KeycloakConta
     issuerUrl = rootUrl.resolve(CONTEXT_PATH);
     tokenEndpoint = issuerUrl.resolve("protocol/openid-connect/token");
     createRole("ALL");
-    RootCredentialsSet.fromEnvironment().credentials().values().stream()
-        .findFirst()
-        .ifPresent(
-            creds -> {
-              createUser("root", creds.clientSecret());
-              createServiceAccount(creds.clientId(), creds.clientSecret());
-            });
+    createUser("root");
+    RootCredentialsSet.fromEnvironment()
+        .credentials()
+        .values()
+        .forEach(creds -> createServiceAccount(creds.clientId(), creds.clientSecret()));
   }
 
   @Override
@@ -102,7 +100,7 @@ public class KeycloakContainer extends ExtendableKeycloakContainer<KeycloakConta
   }
 
   @Override
-  public void createUser(String name, String password) {
+  public void createUser(String name) {
     RealmResource master = keycloakAdminClient.realms().realm("master");
     UserRepresentation user = new UserRepresentation();
     user.setEnabled(true);
@@ -114,7 +112,7 @@ public class KeycloakContainer extends ExtendableKeycloakContainer<KeycloakConta
     user.setRequiredActions(List.of());
     CredentialRepresentation credential = new CredentialRepresentation();
     credential.setType(CredentialRepresentation.PASSWORD);
-    credential.setValue(password);
+    credential.setValue(KeycloakAccess.USER_PASSWORD);
     credential.setTemporary(false);
     user.setCredentials(List.of(credential));
     try (Response response = master.users().create(user)) {
