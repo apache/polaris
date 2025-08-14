@@ -78,6 +78,9 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.AfterCatalogCreatedEvent;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +98,7 @@ public class PolarisServiceImpl
   private final UserSecretsManagerFactory userSecretsManagerFactory;
   private final CallContext callContext;
   private final ReservedProperties reservedProperties;
+  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public PolarisServiceImpl(
@@ -103,13 +107,15 @@ public class PolarisServiceImpl
       UserSecretsManagerFactory userSecretsManagerFactory,
       PolarisAuthorizer polarisAuthorizer,
       CallContext callContext,
-      ReservedProperties reservedProperties) {
+      ReservedProperties reservedProperties,
+      PolarisEventListener polarisEventListener) {
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.userSecretsManagerFactory = userSecretsManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
     this.callContext = callContext;
     this.reservedProperties = reservedProperties;
+    this.polarisEventListener = polarisEventListener;
   }
 
   private PolarisAdminService newAdminService(
@@ -144,6 +150,8 @@ public class PolarisServiceImpl
     validateExternalCatalog(catalog);
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
+    polarisEventListener.onAfterCatalogCreated(
+        new AfterCatalogCreatedEvent(PolarisEvent.createEventId(), newCatalog.getName()));
     return Response.status(Response.Status.CREATED).build();
   }
 

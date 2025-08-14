@@ -16,12 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
+package org.apache.polaris.service.events.listeners;
 
-/** Event listener that does nothing. */
-@ApplicationScoped
-@Identifier("no-op")
-public class NoOpPolarisEventListener extends PolarisEventListener {}
+import io.quarkus.runtime.annotations.StaticInitSafe;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
+import java.time.Duration;
+
+@StaticInitSafe
+@ConfigMapping(prefix = "polaris.event-listener.persistence-in-memory-buffer")
+public interface InMemoryBufferEventListenerConfiguration {
+  /**
+   * @return the buffer time in milliseconds
+   */
+  @WithName("buffer-time")
+  @WithDefault("5000ms")
+  Duration bufferTime();
+
+  /**
+   * @return the maximum number of cached entries
+   */
+  @WithName("max-buffer-size")
+  @WithDefault("5")
+  int maxBufferSize();
+}

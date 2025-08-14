@@ -140,7 +140,8 @@ import org.apache.polaris.service.events.BeforeTableCommitedEvent;
 import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -1394,7 +1395,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onBeforeTableRefreshed(new BeforeTableRefreshedEvent(tableIdentifier));
+        polarisEventListener.onBeforeTableRefreshed(
+            new BeforeTableRefreshedEvent(PolarisEvent.createEventId(), tableIdentifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1414,13 +1416,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
-        polarisEventListener.onAfterTableRefreshed(new AfterTableRefreshedEvent(tableIdentifier));
+        polarisEventListener.onAfterTableRefreshed(
+            new AfterTableRefreshedEvent(PolarisEvent.createEventId(), tableIdentifier));
       }
     }
 
     public void doCommit(TableMetadata base, TableMetadata metadata) {
       polarisEventListener.onBeforeTableCommited(
-          new BeforeTableCommitedEvent(tableIdentifier, base, metadata));
+          new BeforeTableCommitedEvent(
+              PolarisEvent.createEventId(), tableIdentifier, base, metadata));
 
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
@@ -1562,7 +1566,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
 
       polarisEventListener.onAfterTableCommited(
-          new AfterTableCommitedEvent(tableIdentifier, base, metadata));
+          new AfterTableCommitedEvent(
+              PolarisEvent.createEventId(), tableIdentifier, base, metadata));
     }
 
     @Override
@@ -1753,7 +1758,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onBeforeViewRefreshed(new BeforeViewRefreshedEvent(identifier));
+        polarisEventListener.onBeforeViewRefreshed(
+            new BeforeViewRefreshedEvent(PolarisEvent.createEventId(), identifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1775,13 +1781,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
-        polarisEventListener.onAfterViewRefreshed(new AfterViewRefreshedEvent(identifier));
+        polarisEventListener.onAfterViewRefreshed(
+            new AfterViewRefreshedEvent(PolarisEvent.createEventId(), identifier));
       }
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
       polarisEventListener.onBeforeViewCommited(
-          new BeforeViewCommitedEvent(identifier, base, metadata));
+          new BeforeViewCommitedEvent(PolarisEvent.createEventId(), identifier, base, metadata));
 
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
@@ -1878,7 +1885,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
 
       polarisEventListener.onAfterViewCommited(
-          new AfterViewCommitedEvent(identifier, base, metadata));
+          new AfterViewCommitedEvent(PolarisEvent.createEventId(), identifier, base, metadata));
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {
