@@ -20,7 +20,6 @@ package org.apache.polaris.core.connection;
 
 import jakarta.annotation.Nonnull;
 import java.util.Arrays;
-import java.util.Locale;
 
 /**
  * The internal persistence-object counterpart to ConnectionConfigInfo.ConnectionTypeEnum defined in
@@ -36,8 +35,8 @@ public enum ConnectionType {
   HADOOP(2),
   ;
 
-  public static final String ICEBERG_REST_FACTORY_IDENTIFIER = ICEBERG_REST.name().toLowerCase(Locale.ROOT);
-  public static final String HADOOP_FACTORY_IDENTIFIER = HADOOP.name().toLowerCase(Locale.ROOT);
+  public static final String ICEBERG_REST_FACTORY_IDENTIFIER = "iceberg_rest";
+  public static final String HADOOP_FACTORY_IDENTIFIER = "hadoop";
 
   private static final ConnectionType[] REVERSE_MAPPING_ARRAY;
 
