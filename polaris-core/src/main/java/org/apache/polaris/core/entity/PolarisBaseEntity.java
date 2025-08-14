@@ -19,12 +19,9 @@
 package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 
 /**
  * Base polaris entity representing all attributes of a Polaris Entity. This is used to exchange
@@ -33,9 +30,6 @@ import java.util.Objects;
 public class PolarisBaseEntity extends PolarisEntityCore {
 
   public static final String EMPTY_MAP_STRING = "{}";
-
-  // to serialize/deserialize properties
-  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   // the type of the entity when it was resolved
   protected final int subTypeCode;
@@ -106,25 +100,15 @@ public class PolarisBaseEntity extends PolarisEntityCore {
 
   @JsonIgnore
   public Map<String, String> getPropertiesAsMap() {
-    if (properties == null) {
-      return new HashMap<>();
-    }
-    try {
-      return MAPPER.readValue(properties, new TypeReference<>() {});
-    } catch (JsonProcessingException ex) {
-      throw new IllegalStateException(
-          String.format("Failed to deserialize json. properties %s", properties), ex);
-    }
+    return PolarisObjectMapperUtil.deserializeProperties(getProperties());
   }
 
   @JsonIgnore
-  public static String convertPropertiesToJson(Map<String, String> properties) {
-    try {
-      return properties == null ? null : MAPPER.writeValueAsString(properties);
-    } catch (JsonProcessingException ex) {
-      throw new IllegalStateException(
-          String.format("Failed to serialize json. properties %s", properties), ex);
+  protected static String convertPropertiesToJson(Map<String, String> properties) {
+    if (properties == null || properties.isEmpty()) {
+      return EMPTY_MAP_STRING;
     }
+    return PolarisObjectMapperUtil.serializeProperties(properties);
   }
 
   public String getInternalProperties() {
@@ -133,17 +117,7 @@ public class PolarisBaseEntity extends PolarisEntityCore {
 
   @JsonIgnore
   public Map<String, String> getInternalPropertiesAsMap() {
-    if (this.internalProperties == null) {
-      return new HashMap<>();
-    }
-    try {
-      return MAPPER.readValue(this.internalProperties, new TypeReference<>() {});
-    } catch (JsonProcessingException ex) {
-      throw new IllegalStateException(
-          String.format(
-              "Failed to deserialize json. internalProperties %s", this.internalProperties),
-          ex);
-    }
+    return PolarisObjectMapperUtil.deserializeProperties(getInternalProperties());
   }
 
   public int getGrantRecordsVersion() {
