@@ -66,6 +66,7 @@ public class KeycloakContainer extends ExtendableKeycloakContainer<KeycloakConta
     tokenEndpoint = issuerUrl.resolve("protocol/openid-connect/token");
     createRole("ALL");
     createUser("root");
+    assignRoleToUser("ALL", "root");
     RootCredentialsSet.fromEnvironment()
         .credentials()
         .values()
