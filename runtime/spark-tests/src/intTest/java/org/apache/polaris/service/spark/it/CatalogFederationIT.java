@@ -33,6 +33,7 @@ public class CatalogFederationIT extends CatalogFederationIntegrationTest {
     public Map<String, String> getConfigOverrides() {
       return Map.of(
           "polaris.features.\"ENABLE_CATALOG_FEDERATION\"", "true",
+          "polaris.features.\"SUPPORTED_CATALOG_CONNECTION_TYPES\"", "[\"ICEBERG_REST\"]",
           "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true");
     }
   }
