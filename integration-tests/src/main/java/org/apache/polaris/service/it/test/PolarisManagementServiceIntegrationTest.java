@@ -915,8 +915,8 @@ public class PolarisManagementServiceIntegrationTest {
     String principalToken = client.obtainToken(resetCreds);
     customBody =
         Map.of(
-            "clientId", "abcd1234567999e3",
-            "clientSecret", "12346d236azzzzzz04922b0a07031bc3");
+            "clientId", "g174b76a7e1a99e3",
+            "clientSecret", "37029d236abc08e204922b0a07031bc3");
     try (Response response =
         client
             .managementApi(principalToken)

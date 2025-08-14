@@ -754,9 +754,9 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      boolean reset,
       String customClientId,
       String customClientSecret) {
-    throw new UnsupportedOperationException("This method is not supported for EclipseLink as metastore");
+    throw new UnsupportedOperationException(
+        "This method is not supported for EclipseLink as metastore");
   }
 }

@@ -917,7 +917,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      boolean reset,
       @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret) {
@@ -937,30 +936,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         PolarisObjectMapperUtil.deserializeProperties(
             principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
 
-    boolean doReset =
-        reset
-            || internalProps.get(
-                    PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
-                != null;
     PolarisPrincipalSecrets secrets =
         ((IntegrationPersistence) ms)
             .resetPrincipalSecrets(
-                callCtx, clientId, principalId, doReset, customClientId, customClientSecret);
+                callCtx, clientId, principalId, customClientId, customClientSecret);
 
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
-    if (reset
-        && !internalProps.containsKey(
-            PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
-        && customClientId != null
-        && customClientSecret != null) {
-      internalProps.put(
-          PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
-      principalBuilder.internalProperties(
-          PolarisObjectMapperUtil.serializeProperties(internalProps));
-      principalBuilder.entityVersion(principal.getEntityVersion() + 1);
-      ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
-    }
-
+    principalBuilder.internalProperties(PolarisObjectMapperUtil.serializeProperties(internalProps));
+    principalBuilder.entityVersion(principal.getEntityVersion() + 1);
+    ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);

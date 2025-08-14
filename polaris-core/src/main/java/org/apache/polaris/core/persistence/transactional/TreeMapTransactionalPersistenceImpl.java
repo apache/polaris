@@ -490,7 +490,6 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      boolean reset,
       String customClientId,
       String customClientSecret) {
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
@@ -515,9 +514,14 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             principalId,
             principalSecrets.getPrincipalId());
 
-    // rotate the secrets
-    principalSecrets.setPrincipalClientId(customClientId);
-    principalSecrets.resetSecrets(customClientSecret);
+    // reset the secrets
+    if (customClientId != null && customClientSecret != null) {
+      principalSecrets =
+          new PolarisPrincipalSecrets(
+              principalSecrets.getPrincipalId(), customClientId, customClientSecret, null);
+    } else {
+      principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
+    }
 
     // write back new secrets
     this.store.getSlicePrincipalSecrets().write(principalSecrets);

@@ -147,19 +147,6 @@ public class PolarisPrincipalSecrets {
     this.mainSecretHash = hashSecret(mainSecret);
   }
 
-  /** Reset the main secrets */
-  public void resetSecrets(String customClientSecret) {
-    this.mainSecret = customClientSecret;
-    this.mainSecretHash = hashSecret(customClientSecret);
-
-    this.secondarySecret = null;
-    this.secondarySecretHash = hashSecret(customClientSecret);
-  }
-
-  public void setPrincipalClientId(String customClientId) {
-    this.principalClientId = customClientId;
-  }
-
   public long getPrincipalId() {
     return principalId;
   }

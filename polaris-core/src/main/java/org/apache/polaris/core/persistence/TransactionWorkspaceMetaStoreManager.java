@@ -177,7 +177,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      boolean reset,
       @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret) {
