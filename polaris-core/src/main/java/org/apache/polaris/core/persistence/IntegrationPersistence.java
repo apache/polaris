@@ -88,8 +88,6 @@ public interface IntegrationPersistence {
    * @param callCtx call context
    * @param clientId principal client id
    * @param principalId principal id
-   * @param reset true if the principal secrets should be disabled and replaced with a one-time
-   *     password
    * @param customClientId the principal secret's old main secret hash
    * @param customClientSecret the principal secret's old main secret hash
    */
@@ -98,7 +96,6 @@ public interface IntegrationPersistence {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      boolean reset,
       String customClientId,
       String customClientSecret);
 

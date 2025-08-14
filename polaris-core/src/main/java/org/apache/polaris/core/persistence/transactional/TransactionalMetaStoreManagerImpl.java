@@ -921,7 +921,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull TransactionalPersistence ms,
       @Nonnull String clientId,
       long principalId,
-      boolean reset,
       @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret) {
@@ -944,16 +943,13 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
 
     boolean doReset =
-        reset
-            || internalProps.get(
-                    PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
-                != null;
+        internalProps.get(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
+            != null;
     PolarisPrincipalSecrets secrets =
         ms.resetPrincipalSecrets(
-            callCtx, clientId, principalId, doReset, customClientId, customClientSecret);
+            callCtx, clientId, principalId, customClientId, customClientSecret);
 
-    if (reset
-        && !internalProps.containsKey(
+    if (!internalProps.containsKey(
             PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
         && customClientId != null
         && customClientSecret != null) {
@@ -972,7 +968,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      boolean reset,
       @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret) {
@@ -989,7 +984,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                     ms,
                     clientId,
                     principalId,
-                    reset,
                     oldSecretHash,
                     customClientId,
                     customClientSecret));

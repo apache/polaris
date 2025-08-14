@@ -779,7 +779,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      boolean reset,
       String customClientId,
       String customClientSecret) {
     PolarisPrincipalSecrets principalSecrets = loadPrincipalSecrets(callCtx, clientId);
@@ -804,8 +803,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             principalId,
             principalSecrets.getPrincipalId());
 
-    principalSecrets.setPrincipalClientId(customClientId);
-    principalSecrets.resetSecrets(customClientSecret);
+    if (customClientId != null && customClientSecret != null) {
+      principalSecrets =
+          new PolarisPrincipalSecrets(
+              principalSecrets.getPrincipalId(), customClientId, customClientSecret, null);
+    } else {
+      principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
+    }
 
     Map<String, Object> params = Map.of("principal_client_id", clientId, "realm_id", realmId);
     try {
