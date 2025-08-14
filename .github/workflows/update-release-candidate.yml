@@ -121,8 +121,6 @@ jobs:
       - name: Verify GitHub checks are passing
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # DELETE ME: This is only needed for faking the GitHub checks for testing
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
         run: |
           releasey_dir="$(pwd)/releasey"
           LIBS_DIR="${releasey_dir}/libs"
@@ -138,9 +136,7 @@ jobs:
           print_info "Verifying GitHub checks for commit: ${current_commit}"
 
           # Verify all GitHub checks are passing
-          if [[ "${ORG_GRADLE_PROJECT_apacheUsername}" == "testuser" ]]; then
-            print_warning "Skipping GitHub checks verification for test user"
-          elif ! check_github_checks_passed "${current_commit}"; then
+          if ! check_github_checks_passed "${current_commit}"; then
             print_error "GitHub checks are not all passing for commit ${current_commit}"
             print_error "Please ensure all checks pass before updating the release candidate"
             exit 1
