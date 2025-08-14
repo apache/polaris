@@ -34,6 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      dry_run: ${{ steps.set-outputs.outputs.dry_run }}
 
     steps:
       - name: Checkout repository
@@ -42,12 +44,15 @@ jobs:
           fetch-depth: 0
 
       - name: Set DRY_RUN environment variable
+        id: set-outputs
         run: |
           if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
+            echo "dry_run=1" >> $GITHUB_OUTPUT
             echo "DRY_RUN mode enabled - no actual changes will be made"
           else
             echo "DRY_RUN=0" >> $GITHUB_ENV
+            echo "dry_run=0" >> $GITHUB_OUTPUT
             echo "DRY_RUN mode disabled - actual changes will be made"
           fi
 
@@ -188,20 +193,3 @@ jobs:
           exec_process ./gradlew closeApacheStagingRepository
 
           print_success "Apache staging repository closed successfully"
-
-      - name: Summary
-        run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
-          source "${LIBS_DIR}/_log.sh"
-
-          echo
-          print_success "🎉 Release artifacts built and published successfully!"
-          echo
-          print_info "Completed tasks:"
-          print_info "✅ Built source and binary distributions"
-          print_info "✅ Created and signed Helm packages"
-          print_info "✅ Staged artifacts to Apache dist dev repository"
-          print_info "✅ Published Maven artifacts to Apache staging repository"
-          print_info "✅ Closed Apache staging repository"
