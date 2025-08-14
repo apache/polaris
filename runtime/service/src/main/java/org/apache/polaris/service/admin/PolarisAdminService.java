@@ -783,7 +783,7 @@ public class PolarisAdminService {
             .addKeyValue("catalogName", entity.getName())
             .log("Creating a federated catalog");
         FeatureConfiguration.enforceFeatureEnabledOrThrow(
-            callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+            callContext.getRealmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
         Map<String, UserSecretReference> processedSecretReferences = Map.of();
         List<String> supportedAuthenticationTypes =
             callContext

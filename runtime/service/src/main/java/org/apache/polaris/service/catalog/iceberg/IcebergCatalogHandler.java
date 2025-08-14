@@ -214,7 +214,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
-          callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+          callContext.getRealmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
 
       Catalog federatedCatalog;
       ConnectionType connectionType =

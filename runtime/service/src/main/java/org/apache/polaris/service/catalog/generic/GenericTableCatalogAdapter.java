@@ -74,7 +74,7 @@ public class GenericTableCatalogAdapter
   private GenericTableCatalogHandler newHandlerWrapper(
       SecurityContext securityContext, String prefix) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
-        callContext, FeatureConfiguration.ENABLE_GENERIC_TABLES);
+        callContext.getRealmConfig(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
     validatePrincipal(securityContext);
 
     return new GenericTableCatalogHandler(

@@ -74,7 +74,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
 
   private PolicyCatalogHandler newHandlerWrapper(SecurityContext securityContext, String prefix) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
-        callContext, FeatureConfiguration.ENABLE_POLICY_STORE);
+        callContext.getRealmConfig(), FeatureConfiguration.ENABLE_POLICY_STORE);
     validatePrincipal(securityContext);
 
     return new PolicyCatalogHandler(
