@@ -77,8 +77,9 @@ public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor
         principalRoleMappers
             .select(Identifier.Literal.of(config.principalRolesMapper().type()))
             .get();
-    return Uni.createFrom()
-        .item(() -> setPolarisCredential(identity, principalMapper, principalRolesMapper));
+    // The mappers may do expensive work, hence we run within a blocking context
+    return context.runBlocking(
+        () -> setPolarisCredential(identity, principalMapper, principalRolesMapper));
   }
 
   protected SecurityIdentity setPolarisCredential(

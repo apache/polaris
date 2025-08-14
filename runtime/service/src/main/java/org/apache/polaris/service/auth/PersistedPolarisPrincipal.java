@@ -23,6 +23,7 @@ import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /**
  * A persisted {@link PolarisPrincipal}, exposing the underlying {@link PrincipalEntity}.
@@ -45,18 +46,21 @@ abstract class PersistedPolarisPrincipal implements PolarisPrincipal {
 
   abstract PrincipalEntity getEntity();
 
+  @Value.Derived
   @Override
-  public final String getName() {
+  public String getName() {
     return getEntity().getName();
   }
 
+  @Value.Derived
   @Override
-  public final long getId() {
+  public long getId() {
     return getEntity().getId();
   }
 
+  @Value.Lazy
   @Override
-  public final Map<String, String> getProperties() {
+  public Map<String, String> getProperties() {
     return getEntity().getInternalPropertiesAsMap();
   }
 }
