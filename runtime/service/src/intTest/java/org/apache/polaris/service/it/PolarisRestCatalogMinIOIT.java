@@ -84,9 +84,6 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
   protected StorageConfigInfo getStorageConfigInfo() {
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::123456789012:role/polaris-test")
-            .setExternalId("externalId123")
-            .setUserArn("arn:aws:iam::123456789012:user/polaris-test")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(true)
             .setEndpoint(endpoint)

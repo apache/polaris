@@ -184,9 +184,6 @@ public class PolarisPolicyServiceIntegrationTest {
     currentCatalogName = client.newEntityName(method.getName());
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
-            .setRoleArn(TEST_ROLE_ARN)
-            .setExternalId("externalId")
-            .setUserArn("a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();

@@ -73,6 +73,7 @@ jobs:
           name: upload-unit-test-artifacts
           path: |
             **/build/test-results/**
+            **/build/reports/tests/**
 
   quarkus-tests:
     name: Quarkus Tests
@@ -110,6 +111,7 @@ jobs:
           name: upload-quarkus-test-artifacts
           path: |
             **/build/test-results/**
+            **/build/reports/tests/**
 
   integration-tests:
     name: Integration Tests
@@ -143,6 +145,7 @@ jobs:
           name: upload-integration-test-artifacts
           path: |
             **/build/test-results/**
+            **/build/reports/tests/**
 
   store-gradle-cache:
     name: Store Gradle Cache

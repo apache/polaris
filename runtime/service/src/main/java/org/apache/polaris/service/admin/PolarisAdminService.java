@@ -893,7 +893,7 @@ public class PolarisAdminService {
     if (currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
         && newStorageConfig instanceof AwsStorageConfigurationInfo newAwsConfig) {
 
-      if (!currentAwsConfig.getAwsAccountId().equals(newAwsConfig.getAwsAccountId())) {
+      if (!Objects.equals(currentAwsConfig.getAwsAccountId(), newAwsConfig.getAwsAccountId())) {
         throw new BadRequestException(
             "Cannot modify Role ARN in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
