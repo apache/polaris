@@ -46,11 +46,6 @@ public class PolarisRestCatalogFileIntegrationTest extends PolarisRestCatalogInt
         .build();
   }
 
-  @Override
-  protected boolean shouldSkip() {
-    return false;
-  }
-
   private static String stripTrailingSlash(String uri) {
     return uri.endsWith("/") && uri.length() > "file:///".length()
         ? uri.substring(0, uri.length() - 1)

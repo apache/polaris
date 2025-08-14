@@ -24,6 +24,7 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
+import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
@@ -45,13 +46,14 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
+  @SuppressWarnings("unused") // Required by CDI
   protected EclipseLinkPolarisMetaStoreManagerFactory() {
-    this(null);
+    this(null, null);
   }
 
   @Inject
-  protected EclipseLinkPolarisMetaStoreManagerFactory(PolarisDiagnostics diagnostics) {
-    super(diagnostics);
+  protected EclipseLinkPolarisMetaStoreManagerFactory(Clock clock, PolarisDiagnostics diagnostics) {
+    super(clock, diagnostics);
   }
 
   @Override

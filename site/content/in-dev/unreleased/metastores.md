@@ -42,7 +42,7 @@ The Relational JDBC metastore currently relies on a Quarkus-managed datasource a
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
 
-Additionally the retries can be configured via `polaris.persistence.relational.jdbc.*` properties please ref [configuration](./configuration.md)
+Additionally the retries can be configured via `polaris.persistence.relational.jdbc.*` properties please ref [configuration]({{% ref "configuration" %}})
 
 ## EclipseLink (Deprecated)
 > [!IMPORTANT]
@@ -86,7 +86,7 @@ A single `persistence.xml` can describe multiple [persistence units](https://ecl
 The default [persistence.xml] in Polaris is already configured for H2, but you can easily customize
 your H2 configuration using the persistence unit template below:
 
-[persistence.xml]: https://github.com/apache/polaris/blob/main/extension/persistence/eclipselink/src/main/resources/META-INF/persistence.xml
+[persistence.xml]: https://github.com/apache/polaris/blob/main/persistence/eclipselink/src/main/resources/META-INF/persistence.xml
 
 ```xml
 <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">

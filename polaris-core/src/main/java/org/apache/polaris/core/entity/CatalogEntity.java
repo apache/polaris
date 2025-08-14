@@ -22,7 +22,6 @@ import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeE
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -142,6 +141,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
             .setPathStyleAccess(awsConfig.getPathStyleAccess())
+            .setEndpointInternal(awsConfig.getEndpointInternal())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -269,36 +269,39 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
             AwsStorageConfigurationInfo awsConfig =
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    new ArrayList<>(allowedLocations),
-                    awsConfigModel.getRoleArn(),
-                    awsConfigModel.getExternalId(),
-                    awsConfigModel.getRegion(),
-                    awsConfigModel.getEndpoint(),
-                    awsConfigModel.getStsEndpoint(),
-                    awsConfigModel.getPathStyleAccess());
-            awsConfig.validateArn(awsConfigModel.getRoleArn());
+                AwsStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .roleARN(awsConfigModel.getRoleArn())
+                    .externalId(awsConfigModel.getExternalId())
+                    .region(awsConfigModel.getRegion())
+                    .endpoint(awsConfigModel.getEndpoint())
+                    .stsEndpoint(awsConfigModel.getStsEndpoint())
+                    .pathStyleAccess(awsConfigModel.getPathStyleAccess())
+                    .endpointInternal(awsConfigModel.getEndpointInternal())
+                    .build();
             config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            AzureStorageConfigurationInfo azureConfigInfo =
-                new AzureStorageConfigurationInfo(
-                    new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
-            azureConfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
-            azureConfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
-            config = azureConfigInfo;
+            config =
+                AzureStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .tenantId(azureConfigModel.getTenantId())
+                    .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
+                    .consentUrl(azureConfigModel.getConsentUrl())
+                    .build();
             break;
           case GCS:
-            GcpStorageConfigurationInfo gcpConfig =
-                new GcpStorageConfigurationInfo(new ArrayList<>(allowedLocations));
-            gcpConfig.setGcpServiceAccount(
-                ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount());
-            config = gcpConfig;
+            config =
+                GcpStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .gcpServiceAccount(
+                        ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
+                    .build();
             break;
           case FILE:
-            config = new FileStorageConfigurationInfo(new ArrayList<>(allowedLocations));
+            config =
+                FileStorageConfigurationInfo.builder().allowedLocations(allowedLocations).build();
             break;
           default:
             throw new IllegalStateException(
