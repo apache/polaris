@@ -49,6 +49,7 @@ dependencies {
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
+  runtimeOnly(project(":polaris-extensions-federation-hive"))
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
