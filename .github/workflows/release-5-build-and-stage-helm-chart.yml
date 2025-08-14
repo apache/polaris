@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: Build and Publish Release Artifacts
+name: Release - 5 - Build and Stage Helm Chart
 
 on:
   workflow_dispatch:
@@ -27,11 +27,17 @@ on:
         required: false
         type: boolean
         default: true
+  workflow_run:
+    workflows: ["Build and Publish Docker Images"]
+    types:
+      - completed
 
 jobs:
-  build-and-publish-artifacts:
-    name: Build and Publish Artifacts
+  build-and-stage-helm-chart:
+    name: Release - 5 - Build and Stage Helm Chart
     runs-on: ubuntu-latest
+    # Only run if manually triggered or if Docker workflow succeeded
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     permissions:
       contents: read
     outputs:
@@ -45,15 +51,36 @@ jobs:
 
       - name: Set DRY_RUN environment variable
         id: set-outputs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
-            echo "DRY_RUN=1" >> $GITHUB_ENV
-            echo "dry_run=1" >> $GITHUB_OUTPUT
-            echo "DRY_RUN mode enabled - no actual changes will be made"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger - use input parameter
+            if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+              echo "DRY_RUN=1" >> $GITHUB_ENV
+              echo "dry_run=1" >> $GITHUB_OUTPUT
+              echo "DRY_RUN mode enabled - no actual changes will be made"
+            else
+              echo "DRY_RUN=0" >> $GITHUB_ENV
+              echo "dry_run=0" >> $GITHUB_OUTPUT
+              echo "DRY_RUN mode disabled - actual changes will be made"
+            fi
           else
-            echo "DRY_RUN=0" >> $GITHUB_ENV
-            echo "dry_run=0" >> $GITHUB_OUTPUT
-            echo "DRY_RUN mode disabled - actual changes will be made"
+            # Automatic trigger - get upstream workflow's dry_run value
+            workflow_run_id="${{ github.event.workflow_run.id }}"
+            
+            # Fetch the jobs for the workflow run
+            jobs_response=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs/${workflow_run_id}/jobs")
+            
+            # Extract the dry_run output from the build-and-publish-docker job
+            upstream_dry_run=$(echo "$jobs_response" | jq -r '.jobs[] | select(.name == "Build and Publish Docker Images") | .outputs.dry_run // "0"')
+            
+            echo "DRY_RUN=${upstream_dry_run}" >> $GITHUB_ENV
+            echo "dry_run=${upstream_dry_run}" >> $GITHUB_OUTPUT
+            echo "Retrieved upstream dry_run value: ${upstream_dry_run}"
           fi
 
       - name: Validate release candidate tag
@@ -89,11 +116,10 @@ jobs:
           echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
           echo "rc_number=${rc_number}" >> $GITHUB_ENV
 
-      - name: Set up Java
-        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
+      - name: Set up Helm
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          version: 'latest'
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
@@ -116,20 +142,27 @@ jobs:
           mkdir -p ~/.gradle
           echo "signing.gnupg.keyName=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | sed 's/.*\/\([A-F0-9]*\).*/\1/')" >> ~/.gradle/gradle.properties
 
-      - name: Build source and binary distributions
+      - name: Create Helm package
         run: |
           releasey_dir="$(pwd)/releasey"
           LIBS_DIR="${releasey_dir}/libs"
 
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
+          source "${LIBS_DIR}/_gpg.sh"
 
-          print_info "Building source and binary distributions..."
-          exec_process ./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
+          print_info "Creating Helm package..."
+          exec_process cd helm
+          exec_process helm package polaris
+          exec_process helm gpg sign polaris-${version_without_rc}.tgz
+          calculate_sha512 polaris-${version_without_rc}.tgz polaris-${version_without_rc}.tgz.sha512
+          exec_process gpg --armor --output polaris-${version_without_rc}.tgz.asc --detach-sig polaris-${version_without_rc}.tgz
+          calculate_sha512 polaris-${version_without_rc}.tgz.prov polaris-${version_without_rc}.tgz.prov.sha512
+          exec_process gpg --armor --output polaris-${version_without_rc}.tgz.prov.asc --detach-sig polaris-${version_without_rc}.tgz.prov
 
-          print_success "Source and binary distributions built successfully"
+          print_success "Helm package created successfully"
 
-      - name: Stage artifacts to Apache dist dev repository
+      - name: Stage Helm chart to Apache dist dev repository
         env:
           SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
           SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
@@ -141,55 +174,26 @@ jobs:
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Staging artifacts to Apache dist dev repository..."
+          print_info "Staging Helm chart to Apache dist dev repository..."
 
           dist_dev_dir=${releasey_dir}/polaris-dist-dev
           print_info "Checking out ${APACHE_DIST_URL}${APACHE_DIST_PATH} to ${dist_dev_dir}..."
           exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
-          print_info "Copying files to destination directory..."
-          version_dir="${dist_dev_dir}/${version_without_rc}"
-          exec_process mkdir -p "${version_dir}"
-          exec_process cp build/distributions/* "${version_dir}/"
-          exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
+          print_info "Copying Helm package files..."
+          exec_process mkdir -p "${dist_dev_dir}/helm-chart/${version_without_rc}"
+          exec_process cp helm/polaris-${version_without_rc}.tgz* "${dist_dev_dir}/helm-chart/${version_without_rc}/"
+
+          print_info "Updating Helm index..."
+          exec_process cd "${dist_dev_dir}/helm-chart"
+          exec_process helm repo index .
 
           print_info "Adding files to SVN..."
           cd "${dist_dev_dir}"
-          exec_process svn add "${version_without_rc}"
+          exec_process svn add index.yaml
+          exec_process svn add "helm-chart/${version_without_rc}"
 
           print_info "Committing changes..."
-          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris ${version_without_rc} RC${rc_number}"
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Helm chart ${version_without_rc} RC${rc_number}"
 
-          print_success "Artifacts staged to Apache dist dev repository successfully"
-
-      - name: Publish artifacts to Apache Nexus staging repository
-        env:
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
-        run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
-          source "${LIBS_DIR}/_log.sh"
-          source "${LIBS_DIR}/_exec.sh"
-
-          print_info "Publishing artifacts to Apache Nexus staging repository..."
-          exec_process ./gradlew publishToApache -Prelease -PuseGpgAgent
-
-          print_success "Artifacts published to Apache staging repository successfully"
-
-      - name: Close Nexus staging repository
-        env:
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
-        run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
-          source "${LIBS_DIR}/_log.sh"
-          source "${LIBS_DIR}/_exec.sh"
-
-          print_info "Closing Apache staging repository..."
-          exec_process ./gradlew closeApacheStagingRepository
-
-          print_success "Apache staging repository closed successfully"
+          print_success "Helm chart staged to Apache dist dev repository successfully"

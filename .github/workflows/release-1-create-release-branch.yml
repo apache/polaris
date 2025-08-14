@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: Create Release Branch
+name: Release - 1 - Create Release Branch
 
 on:
   workflow_dispatch:
@@ -34,7 +34,7 @@ on:
 
 jobs:
   create-release-branch:
-    name: Create Release Branch
+    name: Release - 1 - Create Release Branch
     runs-on: ubuntu-latest
     permissions:
       contents: write

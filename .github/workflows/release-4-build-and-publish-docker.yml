@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: Build and Publish Docker Images
+name: Release - 4 - Build and Publish Docker Images
 
 on:
   workflow_dispatch:
@@ -34,7 +34,7 @@ on:
 
 jobs:
   build-and-publish-docker:
-    name: Build and Publish Docker Images
+    name: Release - 4 - Build and Publish Docker Images
     runs-on: ubuntu-latest
     # Only run if manually triggered or if the "Build and Publish Release Artifacts" workflow succeeded
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')

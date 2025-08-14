@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: Update version and Changelog for Release Candidate
+name: Release - 2 - Update version and Changelog for Release Candidate
 
 on:
   workflow_dispatch:
@@ -30,7 +30,7 @@ on:
 
 jobs:
   update-release-candidate:
-    name: Update Release Candidate
+    name: Release - 2 - Update version and Changelog for Release Candidate
     runs-on: ubuntu-latest
     permissions:
       contents: write
