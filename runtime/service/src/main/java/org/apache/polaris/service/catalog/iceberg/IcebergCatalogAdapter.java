@@ -27,6 +27,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.HttpHeaders;
@@ -61,6 +63,7 @@ import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -146,6 +149,7 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
+  private final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -159,7 +163,8 @@ public class IcebergCatalogAdapter
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      CatalogHandlerUtils catalogHandlerUtils) {
+      CatalogHandlerUtils catalogHandlerUtils,
+      @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
@@ -172,6 +177,7 @@ public class IcebergCatalogAdapter
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
+    this.externalCatalogFactories = externalCatalogFactories;
   }
 
   /**
@@ -208,7 +214,8 @@ public class IcebergCatalogAdapter
         catalogName,
         polarisAuthorizer,
         reservedProperties,
-        catalogHandlerUtils);
+        catalogHandlerUtils,
+        externalCatalogFactories);
   }
 
   @Override
