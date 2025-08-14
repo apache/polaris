@@ -157,11 +157,9 @@ tasks.register<Exec>("regeneratePythonClient") {
 // Pass environment variables:
 //    ORG_GRADLE_PROJECT_apacheUsername
 //    ORG_GRADLE_PROJECT_apachePassword
-//    ORG_GRADLE_PROJECT_apacheNexusUrl (optional, for testing purposes only)
 // OR in ~/.gradle/gradle.properties set
 //    apacheUsername
 //    apachePassword
-//    apacheNexusUrl
 // Call targets:
 //    publishToApache
 //    closeApacheStagingRepository
@@ -181,15 +179,9 @@ nexusPublishing {
 
   repositories {
     register("apache") {
-      val baseNexusUrl =
-        project.findProperty("apacheNexusUrl") as String? ?: "https://repository.apache.org"
-      nexusUrl = URI.create("$baseNexusUrl/service/local/")
-      snapshotRepositoryUrl = URI.create("$baseNexusUrl/content/repositories/snapshots/")
-
-      // Allow insecure protocols for localhost testing
-      if (baseNexusUrl.startsWith("http://localhost")) {
-        allowInsecureProtocol = true
-      }
+      nexusUrl = URI.create("https://repository.apache.org/service/local/")
+      snapshotRepositoryUrl =
+        URI.create("https://repository.apache.org/content/repositories/snapshots/")
     }
   }
 }
