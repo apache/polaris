@@ -89,8 +89,8 @@ public abstract class JWTBroker implements TokenBroker {
       };
 
     } catch (JWTVerificationException e) {
-      LOGGER.error("Failed to verify the token with error", e);
-      throw new NotAuthorizedException("Failed to verify the token");
+      throw (NotAuthorizedException)
+          new NotAuthorizedException("Failed to verify the token").initCause(e);
     }
   }
 
@@ -115,6 +115,7 @@ public abstract class JWTBroker implements TokenBroker {
     try {
       decodedToken = verify(subjectToken);
     } catch (NotAuthorizedException e) {
+      LOGGER.error("Failed to verify the token", e.getCause());
       return new TokenResponse(Error.invalid_client);
     }
     EntityResult principalLookup =

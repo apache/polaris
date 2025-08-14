@@ -279,7 +279,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .pathStyleAccess(awsConfigModel.getPathStyleAccess())
                     .endpointInternal(awsConfigModel.getEndpointInternal())
                     .build();
-            awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
           case AZURE:

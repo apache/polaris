@@ -51,6 +51,8 @@ at locations that better optimize for object storage.
 
 - Polaris Management API clients must be prepared to deal with new attributes in `AwsStorageConfigInfo` objects.
 
+- S3 configuration property role-ARN is no longer mandatory.
+
 ### Deprecations
 
 * The property `polaris.active-roles-provider.type` is deprecated in favor of

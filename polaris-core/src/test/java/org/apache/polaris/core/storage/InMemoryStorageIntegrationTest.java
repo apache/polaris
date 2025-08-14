@@ -79,21 +79,6 @@ class InMemoryStorageIntegrationTest {
                 new PolarisStorageIntegration.ValidationResult(false, "")));
   }
 
-  @Test
-  public void testAwsAccountIdParsing() {
-    AwsStorageConfigurationInfo awsConfig =
-        AwsStorageConfigurationInfo.builder()
-            .addAllowedLocation("s3://bucket/path/to/warehouse")
-            .roleARN("arn:aws:iam::012345678901:role/jdoe")
-            .region("us-east-2")
-            .build();
-
-    String expectedAccountId = "012345678901";
-    String actualAccountId = awsConfig.getAwsAccountId();
-
-    Assertions.assertThat(actualAccountId).isEqualTo(expectedAccountId);
-  }
-
   @ParameterizedTest
   @ValueSource(strings = {"s3", "s3a"})
   public void testValidateAccessToLocationsWithWildcard(String s3Scheme) {
