@@ -1428,7 +1428,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       properties.put(
           PolarisTaskConstants.TASK_TYPE,
           String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode()));
-      properties.put("data", PolarisObjectMapperUtil.serialize(refreshEntityToDrop));
+      properties.put(
+          PolarisTaskConstants.TASK_DATA, PolarisObjectMapperUtil.serialize(refreshEntityToDrop));
       PolarisBaseEntity.Builder taskEntityBuilder =
           new PolarisBaseEntity.Builder()
               .id(ms.generateNewIdInCurrentTxn(callCtx))
