@@ -56,11 +56,11 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
     if (identity.isAnonymous()) {
       return Uni.createFrom().item(identity);
     }
-    PolarisCredential authInfo = extractPrincipalAuthInfo(identity);
+    PolarisCredential authInfo = extractPolarisCredential(identity);
     return context.runBlocking(() -> authenticatePolarisPrincipal(identity, authInfo));
   }
 
-  private PolarisCredential extractPrincipalAuthInfo(SecurityIdentity identity) {
+  private PolarisCredential extractPolarisCredential(SecurityIdentity identity) {
     PolarisCredential credential = identity.getCredential(PolarisCredential.class);
     if (credential == null) {
       throw new AuthenticationFailedException("No token credential available");

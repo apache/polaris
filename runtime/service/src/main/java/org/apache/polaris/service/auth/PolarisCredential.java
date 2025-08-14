@@ -31,13 +31,11 @@ import org.apache.polaris.immutables.PolarisImmutable;
 public interface PolarisCredential extends Credential {
 
   static PolarisCredential of(
-      @Nullable Long getPrincipalId,
-      @Nullable String getPrincipalName,
-      Set<String> getPrincipalRoles) {
+      @Nullable Long principalId, @Nullable String principalName, Set<String> principalRoles) {
     return ImmutablePolarisCredential.builder()
-        .principalId(getPrincipalId)
-        .principalName(getPrincipalName)
-        .principalRoles(getPrincipalRoles)
+        .principalId(principalId)
+        .principalName(principalName)
+        .principalRoles(principalRoles)
         .build();
   }
 
@@ -50,7 +48,9 @@ public interface PolarisCredential extends Credential {
   String getPrincipalName();
 
   /**
-   * The principal roles present in the token. The special {@link
+   * The principal roles present in the token.
+   *
+   * <p>When using the default authenticator, the special {@link
    * DefaultAuthenticator#PRINCIPAL_ROLE_ALL} can be used to denote a request for all principal
    * roles that the principal has access to.
    */
