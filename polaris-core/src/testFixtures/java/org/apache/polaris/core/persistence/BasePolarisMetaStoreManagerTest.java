@@ -41,6 +41,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
@@ -293,8 +294,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
                     .extracting(
                         e -> PolarisObjectMapperUtil.deserializeProperties(e.getProperties()))
                     .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
-                    .containsEntry("lastAttemptExecutorId", executorId)
-                    .containsEntry("attemptCount", "1"));
+                    .containsEntry(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId)
+                    .containsEntry(PolarisTaskConstants.ATTEMPT_COUNT, "1"));
     Set<String> firstTasks =
         taskList.stream().map(PolarisBaseEntity::getName).collect(Collectors.toSet());
 
