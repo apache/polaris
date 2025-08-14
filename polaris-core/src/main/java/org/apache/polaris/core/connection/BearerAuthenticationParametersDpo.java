@@ -25,7 +25,7 @@ import java.util.Map;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -35,16 +35,16 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 public class BearerAuthenticationParametersDpo extends AuthenticationParametersDpo {
 
   @JsonProperty(value = "bearerTokenReference")
-  private final UserSecretReference bearerTokenReference;
+  private final SecretReference bearerTokenReference;
 
   public BearerAuthenticationParametersDpo(
       @JsonProperty(value = "bearerTokenReference", required = true) @Nonnull
-          UserSecretReference bearerTokenReference) {
+          SecretReference bearerTokenReference) {
     super(AuthenticationType.BEARER.getCode());
     this.bearerTokenReference = bearerTokenReference;
   }
 
-  public @Nonnull UserSecretReference getBearerTokenReference() {
+  public @Nonnull SecretReference getBearerTokenReference() {
     return bearerTokenReference;
   }
 

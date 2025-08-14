@@ -106,7 +106,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
@@ -636,8 +636,8 @@ public class PolarisAdminService {
 
   /**
    * Secrets embedded *or* simply referenced through the API model will require separate processing
-   * for normalizing into resolved/verified/offloaded UserSecretReference objects which are then
-   * placed appropriately into persistence objects.
+   * for normalizing into resolved/verified/offloaded SecretReference objects which are then placed
+   * appropriately into persistence objects.
    *
    * <p>If secrets are already direct URIs/URNs to an external secret store, we may need to validate
    * the URI/URN and/or transform into a polaris-internal URN format along with type-information or
@@ -650,9 +650,9 @@ public class PolarisAdminService {
    * secrets into a Polaris service-level secrets manager and return the associated internal
    * references to the stored secret.
    */
-  private Map<String, UserSecretReference> extractSecretReferences(
+  private Map<String, SecretReference> extractSecretReferences(
       CreateCatalogRequest catalogRequest, PolarisEntity forEntity) {
-    Map<String, UserSecretReference> secretReferences = new HashMap<>();
+    Map<String, SecretReference> secretReferences = new HashMap<>();
     Catalog catalog = catalogRequest.getCatalog();
     UserSecretsManager secretsManager = getUserSecretsManager();
     if (catalog instanceof ExternalCatalog externalCatalog) {
@@ -667,7 +667,7 @@ public class PolarisAdminService {
               OAuthClientCredentialsParameters oauthClientCredentialsModel =
                   (OAuthClientCredentialsParameters) authenticationParameters;
               String inlineClientSecret = oauthClientCredentialsModel.getClientSecret();
-              UserSecretReference secretReference =
+              SecretReference secretReference =
                   secretsManager.writeSecret(inlineClientSecret, forEntity);
               secretReferences.put(
                   AuthenticationParametersDpo.INLINE_CLIENT_SECRET_REFERENCE_KEY, secretReference);
@@ -678,7 +678,7 @@ public class PolarisAdminService {
               BearerAuthenticationParameters bearerAuthenticationParametersModel =
                   (BearerAuthenticationParameters) authenticationParameters;
               String inlineBearerToken = bearerAuthenticationParametersModel.getBearerToken();
-              UserSecretReference secretReference =
+              SecretReference secretReference =
                   secretsManager.writeSecret(inlineBearerToken, forEntity);
               secretReferences.put(
                   AuthenticationParametersDpo.INLINE_BEARER_TOKEN_REFERENCE_KEY, secretReference);
@@ -736,7 +736,7 @@ public class PolarisAdminService {
             .log("Creating a federated catalog");
         FeatureConfiguration.enforceFeatureEnabledOrThrow(
             callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
-        Map<String, UserSecretReference> processedSecretReferences = Map.of();
+        Map<String, SecretReference> processedSecretReferences = Map.of();
         List<String> supportedAuthenticationTypes =
             callContext
                 .getRealmConfig()

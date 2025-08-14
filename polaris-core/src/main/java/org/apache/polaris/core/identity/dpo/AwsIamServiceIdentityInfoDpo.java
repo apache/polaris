@@ -26,15 +26,18 @@ import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
-import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 
 /**
  * Persistence-layer representation of an AWS IAM service identity used by Polaris.
  *
  * <p>This class models an AWS IAM identity (either a user or role) and extends {@link
- * ServiceIdentityInfoDpo}. It is typically used internally to store both the identity metadata
- * (such as the IAM ARN) and a reference to the actual credential (e.g., via {@link
- * ServiceSecretReference}).
+ * ServiceIdentityInfoDpo}. It is typically used internally to store a reference to the actual
+ * credential (e.g., via {@link SecretReference}).
+ *
+ * <p>During the runtime, it will be resolved to an actual ResolvedAwsIamServiceIdentityInfo object
+ * which contains the actual service identity info (e.g., the IAM user arn) and the corresponding
+ * credential.
  *
  * <p>Instances of this class are convertible to the public API model {@link
  * AwsIamServiceIdentityInfo}.
@@ -44,7 +47,7 @@ public class AwsIamServiceIdentityInfoDpo extends ServiceIdentityInfoDpo {
   @JsonCreator
   public AwsIamServiceIdentityInfoDpo(
       @JsonProperty(value = "identityInfoReference", required = false) @Nullable
-          ServiceSecretReference identityInfoReference) {
+          SecretReference identityInfoReference) {
     super(ServiceIdentityType.AWS_IAM.getCode(), identityInfoReference);
   }
 

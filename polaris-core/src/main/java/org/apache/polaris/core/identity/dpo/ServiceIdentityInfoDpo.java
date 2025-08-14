@@ -27,11 +27,14 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
-import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 
 /**
  * The internal persistence-object counterpart to ServiceIdentityInfo defined in the API model.
  * Important: JsonSubTypes must be kept in sync with {@link ServiceIdentityType}.
+ *
+ * <p>During the runtime, it will be resolved to an actual ResolvedServiceIdentityInfo object which
+ * contains the actual service identity info and the corresponding credential.
  */
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
@@ -44,12 +47,12 @@ public abstract class ServiceIdentityInfoDpo {
   private final int identityTypeCode;
 
   @JsonProperty(value = "identityInfoReference")
-  private final ServiceSecretReference identityInfoReference;
+  private final SecretReference identityInfoReference;
 
   public ServiceIdentityInfoDpo(
       @JsonProperty(value = "identityTypeCode", required = true) int identityTypeCode,
       @JsonProperty(value = "identityInfoReference", required = false) @Nullable
-          ServiceSecretReference identityInfoReference) {
+          SecretReference identityInfoReference) {
     this.identityTypeCode = identityTypeCode;
     this.identityInfoReference = identityInfoReference;
   }
@@ -64,7 +67,7 @@ public abstract class ServiceIdentityInfoDpo {
   }
 
   @JsonProperty
-  public ServiceSecretReference getIdentityInfoReference() {
+  public SecretReference getIdentityInfoReference() {
     return identityInfoReference;
   }
 

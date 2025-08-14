@@ -27,6 +27,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -38,7 +39,7 @@ import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +75,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
           AuthenticationParametersDpo authenticationParameters,
-      @JsonProperty(value = "serviceIdentity", required = false) @Nonnull
+      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
           ServiceIdentityInfoDpo serviceIdentity) {
     this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, true);
   }
@@ -83,7 +84,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
       int connectionTypeCode,
       @Nonnull String uri,
       @Nonnull AuthenticationParametersDpo authenticationParameters,
-      @Nonnull ServiceIdentityInfoDpo serviceIdentity,
+      @Nullable ServiceIdentityInfoDpo serviceIdentity,
       boolean validateUri) {
     this.connectionTypeCode = connectionTypeCode;
     this.uri = uri;
@@ -111,7 +112,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return authenticationParameters;
   }
 
-  public @Nonnull ServiceIdentityInfoDpo getServiceIdentity() {
+  public @Nullable ServiceIdentityInfoDpo getServiceIdentity() {
     return serviceIdentity;
   }
 
@@ -156,7 +157,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
    */
   public static ConnectionConfigInfoDpo fromConnectionConfigInfoModelWithSecrets(
       ConnectionConfigInfo connectionConfigurationModel,
-      Map<String, UserSecretReference> secretReferences) {
+      Map<String, SecretReference> secretReferences) {
     ConnectionConfigInfoDpo config = null;
     final AuthenticationParametersDpo authenticationParameters;
     switch (connectionConfigurationModel.getConnectionType()) {

@@ -29,7 +29,7 @@ import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 
 /**
  * The internal persistence-object counterpart to AuthenticationParameters defined in the API model.
@@ -71,7 +71,7 @@ public abstract class AuthenticationParametersDpo implements IcebergCatalogPrope
 
   public static AuthenticationParametersDpo fromAuthenticationParametersModelWithSecrets(
       AuthenticationParameters authenticationParameters,
-      Map<String, UserSecretReference> secretReferences) {
+      Map<String, SecretReference> secretReferences) {
     final AuthenticationParametersDpo config;
     switch (authenticationParameters.getAuthenticationType()) {
       case OAUTH:
