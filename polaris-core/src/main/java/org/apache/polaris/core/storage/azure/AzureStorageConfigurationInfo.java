@@ -18,36 +18,23 @@
  */
 package org.apache.polaris.core.storage.azure;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.annotation.Nullable;
-import java.util.List;
 import java.util.Objects;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /** Azure storage configuration information. */
-public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
+@PolarisImmutable
+@JsonSerialize(as = ImmutableAzureStorageConfigurationInfo.class)
+@JsonDeserialize(as = ImmutableAzureStorageConfigurationInfo.class)
+@JsonTypeName("AzureStorageConfigurationInfo")
+public abstract class AzureStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
-  // Azure tenant id
-  private final @Nonnull String tenantId;
-
-  /** The multi tenant app name for the service principal */
-  @JsonProperty(value = "multiTenantAppName", required = false)
-  private @Nullable String multiTenantAppName = null;
-
-  /** The consent url to the Azure permissions request page */
-  @JsonProperty(value = "consentUrl", required = false)
-  private @Nullable String consentUrl = null;
-
-  @JsonCreator
-  public AzureStorageConfigurationInfo(
-      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
-          List<String> allowedLocations,
-      @JsonProperty(value = "tenantId", required = true) @Nonnull String tenantId) {
-    super(StorageType.AZURE, allowedLocations);
-    this.tenantId = tenantId;
+  public static ImmutableAzureStorageConfigurationInfo.Builder builder() {
+    return ImmutableAzureStorageConfigurationInfo.builder();
   }
 
   @Override
@@ -55,36 +42,21 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
     return "org.apache.iceberg.azure.adlsv2.ADLSFileIO";
   }
 
-  public @Nonnull String getTenantId() {
-    return tenantId;
-  }
-
-  public @Nullable String getMultiTenantAppName() {
-    return multiTenantAppName;
-  }
-
-  public void setMultiTenantAppName(@Nullable String multiTenantAppName) {
-    this.multiTenantAppName = multiTenantAppName;
-  }
-
-  public @Nullable String getConsentUrl() {
-    return consentUrl;
-  }
-
-  public void setConsentUrl(@Nullable String consentUrl) {
-    this.consentUrl = consentUrl;
-  }
-
   @Override
-  public String toString() {
-    return MoreObjects.toStringHelper(this)
-        .add("storageType", getStorageType())
-        .add("tenantId", tenantId)
-        .add("allowedLocation", getAllowedLocations())
-        .add("multiTenantAppName", multiTenantAppName)
-        .add("consentUrl", consentUrl)
-        .toString();
+  public StorageType getStorageType() {
+    return StorageType.AZURE;
   }
+
+  /** Azure tenant ID. */
+  public abstract String getTenantId();
+
+  /** The multi tenant app name for the service principal */
+  @Nullable
+  public abstract String getMultiTenantAppName();
+
+  /** The consent url to the Azure permissions request page */
+  @Nullable
+  public abstract String getConsentUrl();
 
   @Override
   public void validatePrefixForStorageType(String loc) {

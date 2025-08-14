@@ -25,7 +25,7 @@ ENV LANGUAGE='en_US:en'
 
 USER root
 RUN apt update
-RUN apt-get install -y diffutils wget curl python3.10-venv
+RUN apt-get install -y diffutils wget curl python3.10-venv jq
 RUN mkdir -p /home/spark &&  \
     chown -R spark /home/spark && \
     mkdir -p /tmp/polaris-regtests && \

@@ -28,13 +28,13 @@ This page documents various entities that can be managed in Apache Polaris (Incu
 
 A catalog is a top-level entity in Polaris that may contain other entities like [namespaces](#namespace) and [tables](#table). These map directly to [Apache Iceberg catalogs](https://iceberg.apache.org/concepts/catalog/).
 
-For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see [the API docs]({{% github-polaris "client/python/docs/CreateCatalogRequest.md" %}}).
+For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see [the CreateCatalogRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
 ### Storage Type
 
 All catalogs in Polaris are associated with a _storage type_. Valid Storage Types are `S3`, `Azure`, and `GCS`. The `FILE` type is also additionally available for testing. Each of these types relates to a different storage provider where data within the catalog may reside. Depending on the storage type, various other configurations may be set for a catalog including credentials to be used when accessing data inside the catalog.
 
-For details on how to use Storage Types in the REST API, see [the API docs]({{% github-polaris "client/python/docs/StorageConfigInfo.md" %}}).
+For details on how to use Storage Types in the REST API, see [the StorageConfigInfo OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
 For usage examples of storage types, see [docs]({{% ref "command-line-interface" %}}).
 
@@ -44,31 +44,31 @@ A namespace is a logical entity that resides within a [catalog](#catalog) and ca
 
 In Polaris, namespaces can be nested. For example, `a.b.c.d.e.f.g` is a valid namespace. `b` is said to reside within `a`, and so on.
 
-For information on managing namespaces with the REST API or for more information on what data can be associated with a namespace, see [the API docs]({{% github-polaris "client/python/docs/CreateNamespaceRequest.md" %}}).
+For information on managing namespaces with the REST API or for more information on what data can be associated with a namespace, see [the CreateNamespaceRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
 ## Table
 
 Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.apache.org/docs/nightly/configuration/), [Delta tables](https://docs.databricks.com/aws/en/delta/table-properties), or [Hudi tables](https://hudi.apache.org/docs/next/configurations#TABLE_CONFIG).
 
-For information on managing tables with the REST API or for more information on what data can be associated with a table, see [the API docs]({{% github-polaris "client/python/docs/CreateTableRequest.md" %}}).
+For information on managing tables with the REST API or for more information on what data can be associated with a table, see [the CreateTableRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
 ## View
 
 Polaris views are entities that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).
 
-For information on managing views with the REST API or for more information on what data can be associated with a view, see [the API docs]({{% github-polaris "client/python/docs/CreateViewRequest.md" %}}).
+For information on managing views with the REST API or for more information on what data can be associated with a view, see [the CreateViewRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
 ## Principal
 
 Polaris principals are unique identities that can be used to represent users or services. Each principal may have one or more [principal roles](#principal-role) assigned to it for the purpose of accessing catalogs and the entities within them.
 
-For information on managing principals with the REST API or for more information on what data can be associated with a principal, see [the API docs]({{% github-polaris "client/python/docs/CreatePrincipalRequest.md" %}}).
+For information on managing principals with the REST API or for more information on what data can be associated with a principal, see [the CreatePrincipalRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 
 ## Principal Role
 
 Polaris principal roles are labels that may be granted to [principals](#principal). Each principal may have one or more principal roles, and the same principal role may be granted to multiple principals. Principal roles may be assigned based on the persona or responsibilities of a given principal, or on how that principal will need to access different entities within Polaris.
 
-For information on managing principal roles with the REST API or for more information on what data can be associated with a principal role, see [the API docs]({{% github-polaris "client/python/docs/CreatePrincipalRoleRequest.md" %}}).
+For information on managing principal roles with the REST API or for more information on what data can be associated with a principal role, see [the CreatePrincipalRoleRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml)
 
 ## Catalog Role
 
@@ -88,8 +88,4 @@ Polaris privileges are granted to [catalog roles](#catalog-role) in order to gra
 
 A privilege can be scoped to any entity inside a catalog, including the catalog itself.
 
-For a list of supported privileges for each privilege class, see the API docs:
-* [Table Privileges]({{% github-polaris "client/python/docs/TablePrivilege.md" %}})
-* [View Privileges]({{% github-polaris "client/python/docs/ViewPrivilege.md" %}})
-* [Namespace Privileges]({{% github-polaris "client/python/docs/NamespacePrivilege.md" %}})
-* [Catalog Privileges]({{% github-polaris "client/python/docs/CatalogPrivilege.md" %}})
+For a list of supported privileges for each privilege class, see [the OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml) (TablePrivilege, ViewPrivilege, NamespacePrivilege, CatalogPrivilege).

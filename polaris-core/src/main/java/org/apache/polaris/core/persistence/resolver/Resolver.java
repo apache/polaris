@@ -598,7 +598,7 @@ public class Resolver {
               refreshedResolvedEntity =
                   result.isSuccess()
                       ? new ResolvedPolarisEntity(
-                          this.polarisCallContext.getDiagServices(),
+                          this.diagnostics,
                           result.getEntity() != null ? result.getEntity() : entity,
                           result.getEntityGrantRecords() != null
                               ? result.getEntityGrantRecords()
@@ -1020,7 +1020,7 @@ public class Resolver {
 
       resolvedEntity =
           new ResolvedPolarisEntity(
-              this.polarisCallContext.getDiagServices(),
+              this.diagnostics,
               result.getEntity(),
               result.getEntityGrantRecords(),
               result.getGrantRecordsVersion());
@@ -1077,7 +1077,7 @@ public class Resolver {
 
       ResolvedPolarisEntity resolvedEntity =
           new ResolvedPolarisEntity(
-              this.polarisCallContext.getDiagServices(),
+              this.diagnostics,
               result.getEntity(),
               result.getEntityGrantRecords(),
               result.getGrantRecordsVersion());

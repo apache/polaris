@@ -27,7 +27,11 @@ import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** An abstraction over a storage location */
+/**
+ * An abstraction over a storage location. This type may be used for a generic string-based
+ * location, but child classes might be used where behavior specific to a storage provider is
+ * needed.
+ */
 public class StorageLocation {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageLocation.class);
   private static final Pattern SCHEME_PATTERN = Pattern.compile("^(.+?):(.+)");
@@ -36,7 +40,7 @@ public class StorageLocation {
 
   private final String location;
 
-  /** Create a StorageLocation from a String path */
+  /** Create a StorageLocation of the appropriate type from a String path */
   public static StorageLocation of(String location) {
     // TODO implement StorageLocation for all supported file systems and add isValidLocation
     if (AzureLocation.isAzureLocation(location)) {
@@ -61,7 +65,7 @@ public class StorageLocation {
   }
 
   /** If a path doesn't end in `/`, this will add one */
-  protected final String ensureTrailingSlash(String location) {
+  protected static String ensureTrailingSlash(String location) {
     if (location == null || location.endsWith("/")) {
       return location;
     } else {
@@ -70,7 +74,7 @@ public class StorageLocation {
   }
 
   /** If a path doesn't start with `/`, this will add one */
-  protected final @Nonnull String ensureLeadingSlash(@Nonnull String location) {
+  protected static @Nonnull String ensureLeadingSlash(@Nonnull String location) {
     if (location.startsWith("/")) {
       return location;
     } else {
@@ -83,6 +87,12 @@ public class StorageLocation {
     return location.hashCode();
   }
 
+  /**
+   * Checks if two StorageLocations represent the same physical location.
+   *
+   * <p>Child classes should override this behavior if a check other than basic string-matching
+   * should be done.
+   */
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof StorageLocation) {
@@ -99,7 +109,10 @@ public class StorageLocation {
 
   /**
    * Returns true if this StorageLocation's location string starts with the other StorageLocation's
-   * location string
+   * location string.
+   *
+   * <p>Child classes should override this behavior if a check other than basic string-matching
+   * should be done.
    */
   public boolean isChildOf(StorageLocation potentialParent) {
     if (this.location == null || potentialParent.location == null) {

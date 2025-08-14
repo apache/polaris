@@ -22,7 +22,6 @@ import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeE
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,8 +40,8 @@ import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -80,7 +79,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return null;
   }
 
-  public static CatalogEntity fromCatalog(CallContext callContext, Catalog catalog) {
+  public static CatalogEntity fromCatalog(RealmConfig realmConfig, Catalog catalog) {
     Builder builder =
         new Builder()
             .setName(catalog.getName())
@@ -90,7 +89,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
-        callContext, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
+        realmConfig, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
     return builder.build();
   }
 
@@ -142,6 +141,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
             .setPathStyleAccess(awsConfig.getPathStyleAccess())
+            .setEndpointInternal(awsConfig.getEndpointInternal())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -250,7 +250,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     }
 
     public Builder setStorageConfigurationInfo(
-        CallContext callContext, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
+        RealmConfig realmConfig, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
       if (storageConfigModel != null) {
         PolarisStorageConfigurationInfo config;
         Set<String> allowedLocations = new HashSet<>(storageConfigModel.getAllowedLocations());
@@ -264,41 +264,44 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           throw new BadRequestException("Must specify default base location");
         }
         allowedLocations.add(defaultBaseLocation);
-        validateMaxAllowedLocations(callContext, allowedLocations);
+        validateMaxAllowedLocations(realmConfig, allowedLocations);
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
             AwsStorageConfigurationInfo awsConfig =
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    new ArrayList<>(allowedLocations),
-                    awsConfigModel.getRoleArn(),
-                    awsConfigModel.getExternalId(),
-                    awsConfigModel.getRegion(),
-                    awsConfigModel.getEndpoint(),
-                    awsConfigModel.getStsEndpoint(),
-                    awsConfigModel.getPathStyleAccess());
-            awsConfig.validateArn(awsConfigModel.getRoleArn());
+                AwsStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .roleARN(awsConfigModel.getRoleArn())
+                    .externalId(awsConfigModel.getExternalId())
+                    .region(awsConfigModel.getRegion())
+                    .endpoint(awsConfigModel.getEndpoint())
+                    .stsEndpoint(awsConfigModel.getStsEndpoint())
+                    .pathStyleAccess(awsConfigModel.getPathStyleAccess())
+                    .endpointInternal(awsConfigModel.getEndpointInternal())
+                    .build();
             config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            AzureStorageConfigurationInfo azureConfigInfo =
-                new AzureStorageConfigurationInfo(
-                    new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
-            azureConfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
-            azureConfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
-            config = azureConfigInfo;
+            config =
+                AzureStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .tenantId(azureConfigModel.getTenantId())
+                    .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
+                    .consentUrl(azureConfigModel.getConsentUrl())
+                    .build();
             break;
           case GCS:
-            GcpStorageConfigurationInfo gcpConfig =
-                new GcpStorageConfigurationInfo(new ArrayList<>(allowedLocations));
-            gcpConfig.setGcpServiceAccount(
-                ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount());
-            config = gcpConfig;
+            config =
+                GcpStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .gcpServiceAccount(
+                        ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
+                    .build();
             break;
           case FILE:
-            config = new FileStorageConfigurationInfo(new ArrayList<>(allowedLocations));
+            config =
+                FileStorageConfigurationInfo.builder().allowedLocations(allowedLocations).build();
             break;
           default:
             throw new IllegalStateException(
@@ -312,11 +315,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     /** Validate the number of allowed locations not exceeding the max value. */
     private void validateMaxAllowedLocations(
-        CallContext callContext, Collection<String> allowedLocations) {
+        RealmConfig realmConfig, Collection<String> allowedLocations) {
       int maxAllowedLocations =
-          callContext
-              .getRealmConfig()
-              .getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
+          realmConfig.getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
       if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
         throw new IllegalArgumentException(
             String.format(

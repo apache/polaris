@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
@@ -80,7 +81,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
-  private final int version;
+  private final int schemaVersion;
 
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
@@ -89,12 +90,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
       PolarisStorageIntegrationProvider storageIntegrationProvider,
-      String realmId) {
+      String realmId,
+      int schemaVersion) {
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
-    this.version = loadVersion();
+    this.schemaVersion = schemaVersion;
   }
 
   @Override
@@ -183,11 +185,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   entity.getParentId(),
                   entity.getTypeCode(),
                   entity.getName());
-          throw new EntityAlreadyExistsException(existingEntity, e);
-        } else {
-          throw new RuntimeException(
-              String.format("Failed to write entity due to %s", e.getMessage()), e);
+          // This happens in two scenarios:
+          // 1. PRIMARY KEY violated
+          // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
+          // With SERIALIZABLE isolation, the conflicting entity may _not_ be visible and
+          // existingEntity can be null, which would cause an NPE in
+          // EntityAlreadyExistsException.message().
+          throw new EntityAlreadyExistsException(
+              existingEntity != null ? existingEntity : entity, e);
         }
+        throw new RuntimeException(
+            String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
     } else {
       Map<String, Object> params =
@@ -420,32 +428,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
+    // TODO: only fetch the properties required for creating an EntityNameLookupRecord
     return listEntities(
         callCtx,
         catalogId,
         parentId,
         entityType,
+        entitySubType,
         entity -> true,
-        EntityNameLookupRecord::new,
-        pageToken);
-  }
-
-  @Nonnull
-  @Override
-  public Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
-    return listEntities(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        entityFilter,
         EntityNameLookupRecord::new,
         pageToken);
   }
@@ -456,7 +448,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      PolarisEntityType entityType,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
@@ -471,6 +464,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             "realm_id",
             realmId);
     Map<String, Object> whereGreater;
+
+    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
+      Map<String, Object> updatedWhereEquals = new HashMap<>(whereEquals);
+      updatedWhereEquals.put("sub_type_code", entitySubType.getCode());
+      whereEquals = updatedWhereEquals;
+    }
 
     // Limit can't be pushed down, due to client side filtering
     // absence of transaction.
@@ -645,7 +644,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  private int loadVersion() {
+  static int loadSchemaVersion(DatasourceOperations datasourceOperations) {
     PreparedQuery query = QueryGenerator.generateVersionQuery();
     try {
       List<SchemaVersion> schemaVersion =
@@ -665,7 +664,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @Nonnull PolarisCallContext callContext, T entity) {
-    if (this.version < 2) {
+    if (this.schemaVersion < 2) {
       return Optional.empty();
     }
     if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
@@ -1120,7 +1119,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callContext, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(callContext.getDiagServices(), entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

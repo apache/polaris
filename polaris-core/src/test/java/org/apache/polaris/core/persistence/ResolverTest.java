@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
+import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
@@ -29,6 +30,7 @@ import org.mockito.Mockito;
 
 public class ResolverTest extends BaseResolverTest {
 
+  private final Clock clock = Clock.systemUTC();
   private PolarisCallContext callCtx;
   private PolarisTestMetaStoreManager tm;
   private TransactionalMetaStoreManagerImpl metaStoreManager;
@@ -48,7 +50,7 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisMetaStoreManager metaStoreManager() {
     if (metaStoreManager == null) {
-      metaStoreManager = new TransactionalMetaStoreManagerImpl();
+      metaStoreManager = new TransactionalMetaStoreManagerImpl(clock);
     }
     return metaStoreManager;
   }
@@ -56,7 +58,7 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisTestMetaStoreManager tm() {
     if (tm == null) {
-      // bootstrap the mata store with our test schema
+      // bootstrap the meta store with our test schema
       tm = new PolarisTestMetaStoreManager(metaStoreManager(), callCtx());
     }
     return tm;

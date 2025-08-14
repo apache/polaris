@@ -35,6 +35,9 @@ public enum ConnectionType {
   HADOOP(2),
   ;
 
+  public static final String ICEBERG_REST_FACTORY_IDENTIFIER = "iceberg_rest";
+  public static final String HADOOP_FACTORY_IDENTIFIER = "hadoop";
+
   private static final ConnectionType[] REVERSE_MAPPING_ARRAY;
 
   static {
@@ -76,5 +79,23 @@ public enum ConnectionType {
 
   public int getCode() {
     return this.code;
+  }
+
+  /**
+   * Get the factory identifier string used for CDI injection of the appropriate
+   * ExternalCatalogFactory.
+   *
+   * @return the factory identifier string
+   */
+  public String getFactoryIdentifier() {
+    switch (this) {
+      case ICEBERG_REST:
+        return ICEBERG_REST_FACTORY_IDENTIFIER;
+      case HADOOP:
+        return HADOOP_FACTORY_IDENTIFIER;
+      default:
+        throw new UnsupportedOperationException(
+            "No factory identifier for connection type: " + this);
+    }
   }
 }

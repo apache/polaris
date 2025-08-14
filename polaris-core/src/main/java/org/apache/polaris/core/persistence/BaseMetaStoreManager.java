@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -37,20 +38,18 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   public static PolarisStorageConfigurationInfo extractStorageConfiguration(
-      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity reloadedEntity) {
+      @Nonnull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {
     Map<String, String> propMap =
         PolarisObjectMapperUtil.deserializeProperties(reloadedEntity.getInternalProperties());
     String storageConfigInfoStr =
         propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
 
-    callCtx
-        .getDiagServices()
-        .check(
-            storageConfigInfoStr != null,
-            "missing_storage_configuration_info",
-            "catalogId={}, entityId={}",
-            reloadedEntity.getCatalogId(),
-            reloadedEntity.getId());
+    diagnostics.check(
+        storageConfigInfoStr != null,
+        "missing_storage_configuration_info",
+        "catalogId={}, entityId={}",
+        reloadedEntity.getCatalogId(),
+        reloadedEntity.getId());
     return PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr);
   }
 
