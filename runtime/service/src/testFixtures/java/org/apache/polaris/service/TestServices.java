@@ -34,12 +34,11 @@ import java.util.function.BiFunction;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -241,9 +240,8 @@ public record TestServices(
                   .setCreateTimestamp(Instant.now().toEpochMilli())
                   .setCredentialRotationRequiredState()
                   .build());
-      AuthenticatedPolarisPrincipal principal =
-          new AuthenticatedPolarisPrincipal(
-              PolarisEntity.of(createdPrincipal.getPrincipal()), Set.of());
+      PolarisPrincipal principal =
+          PolarisPrincipal.of(PrincipalEntity.of(createdPrincipal.getPrincipal()), Set.of());
 
       SecurityContext securityContext =
           new SecurityContext() {

@@ -31,7 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -481,8 +481,8 @@ public abstract class BaseResolverTest {
                         .filter(Optional::isPresent)
                         .map(Optional::get)
                         .collect(Collectors.toList()));
-    AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(
             PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()));
     return new Resolver(
         callCtx(),

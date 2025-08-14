@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.auth.external;
 
-import static org.apache.polaris.service.auth.external.OidcTenantResolvingAugmentor.TENANT_CONFIG_ATTRIBUTE;
+import static org.apache.polaris.service.auth.external.tenant.OidcTenantResolvingAugmentor.TENANT_CONFIG_ATTRIBUTE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -32,16 +32,17 @@ import java.security.Principal;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
-import org.apache.polaris.service.auth.external.OidcTenantConfiguration.PrincipalMapper;
-import org.apache.polaris.service.auth.external.OidcTenantConfiguration.PrincipalRolesMapper;
-import org.apache.polaris.service.auth.external.PrincipalAuthInfoAugmentor.OidcPrincipalAuthInfo;
+import org.apache.polaris.service.auth.PolarisCredential;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalMapper;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalRolesMapper;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class PrincipalAuthInfoAugmentorTest {
+class OidcPolarisCredentialAugmentorTest {
 
-  private PrincipalAuthInfoAugmentor augmentor;
+  private OidcPolarisCredentialAugmentor augmentor;
   private org.apache.polaris.service.auth.external.mapping.PrincipalMapper principalMapper;
   private org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper
       principalRolesMapper;
@@ -68,7 +69,7 @@ class PrincipalAuthInfoAugmentorTest {
     when(principalRoleMappers.select(Identifier.Literal.of("default")))
         .thenReturn(principalRoleMappers);
     when(principalRoleMappers.get()).thenReturn(principalRolesMapper);
-    augmentor = new PrincipalAuthInfoAugmentor(principalMappers, principalRoleMappers);
+    augmentor = new OidcPolarisCredentialAugmentor(principalMappers, principalRoleMappers);
   }
 
   @Test
@@ -120,8 +121,8 @@ class PrincipalAuthInfoAugmentorTest {
     // Then
     assertThat(result).isNotNull();
     assertThat(result.getPrincipal()).isSameAs(oidcPrincipal);
-    assertThat(result.getCredential(OidcPrincipalAuthInfo.class))
-        .isEqualTo(new OidcPrincipalAuthInfo(123L, "root", Set.of("MAPPED_ROLE1")));
+    assertThat(result.getCredential(PolarisCredential.class))
+        .isEqualTo(PolarisCredential.of(123L, "root", Set.of("MAPPED_ROLE1")));
     // the identity roles should not change, since this is done by the ActiveRolesAugmentor
     assertThat(result.getRoles()).containsExactlyInAnyOrder("ROLE1");
   }
