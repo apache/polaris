@@ -196,7 +196,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
       return ImmutableMap.<String, String>builder()
           .putAll(super.getConfigOverrides())
           .put("polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"", "true")
-          .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
           .build();
     }
   }

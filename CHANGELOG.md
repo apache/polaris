@@ -31,6 +31,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- The `LIST_PAGINATION_ENABLED` feature configuration was unused and has been removed.
+
 ### Breaking changes
 
 - Helm chart: the default value of the `authentication.tokenBroker.secret.symmetricKey.secretKey` property has changed
