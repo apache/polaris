@@ -64,8 +64,8 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
     //  `conf.addResource(new Path(hiveSiteXmlPath));`
     // 2b. Specify individual properties in the configuration.
     //  `conf.set(property, value);`
-    // In this case, Polaris could support federating to multiple LDAP based Hive metastores.
-    // Kerberos is still not suitable because it ties a single identities to the server.
+    // Polaris could support federating to multiple LDAP based Hive metastores. Multiple
+    // Kerberos instances are not suitable because Kerberos ties a single identity to the server.
     HiveCatalog hiveCatalog = new HiveCatalog();
     hiveCatalog.initialize(
         warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
