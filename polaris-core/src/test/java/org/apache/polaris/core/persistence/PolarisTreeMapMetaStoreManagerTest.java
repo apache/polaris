@@ -34,7 +34,7 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
     TransactionalMetaStoreManagerImpl metaStoreManager =
-        new TransactionalMetaStoreManagerImpl(clock);
+        new TransactionalMetaStoreManagerImpl(clock, diagServices);
     PolarisCallContext callCtx =
         new PolarisCallContext(
             () -> "testRealm",
