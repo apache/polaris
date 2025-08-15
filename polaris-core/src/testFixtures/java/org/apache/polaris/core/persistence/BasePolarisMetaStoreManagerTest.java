@@ -292,8 +292,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
             entry ->
                 Assertions.assertThat(entry)
                     .extracting(
-                        e -> PolarisObjectMapperUtil.deserializeProperties(e.getProperties()))
-                    .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
+                        PolarisBaseEntity::getPropertiesAsMap,
+                        InstanceOfAssertFactories.map(String.class, String.class))
                     .containsEntry(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId)
                     .containsEntry(PolarisTaskConstants.ATTEMPT_COUNT, "1"));
     Set<String> firstTasks =
