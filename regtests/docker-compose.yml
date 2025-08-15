@@ -22,7 +22,7 @@ services:
   init:
     image: busybox
     volumes:
-      - ./hadoop-warehouse:/tmp/hadoop_warehouse
+      - hadoop-warehouse:/tmp/hadoop_warehouse
     command: ["sh", "-c", "umask 000 && mkdir -p /tmp/hadoop_warehouse && chmod 777 /tmp/hadoop_warehouse"]
   
   polaris:
@@ -31,7 +31,8 @@ services:
       - "8181"
       - "8182"
     depends_on:
-      - init
+      init:
+        condition: service_completed_successfully
     environment:
       AWS_REGION: us-west-2
       AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
@@ -55,7 +56,7 @@ services:
     volumes:
       - ./credentials:/tmp/credentials/
       - ./hadoop-conf:/tmp/hadoop-conf
-      - ./hadoop-warehouse:/tmp/hadoop_warehouse
+      - hadoop-warehouse:/tmp/hadoop_warehouse
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 10s
@@ -95,4 +96,7 @@ services:
       - ./output:/tmp/polaris-regtests/
       - ./credentials:/tmp/credentials/
       - ./hadoop-conf:/tmp/hadoop-conf
-      - ./hadoop-warehouse:/tmp/hadoop_warehouse
+      - hadoop-warehouse:/tmp/hadoop_warehouse
+
+volumes:
+  hadoop-warehouse:
