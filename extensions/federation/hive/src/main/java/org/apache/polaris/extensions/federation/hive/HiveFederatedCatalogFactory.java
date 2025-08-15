@@ -54,6 +54,18 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
     // Unlike Hadoop, HiveCatalog does not require us to create a Configuration object, the iceberg
     // rest library find the default configuration by reading hive-site.xml in the classpath
     // (including HADOOP_CONF_DIR classpath).
+
+    // TODO: In the future, we could support multiple HiveCatalog instances based on polaris/catalog
+    // properties.
+    // A brief set of setps involved (and the options):
+    // 1. Create a configuration without default properties.
+    //  `Configuration conf = new Configuration(boolean loadDefaults=false);`
+    // 2a. Specify the hive-site.xml file path in the configuration.
+    //  `conf.addResource(new Path(hiveSiteXmlPath));`
+    // 2b. Specify individual properties in the configuration.
+    //  `conf.set(property, value);`
+    // In this case, Polaris could support federating to multiple LDAP based Hive metastores.
+    // Kerberos is still not suitable because it ties a single identities to the server.
     HiveCatalog hiveCatalog = new HiveCatalog();
     hiveCatalog.initialize(
         warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
