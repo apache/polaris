@@ -40,6 +40,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -75,7 +76,9 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
+import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -430,14 +433,43 @@ public class IcebergCatalogAdapter
                     .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           } else {
-            response =
+            LoadTableResponse originalResponse =
                 catalog
                     .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+
+            if (delegationModes.contains(VENDED_CREDENTIALS)) {
+              response =
+                  injectRefreshVendedCredentialProperties(
+                      originalResponse,
+                      new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
+            } else {
+              response = originalResponse;
+            }
           }
 
           return tryInsertETagHeader(Response.ok(response), response, namespace, table).build();
         });
+  }
+
+  private LoadTableResponse injectRefreshVendedCredentialProperties(
+      LoadTableResponse originalResponse, String credentialsEndpoint) {
+    LoadTableResponse.Builder loadResponseBuilder =
+        LoadTableResponse.builder().withTableMetadata(originalResponse.tableMetadata());
+    loadResponseBuilder.addAllConfig(originalResponse.config());
+    loadResponseBuilder.addAllCredentials(originalResponse.credentials());
+    loadResponseBuilder.addConfig(
+        AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, credentialsEndpoint);
+    // Only enable credential refresh for currently supported credential types
+    if (originalResponse.credentials().stream()
+        .anyMatch(
+            credential ->
+                credential
+                    .config()
+                    .containsKey(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName()))) {
+      loadResponseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+    }
+    return loadResponseBuilder.build();
   }
 
   @Override
