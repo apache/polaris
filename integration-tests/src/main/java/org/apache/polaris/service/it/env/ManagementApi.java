@@ -51,9 +51,9 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 /**
  * A simple, non-exhaustive set of helper methods for accessing the Polaris Management API.
  *
- * @see PolarisClient#managementApi(ClientCredentials)
+ * @see PolarisClient#managementApi(String)
  */
-public class ManagementApi extends RestApi {
+public class ManagementApi extends PolarisRestApi {
   public ManagementApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);
   }

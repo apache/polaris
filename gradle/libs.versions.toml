@@ -72,6 +72,7 @@ jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api",
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.13.4" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.6" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.3" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
@@ -94,6 +95,7 @@ spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.21.3" }
+testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "3.8.0" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]

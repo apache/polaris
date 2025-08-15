@@ -94,6 +94,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.GenericTableApi;
 import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
@@ -135,12 +136,14 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   private static final String EXTERNAL_CATALOG_LOCATION_SUBPATH =
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_EXTERNAL_CATALOG_LOCATION_SUBPATH"))
           .orElse("external-catalog");
-  private static ClientCredentials adminCredentials;
+  private static ClientPrincipal adminPrincipal;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
-  private static ManagementApi managementApi;
 
-  private PrincipalWithCredentials principalCredentials;
+  private String principalToken;
+  private String adminToken;
+
+  private ManagementApi managementApi;
   private CatalogApi catalogApi;
   private GenericTableApi genericTableApi;
   private RESTCatalog restCatalog;
@@ -199,11 +202,10 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @BeforeAll
-  static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
-    adminCredentials = credentials;
+  static void setup(PolarisApiEndpoints apiEndpoints, ClientPrincipal admin) {
+    adminPrincipal = admin;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    managementApi = client.managementApi(credentials);
   }
 
   static {
@@ -217,12 +219,16 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
   @BeforeEach
   public void before(TestInfo testInfo) {
+    adminToken = obtainToken(client, adminPrincipal);
+    managementApi = client.managementApi(adminToken);
+
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
-    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    ClientPrincipal testPrincipal = createTestPrincipal(client, principalName, principalRoleName);
+    principalToken = obtainToken(client, testPrincipal);
 
-    catalogApi = client.catalogApi(principalCredentials);
-    genericTableApi = client.genericTableApi(principalCredentials);
+    catalogApi = client.catalogApi(principalToken);
+    genericTableApi = client.genericTableApi(principalToken);
 
     Method method = testInfo.getTestMethod().orElseThrow();
     currentCatalogName = client.newEntityName(method.getName());
@@ -286,9 +292,46 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
   }
 
+  /**
+   * Creates a test principal with the specified name and role. Subclasses can override this method
+   * to customize the principal creation process, e.g. when using federated principals.
+   */
+  protected ClientPrincipal createTestPrincipal(
+      PolarisClient client, String principalName, String principalRoleName) {
+    PrincipalWithCredentials principalWithCredentials =
+        managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    return new ClientPrincipal(
+        principalWithCredentials.getPrincipal().getName(),
+        new ClientCredentials(
+            principalWithCredentials.getCredentials().getClientId(),
+            principalWithCredentials.getCredentials().getClientSecret()));
+  }
+
+  /**
+   * Obtain an access token for the given principal credentials.
+   *
+   * <p>By default, this method uses the {@link PolarisClient} to obtain the token from the Polaris
+   * internal OAuth2 token endpoint.
+   *
+   * <p>Subclasses can override this method to customize the token acquisition process, e.g. when
+   * using external identity providers.
+   */
+  protected String obtainToken(PolarisClient client, ClientPrincipal principal) {
+    return client.obtainToken(principal);
+  }
+
   @AfterEach
   public void cleanUp() {
-    client.cleanUp(adminCredentials);
+    cleanUp(client, adminToken);
+  }
+
+  /**
+   * Cleans up the Polaris environment after each test.
+   *
+   * <p>Subclasses can override this method to perform additional cleanup actions.
+   */
+  protected void cleanUp(PolarisClient client, String adminToken) {
+    client.cleanUp(adminToken);
   }
 
   @Override
@@ -309,11 +352,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     extraPropertiesBuilder.putAll(restCatalogConfig);
     extraPropertiesBuilder.putAll(additionalProperties);
     return IcebergHelper.restCatalog(
-        client,
-        endpoints,
-        principalCredentials,
-        currentCatalogName,
-        extraPropertiesBuilder.buildKeepingLast());
+        endpoints, currentCatalogName, extraPropertiesBuilder.buildKeepingLast(), principalToken);
   }
 
   @Override
