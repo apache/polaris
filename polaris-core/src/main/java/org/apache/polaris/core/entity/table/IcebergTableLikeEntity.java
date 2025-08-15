@@ -19,6 +19,7 @@
 package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.annotation.Nullable;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -48,7 +49,7 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
     super(sourceEntity);
   }
 
-  public static IcebergTableLikeEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable IcebergTableLikeEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new IcebergTableLikeEntity(sourceEntity);
     }

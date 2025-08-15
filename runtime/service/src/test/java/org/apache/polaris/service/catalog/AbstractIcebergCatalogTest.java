@@ -1840,7 +1840,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     FileIO fileIO =
         new TaskFileIOSupplier(
                 new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory))
-            .apply(taskEntity, polarisContext);
+            .apply(taskEntity, TABLE, polarisContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
         .isInstanceOf(InMemoryFileIO.class);
