@@ -1003,11 +1003,18 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         PolarisObjectMapperUtil.deserializeProperties(
             principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
 
+    boolean customReset = customClientId != null && customClientSecret != null;
+
     PolarisPrincipalSecrets secrets =
         ms.resetPrincipalSecrets(
-            callCtx, clientId, principalId, customClientId, customClientSecret);
+            callCtx, clientId, principalId, customClientId, customClientSecret, customReset);
     principalBuilder.internalProperties(PolarisObjectMapperUtil.serializeProperties(internalProps));
-    principalBuilder.entityVersion(principal.getEntityVersion() + 1);
+    // To avoid incrementing entity version twice
+    if (customReset) {
+      principalBuilder.entityVersion(principal.getEntityVersion());
+    } else {
+      principalBuilder.entityVersion(principal.getEntityVersion() + 1);
+    }
     ms.writeEntityInCurrentTxn(callCtx, principalBuilder.build(), true, principal);
     return secrets;
   }

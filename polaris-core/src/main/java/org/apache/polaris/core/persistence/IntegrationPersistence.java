@@ -90,6 +90,7 @@ public interface IntegrationPersistence {
    * @param principalId principal id
    * @param customClientId the principal secret's old main secret hash
    * @param customClientSecret the principal secret's old main secret hash
+   * @param customReset
    */
   @Nullable
   PolarisPrincipalSecrets resetPrincipalSecrets(
@@ -97,7 +98,8 @@ public interface IntegrationPersistence {
       @Nonnull String clientId,
       long principalId,
       String customClientId,
-      String customClientSecret);
+      String customClientSecret,
+      boolean customReset);
 
   /**
    * When dropping a principal, we also need to drop the secrets of that principal

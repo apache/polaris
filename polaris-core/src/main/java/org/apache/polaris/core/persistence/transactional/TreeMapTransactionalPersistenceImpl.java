@@ -491,7 +491,8 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull String clientId,
       long principalId,
       String customClientId,
-      String customClientSecret) {
+      String customClientSecret,
+      boolean customReset) {
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
 
     // should be found
@@ -515,7 +516,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             principalSecrets.getPrincipalId());
 
     // reset the secrets
-    if (customClientId != null && customClientSecret != null) {
+    if (customReset) {
       principalSecrets =
           new PolarisPrincipalSecrets(
               principalSecrets.getPrincipalId(), customClientId, customClientSecret, null);
