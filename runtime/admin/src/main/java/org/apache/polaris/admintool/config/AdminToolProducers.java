@@ -32,15 +32,16 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 public class AdminToolProducers {
 
   @Produces
   public MetaStoreManagerFactory metaStoreManagerFactory(
-      @ConfigProperty(name = "polaris.persistence.type") String persistenceType,
+      QuarkusPersistenceConfiguration persistenceConfiguration,
       @Any Instance<MetaStoreManagerFactory> metaStoreManagerFactories) {
-    return metaStoreManagerFactories.select(Identifier.Literal.of(persistenceType)).get();
+    return metaStoreManagerFactories
+        .select(Identifier.Literal.of(persistenceConfiguration.type()))
+        .get();
   }
 
   // CDI dependencies of EclipseLink's MetaStoreManagerFactory:
