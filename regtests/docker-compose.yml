@@ -22,7 +22,7 @@ services:
   init:
     image: busybox
     volumes:
-      - /tmp/hadoop-warehouse:/tmp/hadoop_warehouse
+      - ./hadoop-warehouse:/tmp/hadoop_warehouse
     command: ["sh", "-c", "umask 000 && mkdir -p /tmp/hadoop_warehouse && chmod 777 /tmp/hadoop_warehouse"]
   
   polaris:
@@ -55,7 +55,7 @@ services:
     volumes:
       - ./credentials:/tmp/credentials/
       - ./hadoop-conf:/tmp/hadoop-conf
-      - /tmp/hadoop-warehouse:/tmp/hadoop_warehouse
+      - ./hadoop-warehouse:/tmp/hadoop_warehouse
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 10s
@@ -95,4 +95,4 @@ services:
       - ./output:/tmp/polaris-regtests/
       - ./credentials:/tmp/credentials/
       - ./hadoop-conf:/tmp/hadoop-conf
-      - /tmp/hadoop-warehouse:/tmp/hadoop_warehouse
+      - ./hadoop-warehouse:/tmp/hadoop_warehouse

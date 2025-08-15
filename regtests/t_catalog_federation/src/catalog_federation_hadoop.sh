@@ -39,10 +39,8 @@ if [ ! -f "${HADOOP_CONF_DIR}/core-site.xml" ]; then
     exit 1
 fi
 
-# Create and verify shared Hadoop warehouse directory is accessible
-echo "Creating and verifying shared Hadoop warehouse directory..."
-mkdir -p /tmp/hadoop_warehouse
-chmod 777 /tmp/hadoop_warehouse 2>/dev/null || true
+# Verify shared Hadoop warehouse directory is accessible
+echo "Verifying shared Hadoop warehouse directory..."
 if [ ! -d "/tmp/hadoop_warehouse" ]; then
     echo "Error: Hadoop warehouse directory not accessible"
     exit 1

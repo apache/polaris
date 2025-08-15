@@ -95,6 +95,11 @@ polaris.features."SUPPORTED_CATALOG_CONNECTION_TYPES"=["ICEBERG_REST", "HADOOP"]
 polaris.features."SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES"=["OAUTH", "BEARER", "IMPLICIT"]
 ```
 
+Further, for Hadoop federation tests, it requires the hadoop-conf-dir environment variable to be set.
+```
+export HADOOP_CONF_DIR=./regtests/hadoop-conf
+```
+
 To run the tests in verbose mode, with test stdout printing to console, set the `VERBOSE`
 environment variable to `1`; you can also choose to run only a subset of tests by specifying the
 test directories as arguments to `run.sh`. For example, to run only the `t_spark_sql` tests in
