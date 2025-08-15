@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.relational.spanner.util;
+package org.apache.polaris.persistence.spanner.util;
 
 import com.google.cloud.ServiceOptions;
 import com.google.cloud.spanner.DatabaseId;
@@ -42,7 +42,8 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.apache.polaris.persistence.relational.spanner.GoogleCloudSpannerConfiguration;
+
+import org.apache.polaris.persistence.spanner.GoogleCloudSpannerConfiguration;
 
 public final class SpannerUtil {
 

@@ -17,9 +17,22 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.relational.spanner;
+package org.apache.polaris.persistence.spanner;
 
-import com.google.cloud.spanner.DatabaseAdminClient;
-import java.util.function.Supplier;
+import java.util.Optional;
 
-public interface DatabaseAdminClientSupplier extends Supplier<DatabaseAdminClient> {}
+import io.smallrye.config.ConfigMapping;
+
+@ConfigMapping(prefix = "polaris.persistence.spanner")
+public interface GoogleCloudSpannerConfiguration {
+
+  public Optional<String> quotaProjectId();
+
+  public Optional<String> projectId();
+
+  public Optional<String> instanceId();
+
+  public Optional<String> databaseId();
+
+  public Optional<String> emulatorHost();
+}

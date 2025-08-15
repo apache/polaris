@@ -17,15 +17,8 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.relational.spanner;
+package org.apache.polaris.persistence.spanner;
 
-import com.google.cloud.spanner.Database;
-import com.google.cloud.spanner.DatabaseAdminClient;
-import com.google.cloud.spanner.DatabaseId;
-import com.google.cloud.spanner.Dialect;
-import com.google.cloud.spanner.Spanner;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Produces;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,10 +26,20 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
-import org.apache.polaris.persistence.relational.spanner.util.SpannerUtil;
+import org.apache.polaris.persistence.spanner.util.SpannerUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.cloud.spanner.Database;
+import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.Spanner;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
 
 @ApplicationScoped
 public class GoogleCloudSpannerDatabaseClientLifecycleManager {
@@ -76,7 +79,8 @@ public class GoogleCloudSpannerDatabaseClientLifecycleManager {
       List<String> lines = new ArrayList<>();
       for (String s : schema.split("\n")) {
         s = s.trim();
-        if (s.startsWith("--") || s.length() == 0) {
+        // Drop comments and empty lines.
+        if (s.startsWith("--") || s.length() == 0 || s.equals(";")) {
           continue;
         }
         lines.add(s);

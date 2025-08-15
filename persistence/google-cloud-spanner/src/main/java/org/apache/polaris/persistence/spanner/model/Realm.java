@@ -17,21 +17,20 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.relational.spanner;
+package org.apache.polaris.persistence.spanner.model;
 
-import io.smallrye.config.ConfigMapping;
-import java.util.Optional;
+import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.Mutation;
 
-@ConfigMapping(prefix = "polaris.persistence.spanner")
-public interface GoogleCloudSpannerConfiguration {
+public final class Realm {
 
-  public Optional<String> quotaProjectId();
+  public static final String TABLE_NAME = "Realms";
 
-  public Optional<String> projectId();
+  public static Mutation upsert(String realmId) {
+    return Mutation.newInsertOrUpdateBuilder(TABLE_NAME).set("RealmId").to(realmId).build();
+  }
 
-  public Optional<String> instanceId();
-
-  public Optional<String> databaseId();
-
-  public Optional<String> emulatorHost();
+  public static Mutation delete(String realmId) {
+    return Mutation.delete(TABLE_NAME, Key.of(realmId));
+  }
 }

@@ -17,20 +17,10 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.relational.spanner.model;
+package org.apache.polaris.persistence.spanner;
 
-import com.google.cloud.spanner.Key;
-import com.google.cloud.spanner.Mutation;
+import java.util.function.Supplier;
 
-public final class Realm {
+import com.google.cloud.spanner.DatabaseAdminClient;
 
-  public static final String TABLE_NAME = "Realms";
-
-  public static Mutation upsert(String realmId) {
-    return Mutation.newInsertOrUpdateBuilder(TABLE_NAME).set("RealmId").to(realmId).build();
-  }
-
-  public static Mutation delete(String realmId) {
-    return Mutation.delete(TABLE_NAME, Key.of(realmId));
-  }
-}
+public interface DatabaseAdminClientSupplier extends Supplier<DatabaseAdminClient> {}

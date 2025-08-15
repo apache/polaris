@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.relational.spanner;
+package org.apache.polaris.persistence.spanner;
 
 import java.util.function.Consumer;
+
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 
 public interface SchemaInitializer extends Consumer<SchemaOptions> {}

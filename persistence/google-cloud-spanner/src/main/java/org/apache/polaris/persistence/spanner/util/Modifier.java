@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.relational.spanner.util;
+package org.apache.polaris.persistence.spanner.util;
 
 import java.util.Optional;
 import java.util.function.BiFunction;
