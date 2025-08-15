@@ -19,9 +19,8 @@
 
 package org.apache.polaris.persistence.spanner;
 
-import java.util.Optional;
-
 import io.smallrye.config.ConfigMapping;
+import java.util.Optional;
 
 @ConfigMapping(prefix = "polaris.persistence.spanner")
 public interface GoogleCloudSpannerConfiguration {

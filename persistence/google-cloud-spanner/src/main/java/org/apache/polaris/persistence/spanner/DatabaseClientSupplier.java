@@ -19,8 +19,7 @@
 
 package org.apache.polaris.persistence.spanner;
 
-import java.util.function.Supplier;
-
 import com.google.cloud.spanner.DatabaseClient;
+import java.util.function.Supplier;
 
 public interface DatabaseClientSupplier extends Supplier<DatabaseClient> {}
