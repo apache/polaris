@@ -50,7 +50,7 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
   val icon = ideaDir.file("icon.png").asFile
   if (!icon.exists()) {
     copy {
-      from("docs/img/logos/polaris-brandmark.png")
+      from("site/static/img/logos/polaris-brandmark.png")
       into(ideaDir)
       rename { _ -> "icon.png" }
     }
