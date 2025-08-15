@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<configuration>
+  <property>
+    <name>fs.defaultFS</name>
+    <value>file:///</value>
+    <description>The default file system URI. Set to local file system.</description>
+  </property>
+</configuration>

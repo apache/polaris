@@ -1,0 +1,58 @@
+=== Setting up Hadoop Catalog Federation Test ===
+Verifying Hadoop configuration...
+Creating and verifying shared Hadoop warehouse directory...
+Testing file creation in warehouse...
+File creation test successful
+Creating Hadoop catalog via Spark...
+spark-sql ()> use hadoop_catalog;
+spark-sql ()> create namespace if not exists hadoop_ns1;
+spark-sql ()> create table if not exists hadoop_ns1.hadoop_test_table (id int, name string, source string);
+spark-sql ()> insert into hadoop_ns1.hadoop_test_table values (1, 'Alice', 'Hadoop Direct');
+spark-sql ()> insert into hadoop_ns1.hadoop_test_table values (2, 'Bob', 'Hadoop Direct');
+spark-sql ()> create namespace if not exists hadoop_ns2;
+spark-sql ()> create table if not exists hadoop_ns2.hadoop_test_table (id int, name string, source string);
+spark-sql ()> insert into hadoop_ns2.hadoop_test_table values (1, 'Apache Spark', 'Hadoop Direct');
+spark-sql ()> insert into hadoop_ns2.hadoop_test_table values (2, 'Apache Iceberg', 'Hadoop Direct');
+spark-sql ()> 
+Creating external catalog in Polaris (Hadoop federation)...
+Create Hadoop federated catalog response: 
+201
+Setting up permissions for Hadoop federated catalog...
+Grant TABLE_WRITE_DATA to hadoop catalog_admin response code: 201
+Assign catalog_admin to service_admin for hadoop catalog response code: 201
+Hadoop federated catalog created successfully
+Verifying catalog creation...
+Catalog verification successful
+
+=== Accessing Hadoop data via Polaris federated catalog ===
+spark-sql ()> use polaris;
+spark-sql ()> select * from hadoop_ns1.hadoop_test_table order by id;
+1	Alice	Hadoop Direct
+2	Bob	Hadoop Direct
+spark-sql ()> insert into hadoop_ns1.hadoop_test_table values (3, 'Charlie', 'Via Polaris Federation');
+spark-sql ()> select * from hadoop_ns2.hadoop_test_table order by id;
+1	Apache Spark	Hadoop Direct
+2	Apache Iceberg	Hadoop Direct
+spark-sql ()> insert into hadoop_ns2.hadoop_test_table values (3, 'Apache Polaris', 'Via Polaris Federation');
+spark-sql ()> 
+=== Verifying federation changes via Hadoop catalog directly ===
+spark-sql ()> use hadoop_catalog;
+spark-sql ()> select * from hadoop_ns1.hadoop_test_table order by id;
+1	Alice	Hadoop Direct
+2	Bob	Hadoop Direct
+3	Charlie	Via Polaris Federation
+spark-sql ()> select * from hadoop_ns2.hadoop_test_table order by id;
+1	Apache Spark	Hadoop Direct
+2	Apache Iceberg	Hadoop Direct
+3	Apache Polaris	Via Polaris Federation
+spark-sql ()> 
+=== Cleaning up via Hadoop catalog ===
+spark-sql ()> use hadoop_catalog;
+spark-sql ()> drop table hadoop_ns1.hadoop_test_table;
+spark-sql ()> drop table hadoop_ns2.hadoop_test_table;
+spark-sql ()> drop namespace hadoop_ns1;
+spark-sql ()> drop namespace hadoop_ns2;
+spark-sql ()> 
+=== Cleaning up Polaris federated catalog ===
+Delete Hadoop federated catalog response code: 204
+Hadoop catalog federation test completed successfully!

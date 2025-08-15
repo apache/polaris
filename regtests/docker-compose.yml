@@ -18,11 +18,20 @@
 #
 
 services:
+  # Init container to create hadoop warehouse directory and set read-write permissions for all users.
+  init:
+    image: busybox
+    volumes:
+      - /tmp/hadoop-warehouse:/tmp/hadoop_warehouse
+    command: ["sh", "-c", "umask 000 && mkdir -p /tmp/hadoop_warehouse && chmod 777 /tmp/hadoop_warehouse"]
+  
   polaris:
     image: apache/polaris:latest
     ports:
       - "8181"
       - "8182"
+    depends_on:
+      - init
     environment:
       AWS_REGION: us-west-2
       AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
@@ -39,9 +48,14 @@ services:
       polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
       polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS": "true"
       polaris.features."ENABLE_CATALOG_FEDERATION": "true"
+      polaris.features."SUPPORTED_CATALOG_CONNECTION_TYPES": "[\"ICEBERG_REST\",\"HADOOP\"]"
+      polaris.features."SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES": "[\"OAUTH\",\"BEARER\",\"IMPLICIT\"]"
       polaris.readiness.ignore-severe-issues: "true"
+      HADOOP_CONF_DIR: "/tmp/hadoop-conf"
     volumes:
       - ./credentials:/tmp/credentials/
+      - ./hadoop-conf:/tmp/hadoop-conf
+      - /tmp/hadoop-warehouse:/tmp/hadoop_warehouse
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 10s
@@ -54,6 +68,8 @@ services:
       args:
         POLARIS_HOST: polaris
     depends_on:
+      init:
+        condition: service_completed_successfully
       polaris:
         condition: service_healthy
     environment:
@@ -74,6 +90,9 @@ services:
       AWS_CROSS_REGION_BUCKET: $AWS_CROSS_REGION_BUCKET
       AWS_ROLE_FOR_CROSS_REGION_BUCKET: $AWS_ROLE_FOR_CROSS_REGION_BUCKET
       AWS_REGION_FOR_CROSS_REGION_TEST: $AWS_REGION_FOR_CROSS_REGION_TEST
+      HADOOP_CONF_DIR: "/tmp/hadoop-conf"
     volumes:
       - ./output:/tmp/polaris-regtests/
       - ./credentials:/tmp/credentials/
+      - ./hadoop-conf:/tmp/hadoop-conf
+      - /tmp/hadoop-warehouse:/tmp/hadoop_warehouse
