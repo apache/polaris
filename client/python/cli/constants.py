@@ -22,13 +22,14 @@ from enum import Enum
 
 class StorageType(Enum):
     """
-    Represents a Storage Type within the Polaris API -- `s3`, `azure`, `gcs`, or `file`.
+    Represents a Storage Type within the Polaris API -- `s3`, `azure`, `gcs`, `file`, or `hdfs`.
     """
 
     S3 = "s3"
     AZURE = "azure"
     GCS = "gcs"
     FILE = "file"
+    HDFS = "hdfs"
 
 
 class CatalogType(Enum):
@@ -185,6 +186,8 @@ class Arguments:
     CATALOG_EXTERNAL_ID = "catalog_external_id"
     CATALOG_SIGNING_REGION = "catalog_signing_region"
     CATALOG_SIGNING_NAME = "catalog_signing_name"
+    HADOOP_RESOURCES = "hadoop_resources"
+    HADOOP_USERNAME = "hadoop_username"
 
 
 class Hints:
@@ -241,6 +244,13 @@ class Hints:
 
             SERVICE_ACCOUNT = (
                 "(Only for GCS) The service account to use when connecting to GCS"
+            )
+
+            HADOOP_RESOURCES = (
+                "(Required for HDFS) Comma-separated list of Hadoop configuration files (core-site.xml, hdfs-site.xml)"
+            )
+            HADOOP_USERNAME = (
+                "(Optional for HDFS) Username for HDFS operations. If not specified, uses process/global user authentication"
             )
 
         class Update:

@@ -128,6 +128,8 @@ class OptionTree:
                     Argument(Arguments.MULTI_TENANT_APP_NAME, str, Hints.Catalogs.Create.MULTI_TENANT_APP_NAME),
                     Argument(Arguments.CONSENT_URL, str, Hints.Catalogs.Create.CONSENT_URL),
                     Argument(Arguments.SERVICE_ACCOUNT, str, Hints.Catalogs.Create.SERVICE_ACCOUNT),
+                    Argument(Arguments.HADOOP_RESOURCES, str, Hints.Catalogs.Create.HADOOP_RESOURCES),
+                    Argument(Arguments.HADOOP_USERNAME, str, Hints.Catalogs.Create.HADOOP_USERNAME),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True),
                 ] + OptionTree._FEDERATION_ARGS, input_name=Arguments.CATALOG),
                 Option(Subcommands.DELETE, input_name=Arguments.CATALOG),

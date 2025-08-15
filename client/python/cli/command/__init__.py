@@ -82,7 +82,9 @@ class Command(ABC):
                 catalog_role_session_name=options_get(Arguments.CATALOG_ROLE_SESSION_NAME),
                 catalog_external_id=options_get(Arguments.CATALOG_EXTERNAL_ID),
                 catalog_signing_region=options_get(Arguments.CATALOG_SIGNING_REGION),
-                catalog_signing_name=options_get(Arguments.CATALOG_SIGNING_NAME)
+                catalog_signing_name=options_get(Arguments.CATALOG_SIGNING_NAME),
+                hadoop_resources=options_get(Arguments.HADOOP_RESOURCES),
+                hadoop_username=options_get(Arguments.HADOOP_USERNAME)
             )
         elif options.command == Commands.PRINCIPALS:
             from cli.command.principals import PrincipalsCommand

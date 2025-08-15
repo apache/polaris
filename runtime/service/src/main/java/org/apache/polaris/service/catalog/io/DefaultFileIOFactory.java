@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
@@ -39,6 +40,8 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageInternalProperties;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
@@ -109,7 +112,39 @@ public class DefaultFileIOFactory implements FileIOFactory {
   @VisibleForTesting
   FileIO loadFileIOInternal(
       @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
-    return new ExceptionMappingFileIO(
-        CatalogUtil.loadFileIO(ioImplClassName, properties, new Configuration()));
+    Configuration hadoopConfig = createHadoopConfiguration(properties);
+    FileIO fileIO = CatalogUtil.loadFileIO(ioImplClassName, properties, hadoopConfig);
+
+    // Check for HDFS username and wrap with impersonation if present
+    String hdfsUsername = properties.get(StorageInternalProperties.HDFS_USERNAME_KEY);
+    if (hdfsUsername != null && !hdfsUsername.trim().isEmpty()) {
+      fileIO = new HadoopImpersonatingFileIO(fileIO, hdfsUsername);
+    }
+
+    return new ExceptionMappingFileIO(fileIO);
+  }
+
+  private Configuration createHadoopConfiguration(@Nonnull Map<String, String> properties) {
+    String storageType = properties.get(StorageInternalProperties.STORAGE_TYPE_KEY);
+    String resources = properties.get(StorageInternalProperties.HDFS_CONFIG_RESOURCES_KEY);
+
+    if (storageType != null &&
+        PolarisStorageConfigurationInfo.StorageType.HDFS.name().equalsIgnoreCase(storageType) &&
+        resources != null && !resources.trim().isEmpty()) {
+
+      Configuration hadoopConfig = new Configuration(false);
+
+      String[] resourcePaths = resources.split(",");
+      for (String resourcePath : resourcePaths) {
+        String trimmedPath = resourcePath.trim();
+        if (!trimmedPath.isEmpty()) {
+          hadoopConfig.addResource(new Path(trimmedPath));
+        }
+      }
+
+      return hadoopConfig;
+    }
+
+    return new Configuration(true);
   }
 }
