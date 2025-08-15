@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.task;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -61,6 +64,7 @@ public class TaskExecutorImplTest {
 
     int attempt = 1;
 
+    AtomicReference<PolarisCallContext> newCallContext = new AtomicReference<>();
     TaskExecutorImpl executor =
         new TaskExecutorImpl(
             Runnable::run,
@@ -68,7 +72,17 @@ public class TaskExecutorImplTest {
             testServices.metaStoreManagerFactory(),
             new TaskFileIOSupplier(testServices.fileIOFactory()),
             testServices.polarisEventListener(),
-            null);
+            (requestURL, method, path, headers) -> {
+              throw new UnsupportedOperationException("mustn't be called in this test");
+            },
+            null) {
+          @Override
+          PolarisCallContext newPolarisCallContext(TaskContext taskContext) {
+            var ctx = super.newPolarisCallContext(taskContext);
+            newCallContext.set(ctx);
+            return ctx;
+          }
+        };
 
     executor.addTaskHandler(
         new TaskHandler() {
@@ -88,11 +102,12 @@ public class TaskExecutorImplTest {
           }
         });
 
-    executor.handleTask(taskEntity.getId(), polarisCallCtx, attempt);
+    executor.handleTask(
+        taskEntity.getId(), new TaskExecutorImpl.TaskContext(polarisCallCtx), attempt);
 
     var afterAttemptTaskEvent = testPolarisEventListener.getLatest(AfterTaskAttemptedEvent.class);
     Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.taskEntityId());
-    Assertions.assertEquals(polarisCallCtx, afterAttemptTaskEvent.callContext());
+    assertThat(newCallContext.get()).isNotNull().isSameAs(afterAttemptTaskEvent.callContext());
     Assertions.assertEquals(attempt, afterAttemptTaskEvent.attempt());
     Assertions.assertTrue(afterAttemptTaskEvent.success());
   }
