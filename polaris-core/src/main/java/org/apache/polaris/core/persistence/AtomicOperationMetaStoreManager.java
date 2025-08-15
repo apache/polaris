@@ -893,6 +893,50 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         : new PrincipalSecretsResult(secrets);
   }
 
+  @Override
+  public @Nonnull PrincipalSecretsResult resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      @Nonnull String oldSecretHash,
+      String customClientId,
+      String customClientSecret) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    // if not found, the principal must have been dropped
+    EntityResult loadEntityResult =
+        loadEntity(
+            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
+    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    PolarisBaseEntity principal = loadEntityResult.getEntity();
+    Map<String, String> internalProps =
+        PolarisObjectMapperUtil.deserializeProperties(
+            principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
+
+    boolean customReset = customClientId != null && customClientSecret != null;
+    PolarisPrincipalSecrets secrets =
+        ((IntegrationPersistence) ms)
+            .resetPrincipalSecrets(
+                callCtx, clientId, principalId, customClientId, customClientSecret, customReset);
+
+    PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
+    principalBuilder.internalProperties(PolarisObjectMapperUtil.serializeProperties(internalProps));
+    // To avoid incrementing entity version twice
+    if (customReset) {
+      principalBuilder.entityVersion(principal.getEntityVersion());
+    } else {
+      principalBuilder.entityVersion(principal.getEntityVersion() + 1);
+    }
+    ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
+    return (secrets == null)
+        ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
+        : new PrincipalSecretsResult(secrets);
+  }
+
   /** {@inheritDoc} */
   @Override
   public @Nonnull EntityResult createEntityIfNotExists(

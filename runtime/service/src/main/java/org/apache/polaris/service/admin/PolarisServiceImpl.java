@@ -53,6 +53,7 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalRoles;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
+import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
@@ -165,6 +166,18 @@ public class PolarisServiceImpl
     Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();
+  }
+
+  private void validateResetClientId(String clientId) {
+    if (!clientId.matches("^[0-9a-f]{16}$")) {
+      throw new IllegalArgumentException("Invalid resetClientId format");
+    }
+  }
+
+  private void validateResetClientSecret(String clientSecret) {
+    if (!clientSecret.matches("^[0-9a-f]{32}$")) {
+      throw new IllegalArgumentException("Invalid resetClientSecret format");
+    }
   }
 
   private void validateStorageConfig(StorageConfigInfo storageConfigInfo) {
@@ -284,6 +297,28 @@ public class PolarisServiceImpl
     PrincipalWithCredentials createdPrincipal = adminService.createPrincipal(principal);
     LOGGER.info("Created new principal {}", createdPrincipal);
     return Response.status(Response.Status.CREATED).entity(createdPrincipal).build();
+  }
+
+  @Override
+  public Response resetCredentials(
+      String principalName,
+      ResetPrincipalRequest resetPrincipalRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    ResetPrincipalRequest safeResetPrincipalRequest =
+        (resetPrincipalRequest != null)
+            ? resetPrincipalRequest
+            : new ResetPrincipalRequest(null, null);
+
+    if (safeResetPrincipalRequest.getClientId() != null) {
+      validateResetClientId(safeResetPrincipalRequest.getClientId());
+    }
+    if (safeResetPrincipalRequest.getClientSecret() != null) {
+      validateResetClientSecret(safeResetPrincipalRequest.getClientSecret());
+    }
+    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+    return Response.ok(adminService.resetCredentials(principalName, safeResetPrincipalRequest))
+        .build();
   }
 
   /** From PolarisPrincipalsApiService */

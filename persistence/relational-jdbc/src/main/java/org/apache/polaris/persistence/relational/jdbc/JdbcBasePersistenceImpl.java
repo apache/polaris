@@ -775,6 +775,73 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nullable
   @Override
+  public PolarisPrincipalSecrets resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      String customClientId,
+      String customClientSecret,
+      boolean customReset) {
+    PolarisPrincipalSecrets principalSecrets = loadPrincipalSecrets(callCtx, clientId);
+
+    // should be found
+    callCtx
+        .getDiagServices()
+        .checkNotNull(
+            principalSecrets,
+            "cannot_find_secrets",
+            "client_id={} principalId={}",
+            clientId,
+            principalId);
+
+    // ensure principal id is matching
+    callCtx
+        .getDiagServices()
+        .check(
+            principalId == principalSecrets.getPrincipalId(),
+            "principal_id_mismatch",
+            "expectedId={} id={}",
+            principalId,
+            principalSecrets.getPrincipalId());
+
+    if (customReset) {
+      principalSecrets =
+          new PolarisPrincipalSecrets(
+              principalSecrets.getPrincipalId(), customClientId, customClientSecret, null);
+    } else {
+      principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
+    }
+
+    Map<String, Object> params = Map.of("principal_client_id", clientId, "realm_id", realmId);
+    try {
+      ModelPrincipalAuthenticationData modelPrincipalAuthenticationData =
+          ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets);
+      datasourceOperations.executeUpdate(
+          QueryGenerator.generateUpdateQuery(
+              ModelPrincipalAuthenticationData.ALL_COLUMNS,
+              ModelPrincipalAuthenticationData.TABLE_NAME,
+              modelPrincipalAuthenticationData
+                  .toMap(datasourceOperations.getDatabaseType())
+                  .values()
+                  .stream()
+                  .toList(),
+              params));
+    } catch (SQLException e) {
+      LOGGER.error(
+          "Failed to reset PrincipalSecrets  for clientId: {}, due to {}",
+          clientId,
+          e.getMessage(),
+          e);
+      throw new RuntimeException(
+          String.format("Failed to reset PrincipalSecrets for clientId: %s", clientId), e);
+    }
+
+    // return those
+    return principalSecrets;
+  }
+
+  @Nullable
+  @Override
   public PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
