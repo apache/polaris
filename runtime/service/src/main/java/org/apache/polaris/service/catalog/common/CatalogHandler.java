@@ -59,6 +59,7 @@ public abstract class CatalogHandler {
   protected final String catalogName;
   protected final PolarisAuthorizer authorizer;
 
+  protected final PolarisDiagnostics diagnostics;
   protected final CallContext callContext;
   protected final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   protected final SecurityContext securityContext;
@@ -72,10 +73,10 @@ public abstract class CatalogHandler {
     this.callContext = callContext;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.catalogName = catalogName;
-    PolarisDiagnostics diagServices = callContext.getPolarisCallContext().getDiagServices();
-    diagServices.checkNotNull(securityContext, "null_security_context");
-    diagServices.checkNotNull(securityContext.getUserPrincipal(), "null_user_principal");
-    diagServices.check(
+    this.diagnostics = callContext.getPolarisCallContext().getDiagServices();
+    diagnostics.checkNotNull(securityContext, "null_security_context");
+    diagnostics.checkNotNull(securityContext.getUserPrincipal(), "null_user_principal");
+    diagnostics.check(
         securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
         "invalid_principal_type",
         "Principal must be an AuthenticatedPolarisPrincipal");
