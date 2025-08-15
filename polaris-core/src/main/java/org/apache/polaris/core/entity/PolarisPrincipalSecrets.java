@@ -36,7 +36,7 @@ public class PolarisPrincipalSecrets {
   private final long principalId;
 
   // the client id for that principal
-  private String principalClientId;
+  private final String principalClientId;
 
   // the main secret hash for that principal
   private String mainSecret;

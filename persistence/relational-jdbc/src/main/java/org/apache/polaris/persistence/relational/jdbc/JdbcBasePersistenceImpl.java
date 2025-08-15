@@ -780,7 +780,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull String clientId,
       long principalId,
       String customClientId,
-      String customClientSecret) {
+      String customClientSecret,
+      boolean customReset) {
     PolarisPrincipalSecrets principalSecrets = loadPrincipalSecrets(callCtx, clientId);
 
     // should be found
@@ -803,7 +804,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             principalId,
             principalSecrets.getPrincipalId());
 
-    if (customClientId != null && customClientSecret != null) {
+    if (customReset) {
       principalSecrets =
           new PolarisPrincipalSecrets(
               principalSecrets.getPrincipalId(), customClientId, customClientSecret, null);
