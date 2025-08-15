@@ -43,17 +43,21 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 public class EclipseLinkPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
 
-  @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
-  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final EclipseLinkConfiguration eclipseLinkConfiguration;
 
   @SuppressWarnings("unused") // Required by CDI
   protected EclipseLinkPolarisMetaStoreManagerFactory() {
-    this(null, null);
+    this(null, null, null, null);
   }
 
   @Inject
-  protected EclipseLinkPolarisMetaStoreManagerFactory(Clock clock, PolarisDiagnostics diagnostics) {
-    super(clock, diagnostics);
+  protected EclipseLinkPolarisMetaStoreManagerFactory(
+      Clock clock,
+      PolarisDiagnostics diagnostics,
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      EclipseLinkConfiguration eclipseLinkConfiguration) {
+    super(clock, diagnostics, storageIntegrationProvider);
+    this.eclipseLinkConfiguration = eclipseLinkConfiguration;
   }
 
   @Override
@@ -69,7 +73,6 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
       @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
         store,
-        storageIntegrationProvider,
         realmContext,
         configurationFile(),
         persistenceUnitName(),
