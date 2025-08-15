@@ -35,7 +35,6 @@ import org.apache.polaris.service.types.DetachPolicyRequest;
 import org.apache.polaris.service.types.PolicyAttachmentTarget;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -78,10 +77,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   private void doTestSufficientPrivileges(
       List<PolarisPrivilege> sufficientPrivileges, Runnable action, Runnable cleanupAction) {
     doTestSufficientPrivilegeSets(
-        sufficientPrivileges.stream().map(priv -> Set.of(priv)).toList(),
-        action,
-        cleanupAction,
-        PRINCIPAL_NAME);
+        sufficientPrivileges.stream().map(Set::of).toList(), action, cleanupAction, PRINCIPAL_NAME);
   }
 
   /**
@@ -199,10 +195,9 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testCreatePolicyAllSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DROP))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DROP));
 
     final PolicyIdentifier newPolicy = new PolicyIdentifier(NS2, "newPolicy");
     final CreatePolicyRequest createPolicyRequest =
@@ -303,10 +298,9 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testDropPolicyAllSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_CREATE))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_CREATE));
 
     final CreatePolicyRequest createPolicyRequest =
         CreatePolicyRequest.builder()
@@ -341,14 +335,12 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testAttachPolicyToCatalogSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_DETACH_POLICY))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_DETACH_POLICY));
     PolicyAttachmentTarget namespaceTarget =
         PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
     AttachPolicyRequest attachPolicyRequest =
@@ -384,14 +376,12 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testAttachPolicyToNamespaceSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DETACH_POLICY))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DETACH_POLICY));
 
     PolicyAttachmentTarget namespaceTarget =
         PolicyAttachmentTarget.builder()
@@ -433,14 +423,12 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testAttachPolicyToTableSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY));
 
     PolicyAttachmentTarget tableTarget =
         PolicyAttachmentTarget.builder()
@@ -482,22 +470,18 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testDetachPolicyFromCatalogSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ATTACH_POLICY))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_DETACH_POLICY))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ATTACH_POLICY));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_DETACH_POLICY));
     PolicyAttachmentTarget catalogTarget =
         PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
     AttachPolicyRequest attachPolicyRequest =
@@ -522,22 +506,18 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testDetachPolicyFromCatalogInsufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ATTACH_POLICY))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_DETACH_POLICY))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ATTACH_POLICY));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_DETACH_POLICY));
 
     PolicyAttachmentTarget catalogTarget =
         PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
@@ -561,22 +541,18 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testDetachPolicyFromNamespaceSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_ATTACH_POLICY))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DETACH_POLICY))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_ATTACH_POLICY));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DETACH_POLICY));
 
     PolicyAttachmentTarget namespaceTarget =
         PolicyAttachmentTarget.builder()
@@ -605,22 +581,18 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testDetachPolicyFromNamespaceInsufficientPrivilege() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_ATTACH_POLICY))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DETACH_POLICY))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_ATTACH_POLICY));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.NAMESPACE_DETACH_POLICY));
 
     PolicyAttachmentTarget namespaceTarget =
         PolicyAttachmentTarget.builder()
@@ -647,22 +619,18 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testDetachPolicyFromTableSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_ATTACH_POLICY))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_ATTACH_POLICY));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY));
 
     PolicyAttachmentTarget tableTarget =
         PolicyAttachmentTarget.builder()
@@ -691,22 +659,18 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testDetachFromPolicyInsufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_ATTACH_POLICY))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_ATTACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_ATTACH_POLICY));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY));
 
     PolicyAttachmentTarget tableTarget =
         PolicyAttachmentTarget.builder()

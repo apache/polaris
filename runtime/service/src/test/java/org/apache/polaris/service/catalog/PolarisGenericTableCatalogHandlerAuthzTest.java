@@ -28,7 +28,6 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandler;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -73,10 +72,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
   private void doTestSufficientPrivileges(
       List<PolarisPrivilege> sufficientPrivileges, Runnable action, Runnable cleanupAction) {
     doTestSufficientPrivilegeSets(
-        sufficientPrivileges.stream().map(priv -> Set.of(priv)).toList(),
-        action,
-        cleanupAction,
-        PRINCIPAL_NAME);
+        sufficientPrivileges.stream().map(Set::of).toList(), action, cleanupAction, PRINCIPAL_NAME);
   }
 
   /**
@@ -169,14 +165,12 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
 
   @Test
   public void testCreateGenericTableAllSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP))
-        .isTrue();
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA));
 
     final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
 
@@ -242,10 +236,9 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
 
   @Test
   public void testDropGenericTableAllSufficientPrivileges() {
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE));
 
     doTestSufficientPrivileges(
         List.of(

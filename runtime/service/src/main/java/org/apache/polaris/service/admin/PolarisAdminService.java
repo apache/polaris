@@ -104,6 +104,7 @@ import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -1401,7 +1402,7 @@ public class PolarisAdminService {
         .toList();
   }
 
-  public boolean assignPrincipalRole(String principalName, String principalRoleName) {
+  public PrivilegeResult assignPrincipalRole(String principalName, String principalRoleName) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ASSIGN_PRINCIPAL_ROLE;
     authorizeGrantOnPrincipalRoleToPrincipalOperationOrThrow(op, principalRoleName, principalName);
 
@@ -1418,13 +1419,11 @@ public class PolarisAdminService {
     if (FederatedEntities.isFederated(principalRoleEntity)) {
       throw new ValidationException("Cannot assign a federated role to a principal");
     }
-    return metaStoreManager
-        .grantUsageOnRoleToGrantee(
-            getCurrentPolarisContext(), null, principalRoleEntity, principalEntity)
-        .isSuccess();
+    return metaStoreManager.grantUsageOnRoleToGrantee(
+        getCurrentPolarisContext(), null, principalRoleEntity, principalEntity);
   }
 
-  public boolean revokePrincipalRole(String principalName, String principalRoleName) {
+  public PrivilegeResult revokePrincipalRole(String principalName, String principalRoleName) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REVOKE_PRINCIPAL_ROLE;
     authorizeGrantOnPrincipalRoleToPrincipalOperationOrThrow(op, principalRoleName, principalName);
 
@@ -1441,10 +1440,8 @@ public class PolarisAdminService {
     if (FederatedEntities.isFederated(principalRoleEntity)) {
       throw new ValidationException("Cannot revoke a federated role from a principal");
     }
-    return metaStoreManager
-        .revokeUsageOnRoleFromGrantee(
-            getCurrentPolarisContext(), null, principalRoleEntity, principalEntity)
-        .isSuccess();
+    return metaStoreManager.revokeUsageOnRoleFromGrantee(
+        getCurrentPolarisContext(), null, principalRoleEntity, principalEntity);
   }
 
   public List<PolarisEntity> listPrincipalRolesAssigned(String principalName) {
@@ -1460,7 +1457,7 @@ public class PolarisAdminService {
     return buildEntitiesFromGrantResults(grantList, false, PolarisEntityType.PRINCIPAL_ROLE, null);
   }
 
-  public boolean assignCatalogRoleToPrincipalRole(
+  public PrivilegeResult assignCatalogRoleToPrincipalRole(
       String principalRoleName, String catalogName, String catalogRoleName) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE;
@@ -1478,13 +1475,11 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    return metaStoreManager
-        .grantUsageOnRoleToGrantee(
-            getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity)
-        .isSuccess();
+    return metaStoreManager.grantUsageOnRoleToGrantee(
+        getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity);
   }
 
-  public boolean revokeCatalogRoleFromPrincipalRole(
+  public PrivilegeResult revokeCatalogRoleFromPrincipalRole(
       String principalRoleName, String catalogName, String catalogRoleName) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE;
@@ -1501,10 +1496,8 @@ public class PolarisAdminService {
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
-    return metaStoreManager
-        .revokeUsageOnRoleFromGrantee(
-            getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity)
-        .isSuccess();
+    return metaStoreManager.revokeUsageOnRoleFromGrantee(
+        getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity);
   }
 
   public List<PolarisEntity> listAssigneePrincipalsForPrincipalRole(String principalRoleName) {
@@ -1580,7 +1573,7 @@ public class PolarisAdminService {
   }
 
   /** Adds a grant on the root container of this realm to {@code principalRoleName}. */
-  public boolean grantPrivilegeOnRootContainerToPrincipalRole(
+  public PrivilegeResult grantPrivilegeOnRootContainerToPrincipalRole(
       String principalRoleName, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE;
     authorizeGrantOnRootContainerToPrincipalRoleOperationOrThrow(op, principalRoleName);
@@ -1592,14 +1585,12 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege);
   }
 
   /** Revokes a grant on the root container of this realm from {@code principalRoleName}. */
-  public boolean revokePrivilegeOnRootContainerFromPrincipalRole(
+  public PrivilegeResult revokePrivilegeOnRootContainerFromPrincipalRole(
       String principalRoleName, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE;
@@ -1612,17 +1603,15 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege);
   }
 
   /**
    * Adds a catalog-level grant on {@code catalogName} to {@code catalogRoleName} which resides
    * within the same catalog on which it is being granted the privilege.
    */
-  public boolean grantPrivilegeOnCatalogToRole(
+  public PrivilegeResult grantPrivilegeOnCatalogToRole(
       String catalogName, String catalogRoleName, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.ADD_CATALOG_GRANT_TO_CATALOG_ROLE;
@@ -1636,18 +1625,16 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(List.of(catalogEntity)),
-            catalogEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(List.of(catalogEntity)),
+        catalogEntity,
+        privilege);
   }
 
   /** Removes a catalog-level grant on {@code catalogName} from {@code catalogRoleName}. */
-  public boolean revokePrivilegeOnCatalogFromRole(
+  public PrivilegeResult revokePrivilegeOnCatalogFromRole(
       String catalogName, String catalogRoleName, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE;
@@ -1660,18 +1647,16 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(List.of(catalogEntity)),
-            catalogEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(List.of(catalogEntity)),
+        catalogEntity,
+        privilege);
   }
 
   /** Adds a namespace-level grant on {@code namespace} to {@code catalogRoleName}. */
-  public boolean grantPrivilegeOnNamespaceToRole(
+  public PrivilegeResult grantPrivilegeOnNamespaceToRole(
       String catalogName, String catalogRoleName, Namespace namespace, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE;
@@ -1689,18 +1674,16 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity namespaceEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            namespaceEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        namespaceEntity,
+        privilege);
   }
 
   /** Removes a namespace-level grant on {@code namespace} from {@code catalogRoleName}. */
-  public boolean revokePrivilegeOnNamespaceFromRole(
+  public PrivilegeResult revokePrivilegeOnNamespaceFromRole(
       String catalogName, String catalogRoleName, Namespace namespace, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE;
@@ -1718,17 +1701,15 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity namespaceEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            namespaceEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        namespaceEntity,
+        privilege);
   }
 
-  public boolean grantPrivilegeOnTableToRole(
+  public PrivilegeResult grantPrivilegeOnTableToRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -1750,7 +1731,7 @@ public class PolarisAdminService {
         privilege);
   }
 
-  public boolean revokePrivilegeOnTableFromRole(
+  public PrivilegeResult revokePrivilegeOnTableFromRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -1773,7 +1754,7 @@ public class PolarisAdminService {
         privilege);
   }
 
-  public boolean grantPrivilegeOnViewToRole(
+  public PrivilegeResult grantPrivilegeOnViewToRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -1791,7 +1772,7 @@ public class PolarisAdminService {
         privilege);
   }
 
-  public boolean revokePrivilegeOnViewFromRole(
+  public PrivilegeResult revokePrivilegeOnViewFromRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -1810,7 +1791,7 @@ public class PolarisAdminService {
         privilege);
   }
 
-  public boolean grantPrivilegeOnPolicyToRole(
+  public PrivilegeResult grantPrivilegeOnPolicyToRole(
       String catalogName,
       String catalogRoleName,
       PolicyIdentifier identifier,
@@ -1822,7 +1803,7 @@ public class PolarisAdminService {
     return grantPrivilegeOnPolicyEntityToRole(catalogName, catalogRoleName, identifier, privilege);
   }
 
-  public boolean revokePrivilegeOnPolicyFromRole(
+  public PrivilegeResult revokePrivilegeOnPolicyFromRole(
       String catalogName,
       String catalogRoleName,
       PolicyIdentifier identifier,
@@ -1999,7 +1980,7 @@ public class PolarisAdminService {
   }
 
   /** Adds a table-level or view-level grant on {@code identifier} to {@code catalogRoleName}. */
-  private boolean grantPrivilegeOnTableLikeToRole(
+  private PrivilegeResult grantPrivilegeOnTableLikeToRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -2022,20 +2003,18 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            tableLikeEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        tableLikeEntity,
+        privilege);
   }
 
   /**
    * Removes a table-level or view-level grant on {@code identifier} from {@code catalogRoleName}.
    */
-  private boolean revokePrivilegeOnTableLikeFromRole(
+  private PrivilegeResult revokePrivilegeOnTableLikeFromRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -2058,17 +2037,15 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            tableLikeEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        tableLikeEntity,
+        privilege);
   }
 
-  private boolean grantPrivilegeOnPolicyEntityToRole(
+  private PrivilegeResult grantPrivilegeOnPolicyEntityToRole(
       String catalogName,
       String catalogRoleName,
       PolicyIdentifier identifier,
@@ -2088,17 +2065,15 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity policyEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            policyEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        policyEntity,
+        privilege);
   }
 
-  private boolean revokePrivilegeOnPolicyEntityFromRole(
+  private PrivilegeResult revokePrivilegeOnPolicyEntityFromRole(
       String catalogName,
       String catalogRoleName,
       PolicyIdentifier identifier,
@@ -2118,13 +2093,11 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity policyEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            policyEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        policyEntity,
+        privilege);
   }
 }

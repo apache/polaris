@@ -35,7 +35,7 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.assertj.core.api.Assertions;
+import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -62,10 +62,10 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
       List<PolarisPrivilege> sufficientPrivileges,
       Runnable action,
       Runnable cleanupAction,
-      Function<PolarisPrivilege, Boolean> grantAction,
-      Function<PolarisPrivilege, Boolean> revokeAction) {
+      Function<PolarisPrivilege, PrivilegeResult> grantAction,
+      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
     doTestSufficientPrivilegeSets(
-        sufficientPrivileges.stream().map(priv -> Set.of(priv)).toList(),
+        sufficientPrivileges.stream().map(Set::of).toList(),
         action,
         cleanupAction,
         PRINCIPAL_NAME,
@@ -76,8 +76,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   private void doTestInsufficientPrivileges(
       List<PolarisPrivilege> insufficientPrivileges,
       Runnable action,
-      Function<PolarisPrivilege, Boolean> grantAction,
-      Function<PolarisPrivilege, Boolean> revokeAction) {
+      Function<PolarisPrivilege, PrivilegeResult> grantAction,
+      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
     doTestInsufficientPrivileges(
         insufficientPrivileges, PRINCIPAL_NAME, action, grantAction, revokeAction);
   }
@@ -127,10 +127,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testCreateCatalogSufficientPrivileges() {
     // Cleanup with PRINCIPAL_ROLE2
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnRootContainerToPrincipalRole(
-                PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_DROP))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnRootContainerToPrincipalRole(
+            PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_DROP));
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
     final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
 
@@ -282,10 +281,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testDeleteCatalogSufficientPrivileges() {
     // Cleanup with PRINCIPAL_ROLE2
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnRootContainerToPrincipalRole(
-                PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_CREATE))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnRootContainerToPrincipalRole(
+            PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_CREATE));
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
     final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
     adminService.createCatalog(createRequest);
@@ -375,10 +373,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testCreatePrincipalSufficientPrivileges() {
     // Cleanup with PRINCIPAL_ROLE2
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnRootContainerToPrincipalRole(
-                PRINCIPAL_ROLE2, PolarisPrivilege.PRINCIPAL_DROP))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnRootContainerToPrincipalRole(
+            PRINCIPAL_ROLE2, PolarisPrivilege.PRINCIPAL_DROP));
     final PrincipalEntity newPrincipal =
         new PrincipalEntity.Builder().setName("new_principal").build();
 
@@ -521,10 +518,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testDeletePrincipalSufficientPrivileges() {
     // Cleanup with PRINCIPAL_ROLE2
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnRootContainerToPrincipalRole(
-                PRINCIPAL_ROLE2, PolarisPrivilege.PRINCIPAL_CREATE))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnRootContainerToPrincipalRole(
+            PRINCIPAL_ROLE2, PolarisPrivilege.PRINCIPAL_CREATE));
     final PrincipalEntity newPrincipal =
         new PrincipalEntity.Builder().setName("new_principal").build();
     adminService.createPrincipal(newPrincipal);
@@ -611,10 +607,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testCreatePrincipalRoleSufficientPrivileges() {
     // Cleanup with PRINCIPAL_ROLE2
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnRootContainerToPrincipalRole(
-                PRINCIPAL_ROLE2, PolarisPrivilege.PRINCIPAL_ROLE_DROP))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnRootContainerToPrincipalRole(
+            PRINCIPAL_ROLE2, PolarisPrivilege.PRINCIPAL_ROLE_DROP));
     final PrincipalRoleEntity newPrincipalRole =
         new PrincipalRoleEntity.Builder().setName("new_principal_role").build();
 
@@ -759,10 +754,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testDeletePrincipalRoleSufficientPrivileges() {
     // Cleanup with PRINCIPAL_ROLE2
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnRootContainerToPrincipalRole(
-                PRINCIPAL_ROLE2, PolarisPrivilege.PRINCIPAL_ROLE_CREATE))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnRootContainerToPrincipalRole(
+            PRINCIPAL_ROLE2, PolarisPrivilege.PRINCIPAL_ROLE_CREATE));
     final PrincipalRoleEntity newPrincipalRole =
         new PrincipalRoleEntity.Builder().setName("new_principal_role").build();
     adminService.createPrincipalRole(newPrincipalRole);
@@ -852,10 +846,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testCreateCatalogRoleSufficientPrivileges() {
     // Cleanup with CATALOG_ROLE2
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ROLE_DROP))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ROLE_DROP));
     final CatalogRoleEntity newCatalogRole =
         new CatalogRoleEntity.Builder().setName("new_catalog_role").build();
 
@@ -1005,10 +998,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testDeleteCatalogRoleSufficientPrivileges() {
     // Cleanup with CATALOG_ROLE2
-    Assertions.assertThat(
-            adminService.grantPrivilegeOnCatalogToRole(
-                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ROLE_CREATE))
-        .isTrue();
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_ROLE_CREATE));
     final CatalogRoleEntity newCatalogRole =
         new CatalogRoleEntity.Builder().setName("new_catalog_role").build();
     adminService.createCatalogRole(CATALOG_NAME, newCatalogRole);
