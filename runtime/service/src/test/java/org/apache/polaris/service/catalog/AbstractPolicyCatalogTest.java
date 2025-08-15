@@ -194,7 +194,7 @@ public abstract class AbstractPolicyCatalogTest {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(),
+            new PolarisAuthorizerImpl(callContext.getRealmConfig()),
             reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";

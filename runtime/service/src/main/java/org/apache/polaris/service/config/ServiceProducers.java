@@ -134,12 +134,6 @@ public class ServiceProducers {
   }
 
   @Produces
-  @ApplicationScoped
-  public PolarisAuthorizer polarisAuthorizer() {
-    return new PolarisAuthorizerImpl();
-  }
-
-  @Produces
   @Singleton
   public PolarisDiagnostics polarisDiagnostics() {
     return new PolarisDefaultDiagServiceImpl();
@@ -168,6 +162,12 @@ public class ServiceProducers {
   @RequestScoped
   public RealmConfig realmConfig(CallContext callContext) {
     return callContext.getRealmConfig();
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisAuthorizer polarisAuthorizer(RealmConfig realmConfig) {
+    return new PolarisAuthorizerImpl(realmConfig);
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans

@@ -228,8 +228,6 @@ public abstract class PolarisAuthzTestBase {
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
-    polarisAuthorizer = new PolarisAuthorizerImpl();
-
     polarisContext =
         new PolarisCallContext(
             realmContext,
@@ -239,6 +237,8 @@ public abstract class PolarisAuthzTestBase {
 
     callContext = polarisContext;
     realmConfig = polarisContext.getRealmConfig();
+
+    polarisAuthorizer = new PolarisAuthorizerImpl(polarisContext.getRealmConfig());
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

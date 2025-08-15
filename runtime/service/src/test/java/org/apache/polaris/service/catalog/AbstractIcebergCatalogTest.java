@@ -313,7 +313,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(),
+            new PolarisAuthorizerImpl(polarisContext.getRealmConfig()),
             reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
