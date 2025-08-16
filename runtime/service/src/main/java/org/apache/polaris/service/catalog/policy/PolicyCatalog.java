@@ -161,6 +161,7 @@ public class PolicyCatalog {
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
+    // TODO: when the "policyType" filter is null we should only call "listEntities" instead
     return metaStoreManager
         .loadEntitiesAll(
             callContext.getPolarisCallContext(),
