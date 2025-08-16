@@ -191,6 +191,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> PURGE_VIEWS_ON_DROP =
+      PolarisConfiguration.<Boolean>builder()
+          .key("PURGE_VIEWS_ON_DROP")
+          .catalogConfig("polaris.config.purge-views-on-drop")
+          .description(
+              "Indicates whether Polaris should purge view metadata files when a view is dropped.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =
       PolarisConfiguration.<Integer>builder()
           .key("STORAGE_CREDENTIAL_DURATION_SECONDS")
