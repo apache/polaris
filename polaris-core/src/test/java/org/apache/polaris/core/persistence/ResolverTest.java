@@ -31,6 +31,7 @@ import org.mockito.Mockito;
 public class ResolverTest extends BaseResolverTest {
 
   private final Clock clock = Clock.systemUTC();
+  private final PolarisDefaultDiagServiceImpl diagServices = new PolarisDefaultDiagServiceImpl();
   private PolarisCallContext callCtx;
   private PolarisTestMetaStoreManager tm;
   private TransactionalMetaStoreManagerImpl metaStoreManager;
@@ -38,7 +39,6 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisCallContext callCtx() {
     if (callCtx == null) {
-      PolarisDefaultDiagServiceImpl diagServices = new PolarisDefaultDiagServiceImpl();
       TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
       TreeMapTransactionalPersistenceImpl metaStore =
           new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
@@ -50,7 +50,7 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisMetaStoreManager metaStoreManager() {
     if (metaStoreManager == null) {
-      metaStoreManager = new TransactionalMetaStoreManagerImpl(clock);
+      metaStoreManager = new TransactionalMetaStoreManagerImpl(clock, diagServices);
     }
     return metaStoreManager;
   }

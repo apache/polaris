@@ -80,7 +80,7 @@ public class InMemoryEntityCacheTest {
     TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
     TransactionalPersistence metaStore =
         new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
-    metaStoreManager = new TransactionalMetaStoreManagerImpl(Clock.systemUTC());
+    metaStoreManager = new TransactionalMetaStoreManagerImpl(Clock.systemUTC(), diagServices);
     callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
 
     // bootstrap the meta store with our test schema
