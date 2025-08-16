@@ -47,6 +47,8 @@ the authentication parameters are picked from the environment or configuration f
 - The `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` feature was added to support placing tables
 at locations that better optimize for object storage.
 
+- Feature configuration `PURGE_VIEWS_ON_DROP` was added to allow dropping views without purging their metadata files.
+
 ### Changes
 
 - Polaris Management API clients must be prepared to deal with new attributes in `AwsStorageConfigInfo` objects.
