@@ -53,10 +53,8 @@ public class PolicyEntity extends PolarisEntity {
 
   @JsonIgnore
   public int getPolicyTypeCode() {
-    Preconditions.checkArgument(
-        getPropertiesAsMap().containsKey(POLICY_TYPE_CODE_KEY),
-        "Invalid policy entity: policy type must exist");
     String policyTypeCode = getPropertiesAsMap().get(POLICY_TYPE_CODE_KEY);
+    Preconditions.checkNotNull(policyTypeCode, "Invalid policy entity: policy type must exist");
     return Integer.parseInt(policyTypeCode);
   }
 
