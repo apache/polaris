@@ -117,13 +117,12 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .extracting(PolarisEntity::toCore)
         .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
-    List<TaskEntity> listedEntities =
+    List<PolarisBaseEntity> listedEntities =
         metaStoreManager.loadEntitiesAll(
             polarisTestMetaStoreManager.polarisCallContext,
             null,
             PolarisEntityType.TASK,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            TaskEntity::of);
+            PolarisEntitySubType.NULL_SUBTYPE);
     Assertions.assertThat(listedEntities)
         .isNotNull()
         .hasSize(2)

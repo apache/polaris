@@ -166,9 +166,9 @@ public class PolicyCatalog {
             callContext.getPolarisCallContext(),
             PolarisEntity.toCoreList(catalogPath),
             PolarisEntityType.POLICY,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolicyEntity::of)
+            PolarisEntitySubType.NULL_SUBTYPE)
         .stream()
+        .map(PolicyEntity::of)
         .filter(policyEntity -> policyType == null || policyEntity.getPolicyType() == policyType)
         .map(
             entity ->

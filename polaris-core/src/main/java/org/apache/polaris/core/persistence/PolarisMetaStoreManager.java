@@ -23,8 +23,6 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
@@ -133,55 +131,39 @@ public interface PolarisMetaStoreManager
       @Nonnull PageToken pageToken);
 
   /**
-   * Load entities where some predicate returns true and transform the entities with a function
+   * Load entities with pagination
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
    *     like catalogs
    * @param entityType type of entities to list
    * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
-   * @param entityFilter the filter to be applied to each entity. Only entities where the predicate
-   *     returns true are returned in the list
-   * @param transformer the transformation function applied to the {@link PolarisBaseEntity} before
-   *     returning
-   * @return the paged list of entities for which the predicate returns true
+   * @return the paged list of entities
    */
   @Nonnull
-  <T> Page<T> loadEntities(
+  Page<PolarisBaseEntity> loadEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken);
 
   /**
-   * Load all entities and transform the entities with a function into an unpaged list
+   * Load all entities into an unpaged list
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
    *     like catalogs
    * @param entityType type of entities to list
    * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
-   * @param transformer the transformation function applied to the {@link PolarisBaseEntity} before
-   *     returning
    * @return the full list of entities
    */
-  default @Nonnull <T> List<T> loadEntitiesAll(
+  default @Nonnull List<PolarisBaseEntity> loadEntitiesAll(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull Function<PolarisBaseEntity, T> transformer) {
-    return loadEntities(
-            callCtx,
-            catalogPath,
-            entityType,
-            entitySubType,
-            e -> true,
-            transformer,
-            PageToken.readEverything())
+      @Nonnull PolarisEntitySubType entitySubType) {
+    return loadEntities(callCtx, catalogPath, entityType, entitySubType, PageToken.readEverything())
         .items();
   }
 
