@@ -201,18 +201,8 @@ public class ManagementServiceTest {
             return "";
           }
         },
-        new PolarisAuthorizerImpl(callContext.getRealmConfig()),
-        new ReservedProperties() {
-          @Override
-          public List<String> prefixes() {
-            return List.of();
-          }
-
-          @Override
-          public Set<String> allowlist() {
-            return Set.of();
-          }
-        });
+        new PolarisAuthorizerImpl(services.realmConfig()),
+        ReservedProperties.NONE);
   }
 
   private PrincipalEntity createPrincipal(

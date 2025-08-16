@@ -29,6 +29,7 @@ import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -54,6 +55,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
   private static final Logger LOGGER = LoggerFactory.getLogger(PolicyCatalogAdapter.class);
 
   private final RealmContext realmContext;
+  private final RealmConfig realmConfig;
   private final CallContext callContext;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisMetaStoreManager metaStoreManager;
@@ -74,6 +76,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.realmContext = realmContext;
     this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
@@ -84,7 +87,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
 
   private PolicyCatalogHandler newHandlerWrapper(SecurityContext securityContext, String prefix) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
-        callContext.getRealmConfig(), FeatureConfiguration.ENABLE_POLICY_STORE);
+        realmConfig, FeatureConfiguration.ENABLE_POLICY_STORE);
     validatePrincipal(securityContext);
 
     return new PolicyCatalogHandler(
