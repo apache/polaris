@@ -290,7 +290,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
       @Nonnull PageToken pageToken);
 
   /**
-   * List entities where some predicate returns true and transform the entities with a function
+   * Load entities where some predicate returns true and transform the entities with a function
    *
    * @param callCtx call context
    * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
@@ -304,7 +304,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull
-  <T> Page<T> listEntities(
+  <T> Page<T> loadEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
