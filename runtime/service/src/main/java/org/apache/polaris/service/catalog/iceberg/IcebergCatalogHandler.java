@@ -685,10 +685,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     }
 
     PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
-    callContext
-        .getPolarisCallContext()
-        .getDiagServices()
-        .checkNotNull(catalogPath, "No catalog available for loadTable request");
+    diagnostics.checkNotNull(catalogPath, "No catalog available for loadTable request");
     CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
     LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
     LOGGER.info(
@@ -921,7 +918,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     // only go into an in-memory collection that we can commit as a single atomic unit after all
     // validations.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
-        new TransactionWorkspaceMetaStoreManager(metaStoreManager);
+        new TransactionWorkspaceMetaStoreManager(diagnostics, metaStoreManager);
     ((IcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
     commitTransactionRequest.tableChanges().stream()
