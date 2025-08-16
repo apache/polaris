@@ -34,8 +34,10 @@ import java.net.URL;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.hive.HiveConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
@@ -54,6 +56,7 @@ import org.slf4j.LoggerFactory;
 @JsonSubTypes({
   @JsonSubTypes.Type(value = IcebergRestConnectionConfigInfoDpo.class, name = "1"),
   @JsonSubTypes.Type(value = HadoopConnectionConfigInfoDpo.class, name = "2"),
+  @JsonSubTypes.Type(value = HiveConnectionConfigInfoDpo.class, name = "3"),
 })
 public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertiesProvider {
   private static final Logger logger = LoggerFactory.getLogger(ConnectionConfigInfoDpo.class);
@@ -144,6 +147,11 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   protected void validateUri(String uri) {
     try {
       URI uriObj = URI.create(uri);
+      if (connectionTypeCode == ConnectionType.HIVE.getCode()
+          && uriObj.getScheme().equals("thrift")) {
+        // Hive metastore runs a thrift server.
+        return;
+      }
       URL url = uriObj.toURL();
     } catch (IllegalArgumentException | MalformedURLException e) {
       throw new IllegalArgumentException("Invalid remote URI: " + uri, e);
@@ -186,6 +194,16 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 authenticationParameters,
                 null /*Service Identity Info*/,
                 hadoopConfigModel.getWarehouse());
+        break;
+      case HIVE:
+        HiveConnectionConfigInfo hiveConfigModel =
+            (HiveConnectionConfigInfo) connectionConfigurationModel;
+        authenticationParameters =
+            AuthenticationParametersDpo.fromAuthenticationParametersModelWithSecrets(
+                hiveConfigModel.getAuthenticationParameters(), secretReferences);
+        config =
+            new HiveConnectionConfigInfoDpo(
+                hiveConfigModel.getUri(), authenticationParameters, hiveConfigModel.getWarehouse());
         break;
       default:
         throw new IllegalStateException(

@@ -33,10 +33,12 @@ public enum ConnectionType {
   NULL_TYPE(0),
   ICEBERG_REST(1),
   HADOOP(2),
+  HIVE(3),
   ;
 
   public static final String ICEBERG_REST_FACTORY_IDENTIFIER = "iceberg_rest";
   public static final String HADOOP_FACTORY_IDENTIFIER = "hadoop";
+  public static final String HIVE_FACTORY_IDENTIFIER = "hive";
 
   private static final ConnectionType[] REVERSE_MAPPING_ARRAY;
 
@@ -93,6 +95,8 @@ public enum ConnectionType {
         return ICEBERG_REST_FACTORY_IDENTIFIER;
       case HADOOP:
         return HADOOP_FACTORY_IDENTIFIER;
+      case HIVE:
+        return HIVE_FACTORY_IDENTIFIER;
       default:
         throw new UnsupportedOperationException(
             "No factory identifier for connection type: " + this);
