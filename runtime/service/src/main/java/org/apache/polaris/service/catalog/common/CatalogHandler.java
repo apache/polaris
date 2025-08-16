@@ -35,6 +35,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -60,6 +61,7 @@ public abstract class CatalogHandler {
   protected final PolarisAuthorizer authorizer;
 
   protected final CallContext callContext;
+  protected final RealmConfig realmConfig;
   protected final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   protected final SecurityContext securityContext;
 
@@ -70,6 +72,7 @@ public abstract class CatalogHandler {
       String catalogName,
       PolarisAuthorizer authorizer) {
     this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.catalogName = catalogName;
     PolarisDiagnostics diagServices = callContext.getPolarisCallContext().getDiagServices();
