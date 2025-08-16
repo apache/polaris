@@ -50,6 +50,9 @@ jobs:
 
       - name: Fix permissions
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
+      
+      - name: Create hadoop-warehouse directory
+        run: mkdir -p regtests/hadoop-warehouse && chmod 777 regtests/hadoop-warehouse
 
       - name: Run regeneratePythonClient
         run: ./gradlew regeneratePythonClient
