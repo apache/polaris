@@ -951,9 +951,9 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.CATALOG,
-            PolarisEntitySubType.ANY_SUBTYPE,
-            CatalogEntity::of)
-        .stream();
+            PolarisEntitySubType.ANY_SUBTYPE)
+        .stream()
+        .map(CatalogEntity::of);
   }
 
   public PrincipalWithCredentials createPrincipal(PolarisEntity entity) {
@@ -1126,9 +1126,9 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PrincipalEntity::of)
+            PolarisEntitySubType.NULL_SUBTYPE)
         .stream()
+        .map(PrincipalEntity::of)
         .map(PrincipalEntity::asPrincipal)
         .toList();
   }
@@ -1234,9 +1234,9 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PrincipalRoleEntity::of)
+            PolarisEntitySubType.NULL_SUBTYPE)
         .stream()
+        .map(PrincipalRoleEntity::of)
         .map(PrincipalRoleEntity::asPrincipalRole)
         .toList();
   }
@@ -1362,9 +1362,9 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             catalogPath,
             PolarisEntityType.CATALOG_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            CatalogRoleEntity::of)
+            PolarisEntitySubType.NULL_SUBTYPE)
         .stream()
+        .map(CatalogRoleEntity::of)
         .map(CatalogRoleEntity::asCatalogRole)
         .toList();
   }

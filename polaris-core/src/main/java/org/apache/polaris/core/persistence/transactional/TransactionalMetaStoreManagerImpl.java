@@ -30,7 +30,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -740,16 +739,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /**
    * See {@link PolarisMetaStoreManager#loadEntities(PolarisCallContext, List, PolarisEntityType,
-   * PolarisEntitySubType, Predicate, Function, PageToken)}
+   * PolarisEntitySubType, PageToken)}
    */
-  private @Nonnull <T> Page<T> loadEntities(
+  private @Nonnull Page<PolarisBaseEntity> loadEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
     // first resolve again the catalogPath to that entity
     PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
@@ -766,20 +763,18 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         resolver.getParentId(),
         entityType,
         entitySubType,
-        entityFilter,
-        transformer,
+        entity -> true,
+        Function.identity(),
         pageToken);
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull <T> Page<T> loadEntities(
+  public @Nonnull Page<PolarisBaseEntity> loadEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
     // get meta store we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
@@ -787,16 +782,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // run operation in a read transaction
     return ms.runInReadTransaction(
         callCtx,
-        () ->
-            loadEntities(
-                callCtx,
-                ms,
-                catalogPath,
-                entityType,
-                entitySubType,
-                entityFilter,
-                transformer,
-                pageToken));
+        () -> loadEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
   }
 
   /** {@link #createPrincipal(PolarisCallContext, PolarisBaseEntity)} */
