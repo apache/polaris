@@ -65,6 +65,7 @@ class CatalogsCommand(Command):
     hadoop_warehouse: str
     iceberg_remote_catalog_name: str
     endpoint: str
+    endpoint_internal: str
     sts_endpoint: str
     path_style_access: bool
     catalog_connection_type: str
@@ -121,18 +122,17 @@ class CatalogsCommand(Command):
                                 f" {Argument.to_flag_name(Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN)}")
 
         if self.storage_type == StorageType.S3.value:
-            if not self.role_arn:
-                raise Exception(
-                    f"Missing required argument for storage type 's3':"
-                    f" {Argument.to_flag_name(Arguments.ROLE_ARN)}"
-                )
             if self._has_azure_storage_info() or self._has_gcs_storage_info():
                 raise Exception(
                     f"Storage type 's3' supports the storage credentials"
                     f" {Argument.to_flag_name(Arguments.ROLE_ARN)},"
                     f" {Argument.to_flag_name(Arguments.REGION)},"
-                    f" {Argument.to_flag_name(Arguments.EXTERNAL_ID)}, and"
-                    f" {Argument.to_flag_name(Arguments.USER_ARN)}"
+                    f" {Argument.to_flag_name(Arguments.EXTERNAL_ID)},"
+                    f" {Argument.to_flag_name(Arguments.USER_ARN)},"
+                    f" {Argument.to_flag_name(Arguments.ENDPOINT)},"
+                    f" {Argument.to_flag_name(Arguments.ENDPOINT_INTERNAL)},"
+                    f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)}, and"
+                    f" {Argument.to_flag_name(Arguments.PATH_STYLE_ACCESS)}"
                 )
         elif self.storage_type == StorageType.AZURE.value:
             if not self.tenant_id:
@@ -164,7 +164,7 @@ class CatalogsCommand(Command):
                 )
 
     def _has_aws_storage_info(self):
-        return self.role_arn or self.external_id or self.user_arn or self.region or self.endpoint or self.sts_endpoint or self.path_style_access
+        return self.role_arn or self.external_id or self.user_arn or self.region or self.endpoint or self.endpoint_internal or self.sts_endpoint or self.path_style_access
 
     def _has_azure_storage_info(self):
         return self.tenant_id or self.multi_tenant_app_name or self.consent_url
@@ -183,6 +183,7 @@ class CatalogsCommand(Command):
                 user_arn=self.user_arn,
                 region=self.region,
                 endpoint=self.endpoint,
+                endpoint_internal=self.endpoint_internal,
                 sts_endpoint=self.sts_endpoint,
                 path_style_access=self.path_style_access,
             )
