@@ -214,7 +214,7 @@ public interface TransactionalPersistence
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
-    return listEntitiesInCurrentTxn(
+    return loadEntitiesInCurrentTxn(
         callCtx,
         catalogId,
         parentId,
@@ -225,9 +225,9 @@ public interface TransactionalPersistence
         pageToken);
   }
 
-  /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
+  /** See {@link org.apache.polaris.core.persistence.BasePersistence#loadEntities} */
   @Nonnull
-  <T> Page<T> listEntitiesInCurrentTxn(
+  <T> Page<T> loadEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,

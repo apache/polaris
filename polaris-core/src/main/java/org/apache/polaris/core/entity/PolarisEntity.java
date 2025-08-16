@@ -223,11 +223,6 @@ public class PolarisEntity extends PolarisBaseEntity {
     return PolarisEntitySubType.fromCode(getSubTypeCode());
   }
 
-  @JsonIgnore
-  public NameAndId nameAndId() {
-    return new NameAndId(name, id);
-  }
-
   @Override
   public String toString() {
     return "name="

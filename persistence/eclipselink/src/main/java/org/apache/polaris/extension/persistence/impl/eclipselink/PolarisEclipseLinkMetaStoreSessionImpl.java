@@ -425,7 +425,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   }
 
   @Override
-  public @Nonnull <T> Page<T> listEntitiesInCurrentTxn(
+  public @Nonnull <T> Page<T> loadEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,

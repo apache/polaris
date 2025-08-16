@@ -47,6 +47,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
@@ -128,6 +129,43 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken);
+
+  /**
+   * Load entities with pagination
+   *
+   * @param callCtx call context
+   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
+   *     like catalogs
+   * @param entityType type of entities to list
+   * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
+   * @return the paged list of entities
+   */
+  @Nonnull
+  Page<PolarisBaseEntity> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken);
+
+  /**
+   * Load all entities into an unpaged list
+   *
+   * @param callCtx call context
+   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
+   *     like catalogs
+   * @param entityType type of entities to list
+   * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
+   * @return the full list of entities
+   */
+  default @Nonnull List<PolarisBaseEntity> loadEntitiesAll(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType) {
+    return loadEntities(callCtx, catalogPath, entityType, entitySubType, PageToken.readEverything())
+        .items();
+  }
 
   /**
    * Generate a new unique id that can be used by the Polaris client when it needs to create a new
