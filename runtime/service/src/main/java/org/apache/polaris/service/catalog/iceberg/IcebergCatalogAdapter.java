@@ -138,8 +138,8 @@ public class IcebergCatalogAdapter
           .build();
 
   private final RealmContext realmContext;
-  private final RealmConfig realmConfig;
   private final CallContext callContext;
+  private final RealmConfig realmConfig;
   private final CallContextCatalogFactory catalogFactory;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final ResolverFactory resolverFactory;
