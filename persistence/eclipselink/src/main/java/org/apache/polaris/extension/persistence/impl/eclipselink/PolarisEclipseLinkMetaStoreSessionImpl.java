@@ -39,6 +39,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
@@ -106,12 +107,14 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
    * @param persistenceUnitName Optional persistence-unit name in confFile. Default to 'polaris'.
    */
   public PolarisEclipseLinkMetaStoreSessionImpl(
+      @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull PolarisEclipseLinkStore store,
       @Nonnull PolarisStorageIntegrationProvider storageIntegrationProvider,
       @Nonnull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName,
       @Nonnull PrincipalSecretsGenerator secretsGenerator) {
+    super(diagnostics);
     LOGGER.debug(
         "Creating EclipseLink Meta Store Session for realm {}", realmContext.getRealmIdentifier());
     emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
@@ -159,7 +162,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   @Override
   public <T> T runInTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
-    callCtx.getDiagServices().check(localSession.get() == null, "cannot nest transaction");
+    diagnostics.check(localSession.get() == null, "cannot nest transaction");
 
     try (EntityManager session = emf.createEntityManager()) {
       localSession.set(session);
@@ -206,7 +209,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   @Override
   public void runActionInTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
-    callCtx.getDiagServices().check(localSession.get() == null, "cannot nest transaction");
+    diagnostics.check(localSession.get() == null, "cannot nest transaction");
 
     try (EntityManager session = emf.createEntityManager()) {
       localSession.set(session);
@@ -560,24 +563,20 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
             this.store.lookupPrincipalSecrets(localSession.get(), clientId));
 
     // should be found
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            principalSecrets,
-            "cannot_find_secrets",
-            "client_id={} principalId={}",
-            clientId,
-            principalId);
+    diagnostics.checkNotNull(
+        principalSecrets,
+        "cannot_find_secrets",
+        "client_id={} principalId={}",
+        clientId,
+        principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
-        .check(
-            principalId == principalSecrets.getPrincipalId(),
-            "principal_id_mismatch",
-            "expectedId={} id={}",
-            principalId,
-            principalSecrets.getPrincipalId());
+    diagnostics.check(
+        principalId == principalSecrets.getPrincipalId(),
+        "principal_id_mismatch",
+        "expectedId={} id={}",
+        principalId,
+        principalSecrets.getPrincipalId());
 
     // rotate the secrets
     principalSecrets.rotateSecrets(oldSecretHash);
@@ -601,24 +600,20 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
         this.store.lookupPrincipalSecrets(localSession.get(), clientId);
 
     // should be found
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            principalSecrets,
-            "cannot_find_secrets",
-            "client_id={} principalId={}",
-            clientId,
-            principalId);
+    diagnostics.checkNotNull(
+        principalSecrets,
+        "cannot_find_secrets",
+        "client_id={} principalId={}",
+        clientId,
+        principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
-        .check(
-            principalId == principalSecrets.getPrincipalId(),
-            "principal_id_mismatch",
-            "expectedId={} id={}",
-            principalId,
-            principalSecrets.getPrincipalId());
+    diagnostics.check(
+        principalId == principalSecrets.getPrincipalId(),
+        "principal_id_mismatch",
+        "expectedId={} id={}",
+        principalId,
+        principalSecrets.getPrincipalId());
 
     // delete these secrets
     this.store.deletePrincipalSecrets(localSession.get(), clientId);
@@ -642,7 +637,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx.getDiagServices(), entity);
+        BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

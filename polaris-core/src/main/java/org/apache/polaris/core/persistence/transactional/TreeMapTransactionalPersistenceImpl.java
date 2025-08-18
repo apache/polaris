@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -62,11 +63,11 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   private final PrincipalSecretsGenerator secretsGenerator;
 
   public TreeMapTransactionalPersistenceImpl(
+      @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull TreeMapMetaStore store,
       @Nonnull PolarisStorageIntegrationProvider storageIntegrationProvider,
       @Nonnull PrincipalSecretsGenerator secretsGenerator) {
-
-    // init store
+    super(diagnostics);
     this.store = store;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.secretsGenerator = secretsGenerator;
@@ -78,7 +79,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
 
     // run transaction on our underlying store
-    return store.runInTransaction(callCtx.getDiagServices(), transactionCode);
+    return store.runInTransaction(diagnostics, transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -87,7 +88,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInTransaction(callCtx.getDiagServices(), transactionCode);
+    store.runActionInTransaction(diagnostics, transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -95,7 +96,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   public <T> T runInReadTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
     // run transaction on our underlying store
-    return store.runInReadTransaction(callCtx.getDiagServices(), transactionCode);
+    return store.runInReadTransaction(diagnostics, transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -104,7 +105,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInReadTransaction(callCtx.getDiagServices(), transactionCode);
+    store.runActionInReadTransaction(diagnostics, transactionCode);
   }
 
   /**
@@ -462,24 +463,20 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
 
     // should be found
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            principalSecrets,
-            "cannot_find_secrets",
-            "client_id={} principalId={}",
-            clientId,
-            principalId);
+    diagnostics.checkNotNull(
+        principalSecrets,
+        "cannot_find_secrets",
+        "client_id={} principalId={}",
+        clientId,
+        principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
-        .check(
-            principalId == principalSecrets.getPrincipalId(),
-            "principal_id_mismatch",
-            "expectedId={} id={}",
-            principalId,
-            principalSecrets.getPrincipalId());
+    diagnostics.check(
+        principalId == principalSecrets.getPrincipalId(),
+        "principal_id_mismatch",
+        "expectedId={} id={}",
+        principalId,
+        principalSecrets.getPrincipalId());
 
     // rotate the secrets
     principalSecrets.rotateSecrets(oldSecretHash);
@@ -502,24 +499,20 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
 
     // should be found
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            principalSecrets,
-            "cannot_find_secrets",
-            "client_id={} principalId={}",
-            clientId,
-            principalId);
+    diagnostics.checkNotNull(
+        principalSecrets,
+        "cannot_find_secrets",
+        "client_id={} principalId={}",
+        clientId,
+        principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
-        .check(
-            principalId == principalSecrets.getPrincipalId(),
-            "principal_id_mismatch",
-            "expectedId={} id={}",
-            principalId,
-            principalSecrets.getPrincipalId());
+    diagnostics.check(
+        principalId == principalSecrets.getPrincipalId(),
+        "principal_id_mismatch",
+        "expectedId={} id={}",
+        principalId,
+        principalSecrets.getPrincipalId());
 
     // delete these secrets
     this.store.getSlicePrincipalSecrets().delete(clientId);
@@ -543,7 +536,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx.getDiagServices(), entity);
+        BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 
