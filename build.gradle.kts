@@ -104,6 +104,7 @@ tasks.named<RatTask>("rat").configure {
 
   // Web site
   excludes.add("**/go.sum")
+  excludes.add("site/.user-settings")
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")
   // Ignore generated stuff, when the Hugo is run w/o Docker
