@@ -1,0 +1,258 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: Release - 6 - Publish Release After Vote Success
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (check to enable, uncheck to perform actual operations)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  publish-release:
+    name: Release - 6 - Publish Release After Vote Success
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          # Fetch full history for proper branch operations
+          fetch-depth: 0
+          # Use a token with write permissions
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set DRY_RUN environment variable
+        run: |
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+            echo "DRY_RUN mode enabled - no actual changes will be made"
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+            echo "DRY_RUN mode disabled - actual changes will be made"
+          fi
+
+      - name: Auto-determine release parameters from branch and Git state
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_version.sh"
+
+          # Get the current branch name
+          current_branch=$(git branch --show-current)
+          print_info "Current branch: ${current_branch}"
+
+          # Validate that we're on a release branch
+          if [[ ! "${current_branch}" =~ ^release/(.+)$ ]]; then
+            print_error "This workflow must be run from a release branch (release/x.y.z-incubating)"
+            print_error "Current branch: ${current_branch}"
+            exit 1
+          fi
+
+          # Extract version from release branch name
+          branch_version="${BASH_REMATCH[1]}"
+          print_info "Extracted version from branch: ${branch_version}"
+
+          # Validate version format and extract components
+          if ! validate_and_extract_branch_version "${branch_version}"; then
+            print_error "Invalid release branch version format: ${branch_version}"
+            print_error "Expected format: x.y.z-incubating"
+            exit 1
+          fi
+
+          print_info "Parsed version components from branch:"
+          print_info "  Major: ${major}"
+          print_info "  Minor: ${minor}"
+          print_info "  Patch: ${patch}"
+          print_info "  Version without RC: ${version_without_rc}"
+
+          # Find the latest RC tag for this version
+          find_next_rc_number "${version_without_rc}"
+          latest_rc=$((rc_number - 1))
+
+          if [[ ${latest_rc} -lt 1 ]]; then
+            print_error "No RC tags found for version ${version_without_rc}"
+            print_error "Expected to find at least one RC tag like apache-polaris-${version_without_rc}-rc1"
+            exit 1
+          fi
+
+          rc_tag="apache-polaris-${version_without_rc}-rc${latest_rc}"
+          print_info "Found latest RC tag: ${rc_tag}"
+
+          # Verify the RC tag exists
+          if ! git rev-parse "${rc_tag}" >/dev/null 2>&1; then
+            print_error "RC tag ${rc_tag} does not exist in repository"
+            exit 1
+          fi
+
+          # Create final release tag name
+          final_release_tag="apache-polaris-${version_without_rc}"
+
+          # Check if final release tag already exists
+          if git rev-parse "${final_release_tag}" >/dev/null 2>&1; then
+            print_error "Final release tag ${final_release_tag} already exists"
+            print_error "This release may have already been published"
+            exit 1
+          fi
+
+          # Export variables for next steps
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
+          echo "rc_tag=${rc_tag}" >> $GITHUB_ENV
+          echo "final_release_tag=${final_release_tag}" >> $GITHUB_ENV
+          echo "release_branch=${current_branch}" >> $GITHUB_ENV
+
+          print_success "Release parameters determined:"
+          print_info "  Version: ${version_without_rc}"
+          print_info "  RC tag to promote: ${rc_tag}"
+          print_info "  Final release tag: ${final_release_tag}"
+          print_info "  Release branch: ${current_branch}"
+
+      - name: Copy distribution from SVN dev to release space
+        env:
+          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Copying distribution from SVN dev to release space..."
+
+          # Define source and destination URLs
+          dev_artifacts_url="${APACHE_DIST_URL}/dev/incubator/polaris/${version_without_rc}"
+          release_artifacts_url="${APACHE_DIST_URL}/release/incubator/polaris/${version_without_rc}"
+          
+          dev_helm_url="${APACHE_DIST_URL}/dev/incubator/polaris/helm-chart/${version_without_rc}"
+          release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart/${version_without_rc}"
+
+          print_info "Moving artifacts from dev to release..."
+          print_info "  From: ${dev_artifacts_url}"
+          print_info "  To: ${release_artifacts_url}"
+          
+          exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+            "${dev_artifacts_url}" "${release_artifacts_url}" \
+            -m "Release Apache Polaris ${version_without_rc}"
+
+          print_info "Moving Helm chart from dev to release..."
+          print_info "  From: ${dev_helm_url}"
+          print_info "  To: ${release_helm_url}"
+          
+          exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+            "${dev_helm_url}" "${release_helm_url}" \
+            -m "Release Apache Polaris Helm chart ${version_without_rc}"
+
+          print_success "Distribution copied from dev to release space successfully"
+
+      - name: Create final release tag and push to Git repository
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Creating final release tag and pushing to Git repository..."
+
+          # Get the commit SHA that the RC tag points to
+          rc_commit=$(git rev-parse "${rc_tag}")
+          print_info "RC tag ${rc_tag} points to commit: ${rc_commit}"
+
+          print_info "Creating final release tag: ${final_release_tag}"
+          exec_process git tag -a "${final_release_tag}" "${rc_commit}" -m "Apache Polaris ${version_without_rc} Release"
+
+          print_info "Pushing final release tag to apache remote"
+          exec_process git push apache "${final_release_tag}"
+
+          print_success "Final release tag ${final_release_tag} created and pushed successfully"
+
+      - name: Update GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Updating GitHub release..."
+
+          release_title="Release ${version_without_rc}"
+
+          # Find the existing pre-release created for this version
+          existing_release_tag=$(gh release list | grep "${release_title}" | head -1 | cut -f3)
+
+          if [[ -z "${existing_release_tag}" ]]; then
+            print_error "Could not find existing GitHub release with title: ${release_title}"
+            print_error "Expected to find a pre-release that was created during RC process"
+            exit 1
+          fi
+
+          print_info "Found existing GitHub release with tag: ${existing_release_tag}"
+
+          # Update the release to point to the final tag and remove prerelease flag
+          print_info "Updating GitHub release to final release..."
+          exec_process gh release edit "${existing_release_tag}" \
+            --tag "${final_release_tag}" \
+            --prerelease=false
+
+          print_success "GitHub release updated to final release: ${final_release_tag}"
+
+      - name: Set up Java
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Release candidate repository on Nexus
+        env:
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Releasing candidate repository on Nexus..."
+
+          # Use the Gradle task to release the Apache staging repository
+          print_info "Using Gradle task to release Apache staging repository..."
+          exec_process ./gradlew releaseApacheStagingRepository
+
+          print_success "Nexus repository release completed"
