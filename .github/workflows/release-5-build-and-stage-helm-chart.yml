@@ -149,7 +149,6 @@ jobs:
 
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
-          source "${LIBS_DIR}/_gpg.sh"
 
           print_info "Creating Helm package..."
           exec_process cd helm

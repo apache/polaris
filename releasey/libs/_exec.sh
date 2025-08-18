@@ -18,10 +18,6 @@
 # under the License.
 #
 
-#
-# Execution wrapper function for system-modifying commands
-#
-
 LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$LIBS_DIR/_constants.sh"
@@ -36,5 +32,18 @@ function exec_process {
     print_command "${*}"
   else
     print_command "Dry-run, WOULD execute '${*}'"
+  fi
+}
+
+function calculate_sha512 {
+  local source_file="$1"
+  local target_file="$2"
+  # This function is only there for dry-run support.  Because of the
+  # redirection, we cannot use exec_process with the exact command that will be
+  # executed.
+  if [[ ${DRY_RUN:-1} -ne 1 ]]; then
+    exec_process shasum -a 512 "${source_file}" > "${target_file}"
+  else
+    exec_process "shasum -a 512 ${source_file} > ${target_file}"
   fi
 }

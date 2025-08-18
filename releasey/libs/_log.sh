@@ -44,16 +44,16 @@ function print_error() {
   echo -e "${RED}ERROR: $*${RESET}" >&2
 }
 
-function print_success() {
-  echo -e "${GREEN}SUCCESS: $*${RESET}" >&2
-}
-
 function print_warning() {
   echo -e "${YELLOW}WARNING: $*${RESET}" >&2
 }
 
 function print_info() {
   echo "INFO: $*" >&2
+}
+
+function print_success() {
+  echo -e "${GREEN}SUCCESS: $*${RESET}" >&2
 }
 
 function print_command() {

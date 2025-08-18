@@ -20,34 +20,18 @@
 
 LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# GPG constants
-KEYS_URL=${KEYS_URL:-"https://downloads.apache.org/incubator/polaris/KEYS"}
-KEYSERVER=${KEYSERVER:-"hkps://keyserver.ubuntu.com"}
-
 # Git/SVN repository constants
-APACHE_REMOTE_NAME=${APACHE_REMOTE_NAME:-"apache"}
-APACHE_REMOTE_URL=${APACHE_REMOTE_URL:-"https://github.com/apache/polaris.git"}
 APACHE_DIST_URL=${APACHE_DIST_URL:-"https://dist.apache.org/repos/dist"}
 APACHE_DIST_PATH=${APACHE_DIST_PATH:-"/dev/incubator/polaris"}
-
-# GitHub API constants
-GITHUB_REPO_OWNER=${GITHUB_REPO_OWNER:-"apache"}
-GITHUB_REPO_NAME=${GITHUB_REPO_NAME:-"polaris"}
 
 # Execution mode constants
 DRY_RUN=${DRY_RUN:-1}
 
-# Docker constants
-DOCKER_REGISTRY=${DOCKER_REGISTRY:-"docker.io"}
-DOCKER_HUB_URL=${DOCKER_HUB_URL:-"https://hub.docker.com"}
-
 # Version validation regex patterns
 VERSION_REGEX="([0-9]+)\.([0-9]+)\.([0-9]+)-incubating"
-VERSION_REGEX_RC="^$VERSION_REGEX-rc([1-9][0-9]*)$"
 VERSION_REGEX_GIT_TAG="^apache-polaris-$VERSION_REGEX-rc([0-9]+)$"
 
-# Other project constants
-GRADLE_PROPERTIES_FILE=${GRADLE_PROPERTIES_FILE:-"${HOME}/.gradle/gradle.properties"}
+# Project file constants
 VERSION_FILE="$LIBS_DIR/../../version.txt"
 CHANGELOG_FILE="$LIBS_DIR/../../CHANGELOG.md"
 HELM_CHART_YAML_FILE="$LIBS_DIR/../../helm/polaris/Chart.yaml"
