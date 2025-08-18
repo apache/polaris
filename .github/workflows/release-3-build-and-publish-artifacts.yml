@@ -154,7 +154,7 @@ jobs:
           exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
 
           print_info "Adding files to SVN..."
-          cd "${dist_dev_dir}"
+          exec_process cd "${dist_dev_dir}"
           exec_process svn add "${version_without_rc}"
 
           print_info "Committing changes..."

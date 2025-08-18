@@ -189,7 +189,7 @@ jobs:
           exec_process helm repo index .
 
           print_info "Adding files to SVN..."
-          cd "${dist_dev_dir}"
+          exec_process cd "${dist_dev_dir}"
           exec_process svn add index.yaml
           exec_process svn add "helm-chart/${version_without_rc}"
 
