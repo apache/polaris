@@ -121,12 +121,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
   private final PolarisMetaStoreManager metaStoreManager;
-  private final UserSecretsManager userSecretsManager;
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
-
-  private final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -149,13 +146,18 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
-    super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer);
+    super(
+        callContext,
+        resolutionManifestFactory,
+        securityContext,
+        catalogName,
+        authorizer,
+        userSecretsManager,
+        externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
-    this.userSecretsManager = userSecretsManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
-    this.externalCatalogFactories = externalCatalogFactories;
   }
 
   /**
@@ -194,10 +196,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     } else {
       return catalogHandlerUtils.listNamespaces(namespaceCatalog, parent, pageToken, pageSize);
     }
-  }
-
-  private UserSecretsManager getUserSecretsManager() {
-    return userSecretsManager;
   }
 
   @Override

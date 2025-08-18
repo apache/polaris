@@ -76,7 +76,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
-      @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
+      @JsonProperty(value = "authenticationParameters", required = true) @Nullable
           AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "serviceIdentity", required = false) @Nullable
           ServiceIdentityInfoDpo serviceIdentity) {
@@ -86,7 +86,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   protected ConnectionConfigInfoDpo(
       int connectionTypeCode,
       @Nonnull String uri,
-      @Nonnull AuthenticationParametersDpo authenticationParameters,
+      @Nullable AuthenticationParametersDpo authenticationParameters,
       @Nullable ServiceIdentityInfoDpo serviceIdentity,
       boolean validateUri) {
     this.connectionTypeCode = connectionTypeCode;
@@ -203,7 +203,10 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
                 hiveConfigModel.getAuthenticationParameters(), secretReferences);
         config =
             new HiveConnectionConfigInfoDpo(
-                hiveConfigModel.getUri(), authenticationParameters, hiveConfigModel.getWarehouse());
+                hiveConfigModel.getUri(),
+                authenticationParameters,
+                hiveConfigModel.getWarehouse(),
+                null /*Service Identity Info*/);
         break;
       default:
         throw new IllegalStateException(
