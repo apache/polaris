@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
 
-import java.util.Set;
-import org.apache.polaris.core.auth.PolarisPrincipal;
+package org.apache.polaris.service.auth.internal;
 
-/**
- * Provides the active roles for a given principal. Implementations may rely on the active request
- * or SecurityContext to determine the active roles.
- */
-public interface ActiveRolesProvider {
-  /**
-   * Returns the active roles for the given principal.
-   *
-   * @param principal the currently authenticated principal
-   * @return the active roles
-   */
-  Set<String> getActiveRoles(PolarisPrincipal principal);
+import io.quarkus.security.identity.request.BaseAuthenticationRequest;
+import org.apache.polaris.service.auth.PolarisCredential;
+
+final class InternalAuthenticationRequest extends BaseAuthenticationRequest {
+
+  private final PolarisCredential credential;
+
+  InternalAuthenticationRequest(PolarisCredential credential) {
+    this.credential = credential;
+  }
+
+  PolarisCredential getCredential() {
+    return credential;
+  }
 }
