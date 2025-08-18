@@ -40,4 +40,15 @@ public interface ExternalCatalogFactory {
    */
   Catalog createCatalog(
       ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager);
+
+  /**
+   * Creates a generic table catalog for the given connection configuration.
+   *
+   * @param connectionConfig the connection configuration
+   * @param userSecretsManager the user secrets manager for handling credentials
+   * @return the initialized catalog
+   * @throws IllegalStateException if the connection configuration is invalid
+   */
+  GenericTableCatalog createGenericCatalog(
+      ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager);
 }
