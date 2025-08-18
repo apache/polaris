@@ -71,7 +71,14 @@ public class PolicyCatalogHandler extends CatalogHandler {
       PolarisAuthorizer authorizer,
       UserSecretsManager userSecretsManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
-    super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer, userSecretsManager, externalCatalogFactories);
+    super(
+        callContext,
+        resolutionManifestFactory,
+        securityContext,
+        catalogName,
+        authorizer,
+        userSecretsManager,
+        externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
   }
 
