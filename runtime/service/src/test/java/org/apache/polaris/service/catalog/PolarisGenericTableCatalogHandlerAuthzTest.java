@@ -52,7 +52,9 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         metaStoreManager,
         securityContext(authenticatedPrincipal),
         catalogName,
-        polarisAuthorizer);
+        polarisAuthorizer,
+        null,
+        null);
   }
 
   /**

@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.policy;
 
 import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
+import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -31,6 +32,7 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -42,6 +44,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
@@ -65,8 +68,10 @@ public class PolicyCatalogHandler extends CatalogHandler {
       PolarisMetaStoreManager metaStoreManager,
       SecurityContext securityContext,
       String catalogName,
-      PolarisAuthorizer authorizer) {
-    super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer);
+      PolarisAuthorizer authorizer,
+      UserSecretsManager userSecretsManager,
+      Instance<ExternalCatalogFactory> externalCatalogFactories) {
+    super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer, userSecretsManager, externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
   }
 

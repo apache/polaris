@@ -30,6 +30,7 @@ import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -44,8 +45,10 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "authenticationParameters", required = false) @Nullable
           AuthenticationParametersDpo authenticationParameters,
-      @JsonProperty(value = "warehouse", required = false) @Nullable String warehouse) {
-    super(ConnectionType.HIVE.getCode(), uri, authenticationParameters);
+      @JsonProperty(value = "warehouse", required = false) @Nullable String warehouse,
+      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
+          ServiceIdentityInfoDpo serviceIdentity) {
+    super(ConnectionType.HIVE.getCode(), uri, authenticationParameters, serviceIdentity);
     this.warehouse = warehouse;
   }
 
@@ -75,6 +78,13 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
       properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(secretsManager));
     }
     return properties;
+  }
+
+  @Override
+  public ConnectionConfigInfoDpo withServiceIdentity(
+      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
+    return new HiveConnectionConfigInfoDpo(
+        getUri(), getAuthenticationParameters(), warehouse, serviceIdentityInfo);
   }
 
   @Override
