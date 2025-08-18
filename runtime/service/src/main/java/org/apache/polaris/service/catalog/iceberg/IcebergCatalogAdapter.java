@@ -62,6 +62,7 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
@@ -78,7 +79,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -454,22 +454,25 @@ public class IcebergCatalogAdapter
 
   private LoadTableResponse injectRefreshVendedCredentialProperties(
       LoadTableResponse originalResponse, String credentialsEndpoint) {
-    LoadTableResponse.Builder loadResponseBuilder =
-        LoadTableResponse.builder().withTableMetadata(originalResponse.tableMetadata());
-    loadResponseBuilder.addAllConfig(originalResponse.config());
-    loadResponseBuilder.addAllCredentials(originalResponse.credentials());
-    loadResponseBuilder.addConfig(
-        AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, credentialsEndpoint);
     // Only enable credential refresh for currently supported credential types
     if (originalResponse.credentials().stream()
         .anyMatch(
             credential ->
                 credential
-                    .config()
-                    .containsKey(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName()))) {
+                    .prefix()
+                    .toLowerCase()
+                    .startsWith(StorageConfigInfo.StorageTypeEnum.S3.name().toLowerCase()))) {
+      LoadTableResponse.Builder loadResponseBuilder =
+          LoadTableResponse.builder().withTableMetadata(originalResponse.tableMetadata());
+      loadResponseBuilder.addAllConfig(originalResponse.config());
+      loadResponseBuilder.addAllCredentials(originalResponse.credentials());
+      loadResponseBuilder.addConfig(
+          AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, credentialsEndpoint);
       loadResponseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+      return loadResponseBuilder.build();
+    } else {
+      return originalResponse;
     }
-    return loadResponseBuilder.build();
   }
 
   @Override
