@@ -23,6 +23,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.hive.HiveCatalog;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -70,5 +71,13 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
     hiveCatalog.initialize(
         warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
     return hiveCatalog;
+  }
+
+  @Override
+  public GenericTableCatalog createGenericCatalog(
+      ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager) {
+    // TODO implement
+    throw new UnsupportedOperationException(
+        "Generic table federation to this catalog is not supported.");
   }
 }

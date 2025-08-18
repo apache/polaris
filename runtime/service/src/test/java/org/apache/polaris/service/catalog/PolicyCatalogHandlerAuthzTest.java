@@ -57,7 +57,9 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         metaStoreManager,
         securityContext(authenticatedPrincipal),
         catalogName,
-        polarisAuthorizer);
+        polarisAuthorizer,
+        null,
+        null);
   }
 
   /**

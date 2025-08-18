@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.common;
 
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 
+import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -43,6 +45,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.types.PolicyIdentifier;
 
 /**
@@ -58,6 +61,8 @@ public abstract class CatalogHandler {
   protected final ResolutionManifestFactory resolutionManifestFactory;
   protected final String catalogName;
   protected final PolarisAuthorizer authorizer;
+  protected final UserSecretsManager userSecretsManager;
+  protected final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   protected final PolarisDiagnostics diagnostics;
   protected final CallContext callContext;
@@ -69,7 +74,9 @@ public abstract class CatalogHandler {
       ResolutionManifestFactory resolutionManifestFactory,
       SecurityContext securityContext,
       String catalogName,
-      PolarisAuthorizer authorizer) {
+      PolarisAuthorizer authorizer,
+      UserSecretsManager userSecretsManager,
+      Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.callContext = callContext;
     this.diagnostics = callContext.getPolarisCallContext().getDiagServices();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -83,6 +90,12 @@ public abstract class CatalogHandler {
     this.securityContext = securityContext;
     this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
+    this.userSecretsManager = userSecretsManager;
+    this.externalCatalogFactories = externalCatalogFactories;
+  }
+
+  protected UserSecretsManager getUserSecretsManager() {
+    return userSecretsManager;
   }
 
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
