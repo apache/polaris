@@ -62,6 +62,21 @@ podLabels: {}
 # -- Additional Labels to apply to polaris configmap.
 configMapLabels: {}
 
+# -- Pod disruption budget settings.
+podDisruptionBudget:
+  # -- Specifies whether a pod disruption budget should be created.
+  enabled: false
+  # -- The minimum number of pods that should remain available during disruptions.
+  # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
+  # Cannot be used if maxUnavailable is set.
+  minAvailable: ~
+  # -- The maximum number of pods that can be unavailable during disruptions.
+  # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
+  # Cannot be used if minAvailable is set.
+  maxUnavailable: 1
+  # -- Annotations to add to the pod disruption budget.
+  annotations: {}
+
 # -- The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10).
 revisionHistoryLimit: ~
 
