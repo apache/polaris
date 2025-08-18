@@ -32,6 +32,7 @@ configurations.all {
 }
 
 dependencies {
+  implementation(libs.s3mock.testcontainers)
   implementation(project(":polaris-core"))
   implementation(libs.jakarta.ws.rs.api)
   implementation(enforcedPlatform(libs.quarkus.bom))
