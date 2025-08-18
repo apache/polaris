@@ -95,7 +95,7 @@ public abstract class CatalogHandler {
 
   protected UserSecretsManager getUserSecretsManager() {
     return userSecretsManager;
-}
+  }
 
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
   protected abstract void initializeCatalog();

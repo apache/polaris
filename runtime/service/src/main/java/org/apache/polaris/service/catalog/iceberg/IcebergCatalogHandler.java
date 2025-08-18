@@ -146,7 +146,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
-    super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer, userSecretsManager, externalCatalogFactories);
+    super(
+        callContext,
+        resolutionManifestFactory,
+        securityContext,
+        catalogName,
+        authorizer,
+        userSecretsManager,
+        externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;

@@ -23,8 +23,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.LinkedHashSet;
 import java.util.Map;
-
-import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
@@ -64,7 +62,14 @@ public class GenericTableCatalogHandler extends CatalogHandler {
       PolarisAuthorizer authorizer,
       UserSecretsManager userSecretsManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
-    super(callContext, resolutionManifestFactory, securityContext, catalogName, authorizer, userSecretsManager, externalCatalogFactories);
+    super(
+        callContext,
+        resolutionManifestFactory,
+        securityContext,
+        catalogName,
+        authorizer,
+        userSecretsManager,
+        externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
   }
 

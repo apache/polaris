@@ -74,8 +74,10 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
   }
 
   @Override
-  public GenericTableCatalog createGenericCatalog(ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager) {
+  public GenericTableCatalog createGenericCatalog(
+      ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager) {
     // TODO implement
-    throw new UnsupportedOperationException("Generic table federation to this catalog is not supported.");
+    throw new UnsupportedOperationException(
+        "Generic table federation to this catalog is not supported.");
   }
 }
