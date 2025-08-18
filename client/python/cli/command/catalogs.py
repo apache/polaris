@@ -124,7 +124,7 @@ class CatalogsCommand(Command):
         if self.storage_type == StorageType.S3.value:
             if self._has_azure_storage_info() or self._has_gcs_storage_info():
                 raise Exception(
-                    f"Storage type 's3' supports the storage credentials"
+                    f"Storage type 's3' supports the options"
                     f" {Argument.to_flag_name(Arguments.ROLE_ARN)},"
                     f" {Argument.to_flag_name(Arguments.REGION)},"
                     f" {Argument.to_flag_name(Arguments.EXTERNAL_ID)},"
@@ -142,7 +142,7 @@ class CatalogsCommand(Command):
                 )
             if self._has_aws_storage_info() or self._has_gcs_storage_info():
                 raise Exception(
-                    "Storage type 'azure' supports the storage credentials"
+                    "Storage type 'azure' supports the options"
                     f" {Argument.to_flag_name(Arguments.TENANT_ID)},"
                     f" {Argument.to_flag_name(Arguments.MULTI_TENANT_APP_NAME)}, and"
                     f" {Argument.to_flag_name(Arguments.CONSENT_URL)}"
@@ -160,7 +160,7 @@ class CatalogsCommand(Command):
                 or self._has_gcs_storage_info()
             ):
                 raise Exception(
-                    "Storage type 'file' does not support any storage credentials"
+                    "Storage type 'file' does not support any additional options"
                 )
 
     def _has_aws_storage_info(self):
