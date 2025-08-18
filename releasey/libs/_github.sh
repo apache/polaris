@@ -127,10 +127,15 @@ function check_github_checks_passed() {
     print_command "${num_invalid_checks_retrieval_command}"
     num_invalid_checks=0
   else
-    num_invalid_checks=$(${num_invalid_checks_retrieval_command})
+    # Ideally, we should be able to use num_invalid_checks=$(${num_invalid_checks_retrieval_command}) but it seems Github does not like that.  Use a temporary script instead.
+    local temp_script=$(mktemp)
+    echo "${num_invalid_checks_retrieval_command}" > "${temp_script}"
+    num_invalid_checks=$(bash "${temp_script}")
+    script_exit_code=$?
+    rm -f "${temp_script}"
   fi
 
-  if [[ $? -ne 0 ]]; then
+  if [[ $script_exit_code -ne 0 ]]; then
     print_error "Failed to fetch GitHub check runs for commit ${commit_sha}"
     return 1
   fi
