@@ -53,10 +53,14 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
  */
 public abstract class AbstractTransactionalPersistence implements TransactionalPersistence {
 
-  protected final PolarisDiagnostics diagnostics;
+  private final PolarisDiagnostics diagnostics;
 
   protected AbstractTransactionalPersistence(PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
+  }
+
+  protected PolarisDiagnostics getDiagnostics() {
+    return diagnostics;
   }
 
   //
@@ -218,12 +222,13 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       @Nonnull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities) {
     if (originalEntities != null) {
-      diagnostics.check(
-          entities.size() == originalEntities.size(),
-          "mismatched_entities_and_original_entities_size",
-          "entities.size()={}, originalEntities.size()={}",
-          entities.size(),
-          originalEntities.size());
+      getDiagnostics()
+          .check(
+              entities.size() == originalEntities.size(),
+              "mismatched_entities_and_original_entities_size",
+              "entities.size()={}, originalEntities.size()={}",
+              entities.size(),
+              originalEntities.size());
     }
     runActionInTransaction(
         callCtx,
@@ -586,12 +591,13 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       @Nonnull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities) {
     if (originalEntities != null) {
-      diagnostics.check(
-          entities.size() == originalEntities.size(),
-          "mismatched_entities_and_original_entities_size",
-          "entities.size()={}, originalEntities.size()={}",
-          entities.size(),
-          originalEntities.size());
+      getDiagnostics()
+          .check(
+              entities.size() == originalEntities.size(),
+              "mismatched_entities_and_original_entities_size",
+              "entities.size()={}, originalEntities.size()={}",
+              entities.size(),
+              originalEntities.size());
     }
     for (int i = 0; i < entities.size(); ++i) {
       PolarisBaseEntity entity = entities.get(i);
@@ -647,8 +653,9 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
             entityActiveRecord.getCatalogId(),
             entityActiveRecord.getId(),
             entityActiveRecord.getTypeCode());
-    diagnostics.checkNotNull(
-        entity, "unexpected_not_found_entity", "entityActiveRecord={}", entityActiveRecord);
+    getDiagnostics()
+        .checkNotNull(
+            entity, "unexpected_not_found_entity", "entityActiveRecord={}", entityActiveRecord);
 
     // return it now
     return entity;
