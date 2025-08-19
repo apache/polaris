@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -275,6 +276,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
    * @param parentId id of the parent, can be the special 0 value representing the root entity
    * @param entityType type of entities to list
+   * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
    * @param pageToken the token to start listing after
    * @return the list of entities for the specified list operation
    */
@@ -284,27 +286,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken);
-
-  /**
-   * List entities where some predicate returns true
-   *
-   * @param callCtx call context
-   * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
-   * @param parentId id of the parent, can be the special 0 value representing the root entity
-   * @param entityType type of entities to list
-   * @param entityFilter the filter to be applied to each entity. Only entities where the predicate
-   *     returns true are returned in the list
-   * @param pageToken the token to start listing after
-   * @return the list of entities for which the predicate returns true
-   */
-  @Nonnull
-  Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken);
 
   /**
@@ -314,6 +296,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
    * @param parentId id of the parent, can be the special 0 value representing the root entity
    * @param entityType type of entities to list
+   * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
    * @param entityFilter the filter to be applied to each entity. Only entities where the predicate
    *     returns true are returned in the list
    * @param transformer the transformation function applied to the {@link PolarisBaseEntity} before
@@ -326,6 +309,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       PageToken pageToken);

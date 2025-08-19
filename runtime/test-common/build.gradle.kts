@@ -32,10 +32,21 @@ configurations.all {
 }
 
 dependencies {
+  implementation(project(":polaris-core"))
+  implementation(libs.jakarta.ws.rs.api)
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-junit5")
+
   implementation(platform(libs.testcontainers.bom))
   implementation("org.testcontainers:testcontainers")
   implementation("org.testcontainers:postgresql")
+
+  implementation(libs.testcontainers.keycloak) {
+    exclude(group = "org.keycloak", module = "keycloak-admin-client")
+  }
+  // Keycloak Admin Client brings RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
+  // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
+  compileOnly(libs.keycloak.admin.client)
+
   implementation(project(":polaris-container-spec-helper"))
 }

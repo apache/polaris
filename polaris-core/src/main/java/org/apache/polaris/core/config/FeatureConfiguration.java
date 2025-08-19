@@ -23,7 +23,6 @@ import java.util.Optional;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
 
 /**
@@ -48,8 +47,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
    * we want to throw an UnsupportedOperationException if it's not enabled.
    */
   public static void enforceFeatureEnabledOrThrow(
-      CallContext callContext, FeatureConfiguration<Boolean> featureConfig) {
-    boolean enabled = callContext.getRealmConfig().getConfig(featureConfig);
+      RealmConfig realmConfig, FeatureConfiguration<Boolean> featureConfig) {
+    boolean enabled = realmConfig.getConfig(featureConfig);
     if (!enabled) {
       throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key());
     }

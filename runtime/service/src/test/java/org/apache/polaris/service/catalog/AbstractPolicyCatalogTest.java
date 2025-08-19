@@ -48,11 +48,11 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -132,15 +132,15 @@ public abstract class AbstractPolicyCatalogTest {
 
   private PolicyCatalog policyCatalog;
   private IcebergCatalog icebergCatalog;
-  private CallContext callContext;
   private AwsStorageConfigInfo storageConfigModel;
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
+  private RealmConfig realmConfig;
   private PolarisAdminService adminService;
   private FileIOFactory fileIOFactory;
-  private AuthenticatedPolarisPrincipal authenticatedRoot;
+  private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
   private ReservedProperties reservedProperties;
@@ -175,12 +175,11 @@ public abstract class AbstractPolicyCatalogTest {
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore);
-
-    callContext = polarisContext;
+    realmConfig = polarisContext.getRealmConfig();
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
+    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
@@ -190,12 +189,12 @@ public abstract class AbstractPolicyCatalogTest {
 
     adminService =
         new PolarisAdminService(
-            callContext,
+            polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(),
+            new PolarisAuthorizerImpl(realmConfig),
             reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
@@ -219,14 +218,13 @@ public abstract class AbstractPolicyCatalogTest {
                     .addProperty(
                         FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                         "true")
-                    .setStorageConfigurationInfo(
-                        polarisContext, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
+            polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
@@ -250,13 +248,13 @@ public abstract class AbstractPolicyCatalogTest {
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
-    this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
+    this.policyCatalog = new PolicyCatalog(metaStoreManager, polarisContext, passthroughView);
     this.icebergCatalog =
         new IcebergCatalog(
             storageCredentialCache,
             resolverFactory,
             metaStoreManager,
-            callContext,
+            polarisContext,
             passthroughView,
             securityContext,
             taskExecutor,

@@ -1,0 +1,100 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+services:
+
+  polaris:
+    image: apache/polaris:latest
+    ports:
+      # API port
+      - "8181:8181"
+      # Management port (metrics and health checks)
+      - "8182:8182"
+      # Optional, allows attaching a debugger to the Polaris JVM
+      - "5005:5005"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      JAVA_DEBUG: true
+      JAVA_DEBUG_PORT: "*:5005"
+      POLARIS_BOOTSTRAP_CREDENTIALS: realm-internal,root,s3cr3t;realm-external,root,s3cr3t;realm-mixed,root,s3cr3t
+      polaris.realm-context.realms: realm-internal,realm-external,realm-mixed
+      polaris.authentication.type: internal
+      polaris.authentication."realm-external".type: external
+      polaris.authentication."realm-mixed".type: mixed
+      quarkus.oidc.tenant-enabled: true
+      quarkus.oidc.auth-server-url: http://keycloak:8080/realms/iceberg
+      quarkus.oidc.client-id: client1
+      quarkus.oidc.roles.role-claim-path: principal_roles
+      polaris.oidc.principal-mapper.id-claim-path: principal_id
+      polaris.oidc.principal-mapper.name-claim-path: principal_name
+      polaris.oidc.principal-roles-mapper.mappings[0].regex: (.+)
+      polaris.oidc.principal-roles-mapper.mappings[0].replacement: PRINCIPAL_ROLE:$1
+      polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
+      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+      polaris.readiness.ignore-severe-issues: "true"
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  polaris-setup:
+    image: alpine/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      - CLIENT_ID=root
+      - CLIENT_SECRET=s3cr3t
+    volumes:
+      - ../assets/polaris/:/polaris
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        apk add --no-cache jq && 
+        chmod +x /polaris/create-catalog.sh && 
+        token=$$(curl http://keycloak:8080/realms/iceberg/protocol/openid-connect/token --user client1:s3cr3t -d 'grant_type=client_credentials' | jq -r .access_token) && 
+        /polaris/create-catalog.sh realm-internal && 
+        /polaris/create-catalog.sh realm-external $$token && 
+        /polaris/create-catalog.sh realm-mixed $$token
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3.2
+    ports:
+      - "8080:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      - ../assets/keycloak/iceberg-realm.json:/opt/keycloak/data/import/iceberg-realm.json
+    command: [
+      "start-dev",
+      "--import-realm",
+      "--health-enabled=true"
+    ]
+    healthcheck:
+      test: "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"
+      interval: 5s
+      timeout: 2s
+      retries: 15
+

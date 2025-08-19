@@ -119,8 +119,7 @@ public class PolarisPolicyServiceIntegrationTest {
 
   private static URI s3BucketBase;
   private static String principalRoleName;
-  private static ClientCredentials adminCredentials;
-  private static PrincipalWithCredentials principalCredentials;
+  private static String adminToken;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
@@ -155,17 +154,19 @@ public class PolarisPolicyServiceIntegrationTest {
   @BeforeAll
   public static void setup(
       PolarisApiEndpoints apiEndpoints, ClientCredentials credentials, @TempDir Path tempDir) {
-    adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    managementApi = client.managementApi(credentials);
+    adminToken = client.obtainToken(credentials);
+    managementApi = client.managementApi(adminToken);
     String principalName = client.newEntityName("snowman-rest");
     principalRoleName = client.newEntityName("rest-admin");
-    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    PrincipalWithCredentials principalCredentials =
+        managementApi.createPrincipalWithRole(principalName, principalRoleName);
     URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
     s3BucketBase = testRootUri.resolve("my-bucket");
 
-    policyApi = client.policyApi(principalCredentials);
+    String principalToken = client.obtainToken(principalCredentials);
+    policyApi = client.policyApi(principalToken);
   }
 
   @AfterAll
@@ -184,9 +185,6 @@ public class PolarisPolicyServiceIntegrationTest {
     currentCatalogName = client.newEntityName(method.getName());
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
-            .setRoleArn(TEST_ROLE_ARN)
-            .setExternalId("externalId")
-            .setUserArn("a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
@@ -239,13 +237,10 @@ public class PolarisPolicyServiceIntegrationTest {
           }
         });
 
+    String principalToken = client.obtainToken(principalCredentials);
     restCatalog =
         IcebergHelper.restCatalog(
-            client,
-            endpoints,
-            principalCredentials,
-            currentCatalogName,
-            extraPropertiesBuilder.build());
+            endpoints, currentCatalogName, extraPropertiesBuilder.build(), principalToken);
     CatalogGrant catalogGrant =
         new CatalogGrant(CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
     managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_1);
@@ -254,12 +249,12 @@ public class PolarisPolicyServiceIntegrationTest {
     managementApi.grantCatalogRoleToPrincipalRole(
         principalRoleName, currentCatalogName, catalogRole);
 
-    policyApi = client.policyApi(principalCredentials);
+    policyApi = client.policyApi(principalToken);
   }
 
   @AfterEach
   public void cleanUp() {
-    client.cleanUp(adminCredentials);
+    client.cleanUp(adminToken);
   }
 
   @Test

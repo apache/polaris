@@ -24,6 +24,7 @@ dependencies {
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-catalog-service"))
 
+  implementation(libs.jakarta.annotation.api)
   implementation(libs.jakarta.ws.rs.api)
   implementation(libs.guava)
 

@@ -57,7 +57,9 @@ public class CatalogSerializationTest {
             Catalog.TypeEnum.INTERNAL,
             TEST_CATALOG_NAME,
             new CatalogProperties(TEST_LOCATION),
-            new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3));
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn(TEST_ROLE_ARN)
+                .build());
 
     String json = mapper.writeValueAsString(catalog);
 
@@ -83,7 +85,9 @@ public class CatalogSerializationTest {
                     Catalog.TypeEnum.INTERNAL,
                     TEST_CATALOG_NAME,
                     new CatalogProperties(TEST_LOCATION),
-                    new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3))),
+                    AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                        .setRoleArn(TEST_ROLE_ARN)
+                        .build())),
             Arguments.of("Null fields", new Catalog(Catalog.TypeEnum.INTERNAL, null, null, null)),
             Arguments.of(
                 "Long name",
@@ -102,14 +106,16 @@ public class CatalogSerializationTest {
                     Catalog.TypeEnum.INTERNAL,
                     "",
                     new CatalogProperties(""),
-                    new AwsStorageConfigInfo("", StorageConfigInfo.StorageTypeEnum.S3))),
+                    new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))),
             Arguments.of(
                 "Special characters",
                 new Catalog(
                     Catalog.TypeEnum.INTERNAL,
                     "test\"catalog",
                     new CatalogProperties(TEST_LOCATION),
-                    new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3))),
+                    AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                        .setRoleArn(TEST_ROLE_ARN)
+                        .build())),
             Arguments.of(
                 "Whitespace",
                 new Catalog(
@@ -131,7 +137,9 @@ public class CatalogSerializationTest {
                             Catalog.TypeEnum.INTERNAL,
                             TEST_CATALOG_NAME,
                             new CatalogProperties(TEST_LOCATION),
-                            new AwsStorageConfigInfo(arn, StorageConfigInfo.StorageTypeEnum.S3))));
+                            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                                .setRoleArn(arn)
+                                .build())));
 
     return Stream.concat(basicCases, arnCases);
   }

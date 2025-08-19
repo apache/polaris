@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.auth.external;
 
-import static org.apache.polaris.service.auth.external.OidcTenantResolvingAugmentor.getOidcTenantConfig;
+import static org.apache.polaris.service.auth.external.tenant.OidcTenantResolvingAugmentor.getOidcTenantConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -27,7 +27,9 @@ import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import java.security.Principal;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantResolvingAugmentor;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

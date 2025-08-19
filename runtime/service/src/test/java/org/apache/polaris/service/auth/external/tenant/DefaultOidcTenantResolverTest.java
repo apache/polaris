@@ -28,7 +28,6 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.service.auth.external.OidcConfiguration;
-import org.apache.polaris.service.auth.external.OidcTenantConfiguration;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

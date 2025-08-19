@@ -37,6 +37,8 @@ services:
       polaris.features."DROP_WITH_PURGE_ENABLED": "true"
       polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
       polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
+      polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS": "true"
+      polaris.features."ENABLE_CATALOG_FEDERATION": "true"
       polaris.readiness.ignore-severe-issues: "true"
     volumes:
       - ./credentials:/tmp/credentials/

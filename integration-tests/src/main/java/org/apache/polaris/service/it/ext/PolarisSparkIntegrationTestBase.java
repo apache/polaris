@@ -81,8 +81,8 @@ public abstract class PolarisSparkIntegrationTestBase {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     sparkToken = client.obtainToken(credentials);
-    managementApi = client.managementApi(credentials);
-    catalogApi = client.catalogApi(credentials);
+    managementApi = client.managementApi(sparkToken);
+    catalogApi = client.catalogApi(sparkToken);
 
     warehouseDir = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve("spark-warehouse");
 

@@ -26,6 +26,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import jakarta.ws.rs.client.Client;
+import java.net.URI;
+import java.util.Map;
 import java.util.Random;
 import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
@@ -73,7 +75,7 @@ public final class PolarisClient implements AutoCloseable {
   /**
    * This method should be used by test code to make top-level entity names. The purpose of this
    * method is two-fold:
-   * <li>Identify top-level entities for latger clean-up by {@link #cleanUp(ClientCredentials)}.
+   * <li>Identify top-level entities for later clean-up by {@link #cleanUp(String)}.
    * <li>Allow {@link PolarisServerManager}s to customize top-level entities per environment.
    */
   public String newEntityName(String hint) {
@@ -84,70 +86,53 @@ public final class PolarisClient implements AutoCloseable {
     return new ManagementApi(client, endpoints, authToken, endpoints.managementApiEndpoint());
   }
 
-  public ManagementApi managementApi(ClientCredentials credentials) {
-    return managementApi(obtainToken(credentials));
-  }
-
-  public ManagementApi managementApi(PrincipalWithCredentials principal) {
-    return managementApi(obtainToken(principal));
-  }
-
-  public CatalogApi catalogApi(PrincipalWithCredentials principal) {
-    return new CatalogApi(
-        client, endpoints, obtainToken(principal), endpoints.catalogApiEndpoint());
-  }
-
-  public CatalogApi catalogApi(ClientCredentials credentials) {
-    return new CatalogApi(
-        client, endpoints, obtainToken(credentials), endpoints.catalogApiEndpoint());
+  public CatalogApi catalogApi(String authToken) {
+    return new CatalogApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
   }
 
   public CatalogApi catalogApiPlain() {
     return new CatalogApi(client, endpoints, null, endpoints.catalogApiEndpoint());
   }
 
-  public GenericTableApi genericTableApi(PrincipalWithCredentials principal) {
-    return new GenericTableApi(
-        client, endpoints, obtainToken(principal), endpoints.catalogApiEndpoint());
+  public GenericTableApi genericTableApi(String authToken) {
+    return new GenericTableApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
   }
 
-  public GenericTableApi genericTableApi(ClientCredentials credentials) {
-    return new GenericTableApi(
-        client, endpoints, obtainToken(credentials), endpoints.catalogApiEndpoint());
+  public PolicyApi policyApi(String authToken) {
+    return new PolicyApi(client, endpoints, authToken, endpoints.catalogApiEndpoint());
   }
 
-  public PolicyApi policyApi(PrincipalWithCredentials principal) {
-    return new PolicyApi(client, endpoints, obtainToken(principal), endpoints.catalogApiEndpoint());
+  /** Requests an access token from the Polaris server for the given principal. */
+  public String obtainToken(PrincipalWithCredentials credentials) {
+    return obtainToken(new ClientPrincipal(credentials));
   }
 
-  public PolicyApi policyApi(ClientCredentials credentials) {
-    return new PolicyApi(
-        client, endpoints, obtainToken(credentials), endpoints.catalogApiEndpoint());
+  /** Requests an access token from the Polaris server for the given principal. */
+  public String obtainToken(ClientPrincipal principal) {
+    return obtainToken(principal.credentials());
+  }
+
+  /** Requests an access token from the Polaris server for the given credentials. */
+  public String obtainToken(ClientCredentials credentials) {
+    OAuth2Api api = new OAuth2Api(client, endpoints.catalogApiEndpoint(), "v1/oauth/tokens");
+    return api.obtainAccessToken(credentials, "PRINCIPAL_ROLE:ALL");
   }
 
   /**
-   * Requests an access token from the Polaris server for the client ID/secret pair that is part of
-   * the given principal data object.
+   * Requests an access token from the authorization server denoted by the issuer URL and token
+   * endpoint path.
    */
-  public String obtainToken(PrincipalWithCredentials principal) {
-    return obtainToken(
-        new ClientCredentials(
-            principal.getCredentials().getClientId(),
-            principal.getCredentials().getClientSecret()));
+  public String obtainToken(URI issuerUrl, String endpointPath, Map<String, String> requestBody) {
+    return new OAuth2Api(client, issuerUrl, endpointPath).obtainAccessToken(requestBody);
   }
 
-  /** Requests an access token from the Polaris server for the given {@link ClientCredentials}. */
-  public String obtainToken(ClientCredentials credentials) {
-    return polarisServerManager().accessManager(client).obtainAccessToken(endpoints, credentials);
-  }
-
-  private boolean ownedName(String name) {
+  public boolean ownedName(String name) {
     return name != null && name.contains(clientId);
   }
 
-  public void cleanUp(ClientCredentials credentials) {
-    ManagementApi managementApi = managementApi(credentials);
-    CatalogApi catalogApi = catalogApi(credentials);
+  public void cleanUp(String authToken) {
+    ManagementApi managementApi = managementApi(authToken);
+    CatalogApi catalogApi = catalogApi(authToken);
 
     managementApi.listCatalogs().stream()
         .filter(c -> ownedName(c.getName()))
