@@ -196,7 +196,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .key("PURGE_VIEW_METADATA_ON_DROP")
           .catalogConfig("polaris.config.purge-view-metadata-on-drop")
           .description(
-              "Indicates whether Polaris should purge view metadata files when a view is dropped.")
+              "If set to true, Polaris will attempt to delete view metadata files when a view is dropped.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 
