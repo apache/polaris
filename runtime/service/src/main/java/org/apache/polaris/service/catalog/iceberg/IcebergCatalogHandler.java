@@ -210,7 +210,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
-          callContext.getRealmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+          realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
 
       Catalog federatedCatalog;
       ConnectionType connectionType =
@@ -688,17 +688,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
     LOGGER.info(
         "allow external catalog credential vending: {}",
-        callContext
-            .getRealmConfig()
-            .getConfig(
-                FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
+        realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
-        && !callContext
-            .getRealmConfig()
-            .getConfig(
-                FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
+        && !realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
       throw new ForbiddenException(
           "Access Delegation is not enabled for this catalog. Please consult applicable "
               + "documentation for the catalog config property '%s' to enable this feature",
@@ -952,10 +948,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                           if (!currentMetadata
                                   .location()
                                   .equals(((MetadataUpdate.SetLocation) singleUpdate).location())
-                              && !callContext
-                                  .getRealmConfig()
-                                  .getConfig(
-                                      FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+                              && !realmConfig.getConfig(
+                                  FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
                             throw new BadRequestException(
                                 "Unsupported operation: commitTransaction containing SetLocation"
                                     + " for table '%s' and new location '%s'",

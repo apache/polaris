@@ -238,7 +238,7 @@ public abstract class PolarisAuthzTestBase {
     callContext = polarisContext;
     realmConfig = polarisContext.getRealmConfig();
 
-    polarisAuthorizer = new PolarisAuthorizerImpl(polarisContext.getRealmConfig());
+    polarisAuthorizer = new PolarisAuthorizerImpl(realmConfig);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

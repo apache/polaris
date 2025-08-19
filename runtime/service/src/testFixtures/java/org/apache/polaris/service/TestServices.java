@@ -39,6 +39,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -89,6 +90,7 @@ public record TestServices(
     ResolutionManifestFactory resolutionManifestFactory,
     MetaStoreManagerFactory metaStoreManagerFactory,
     RealmContext realmContext,
+    RealmConfig realmConfig,
     SecurityContext securityContext,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
@@ -175,13 +177,13 @@ public record TestServices(
       CallContext callContext =
           new PolarisCallContext(
               realmContext, metaStoreSession, polarisDiagnostics, configurationStore);
+      RealmConfig realmConfig = callContext.getRealmConfig();
 
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
       EntityCache entityCache =
-          metaStoreManagerFactory.getOrCreateEntityCache(
-              realmContext, callContext.getRealmConfig());
+          metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
       ResolverFactory resolverFactory =
           (_callContext, securityContext, referenceCatalogName) ->
               new Resolver(
@@ -213,8 +215,7 @@ public record TestServices(
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
-      CatalogHandlerUtils catalogHandlerUtils =
-          new CatalogHandlerUtils(callContext.getRealmConfig());
+      CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(realmConfig);
 
       @SuppressWarnings("unchecked")
       Instance<ExternalCatalogFactory> externalCatalogFactory = Mockito.mock(Instance.class);
@@ -297,6 +298,7 @@ public record TestServices(
           resolutionManifestFactory,
           metaStoreManagerFactory,
           realmContext,
+          realmConfig,
           securityContext,
           fileIOFactory,
           taskExecutor,
