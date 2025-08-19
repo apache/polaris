@@ -1014,8 +1014,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       principalBuilder.entityVersion(principal.getEntityVersion());
     } else {
       principalBuilder.entityVersion(principal.getEntityVersion() + 1);
+      ms.writeEntityInCurrentTxn(callCtx, principalBuilder.build(), true, principal);
     }
-    ms.writeEntityInCurrentTxn(callCtx, principalBuilder.build(), true, principal);
     return secrets;
   }
 
