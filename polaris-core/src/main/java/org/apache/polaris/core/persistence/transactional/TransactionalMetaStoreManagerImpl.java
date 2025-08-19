@@ -93,6 +93,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   private final PolarisDiagnostics diagnostics;
 
   public TransactionalMetaStoreManagerImpl(Clock clock, PolarisDiagnostics diagnostics) {
+    super(diagnostics);
     this.clock = clock;
     this.diagnostics = diagnostics;
   }
