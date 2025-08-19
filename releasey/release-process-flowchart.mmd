@@ -1,0 +1,29 @@
+flowchart TD
+    B["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/><br/>• Create a new branch from the Git SHA<br/>• Push the branch to the remote repository"]
+
+    B --> C["👤 Release Manager<br/><br/>• Cherry pick the commits from main branch to release branch<br/>• Ensure that the changelog is up to date<br/>• Create a pull request to add the commits<br/>• Get the pull request approved and merged"]
+
+    C --> D["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/><br/>• Verify that all Github checks are passing<br/>• Update the project version files<br/>• Finalize the changelog for the release<br/>• Commit the changes to release branch<br/>• Create the RC tag<br/>• Push the branch and the tag"]
+
+    D --> E["🤖 GitHub Workflow<br/>⚡ Automated on version update workflow<br/><br/>• Build the source and binary artifacts<br/>• Stage artifacts to dist dev repository<br/>• Publish artifacts to Nexus staging repository<br/>• Close Nexus staging repository"]
+
+    E --> F["🤖 GitHub Workflow<br/>⚡ Automated on binary artifacts build workflow<br/><br/>• Build Docker images for server and admin tool<br/>• Publish Docker images on DockerHub"]
+
+    F --> G["🤖 GitHub Workflow<br/>⚡ Automated on Docker images build workflow<br/><br/>• Build the Helm chart<br/>• Create signature and checksum for Helm package files<br/>• Copy package files to dist dev repository"]
+
+    E --> H["👤 Release Manager<br/><br/>• Start vote thread on dev mailing list<br/>• Wait for the vote to pass<br/>• Start vote thread on incubator mailing list<br/>• Wait for the vote to pass"]
+
+    F --> H
+    G --> H
+
+    H --> I["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/><br/>• Copy distribution from dist dev to dist release space<br/>• Create a final release tag to Git repository<br/>• Update the Github release accordingly<br/>• Release the candidate repository on Nexus"]
+
+    I --> J["👤 Release Manager<br/><br/>• Update documentation - TBD - Process yet to be determined"]
+
+    I --> K["👤 Release Manager<br/><br/>• Send announcement e-mail to dev mailing list<br/>• Send announcement to announce Apache mailing list"]
+
+    %% Class definition for left-aligned text
+    classDef leftAlign text-align:left;
+
+    %% Apply left-align class to all nodes
+    class A,B,C,D,E,F,G,H,I,J,K leftAlign;
