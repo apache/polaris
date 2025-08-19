@@ -38,9 +38,9 @@ import org.apache.polaris.service.types.LoadGenericTableResponse;
 /**
  * A simple, non-exhaustive set of helper methods for accessing the generic tables REST API
  *
- * @see PolarisClient#genericTableApi(ClientCredentials)
+ * @see PolarisClient#genericTableApi(String)
  */
-public class GenericTableApi extends RestApi {
+public class GenericTableApi extends PolarisRestApi {
   GenericTableApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);
   }

@@ -32,7 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -68,7 +68,7 @@ public class Resolver {
   @Nullable private final EntityCache cache;
 
   // the id of the principal making the call or 0 if unknown
-  private final @Nonnull AuthenticatedPolarisPrincipal polarisPrincipal;
+  private final @Nonnull PolarisPrincipal polarisPrincipal;
   private final @Nonnull SecurityContext securityContext;
 
   // reference catalog name for name resolution
@@ -116,7 +116,7 @@ public class Resolver {
    *
    * @param polarisCallContext the polaris call context
    * @param polarisMetaStoreManager meta store manager
-   * @param securityContext The {@link AuthenticatedPolarisPrincipal} for the current request
+   * @param securityContext The {@link SecurityContext} for the current request
    * @param cache shared entity cache
    * @param referenceCatalogName if not null, specifies the name of the reference catalog. The
    *     reference catalog is the catalog used to resolve catalog roles and catalog path. Also, if a
@@ -147,12 +147,12 @@ public class Resolver {
     this.diagnostics.checkNotNull(
         securityContext.getUserPrincipal(), "principal_must_be_specified");
     this.diagnostics.check(
-        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
         "unexpected_principal_type",
         "class={}",
         securityContext.getUserPrincipal().getClass().getName());
 
-    this.polarisPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+    this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     // paths to resolve
     this.pathsToResolve = new ArrayList<>();
     this.resolvedPaths = new ArrayList<>();
@@ -758,7 +758,7 @@ public class Resolver {
             toValidate,
             PolarisEntityType.PRINCIPAL,
             PolarisEntityConstants.getNullId(),
-            polarisPrincipal.getPrincipalEntity().getId());
+            polarisPrincipal.getId());
 
     // if the principal was not found, we can end right there
     if (this.resolvedCallerPrincipal == null
@@ -768,10 +768,9 @@ public class Resolver {
 
     // activate all principal roles specified in the authenticated principal
     resolvedCallerPrincipalRoles =
-        this.polarisPrincipal.getActivatedPrincipalRoleNames().isEmpty()
+        this.polarisPrincipal.getRoles().isEmpty()
             ? resolveAllPrincipalRoles(toValidate, resolvedCallerPrincipal)
-            : resolvePrincipalRolesByName(
-                toValidate, this.polarisPrincipal.getActivatedPrincipalRoleNames());
+            : resolvePrincipalRolesByName(toValidate, this.polarisPrincipal.getRoles());
 
     // total success
     return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);

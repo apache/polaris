@@ -16,12 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.ext;
 
-import org.apache.polaris.service.it.env.ClientCredentials;
-import org.apache.polaris.service.it.env.PolarisApiEndpoints;
+package org.apache.polaris.service.auth.internal;
 
-public interface PolarisAccessManager {
+import io.quarkus.security.identity.request.BaseAuthenticationRequest;
+import org.apache.polaris.service.auth.PolarisCredential;
 
-  String obtainAccessToken(PolarisApiEndpoints endpoints, ClientCredentials credentials);
+final class InternalAuthenticationRequest extends BaseAuthenticationRequest {
+
+  private final PolarisCredential credential;
+
+  InternalAuthenticationRequest(PolarisCredential credential) {
+    this.credential = credential;
+  }
+
+  PolarisCredential getCredential() {
+    return credential;
+  }
 }

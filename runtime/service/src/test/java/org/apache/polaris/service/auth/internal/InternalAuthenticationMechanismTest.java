@@ -29,7 +29,6 @@ import static org.mockito.Mockito.when;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
-import io.quarkus.security.identity.request.TokenAuthenticationRequest;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
@@ -128,7 +127,7 @@ public class InternalAuthenticationMechanismTest {
         .isInstanceOf(AuthenticationFailedException.class)
         .hasCause(cause);
     verify(tokenBroker).verify("invalidToken");
-    verify(identityProviderManager, never()).authenticate(any(TokenAuthenticationRequest.class));
+    verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
   }
 
   @Test
@@ -148,7 +147,7 @@ public class InternalAuthenticationMechanismTest {
 
     assertThat(result.await().indefinitely()).isNull();
     verify(tokenBroker).verify("invalidToken");
-    verify(identityProviderManager, never()).authenticate(any(TokenAuthenticationRequest.class));
+    verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
   }
 
   @Test
@@ -168,6 +167,6 @@ public class InternalAuthenticationMechanismTest {
 
     assertThat(result.await().indefinitely()).isSameAs(securityIdentity);
     verify(tokenBroker).verify("validToken");
-    verify(identityProviderManager).authenticate(any(TokenAuthenticationRequest.class));
+    verify(identityProviderManager).authenticate(any(InternalAuthenticationRequest.class));
   }
 }

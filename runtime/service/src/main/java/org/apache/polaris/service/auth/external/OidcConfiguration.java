@@ -25,6 +25,7 @@ import io.smallrye.config.WithName;
 import io.smallrye.config.WithParentName;
 import io.smallrye.config.WithUnnamedKey;
 import java.util.Map;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
 
 /** Polaris-specific configuration for OIDC tenants. */

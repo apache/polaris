@@ -23,10 +23,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * A specialized {@link PrincipalAuthInfo} used for internal authentication, when Polaris is the
+ * A specialized {@link PolarisCredential} used for internal authentication, when Polaris is the
  * identity provider.
  */
-public interface DecodedToken extends PrincipalAuthInfo {
+public interface DecodedToken extends PolarisCredential {
 
   String getClientId();
 

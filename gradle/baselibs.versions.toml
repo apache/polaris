@@ -22,5 +22,5 @@ errorprone = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version = "4
 idea-ext = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version = "1.2" }
 license-report = { module = "com.github.jk1:gradle-license-report", version = "2.9" }
 nexus-publish = { module = "io.github.gradle-nexus:publish-plugin", version = "2.0.0" }
-shadow = { module = "com.gradleup.shadow:shadow-gradle-plugin", version = "9.0.1" }
+shadow = { module = "com.gradleup.shadow:shadow-gradle-plugin", version = "9.0.2" }
 spotless = { module = "com.diffplug.spotless:spotless-plugin-gradle", version = "7.2.1" }

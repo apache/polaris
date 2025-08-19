@@ -41,10 +41,12 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -110,12 +112,12 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
+  private RealmConfig realmConfig;
   private PolarisAdminService adminService;
   private FileIOFactory fileIOFactory;
-  private AuthenticatedPolarisPrincipal authenticatedRoot;
+  private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
-  private ReservedProperties reservedProperties;
 
   protected static final Schema SCHEMA =
       new Schema(
@@ -152,16 +154,18 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             diagServices,
             configurationStore);
+    realmConfig = polarisContext.getRealmConfig();
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
+    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
 
-    reservedProperties = ReservedProperties.NONE;
+    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
+    ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     adminService =
         new PolarisAdminService(
@@ -170,7 +174,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(),
+            authorizer,
             reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";
@@ -196,8 +200,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
-                    .setStorageConfigurationInfo(
-                        polarisContext, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
 

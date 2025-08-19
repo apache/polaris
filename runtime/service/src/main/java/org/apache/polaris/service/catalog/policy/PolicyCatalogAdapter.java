@@ -19,18 +19,23 @@
 package org.apache.polaris.service.catalog.policy;
 
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogPolicyApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
@@ -50,11 +55,14 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
   private static final Logger LOGGER = LoggerFactory.getLogger(PolicyCatalogAdapter.class);
 
   private final RealmContext realmContext;
+  private final RealmConfig realmConfig;
   private final CallContext callContext;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisAuthorizer polarisAuthorizer;
   private final CatalogPrefixParser prefixParser;
+  private final UserSecretsManager userSecretsManager;
+  private final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   @Inject
   public PolicyCatalogAdapter(
@@ -63,18 +71,23 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       PolarisAuthorizer polarisAuthorizer,
-      CatalogPrefixParser prefixParser) {
+      CatalogPrefixParser prefixParser,
+      UserSecretsManager userSecretsManager,
+      @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.realmContext = realmContext;
     this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
+    this.userSecretsManager = userSecretsManager;
+    this.externalCatalogFactories = externalCatalogFactories;
   }
 
   private PolicyCatalogHandler newHandlerWrapper(SecurityContext securityContext, String prefix) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
-        callContext, FeatureConfiguration.ENABLE_POLICY_STORE);
+        realmConfig, FeatureConfiguration.ENABLE_POLICY_STORE);
     validatePrincipal(securityContext);
 
     return new PolicyCatalogHandler(
@@ -83,7 +96,9 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
         metaStoreManager,
         securityContext,
         prefixParser.prefixToCatalogName(realmContext, prefix),
-        polarisAuthorizer);
+        polarisAuthorizer,
+        userSecretsManager,
+        externalCatalogFactories);
   }
 
   @Override

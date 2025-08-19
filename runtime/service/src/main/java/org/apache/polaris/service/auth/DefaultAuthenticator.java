@@ -22,12 +22,11 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -38,15 +37,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The default authenticator that resolves a {@link PrincipalAuthInfo} to an {@link
- * AuthenticatedPolarisPrincipal}.
+ * The default {@link Authenticator}.
  *
  * <p>This authenticator is used in both internal and external authentication scenarios.
  */
 @RequestScoped
 @Identifier("default")
-public class DefaultAuthenticator
-    implements Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> {
+public class DefaultAuthenticator implements Authenticator {
 
   public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
   public static final String PRINCIPAL_ROLE_PREFIX = "PRINCIPAL_ROLE:";
@@ -57,7 +54,7 @@ public class DefaultAuthenticator
   @Inject CallContext callContext;
 
   @Override
-  public Optional<AuthenticatedPolarisPrincipal> authenticate(PrincipalAuthInfo credentials) {
+  public PolarisPrincipal authenticate(PolarisCredential credentials) {
     LOGGER.debug("Resolving principal for credentials={}", credentials);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
@@ -108,8 +105,6 @@ public class DefaultAuthenticator
 
     LOGGER.debug("Resolved principal: {}", principal);
 
-    AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(new PrincipalEntity(principal), activatedPrincipalRoles);
-    return Optional.of(authenticatedPrincipal);
+    return PersistedPolarisPrincipal.of(new PrincipalEntity(principal), activatedPrincipalRoles);
   }
 }

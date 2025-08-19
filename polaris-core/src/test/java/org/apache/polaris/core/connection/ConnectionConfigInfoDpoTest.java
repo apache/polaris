@@ -163,4 +163,65 @@ public class ConnectionConfigInfoDpoTest {
         objectMapper.readValue(expectedApiModelJson, ConnectionConfigInfo.class),
         connectionConfigInfoApiModel);
   }
+
+  @Test
+  void testSigV4AuthenticationParameters() throws JsonProcessingException {
+    // Test deserialization and reserialization of the persistence JSON.
+    String json =
+        ""
+            + "{"
+            + "  \"connectionTypeCode\": 1,"
+            + "  \"uri\": \"https://glue.us-west-2.amazonaws.com/iceberg\","
+            + "  \"remoteCatalogName\": \"123456789012\","
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationTypeCode\": 4,"
+            + "    \"roleArn\": \"arn:aws:iam::123456789012:role/glue-catalog-role\","
+            + "    \"roleSessionName\": \"polaris-catalog-federation\","
+            + "    \"externalId\": \"external-id\","
+            + "    \"signingRegion\": \"us-west-2\","
+            + "    \"signingName\": \"glue\""
+            + "  },"
+            + "  \"serviceIdentity\": {"
+            + "    \"identityTypeCode\": 1,"
+            + "    \"identityInfoReference\": {"
+            + "      \"urn\": \"urn:polaris-secret:default-identity-registry:my-realm:AWS_IAM\","
+            + "      \"referencePayload\": {"
+            + "        \"key\": \"value\""
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}";
+
+    ConnectionConfigInfoDpo connectionConfigInfoDpo = ConnectionConfigInfoDpo.deserialize(json);
+    Assertions.assertNotNull(connectionConfigInfoDpo);
+    JsonNode tree1 = objectMapper.readTree(json);
+    JsonNode tree2 = objectMapper.readTree(connectionConfigInfoDpo.serialize());
+    Assertions.assertEquals(tree1, tree2);
+
+    // Test conversion into API model JSON.
+    ConnectionConfigInfo connectionConfigInfoApiModel =
+        connectionConfigInfoDpo.asConnectionConfigInfoModel();
+    String expectedApiModelJson =
+        ""
+            + "{"
+            + "  \"connectionType\": \"ICEBERG_REST\","
+            + "  \"uri\": \"https://glue.us-west-2.amazonaws.com/iceberg\","
+            + "  \"remoteCatalogName\": \"123456789012\","
+            + "  \"authenticationParameters\": {"
+            + "    \"authenticationType\": \"SIGV4\","
+            + "    \"roleArn\": \"arn:aws:iam::123456789012:role/glue-catalog-role\","
+            + "    \"roleSessionName\": \"polaris-catalog-federation\","
+            + "    \"externalId\": \"external-id\","
+            + "    \"signingRegion\": \"us-west-2\","
+            + "    \"signingName\": \"glue\""
+            + "  },"
+            + "  \"serviceIdentity\": {"
+            + "    \"identityType\": \"AWS_IAM\","
+            + "    \"iamArn\": \"\""
+            + "  }"
+            + "}";
+    Assertions.assertEquals(
+        objectMapper.readValue(expectedApiModelJson, ConnectionConfigInfo.class),
+        connectionConfigInfoApiModel);
+  }
 }

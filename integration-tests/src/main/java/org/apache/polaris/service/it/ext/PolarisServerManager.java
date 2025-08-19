@@ -25,7 +25,6 @@ import com.fasterxml.jackson.jakarta.rs.json.JacksonJsonProvider;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import java.util.ServiceLoader;
-import org.apache.polaris.service.it.env.IcebergTokenAccessManager;
 import org.apache.polaris.service.it.env.Server;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -50,10 +49,6 @@ public interface PolarisServerManager {
    * this is not guaranteed.
    */
   Server serverForContext(ExtensionContext context);
-
-  default PolarisAccessManager accessManager(Client client) {
-    return new IcebergTokenAccessManager(client);
-  }
 
   /** Create a new HTTP client for accessing the server targeted by tests. */
   default Client createClient() {

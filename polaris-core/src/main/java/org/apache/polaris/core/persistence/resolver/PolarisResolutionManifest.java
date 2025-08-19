@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -83,7 +83,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     this.diagnostics.checkNotNull(securityContext, "null_security_context_for_resolution_manifest");
     this.securityContext = securityContext;
     diagnostics.check(
-        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
         "invalid_principal_type_for_resolution_manifest",
         "principal={}",
         securityContext.getUserPrincipal());

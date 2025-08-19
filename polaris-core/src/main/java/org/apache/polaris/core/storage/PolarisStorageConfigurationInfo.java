@@ -34,9 +34,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -117,7 +117,7 @@ public abstract class PolarisStorageConfigurationInfo {
   }
 
   public static Optional<PolarisStorageConfigurationInfo> forEntityPath(
-      PolarisCallContext callContext, List<PolarisEntity> entityPath) {
+      RealmConfig realmConfig, List<PolarisEntity> entityPath) {
     return findStorageInfoFromHierarchy(entityPath)
         .map(
             storageInfo ->
@@ -142,9 +142,8 @@ public abstract class PolarisStorageConfigurationInfo {
                       .orElse(null);
               CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
               boolean allowEscape =
-                  callContext
-                      .getRealmConfig()
-                      .getConfig(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION, catalog);
+                  realmConfig.getConfig(
+                      FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION, catalog);
               if (!allowEscape
                   && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
                   && baseLocation != null) {
