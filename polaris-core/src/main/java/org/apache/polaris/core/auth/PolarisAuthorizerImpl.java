@@ -582,6 +582,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     boolean enforceCredentialRotationRequiredState =
         realmConfig.getConfig(
             FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+    boolean isRoot = getRootPrincipalName().equals(polarisPrincipal.getName());
     if (enforceCredentialRotationRequiredState
         && polarisPrincipal
             .getProperties()
@@ -590,6 +591,14 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       throw new ForbiddenException(
           "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE",
           polarisPrincipal.getName(), authzOp);
+    } else if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
+      if (!isRoot) {
+        throw new ForbiddenException("Only Root principal(service-admin) can perform %s", authzOp);
+      }
+      LOGGER
+          .atDebug()
+          .addKeyValue("principalName", polarisPrincipal.getName())
+          .log("Root principal allowed to reset credentials");
     } else if (!isAuthorized(polarisPrincipal, activatedEntities, authzOp, targets, secondaries)) {
       throw new ForbiddenException(
           "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
@@ -597,17 +606,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
           polarisPrincipal.getRoles(),
           activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
           authzOp);
-    }
-  }
-
-  @Override
-  public void authorizeOrThrow(@Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal) {
-    boolean isRoot =
-        getRootPrincipalName().equals(authenticatedPrincipal.getPrincipalEntity().getName());
-    if (!isRoot) {
-      throw new ForbiddenException(
-          "Only %s principal can reset credentials",
-          authenticatedPrincipal.getPrincipalEntity().getName());
     }
   }
 
