@@ -238,6 +238,47 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Log in to Docker Hub
+        if: env.DRY_RUN == '0'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Publish Polaris Server Docker image to Docker Hub
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Publishing Polaris Server Docker image to Docker Hub..."
+          exec_process ./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.push=true \
+            -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
+            -Dquarkus.container-image.tag="${final_release_tag}"
+
+          print_success "Polaris Server Docker image published successfully"
+
+      - name: Publish Polaris Admin Tool Docker image to Docker Hub
+        run: |
+          releasey_dir="$(pwd)/releasey"
+          LIBS_DIR="${releasey_dir}/libs"
+
+          source "${LIBS_DIR}/_log.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          print_info "Publishing Polaris Admin Tool Docker image to Docker Hub..."
+          exec_process ./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.push=true \
+            -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
+            -Dquarkus.container-image.tag="${final_release_tag}"
+
+          print_success "Polaris Admin Tool Docker image published successfully"
+
       - name: Release candidate repository on Nexus
         env:
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}

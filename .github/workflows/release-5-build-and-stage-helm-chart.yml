@@ -28,7 +28,7 @@ on:
         type: boolean
         default: true
   workflow_run:
-    workflows: ["Build and Publish Docker Images"]
+    workflows: ["Build Docker Images"]
     types:
       - completed
 

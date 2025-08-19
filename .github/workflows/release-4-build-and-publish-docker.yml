@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: Release - 4 - Build and Publish Docker Images
+name: Release - 4 - Build Docker Images
 
 on:
   workflow_dispatch:
@@ -33,8 +33,8 @@ on:
       - completed
 
 jobs:
-  build-and-publish-docker:
-    name: Release - 4 - Build and Publish Docker Images
+  build-docker:
+    name: Release - 4 - Build Docker Images
     runs-on: ubuntu-latest
     # Only run if manually triggered or if the "Build and Publish Release Artifacts" workflow succeeded
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
@@ -122,14 +122,9 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Log in to Docker Hub
-        if: env.DRY_RUN == '0'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Polaris Server Docker image
+
+      - name: Build Polaris Server Docker image
         run: |
           releasey_dir="$(pwd)/releasey"
           LIBS_DIR="${releasey_dir}/libs"
@@ -137,16 +132,16 @@ jobs:
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Building and pushing Polaris Server Docker image..."
+          print_info "Building Polaris Server Docker image..."
           exec_process ./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true \
-            -Dquarkus.container-image.push=true \
+            -Dquarkus.container-image.push=false \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
             -Dquarkus.container-image.tag="${git_tag}"
 
-          print_success "Polaris Server Docker image processed successfully"
+          print_success "Polaris Server Docker image built successfully"
 
-      - name: Build and push Polaris Admin Tool Docker image
+      - name: Build Polaris Admin Tool Docker image
         run: |
           releasey_dir="$(pwd)/releasey"
           LIBS_DIR="${releasey_dir}/libs"
@@ -154,11 +149,11 @@ jobs:
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Building and pushing Polaris Admin Tool Docker image..."
+          print_info "Building Polaris Admin Tool Docker image..."
           exec_process ./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true \
-            -Dquarkus.container-image.push=true \
+            -Dquarkus.container-image.push=false \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
             -Dquarkus.container-image.tag="${git_tag}"
 
-          print_success "Polaris Admin Tool Docker image processed successfully"
+          print_success "Polaris Admin Tool Docker image built successfully"

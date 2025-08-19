@@ -7,7 +7,7 @@ flowchart TD
 
     D --> E["🤖 GitHub Workflow<br/>⚡ Automated on version update workflow<br/><br/>• Build the source and binary artifacts<br/>• Stage artifacts to dist dev repository<br/>• Publish artifacts to Nexus staging repository<br/>• Close Nexus staging repository"]
 
-    E --> F["🤖 GitHub Workflow<br/>⚡ Automated on binary artifacts build workflow<br/><br/>• Build Docker images for server and admin tool<br/>• Publish Docker images on DockerHub"]
+    E --> F["🤖 GitHub Workflow<br/>⚡ Automated on binary artifacts build workflow<br/><br/>• Build Docker images for server and admin tool"]
 
     F --> G["🤖 GitHub Workflow<br/>⚡ Automated on Docker images build workflow<br/><br/>• Build the Helm chart<br/>• Create signature and checksum for Helm package files<br/>• Copy package files to dist dev repository"]
 
@@ -16,7 +16,7 @@ flowchart TD
     F --> H
     G --> H
 
-    H --> I["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/><br/>• Copy distribution from dist dev to dist release space<br/>• Create a final release tag to Git repository<br/>• Create the GitHub release<br/>• Release the candidate repository on Nexus"]
+    H --> I["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/><br/>• Copy distribution from dist dev to dist release space<br/>• Create a final release tag to Git repository<br/>• Create the GitHub release<br/>• Publish Docker images to DockerHub<br/>• Release the candidate repository on Nexus"]
 
     I --> J["👤 Release Manager<br/><br/>• Update documentation - TBD - Process yet to be determined"]
 
