@@ -1213,13 +1213,13 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Catalog catalog = managementApi.getCatalog(currentCatalogName);
     Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
     catalogProps.put(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false");
-    catalogProps.put(FeatureConfiguration.PURGE_VIEWS_ON_DROP.catalogConfig(), "true");
+    catalogProps.put(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "true");
     managementApi.updateCatalog(catalog, catalogProps);
 
     assertThatThrownBy(() -> restCatalog.dropView(id)).isInstanceOf(ForbiddenException.class);
 
     catalog = managementApi.getCatalog(currentCatalogName);
-    catalogProps.put(FeatureConfiguration.PURGE_VIEWS_ON_DROP.catalogConfig(), "false");
+    catalogProps.put(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "false");
     managementApi.updateCatalog(catalog, catalogProps);
 
     assertThatCode(() -> restCatalog.dropView(id)).doesNotThrowAnyException();
