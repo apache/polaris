@@ -160,6 +160,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.catalogHandlerUtils = catalogHandlerUtils;
   }
 
+  private CatalogEntity getResolvedCatalogEntity() {
+    PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
+    diagnostics.checkNotNull(catalogPath, "No catalog available");
+    return CatalogEntity.of(catalogPath.getRawLeafEntity());
+  }
+
   /**
    * TODO: Make the helper in org.apache.iceberg.rest.CatalogHandlers public instead of needing to
    * copy/paste here.
@@ -200,8 +206,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   @Override
   protected void initializeCatalog() {
-    CatalogEntity resolvedCatalogEntity =
-        CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+    CatalogEntity resolvedCatalogEntity = getResolvedCatalogEntity();
     ConnectionConfigInfoDpo connectionConfigInfoDpo =
         resolvedCatalogEntity.getConnectionConfigInfoDpo();
     if (connectionConfigInfoDpo != null) {
@@ -363,12 +368,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
@@ -399,12 +399,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
         op, TableIdentifier.of(namespace, request.name()));
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
@@ -496,12 +491,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
         op, TableIdentifier.of(namespace, request.name()));
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
@@ -516,12 +506,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
         op, TableIdentifier.of(namespace, request.name()));
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
@@ -566,12 +551,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicNamespaceOperationOrThrow(
         op, Namespace.empty(), extraPassthroughNamespaces, extraPassthroughTableLikes, null);
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog
         .getCatalogType()
         .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.INTERNAL)) {
@@ -682,9 +662,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
-    PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
-    diagnostics.checkNotNull(catalogPath, "No catalog available for loadTable request");
-    CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+
     LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
     LOGGER.info(
         "allow external catalog credential vending: {}",
@@ -798,12 +777,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
@@ -816,12 +790,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_TABLE_FOR_STAGED_CREATE;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, tableIdentifier);
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
@@ -842,12 +811,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot drop table on static-facade external catalogs.");
     }
@@ -868,12 +832,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeRenameTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, request.source(), request.destination());
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot rename table on static-facade external catalogs.");
     }
@@ -892,12 +851,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         commitTransactionRequest.tableChanges().stream()
             .map(UpdateTableRequest::identifier)
             .toList());
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
     }
@@ -1014,12 +968,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
         op, TableIdentifier.of(namespace, request.name()));
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot create view on static-facade external catalogs.");
     }
@@ -1037,12 +986,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REPLACE_VIEW;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot replace view on static-facade external catalogs.");
     }
@@ -1069,12 +1013,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     authorizeRenameTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_VIEW, request.source(), request.destination());
 
-    CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+    CatalogEntity catalog = getResolvedCatalogEntity();
     if (isStaticFacade(catalog)) {
       throw new BadRequestException("Cannot rename view on static-facade external catalogs.");
     }
