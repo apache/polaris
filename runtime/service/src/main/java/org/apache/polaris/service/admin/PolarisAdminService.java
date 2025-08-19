@@ -79,6 +79,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -138,6 +139,7 @@ public class PolarisAdminService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAdminService.class);
 
   private final CallContext callContext;
+  private final RealmConfig realmConfig;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final SecurityContext securityContext;
   private final PolarisPrincipal polarisPrincipal;
@@ -158,6 +160,7 @@ public class PolarisAdminService {
       @NotNull PolarisAuthorizer authorizer,
       @NotNull ReservedProperties reservedProperties) {
     this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.securityContext = securityContext;
@@ -643,7 +646,7 @@ public class PolarisAdminService {
    */
   private boolean catalogOverlapsWithExistingCatalog(CatalogEntity catalogEntity) {
     boolean allowOverlappingCatalogUrls =
-        callContext.getRealmConfig().getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
+        realmConfig.getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
     if (allowOverlappingCatalogUrls) {
       return false;
     }
@@ -744,8 +747,7 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
     authorizeBasicRootOperationOrThrow(op);
 
-    CatalogEntity entity =
-        CatalogEntity.fromCatalog(callContext.getRealmConfig(), catalogRequest.getCatalog());
+    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalogRequest.getCatalog());
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
@@ -773,11 +775,10 @@ public class PolarisAdminService {
             .addKeyValue("catalogName", entity.getName())
             .log("Creating a federated catalog");
         FeatureConfiguration.enforceFeatureEnabledOrThrow(
-            callContext.getRealmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+            realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
         Map<String, SecretReference> processedSecretReferences = Map.of();
         List<String> supportedAuthenticationTypes =
-            callContext
-                .getRealmConfig()
+            realmConfig
                 .getConfig(FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
                 .stream()
                 .map(s -> s.toUpperCase(Locale.ROOT))
@@ -830,8 +831,7 @@ public class PolarisAdminService {
         findCatalogByName(name)
             .orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
     // TODO: Handle return value in case of concurrent modification
-    boolean cleanup =
-        callContext.getRealmConfig().getConfig(FeatureConfiguration.CLEANUP_ON_CATALOG_DROP);
+    boolean cleanup = realmConfig.getConfig(FeatureConfiguration.CLEANUP_ON_CATALOG_DROP);
     DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), cleanup);
@@ -950,7 +950,7 @@ public class PolarisAdminService {
     }
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(
-          callContext.getRealmConfig(), updateRequest.getStorageConfigInfo(), defaultBaseLocation);
+          realmConfig, updateRequest.getStorageConfigInfo(), defaultBaseLocation);
     }
     CatalogEntity updatedEntity = updateBuilder.build();
 

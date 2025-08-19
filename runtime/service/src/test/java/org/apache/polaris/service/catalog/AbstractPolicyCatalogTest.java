@@ -48,6 +48,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -143,7 +144,6 @@ public abstract class AbstractPolicyCatalogTest {
   private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
-  private ReservedProperties reservedProperties;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -185,7 +185,8 @@ public abstract class AbstractPolicyCatalogTest {
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
 
-    reservedProperties = ReservedProperties.NONE;
+    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
+    ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     adminService =
         new PolarisAdminService(
@@ -194,7 +195,7 @@ public abstract class AbstractPolicyCatalogTest {
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(realmConfig),
+            authorizer,
             reservedProperties);
 
     String storageLocation = "s3://my-bucket/path/to/data";

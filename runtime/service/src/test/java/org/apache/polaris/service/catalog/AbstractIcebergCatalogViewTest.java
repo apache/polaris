@@ -40,6 +40,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -172,6 +173,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
 
+    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     PolarisAdminService adminService =
@@ -181,7 +183,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             metaStoreManager,
             userSecretsManager,
             securityContext,
-            new PolarisAuthorizerImpl(polarisContext.getRealmConfig()),
+            authorizer,
             reservedProperties);
     adminService.createCatalog(
         new CreateCatalogRequest(

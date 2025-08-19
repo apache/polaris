@@ -28,6 +28,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -50,6 +51,7 @@ public class GenericTableCatalogAdapter
   private static final Logger LOGGER = LoggerFactory.getLogger(GenericTableCatalogAdapter.class);
 
   private final RealmContext realmContext;
+  private final RealmConfig realmConfig;
   private final CallContext callContext;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisMetaStoreManager metaStoreManager;
@@ -72,6 +74,7 @@ public class GenericTableCatalogAdapter
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.realmContext = realmContext;
     this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
@@ -84,7 +87,7 @@ public class GenericTableCatalogAdapter
   private GenericTableCatalogHandler newHandlerWrapper(
       SecurityContext securityContext, String prefix) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
-        callContext.getRealmConfig(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
+        realmConfig, FeatureConfiguration.ENABLE_GENERIC_TABLES);
     validatePrincipal(securityContext);
 
     return new GenericTableCatalogHandler(

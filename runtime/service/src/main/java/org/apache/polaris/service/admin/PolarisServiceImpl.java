@@ -64,6 +64,7 @@ import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -98,6 +99,7 @@ public class PolarisServiceImpl
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final UserSecretsManagerFactory userSecretsManagerFactory;
   private final CallContext callContext;
+  private final RealmConfig realmConfig;
   private final ReservedProperties reservedProperties;
 
   @Inject
@@ -113,6 +115,7 @@ public class PolarisServiceImpl
     this.userSecretsManagerFactory = userSecretsManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
     this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.reservedProperties = reservedProperties;
   }
 
@@ -168,9 +171,7 @@ public class PolarisServiceImpl
 
   private void validateStorageConfig(StorageConfigInfo storageConfigInfo) {
     List<String> allowedStorageTypes =
-        callContext
-            .getRealmConfig()
-            .getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+        realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
@@ -197,10 +198,7 @@ public class PolarisServiceImpl
 
     String connectionType = connectionConfigInfo.getConnectionType().name();
     List<String> supportedConnectionTypes =
-        callContext
-            .getRealmConfig()
-            .getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES)
-            .stream()
+        realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES).stream()
             .map(s -> s.toUpperCase(Locale.ROOT))
             .toList();
     if (!supportedConnectionTypes.contains(connectionType)) {
@@ -212,8 +210,7 @@ public class PolarisServiceImpl
 
     String authenticationType = authenticationParameters.getAuthenticationType().name();
     List<String> supportedAuthenticationTypes =
-        callContext
-            .getRealmConfig()
+        realmConfig
             .getConfig(FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
             .stream()
             .map(s -> s.toUpperCase(Locale.ROOT))
