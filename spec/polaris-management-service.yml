@@ -199,7 +199,6 @@ paths:
         404:
           description: "The catalog or principal does not exist"
 
-
     put:
       operationId: updatePrincipal
       description: Update an existing principal
