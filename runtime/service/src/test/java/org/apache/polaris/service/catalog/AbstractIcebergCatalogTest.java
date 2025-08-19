@@ -2240,7 +2240,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   }
 
   private static PageToken nextRequest(Page<?> previousPage) {
-    return PageToken.build(previousPage.encodedResponseToken(), null);
+    return PageToken.build(previousPage.encodedResponseToken(), null, () -> true);
   }
 
   @Test
