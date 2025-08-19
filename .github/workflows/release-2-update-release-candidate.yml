@@ -219,43 +219,4 @@ jobs:
 
           print_success "🎉 RC tag ${release_tag} created successfully at commit ${new_tag_ref}!"
 
-      - name: Create or update GitHub release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
 
-          source "${LIBS_DIR}/_log.sh"
-          source "${LIBS_DIR}/_exec.sh"
-
-          release_title="Release ${version_without_rc}"
-
-          if [[ ${rc_number} -eq 1 ]]; then
-            print_info "Creating new GitHub release: ${release_title}"
-            exec_process gh release create "${release_tag}" \
-              --title "${release_title}" \
-              --prerelease \
-              --target "${new_tag_ref}"
-
-            print_success "🎉 GitHub release created: ${release_title}"
-          else
-            print_info "Updating existing GitHub release to point to new RC tag: ${release_tag}"
-
-            existing_release_tag=$(gh release list | grep "${release_title}" | head -1 | cut -f3)
-
-            if [[ -z "${existing_release_tag}" ]]; then
-              print_error "Could not find existing release with title: ${release_title}"
-              print_error "Expected to find a release that was created for RC1"
-              exit 1
-            fi
-
-            print_info "Found existing release with tag: ${existing_release_tag}"
-
-            # Update the release to point to the new tag
-            exec_process gh release edit "${existing_release_tag}" \
-              --tag "${release_tag}" \
-              --target "${new_tag_ref}"
-
-            print_success "🎉 GitHub release updated to point to tag: ${release_tag}"
-          fi
