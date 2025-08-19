@@ -133,7 +133,8 @@ public class StorageCredentialCache {
                   k.allowedWriteLocations());
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmConfig());
-            return new StorageCredentialCacheEntry(scopedCredentialsResult, maxCacheDurationMs);
+            return new StorageCredentialCacheEntry(
+                scopedCredentialsResult.getAccessConfig(), maxCacheDurationMs);
           }
           LOGGER
               .atDebug()
@@ -168,5 +169,10 @@ public class StorageCredentialCache {
   @VisibleForTesting
   public long getEstimatedSize() {
     return this.cache.estimatedSize();
+  }
+
+  @VisibleForTesting
+  public void invalidateAll() {
+    this.cache.invalidateAll();
   }
 }

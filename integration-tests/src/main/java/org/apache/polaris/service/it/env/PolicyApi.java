@@ -42,7 +42,7 @@ import org.apache.polaris.service.types.PolicyIdentifier;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
 import org.assertj.core.api.Assertions;
 
-public class PolicyApi extends RestApi {
+public class PolicyApi extends PolarisRestApi {
   PolicyApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);
   }

@@ -31,23 +31,18 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
-import com.google.cloud.http.HttpTransportOptions;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
 import java.io.IOException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
@@ -136,9 +131,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   private Storage setupStorageClient(
       List<String> allowedReadLoc, List<String> allowedWriteLoc, boolean allowListAction)
       throws IOException {
-    Map<StorageAccessProperty, String> credsMap =
-        subscopedCredsForOperations(allowedReadLoc, allowedWriteLoc, allowListAction);
-    return createStorageClient(credsMap);
+    return createStorageClient(
+        subscopedCredsForOperations(allowedReadLoc, allowedWriteLoc, allowListAction));
   }
 
   BlobInfo createStorageBlob(String bucket, String prefix, String fileName) {
@@ -146,52 +140,43 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     return BlobInfo.newBuilder(blobId).build();
   }
 
-  private Storage createStorageClient(Map<StorageAccessProperty, String> credsMap) {
+  private Storage createStorageClient(AccessConfig accessConfig) {
     AccessToken accessToken =
         new AccessToken(
-            credsMap.get(StorageAccessProperty.GCS_ACCESS_TOKEN),
+            accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN),
             new Date(
-                Long.parseLong(credsMap.get(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT))));
+                Long.parseLong(
+                    accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT))));
     return StorageOptions.newBuilder()
         .setCredentials(GoogleCredentials.create(accessToken))
         .build()
         .getService();
   }
 
-  private Map<StorageAccessProperty, String> subscopedCredsForOperations(
+  private AccessConfig subscopedCredsForOperations(
       List<String> allowedReadLoc, List<String> allowedWriteLoc, boolean allowListAction)
       throws IOException {
-    List<String> allowedLoc = new ArrayList<>();
-    allowedLoc.addAll(allowedReadLoc);
-    allowedLoc.addAll(allowedWriteLoc);
-    GcpStorageConfigurationInfo gcpConfig = new GcpStorageConfigurationInfo(allowedLoc);
+    GcpStorageConfigurationInfo gcpConfig =
+        GcpStorageConfigurationInfo.builder()
+            .addAllAllowedLocations(allowedReadLoc)
+            .addAllAllowedLocations(allowedWriteLoc)
+            .build();
     GcpCredentialsStorageIntegration gcpCredsIntegration =
         new GcpCredentialsStorageIntegration(
+            gcpConfig,
             GoogleCredentials.getApplicationDefault(),
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
-    EnumMap<StorageAccessProperty, String> credsMap =
-        gcpCredsIntegration.getSubscopedCreds(
-            newCallContext(),
-            gcpConfig,
-            allowListAction,
-            new HashSet<>(allowedReadLoc),
-            new HashSet<>(allowedWriteLoc));
-    return credsMap;
+    return gcpCredsIntegration.getSubscopedCreds(
+        EMPTY_REALM_CONFIG,
+        allowListAction,
+        new HashSet<>(allowedReadLoc),
+        new HashSet<>(allowedWriteLoc));
   }
 
   @Test
   public void testGenerateAccessBoundary() throws IOException {
-    GcpCredentialsStorageIntegration integration =
-        new GcpCredentialsStorageIntegration(
-            GoogleCredentials.newBuilder()
-                .setAccessToken(
-                    new AccessToken(
-                        "my_token",
-                        new Date(Instant.now().plus(10, ChronoUnit.MINUTES).toEpochMilli())))
-                .build(),
-            new HttpTransportOptions.DefaultHttpTransportFactory());
     CredentialAccessBoundary credentialAccessBoundary =
-        integration.generateAccessBoundaryRules(
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
             true, Set.of("gs://bucket1/path/to/data"), Set.of("gs://bucket1/path/to/data"));
     assertThat(credentialAccessBoundary).isNotNull();
     ObjectMapper mapper = new ObjectMapper();
@@ -210,17 +195,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testGenerateAccessBoundaryWithMultipleBuckets() throws IOException {
-    GcpCredentialsStorageIntegration integration =
-        new GcpCredentialsStorageIntegration(
-            GoogleCredentials.newBuilder()
-                .setAccessToken(
-                    new AccessToken(
-                        "my_token",
-                        new Date(Instant.now().plus(10, ChronoUnit.MINUTES).toEpochMilli())))
-                .build(),
-            new HttpTransportOptions.DefaultHttpTransportFactory());
     CredentialAccessBoundary credentialAccessBoundary =
-        integration.generateAccessBoundaryRules(
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
             true,
             Set.of(
                 "gs://bucket1/normal/path/to/data",
@@ -244,17 +220,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testGenerateAccessBoundaryWithoutList() throws IOException {
-    GcpCredentialsStorageIntegration integration =
-        new GcpCredentialsStorageIntegration(
-            GoogleCredentials.newBuilder()
-                .setAccessToken(
-                    new AccessToken(
-                        "my_token",
-                        new Date(Instant.now().plus(10, ChronoUnit.MINUTES).toEpochMilli())))
-                .build(),
-            new HttpTransportOptions.DefaultHttpTransportFactory());
     CredentialAccessBoundary credentialAccessBoundary =
-        integration.generateAccessBoundaryRules(
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
             false,
             Set.of("gs://bucket1/path/to/data", "gs://bucket1/another/path/to/data"),
             Set.of("gs://bucket1/path/to/data"));
@@ -275,17 +242,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   @Test
   public void testGenerateAccessBoundaryWithoutWrites() throws IOException {
-    GcpCredentialsStorageIntegration integration =
-        new GcpCredentialsStorageIntegration(
-            GoogleCredentials.newBuilder()
-                .setAccessToken(
-                    new AccessToken(
-                        "my_token",
-                        new Date(Instant.now().plus(10, ChronoUnit.MINUTES).toEpochMilli())))
-                .build(),
-            new HttpTransportOptions.DefaultHttpTransportFactory());
     CredentialAccessBoundary credentialAccessBoundary =
-        integration.generateAccessBoundaryRules(
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
             false,
             Set.of("gs://bucket1/normal/path/to/data", "gs://bucket1/awesome/path/to/data"),
             Set.of());

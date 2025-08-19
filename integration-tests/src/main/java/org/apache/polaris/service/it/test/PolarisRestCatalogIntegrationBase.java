@@ -31,8 +31,7 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.Arrays;
@@ -64,6 +63,7 @@ import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.expressions.Expressions;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
@@ -92,12 +92,16 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
+import org.apache.polaris.service.it.env.CatalogConfig;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.GenericTableApi;
 import org.apache.polaris.service.it.env.IcebergHelper;
+import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
+import org.apache.polaris.service.it.env.RestCatalogConfig;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
@@ -134,22 +138,26 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   private static final String EXTERNAL_CATALOG_LOCATION_SUBPATH =
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_EXTERNAL_CATALOG_LOCATION_SUBPATH"))
           .orElse("external-catalog");
-  private static ClientCredentials adminCredentials;
+  private static ClientPrincipal adminPrincipal;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
-  private static ManagementApi managementApi;
 
-  private PrincipalWithCredentials principalCredentials;
+  private String principalToken;
+  private String adminToken;
+
+  private ManagementApi managementApi;
   private CatalogApi catalogApi;
   private GenericTableApi genericTableApi;
   private RESTCatalog restCatalog;
   private String currentCatalogName;
   private Map<String, String> restCatalogConfig;
-  private URI externalCatalogBase;
+  private URI externalCatalogBaseLocation;
   private String catalogBaseLocation;
 
   private static final Map<String, String> DEFAULT_REST_CATALOG_CONFIG =
       Map.of(
+          org.apache.iceberg.CatalogProperties.FILE_IO_IMPL,
+          "org.apache.iceberg.inmemory.InMemoryFileIO",
           org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key1",
           "catalog-default-key1",
           org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX + "default-key2",
@@ -161,26 +169,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
           org.apache.iceberg.CatalogProperties.TABLE_OVERRIDE_PREFIX + "override-key4",
           "catalog-override-key4");
 
-  private static final String[] DEFAULT_CATALOG_PROPERTIES = {
-    "polaris.config.allow.unstructured.table.location", "true",
-    "polaris.config.allow.external.table.location", "true",
-    "polaris.config.list-pagination-enabled", "true"
-  };
-
-  @Retention(RetentionPolicy.RUNTIME)
-  private @interface CatalogConfig {
-    Catalog.TypeEnum value() default Catalog.TypeEnum.INTERNAL;
-
-    String[] properties() default {
-      "polaris.config.allow.unstructured.table.location", "true",
-      "polaris.config.allow.external.table.location", "true"
-    };
-  }
-
-  @Retention(RetentionPolicy.RUNTIME)
-  private @interface RestCatalogConfig {
-    String[] value() default {};
-  }
+  private static final Map<String, String> DEFAULT_CATALOG_PROPERTIES =
+      Map.of(
+          "polaris.config.allow.unstructured.table.location", "true",
+          "polaris.config.allow.external.table.location", "true",
+          "polaris.config.list-pagination-enabled", "true");
 
   /**
    * Get the storage configuration information for the catalog.
@@ -190,18 +183,36 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   protected abstract StorageConfigInfo getStorageConfigInfo();
 
   /**
-   * Determine whether the test should be skipped based on the environment or configuration.
+   * A hook for test subclasses to initialize {@link FileIO} objects used by test cases themselves
+   * for accessing test storage.
    *
-   * @return true if the test should be skipped, false otherwise
+   * <p>Important: this FileIO instance is not tied to a REST Catalog; it is created by test code
+   * performing adhoc, direct access to the storage; thus, it may not be configured with the same
+   * properties as the ones used by {@link #catalog()}!
    */
-  protected abstract boolean shouldSkip();
+  protected <T extends FileIO> T initializeClientFileIO(T fileIO) {
+    fileIO.initialize(clientFileIOProperties().build());
+    return fileIO;
+  }
+
+  /**
+   * Get the properties to be used for {@linkplain #initializeClientFileIO(FileIO) initializing} the
+   * {@link FileIO} instance used by test code for accessing test storage.
+   */
+  protected ImmutableMap.Builder<String, String> clientFileIOProperties() {
+    return ImmutableMap.builder();
+  }
+
+  /** Get the base URI for the external catalog. */
+  protected URI externalCatalogBaseLocation() {
+    return externalCatalogBaseLocation;
+  }
 
   @BeforeAll
-  static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
-    adminCredentials = credentials;
+  static void setup(PolarisApiEndpoints apiEndpoints, ClientPrincipal admin) {
+    adminPrincipal = admin;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    managementApi = client.managementApi(credentials);
   }
 
   static {
@@ -215,41 +226,49 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    Assumptions.assumeThat(shouldSkip()).isFalse();
+    adminToken = obtainToken(client, adminPrincipal);
+    managementApi = client.managementApi(adminToken);
+
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
-    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    ClientPrincipal testPrincipal = createTestPrincipal(client, principalName, principalRoleName);
+    principalToken = obtainToken(client, testPrincipal);
 
-    catalogApi = client.catalogApi(principalCredentials);
-    genericTableApi = client.genericTableApi(principalCredentials);
+    catalogApi = client.catalogApi(principalToken);
+    genericTableApi = client.genericTableApi(principalToken);
 
     Method method = testInfo.getTestMethod().orElseThrow();
     currentCatalogName = client.newEntityName(method.getName());
+
     StorageConfigInfo storageConfig = getStorageConfigInfo();
     URI testRuntimeURI = URI.create(storageConfig.getAllowedLocations().getFirst());
     catalogBaseLocation = testRuntimeURI + "/" + CATALOG_LOCATION_SUBPATH;
-    externalCatalogBase =
+    externalCatalogBaseLocation =
         URI.create(
             testRuntimeURI + "/" + EXTERNAL_CATALOG_LOCATION_SUBPATH + "/" + method.getName());
 
-    Optional<CatalogConfig> catalogConfig =
-        Optional.ofNullable(method.getAnnotation(CatalogConfig.class));
-
     CatalogProperties.Builder catalogPropsBuilder = CatalogProperties.builder(catalogBaseLocation);
-    String[] properties =
-        catalogConfig.map(CatalogConfig::properties).orElse(DEFAULT_CATALOG_PROPERTIES);
-    for (int i = 0; i < properties.length; i += 2) {
-      catalogPropsBuilder.addProperty(properties[i], properties[i + 1]);
-    }
+
+    Map<String, String> catalogProperties =
+        IntegrationTestsHelper.mergeFromAnnotatedElements(
+            testInfo, CatalogConfig.class, CatalogConfig::properties, DEFAULT_CATALOG_PROPERTIES);
+    catalogPropsBuilder.putAll(catalogProperties);
+
     catalogPropsBuilder.addProperty(
         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true");
+
     if (!testRuntimeURI.getScheme().equals("file")) {
       catalogPropsBuilder.addProperty(
           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
     }
+
+    Catalog.TypeEnum catalogType =
+        IntegrationTestsHelper.extractFromAnnotatedElements(
+            testInfo, CatalogConfig.class, CatalogConfig::value, Catalog.TypeEnum.INTERNAL);
+
     Catalog catalog =
         PolarisCatalog.builder()
-            .setType(catalogConfig.map(CatalogConfig::value).orElse(Catalog.TypeEnum.INTERNAL))
+            .setType(catalogType)
             .setName(currentCatalogName)
             .setProperties(catalogPropsBuilder.build())
             .setStorageConfigInfo(storageConfig)
@@ -257,37 +276,62 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
     managementApi.createCatalog(principalRoleName, catalog);
 
-    Map<String, String> dynamicConfig =
-        testInfo
-            .getTestMethod()
-            .map(m -> m.getAnnotation(RestCatalogConfig.class))
-            .map(RestCatalogConfig::value)
-            .map(
-                values -> {
-                  if (values.length % 2 != 0) {
-                    throw new IllegalArgumentException(
-                        String.format("Missing value for config '%s'", values[values.length - 1]));
-                  }
-                  Map<String, String> config = new HashMap<>();
-                  for (int i = 0; i < values.length; i += 2) {
-                    config.put(values[i], values[i + 1]);
-                  }
-                  return config;
-                })
-            .orElse(ImmutableMap.of());
-
     restCatalogConfig =
-        ImmutableMap.<String, String>builder()
-            .putAll(DEFAULT_REST_CATALOG_CONFIG)
-            .putAll(dynamicConfig)
-            .build();
+        IntegrationTestsHelper.mergeFromAnnotatedElements(
+            testInfo,
+            RestCatalogConfig.class,
+            RestCatalogConfig::value,
+            DEFAULT_REST_CATALOG_CONFIG);
 
     restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
   }
 
+  /**
+   * Creates a test principal with the specified name and role. Subclasses can override this method
+   * to customize the principal creation process, e.g. when using federated principals.
+   */
+  protected ClientPrincipal createTestPrincipal(
+      PolarisClient client, String principalName, String principalRoleName) {
+    PrincipalWithCredentials principalWithCredentials =
+        managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    return new ClientPrincipal(
+        principalWithCredentials.getPrincipal().getName(),
+        new ClientCredentials(
+            principalWithCredentials.getCredentials().getClientId(),
+            principalWithCredentials.getCredentials().getClientSecret()));
+  }
+
+  /**
+   * Obtain an access token for the given principal credentials.
+   *
+   * <p>By default, this method uses the {@link PolarisClient} to obtain the token from the Polaris
+   * internal OAuth2 token endpoint.
+   *
+   * <p>Subclasses can override this method to customize the token acquisition process, e.g. when
+   * using external identity providers.
+   */
+  protected String obtainToken(PolarisClient client, ClientPrincipal principal) {
+    return client.obtainToken(principal);
+  }
+
   @AfterEach
-  public void cleanUp() {
-    client.cleanUp(adminCredentials);
+  public void cleanUp() throws IOException {
+    try {
+      if (restCatalog != null) {
+        restCatalog.close();
+      }
+    } finally {
+      cleanUp(client, adminToken);
+    }
+  }
+
+  /**
+   * Cleans up the Polaris environment after each test.
+   *
+   * <p>Subclasses can override this method to perform additional cleanup actions.
+   */
+  protected void cleanUp(PolarisClient client, String adminToken) {
+    client.cleanUp(adminToken);
   }
 
   @Override
@@ -308,11 +352,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     extraPropertiesBuilder.putAll(restCatalogConfig);
     extraPropertiesBuilder.putAll(additionalProperties);
     return IcebergHelper.restCatalog(
-        client,
-        endpoints,
-        principalCredentials,
-        currentCatalogName,
-        extraPropertiesBuilder.buildKeepingLast());
+        endpoints, currentCatalogName, extraPropertiesBuilder.buildKeepingLast(), principalToken);
   }
 
   @Override
@@ -611,12 +651,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            externalCatalogBase + "/ns1/my_table",
+            externalCatalogBaseLocation + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
-      resolvingFileIO.initialize(Map.of());
+      initializeClientFileIO(resolvingFileIO);
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
       try {
@@ -646,12 +686,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            externalCatalogBase + "/ns1/my_table",
+            externalCatalogBaseLocation + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
-      resolvingFileIO.initialize(Map.of());
+      initializeClientFileIO(resolvingFileIO);
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
       try {
@@ -680,12 +720,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            externalCatalogBase + "/ns1/my_table",
+            externalCatalogBaseLocation + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
-      resolvingFileIO.initialize(Map.of());
+      initializeClientFileIO(resolvingFileIO);
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
       try {
@@ -708,12 +748,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            externalCatalogBase + "/ns1/my_table",
+            externalCatalogBaseLocation + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
-      resolvingFileIO.initialize(Map.of());
+      initializeClientFileIO(resolvingFileIO);
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table_etagged"), fileLocation);
       Invocation invocation =
@@ -752,12 +792,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            externalCatalogBase + "/ns1/my_table",
+            externalCatalogBaseLocation + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
-      resolvingFileIO.initialize(Map.of());
+      initializeClientFileIO(resolvingFileIO);
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
       Invocation registerInvocation =
@@ -795,12 +835,12 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
         TableMetadata.newTableMetadata(
             new Schema(List.of(Types.NestedField.required(1, "col1", new Types.StringType()))),
             PartitionSpec.unpartitioned(),
-            externalCatalogBase + "/ns1/my_table",
+            externalCatalogBaseLocation + "/ns1/my_table",
             Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
-      resolvingFileIO.initialize(Map.of());
+      initializeClientFileIO(resolvingFileIO);
       resolvingFileIO.setConf(new Configuration());
-      String fileLocation = externalCatalogBase + "/ns1/my_table/metadata/v1.metadata.json";
+      String fileLocation = externalCatalogBaseLocation + "/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
       Invocation createInvocation =

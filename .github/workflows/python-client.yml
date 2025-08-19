@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Checkout Polaris project
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Set up JDK for Gradle
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4
@@ -59,14 +59,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Lint
-        working-directory: client/python
         run: |
-          make lint
+          make client-lint
 
       - name: Generated Client Tests
-        working-directory: client/python
         run: |
-          make test-client
+          make client-unit-test
 
       - name: Image build
         run: |
@@ -76,6 +74,5 @@ jobs:
             -Dquarkus.container-image.build=true
 
       - name: Integration Tests
-        working-directory: client/python
         run: |
-          make test-integration
+          make client-integration-test

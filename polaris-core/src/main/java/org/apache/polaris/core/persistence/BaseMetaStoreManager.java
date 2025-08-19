@@ -18,13 +18,10 @@
  */
 package org.apache.polaris.core.persistence;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -34,67 +31,20 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
 public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
-  /** mapper, allows to serialize/deserialize properties to/from JSON */
-  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   public static PolarisStorageConfigurationInfo extractStorageConfiguration(
-      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity reloadedEntity) {
-    Map<String, String> propMap =
-        PolarisObjectMapperUtil.deserializeProperties(
-            callCtx, reloadedEntity.getInternalProperties());
+      @Nonnull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {
+    Map<String, String> propMap = reloadedEntity.getInternalPropertiesAsMap();
     String storageConfigInfoStr =
         propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
 
-    callCtx
-        .getDiagServices()
-        .check(
-            storageConfigInfoStr != null,
-            "missing_storage_configuration_info",
-            "catalogId={}, entityId={}",
-            reloadedEntity.getCatalogId(),
-            reloadedEntity.getId());
-    return PolarisStorageConfigurationInfo.deserialize(
-        callCtx.getDiagServices(), storageConfigInfoStr);
-  }
-
-  /**
-   * Given the internal property as a map of key/value pairs, serialize it to a String
-   *
-   * @param properties a map of key/value pairs
-   * @return a String, the JSON representation of the map
-   */
-  public String serializeProperties(PolarisCallContext callCtx, Map<String, String> properties) {
-
-    String jsonString = null;
-    try {
-      // Deserialize the JSON string to a Map<String, String>
-      jsonString = MAPPER.writeValueAsString(properties);
-    } catch (JsonProcessingException ex) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", "ex={}", ex);
-    }
-
-    return jsonString;
-  }
-
-  /**
-   * Given the serialized properties, deserialize those to a {@code Map<String, String>}
-   *
-   * @param properties a JSON string representing the set of properties
-   * @return a Map of string
-   */
-  public Map<String, String> deserializeProperties(PolarisCallContext callCtx, String properties) {
-
-    Map<String, String> retProperties = null;
-    try {
-      // Deserialize the JSON string to a Map<String, String>
-      retProperties = MAPPER.readValue(properties, new TypeReference<>() {});
-    } catch (JsonMappingException ex) {
-      callCtx.getDiagServices().fail("got_json_mapping_exception", "ex={}", ex);
-    } catch (JsonProcessingException ex) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", "ex={}", ex);
-    }
-
-    return retProperties;
+    diagnostics.check(
+        storageConfigInfoStr != null,
+        "missing_storage_configuration_info",
+        "catalogId={}, entityId={}",
+        reloadedEntity.getCatalogId(),
+        reloadedEntity.getId());
+    return PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr);
   }
 
   /**

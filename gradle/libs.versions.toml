@@ -20,9 +20,10 @@
 [versions]
 checkstyle = "10.25.0"
 hadoop = "3.4.1"
+hive = "3.1.3"
 iceberg = "1.9.2" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
-quarkus = "3.24.4"
-immutables = "2.11.1"
+quarkus = "3.25.0"
+immutables = "2.11.3"
 jmh = "1.37"
 picocli = "4.7.7"
 scala212 = "2.12.19"
@@ -39,31 +40,32 @@ swagger = "1.6.16"
 # (aka mention of the dependency removed).
 #
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
-assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
+assertj-core = { module = "org.assertj:assertj-core", version = "3.27.4" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.31.78" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.32.24" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
-azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.36" }
+azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.37" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
-commons-codec1 = { module = "commons-codec:commons-codec", version = "1.18.0" }
+commons-codec = { module = "commons-codec:commons-codec", version = "1.19.0" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.18.0" }
-commons-text = { module = "org.apache.commons:commons-text", version = "1.13.1" }
+commons-text = { module = "org.apache.commons:commons-text", version = "1.14.0" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.7" }
-errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.40.0" }
-google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.53.3" }
+errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.41.0" }
+google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.55.0" }
 guava = { module = "com.google.guava:guava", version = "33.4.8-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }
 dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
 hadoop-client-runtime = { module = "org.apache.hadoop:hadoop-client-runtime", version.ref = "hadoop" }
 hadoop-common = { module = "org.apache.hadoop:hadoop-common", version.ref = "hadoop" }
+hive-metastore = { module = "org.apache.hive:hive-metastore", version.ref = "hive" }
 hadoop-hdfs-client = { module = "org.apache.hadoop:hadoop-hdfs-client", version.ref = "hadoop" }
 hawkular-agent-prometheus-scraper = { module = "org.hawkular.agent:prometheus-scraper", version = "0.23.0.Final" }
 immutables-builder = { module = "org.immutables:builder", version.ref = "immutables" }
 immutables-value-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
 immutables-value-processor = { module = "org.immutables:value-processor", version.ref = "immutables" }
 iceberg-bom = { module = "org.apache.iceberg:iceberg-bom", version.ref = "iceberg" }
-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.19.1" }
+jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.19.2" }
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version = "3.0.0" }
 jakarta-enterprise-cdi-api = { module = "jakarta.enterprise:jakarta.enterprise.cdi-api", version = "4.1.0" }
 jakarta-inject-api = { module = "jakarta.inject:jakarta.inject-api", version = "2.0.1" }
@@ -72,40 +74,42 @@ jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version 
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.1" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
+junit-bom = { module = "org.junit:junit-bom", version = "5.13.4" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.6" }
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.13.3" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
-micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.2" }
+micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.3" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
-mockito-core = { module = "org.mockito:mockito-core", version = "5.18.0" }
-mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.18.0" }
-opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.52.0" }
+mockito-core = { module = "org.mockito:mockito-core", version = "5.19.0" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.19.0" }
+opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.53.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.34.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.7" }
-prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.3.10" }
+prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.4.1" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
 scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref = "scala212" }
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
-s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.6.0" }
+s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.7.0" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
-smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.13.7" }
-smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.13.3" }
+smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.13.8" }
+smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.13.4" }
 spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark35" }
-spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version = "4.9.3" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.21.3" }
+testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "3.8.0" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]
-jandex = { id = "org.kordamp.gradle.jandex", version = "2.1.0" }
+jandex = { id = "org.kordamp.gradle.jandex", version = "2.2.0" }
 jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "0.8.15" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 openapi-generator = { id = "org.openapi.generator", version = "7.12.0" }
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }
-jetbrains-changelog = { id = "org.jetbrains.changelog",  version = "2.2.1"}
+jetbrains-changelog = { id = "org.jetbrains.changelog",  version = "2.4.0"}

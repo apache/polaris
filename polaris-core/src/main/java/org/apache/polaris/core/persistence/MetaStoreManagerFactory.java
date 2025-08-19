@@ -19,7 +19,6 @@
 package org.apache.polaris.core.persistence;
 
 import java.util.Map;
-import java.util.function.Supplier;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
@@ -33,7 +32,7 @@ public interface MetaStoreManagerFactory {
 
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
 
-  Supplier<? extends BasePersistence> getOrCreateSessionSupplier(RealmContext realmContext);
+  BasePersistence getOrCreateSession(RealmContext realmContext);
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig);
 

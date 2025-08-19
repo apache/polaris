@@ -76,12 +76,16 @@ public class PolarisCatalogUtils {
     boolean hasPathClause = properties.get(TABLE_PATH_KEY) != null;
     Map<String, String> tableProperties = Maps.newHashMap();
     tableProperties.putAll(properties);
-    if (!hasPathClause && hasLocationClause) {
+    if (!hasPathClause) {
       // DataSourceV2 requires the path property on table loading. However, spark today
       // doesn't create the corresponding path property if the path keyword is not
       // provided by user when location is provided. Here, we duplicate the location
       // property as path to make sure the table can be loaded.
-      tableProperties.put(TABLE_PATH_KEY, properties.get(TableCatalog.PROP_LOCATION));
+      if (genericTable.getBaseLocation() != null && !genericTable.getBaseLocation().isEmpty()) {
+        tableProperties.put(TABLE_PATH_KEY, genericTable.getBaseLocation());
+      } else if (hasLocationClause) {
+        tableProperties.put(TABLE_PATH_KEY, properties.get(TableCatalog.PROP_LOCATION));
+      }
     }
     return DataSourceV2Utils.getTableFromProvider(
         provider, new CaseInsensitiveStringMap(tableProperties), scala.Option.empty());

@@ -30,7 +30,6 @@ import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +37,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -59,8 +59,10 @@ public class GcpCredentialsStorageIntegration
   private final HttpTransportFactory transportFactory;
 
   public GcpCredentialsStorageIntegration(
-      GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
-    super(GcpCredentialsStorageIntegration.class.getName());
+      GcpStorageConfigurationInfo config,
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory) {
+    super(config, GcpCredentialsStorageIntegration.class.getName());
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
@@ -69,9 +71,8 @@ public class GcpCredentialsStorageIntegration
   }
 
   @Override
-  public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
-      @Nonnull CallContext callContext,
-      @Nonnull GcpStorageConfigurationInfo storageConfig,
+  public AccessConfig getSubscopedCreds(
+      @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
@@ -106,12 +107,12 @@ public class GcpCredentialsStorageIntegration
 
     // If expires_in missing, use source credential's expire time, which require another api call to
     // get.
-    EnumMap<StorageAccessProperty, String> propertyMap = new EnumMap<>(StorageAccessProperty.class);
-    propertyMap.put(StorageAccessProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
-    propertyMap.put(
+    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    accessConfig.put(StorageAccessProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
+    accessConfig.put(
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
         String.valueOf(token.getExpirationTime().getTime()));
-    return propertyMap;
+    return accessConfig.build();
   }
 
   private String convertToString(CredentialAccessBoundary accessBoundary) {

@@ -1,0 +1,112 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+services:
+
+  minio:
+    image: quay.io/minio/minio:latest
+    ports:
+      # API port
+      - "9000:9000"
+      # UI port
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minio_root
+      MINIO_ROOT_PASSWORD: m1n1opwd
+    command:
+      - "server"
+      - "/data"
+      - "--console-address"
+      - ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 1s
+      timeout: 10s
+
+  polaris:
+    image: apache/polaris:latest
+    ports:
+      # API port
+      - "8181:8181"
+      # Optional, allows attaching a debugger to the Polaris JVM
+      - "5005:5005"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      JAVA_DEBUG: true
+      JAVA_DEBUG_PORT: "*:5005"
+      AWS_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: minio_root
+      AWS_SECRET_ACCESS_KEY: m1n1opwd
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      polaris.realm-context.realms: POLARIS
+      quarkus.otel.sdk.disabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  setup_bucket:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        echo Creating MinIO bucket...;
+        mc alias set pol http://minio:9000 minio_root m1n1opwd;
+        mc mb pol/bucket123;
+        mc ls pol;
+        echo Bucket setup complete.;
+
+  polaris-setup:
+    image: alpine/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      - CLIENT_ID=root
+      - CLIENT_SECRET=s3cr3t
+    volumes:
+      - ../assets/polaris/:/polaris
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        chmod +x /polaris/create-catalog.sh;
+        chmod +x /polaris/obtain-token.sh;
+        source /polaris/obtain-token.sh;
+        echo Creating catalog...;
+        export STORAGE_CONFIG_INFO='{"storageType":"S3",
+          "endpoint":"http://localhost:9000",
+          "endpointInternal":"http://minio:9000",
+          "pathStyleAccess":true}';
+        export STORAGE_LOCATION='s3://bucket123';
+        /polaris/create-catalog.sh POLARIS $$TOKEN;
+        echo Extra grants...;
+        curl -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
+          -X PUT \
+          http://polaris:8181/api/management/v1/catalogs/quickstart_catalog/catalog-roles/catalog_admin/grants \
+          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}';
+        echo Done.;

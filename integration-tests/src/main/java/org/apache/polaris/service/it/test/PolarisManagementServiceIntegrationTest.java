@@ -113,23 +113,27 @@ public class PolarisManagementServiceIntegrationTest {
   private static ManagementApi managementApi;
   private static CatalogApi catalogApi;
   private static ClientCredentials rootCredentials;
+  private static String authToken;
 
   @BeforeAll
   public static void setup(PolarisApiEndpoints endpoints, ClientCredentials credentials) {
     client = polarisClient(endpoints);
-    managementApi = client.managementApi(credentials);
-    catalogApi = client.catalogApi(credentials);
+    authToken = client.obtainToken(credentials);
+    managementApi = client.managementApi(authToken);
+    catalogApi = client.catalogApi(authToken);
     rootCredentials = credentials;
   }
 
   @AfterAll
   public static void close() throws Exception {
-    client.close();
+    if (client != null) {
+      client.close();
+    }
   }
 
   @AfterEach
   public void tearDown() {
-    client.cleanUp(rootCredentials);
+    client.cleanUp(authToken);
   }
 
   @Test
@@ -177,7 +181,8 @@ public class PolarisManagementServiceIntegrationTest {
   public void testListCatalogsUnauthorized() {
     PrincipalWithCredentials principal =
         managementApi.createPrincipal(client.newEntityName("a_new_user"));
-    try (Response response = client.managementApi(principal).request("v1/catalogs").get()) {
+    String authToken = client.obtainToken(principal);
+    try (Response response = client.managementApi(authToken).request("v1/catalogs").get()) {
       assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
     }
   }
@@ -605,8 +610,9 @@ public class PolarisManagementServiceIntegrationTest {
   @Test
   public void testCreateListUpdateAndDeleteCatalog() {
     StorageConfigInfo storageConfig =
-        new AwsStorageConfigInfo(
-            "arn:aws:iam::123456789011:role/role1", StorageConfigInfo.StorageTypeEnum.S3);
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789011:role/role1")
+            .build();
     String catalogName = client.newEntityName("mycatalog");
     Catalog catalog =
         PolarisCatalog.builder()
@@ -649,8 +655,9 @@ public class PolarisManagementServiceIntegrationTest {
 
     // Reject update of fields that can't be currently updated
     StorageConfigInfo invalidModifiedStorageConfig =
-        new AwsStorageConfigInfo(
-            "arn:aws:iam::123456789012:role/newrole", StorageConfigInfo.StorageTypeEnum.S3);
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789012:role/newrole")
+            .build();
     UpdateCatalogRequest badUpdateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
@@ -674,8 +681,9 @@ public class PolarisManagementServiceIntegrationTest {
     // AWS
     // account IDs are same)
     StorageConfigInfo validModifiedStorageConfig =
-        new AwsStorageConfigInfo(
-            "arn:aws:iam::123456789011:role/newrole", StorageConfigInfo.StorageTypeEnum.S3);
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn("arn:aws:iam::123456789011:role/newrole")
+            .build();
     UpdateCatalogRequest updateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
@@ -772,9 +780,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
             .setProperties(new CatalogProperties("s3://required/base/location"))
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .build();
     managementApi.createCatalog(catalog);
 
@@ -806,7 +812,8 @@ public class PolarisManagementServiceIntegrationTest {
   public void testListPrincipalsUnauthorized() {
     PrincipalWithCredentials principal =
         managementApi.createPrincipal(client.newEntityName("new_admin"));
-    try (Response response = client.managementApi(principal).request("v1/principals").get()) {
+    String authToken = client.obtainToken(principal);
+    try (Response response = client.managementApi(authToken).request("v1/principals").get()) {
       assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
     }
   }
@@ -1204,9 +1211,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
             .setProperties(new CatalogProperties("s3://required/base/location"))
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .build();
     managementApi.createCatalog(catalog);
 
@@ -1215,9 +1220,7 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName2)
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://required/base/other_location"))
             .build();
     managementApi.createCatalog(catalog2);
@@ -1512,9 +1515,7 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(client.newEntityName("mycatalog"))
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
     managementApi.createCatalog(catalog);
@@ -1534,9 +1535,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(client.newEntityName("othercatalog"))
             .setProperties(new CatalogProperties("s3://path/to/data"))
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .build();
     managementApi.createCatalog(otherCatalog);
 
@@ -1677,14 +1676,14 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
     managementApi.createCatalog(catalog);
 
-    CatalogRole catalogAdminRole = managementApi.getCatalogRole(catalogName, "catalog_admin");
+    CatalogRole catalogAdminRole =
+        managementApi.getCatalogRole(
+            catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
     PrincipalWithCredentials catalogAdminPrincipal =
@@ -1726,7 +1725,7 @@ public class PolarisManagementServiceIntegrationTest {
             .managementApi(catalogAdminToken)
             .request(
                 "v1/principal-roles/"
-                    + principalRoleName
+                    + principalRoleName2
                     + "/catalog-roles/"
                     + catalogName
                     + "/"
@@ -1741,13 +1740,31 @@ public class PolarisManagementServiceIntegrationTest {
         managementApi
             .request(
                 "v1/principal-roles/"
-                    + principalRoleName
+                    + principalRoleName2
                     + "/catalog-roles/"
                     + catalogName
                     + "/"
                     + catalogRoleName)
             .delete()) {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+
+    // trigger an internal error by using "principalRoleName" instead of "principalRoleName2"
+    try (Response response =
+        managementApi
+            .request(
+                "v1/principal-roles/"
+                    + principalRoleName
+                    + "/catalog-roles/"
+                    + catalogName
+                    + "/"
+                    + catalogRoleName)
+            .delete()) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+      assertThat(response.hasEntity()).isTrue();
+      ErrorResponse errorResponse = response.readEntity(ErrorResponse.class);
+      assertThat(errorResponse.message()).contains("Operation failed: GRANT_NOT_FOUND");
     }
   }
 
@@ -1764,14 +1781,14 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
     managementApi.createCatalog(catalog);
 
-    CatalogRole catalogAdminRole = managementApi.getCatalogRole(catalogName, "catalog_admin");
+    CatalogRole catalogAdminRole =
+        managementApi.getCatalogRole(
+            catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
     PrincipalWithCredentials catalogAdminPrincipal =
@@ -1813,7 +1830,10 @@ public class PolarisManagementServiceIntegrationTest {
       // grant the admin role back to service_admin so that cleanup can happen
       client
           .managementApi(catalogAdminToken)
-          .grantCatalogRoleToPrincipalRole("service_admin", catalogName, catalogAdminRole);
+          .grantCatalogRoleToPrincipalRole(
+              PolarisEntityConstants.getNameOfPrincipalServiceAdminRole(),
+              catalogName,
+              catalogAdminRole);
     }
   }
 
@@ -1831,9 +1851,7 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
     managementApi.createCatalog(catalog);
@@ -1844,9 +1862,7 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName2)
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
     managementApi.createCatalog(catalog2);
@@ -1856,7 +1872,9 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.createCatalogRole(catalogName2, catalogRoleName);
 
     // Get the catalog admin role from the *first* catalog and grant that role to the principal role
-    CatalogRole catalogAdminRole = managementApi.getCatalogRole(catalogName, "catalog_admin");
+    CatalogRole catalogAdminRole =
+        managementApi.getCatalogRole(
+            catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole());
     managementApi.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole);
 
     // Create a principal and grant the principal role to it
@@ -1896,9 +1914,7 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
     managementApi.createCatalog(catalog);
@@ -1912,9 +1928,7 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName2)
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
     managementApi.createCatalog(catalog2);
@@ -2086,9 +2100,7 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
     managementApi.createCatalog(catalog);
@@ -2112,9 +2124,7 @@ public class PolarisManagementServiceIntegrationTest {
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
     managementApi.createCatalog(catalog);
@@ -2138,9 +2148,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
             .setProperties(new CatalogProperties("s3://required/base/location"))
-            .setStorageConfigInfo(
-                new AwsStorageConfigInfo(
-                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setStorageConfigInfo(new AwsStorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3))
             .build();
     managementApi.createCatalog(catalog);
 

@@ -35,7 +35,6 @@ cd ~/polaris
   :polaris-server:quarkusAppPartsBuild --rerun \
   :polaris-admin:assemble \
   :polaris-admin:quarkusAppPartsBuild --rerun \
-  -Dquarkus.container-image.tag=postgres-latest \
   -Dquarkus.container-image.build=true
 ```
 - **For standalone**: Omit the `-Dquarkus.container-image.tag` and `-Dquarkus.container-image.build` options if you do not need to build a Docker image.

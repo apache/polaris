@@ -43,16 +43,15 @@ dependencies {
 
   implementation(libs.caffeine)
   implementation(libs.commons.lang3)
-  implementation(libs.commons.codec1)
+  implementation(libs.commons.codec)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
-  compileOnly(libs.spotbugs.annotations)
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   constraints {
-    implementation("org.xerial.snappy:snappy-java:1.1.10.7") {
+    implementation("org.xerial.snappy:snappy-java:1.1.10.8") {
       because("Vulnerability detected in 1.1.8.2")
     }
     implementation("org.codehaus.jettison:jettison:1.5.4") {
@@ -61,10 +60,10 @@ dependencies {
     implementation("org.apache.commons:commons-configuration2:2.12.0") {
       because("Vulnerability detected in 2.8.0")
     }
-    implementation("org.apache.commons:commons-compress:1.27.1") {
+    implementation("org.apache.commons:commons-compress:1.28.0") {
       because("Vulnerability detected in 1.21")
     }
-    implementation("com.nimbusds:nimbus-jose-jwt:10.3.1") {
+    implementation("com.nimbusds:nimbus-jose-jwt:10.4.2") {
       because("Vulnerability detected in 9.8.1")
     }
   }
@@ -89,10 +88,10 @@ dependencies {
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
   constraints {
-    implementation("io.netty:netty-codec-http2:4.2.3.Final") {
+    implementation("io.netty:netty-codec-http2:4.2.4.Final") {
       because("Vulnerability detected in 4.1.72")
     }
-    implementation("io.projectreactor.netty:reactor-netty-http:1.2.8") {
+    implementation("io.projectreactor.netty:reactor-netty-http:1.2.9") {
       because("Vulnerability detected in 1.0.45")
     }
   }

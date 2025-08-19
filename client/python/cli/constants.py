@@ -164,8 +164,13 @@ class Arguments:
     REGION = "region"
     PROFILE = "profile"
     PROXY = "proxy"
+    DEBUG = "debug"
     HADOOP_WAREHOUSE = "hadoop_warehouse"
     ICEBERG_REMOTE_CATALOG_NAME = "iceberg_remote_catalog_name"
+    ENDPOINT = "endpoint"
+    ENDPOINT_INTERNAL = "endpoint_internal"
+    STS_ENDPOINT = "sts_endpoint"
+    PATH_STYLE_ACCESS = "path_style_access"
     CATALOG_CONNECTION_TYPE = "catalog_connection_type"
     CATALOG_AUTHENTICATION_TYPE = "catalog_authentication_type"
     CATALOG_SERVICE_IDENTITY_TYPE = "catalog_service_identity_type"
@@ -219,10 +224,16 @@ class Hints:
                 "Multiple locations can be provided by specifying this option more than once."
             )
 
-            ROLE_ARN = "(Required for S3) A role ARN to use when connecting to S3"
+            ROLE_ARN = "(Only for S3) A role ARN to use when connecting to S3"
             EXTERNAL_ID = "(Only for S3) The external ID to use when connecting to S3"
             REGION = "(Only for S3) The region to use when connecting to S3"
             USER_ARN = "(Only for S3) A user ARN to use when connecting to S3"
+            ENDPOINT = "(Only for S3) The S3 endpoint to use when connecting to S3"
+            ENDPOINT_INTERNAL = "(Only for S3) The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use"
+            STS_ENDPOINT = (
+                "(Only for S3) The STS endpoint to use when connecting to STS"
+            )
+            PATH_STYLE_ACCESS = "(Only for S3) Whether to use path-style-access for S3"
 
             TENANT_ID = "(Required for Azure) A tenant ID to use when connecting to Azure Storage"
             MULTI_TENANT_APP_NAME = (
