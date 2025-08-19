@@ -932,15 +932,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     PolarisBaseEntity principal = loadEntityResult.getEntity();
-    Map<String, String> internalProps =
-        PolarisObjectMapperUtil.deserializeProperties(
-            principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
+    Map<String, String> internalProps = principal.getInternalPropertiesAsMap();
 
     boolean customReset = customClientId != null && customClientSecret != null;
     PolarisPrincipalSecrets secrets =
         ((IntegrationPersistence) ms)
             .resetPrincipalSecrets(
-                callCtx, clientId, principalId, customClientId, customClientSecret, customReset);
+                callCtx, clientId, principalId, customClientId, customClientSecret);
 
     PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     principalBuilder.internalProperties(PolarisObjectMapperUtil.serializeProperties(internalProps));
@@ -949,8 +947,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       principalBuilder.entityVersion(principal.getEntityVersion());
     } else {
       principalBuilder.entityVersion(principal.getEntityVersion() + 1);
+      ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
     }
-    ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);

@@ -1007,7 +1007,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     PolarisPrincipalSecrets secrets =
         ms.resetPrincipalSecrets(
-            callCtx, clientId, principalId, customClientId, customClientSecret, customReset);
+            callCtx, clientId, principalId, customClientId, customClientSecret);
     principalBuilder.internalProperties(PolarisObjectMapperUtil.serializeProperties(internalProps));
     // To avoid incrementing entity version twice
     if (customReset) {
