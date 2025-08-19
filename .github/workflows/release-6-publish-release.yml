@@ -154,14 +154,14 @@ jobs:
           # Define source and destination URLs
           dev_artifacts_url="${APACHE_DIST_URL}/dev/incubator/polaris/${version_without_rc}"
           release_artifacts_url="${APACHE_DIST_URL}/release/incubator/polaris/${version_without_rc}"
-          
+
           dev_helm_url="${APACHE_DIST_URL}/dev/incubator/polaris/helm-chart/${version_without_rc}"
           release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart/${version_without_rc}"
 
           print_info "Moving artifacts from dev to release..."
           print_info "  From: ${dev_artifacts_url}"
           print_info "  To: ${release_artifacts_url}"
-          
+
           exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_artifacts_url}" "${release_artifacts_url}" \
             -m "Release Apache Polaris ${version_without_rc}"
@@ -169,7 +169,7 @@ jobs:
           print_info "Moving Helm chart from dev to release..."
           print_info "  From: ${dev_helm_url}"
           print_info "  To: ${release_helm_url}"
-          
+
           exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_helm_url}" "${release_helm_url}" \
             -m "Release Apache Polaris Helm chart ${version_without_rc}"

@@ -68,16 +68,16 @@ jobs:
           else
             # Automatic trigger - get upstream workflow's dry_run value
             workflow_run_id="${{ github.event.workflow_run.id }}"
-            
+
             # Fetch the jobs for the workflow run
             jobs_response=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
               "https://api.github.com/repos/${{ github.repository }}/actions/runs/${workflow_run_id}/jobs")
-            
+
             # Extract the dry_run output from the build-and-publish-docker job
             upstream_dry_run=$(echo "$jobs_response" | jq -r '.jobs[] | select(.name == "Build and Publish Docker Images") | .outputs.dry_run // "0"')
-            
+
             echo "DRY_RUN=${upstream_dry_run}" >> $GITHUB_ENV
             echo "dry_run=${upstream_dry_run}" >> $GITHUB_OUTPUT
             echo "Retrieved upstream dry_run value: ${upstream_dry_run}"
