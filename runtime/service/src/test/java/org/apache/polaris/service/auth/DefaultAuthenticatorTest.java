@@ -52,7 +52,7 @@ public class DefaultAuthenticatorTest {
 
   @Test
   public void testFetchPrincipalThrowsServiceExceptionOnMetastoreException() {
-    DecodedToken token = Mockito.mock(DecodedToken.class);
+    PolarisCredential token = Mockito.mock(PolarisCredential.class);
     long principalId = 100L;
     when(token.getPrincipalId()).thenReturn(principalId);
     when(metaStoreManager.loadEntity(
@@ -69,10 +69,9 @@ public class DefaultAuthenticatorTest {
 
   @Test
   public void testFetchPrincipalThrowsNotAuthorizedWhenNotFound() {
-    DecodedToken token = Mockito.mock(DecodedToken.class);
+    PolarisCredential token = Mockito.mock(PolarisCredential.class);
     long principalId = 100L;
     when(token.getPrincipalId()).thenReturn(principalId);
-    when(token.getClientId()).thenReturn("abc");
     when(metaStoreManager.loadEntity(
             authenticator.callContext.getPolarisCallContext(),
             0L,
