@@ -24,6 +24,7 @@ import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -99,8 +100,8 @@ public class Page<T> {
 
   /**
    * Returns a page token in encoded form suitable for returning to API clients. The string returned
-   * from this method is expected to be parsed by {@link PageToken#build(String, Integer)} when
-   * servicing the request for the next page of related data.
+   * from this method is expected to be parsed by {@link PageToken#build(String, Integer,
+   * BooleanSupplier)} when servicing the request for the next page of related data.
    */
   public @Nullable String encodedResponseToken() {
     return PageTokenUtil.encodePageToken(request, nextToken);
