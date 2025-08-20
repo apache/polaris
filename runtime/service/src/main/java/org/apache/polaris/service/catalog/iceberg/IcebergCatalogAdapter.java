@@ -35,6 +35,7 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -460,8 +461,9 @@ public class IcebergCatalogAdapter
             credential ->
                 credential
                     .prefix()
-                    .toLowerCase()
-                    .startsWith(StorageConfigInfo.StorageTypeEnum.S3.name().toLowerCase()))) {
+                    .toLowerCase(Locale.ROOT)
+                    .startsWith(
+                        StorageConfigInfo.StorageTypeEnum.S3.name().toLowerCase(Locale.ROOT)))) {
       LoadTableResponse.Builder loadResponseBuilder =
           LoadTableResponse.builder().withTableMetadata(originalResponse.tableMetadata());
       loadResponseBuilder.addAllConfig(originalResponse.config());
