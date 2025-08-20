@@ -24,7 +24,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.OptionalInt;
-import java.util.function.Supplier;
+import java.util.function.BooleanSupplier;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /** A wrapper for pagination information passed in as part of a request. */
@@ -89,7 +89,7 @@ public interface PageToken {
   static PageToken build(
       @Nullable String serializedPageToken,
       @Nullable Integer requestedPageSize,
-      Supplier<Boolean> shouldDecodeToken) {
+      BooleanSupplier shouldDecodeToken) {
     return PageTokenUtil.decodePageRequest(
         serializedPageToken, requestedPageSize, shouldDecodeToken);
   }
