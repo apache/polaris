@@ -1295,7 +1295,7 @@ components:
           type: string
           description: >
             Optional client secret to set for the principal.
-            Must match the secret issued for the given client ID.
+            Polaris service implementations may impose extra requirements on what is accepted as a secret (special chars, length, etc.)
 
     PrincipalRoles:
       type: object
