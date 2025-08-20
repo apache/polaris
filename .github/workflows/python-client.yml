@@ -50,9 +50,6 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Run regeneratePythonClient
-        run: ./gradlew regeneratePythonClient
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -76,3 +73,7 @@ jobs:
       - name: Integration Tests
         run: |
           make client-integration-test
+
+      - name: Run Polaris Client help maual
+        run: |
+          ./polaris --help
