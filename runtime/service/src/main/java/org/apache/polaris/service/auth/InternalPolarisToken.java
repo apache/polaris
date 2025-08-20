@@ -35,13 +35,13 @@ import org.immutables.value.Value;
  * @see JWTBroker
  */
 @PolarisImmutable
-abstract class InternalPolarisCredential implements PolarisCredential {
+abstract class InternalPolarisToken implements PolarisCredential {
 
   private static final Splitter SCOPE_SPLITTER = Splitter.on(' ').omitEmptyStrings().trimResults();
 
-  static InternalPolarisCredential of(
+  static InternalPolarisToken of(
       String principalName, Long principalId, String clientId, String scope) {
-    return ImmutableInternalPolarisCredential.builder()
+    return ImmutableInternalPolarisToken.builder()
         .principalName(principalName)
         .principalId(principalId)
         .clientId(clientId)

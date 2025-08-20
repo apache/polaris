@@ -62,12 +62,12 @@ public abstract class JWTBroker implements TokenBroker {
     return verifyInternal(token);
   }
 
-  private InternalPolarisCredential verifyInternal(String token) {
+  private InternalPolarisToken verifyInternal(String token) {
     JWTVerifier verifier = JWT.require(getAlgorithm()).withClaim(CLAIM_KEY_ACTIVE, true).build();
 
     try {
       DecodedJWT decodedJWT = verifier.verify(token);
-      return InternalPolarisCredential.of(
+      return InternalPolarisToken.of(
           decodedJWT.getSubject(),
           decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
           decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString(),
@@ -96,7 +96,7 @@ public abstract class JWTBroker implements TokenBroker {
     if (subjectToken == null || subjectToken.isBlank()) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
     }
-    InternalPolarisCredential decodedToken;
+    InternalPolarisToken decodedToken;
     try {
       decodedToken = verifyInternal(subjectToken);
     } catch (NotAuthorizedException e) {
