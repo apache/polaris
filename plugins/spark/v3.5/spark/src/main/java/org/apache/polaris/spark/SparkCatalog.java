@@ -145,6 +145,7 @@ public class SparkCatalog
   }
 
   @Override
+  @SuppressWarnings({"deprecation"})
   public Table createTable(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
       throws TableAlreadyExistsException, NoSuchNamespaceException {
@@ -226,6 +227,7 @@ public class SparkCatalog
   }
 
   @Override
+  @SuppressWarnings({"deprecation", "RedundantSuppression"})
   public StagedTable stageCreate(
       Identifier ident, StructType schema, Transform[] transforms, Map<String, String> properties)
       throws TableAlreadyExistsException {
