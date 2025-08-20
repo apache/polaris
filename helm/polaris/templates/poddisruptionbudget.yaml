@@ -30,9 +30,13 @@ metadata:
     {{- tpl (toYaml .Values.podDisruptionBudget.annotations) . | nindent 4 }}
   {{- end }}
 spec:
+  {{- if and .Values.podDisruptionBudget.minAvailable .Values.podDisruptionBudget.maxUnavailable }}
+  {{- fail "podDisruptionBudget.minAvailable and podDisruptionBudget.maxUnavailable cannot be both set." -}}
+  {{- end }}
   {{- if .Values.podDisruptionBudget.minAvailable }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
-  {{- else if .Values.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+  {{- if .Values.podDisruptionBudget.maxUnavailable }}
   maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
   {{- end }}
   selector:
