@@ -49,6 +49,7 @@ public interface AuthenticationRealmConfiguration {
    * The configuration for the active roles provider. The active roles provider is responsible for
    * determining the active roles for a given Polaris principal.
    */
+  @Deprecated
   ActiveRolesProviderConfiguration activeRolesProvider();
 
   interface ActiveRolesProviderConfiguration {
