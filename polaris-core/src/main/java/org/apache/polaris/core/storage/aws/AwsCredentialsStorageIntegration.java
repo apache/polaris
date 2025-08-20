@@ -116,6 +116,27 @@ public class AwsCredentialsStorageIntegration
                   String.valueOf(i.toEpochMilli()));
             });
 
+    addCommonProperties(region, accessConfig, storageConfig);
+
+    return accessConfig.build();
+  }
+
+  public AccessConfig getRemoteSigningAccessConfig(URI signerUri, String signerEndpoint) {
+
+    AwsStorageConfigurationInfo storageConfig = config();
+    AccessConfig.Builder accessConfig = AccessConfig.builder();
+
+    accessConfig.put(StorageAccessProperty.AWS_REMOTE_SIGNING_ENABLED, Boolean.TRUE.toString());
+    accessConfig.put(StorageAccessProperty.AWS_REMOTE_SIGNER_URI, signerUri.toString());
+    accessConfig.put(StorageAccessProperty.AWS_REMOTE_SIGNER_ENDPOINT, signerEndpoint);
+
+    addCommonProperties(storageConfig.getRegion(), accessConfig, storageConfig);
+
+    return accessConfig.build();
+  }
+
+  private static void addCommonProperties(
+      String region, AccessConfig.Builder accessConfig, AwsStorageConfigurationInfo storageConfig) {
     if (region != null) {
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
@@ -139,8 +160,6 @@ public class AwsCredentialsStorageIntegration
           String.format(
               "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
     }
-
-    return accessConfig.build();
   }
 
   /**

@@ -36,7 +36,6 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 @ConfigMapping(prefix = "polaris.storage")
 public interface StorageConfiguration extends S3AccessConfig {
@@ -72,21 +71,19 @@ public interface StorageConfiguration extends S3AccessConfig {
   Optional<Duration> gcpAccessTokenLifespan();
 
   default Supplier<StsClient> stsClientSupplier() {
-    return stsClientSupplier(true);
-  }
-
-  default Supplier<StsClient> stsClientSupplier(boolean withCredentials) {
     return Suppliers.memoize(
-        () -> {
-          StsClientBuilder stsClientBuilder = StsClient.builder();
-          if (withCredentials) {
-            stsClientBuilder.credentialsProvider(stsCredentials());
-          }
-          return stsClientBuilder.build();
-        });
+        () -> StsClient.builder().credentialsProvider(awsSystemCredentials()).build());
   }
 
-  default AwsCredentialsProvider stsCredentials() {
+  /**
+   * Returns an {@link AwsCredentialsProvider} that provides system-wide AWS credentials. If both
+   * access key and secret key are present, it uses them directly; otherwise, it uses the default
+   * credentials provider chain.
+   *
+   * <p>The returned provider is not meant to be vended directly to clients, but rather used with
+   * STS, unless credential subscoping is disabled.
+   */
+  default AwsCredentialsProvider awsSystemCredentials() {
     if (awsAccessKey().isPresent() && awsSecretKey().isPresent()) {
       LoggerFactory.getLogger(StorageConfiguration.class)
           .warn("Using hard-coded AWS credentials - this is not recommended for production");

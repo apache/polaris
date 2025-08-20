@@ -152,6 +152,7 @@ tasks.register<Exec>("regeneratePythonClient") {
   dependsOn(":polaris-api-management-service:processResources")
   dependsOn(":polaris-api-catalog-service:processResources")
   dependsOn(":polaris-api-management-model:processResources")
+  dependsOn(":polaris-api-s3-sign-service:processResources")
 }
 
 // Pass environment variables:

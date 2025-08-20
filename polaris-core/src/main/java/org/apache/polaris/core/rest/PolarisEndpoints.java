@@ -23,6 +23,7 @@ import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.CatalogEntity;
 
 public class PolarisEndpoints {
   // Generic table endpoints
@@ -73,6 +74,12 @@ public class PolarisEndpoints {
           .add(V1_GET_APPLICABLE_POLICIES)
           .build();
 
+  public static final Endpoint V1_S3_REMOTE_SIGNING =
+      Endpoint.create("POST", PolarisResourcePaths.V1_S3_REMOTE_SIGNING);
+
+  public static final Set<Endpoint> REMOTE_SIGNING_ENDPOINTS =
+      ImmutableSet.<Endpoint>builder().add(V1_S3_REMOTE_SIGNING).build();
+
   /**
    * Get the generic table endpoints. Returns GENERIC_TABLE_ENDPOINTS if ENABLE_GENERIC_TABLES is
    * set to true, otherwise, returns an empty set.
@@ -91,5 +98,17 @@ public class PolarisEndpoints {
   public static Set<Endpoint> getSupportedPolicyEndpoints(RealmConfig realmConfig) {
     boolean policyStoreEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_POLICY_STORE);
     return policyStoreEnabled ? POLICY_STORE_ENDPOINTS : ImmutableSet.of();
+  }
+
+  /**
+   * Get the remote signing endpoints. Returns {@link #REMOTE_SIGNING_ENDPOINTS} if {@link
+   * FeatureConfiguration#REMOTE_SIGNING_ENABLED} is set globally to true or if the catalog enables
+   * remote signing; otherwise, returns an empty set.
+   */
+  public static Set<Endpoint> getSupportedRemoteSigningEndpoints(
+      RealmConfig realmConfig, CatalogEntity catalogEntity) {
+    boolean remoteSigningEnabled =
+        realmConfig.getConfig(FeatureConfiguration.REMOTE_SIGNING_ENABLED, catalogEntity);
+    return remoteSigningEnabled ? REMOTE_SIGNING_ENDPOINTS : ImmutableSet.of();
   }
 }
