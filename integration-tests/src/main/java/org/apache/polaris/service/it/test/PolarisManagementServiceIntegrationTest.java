@@ -911,6 +911,10 @@ public class PolarisManagementServiceIntegrationTest {
     assertThat(resetCreds.getCredentials().getClientSecret())
         .isEqualTo("27029d236abc08e204922b0a07031bc2");
 
+    // Validate that the principal entity itself is updated in sync with credentials
+    Principal updatedPrincipal = managementApi.getPrincipal(principal.getName());
+    assertThat(updatedPrincipal.getClientId()).isEqualTo("f174b76a7e1a99e2");
+
     // Principal itself tries to reset with custom creds → should fail (403 Forbidden)
     String principalToken = client.obtainToken(resetCreds);
     customBody =

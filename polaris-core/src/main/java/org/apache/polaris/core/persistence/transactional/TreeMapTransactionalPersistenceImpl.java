@@ -515,13 +515,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             principalSecrets.getPrincipalId());
 
     // reset the secrets
-    if (customClientId != null && customClientSecret != null) {
-      principalSecrets =
-          new PolarisPrincipalSecrets(
-              principalSecrets.getPrincipalId(), customClientId, customClientSecret, null);
-    } else {
-      principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
-    }
+    principalSecrets = principalSecrets.resetSecrets(customClientId, customClientSecret);
 
     // write back new secrets
     this.store.getSlicePrincipalSecrets().write(principalSecrets);
