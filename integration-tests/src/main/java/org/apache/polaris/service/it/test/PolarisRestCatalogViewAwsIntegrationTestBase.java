@@ -20,13 +20,12 @@ package org.apache.polaris.service.it.test;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
+import org.apache.hadoop.fs.Path;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.assertj.core.util.Strings;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on AWS. */
-public class PolarisRestCatalogViewAwsIntegrationTest
+public abstract class PolarisRestCatalogViewAwsIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
   public static final String ROLE_ARN =
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN")) // Backward compatibility
@@ -38,12 +37,12 @@ public class PolarisRestCatalogViewAwsIntegrationTest
     return AwsStorageConfigInfo.builder()
         .setRoleArn(ROLE_ARN)
         .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-        .setAllowedLocations(List.of(BASE_LOCATION))
+        .setAllowedLocations(List.of(new Path(BASE_LOCATION, POLARIS_IT_SUBDIR).toString()))
         .build();
   }
 
   @Override
-  protected boolean shouldSkip() {
-    return Stream.of(BASE_LOCATION, ROLE_ARN).anyMatch(Strings::isNullOrEmpty);
+  protected String getCustomMetadataLocationDir() {
+    return new Path(BASE_LOCATION, POLARIS_IT_CUSTOM_SUBDIR).toString();
   }
 }
