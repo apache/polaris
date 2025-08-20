@@ -2160,4 +2160,52 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       restCatalog.dropNamespace(namespace);
     }
   }
+
+  @Test
+  public void testNonPaginatedListTablesViewNamespaces() {
+    Catalog catalog = managementApi.getCatalog(currentCatalogName);
+    Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+    catalogProps.put(FeatureConfiguration.LIST_PAGINATION_ENABLED.catalogConfig(), "false");
+    managementApi.updateCatalog(catalog, catalogProps);
+
+    String prefix = "testNonPaginatedListTablesViewNamespaces";
+    Namespace namespace = Namespace.of(prefix);
+    restCatalog.createNamespace(namespace);
+    for (int i = 0; i < 5; i++) {
+      restCatalog.createNamespace(Namespace.of(prefix, "nested-ns" + i));
+      restCatalog.createTable(TableIdentifier.of(namespace, "table" + i), SCHEMA);
+      restCatalog
+          .buildView(TableIdentifier.of(namespace, "view" + i))
+          .withSchema(SCHEMA)
+          .withDefaultNamespace(namespace)
+          .withQuery("spark", VIEW_QUERY)
+          .create();
+    }
+
+    assertThat(catalogApi.listTables(currentCatalogName, namespace)).hasSize(5);
+    // Note: no pagination per feature config
+    ListTablesResponse response = catalogApi.listTables(currentCatalogName, namespace, null, "2");
+    assertThat(response.identifiers()).hasSize(5);
+    assertThat(response.nextPageToken()).isNull();
+    response = catalogApi.listTables(currentCatalogName, namespace, "fake-token", null);
+    assertThat(response.identifiers()).hasSize(5);
+    assertThat(response.nextPageToken()).isNull();
+
+    assertThat(catalogApi.listViews(currentCatalogName, namespace)).hasSize(5);
+    response = catalogApi.listViews(currentCatalogName, namespace, null, "2");
+    assertThat(response.identifiers()).hasSize(5);
+    assertThat(response.nextPageToken()).isNull();
+    response = catalogApi.listViews(currentCatalogName, namespace, "fake-token", null);
+    assertThat(response.identifiers()).hasSize(5);
+    assertThat(response.nextPageToken()).isNull();
+
+    assertThat(catalogApi.listNamespaces(currentCatalogName, namespace)).hasSize(5);
+    ListNamespacesResponse nsResponse =
+        catalogApi.listNamespaces(currentCatalogName, namespace, null, "2");
+    assertThat(nsResponse.namespaces()).hasSize(5);
+    assertThat(nsResponse.nextPageToken()).isNull();
+    nsResponse = catalogApi.listNamespaces(currentCatalogName, namespace, "fake-token", null);
+    assertThat(nsResponse.namespaces()).hasSize(5);
+    assertThat(nsResponse.nextPageToken()).isNull();
+  }
 }
