@@ -31,7 +31,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - **HMS Federation Support**: Added support for Hive Metastore (HMS) federation, enabling integration with existing Hive metastores.
 
-- **Generic Table Federation**: Introduced modularized federation architecture to support multiple catalog types and improve extensibility.
+- **Modularized Federation**: Introduced modularized federation architecture to support multiple catalog types and improve extensibility.
 
 - **External Authentication**: Added comprehensive support for external identity providers including Keycloak integration and Helm chart configuration options.
 
