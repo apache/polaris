@@ -1200,6 +1200,32 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @Test
+  public void testDropViewWithPurge() {
+    restCatalog.createNamespace(Namespace.of("ns1"));
+    TableIdentifier id = TableIdentifier.of(Namespace.of("ns1"), "view1");
+    restCatalog
+        .buildView(id)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(Namespace.of("ns1"))
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    Catalog catalog = managementApi.getCatalog(currentCatalogName);
+    Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+    catalogProps.put(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false");
+    catalogProps.put(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "true");
+    managementApi.updateCatalog(catalog, catalogProps);
+
+    assertThatThrownBy(() -> restCatalog.dropView(id)).isInstanceOf(ForbiddenException.class);
+
+    catalog = managementApi.getCatalog(currentCatalogName);
+    catalogProps.put(FeatureConfiguration.PURGE_VIEW_METADATA_ON_DROP.catalogConfig(), "false");
+    managementApi.updateCatalog(catalog, catalogProps);
+
+    assertThatCode(() -> restCatalog.dropView(id)).doesNotThrowAnyException();
+  }
+
+  @Test
   public void testRenameViewStatus() {
     String tableName = "tbl1";
     String viewName = "view1";
