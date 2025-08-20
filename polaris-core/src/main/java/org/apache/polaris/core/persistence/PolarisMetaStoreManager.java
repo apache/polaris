@@ -111,8 +111,8 @@ public interface PolarisMetaStoreManager
       @Nonnull String name);
 
   /**
-   * List all entities of the specified type under the specified catalogPath. If the catalogPath is
-   * null, listed entities will be top-level entities like catalogs.
+   * List lightweight information about entities matching the given criteria. If all properties of
+   * the entity are required,use {@link #loadEntities} instead.
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
@@ -131,14 +131,16 @@ public interface PolarisMetaStoreManager
       @Nonnull PageToken pageToken);
 
   /**
-   * Load entities with pagination
+   * Load full entities matching the given criteria with pagination. If only the entity name/id/type
+   * is required, use {@link #listEntities} instead. If no pagination is required, use {@link
+   * #loadEntitiesAll} instead.
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
    *     like catalogs
    * @param entityType type of entities to list
    * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
-   * @return the paged list of entities
+   * @return paged list of matching entities
    */
   @Nonnull
   Page<PolarisBaseEntity> loadEntities(
@@ -149,14 +151,16 @@ public interface PolarisMetaStoreManager
       @Nonnull PageToken pageToken);
 
   /**
-   * Load all entities into an unpaged list
+   * Load full entities matching the given criteria into an unpaged list. If pagination is required
+   * use {@link #loadEntities} instead. If only the entity name/id/type is required, use {@link
+   * #listEntities} instead.
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
    *     like catalogs
    * @param entityType type of entities to list
    * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
-   * @return the full list of entities
+   * @return list of all matching entities
    */
   default @Nonnull List<PolarisBaseEntity> loadEntitiesAll(
       @Nonnull PolarisCallContext callCtx,
