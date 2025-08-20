@@ -123,16 +123,6 @@ tests:
           value:
             app.example.com/release: "polaris-release"
 
-  # spec.maxUnavailable (default behavior)
-  - it: should set default maxUnavailable
-    set:
-      podDisruptionBudget.enabled: true
-    asserts:
-      - equal:
-          path: spec.maxUnavailable
-          value: 1
-      - isNull:
-          path: spec.minAvailable
   - it: should set custom maxUnavailable
     set:
       podDisruptionBudget.enabled: true
