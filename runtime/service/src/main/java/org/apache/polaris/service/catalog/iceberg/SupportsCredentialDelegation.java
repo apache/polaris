@@ -35,5 +35,6 @@ public interface SupportsCredentialDelegation {
   AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      Set<PolarisStorageActions> storageActions);
+      Set<PolarisStorageActions> storageActions,
+      String refreshCredentialsEndpoint);
 }

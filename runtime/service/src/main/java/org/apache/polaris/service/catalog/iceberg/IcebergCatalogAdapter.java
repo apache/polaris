@@ -35,13 +35,11 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import org.apache.iceberg.MetadataUpdate;
-import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -63,7 +61,6 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
-import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
@@ -363,12 +360,18 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
+          String refreshCredentialsEndpoint =
+              delegationModes.contains(VENDED_CREDENTIALS)
+                  ? new PolarisResourcePaths(prefix)
+                      .credentialsPath(TableIdentifier.of(namespace, createTableRequest.name()))
+                  : null;
           if (createTableRequest.stageCreate()) {
             if (delegationModes.isEmpty()) {
               return Response.ok(catalog.createTableStaged(ns, createTableRequest)).build();
             } else {
               return Response.ok(
-                      catalog.createTableStagedWithWriteDelegation(ns, createTableRequest))
+                      catalog.createTableStagedWithWriteDelegation(
+                          ns, createTableRequest, refreshCredentialsEndpoint))
                   .build();
             }
           } else if (delegationModes.isEmpty()) {
@@ -378,7 +381,8 @@ public class IcebergCatalogAdapter
                 .build();
           } else {
             LoadTableResponse response =
-                catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
+                catalog.createTableDirectWithWriteDelegation(
+                    ns, createTableRequest, refreshCredentialsEndpoint);
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
@@ -434,47 +438,19 @@ public class IcebergCatalogAdapter
                     .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           } else {
-            LoadTableResponse originalResponse =
+            String refreshCredentialsEndpoint =
+                (delegationModes.contains(VENDED_CREDENTIALS))
+                    ? new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier)
+                    : null;
+            response =
                 catalog
-                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                    .loadTableWithAccessDelegationIfStale(
+                        tableIdentifier, ifNoneMatch, snapshots, refreshCredentialsEndpoint)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
-
-            if (delegationModes.contains(VENDED_CREDENTIALS)) {
-              response =
-                  injectRefreshVendedCredentialProperties(
-                      originalResponse,
-                      new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
-            } else {
-              response = originalResponse;
-            }
           }
 
           return tryInsertETagHeader(Response.ok(response), response, namespace, table).build();
         });
-  }
-
-  private LoadTableResponse injectRefreshVendedCredentialProperties(
-      LoadTableResponse originalResponse, String credentialsEndpoint) {
-    // Only enable credential refresh for currently supported credential types
-    if (originalResponse.credentials().stream()
-        .anyMatch(
-            credential ->
-                credential
-                    .prefix()
-                    .toLowerCase(Locale.ROOT)
-                    .startsWith(
-                        StorageConfigInfo.StorageTypeEnum.S3.name().toLowerCase(Locale.ROOT)))) {
-      LoadTableResponse.Builder loadResponseBuilder =
-          LoadTableResponse.builder().withTableMetadata(originalResponse.tableMetadata());
-      loadResponseBuilder.addAllConfig(originalResponse.config());
-      loadResponseBuilder.addAllCredentials(originalResponse.credentials());
-      loadResponseBuilder.addConfig(
-          AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, credentialsEndpoint);
-      loadResponseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
-      return loadResponseBuilder.build();
-    } else {
-      return originalResponse;
-    }
   }
 
   @Override
@@ -636,7 +612,10 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(tableIdentifier, "all");
+              catalog.loadTableWithAccessDelegation(
+                  tableIdentifier,
+                  "all",
+                  new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
                       .credentials(loadTableResponse.credentials())

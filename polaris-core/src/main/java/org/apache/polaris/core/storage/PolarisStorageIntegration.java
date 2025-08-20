@@ -61,7 +61,8 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations);
+      @Nonnull Set<String> allowedWriteLocations,
+      String refreshCredentialsEndpoint);
 
   /**
    * Validate access for the provided operation actions and locations.

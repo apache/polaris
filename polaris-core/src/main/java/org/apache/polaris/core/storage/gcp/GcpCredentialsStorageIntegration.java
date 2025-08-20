@@ -75,7 +75,8 @@ public class GcpCredentialsStorageIntegration
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      String refreshCredentialsEndpoint) {
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {

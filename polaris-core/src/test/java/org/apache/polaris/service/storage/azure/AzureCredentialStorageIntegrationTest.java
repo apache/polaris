@@ -352,7 +352,8 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         EMPTY_REALM_CONFIG,
         allowListAction,
         new HashSet<>(allowedReadLoc),
-        new HashSet<>(allowedWriteLoc));
+        new HashSet<>(allowedWriteLoc),
+        null);
   }
 
   private BlobContainerClient createContainerClient(

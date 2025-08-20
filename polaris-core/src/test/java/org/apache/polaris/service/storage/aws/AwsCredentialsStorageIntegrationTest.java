@@ -95,12 +95,18 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 EMPTY_REALM_CONFIG,
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
-                Set.of(warehouseDir + "/namespace/table"));
+                Set.of(warehouseDir + "/namespace/table"),
+                "/namespace/table/credentials");
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
         .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
+        .containsEntry(
+            StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENABLED.getPropertyName(), "true")
+        .containsEntry(
+            StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
+            "/namespace/table/credentials")
         .containsEntry(
             StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
@@ -242,7 +248,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             EMPTY_REALM_CONFIG,
                             true,
                             Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                            Set.of(s3Path(bucket, firstPath))))
+                            Set.of(s3Path(bucket, firstPath)),
+                            null))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       case AWS_PARTITION:
@@ -260,7 +267,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     EMPTY_REALM_CONFIG,
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                    Set.of(s3Path(bucket, firstPath)));
+                    Set.of(s3Path(bucket, firstPath)),
+                    null);
         assertThat(accessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -360,7 +368,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 EMPTY_REALM_CONFIG,
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                Set.of(s3Path(bucket, firstPath)));
+                Set.of(s3Path(bucket, firstPath)),
+                null);
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -454,7 +463,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 EMPTY_REALM_CONFIG,
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                Set.of());
+                Set.of(),
+                null);
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -516,7 +526,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .region("us-east-2")
                     .build(),
                 stsClient)
-            .getSubscopedCreds(EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of());
+            .getSubscopedCreds(
+                EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of(), null);
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -554,7 +565,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .build(),
                             stsClient)
                         .getSubscopedCreds(
-                            EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of()))
+                            EMPTY_REALM_CONFIG,
+                            true, /* allowList = true */
+                            Set.of(),
+                            Set.of(),
+                            null))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       case AWS_PARTITION:
@@ -569,7 +584,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .build(),
                     stsClient)
                 .getSubscopedCreds(
-                    EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of());
+                    EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of(), null);
         assertThat(accessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), clientRegion);
@@ -604,7 +619,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .build(),
                     stsClient)
                 .getSubscopedCreds(
-                    EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of());
+                    EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of(), null);
         assertThat(accessConfig.credentials())
             .isNotEmpty()
             .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
@@ -621,7 +636,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .build(),
                             stsClient)
                         .getSubscopedCreds(
-                            EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of()))
+                            EMPTY_REALM_CONFIG,
+                            true, /* allowList = true */
+                            Set.of(),
+                            Set.of(),
+                            null))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       default:

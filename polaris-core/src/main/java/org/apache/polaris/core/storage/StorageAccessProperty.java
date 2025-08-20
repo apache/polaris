@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.storage;
 
+import org.apache.iceberg.aws.AwsClientProperties;
+
 /**
  * A subset of Iceberg catalog properties recognized by Polaris.
  *
@@ -39,6 +41,18 @@ public enum StorageAccessProperty {
       Boolean.class, "s3.path-style-access", "whether to use S3 path style access", false),
   CLIENT_REGION(
       String.class, "client.region", "region to configure client for making requests to AWS"),
+  AWS_REFRESH_CREDENTIALS_ENABLED(
+      Boolean.class,
+      AwsClientProperties.REFRESH_CREDENTIALS_ENABLED,
+      "whether to enable automatic refresh of credentials",
+      true,
+      false),
+  AWS_REFRESH_CREDENTIALS_ENDPOINT(
+      String.class,
+      AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
+      "the endpoint to use for refreshing credentials",
+      true,
+      false),
 
   GCS_ACCESS_TOKEN(String.class, "gcs.oauth2.token", "the gcs scoped access token"),
   GCS_ACCESS_TOKEN_EXPIRES_AT(
@@ -52,6 +66,18 @@ public enum StorageAccessProperty {
   // it expects for SAS
   AZURE_ACCESS_TOKEN(String.class, "", "the azure scoped access token"),
   AZURE_SAS_TOKEN(String.class, "adls.sas-token.", "an azure shared access signature token"),
+  AZURE_REFRESH_CREDENTIALS_ENABLED(
+      Boolean.class,
+      "adls.refresh-credentials-enabled",
+      "whether to enable automatic refresh of credentials",
+      true,
+      false),
+  AZURE_REFRESH_CREDENTIALS_ENDPOINT(
+      String.class,
+      "adls.refresh-credentials-endpoint",
+      "the endpoint to use for refreshing credentials",
+      true,
+      false),
   EXPIRATION_TIME(
       Long.class,
       "expiration-time",

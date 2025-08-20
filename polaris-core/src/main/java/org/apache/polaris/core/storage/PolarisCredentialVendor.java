@@ -47,5 +47,6 @@ public interface PolarisCredentialVendor {
       PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations);
+      @Nonnull Set<String> allowedWriteLocations,
+      String refreshCredentialsEndpoint);
 }

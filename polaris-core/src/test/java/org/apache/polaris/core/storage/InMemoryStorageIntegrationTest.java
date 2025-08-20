@@ -197,7 +197,8 @@ class InMemoryStorageIntegrationTest {
         @Nonnull RealmConfig realmConfig,
         boolean allowListOperation,
         @Nonnull Set<String> allowedReadLocations,
-        @Nonnull Set<String> allowedWriteLocations) {
+        @Nonnull Set<String> allowedWriteLocations,
+        String refreshCredentialsEndpoint) {
       return null;
     }
   }

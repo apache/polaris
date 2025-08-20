@@ -170,7 +170,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         EMPTY_REALM_CONFIG,
         allowListAction,
         new HashSet<>(allowedReadLoc),
-        new HashSet<>(allowedWriteLoc));
+        new HashSet<>(allowedWriteLoc),
+        null);
   }
 
   @Test

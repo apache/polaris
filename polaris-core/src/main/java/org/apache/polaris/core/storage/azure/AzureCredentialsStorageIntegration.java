@@ -76,7 +76,8 @@ public class AzureCredentialsStorageIntegration
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      String refreshCredentialsEndpoint) {
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)
@@ -169,15 +170,25 @@ public class AzureCredentialsStorageIntegration
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
 
-    return toAccessConfig(sasToken, storageDnsName, sanitizedEndTime.toInstant());
+    return toAccessConfig(
+        sasToken, storageDnsName, sanitizedEndTime.toInstant(), refreshCredentialsEndpoint);
   }
 
   @VisibleForTesting
-  static AccessConfig toAccessConfig(String sasToken, String storageDnsName, Instant expiresAt) {
+  static AccessConfig toAccessConfig(
+      String sasToken,
+      String storageDnsName,
+      Instant expiresAt,
+      String refreshCredentialsEndpoint) {
     AccessConfig.Builder accessConfig = AccessConfig.builder();
     handleAzureCredential(accessConfig, sasToken, storageDnsName);
     accessConfig.put(
         StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
+    if (refreshCredentialsEndpoint != null) {
+      accessConfig.put(
+          StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, refreshCredentialsEndpoint);
+      accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENABLED, "true");
+    }
     return accessConfig.build();
   }
 

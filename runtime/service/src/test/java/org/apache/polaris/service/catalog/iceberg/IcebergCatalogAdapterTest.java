@@ -19,23 +19,17 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.iceberg.Schema;
-import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryCatalog;
-import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
-import org.apache.iceberg.rest.responses.LoadTableResponse;
-import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
@@ -49,7 +43,6 @@ import org.apache.polaris.service.TestServices;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Strings;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -248,61 +241,5 @@ public class IcebergCatalogAdapterTest {
         Arguments.of("5", 3),
         Arguments.of("5", 5),
         Arguments.of("5", 10));
-  }
-
-  @Test
-  void testLoadTableReturnsCredentialsRefreshEndpoint() throws IOException {
-    try (InMemoryCatalog inMemoryCatalog = new InMemoryCatalog()) {
-      // Initialize and replace the default handler with one backed by in-memory catalog
-      inMemoryCatalog.initialize("inMemory", Map.of());
-      mockCatalogAdapter(inMemoryCatalog);
-
-      // Create a namespace and table
-      String namespace = "test_ns";
-      String tableName = "test_table";
-      inMemoryCatalog.createNamespace(Namespace.of(namespace));
-
-      Schema schema =
-          new Schema(
-              Types.NestedField.required(1, "id", Types.LongType.get()),
-              Types.NestedField.optional(2, "name", Types.StringType.get()));
-
-      CreateTableRequest createTableRequest =
-          CreateTableRequest.builder().withName(tableName).withSchema(schema).build();
-
-      // Create the table first
-      catalogAdapter.createTable(
-          FEDERATED_CATALOG_NAME,
-          namespace,
-          createTableRequest,
-          "vended-credentials",
-          testServices.realmContext(),
-          testServices.securityContext());
-
-      // Load the table with vended credentials access delegation mode
-      LoadTableResponse response =
-          (LoadTableResponse)
-              catalogAdapter
-                  .loadTable(
-                      FEDERATED_CATALOG_NAME,
-                      namespace,
-                      tableName,
-                      "vended-credentials",
-                      null,
-                      null,
-                      testServices.realmContext(),
-                      testServices.securityContext())
-                  .getEntity();
-
-      // Verify that the response contains the credentials refresh endpoint configuration
-      assertThat(response.config()).containsKey(AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT);
-
-      String expectedEndpoint =
-          String.format(
-              "v1/%s/namespaces/%s/tables/%s/credentials",
-              FEDERATED_CATALOG_NAME, namespace, tableName);
-      assertThat(response.config().get(AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT))
-          .isEqualTo(expectedEndpoint);
-    }
   }
 }

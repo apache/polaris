@@ -81,7 +81,8 @@ public class FileIOUtil {
       TableIdentifier tableIdentifier,
       Set<String> tableLocations,
       Set<PolarisStorageActions> storageActions,
-      PolarisEntity entity) {
+      PolarisEntity entity,
+      String refreshCredentialsEndpoint) {
 
     boolean skipCredentialSubscopingIndirection =
         callContext
@@ -111,7 +112,8 @@ public class FileIOUtil {
             entity,
             allowList,
             tableLocations,
-            writeLocations);
+            writeLocations,
+            refreshCredentialsEndpoint);
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)
