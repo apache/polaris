@@ -57,15 +57,11 @@ the authentication parameters are picked from the environment or configuration f
 - The `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` feature was added to support placing tables
 at locations that better optimize for object storage.
 
-- Added support for generic table `baseLocation` field in both server and client implementations.
-
 - Introduced S3 path-style access support for improved compatibility with S3-compatible storage systems.
 
 - Added MinIO integration support with comprehensive getting started documentation.
 
 - Enhanced Python client with integration tests and improved error handling.
-
-- Added ability to override active roles provider configuration per realm for more flexible authentication setups.
 
 - Introduced extensible pagination token implementation for better API performance.
 
