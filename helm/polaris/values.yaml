@@ -68,11 +68,11 @@ podDisruptionBudget:
   enabled: false
   # -- The minimum number of pods that should remain available during disruptions.
   # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
-  # Cannot be used if maxUnavailable is set.
+  # IMPORTANT: Cannot be used simultaneously with maxUnavailable. If both are set, minAvailable takes precedence.
   minAvailable: ~
   # -- The maximum number of pods that can be unavailable during disruptions.
   # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
-  # Cannot be used if minAvailable is set.
+  # IMPORTANT: Cannot be used simultaneously with minAvailable. If both are set, minAvailable takes precedence.
   maxUnavailable: ~
   # -- Annotations to add to the pod disruption budget.
   annotations: {}

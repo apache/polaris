@@ -200,7 +200,7 @@ tests:
             app.kubernetes.io/instance: polaris-release
 
   # validation tests
-  - it: should handle both minAvailable and maxUnavailable set (minAvailable takes precedence)
+  - it: should not allow both minAvailable and maxUnavailable (minAvailable takes precedence)
     set:
       podDisruptionBudget.enabled: true
       podDisruptionBudget.minAvailable: 1
@@ -209,6 +209,5 @@ tests:
       - equal:
           path: spec.minAvailable
           value: 1
-      - equal:
+      - isNull:
           path: spec.maxUnavailable
-          value: 1
