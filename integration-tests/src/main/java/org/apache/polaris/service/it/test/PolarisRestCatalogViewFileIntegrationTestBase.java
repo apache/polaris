@@ -23,12 +23,14 @@ import java.util.List;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
 public abstract class PolarisRestCatalogViewFileIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
   static String baseLocation;
+  private Path tempDirForCustomMetadataLocation;
 
   @BeforeAll
   public static void setUp(@TempDir Path tempDir) {
@@ -37,6 +39,11 @@ public abstract class PolarisRestCatalogViewFileIntegrationTestBase
       baseUri = baseUri.substring(0, baseUri.length() - 1);
     }
     baseLocation = baseUri;
+  }
+
+  @BeforeEach
+  public void setUpTempDirForCustomMetadata(@TempDir Path tempDir) {
+    this.tempDirForCustomMetadataLocation = tempDir;
   }
 
   @Override
@@ -48,7 +55,7 @@ public abstract class PolarisRestCatalogViewFileIntegrationTestBase
   }
 
   @Override
-  protected boolean shouldSkip() {
-    return false;
+  protected String getCustomMetadataLocationDir() {
+    return Path.of(tempDirForCustomMetadataLocation.toUri().toString()).toString();
   }
 }

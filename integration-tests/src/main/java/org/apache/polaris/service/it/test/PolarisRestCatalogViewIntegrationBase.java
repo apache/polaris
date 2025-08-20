@@ -22,14 +22,14 @@ import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 
 import com.google.common.collect.ImmutableMap;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
+import org.apache.hadoop.fs.Path;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.view.BaseView;
 import org.apache.iceberg.view.View;
+import org.apache.iceberg.view.ViewBuilder;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -45,6 +45,8 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.assertj.core.api.AbstractBooleanAssert;
+import org.assertj.core.api.AbstractStringAssert;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.configuration.PreferredAssumptionException;
@@ -55,7 +57,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
@@ -86,6 +87,8 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
+  protected static final String POLARIS_IT_SUBDIR = "polaris_it";
+  protected static final String POLARIS_IT_CUSTOM_SUBDIR = "polaris_it_custom";
 
   private RESTCatalog restCatalog;
 
@@ -104,8 +107,6 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    Assumptions.assumeThat(shouldSkip()).isFalse();
-
     String principalName = client.newEntityName("snowman-rest");
     String principalRoleName = client.newEntityName("rest-admin");
     PrincipalWithCredentials principalCredentials =
@@ -157,12 +158,6 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
    */
   protected abstract StorageConfigInfo getStorageConfigInfo();
 
-  /**
-   * @return Whether the tests should be skipped, for example due to environment variables not being
-   *     specified.
-   */
-  protected abstract boolean shouldSkip();
-
   @Override
   protected RESTCatalog catalog() {
     return restCatalog;
@@ -188,33 +183,84 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     return true;
   }
 
-  @Override
-  @Test
-  public void createViewWithCustomMetadataLocation() {
-    Assertions.assertThatThrownBy(super::createViewWithCustomMetadataLocation)
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Forbidden: Invalid locations");
+  protected String getCustomMetadataLocationDir() {
+    return "";
   }
 
   @Test
-  public void createViewWithCustomMetadataLocationUsingPolaris(@TempDir Path tempDir) {
+  @Override
+  public void createViewWithCustomMetadataLocation() {
     TableIdentifier identifier = TableIdentifier.of("ns", "view");
+    String baseLocation = catalog().properties().get(CatalogEntity.DEFAULT_BASE_LOCATION_KEY);
+    if (this.requiresNamespaceCreate()) {
+      // Use the default baseLocation of the catalog. No "write.metadata.path" set.
+      catalog().createNamespace(identifier.namespace());
+    }
 
-    String location = Paths.get(tempDir.toUri().toString()).toString();
-    String customLocation = Paths.get(tempDir.toUri().toString(), "custom-location").toString();
-    String customLocation2 = Paths.get(tempDir.toUri().toString(), "custom-location2").toString();
-    String customLocationChild =
-        Paths.get(tempDir.toUri().toString(), "custom-location/child").toString();
+    // Negative test, we cannot create views outside of base location
+    ((AbstractBooleanAssert)
+            Assertions.assertThat(this.catalog().viewExists(identifier))
+                .as("View should not exist", new Object[0]))
+        .isFalse();
+    ViewBuilder viewBuilder =
+        catalog()
+            .buildView(identifier)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(identifier.namespace())
+            .withDefaultCatalog(catalog().name())
+            .withQuery("spark", "select * from ns.tbl")
+            .withProperty(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                getCustomMetadataLocationDir())
+            .withLocation(baseLocation);
+    Assertions.assertThatThrownBy(viewBuilder::create)
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Forbidden: Invalid locations");
 
-    catalog()
-        .createNamespace(
-            identifier.namespace(),
-            ImmutableMap.of(
-                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, location));
+    // Positive, we can create views in the default base location's subdirectory
+    String baseViewLocation = catalog().properties().get(CatalogEntity.DEFAULT_BASE_LOCATION_KEY);
+    String baseCustomWriteMetadataLocation = baseViewLocation + "/custom_location";
+    View view =
+        this.catalog()
+            .buildView(identifier)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(identifier.namespace())
+            .withDefaultCatalog(this.catalog().name())
+            .withQuery("spark", "select * from ns.tbl")
+            .withProperty("write.metadata.path", baseCustomWriteMetadataLocation)
+            .withLocation(baseViewLocation)
+            .create();
+    Assertions.assertThat(view).isNotNull();
+    ((AbstractBooleanAssert)
+            Assertions.assertThat(this.catalog().viewExists(identifier))
+                .as("View should exist", new Object[0]))
+        .isTrue();
+    Assertions.assertThat(view.properties())
+        .containsEntry("write.metadata.path", baseCustomWriteMetadataLocation);
+    ((AbstractStringAssert)
+            Assertions.assertThat(((BaseView) view).operations().current().metadataFileLocation())
+                .isNotNull())
+        .startsWith(new Path(baseCustomWriteMetadataLocation).toString());
+  }
 
+  @Test
+  public void createViewWithCustomMetadataLocationInheritedFromNamespace() {
+    TableIdentifier identifier = TableIdentifier.of("ns", "view");
+    String viewBaseLocation = getCustomMetadataLocationDir();
+    String customWriteMetadataLocation = viewBaseLocation + "/custom-location";
+    String customWriteMetadataLocation2 = viewBaseLocation + "/custom-location2";
+    String customWriteMetadataLocationChild = viewBaseLocation + "/custom-location/child";
+    if (this.requiresNamespaceCreate()) {
+      // Views can inherit the namespace's "write.metadata.path" setting in Polaris.
+      catalog()
+          .createNamespace(
+              identifier.namespace(),
+              ImmutableMap.of(
+                  IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                  viewBaseLocation));
+    }
     Assertions.assertThat(catalog().viewExists(identifier)).as("View should not exist").isFalse();
-
-    // CAN create a view with a custom metadata location `baseLocation/customLocation`,
+    // CAN create a view with a custom metadata location `viewLocation/customLocation`,
     // as long as the location is within the parent namespace's `write.metadata.path=baseLocation`
     View view =
         catalog()
@@ -224,17 +270,17 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
             .withDefaultCatalog(catalog().name())
             .withQuery("spark", "select * from ns.tbl")
             .withProperty(
-                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, customLocation)
-            .withLocation(location)
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                customWriteMetadataLocation)
+            .withLocation(viewBaseLocation)
             .create();
-
     Assertions.assertThat(view).isNotNull();
     Assertions.assertThat(catalog().viewExists(identifier)).as("View should exist").isTrue();
-    Assertions.assertThat(view.properties()).containsEntry("write.metadata.path", customLocation);
+    Assertions.assertThat(view.properties())
+        .containsEntry("write.metadata.path", customWriteMetadataLocation);
     Assertions.assertThat(((BaseView) view).operations().current().metadataFileLocation())
         .isNotNull()
-        .startsWith(customLocation);
-
+        .startsWith(customWriteMetadataLocation);
     // CANNOT update the view with a new metadata location `baseLocation/customLocation2`,
     // even though the new location is still under the parent namespace's
     // `write.metadata.path=baseLocation`.
@@ -245,11 +291,10 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
                     .updateProperties()
                     .set(
                         IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
-                        customLocation2)
+                        customWriteMetadataLocation2)
                     .commit())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Forbidden: Invalid locations");
-
     // CANNOT update the view with a child metadata location `baseLocation/customLocation/child`,
     // even though it is a subpath of the original view's
     // `write.metadata.path=baseLocation/customLocation`.
@@ -260,7 +305,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
                     .updateProperties()
                     .set(
                         IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
-                        customLocationChild)
+                        customWriteMetadataLocationChild)
                     .commit())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Forbidden: Invalid locations");

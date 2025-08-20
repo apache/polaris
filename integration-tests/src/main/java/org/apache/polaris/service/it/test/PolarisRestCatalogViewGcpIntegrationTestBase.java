@@ -20,12 +20,12 @@ package org.apache.polaris.service.it.test;
 
 import com.google.common.base.Strings;
 import java.util.List;
-import java.util.stream.Stream;
+import org.apache.hadoop.fs.Path;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on GCP. */
-public class PolarisRestCatalogViewGcpIntegrationTest
+public abstract class PolarisRestCatalogViewGcpIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
   public static final String SERVICE_ACCOUNT =
       System.getenv("INTEGRATION_TEST_GCS_SERVICE_ACCOUNT");
@@ -36,12 +36,12 @@ public class PolarisRestCatalogViewGcpIntegrationTest
     return GcpStorageConfigInfo.builder()
         .setGcsServiceAccount(SERVICE_ACCOUNT)
         .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-        .setAllowedLocations(List.of(BASE_LOCATION))
+        .setAllowedLocations(List.of(new Path(BASE_LOCATION, POLARIS_IT_SUBDIR).toString()))
         .build();
   }
 
   @Override
-  protected boolean shouldSkip() {
-    return Stream.of(BASE_LOCATION, SERVICE_ACCOUNT).anyMatch(Strings::isNullOrEmpty);
+  protected String getCustomMetadataLocationDir() {
+    return new Path(BASE_LOCATION, POLARIS_IT_CUSTOM_SUBDIR).toString();
   }
 }
