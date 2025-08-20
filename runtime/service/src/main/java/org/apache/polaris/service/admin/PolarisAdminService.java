@@ -1130,7 +1130,7 @@ public class PolarisAdminService {
                 currentPrincipalEntity.getType()));
 
     PrincipalEntity newPrincipalEntity = PrincipalEntity.of(newPrincipal);
-    if (customClientId != null && customClientSecret != null) {
+    if (customClientId != null) {
       PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(newPrincipalEntity);
       updateBuilder.setClientId(newSecrets.getPrincipalClientId());
       PrincipalEntity updatedNewPrincipalEntity = updateBuilder.build();

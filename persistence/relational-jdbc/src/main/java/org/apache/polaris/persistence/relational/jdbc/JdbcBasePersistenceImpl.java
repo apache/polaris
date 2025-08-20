@@ -803,13 +803,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             principalId,
             principalSecrets.getPrincipalId());
 
-    if (customClientId != null && customClientSecret != null) {
-      principalSecrets =
-          new PolarisPrincipalSecrets(
-              principalSecrets.getPrincipalId(), customClientId, customClientSecret, null);
-    } else {
-      principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
-    }
+    principalSecrets = principalSecrets.resetSecrets(customClientId, customClientSecret);
 
     Map<String, Object> params = Map.of("principal_client_id", clientId, "realm_id", realmId);
     try {

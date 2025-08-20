@@ -20,6 +20,7 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nullable;
 import java.security.SecureRandom;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -145,6 +146,21 @@ public class PolarisPrincipalSecrets {
 
     this.mainSecret = this.generateRandomHexString(32);
     this.mainSecretHash = hashSecret(mainSecret);
+  }
+
+  public PolarisPrincipalSecrets resetSecrets(
+      @Nullable String newClientId, @Nullable String newSecret) {
+    String finalClientId = (newClientId != null) ? newClientId : this.principalClientId;
+    String finalSecret = (newSecret != null) ? newSecret : this.generateRandomHexString(32);
+    String finalSecondarySecret = this.secondarySecret; // keep existing secondary secret
+    return new PolarisPrincipalSecrets(
+        this.principalId,
+        finalClientId,
+        finalSecret,
+        finalSecondarySecret,
+        this.secretSalt, // reuse existing salt
+        null, // recompute mainSecretHash
+        this.secondarySecretHash);
   }
 
   public long getPrincipalId() {
