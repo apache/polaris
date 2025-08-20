@@ -47,6 +47,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
@@ -110,8 +111,8 @@ public interface PolarisMetaStoreManager
       @Nonnull String name);
 
   /**
-   * List all entities of the specified type under the specified catalogPath. If the catalogPath is
-   * null, listed entities will be top-level entities like catalogs.
+   * List lightweight information about entities matching the given criteria. If all properties of
+   * the entity are required,use {@link #loadEntities} instead.
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
@@ -128,6 +129,47 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken);
+
+  /**
+   * Load full entities matching the given criteria with pagination. If only the entity name/id/type
+   * is required, use {@link #listEntities} instead. If no pagination is required, use {@link
+   * #loadEntitiesAll} instead.
+   *
+   * @param callCtx call context
+   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
+   *     like catalogs
+   * @param entityType type of entities to list
+   * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
+   * @return paged list of matching entities
+   */
+  @Nonnull
+  Page<PolarisBaseEntity> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken);
+
+  /**
+   * Load full entities matching the given criteria into an unpaged list. If pagination is required
+   * use {@link #loadEntities} instead. If only the entity name/id/type is required, use {@link
+   * #listEntities} instead.
+   *
+   * @param callCtx call context
+   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
+   *     like catalogs
+   * @param entityType type of entities to list
+   * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
+   * @return list of all matching entities
+   */
+  default @Nonnull List<PolarisBaseEntity> loadEntitiesAll(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType) {
+    return loadEntities(callCtx, catalogPath, entityType, entitySubType, PageToken.readEverything())
+        .items();
+  }
 
   /**
    * Generate a new unique id that can be used by the Polaris client when it needs to create a new

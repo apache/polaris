@@ -288,15 +288,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                     entityActiveKey.getName()));
 
     // return record
-    return (entity == null)
-        ? null
-        : new EntityNameLookupRecord(
-            entity.getCatalogId(),
-            entity.getId(),
-            entity.getParentId(),
-            entity.getName(),
-            entity.getTypeCode(),
-            entity.getSubTypeCode());
+    return entity == null ? null : new EntityNameLookupRecord(entity);
   }
 
   /** {@inheritDoc} */
@@ -312,7 +304,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   }
 
   @Override
-  public @Nonnull <T> Page<T> listEntitiesInCurrentTxn(
+  public @Nonnull <T> Page<T> loadEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,

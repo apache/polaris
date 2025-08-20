@@ -49,7 +49,6 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
@@ -57,7 +56,6 @@ import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 public class ManagementServiceTest {
   private TestServices services;
@@ -248,10 +246,9 @@ public class ManagementServiceTest {
         .isInstanceOf(ValidationException.class);
   }
 
-  /** Simulates the case when a catalog is dropped after being found while listing all catalogs. */
   @Test
-  public void testCatalogNotReturnedWhenDeletedAfterListBeforeGet() {
-    PolarisMetaStoreManager metaStoreManager = Mockito.spy(setupMetaStoreManager());
+  public void testCanListCatalogs() {
+    PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
     PolarisCallContext callContext = services.newCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
@@ -267,6 +264,8 @@ public class ManagementServiceTest {
                 PolarisEntityConstants.getRootEntityId(),
                 "my-catalog-1"),
             List.of());
+    assertThat(catalog1.isSuccess()).isTrue();
+
     CreateCatalogResult catalog2 =
         metaStoreManager.createCatalog(
             callContext,
@@ -278,20 +277,12 @@ public class ManagementServiceTest {
                 PolarisEntityConstants.getRootEntityId(),
                 "my-catalog-2"),
             List.of());
-
-    Mockito.doAnswer(
-            invocation -> {
-              Object entityId = invocation.getArgument(2);
-              if (entityId.equals(catalog1.getCatalog().getId())) {
-                return new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "");
-              }
-              return invocation.callRealMethod();
-            })
-        .when(metaStoreManager)
-        .loadEntity(Mockito.any(), Mockito.anyLong(), Mockito.anyLong(), Mockito.any());
+    assertThat(catalog2.isSuccess()).isTrue();
 
     List<Catalog> catalogs = polarisAdminService.listCatalogs();
-    assertThat(catalogs.size()).isEqualTo(1);
-    assertThat(catalogs.getFirst().getName()).isEqualTo(catalog2.getCatalog().getName());
+    assertThat(catalogs.size()).isEqualTo(2);
+    assertThat(catalogs)
+        .extracting(Catalog::getName)
+        .containsExactlyInAnyOrder("my-catalog-1", "my-catalog-2");
   }
 }

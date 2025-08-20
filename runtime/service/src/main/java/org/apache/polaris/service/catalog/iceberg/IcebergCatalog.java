@@ -1124,8 +1124,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     ListEntitiesResult siblingNamespacesResult =
         getMetaStoreManager()
             .listEntities(
-                callContext.getPolarisCallContext(),
-                parentPath.stream().map(PolarisEntity::toCore).collect(Collectors.toList()),
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(parentPath),
                 PolarisEntityType.NAMESPACE,
                 PolarisEntitySubType.ANY_SUBTYPE,
                 PageToken.readEverything());
@@ -1141,10 +1141,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   ListEntitiesResult siblingTablesResult =
                       getMetaStoreManager()
                           .listEntities(
-                              callContext.getPolarisCallContext(),
-                              parentPath.stream()
-                                  .map(PolarisEntity::toCore)
-                                  .collect(Collectors.toList()),
+                              getCurrentPolarisContext(),
+                              PolarisEntity.toCoreList(parentPath),
                               PolarisEntityType.TABLE_LIKE,
                               PolarisEntitySubType.ANY_SUBTYPE,
                               PageToken.readEverything());

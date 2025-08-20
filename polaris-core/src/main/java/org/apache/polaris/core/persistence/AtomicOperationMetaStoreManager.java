@@ -717,8 +717,43 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // with sensitive data; but the window of inconsistency is only the duration of a single
     // in-flight request (the cache-based resolution follows a different path entirely).
 
-    // done
     return ListEntitiesResult.fromPage(resultPage);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull Page<PolarisBaseEntity> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
+    // get meta store we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+
+    // return list of active entities
+    // TODO: Clean up shared logic for catalogId/parentId
+    long catalogId = catalogPath == null || catalogPath.isEmpty() ? 0L : catalogPath.get(0).getId();
+    long parentId =
+        catalogPath == null || catalogPath.isEmpty()
+            ? 0L
+            : catalogPath.get(catalogPath.size() - 1).getId();
+
+    // TODO: Use post-validation to enforce consistent view against catalogPath. In the
+    // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency
+    // race conditions, such as first revoking a grant on a namespace before adding a table
+    // with sensitive data; but the window of inconsistency is only the duration of a single
+    // in-flight request (the cache-based resolution follows a different path entirely).
+
+    return ms.loadEntities(
+        callCtx,
+        catalogId,
+        parentId,
+        entityType,
+        entitySubType,
+        entity -> true,
+        Function.identity(),
+        pageToken);
   }
 
   /** {@inheritDoc} */
@@ -1166,7 +1201,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
-          ms.listEntities(
+          ms.loadEntities(
                   callCtx,
                   catalogId,
                   catalogId,
@@ -1488,7 +1523,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // find all available tasks
     Page<PolarisBaseEntity> availableTasks =
-        ms.listEntities(
+        ms.loadEntities(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),

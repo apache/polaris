@@ -383,7 +383,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public <T> Page<T> listEntities(
+  public <T> Page<T> loadEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -395,7 +395,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
     return runInReadTransaction(
         callCtx,
         () ->
-            this.listEntitiesInCurrentTxn(
+            this.loadEntitiesInCurrentTxn(
                 callCtx,
                 catalogId,
                 parentId,
