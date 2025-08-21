@@ -228,9 +228,9 @@ gpg --armor --output polaris-x.y.z.tgz.prov.asc --detach-sig polaris-x.y.z.tgz.p
 Copy and Add the Helm package files to dist folder:
 
 ```
-cd polaris-dist-dev
+cd ../polaris-dist-dev
 mkdir helm-chart/x.y.z
-cp helm/*.tgz*  helm-chart/x.y.z
+cp ../helm/*.tgz*  helm-chart/x.y.z
 svn add helm-chart/x.y.z
 ```
 
