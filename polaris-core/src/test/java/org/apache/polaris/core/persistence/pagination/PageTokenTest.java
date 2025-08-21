@@ -53,7 +53,7 @@ class PageTokenTest {
     soft.assertThat(pageEverything.encodedResponseToken()).isNull();
     soft.assertThat(pageEverything.items()).containsExactly(1, 2, 3, 4);
 
-    r = PageToken.build(null, null);
+    r = PageToken.build(null, null, () -> true);
     soft.assertThat(r.paginationRequested()).isFalse();
     soft.assertThat(r.pageSize()).isEmpty();
     soft.assertThat(r.value()).isEmpty();
@@ -62,7 +62,7 @@ class PageTokenTest {
   @Test
   public void testLimit() {
     PageToken r = PageToken.fromLimit(123);
-    soft.assertThat(r).isEqualTo(PageToken.build(null, 123));
+    soft.assertThat(r).isEqualTo(PageToken.build(null, 123, () -> true));
     soft.assertThat(r.paginationRequested()).isTrue();
     soft.assertThat(r.pageSize()).isEqualTo(OptionalInt.of(123));
     soft.assertThat(r.value()).isEmpty();
@@ -71,7 +71,7 @@ class PageTokenTest {
   @Test
   public void testTokenValueForPaging() {
     PageToken r = PageToken.fromLimit(2);
-    soft.assertThat(r).isEqualTo(PageToken.build(null, 2));
+    soft.assertThat(r).isEqualTo(PageToken.build(null, 2, () -> true));
     Page<Integer> pageMoreData =
         Page.mapped(
             r,
@@ -103,7 +103,7 @@ class PageTokenTest {
     soft.assertThat(lastPageNotSaturated.items()).containsExactly(3);
 
     r = PageToken.fromLimit(200);
-    soft.assertThat(r).isEqualTo(PageToken.build(null, 200));
+    soft.assertThat(r).isEqualTo(PageToken.build(null, 200, () -> true));
     Page<Integer> page200 =
         Page.mapped(
             r,
@@ -117,8 +117,10 @@ class PageTokenTest {
   @ParameterizedTest
   @MethodSource
   public void testDeSer(Integer pageSize, String serializedPageToken, PageToken expectedPageToken) {
-    soft.assertThat(PageTokenUtil.decodePageRequest(serializedPageToken, pageSize))
+    soft.assertThat(PageTokenUtil.decodePageRequest(serializedPageToken, pageSize, () -> true))
         .isEqualTo(expectedPageToken);
+    soft.assertThat(PageTokenUtil.decodePageRequest(serializedPageToken, pageSize, () -> false))
+        .isEqualTo(PageToken.readEverything());
   }
 
   static Stream<Arguments> testDeSer() {
@@ -142,16 +144,16 @@ class PageTokenTest {
   @ParameterizedTest
   @MethodSource
   public void testApiRoundTrip(Token token) {
-    PageToken request = PageToken.build(null, 123);
+    PageToken request = PageToken.build(null, 123, () -> true);
     Page<?> page = Page.mapped(request, Stream.of("i1"), Function.identity(), x -> token);
     soft.assertThat(page.encodedResponseToken()).isNotBlank();
 
-    PageToken r = PageToken.build(page.encodedResponseToken(), null);
+    PageToken r = PageToken.build(page.encodedResponseToken(), null, () -> true);
     soft.assertThat(r.value()).contains(token);
     soft.assertThat(r.paginationRequested()).isTrue();
     soft.assertThat(r.pageSize()).isEqualTo(OptionalInt.of(123));
 
-    r = PageToken.build(page.encodedResponseToken(), 456);
+    r = PageToken.build(page.encodedResponseToken(), 456, () -> true);
     soft.assertThat(r.value()).contains(token);
     soft.assertThat(r.paginationRequested()).isTrue();
     soft.assertThat(r.pageSize()).isEqualTo(OptionalInt.of(456));

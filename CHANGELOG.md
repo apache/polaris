@@ -57,6 +57,14 @@ the authentication parameters are picked from the environment or configuration f
 - The `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` feature was added to support placing tables
 at locations that better optimize for object storage.
 
+- The `LIST_PAGINATION_ENABLED` (default: false) feature flag can be used to enable pagination
+  in the Iceberg REST Catalog API.
+
+- The Helm chart now supports Pod Disruption Budgets (PDBs) for Polaris components. This allows users to define
+  the minimum number of pods that must be available during voluntary disruptions, such as node maintenance.
+
+- Feature configuration `PURGE_VIEW_METADATA_ON_DROP` was added to allow dropping views without purging their metadata files.
+
 - Introduced S3 path-style access support for improved compatibility with S3-compatible storage systems.
 
 - Added MinIO integration support with comprehensive getting started documentation.

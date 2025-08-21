@@ -240,7 +240,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // if it is a principal, we also need to drop the secrets
     if (entity.getType() == PolarisEntityType.PRINCIPAL) {
       // get internal properties
-      Map<String, String> properties = this.deserializeProperties(entity.getInternalProperties());
+      Map<String, String> properties = entity.getInternalPropertiesAsMap();
 
       // get client_id
       String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
@@ -699,7 +699,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             entitySubType,
             pageToken);
 
-    // done
     return ListEntitiesResult.fromPage(resultPage);
   }
 
@@ -718,6 +717,54 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     return ms.runInReadTransaction(
         callCtx,
         () -> listEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
+  }
+
+  /**
+   * See {@link PolarisMetaStoreManager#loadEntities(PolarisCallContext, List, PolarisEntityType,
+   * PolarisEntitySubType, PageToken)}
+   */
+  private @Nonnull Page<PolarisBaseEntity> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
+    // first resolve again the catalogPath to that entity
+    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
+
+    // throw if we failed to resolve
+    if (resolver.isFailure()) {
+      throw new IllegalArgumentException("Failed to resolve catalogPath: " + catalogPath);
+    }
+
+    // return list of active entities
+    return ms.loadEntitiesInCurrentTxn(
+        callCtx,
+        resolver.getCatalogIdOrNull(),
+        resolver.getParentId(),
+        entityType,
+        entitySubType,
+        entity -> true,
+        Function.identity(),
+        pageToken);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull Page<PolarisBaseEntity> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
+    // get meta store we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // run operation in a read transaction
+    return ms.runInReadTransaction(
+        callCtx,
+        () -> loadEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
   }
 
   /** {@link #createPrincipal(PolarisCallContext, PolarisBaseEntity)} */
@@ -743,8 +790,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
           principal);
 
       // get internal properties
-      Map<String, String> properties =
-          this.deserializeProperties(refreshPrincipal.getInternalProperties());
+      Map<String, String> properties = refreshPrincipal.getInternalPropertiesAsMap();
 
       // get client_id
       String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
@@ -792,14 +838,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         ms.generateNewPrincipalSecretsInCurrentTxn(callCtx, principal.getName(), principal.getId());
 
     // generate properties
-    Map<String, String> internalProperties = getInternalPropertyMap(principal);
+    Map<String, String> internalProperties = principal.getInternalPropertiesAsMap();
     internalProperties.put(
         PolarisEntityConstants.getClientIdPropertyName(), principalSecrets.getPrincipalClientId());
 
     // remember client id
     PolarisBaseEntity updatedPrincipal =
         new PolarisBaseEntity.Builder(principal)
-            .internalProperties(this.serializeProperties(internalProperties))
+            .internalPropertiesAsMap(internalProperties)
             .build();
 
     // now create and persist new catalog entity
@@ -926,7 +972,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
-    Map<String, String> internalProp = getInternalPropertyMap(catalog);
+    Map<String, String> internalProp = catalog.getInternalPropertiesAsMap();
     String integrationIdentifierOrId =
         internalProp.get(PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName());
     String storageConfigInfoStr =
@@ -1336,7 +1382,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
-          ms.listEntitiesInCurrentTxn(
+          ms.loadEntitiesInCurrentTxn(
                   callCtx,
                   catalogId,
                   catalogId,
@@ -1902,7 +1948,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // find all available tasks
     Page<PolarisBaseEntity> availableTasks =
-        ms.listEntitiesInCurrentTxn(
+        ms.loadEntitiesInCurrentTxn(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
@@ -2015,21 +2061,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       return new ScopedCredentialsResult(
           BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
     }
-  }
-
-  /**
-   * Get the internal property map for an entity
-   *
-   * @param entity the target entity
-   * @return a map of string representing the internal properties
-   */
-  public Map<String, String> getInternalPropertyMap(@Nonnull PolarisBaseEntity entity) {
-    String internalPropStr = entity.getInternalProperties();
-    Map<String, String> res = new HashMap<>();
-    if (internalPropStr == null) {
-      return res;
-    }
-    return deserializeProperties(internalPropStr);
   }
 
   /** {@link #loadResolvedEntityById(PolarisCallContext, long, long, PolarisEntityType)} */

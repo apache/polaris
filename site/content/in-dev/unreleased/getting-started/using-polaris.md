@@ -165,7 +165,7 @@ bin/spark-sql \
 --conf spark.sql.catalog.quickstart_catalog=org.apache.iceberg.spark.SparkCatalog \
 --conf spark.sql.catalog.quickstart_catalog.catalog-impl=org.apache.iceberg.rest.RESTCatalog \
 --conf spark.sql.catalog.quickstart_catalog.uri=http://localhost:8181/api/catalog \
---conf spark.sql.catalog.quickstart_catalog.credential='${USER_CLIENT_ID}:${USER_CLIENT_SECRET}' \
+--conf spark.sql.catalog.quickstart_catalog.credential=${USER_CLIENT_ID}:${USER_CLIENT_SECRET} \
 --conf spark.sql.catalog.quickstart_catalog.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true \
 --conf spark.sql.catalog.quickstart_catalog.client.region=us-west-2
