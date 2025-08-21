@@ -121,6 +121,11 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Install Helm GPG plugin
+        run: |
+          helm plugin install https://github.com/technosophos/helm-gpg || true
+          helm plugin list
+
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
         with:

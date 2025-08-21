@@ -218,5 +218,3 @@ jobs:
           exec_process git push origin "${release_tag}"
 
           print_success "🎉 RC tag ${release_tag} created successfully at commit ${new_tag_ref}!"
-
-

@@ -24,7 +24,7 @@ The release automation is implemented through the following GitHub workflows:
 1. **[Create Release Branch](../.github/workflows/release-1-create-release-branch.yml)** - Creates a new release branch from a specified Git SHA
 2. **[Update Release Candidate](../.github/workflows/release-2-update-release-candidate.yml)** - Updates version files, finalizes changelog, and creates RC tags
 3. **[Build and Publish Artifacts](../.github/workflows/release-3-build-and-publish-artifacts.yml)** - Builds source/binary artifacts and publishes to Nexus staging
-4. **[Build Docker](../.github/workflows/release-4-build-and-publish-docker.yml)** - Builds Docker images locally (without publishing to DockerHub)
+4. **[Build Docker](../.github/workflows/release-4-build-docker.yml)** - Builds Docker images locally (without publishing to DockerHub)
 5. **[Build and Stage Helm Chart](../.github/workflows/release-5-build-and-stage-helm-chart.yml)** - Builds Helm charts and stages them to dist dev repository
 6. **[Publish Release](../.github/workflows/release-6-publish-release.yml)** - Finalizes the release by copying to dist release, creating final tags, creating the GitHub release, and publishing Docker images to DockerHub
 

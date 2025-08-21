@@ -122,8 +122,6 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-
-
       - name: Build Polaris Server Docker image
         run: |
           releasey_dir="$(pwd)/releasey"
