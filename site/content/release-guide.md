@@ -264,14 +264,13 @@ Next, you have to close the staging repository:
 4. At the top, select "Close" and follow the instructions
 5. In the comment field, use "Apache Polaris x.y.z RCi"
 
-### Build Docker images
+### Build and staging Docker images
 
-You can now build the Docker images but you may not publish them on Docker Hub yet.
-This step is mostly for verification, to ensure that the Docker image builds correctly.
+You can now publish Docker images on DockerHub:
 
 ```
-./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=false -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z-rci
-./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=false -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z-rci
+./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z-rci
+./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z-rci
 ```
 
 ### Start the vote thread
@@ -423,15 +422,6 @@ This vote passed with the following result:
 
 After the release votes passed, you need to release the last candidate's artifacts.
 
-### Publishing the Docker Images
-
-You can now build and publish the Docker images to Docker Hub:
-
-```
-./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z-rci
-./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z-rci
-```
-
 ### Publishing the release
 
 First, copy the distribution from the dist dev space to the dist release space:
@@ -534,10 +524,6 @@ In the source distribution:
 ```
 ./gradlew build
 ```
-
-#### Testing the Helm Chart
-
-The Docker image associated with the release candidate may not be published on Docker Hub before the release vote. Therefore, building the Docker image associated to a release candidate is required before the Helm chart can be tested.  Refer to the [Building Docker Images section](#building-docker-images).
 
 ### Voting
 
