@@ -42,7 +42,6 @@ svn commit -m "add key for <YOUR NAME HERE>"
 To send the key to the Ubuntu key-server, Apache Nexus needs it to validate published artifacts:
 ```
 gpg --keyserver hkps://keyserver.ubuntu.com --send-keys <YOUR KEY ID HERE>
-
 ```
 
 ### Dist repository
