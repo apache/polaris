@@ -132,7 +132,7 @@ git commit -m "Bump version to x.y.z" version.txt helm/polaris/Chart.yaml helm/p
 Update `CHANGELOG.md`:
 ```
 ./gradlew patchChangelog
-git commit CHANGELOG.md
+git commit CHANGELOG.md -m "Update CHANGELOG for x.y.z release"
 git push
 ```
 
