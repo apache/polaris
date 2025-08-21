@@ -431,6 +431,16 @@ svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z https://di
 svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart
 ```
 
+Then, update the Helm index with the new Helm chart location:
+
+```
+svn checkout https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart polaris-dist-release-helm-chart
+cd polaris-dist-release-helm-chart
+helm repo index .
+svn add index.yaml
+svn commit -m "Update Helm index for x.y.z release"
+```
+
 Next, add a release tag to the git repository based on the candidate tag:
 
 ```
