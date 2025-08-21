@@ -257,7 +257,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Nullable
   protected abstract EntityCache createEntityCache(
-      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager);
+      PolarisDiagnostics diagnostics,
+      RealmConfig realmConfig,
+      PolarisMetaStoreManager metaStoreManager);
 
   protected void bootstrapRealm(String realmName) {}
 
@@ -284,10 +286,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
 
-    EntityCache entityCache = createEntityCache(realmConfig, metaStoreManager);
+    EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =
         (callContext, securityContext, referenceCatalogName) ->
             new Resolver(
+                diagServices,
                 callContext.getPolarisCallContext(),
                 metaStoreManager,
                 securityContext,
@@ -295,7 +298,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 referenceCatalogName);
     QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
 
-    resolutionManifestFactory = new ResolutionManifestFactoryImpl(resolverFactory);
+    resolutionManifestFactory = new ResolutionManifestFactoryImpl(diagServices, resolverFactory);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -310,6 +313,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     adminService =
         new PolarisAdminService(
+            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -439,6 +443,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             polarisContext, resolutionManifestFactory, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
     return new IcebergCatalog(
+        diagServices,
         storageCredentialCache,
         resolverFactory,
         metaStoreManager,
