@@ -34,7 +34,6 @@ public class PolarisCallContext implements CallContext {
 
   // meta store which is used to persist Polaris entity metadata
   private final BasePersistence metaStore;
-  private final PolarisDiagnostics diagServices;
   private final PolarisConfigurationStore configurationStore;
   private final RealmContext realmContext;
   private final RealmConfig realmConfig;
@@ -42,20 +41,16 @@ public class PolarisCallContext implements CallContext {
   public PolarisCallContext(
       @Nonnull RealmContext realmContext,
       @Nonnull BasePersistence metaStore,
-      @Nonnull PolarisDiagnostics diagServices,
       @Nonnull PolarisConfigurationStore configurationStore) {
     this.realmContext = realmContext;
     this.metaStore = metaStore;
-    this.diagServices = diagServices;
     this.configurationStore = configurationStore;
     this.realmConfig = new RealmConfigImpl(this.configurationStore, this.realmContext);
   }
 
   public PolarisCallContext(
-      @Nonnull RealmContext realmContext,
-      @Nonnull BasePersistence metaStore,
-      @Nonnull PolarisDiagnostics diagServices) {
-    this(realmContext, metaStore, diagServices, new PolarisConfigurationStore() {});
+      @Nonnull RealmContext realmContext, @Nonnull BasePersistence metaStore) {
+    this(realmContext, metaStore, new PolarisConfigurationStore() {});
   }
 
   public BasePersistence getMetaStore() {
@@ -86,7 +81,6 @@ public class PolarisCallContext implements CallContext {
     // copy of the RealmContext to ensure the access during the task executor.
     String realmId = this.realmContext.getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
-    return new PolarisCallContext(
-        realmContext, this.metaStore, this.diagServices, this.configurationStore);
+    return new PolarisCallContext(realmContext, this.metaStore, this.configurationStore);
   }
 }

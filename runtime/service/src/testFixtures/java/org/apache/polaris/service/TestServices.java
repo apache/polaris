@@ -175,7 +175,7 @@ public record TestServices(
 
       BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
       CallContext callContext =
-          new PolarisCallContext(realmContext, metaStoreSession, diagnostics, configurationStore);
+          new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
       RealmConfig realmConfig = callContext.getRealmConfig();
 
       PolarisMetaStoreManager metaStoreManager =
@@ -311,6 +311,6 @@ public record TestServices(
 
   public PolarisCallContext newCallContext() {
     BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore, polarisDiagnostics, configurationStore);
+    return new PolarisCallContext(realmContext, metaStore, configurationStore);
   }
 }

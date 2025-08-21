@@ -38,7 +38,7 @@ public class PolarisTreeMapAtomicOperationMetaStoreManagerTest
             diagServices, store, Mockito.mock(), RANDOM_SECRETS);
     AtomicOperationMetaStoreManager metaStoreManager =
         new AtomicOperationMetaStoreManager(clock, diagServices);
-    PolarisCallContext callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+    PolarisCallContext callCtx = new PolarisCallContext(() -> "testRealm", metaStore);
     return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 }
