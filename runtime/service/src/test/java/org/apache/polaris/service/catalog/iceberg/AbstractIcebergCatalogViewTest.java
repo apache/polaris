@@ -162,7 +162,6 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
 

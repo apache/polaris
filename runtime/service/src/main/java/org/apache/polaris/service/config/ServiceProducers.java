@@ -152,11 +152,10 @@ public class ServiceProducers {
   @RequestScoped
   public CallContext polarisCallContext(
       RealmContext realmContext,
-      PolarisDiagnostics diagServices,
       PolarisConfigurationStore configurationStore,
       MetaStoreManagerFactory metaStoreManagerFactory) {
     BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStoreSession, diagServices, configurationStore);
+    return new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
   }
 
   @Produces
