@@ -192,7 +192,13 @@ public class PolarisApplicationIntegrationTest {
       String principalRoleName,
       StorageConfigInfo storageConfig,
       String defaultBaseLocation) {
-    createCatalog(catalogName, catalogType, principalRoleName, storageConfig, defaultBaseLocation, ImmutableMap.of());
+    createCatalog(
+        catalogName,
+        catalogType,
+        principalRoleName,
+        storageConfig,
+        defaultBaseLocation,
+        ImmutableMap.of());
   }
 
   private static void createCatalog(
@@ -206,7 +212,7 @@ public class PolarisApplicationIntegrationTest {
         CatalogProperties.builder(defaultBaseLocation)
             .addProperty(
                 CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:/");
-    for (var entry: additionalProperties.entrySet()) {
+    for (var entry : additionalProperties.entrySet()) {
       propsBuilder.addProperty(entry.getKey(), entry.getValue());
     }
     CatalogProperties props = propsBuilder.build();
@@ -662,11 +668,11 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
+  @ValueSource(booleans = {true, false})
   public void testNamespaceOutsideCatalog(boolean allowNamespaceLocationEscape) throws IOException {
     String catalogName = client.newEntityName("testNamespaceOutsideCatalog_specificLocation");
     String catalogLocation = baseLocation.resolve(catalogName + "/catalog").toString();
-    String namespaceLocation = baseLocation.resolve(catalogName + "/ns").toString();
+    String badLocation = baseLocation.resolve(catalogName + "/ns").toString();
     createCatalog(
         catalogName,
         Catalog.TypeEnum.INTERNAL,
@@ -681,16 +687,31 @@ public class PolarisApplicationIntegrationTest {
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       sessionCatalog.createNamespace(sessionContext, Namespace.of("good_namespace"));
-      ThrowableAssert.ThrowingCallable createBadNamespace = () -> sessionCatalog.createNamespace(
-          sessionContext,
-          Namespace.of("bad_namespace"),
-          ImmutableMap.of("location", namespaceLocation));
+      ThrowableAssert.ThrowingCallable createBadNamespace =
+          () ->
+              sessionCatalog.createNamespace(
+                  sessionContext,
+                  Namespace.of("bad_namespace"),
+                  ImmutableMap.of("location", badLocation));
       if (!allowNamespaceLocationEscape) {
         assertThatThrownBy(createBadNamespace)
-            .isInstanceOf(IllegalArgumentException.class)
+            .isInstanceOf(BadRequestException.class)
             .hasMessageContaining("location");
       } else {
         assertThatCode(createBadNamespace).doesNotThrowAnyException();
+      }
+      ThrowableAssert.ThrowingCallable createBadChildGoodParent =
+          () ->
+              sessionCatalog.createNamespace(
+                  sessionContext,
+                  Namespace.of("good_namespace", "bad_child"),
+                  ImmutableMap.of("location", badLocation));
+      if (!allowNamespaceLocationEscape) {
+        assertThatThrownBy(createBadChildGoodParent)
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("location");
+      } else {
+        assertThatCode(createBadChildGoodParent).doesNotThrowAnyException();
       }
     }
   }

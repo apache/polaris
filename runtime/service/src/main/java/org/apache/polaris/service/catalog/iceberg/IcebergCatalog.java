@@ -508,6 +508,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     } else {
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
+    if (!realmConfig.getConfig(
+        FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_ESCAPE, catalogEntity)) {
+      LOGGER.debug("Validating that namespace {} has a location inside its parent", namespace);
+      validateNamespaceLocation(entity, resolvedParent);
+    }
     PolarisEntity returnedEntity =
         PolarisEntity.of(
             getMetaStoreManager()
@@ -670,6 +675,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           NamespaceEntity.of(updatedEntity), resolvedEntities.getRawParentPath());
     } else {
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
+    }
+    if (!realmConfig.getConfig(
+        FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_ESCAPE, catalogEntity)) {
+      LOGGER.debug("Validating that namespace {} has a location inside its parent", namespace);
+      validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
     }
 
     List<PolarisEntity> parentPath = resolvedEntities.getRawFullPath();
@@ -1080,6 +1090,65 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   .build());
 
       validateNoLocationOverlap(virtualEntity, resolvedNamespace);
+    }
+  }
+
+  /** Checks whether the location of a namespace is valid given its parent */
+  private void validateNamespaceLocation(
+      NamespaceEntity namespace, PolarisResolvedPathWrapper resolvedParent) {
+    StorageLocation namespaceLocation =
+        StorageLocation.of(
+            resolveNamespaceLocation(namespace.asNamespace(), namespace.getPropertiesAsMap()));
+    PolarisEntity parent = resolvedParent.getResolvedLeafEntity().getEntity();
+    if (parent.getType().equals(PolarisEntityType.CATALOG)) {
+      CatalogEntity parentEntity = CatalogEntity.of(parent);
+      LOGGER.debug(
+          "Validating namespace {} given parent catalog {}",
+          namespace.getName(),
+          parentEntity.getName());
+      var storageConfigInfo = parentEntity.getStorageConfigurationInfo();
+      if (storageConfigInfo == null) {
+        throw new IllegalArgumentException(
+            "Cannot create namespace without a parent storage configuration");
+      }
+      System.out.println("#### Validating " + namespace.getName());
+      System.out.println("#### Parent location is a catalog");
+      System.out.println("#### New location is " + namespaceLocation);
+      for (var l : parentEntity.getStorageConfigurationInfo().getAllowedLocations()) {
+        System.out.println("#### parent location -> " + l);
+      }
+      boolean allowed =
+          parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
+              .filter(java.util.Objects::nonNull)
+              .map(StorageLocation::of)
+              .anyMatch(namespaceLocation::isChildOf);
+      if (!allowed) {
+        throw new IllegalArgumentException(
+            "Namespace location " + namespaceLocation + " is not within an allowed location");
+      }
+    } else if (parent.getType().equals(PolarisEntityType.NAMESPACE)) {
+      NamespaceEntity parentEntity = NamespaceEntity.of(parent);
+      LOGGER.debug(
+          "Validating namespace {} given parent namespace {}",
+          namespace.getName(),
+          parentEntity.getName());
+      StorageLocation parentLocation =
+          StorageLocation.of(
+              resolveNamespaceLocation(
+                  parentEntity.asNamespace(), parentEntity.getPropertiesAsMap()));
+      System.out.println("#### Validating " + namespace.getName());
+      System.out.println("#### Parent location is " + parentLocation);
+      System.out.println("#### New location is " + namespaceLocation);
+      if (!namespaceLocation.isChildOf(parentLocation)) {
+        throw new IllegalArgumentException(
+            "Namespace location " + namespaceLocation + " is not within an allowed location");
+      }
+    } else {
+      throw new IllegalArgumentException(
+          "Failed to validate namespace "
+              + namespace.getName()
+              + " given parent "
+              + parent.getName());
     }
   }
 
