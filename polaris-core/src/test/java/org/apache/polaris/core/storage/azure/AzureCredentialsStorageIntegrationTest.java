@@ -24,6 +24,7 @@ import static org.apache.polaris.core.storage.azure.AzureCredentialsStorageInteg
 import java.time.Instant;
 import java.util.Optional;
 import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -37,15 +38,28 @@ public class AzureCredentialsStorageIntegrationTest {
         toAccessConfig("sasToken", "some_account", expiresAt, Optional.empty());
     Assertions.assertThat(noSuffixResult.credentials()).hasSize(2);
     Assertions.assertThat(noSuffixResult.credentials()).containsKey("adls.sas-token.some_account");
+    Assertions.assertThat(noSuffixResult.credentials())
+        .doesNotContainKey(
+            StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName());
 
     AccessConfig adlsSuffixResult =
         toAccessConfig(
-            "sasToken", "some_account." + AzureLocation.ADLS_ENDPOINT, expiresAt, Optional.empty());
-    Assertions.assertThat(adlsSuffixResult.credentials()).hasSize(3);
+            "sasToken",
+            "some_account." + AzureLocation.ADLS_ENDPOINT,
+            expiresAt,
+            Optional.of("endpoint/credentials"));
+    Assertions.assertThat(adlsSuffixResult.credentials()).hasSize(5);
     Assertions.assertThat(adlsSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account");
     Assertions.assertThat(adlsSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account." + AzureLocation.ADLS_ENDPOINT);
+    Assertions.assertThat(adlsSuffixResult.credentials())
+        .containsEntry(
+            StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
+            "endpoint/credentials");
+    Assertions.assertThat(adlsSuffixResult.credentials())
+        .containsEntry(
+            StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENABLED.getPropertyName(), "true");
 
     AccessConfig blobSuffixResult =
         toAccessConfig(
