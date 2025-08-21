@@ -103,13 +103,14 @@ public class ServiceProducers {
   @Produces
   @ApplicationScoped
   public StorageCredentialCache storageCredentialCache(
-      StorageCredentialCacheConfig storageCredentialCacheConfig) {
-    return new StorageCredentialCache(storageCredentialCacheConfig);
+      PolarisDiagnostics diagnostics, StorageCredentialCacheConfig storageCredentialCacheConfig) {
+    return new StorageCredentialCache(diagnostics, storageCredentialCacheConfig);
   }
 
   @Produces
   @ApplicationScoped
   public ResolverFactory resolverFactory(
+      PolarisDiagnostics diagnostics,
       MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisMetaStoreManager polarisMetaStoreManager) {
     return (callContext, securityContext, referenceCatalogName) -> {
@@ -117,6 +118,7 @@ public class ServiceProducers {
           metaStoreManagerFactory.getOrCreateEntityCache(
               callContext.getRealmContext(), callContext.getRealmConfig());
       return new Resolver(
+          diagnostics,
           callContext.getPolarisCallContext(),
           polarisMetaStoreManager,
           securityContext,
@@ -127,8 +129,9 @@ public class ServiceProducers {
 
   @Produces
   @ApplicationScoped
-  public ResolutionManifestFactory resolutionManifestFactory(ResolverFactory resolverFactory) {
-    return new ResolutionManifestFactoryImpl(resolverFactory);
+  public ResolutionManifestFactory resolutionManifestFactory(
+      PolarisDiagnostics diagnostics, ResolverFactory resolverFactory) {
+    return new ResolutionManifestFactoryImpl(diagnostics, resolverFactory);
   }
 
   @Produces

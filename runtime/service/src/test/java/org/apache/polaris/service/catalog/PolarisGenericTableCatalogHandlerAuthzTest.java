@@ -47,6 +47,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     return new GenericTableCatalogHandler(
+        diagServices,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,

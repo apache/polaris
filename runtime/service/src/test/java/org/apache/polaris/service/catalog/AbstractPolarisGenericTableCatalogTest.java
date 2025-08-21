@@ -169,6 +169,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     adminService =
         new PolarisAdminService(
+            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -235,6 +236,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new IcebergCatalog(
+            diagServices,
             storageCredentialCache,
             resolverFactory,
             metaStoreManager,

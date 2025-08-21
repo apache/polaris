@@ -170,6 +170,7 @@ public class ManagementServiceTest {
   private PolarisAdminService setupPolarisAdminService(
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
     return new PolarisAdminService(
+        services.polarisDiagnostics(),
         callContext,
         services.resolutionManifestFactory(),
         metaStoreManager,

@@ -29,6 +29,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -94,6 +95,7 @@ public class PolarisServiceImpl
         PolarisPrincipalsApiService,
         PolarisPrincipalRolesApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
+  private final PolarisDiagnostics diagnostics;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisAuthorizer polarisAuthorizer;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
@@ -104,12 +106,14 @@ public class PolarisServiceImpl
 
   @Inject
   public PolarisServiceImpl(
+      PolarisDiagnostics diagnostics,
       ResolutionManifestFactory resolutionManifestFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       UserSecretsManagerFactory userSecretsManagerFactory,
       PolarisAuthorizer polarisAuthorizer,
       CallContext callContext,
       ReservedProperties reservedProperties) {
+    this.diagnostics = diagnostics;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.userSecretsManagerFactory = userSecretsManagerFactory;
@@ -131,6 +135,7 @@ public class PolarisServiceImpl
     UserSecretsManager userSecretsManager =
         userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     return new PolarisAdminService(
+        diagnostics,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,

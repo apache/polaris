@@ -93,7 +93,7 @@ public class InMemoryEntityCacheTest {
    * @return new cache for the entity store
    */
   InMemoryEntityCache allocateNewCache() {
-    return new InMemoryEntityCache(callCtx.getRealmConfig(), this.metaStoreManager);
+    return new InMemoryEntityCache(diagServices, callCtx.getRealmConfig(), this.metaStoreManager);
   }
 
   @Test
