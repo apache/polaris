@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence.resolver;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -63,13 +64,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   private final Map<Object, ResolverPath> passthroughPaths = new HashMap<>();
 
-  // For applicable operations, this represents the topmost root entity which services as an
-  // authorization parent for all other entities that reside at the root level, such as
-  // Catalog, Principal, and PrincipalRole.
-  // This simulated entity will be used if the actual resolver fails to resolve the rootContainer
-  // on the backend due to compatibility mismatches.
-  private ResolvedPolarisEntity simulatedResolvedRootContainerEntity = null;
-
   private int currentPathIndex = 0;
 
   // Set when resolveAll is called
@@ -89,7 +83,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     this.diagnostics.checkNotNull(securityContext, "null_security_context_for_resolution_manifest");
     this.securityContext = securityContext;
     diagnostics.check(
-        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
         "invalid_principal_type_for_resolution_manifest",
         "principal={}",
         securityContext.getUserPrincipal());
@@ -268,12 +262,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return activatedEntities;
   }
 
-  public void setSimulatedResolvedRootContainerEntity(
-      ResolvedPolarisEntity simulatedResolvedRootContainerEntity) {
-    this.simulatedResolvedRootContainerEntity = simulatedResolvedRootContainerEntity;
-  }
-
-  private ResolvedPolarisEntity getResolvedRootContainerEntity() {
+  private @Nullable ResolvedPolarisEntity getResolvedRootContainerEntity() {
     if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
       return null;
     }
@@ -281,8 +270,10 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         primaryResolver.getResolvedEntity(
             PolarisEntityType.ROOT, PolarisEntityConstants.getRootContainerName());
     if (resolvedEntity == null) {
-      LOGGER.debug("Failed to find rootContainer, so using simulated rootContainer instead.");
-      return simulatedResolvedRootContainerEntity;
+      LOGGER.warn(
+          "Failed to find rootContainer for realm: {} and catalog: {}",
+          callContext.getRealmContext().getRealmIdentifier(),
+          catalogName);
     }
     return resolvedEntity;
   }

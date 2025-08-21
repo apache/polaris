@@ -20,11 +20,9 @@ package org.apache.polaris.core.persistence;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
-import java.time.ZoneId;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.mockito.Mockito;
@@ -35,14 +33,11 @@ public class PolarisTreeMapAtomicOperationMetaStoreManagerTest
   public PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
-    PolarisCallContext callCtx =
-        new PolarisCallContext(
-            () -> "testRealm",
-            new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS),
-            diagServices,
-            new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault()));
-
-    return new PolarisTestMetaStoreManager(new AtomicOperationMetaStoreManager(), callCtx);
+    TreeMapTransactionalPersistenceImpl metaStore =
+        new TreeMapTransactionalPersistenceImpl(
+            diagServices, store, Mockito.mock(), RANDOM_SECRETS);
+    AtomicOperationMetaStoreManager metaStoreManager = new AtomicOperationMetaStoreManager(clock);
+    PolarisCallContext callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+    return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 }

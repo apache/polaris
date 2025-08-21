@@ -22,13 +22,13 @@ import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDEN
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -49,31 +49,35 @@ public class AwsCredentialsStorageIntegration
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
 
-  public AwsCredentialsStorageIntegration(StsClient fixedClient) {
-    this((destination) -> fixedClient);
-  }
-
-  public AwsCredentialsStorageIntegration(StsClientProvider stsClientProvider) {
-    this(stsClientProvider, Optional.empty());
+  public AwsCredentialsStorageIntegration(
+      AwsStorageConfigurationInfo config, StsClient fixedClient) {
+    this(config, (destination) -> fixedClient);
   }
 
   public AwsCredentialsStorageIntegration(
-      StsClientProvider stsClientProvider, Optional<AwsCredentialsProvider> credentialsProvider) {
-    super(AwsCredentialsStorageIntegration.class.getName());
+      AwsStorageConfigurationInfo config, StsClientProvider stsClientProvider) {
+    this(config, stsClientProvider, Optional.empty());
+  }
+
+  public AwsCredentialsStorageIntegration(
+      AwsStorageConfigurationInfo config,
+      StsClientProvider stsClientProvider,
+      Optional<AwsCredentialsProvider> credentialsProvider) {
+    super(config, AwsCredentialsStorageIntegration.class.getName());
     this.stsClientProvider = stsClientProvider;
     this.credentialsProvider = credentialsProvider;
   }
 
   /** {@inheritDoc} */
   @Override
-  public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
-      @Nonnull CallContext callContext,
-      @Nonnull AwsStorageConfigurationInfo storageConfig,
+  public AccessConfig getSubscopedCreds(
+      @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
     int storageCredentialDurationSeconds =
-        callContext.getRealmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+        realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+    AwsStorageConfigurationInfo storageConfig = config();
     AssumeRoleRequest.Builder request =
         AssumeRoleRequest.builder()
             .externalId(storageConfig.getExternalId())
@@ -81,7 +85,7 @@ public class AwsCredentialsStorageIntegration
             .roleSessionName("PolarisAwsCredentialsStorageIntegration")
             .policy(
                 policyString(
-                        storageConfig.getRoleARN(),
+                        storageConfig.getAwsPartition(),
                         allowListOperation,
                         allowedReadLocations,
                         allowedWriteLocations)
@@ -90,50 +94,53 @@ public class AwsCredentialsStorageIntegration
     credentialsProvider.ifPresent(
         cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
+    String region = storageConfig.getRegion();
     @SuppressWarnings("resource")
     // Note: stsClientProvider returns "thin" clients that do not need closing
     StsClient stsClient =
-        stsClientProvider.stsClient(
-            StsDestination.of(storageConfig.getStsEndpointUri(), storageConfig.getRegion()));
+        stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
 
     AssumeRoleResponse response = stsClient.assumeRole(request.build());
-    EnumMap<StorageAccessProperty, String> credentialMap =
-        new EnumMap<>(StorageAccessProperty.class);
-    credentialMap.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
-    credentialMap.put(
+    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
+    accessConfig.put(
         StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
-    credentialMap.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
+    accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
         .ifPresent(
             i -> {
-              credentialMap.put(
+              accessConfig.put(
                   StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
-              credentialMap.put(
+              accessConfig.put(
                   StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
                   String.valueOf(i.toEpochMilli()));
             });
 
-    if (storageConfig.getRegion() != null) {
-      credentialMap.put(StorageAccessProperty.CLIENT_REGION, storageConfig.getRegion());
+    if (region != null) {
+      accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
 
     URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {
-      credentialMap.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
+      accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
+    }
+    URI internalEndpointUri = storageConfig.getInternalEndpointUri();
+    if (internalEndpointUri != null) {
+      accessConfig.putInternalProperty(
+          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
     }
 
     if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {
-      credentialMap.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
+      accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
     }
 
-    if (storageConfig.getAwsPartition().equals("aws-us-gov")
-        && credentialMap.get(StorageAccessProperty.CLIENT_REGION) == null) {
+    if ("aws-us-gov".equals(storageConfig.getAwsPartition()) && region == null) {
       throw new IllegalArgumentException(
           String.format(
               "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
     }
 
-    return credentialMap;
+    return accessConfig.build();
   }
 
   /**
@@ -145,7 +152,10 @@ public class AwsCredentialsStorageIntegration
    */
   // TODO - add KMS key access
   private IamPolicy policyString(
-      String roleArn, boolean allowList, Set<String> readLocations, Set<String> writeLocations) {
+      String awsPartition,
+      boolean allowList,
+      Set<String> readLocations,
+      Set<String> writeLocations) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -155,7 +165,7 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
-    String arnPrefix = getArnPrefixFor(roleArn);
+    String arnPrefix = arnPrefixForPartition(awsPartition);
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
@@ -219,14 +229,8 @@ public class AwsCredentialsStorageIntegration
     return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
   }
 
-  private String getArnPrefixFor(String roleArn) {
-    if (roleArn.contains("aws-cn")) {
-      return "arn:aws-cn:s3:::";
-    } else if (roleArn.contains("aws-us-gov")) {
-      return "arn:aws-us-gov:s3:::";
-    } else {
-      return "arn:aws:s3:::";
-    }
+  private static String arnPrefixForPartition(String awsPartition) {
+    return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 
   private static @Nonnull String parseS3Path(URI uri) {

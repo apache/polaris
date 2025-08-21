@@ -23,7 +23,6 @@ import java.util.Optional;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.cache.EntityWeigher;
 
 /**
@@ -48,8 +47,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
    * we want to throw an UnsupportedOperationException if it's not enabled.
    */
   public static void enforceFeatureEnabledOrThrow(
-      CallContext callContext, FeatureConfiguration<Boolean> featureConfig) {
-    boolean enabled = callContext.getRealmConfig().getConfig(featureConfig);
+      RealmConfig realmConfig, FeatureConfiguration<Boolean> featureConfig) {
+    boolean enabled = realmConfig.getConfig(featureConfig);
     if (!enabled) {
       throw new UnsupportedOperationException("Feature not enabled: " + featureConfig.key());
     }
@@ -190,6 +189,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> PURGE_VIEW_METADATA_ON_DROP =
+      PolarisConfiguration.<Boolean>builder()
+          .key("PURGE_VIEW_METADATA_ON_DROP")
+          .catalogConfig("polaris.config.purge-view-metadata-on-drop")
+          .description(
+              "If set to true, Polaris will attempt to delete view metadata files when a view is dropped.")
+          .defaultValue(true)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =

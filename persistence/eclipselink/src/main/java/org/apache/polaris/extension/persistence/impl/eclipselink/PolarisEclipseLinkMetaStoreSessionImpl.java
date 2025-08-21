@@ -19,7 +19,6 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.EntityManager;
@@ -40,6 +39,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
@@ -49,6 +49,7 @@ import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
@@ -106,12 +107,14 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
    * @param persistenceUnitName Optional persistence-unit name in confFile. Default to 'polaris'.
    */
   public PolarisEclipseLinkMetaStoreSessionImpl(
+      @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull PolarisEclipseLinkStore store,
       @Nonnull PolarisStorageIntegrationProvider storageIntegrationProvider,
       @Nonnull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName,
       @Nonnull PrincipalSecretsGenerator secretsGenerator) {
+    super(diagnostics);
     LOGGER.debug(
         "Creating EclipseLink Meta Store Session for realm {}", realmContext.getRealmIdentifier());
     emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
@@ -159,7 +162,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   @Override
   public <T> T runInTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
-    callCtx.getDiagServices().check(localSession.get() == null, "cannot nest transaction");
+    getDiagnostics().check(localSession.get() == null, "cannot nest transaction");
 
     try (EntityManager session = emf.createEntityManager()) {
       localSession.set(session);
@@ -206,7 +209,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   @Override
   public void runActionInTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
-    callCtx.getDiagServices().check(localSession.get() == null, "cannot nest transaction");
+    getDiagnostics().check(localSession.get() == null, "cannot nest transaction");
 
     try (EntityManager session = emf.createEntityManager()) {
       localSession.set(session);
@@ -424,50 +427,13 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
         .collect(Collectors.toList());
   }
 
-  /** {@inheritDoc} */
   @Override
-  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+  public @Nonnull <T> Page<T> loadEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
-    return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
-  }
-
-  @Override
-  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
-    // full range scan under the parent for that type
-    return this.listEntitiesInCurrentTxn(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        entityFilter,
-        entity ->
-            new EntityNameLookupRecord(
-                entity.getCatalogId(),
-                entity.getId(),
-                entity.getParentId(),
-                entity.getName(),
-                entity.getTypeCode(),
-                entity.getSubTypeCode()),
-        pageToken);
-  }
-
-  @Override
-  public @Nonnull <T> Page<T> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
@@ -475,7 +441,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     Stream<PolarisBaseEntity> data =
         this.store
             .lookupFullEntitiesActive(
-                localSession.get(), catalogId, parentId, entityType, pageToken)
+                localSession.get(), catalogId, parentId, entityType, entitySubType, pageToken)
             .stream()
             .map(ModelEntity::toEntity)
             .filter(entityFilter);
@@ -597,8 +563,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
             this.store.lookupPrincipalSecrets(localSession.get(), clientId));
 
     // should be found
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .checkNotNull(
             principalSecrets,
             "cannot_find_secrets",
@@ -607,8 +572,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
             principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             principalId == principalSecrets.getPrincipalId(),
             "principal_id_mismatch",
@@ -638,8 +602,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
         this.store.lookupPrincipalSecrets(localSession.get(), clientId);
 
     // should be found
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .checkNotNull(
             principalSecrets,
             "cannot_find_secrets",
@@ -648,8 +611,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
             principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             principalId == principalSecrets.getPrincipalId(),
             "principal_id_mismatch",
@@ -679,7 +641,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(getDiagnostics(), entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 
