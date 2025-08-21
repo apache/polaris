@@ -72,8 +72,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             schemaVersion);
     AtomicOperationMetaStoreManager metaStoreManager =
         new AtomicOperationMetaStoreManager(clock, diagServices);
-    PolarisCallContext callCtx =
-        new PolarisCallContext(realmContext, basePersistence, diagServices);
+    PolarisCallContext callCtx = new PolarisCallContext(realmContext, basePersistence);
     return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 
