@@ -641,4 +641,26 @@ public class PolarisApplicationIntegrationTest {
               });
     }
   }
+
+  @Test
+  public void testNamespaceOutsideCatalog() throws IOException {
+    String catalogName = client.newEntityName("testNamespaceOutsideCatalog");
+    String catalogLocation = baseLocation.resolve("testNamespaceOutsideCatalog").resolve("catalog").toString();
+    String namespaceLocation = baseLocation.resolve("testNamespaceOutsideCatalog").resolve("ns").toString();
+    createCatalog(
+        catalogName,
+        Catalog.TypeEnum.INTERNAL,
+        principalRoleName,
+        FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(List.of(catalogLocation))
+            .build(),
+        catalogLocation);
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      Namespace ns = Namespace.of("ns");
+      sessionCatalog.createNamespace(sessionContext, ns, Map.of("location", namespaceLocation));
+    } finally {
+
+    }
+  }
 }
