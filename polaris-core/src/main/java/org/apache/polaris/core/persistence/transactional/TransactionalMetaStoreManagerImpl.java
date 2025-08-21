@@ -902,6 +902,17 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         : new PrincipalSecretsResult(secrets);
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull void deletePrincipalSecrets(
+          @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+    // get metastore we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // need to run inside a read/write transaction
+    ms.deletePrincipalSecretsInCurrentTxn(callCtx, clientId, principalId);
+  }
+
   /** See {@link #} */
   private @Nullable PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
@@ -982,7 +993,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull TransactionalPersistence ms,
       @Nonnull String clientId,
       long principalId,
-      @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret) {
     // if not found, the principal must have been dropped
@@ -1018,7 +1028,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret) {
     // get metastore we should be using
@@ -1034,8 +1043,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                     ms,
                     clientId,
                     principalId,
-                    oldSecretHash,
-                    customClientId,
+                        customClientId,
                     customClientSecret));
 
     return (secrets == null)

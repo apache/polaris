@@ -42,7 +42,6 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
@@ -1078,49 +1077,40 @@ public class PolarisAdminService {
         metaStoreManager
             .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
             .getPrincipalSecrets();
-    if (currentSecrets == null) {
-      throw new IllegalArgumentException(
-          String.format("Failed to load current secrets for principal '%s'", principalName));
+    if (currentSecrets != null) {
+      metaStoreManager.deletePrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId(), currentPrincipalEntity.getId());
     }
+    PrincipalEntity newPrincipalEntity = currentPrincipalEntity;
+    if (customClientId != null) {
+      PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(newPrincipalEntity);
+      updateBuilder.setClientId(customClientId);
+      PrincipalEntity updatedNewPrincipalEntity = updateBuilder.build();
+      newPrincipalEntity =
+              Optional.ofNullable(
+                              PrincipalEntity.of(
+                                      PolarisEntity.of(
+                                              metaStoreManager.updateEntityPropertiesIfNotChanged(
+                                                      getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
+                      .orElseThrow(
+                              () ->
+                                      new CommitConflictException(
+                                              "Concurrent modification on Principal '%s'; retry later", principalName));
+    }
+
     PolarisPrincipalSecrets newSecrets =
         metaStoreManager
             .resetPrincipalSecrets(
                 getCurrentPolarisContext(),
                 currentPrincipalEntity.getClientId(),
                 currentPrincipalEntity.getId(),
-                currentSecrets.getMainSecretHash(),
-                customClientId,
+                 customClientId,
                 customClientSecret)
             .getPrincipalSecrets();
     if (newSecrets == null) {
       throw new IllegalStateException(
           String.format("Failed to %s secrets for principal '%s'", "reset", principalName));
     }
-    PolarisEntity newPrincipal =
-        PolarisEntity.of(
-            metaStoreManager.loadEntity(
-                getCurrentPolarisContext(),
-                0L,
-                currentPrincipalEntity.getId(),
-                currentPrincipalEntity.getType()));
 
-    PrincipalEntity newPrincipalEntity = PrincipalEntity.of(newPrincipal);
-    if (customClientId != null) {
-      PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(newPrincipalEntity);
-      updateBuilder.setClientId(newSecrets.getPrincipalClientId());
-      PrincipalEntity updatedNewPrincipalEntity = updateBuilder.build();
-      updatedNewPrincipalEntity =
-          Optional.ofNullable(
-                  PrincipalEntity.of(
-                      PolarisEntity.of(
-                          metaStoreManager.updateEntityPropertiesIfNotChanged(
-                              getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
-              .orElseThrow(
-                  () ->
-                      new CommitFailedException(
-                          "Concurrent modification on Principal '%s'; retry later", principalName));
-      newPrincipalEntity = updatedNewPrincipalEntity;
-    }
     return new PrincipalWithCredentials(
         newPrincipalEntity.asPrincipal(),
         new PrincipalWithCredentialsCredentials(
