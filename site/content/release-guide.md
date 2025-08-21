@@ -239,6 +239,7 @@ You can now update the Helm index:
 ```
 cd helm-chart
 helm repo index .
+svn add index.yaml
 ```
 
 Dist repository is now "complete" and we can push/commit:
