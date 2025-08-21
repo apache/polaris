@@ -33,7 +33,7 @@ To create a release candidate, you will need:
 If you haven't published your GPG key yet, you must publish it before starting the release process:
 
 ```
-svn co https://dist.apache.org/repos/dist/release/incubator/polaris polaris-dist-release
+svn checkout https://dist.apache.org/repos/dist/release/incubator/polaris polaris-dist-release
 cd polaris-dist-release
 echo "" >> KEYS # append a new line
 gpg --list-sigs <YOUR KEY ID HERE> >> KEYS # append signatures
@@ -198,7 +198,7 @@ The binary distributions (for convenience) are available in:
 Now, we can stage the artifacts to dist dev repository:
 
 ```
-svn co https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
+svn checkout https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
 cd polaris-dist-dev
 mkdir x.y.z
 cp /path/to/polaris/github/clone/repo/build/distribution/* x.y.z
