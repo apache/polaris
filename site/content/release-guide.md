@@ -28,6 +28,8 @@ To create a release candidate, you will need:
 * your Apache credentials (for repository.apache.org and dist.apache.org repositories)
 * a [GPG key](https://www.apache.org/dev/release-signing#generate) for signing artifacts, published in [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) file
 
+### Publish your GPG key
+
 If you haven't published your GPG key yet, you must publish it before starting the release process:
 
 ```
@@ -73,7 +75,7 @@ export ORG_GRADLE_PROJECT_apachePassword=bar
 
 ### PGP signing
 
-During release process, the artifacts will be signed with your key, eventually using `gpg-agent`.
+During release process, the artifacts will be signed with your key, using `gpg-agent`.
 
 To configure gradle to sign the artifacts, you can add the following settings in your `~/.gradle/gradle.properties` file:
 
@@ -84,6 +86,10 @@ signing.gnupg.keyName=Your Key Name
 To use `gpg` instead of `gpg2`, also set `signing.gnupg.executable=gpg`.
 
 For more information, see the Gradle [signing documentation](https://docs.gradle.org/current/userguide/signing_plugin.html#sec:signatory_credentials).
+
+### Helm chart signing
+
+Helm chart artifacts are signed with your key, using the [helm gpg plugin](https://github.com/technosophos/helm-gpg)].  Ensure the plugin is installed locally.
 
 ### GitHub Repository
 
@@ -206,7 +212,8 @@ You can now create a Helm package with the following command in the Polaris sour
 
 ```
 cd helm
-helm package --sign --key '<YOUR KEY ID HERE>' --keyring ~/.gnupg/secring.kbx polaris
+helm package polaris
+helm gpg sign polaris-x.y.z.tgz
 ```
 
 Create the signature and checksum for the Helm package tgz and prov files:
