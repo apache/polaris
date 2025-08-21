@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
+import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
@@ -644,9 +645,9 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testNamespaceOutsideCatalog() throws IOException {
-    String catalogName = client.newEntityName("testNamespaceOutsideCatalog");
-    String catalogLocation = baseLocation.resolve("testNamespaceOutsideCatalog").resolve("catalog").toString();
-    String namespaceLocation = baseLocation.resolve("testNamespaceOutsideCatalog").resolve("ns").toString();
+    String catalogName = client.newEntityName("testNamespaceOutsideCatalog_specificLocation");
+    String catalogLocation = baseLocation.resolve(catalogName + "/catalog").toString();
+    String namespaceLocation = baseLocation.resolve(catalogName + "/ns").toString();
     createCatalog(
         catalogName,
         Catalog.TypeEnum.INTERNAL,
@@ -657,8 +658,11 @@ public class PolarisApplicationIntegrationTest {
         catalogLocation);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
-      Namespace ns = Namespace.of("ns");
-      sessionCatalog.createNamespace(sessionContext, ns, Map.of("location", namespaceLocation));
+      sessionCatalog.createNamespace(sessionContext, Namespace.of("good_namespace"));
+      sessionCatalog.createNamespace(
+          sessionContext,
+          Namespace.of("bad_namespace"),
+          ImmutableMap.of("location", namespaceLocation));
     }
   }
 }
