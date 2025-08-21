@@ -106,7 +106,7 @@ public class StorageCredentialCache {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      String refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint) {
     if (!isTypeSupported(polarisEntity.getType())) {
       callCtx
           .getDiagServices()

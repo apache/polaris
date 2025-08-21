@@ -46,6 +46,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.AccessConfig;
@@ -77,7 +78,7 @@ public class AzureCredentialsStorageIntegration
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      String refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint) {
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)
@@ -179,16 +180,16 @@ public class AzureCredentialsStorageIntegration
       String sasToken,
       String storageDnsName,
       Instant expiresAt,
-      String refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint) {
     AccessConfig.Builder accessConfig = AccessConfig.builder();
     handleAzureCredential(accessConfig, sasToken, storageDnsName);
     accessConfig.put(
         StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
-    if (refreshCredentialsEndpoint != null) {
-      accessConfig.put(
-          StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, refreshCredentialsEndpoint);
-      accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENABLED, "true");
-    }
+    refreshCredentialsEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+          accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENABLED, "true");
+        });
     return accessConfig.build();
   }
 

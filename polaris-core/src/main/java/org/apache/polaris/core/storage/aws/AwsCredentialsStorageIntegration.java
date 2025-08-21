@@ -75,7 +75,7 @@ public class AwsCredentialsStorageIntegration
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      String refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
@@ -121,11 +121,11 @@ public class AwsCredentialsStorageIntegration
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
 
-    if (refreshCredentialsEndpoint != null) {
-      accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENABLED, "true");
-      accessConfig.put(
-          StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, refreshCredentialsEndpoint);
-    }
+    refreshCredentialsEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENABLED, "true");
+          accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+        });
 
     URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {

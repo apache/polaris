@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
@@ -198,7 +199,7 @@ class InMemoryStorageIntegrationTest {
         boolean allowListOperation,
         @Nonnull Set<String> allowedReadLocations,
         @Nonnull Set<String> allowedWriteLocations,
-        String refreshCredentialsEndpoint) {
+        Optional<String> refreshCredentialsEndpoint) {
       return null;
     }
   }

@@ -831,7 +831,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions,
-      String refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint) {
     Optional<PolarisEntity> storageInfo = findStorageInfo(tableIdentifier);
     if (storageInfo.isEmpty()) {
       LOGGER

@@ -393,7 +393,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
   public LoadTableResponse createTableDirectWithWriteDelegation(
-      Namespace namespace, CreateTableRequest request, String refreshCredentialsEndpoint) {
+      Namespace namespace,
+      CreateTableRequest request,
+      Optional<String> refreshCredentialsEndpoint) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
@@ -501,7 +503,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadTableResponse createTableStagedWithWriteDelegation(
-      Namespace namespace, CreateTableRequest request, String refreshCredentialsEndpoint) {
+      Namespace namespace,
+      CreateTableRequest request,
+      Optional<String> refreshCredentialsEndpoint) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
@@ -628,7 +632,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String snapshots, String refreshCredentialsEndpoint) {
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      Optional<String> refreshCredentialsEndpoint) {
     return loadTableWithAccessDelegationIfStale(
             tableIdentifier, null, snapshots, refreshCredentialsEndpoint)
         .get();
@@ -648,7 +654,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       TableIdentifier tableIdentifier,
       IfNoneMatch ifNoneMatch,
       String snapshots,
-      String refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -737,7 +743,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> actions,
       String snapshots,
-      String refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {

@@ -22,6 +22,7 @@ package org.apache.polaris.core.storage.azure;
 import static org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration.toAccessConfig;
 
 import java.time.Instant;
+import java.util.Optional;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -32,12 +33,14 @@ public class AzureCredentialsStorageIntegrationTest {
   public void testAzureCredentialFormatting() {
     Instant expiresAt = Instant.ofEpochMilli(Long.MAX_VALUE);
 
-    AccessConfig noSuffixResult = toAccessConfig("sasToken", "some_account", expiresAt, null);
+    AccessConfig noSuffixResult =
+        toAccessConfig("sasToken", "some_account", expiresAt, Optional.empty());
     Assertions.assertThat(noSuffixResult.credentials()).hasSize(2);
     Assertions.assertThat(noSuffixResult.credentials()).containsKey("adls.sas-token.some_account");
 
     AccessConfig adlsSuffixResult =
-        toAccessConfig("sasToken", "some_account." + AzureLocation.ADLS_ENDPOINT, expiresAt, null);
+        toAccessConfig(
+            "sasToken", "some_account." + AzureLocation.ADLS_ENDPOINT, expiresAt, Optional.empty());
     Assertions.assertThat(adlsSuffixResult.credentials()).hasSize(3);
     Assertions.assertThat(adlsSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account");
@@ -45,7 +48,8 @@ public class AzureCredentialsStorageIntegrationTest {
         .containsKey("adls.sas-token.some_account." + AzureLocation.ADLS_ENDPOINT);
 
     AccessConfig blobSuffixResult =
-        toAccessConfig("sasToken", "some_account." + AzureLocation.BLOB_ENDPOINT, expiresAt, null);
+        toAccessConfig(
+            "sasToken", "some_account." + AzureLocation.BLOB_ENDPOINT, expiresAt, Optional.empty());
     Assertions.assertThat(blobSuffixResult.credentials()).hasSize(3);
     Assertions.assertThat(blobSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account");

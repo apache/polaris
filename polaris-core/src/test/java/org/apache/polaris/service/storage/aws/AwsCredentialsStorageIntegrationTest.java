@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
@@ -96,7 +97,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
-                "/namespace/table/credentials");
+                Optional.of("/namespace/table/credentials"));
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -268,7 +269,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
-                    null);
+                    Optional.empty());
         assertThat(accessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -369,7 +370,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)),
-                null);
+                Optional.empty());
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -464,7 +465,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
-                null);
+                Optional.empty());
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -527,7 +528,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .build(),
                 stsClient)
             .getSubscopedCreds(
-                EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of(), null);
+                EMPTY_REALM_CONFIG,
+                true, /* allowList = true */
+                Set.of(),
+                Set.of(),
+                Optional.empty());
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -569,7 +574,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             true, /* allowList = true */
                             Set.of(),
                             Set.of(),
-                            null))
+                            Optional.empty()))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       case AWS_PARTITION:
@@ -584,7 +589,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .build(),
                     stsClient)
                 .getSubscopedCreds(
-                    EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of(), null);
+                    EMPTY_REALM_CONFIG,
+                    true, /* allowList = true */
+                    Set.of(),
+                    Set.of(),
+                    Optional.empty());
         assertThat(accessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), clientRegion);
@@ -619,7 +628,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .build(),
                     stsClient)
                 .getSubscopedCreds(
-                    EMPTY_REALM_CONFIG, true, /* allowList = true */ Set.of(), Set.of(), null);
+                    EMPTY_REALM_CONFIG,
+                    true, /* allowList = true */
+                    Set.of(),
+                    Set.of(),
+                    Optional.empty());
         assertThat(accessConfig.credentials())
             .isNotEmpty()
             .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
@@ -640,7 +653,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             true, /* allowList = true */
                             Set.of(),
                             Set.of(),
-                            null))
+                            Optional.empty()))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       default:

@@ -82,7 +82,7 @@ public class FileIOUtil {
       Set<String> tableLocations,
       Set<PolarisStorageActions> storageActions,
       PolarisEntity entity,
-      String refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint) {
 
     boolean skipCredentialSubscopingIndirection =
         callContext

@@ -92,7 +92,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
                     tableLocations,
                     storageActions,
                     storageInfo,
-                    null));
+                    Optional.empty()));
 
     // Update the FileIO with the subscoped credentials
     // Update with properties in case there are table-level overrides the credentials should

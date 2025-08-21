@@ -360,11 +360,11 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          String refreshCredentialsEndpoint =
-              delegationModes.contains(VENDED_CREDENTIALS)
-                  ? new PolarisResourcePaths(prefix)
-                      .credentialsPath(TableIdentifier.of(namespace, createTableRequest.name()))
-                  : null;
+          Optional<String> refreshCredentialsEndpoint =
+              getRefreshCredentialsEndpoint(
+                  delegationModes,
+                  prefix,
+                  TableIdentifier.of(namespace, createTableRequest.name()));
           if (createTableRequest.stageCreate()) {
             if (delegationModes.isEmpty()) {
               return Response.ok(catalog.createTableStaged(ns, createTableRequest)).build();
@@ -438,10 +438,8 @@ public class IcebergCatalogAdapter
                     .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           } else {
-            String refreshCredentialsEndpoint =
-                (delegationModes.contains(VENDED_CREDENTIALS))
-                    ? new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier)
-                    : null;
+            Optional<String> refreshCredentialsEndpoint =
+                getRefreshCredentialsEndpoint(delegationModes, prefix, tableIdentifier);
             response =
                 catalog
                     .loadTableWithAccessDelegationIfStale(
@@ -451,6 +449,15 @@ public class IcebergCatalogAdapter
 
           return tryInsertETagHeader(Response.ok(response), response, namespace, table).build();
         });
+  }
+
+  private static Optional<String> getRefreshCredentialsEndpoint(
+      EnumSet<AccessDelegationMode> delegationModes,
+      String prefix,
+      TableIdentifier tableIdentifier) {
+    return delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
+        ? Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier))
+        : Optional.empty();
   }
 
   @Override
@@ -615,7 +622,7 @@ public class IcebergCatalogAdapter
               catalog.loadTableWithAccessDelegation(
                   tableIdentifier,
                   "all",
-                  new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier));
+                  Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier)));
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
                       .credentials(loadTableResponse.credentials())
