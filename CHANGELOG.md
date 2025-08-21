@@ -39,6 +39,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - **Catalog Federation CLI**: Extended the CLI with support for managing federated catalogs, making it easier to configure and operate catalog federation.
 
+- **MinIO**: Added MinIO integration support with comprehensive getting started documentation.
+
 ### Upgrade notes
 
 ### Breaking changes
@@ -66,8 +68,6 @@ at locations that better optimize for object storage.
 - Feature configuration `PURGE_VIEW_METADATA_ON_DROP` was added to allow dropping views without purging their metadata files.
 
 - Introduced S3 path-style access support for improved compatibility with S3-compatible storage systems.
-
-- Added MinIO integration support with comprehensive getting started documentation.
 
 - Enhanced Python client with integration tests and improved error handling.
 
