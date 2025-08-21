@@ -118,7 +118,8 @@ public class StorageCredentialCache {
             polarisEntity,
             allowListOperation,
             allowedReadLocations,
-            allowedWriteLocations);
+            allowedWriteLocations,
+            refreshCredentialsEndpoint);
     LOGGER.atDebug().addKeyValue("key", key).log("subscopedCredsCache");
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {

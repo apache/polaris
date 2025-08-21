@@ -185,7 +185,8 @@ public class StorageCredentialCacheTest {
             polarisEntity,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
-            Set.of("s3://bucket/path"));
+            Set.of("s3://bucket/path"),
+            Optional.empty());
 
     // the entry will be evicted immediately because the token is expired
     storageCredentialCache.getOrGenerateSubScopeCreds(
