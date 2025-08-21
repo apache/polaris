@@ -89,7 +89,7 @@ For more information, see the Gradle [signing documentation](https://docs.gradle
 
 ### Helm chart signing
 
-Helm chart artifacts are signed with your key, using the [helm gpg plugin](https://github.com/technosophos/helm-gpg)].  Ensure the plugin is installed locally.
+Helm chart artifacts are signed with your key, using the [helm gpg plugin](https://github.com/technosophos/helm-gpg).  Ensure the plugin is installed locally.
 
 ### GitHub Repository
 
@@ -423,7 +423,7 @@ This vote passed with the following result:
 
 After the release votes passed, you need to release the last candidate's artifacts.
 
-### Publishing the Dobker Images
+### Publishing the Docker Images
 
 You can now build and publish the Docker images to Docker Hub:
 
