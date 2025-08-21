@@ -62,10 +62,6 @@ public class PolarisCallContext implements CallContext {
     return metaStore;
   }
 
-  public PolarisDiagnostics getDiagServices() {
-    return diagServices;
-  }
-
   @Override
   public RealmContext getRealmContext() {
     return realmContext;

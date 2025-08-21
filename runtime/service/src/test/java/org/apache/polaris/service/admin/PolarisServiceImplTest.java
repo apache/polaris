@@ -24,6 +24,8 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -46,6 +48,7 @@ import org.mockito.Mockito;
 
 public class PolarisServiceImplTest {
 
+  private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
   private ResolutionManifestFactory resolutionManifestFactory;
   private MetaStoreManagerFactory metaStoreManagerFactory;
   private UserSecretsManagerFactory userSecretsManagerFactory;
@@ -75,6 +78,7 @@ public class PolarisServiceImplTest {
 
     polarisService =
         new PolarisServiceImpl(
+            diagnostics,
             resolutionManifestFactory,
             metaStoreManagerFactory,
             userSecretsManagerFactory,

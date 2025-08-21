@@ -151,6 +151,7 @@ public class PolarisAdminService {
   private PolarisResolutionManifest resolutionManifest = null;
 
   public PolarisAdminService(
+      @NotNull PolarisDiagnostics diagnostics,
       @NotNull CallContext callContext,
       @NotNull ResolutionManifestFactory resolutionManifestFactory,
       @NotNull PolarisMetaStoreManager metaStoreManager,
@@ -163,10 +164,9 @@ public class PolarisAdminService {
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.securityContext = securityContext;
-    PolarisDiagnostics diagServices = callContext.getPolarisCallContext().getDiagServices();
-    diagServices.checkNotNull(securityContext, "null_security_context");
-    diagServices.checkNotNull(securityContext.getUserPrincipal(), "null_security_context");
-    diagServices.check(
+    diagnostics.checkNotNull(securityContext, "null_security_context");
+    diagnostics.checkNotNull(securityContext.getUserPrincipal(), "null_security_context");
+    diagnostics.check(
         securityContext.getUserPrincipal() instanceof PolarisPrincipal,
         "unexpected_principal_type",
         "class={}",
