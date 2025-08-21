@@ -659,8 +659,6 @@ public class PolarisApplicationIntegrationTest {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("ns");
       sessionCatalog.createNamespace(sessionContext, ns, Map.of("location", namespaceLocation));
-    } finally {
-
     }
   }
 }
