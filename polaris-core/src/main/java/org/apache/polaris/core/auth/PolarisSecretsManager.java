@@ -60,7 +60,10 @@ public interface PolarisSecretsManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret);
+
+  @Nonnull
+  void deletePrincipalSecrets(
+          @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
 }

@@ -839,6 +839,16 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
+  public @Nonnull void deletePrincipalSecrets(
+          @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+    ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, principalId);
+
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public @Nonnull PrincipalSecretsResult rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
@@ -897,7 +907,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
-      @Nonnull String oldSecretHash,
       String customClientId,
       String customClientSecret) {
     // get metastore we should be using
