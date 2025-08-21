@@ -63,9 +63,9 @@ public class CatalogFederationIntegrationTest {
   private static PolarisClient client;
   private static ManagementApi managementApi;
   private static PolarisApiEndpoints endpoints;
-  private static ClientCredentials adminCredentials;
   private static SparkSession spark;
   private static String sparkToken;
+  private static String adminToken;
 
   private static final String PRINCIPAL_NAME = "test-catalog-federation-user";
   private static final String LOCAL_CATALOG_NAME = "test_catalog_local";
@@ -82,8 +82,8 @@ public class CatalogFederationIntegrationTest {
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    managementApi = client.managementApi(credentials);
-    adminCredentials = credentials;
+    adminToken = client.obtainToken(credentials);
+    managementApi = client.managementApi(adminToken);
     sparkToken = client.obtainToken(credentials);
   }
 
