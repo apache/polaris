@@ -63,7 +63,6 @@ public class CatalogFederationIntegrationTest {
   private static PolarisClient client;
   private static ManagementApi managementApi;
   private static PolarisApiEndpoints endpoints;
-  private static ClientCredentials adminCredentials;
   private static SparkSession spark;
   private static String sparkToken;
   private static String adminToken;
@@ -85,7 +84,6 @@ public class CatalogFederationIntegrationTest {
     client = polarisClient(endpoints);
     adminToken = client.obtainToken(credentials);
     managementApi = client.managementApi(adminToken);
-    adminCredentials = credentials;
     sparkToken = client.obtainToken(credentials);
   }
 
