@@ -1102,6 +1102,7 @@ public class PolarisAdminService {
         metaStoreManager
             .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
             .getPrincipalSecrets();
+    // delete the existing creds if present
     if (currentSecrets != null) {
       metaStoreManager.deletePrincipalSecrets(
           getCurrentPolarisContext(),
@@ -1109,6 +1110,7 @@ public class PolarisAdminService {
           currentPrincipalEntity.getId());
     }
     PrincipalEntity newPrincipalEntity = currentPrincipalEntity;
+    // update the clientId tied to the principal entity
     if (customClientId != null) {
       PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(newPrincipalEntity);
       updateBuilder.setClientId(customClientId);
@@ -1125,6 +1127,7 @@ public class PolarisAdminService {
                           "Concurrent modification on Principal '%s'; retry later", principalName));
     }
 
+    // generate new secrets
     PolarisPrincipalSecrets newSecrets =
         metaStoreManager
             .resetPrincipalSecrets(
@@ -1134,6 +1137,7 @@ public class PolarisAdminService {
                 customClientId,
                 customClientSecret)
             .getPrincipalSecrets();
+
     if (newSecrets == null) {
       throw new IllegalStateException(
           String.format("Failed to %s secrets for principal '%s'", "reset", principalName));
