@@ -25,6 +25,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
@@ -54,6 +55,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
   private GenericTableCatalog genericTableCatalog;
 
   public GenericTableCatalogHandler(
+      PolarisDiagnostics diagnostics,
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
@@ -63,6 +65,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
       UserSecretsManager userSecretsManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(
+        diagnostics,
         callContext,
         resolutionManifestFactory,
         securityContext,

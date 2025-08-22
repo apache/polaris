@@ -109,8 +109,7 @@ public class PolarisIntegrationTestFixture {
     BasePersistence metaStoreSession =
         helper.metaStoreManagerFactory.getOrCreateSession(realmContext);
     PolarisCallContext polarisContext =
-        new PolarisCallContext(
-            realmContext, metaStoreSession, helper.diagServices, helper.configurationStore);
+        new PolarisCallContext(realmContext, metaStoreSession, helper.configurationStore);
     PolarisMetaStoreManager metaStoreManager =
         helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     PrincipalEntity principal = metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

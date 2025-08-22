@@ -47,6 +47,16 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     return PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr);
   }
 
+  private final PolarisDiagnostics diagnostics;
+
+  protected BaseMetaStoreManager(PolarisDiagnostics diagnostics) {
+    this.diagnostics = diagnostics;
+  }
+
+  protected PolarisDiagnostics getDiagnostics() {
+    return diagnostics;
+  }
+
   /**
    * Performs basic validation of expected invariants on a new entity, then returns the entity with
    * fields filled out for which the persistence layer is responsible.
@@ -61,16 +71,13 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
       @Nonnull PolarisBaseEntity entity) {
 
     // validate the entity type and subtype
-    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
-    callCtx
-        .getDiagServices()
-        .checkNotNull(entity.getName(), "unexpected_null_name", "entity={}", entity);
+    getDiagnostics().checkNotNull(entity, "unexpected_null_entity");
+    getDiagnostics().checkNotNull(entity.getName(), "unexpected_null_name", "entity={}", entity);
     PolarisEntityType type = PolarisEntityType.fromCode(entity.getTypeCode());
-    callCtx.getDiagServices().checkNotNull(type, "unknown_type", "entity={}", entity);
+    getDiagnostics().checkNotNull(type, "unknown_type", "entity={}", entity);
     PolarisEntitySubType subType = PolarisEntitySubType.fromCode(entity.getSubTypeCode());
-    callCtx.getDiagServices().checkNotNull(subType, "unexpected_null_subType", "entity={}", entity);
-    callCtx
-        .getDiagServices()
+    getDiagnostics().checkNotNull(subType, "unexpected_null_subType", "entity={}", entity);
+    getDiagnostics()
         .check(
             subType.getParentType() == null || subType.getParentType() == type,
             "invalid_subtype",
@@ -79,8 +86,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
             subType);
 
     // if top-level entity, its parent should be the account
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             !type.isTopLevel() || entity.getParentId() == PolarisEntityConstants.getRootEntityId(),
             "top_level_parent_should_be_account",
@@ -88,8 +94,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
             entity);
 
     // id should not be null
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             entity.getId() != 0 || type == PolarisEntityType.ROOT,
             "id_not_set",
@@ -97,7 +102,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
             entity);
 
     // creation timestamp must be filled
-    callCtx.getDiagServices().check(entity.getCreateTimestamp() != 0, "null_create_timestamp");
+    getDiagnostics().check(entity.getCreateTimestamp() != 0, "null_create_timestamp");
 
     PolarisBaseEntity.Builder entityBuilder = new PolarisBaseEntity.Builder(entity);
     entityBuilder.lastUpdateTimestamp(entity.getCreateTimestamp());
@@ -126,16 +131,13 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
       @Nonnull PolarisBaseEntity originalEntity) {
 
     // validate the entity type and subtype
-    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
-    callCtx
-        .getDiagServices()
-        .checkNotNull(entity.getName(), "unexpected_null_name", "entity={}", entity);
+    getDiagnostics().checkNotNull(entity, "unexpected_null_entity");
+    getDiagnostics().checkNotNull(entity.getName(), "unexpected_null_name", "entity={}", entity);
     PolarisEntityType type = entity.getType();
-    callCtx.getDiagServices().checkNotNull(type, "unexpected_null_type", "entity={}", entity);
+    getDiagnostics().checkNotNull(type, "unexpected_null_type", "entity={}", entity);
     PolarisEntitySubType subType = entity.getSubType();
-    callCtx.getDiagServices().checkNotNull(subType, "unexpected_null_subType", "entity={}", entity);
-    callCtx
-        .getDiagServices()
+    getDiagnostics().checkNotNull(subType, "unexpected_null_subType", "entity={}", entity);
+    getDiagnostics()
         .check(
             subType.getParentType() == null || subType.getParentType() == type,
             "invalid_subtype",
@@ -145,15 +147,11 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
             entity);
 
     // entity should not have been dropped
-    callCtx
-        .getDiagServices()
-        .check(entity.getDropTimestamp() == 0, "entity_dropped", "entity={}", entity);
+    getDiagnostics().check(entity.getDropTimestamp() == 0, "entity_dropped", "entity={}", entity);
 
     // creation timestamp must be filled
     long createTimestamp = entity.getCreateTimestamp();
-    callCtx
-        .getDiagServices()
-        .check(createTimestamp != 0, "null_create_timestamp", "entity={}", entity);
+    getDiagnostics().check(createTimestamp != 0, "null_create_timestamp", "entity={}", entity);
 
     // ensure time is not moving backward...
     long now = System.currentTimeMillis();

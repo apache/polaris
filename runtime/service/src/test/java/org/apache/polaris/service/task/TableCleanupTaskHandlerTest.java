@@ -40,7 +40,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -63,7 +62,6 @@ class TableCleanupTaskHandlerTest {
   @Inject Clock clock;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject PolarisDiagnostics diagServices;
 
   private CallContext callContext;
 
@@ -83,7 +81,6 @@ class TableCleanupTaskHandlerTest {
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
             configurationStore);
   }
 

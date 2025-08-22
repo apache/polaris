@@ -41,7 +41,6 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -52,7 +51,6 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class ManifestFileCleanupTaskHandlerTest {
-  @Inject PolarisDiagnostics diagnostics;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
 
   private final RealmContext realmContext = () -> "realmName";
@@ -63,7 +61,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
   private PolarisCallContext newCallContext() {
     BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore, diagnostics);
+    return new PolarisCallContext(realmContext, metaStore);
   }
 
   @Test

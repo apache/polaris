@@ -36,8 +36,9 @@ public class PolarisTreeMapAtomicOperationMetaStoreManagerTest
     TreeMapTransactionalPersistenceImpl metaStore =
         new TreeMapTransactionalPersistenceImpl(
             diagServices, store, Mockito.mock(), RANDOM_SECRETS);
-    AtomicOperationMetaStoreManager metaStoreManager = new AtomicOperationMetaStoreManager(clock);
-    PolarisCallContext callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+    AtomicOperationMetaStoreManager metaStoreManager =
+        new AtomicOperationMetaStoreManager(clock, diagServices);
+    PolarisCallContext callCtx = new PolarisCallContext(() -> "testRealm", metaStore);
     return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 }

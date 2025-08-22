@@ -61,6 +61,7 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
@@ -137,6 +138,7 @@ public class IcebergCatalogAdapter
           .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
           .build();
 
+  private final PolarisDiagnostics diagnostics;
   private final RealmContext realmContext;
   private final CallContext callContext;
   private final RealmConfig realmConfig;
@@ -153,6 +155,7 @@ public class IcebergCatalogAdapter
 
   @Inject
   public IcebergCatalogAdapter(
+      PolarisDiagnostics diagnostics,
       RealmContext realmContext,
       CallContext callContext,
       CallContextCatalogFactory catalogFactory,
@@ -165,6 +168,7 @@ public class IcebergCatalogAdapter
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
+    this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
@@ -205,6 +209,7 @@ public class IcebergCatalogAdapter
     validatePrincipal(securityContext);
 
     return new IcebergCatalogHandler(
+        diagnostics,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
