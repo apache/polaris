@@ -25,7 +25,6 @@ import io.quarkus.test.junit.TestProfile;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -70,23 +69,18 @@ public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase
   }
 
   @Override
-  protected void initializeClientFileIO(FileIO fileIO) {
-    fileIO.initialize(
-        ImmutableMap.<String, String>builder()
-            .put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
-            .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
-            .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), MINIO_ACCESS_KEY)
-            .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), MINIO_SECRET_KEY)
-            .build());
+  protected ImmutableMap.Builder<String, String> clientFileIOProperties() {
+    return super.clientFileIOProperties()
+        .put(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
+        .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS.getPropertyName(), "true")
+        .put(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), MINIO_ACCESS_KEY)
+        .put(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), MINIO_SECRET_KEY);
   }
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::123456789012:role/polaris-test")
-            .setExternalId("externalId123")
-            .setUserArn("arn:aws:iam::123456789012:user/polaris-test")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(true)
             .setEndpoint(endpoint)

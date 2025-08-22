@@ -869,6 +869,7 @@ components:
           enum:
             - ICEBERG_REST
             - HADOOP
+            - HIVE
           description: The type of remote catalog service represented by this connection
         uri:
           type: string
@@ -884,6 +885,7 @@ components:
         mapping:
           ICEBERG_REST: "#/components/schemas/IcebergRestConnectionConfigInfo"
           HADOOP: "#/components/schemas/HadoopConnectionConfigInfo"
+          HIVE: "#/components/schemas/HiveConnectionConfigInfo"
 
     IcebergRestConnectionConfigInfo:
       type: object
@@ -906,6 +908,16 @@ components:
         warehouse:
           type: string
           description: The file path to where this catalog should store tables
+    
+    HiveConnectionConfigInfo:
+      type: object
+      description: Configuration necessary for connecting to a Hive Catalog
+      allOf:
+        - $ref: '#/components/schemas/ConnectionConfigInfo'
+      properties:
+        warehouse:
+          type: string
+          description: The warehouse location for the hive catalog.
 
     AuthenticationParameters:
       type: object
@@ -1073,8 +1085,6 @@ components:
                 Whether S3 requests to files in this catalog should use 'path-style addressing for buckets'.
               example: true
               default: false
-          required:
-            - roleArn
 
     AzureStorageConfigInfo:
       type: object

@@ -22,12 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Clock;
 import java.util.List;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -35,12 +31,11 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,17 +47,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class CatalogEntityTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  private final Clock clock = Clock.systemUTC();
-  private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
-  private CallContext callContext;
+  private RealmConfig realmConfig;
 
   @BeforeEach
   public void setup() {
     RealmContext realmContext = () -> "realm";
-    MetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory(clock, diagnostics, null);
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    this.callContext = new PolarisCallContext(realmContext, metaStore, diagnostics);
+    this.realmConfig = new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
   }
 
   @ParameterizedTest
@@ -85,7 +75,7 @@ public class CatalogEntityTest {
             .setProperties(props)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefixes");
@@ -111,7 +101,7 @@ public class CatalogEntityTest {
                 new CatalogProperties("abfs://container@storageaccount.blob.windows.net/path"))
             .setStorageConfigInfo(azureStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(callContext, azureCatalog))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, azureCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid azure location uri unsupportPrefix://mybucket/path");
 
@@ -128,7 +118,7 @@ public class CatalogEntityTest {
             .setProperties(new CatalogProperties("gs://externally-owned-bucket"))
             .setStorageConfigInfo(gcpStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(callContext, gcpCatalog))
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, gcpCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
             "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefixes");
@@ -161,7 +151,7 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(callContext, awsCatalog))
+    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog))
         .doesNotThrowAnyException();
   }
 
@@ -187,7 +177,7 @@ public class CatalogEntityTest {
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
     Assertions.assertThatNoException()
-        .isThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog));
+        .isThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog));
   }
 
   @Test
@@ -208,7 +198,7 @@ public class CatalogEntityTest {
             .setStorageConfigInfo(azureStorageConfigModel)
             .build();
     Assertions.assertThatNoException()
-        .isThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog));
+        .isThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog));
     prop.put(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, basedLocation);
 
     Catalog azureCatalog =
@@ -219,7 +209,7 @@ public class CatalogEntityTest {
             .setStorageConfigInfo(azureStorageConfigModel)
             .build();
     Assertions.assertThatNoException()
-        .isThrownBy(() -> CatalogEntity.fromCatalog(callContext, azureCatalog));
+        .isThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, azureCatalog));
 
     basedLocation = "gs://externally-owned-bucket";
     prop.put(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, basedLocation);
@@ -236,7 +226,7 @@ public class CatalogEntityTest {
             .setStorageConfigInfo(gcpStorageConfigModel)
             .build();
     Assertions.assertThatNoException()
-        .isThrownBy(() -> CatalogEntity.fromCatalog(callContext, gcpCatalog));
+        .isThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, gcpCatalog));
   }
 
   @ParameterizedTest
@@ -259,19 +249,13 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    String expectedMessage = "";
-    switch (roleArn) {
-      case "":
-        expectedMessage = "ARN cannot be null or empty";
-        break;
-      case "aws-cn":
-        expectedMessage = "AWS China is temporarily not supported";
-        break;
-      default:
-        expectedMessage = "Invalid role ARN format";
-    }
-    ;
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(callContext, awsCatalog))
+    String expectedMessage =
+        switch (roleArn) {
+          case "" -> "ARN must not be empty";
+          case "aws-cn" -> "AWS China is temporarily not supported";
+          default -> "Invalid role ARN format: arn:aws:iam::0123456:role/jdoe";
+        };
+    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
@@ -291,7 +275,7 @@ public class CatalogEntityTest {
         new CatalogEntity.Builder()
             .setName("test-catalog")
             .setDefaultBaseLocation(baseLocation)
-            .setStorageConfigurationInfo(callContext, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
             .build();
 
     Catalog catalog = catalogEntity.asCatalog();
@@ -314,7 +298,7 @@ public class CatalogEntityTest {
             .setName("test-external-catalog")
             .setDefaultBaseLocation(baseLocation)
             .setCatalogType(Catalog.TypeEnum.EXTERNAL.name())
-            .setStorageConfigurationInfo(callContext, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
             .build();
 
     Catalog catalog = catalogEntity.asCatalog();
@@ -337,7 +321,7 @@ public class CatalogEntityTest {
             .setName("test-internal-catalog")
             .setDefaultBaseLocation(baseLocation)
             .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
-            .setStorageConfigurationInfo(callContext, storageConfigModel, baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
             .build();
 
     Catalog catalog = catalogEntity.asCatalog();
@@ -373,7 +357,7 @@ public class CatalogEntityTest {
             .setDefaultBaseLocation(config.getAllowedLocations().getFirst())
             .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
             .setStorageConfigurationInfo(
-                callContext,
+                realmConfig,
                 MAPPER.readValue(configStr, StorageConfigInfo.class),
                 config.getAllowedLocations().getFirst())
             .build();

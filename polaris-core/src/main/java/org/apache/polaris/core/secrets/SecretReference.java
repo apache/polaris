@@ -51,7 +51,7 @@ import java.util.regex.Pattern;
  * the stored "secret material" as well as the referencePayload and any associated keys used for
  * encryption.
  */
-public class UserSecretReference {
+public class SecretReference {
   @JsonProperty(value = "urn")
   private final String urn;
 
@@ -74,7 +74,7 @@ public class UserSecretReference {
       Pattern.compile("^" + TYPE_SPECIFIC_IDENTIFIER_REGEX + "$");
 
   /**
-   * Precompiled regex pattern for validating and parsing UserSecretReference URNs. Expected format:
+   * Precompiled regex pattern for validating and parsing SecretReference URNs. Expected format:
    * urn:polaris-secret:<secret-manager-type>:<identifier1>(:<identifier2>:...).
    *
    * <p>Groups:
@@ -98,15 +98,15 @@ public class UserSecretReference {
   /**
    * @param urn A string which should be self-sufficient to retrieve whatever secret material that
    *     is stored in the remote secret store and also to identify an implementation of the
-   *     UserSecretsManager which is capable of interpreting this concrete UserSecretReference.
-   *     Should be of the form:
+   *     UserSecretsManager which is capable of interpreting this concrete SecretReference. Should
+   *     be of the form:
    *     'urn:polaris-secret:&lt;secret-manager-type&gt;:&lt;type-specific-identifier&gt;
    * @param referencePayload Optionally, any additional information that is necessary to fully
    *     reconstitute the original secret based on what is retrieved by the {@code urn}; this
    *     payload may include hashes/checksums, encryption key ids, OTP encryption keys, additional
    *     protocol/version specifiers, etc., which are implementation-specific.
    */
-  public UserSecretReference(
+  public SecretReference(
       @JsonProperty(value = "urn", required = true) @Nonnull String urn,
       @JsonProperty(value = "referencePayload") @Nullable Map<String, String> referencePayload) {
     Preconditions.checkArgument(
@@ -117,8 +117,7 @@ public class UserSecretReference {
   }
 
   /**
-   * Validates whether the given URN string matches the expected format for UserSecretReference
-   * URNs.
+   * Validates whether the given URN string matches the expected format for SecretReference URNs.
    *
    * @param urn The URN string to validate.
    * @return true if the URN is valid, false otherwise.
@@ -164,13 +163,13 @@ public class UserSecretReference {
   }
 
   /**
-   * Since UserSecretReference objects are specific to UserSecretManager implementations, the
+   * Since SecretReference objects are specific to UserSecretManager implementations, the
    * "secret-manager-type" portion of the URN should be used to validate that a URN is valid for a
    * given implementation and to dispatch to the correct implementation at runtime if multiple
    * concurrent implementations are possible in a given runtime environment.
    */
   @JsonIgnore
-  public String getUserSecretManagerType() {
+  public String getSecretManagerType() {
     Matcher matcher = URN_PATTERN.matcher(urn);
     Preconditions.checkState(matcher.matches(), "Invalid secret URN: " + urn);
     return matcher.group(1);
@@ -203,10 +202,10 @@ public class UserSecretReference {
 
   @Override
   public boolean equals(Object obj) {
-    if (obj == null || !(obj instanceof UserSecretReference)) {
+    if (obj == null || !(obj instanceof SecretReference)) {
       return false;
     }
-    UserSecretReference that = (UserSecretReference) obj;
+    SecretReference that = (SecretReference) obj;
     return Objects.equals(this.getUrn(), that.getUrn())
         && Objects.equals(this.getReferencePayload(), that.getReferencePayload());
   }

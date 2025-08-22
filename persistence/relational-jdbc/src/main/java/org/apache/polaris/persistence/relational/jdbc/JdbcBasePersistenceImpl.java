@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
@@ -427,12 +428,15 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
-    return listEntities(
+    // TODO: only fetch the properties required for creating an EntityNameLookupRecord
+    return loadEntities(
         callCtx,
         catalogId,
         parentId,
         entityType,
+        entitySubType,
         entity -> true,
         EntityNameLookupRecord::new,
         pageToken);
@@ -440,30 +444,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nonnull
   @Override
-  public Page<EntityNameLookupRecord> listEntities(
+  public <T> Page<T> loadEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
-    return listEntities(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        entityFilter,
-        EntityNameLookupRecord::new,
-        pageToken);
-  }
-
-  @Nonnull
-  @Override
-  public <T> Page<T> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
@@ -478,6 +464,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             "realm_id",
             realmId);
     Map<String, Object> whereGreater;
+
+    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
+      Map<String, Object> updatedWhereEquals = new HashMap<>(whereEquals);
+      updatedWhereEquals.put("sub_type_code", entitySubType.getCode());
+      whereEquals = updatedWhereEquals;
+    }
 
     // Limit can't be pushed down, due to client side filtering
     // absence of transaction.

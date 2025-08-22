@@ -21,19 +21,23 @@ package org.apache.polaris.service.auth;
 import io.quarkus.security.credential.Credential;
 import jakarta.annotation.Nullable;
 import java.util.Set;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
- * Principal information extracted from authentication data (typically, an access token) by the
- * configured authentication mechanism. Used to determine the principal id, name, and roles while
- * authenticating a request.
- *
- * <p>This interface also implements Quarkus {@link Credential}, thus allowing it to be used as a
- * {@linkplain io.quarkus.security.identity.SecurityIdentity#getCredential(Class) security identity
- * credential}.
- *
- * @see DefaultAuthenticator
+ * A Quarkus Security {@link Credential} exposing Polaris-specific attributes: the principal id,
+ * name, and roles.
  */
-public interface PrincipalAuthInfo extends Credential {
+@PolarisImmutable
+public interface PolarisCredential extends Credential {
+
+  static PolarisCredential of(
+      @Nullable Long principalId, @Nullable String principalName, Set<String> principalRoles) {
+    return ImmutablePolarisCredential.builder()
+        .principalId(principalId)
+        .principalName(principalName)
+        .principalRoles(principalRoles)
+        .build();
+  }
 
   /** The principal id, or null if unknown. Used for principal lookups by id. */
   @Nullable
@@ -44,7 +48,9 @@ public interface PrincipalAuthInfo extends Credential {
   String getPrincipalName();
 
   /**
-   * The principal roles present in the token. The special {@link
+   * The principal roles present in the token.
+   *
+   * <p>When using the default authenticator, the special {@link
    * DefaultAuthenticator#PRINCIPAL_ROLE_ALL} can be used to denote a request for all principal
    * roles that the principal has access to.
    */

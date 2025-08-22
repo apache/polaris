@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
@@ -62,7 +61,6 @@ import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.PrincipalAuthInfo;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
@@ -134,12 +132,6 @@ public class ServiceProducers {
   }
 
   @Produces
-  @ApplicationScoped
-  public PolarisAuthorizer polarisAuthorizer() {
-    return new PolarisAuthorizerImpl();
-  }
-
-  @Produces
   @Singleton
   public PolarisDiagnostics polarisDiagnostics() {
     return new PolarisDefaultDiagServiceImpl();
@@ -168,6 +160,12 @@ public class ServiceProducers {
   @RequestScoped
   public RealmConfig realmConfig(CallContext callContext) {
     return callContext.getRealmConfig();
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisAuthorizer polarisAuthorizer(RealmConfig realmConfig) {
+    return new PolarisAuthorizerImpl(realmConfig);
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans
@@ -329,11 +327,8 @@ public class ServiceProducers {
 
   @Produces
   @RequestScoped
-  public Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> authenticator(
-      AuthenticationRealmConfiguration config,
-      @Any
-          Instance<Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal>>
-              authenticators) {
+  public Authenticator authenticator(
+      AuthenticationRealmConfiguration config, @Any Instance<Authenticator> authenticators) {
     return authenticators.select(Identifier.Literal.of(config.authenticator().type())).get();
   }
 

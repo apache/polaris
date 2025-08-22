@@ -69,7 +69,6 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
@@ -111,7 +110,6 @@ public class PolarisApplicationIntegrationTest {
   private static RestApi managementApi;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
-  private static ClientCredentials clientCredentials;
   private static ClientPrincipal admin;
   private static String authToken;
   private static URI baseLocation;
@@ -126,9 +124,8 @@ public class PolarisApplicationIntegrationTest {
     client = polarisClient(endpoints);
     realm = endpoints.realmId();
     admin = adminCredentials;
-    clientCredentials = adminCredentials.credentials();
-    authToken = client.obtainToken(clientCredentials);
-    managementApi = client.managementApi(clientCredentials);
+    authToken = client.obtainToken(adminCredentials.credentials());
+    managementApi = client.managementApi(authToken);
     baseLocation = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(realm + "/");
   }
 
@@ -165,7 +162,7 @@ public class PolarisApplicationIntegrationTest {
 
   @AfterEach
   public void cleanUp() {
-    client.cleanUp(clientCredentials);
+    client.cleanUp(authToken);
   }
 
   private static void createCatalog(
@@ -592,7 +589,7 @@ public class PolarisApplicationIntegrationTest {
           .untilAsserted(
               () -> {
                 Invocation.Builder request =
-                    localClient.managementApi(clientCredentials).request("v1/principal-roles");
+                    localClient.managementApi(authToken).request("v1/principal-roles");
                 // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500
                 // definitely exceeds the limit
                 for (int i = 0; i < 1500; i++) {
@@ -628,7 +625,7 @@ public class PolarisApplicationIntegrationTest {
                     Entity.json(new PrincipalRole("r".repeat(1000001)));
                 try (Response response =
                     localClient
-                        .managementApi(clientCredentials)
+                        .managementApi(authToken)
                         .request("v1/principal-roles")
                         .post(largeRequest)) {
                   // Note we only validate the status code here because per RFC 9110, the server MAY

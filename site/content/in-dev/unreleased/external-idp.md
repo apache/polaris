@@ -50,7 +50,7 @@ polaris.authentication.realm2.type=mixed
 
 ### Authenticator 
 
-The [`Authenticator`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/Authenticator.java) is a component responsible for creating a Polaris principal from the credentials provided by the authentication process. It is common to all authentication types. 
+The [`Authenticator`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/Authenticator.java) is a component responsible for resolving the principal and the principal roles, and for creating a `PolarisPrincipal` from the credentials provided by the authentication process. It is a central component and is invoked for all types of authentication.
 
 The `type` property is used to define the `Authenticator` implementation. It is overridable per realm: 
 
@@ -59,7 +59,7 @@ polaris.authentication.authenticator.type=default
 polaris.authentication.realm1.authenticator.type=custom
 ```
 
-### Active Roles Provider 
+### Active Roles Provider
 
 The [`ActiveRolesProvider`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/ActiveRolesProvider.java) is a component responsible for determining which roles the principal is requesting and should be activated. It is common to all authentication types. 
 
@@ -71,7 +71,7 @@ polaris.authentication.active-roles-provider.type=default
 
 ## Internal Authentication Configuration 
 
-### Token Broker 
+### Token Broker
 
 The [`TokenBroker`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) signs and verifies tokens to ensure that they can be validated and remain unaltered. 
 

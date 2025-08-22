@@ -25,7 +25,7 @@ ENV LANGUAGE='en_US:en'
 
 USER root
 RUN apt update
-RUN apt-get install -y diffutils wget curl python3.10-venv
+RUN apt-get install -y diffutils wget curl python3.10-venv jq
 RUN mkdir -p /home/spark &&  \
     chown -R spark /home/spark && \
     mkdir -p /tmp/polaris-regtests && \
@@ -41,6 +41,8 @@ COPY --chown=spark ./regtests/setup.sh /home/spark/polaris/regtests/setup.sh
 COPY --chown=spark ./regtests/pyspark-setup.sh /home/spark/polaris/regtests/pyspark-setup.sh
 COPY --chown=spark ./client/python /home/spark/polaris/client/python
 COPY --chown=spark ./polaris /home/spark/polaris/polaris
+COPY --chown=spark ./client/templates /home/spark/polaris/client/templates
+COPY --chown=spark ./spec /home/spark/polaris/spec
 COPY --chown=spark ./regtests/requirements.txt /tmp/
 
 RUN python3 -m venv /home/spark/polaris/polaris-venv && \
@@ -48,7 +50,7 @@ RUN python3 -m venv /home/spark/polaris/polaris-venv && \
     pip install -r /tmp/requirements.txt && \
     cd /home/spark/polaris/client/python && \
     poetry install && \
-    deactivate \
+    deactivate && \
     /home/spark/polaris/regtests/setup.sh
 
 COPY --chown=spark ./regtests /home/spark/polaris/regtests

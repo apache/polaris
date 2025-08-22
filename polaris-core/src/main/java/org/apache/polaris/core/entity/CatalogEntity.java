@@ -40,9 +40,9 @@ import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -79,7 +79,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return null;
   }
 
-  public static CatalogEntity fromCatalog(CallContext callContext, Catalog catalog) {
+  public static CatalogEntity fromCatalog(RealmConfig realmConfig, Catalog catalog) {
     Builder builder =
         new Builder()
             .setName(catalog.getName())
@@ -89,7 +89,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
-        callContext, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
+        realmConfig, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
     return builder.build();
   }
 
@@ -205,9 +205,17 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         .orElse(null);
   }
 
+  public boolean isExternal() {
+    return getCatalogType() == Catalog.TypeEnum.EXTERNAL;
+  }
+
   public boolean isPassthroughFacade() {
     return getInternalPropertiesAsMap()
         .containsKey(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
+  }
+
+  public boolean isStaticFacade() {
+    return isExternal() && !isPassthroughFacade();
   }
 
   public ConnectionConfigInfoDpo getConnectionConfigInfoDpo() {
@@ -250,7 +258,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     }
 
     public Builder setStorageConfigurationInfo(
-        CallContext callContext, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
+        RealmConfig realmConfig, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
       if (storageConfigModel != null) {
         PolarisStorageConfigurationInfo config;
         Set<String> allowedLocations = new HashSet<>(storageConfigModel.getAllowedLocations());
@@ -264,7 +272,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           throw new BadRequestException("Must specify default base location");
         }
         allowedLocations.add(defaultBaseLocation);
-        validateMaxAllowedLocations(callContext, allowedLocations);
+        validateMaxAllowedLocations(realmConfig, allowedLocations);
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
@@ -279,7 +287,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .pathStyleAccess(awsConfigModel.getPathStyleAccess())
                     .endpointInternal(awsConfigModel.getEndpointInternal())
                     .build();
-            awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
           case AZURE:
@@ -316,11 +323,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     /** Validate the number of allowed locations not exceeding the max value. */
     private void validateMaxAllowedLocations(
-        CallContext callContext, Collection<String> allowedLocations) {
+        RealmConfig realmConfig, Collection<String> allowedLocations) {
       int maxAllowedLocations =
-          callContext
-              .getRealmConfig()
-              .getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
+          realmConfig.getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
       if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
         throw new IllegalArgumentException(
             String.format(
@@ -331,7 +336,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     public Builder setConnectionConfigInfoDpoWithSecrets(
         ConnectionConfigInfo connectionConfigurationModel,
-        Map<String, UserSecretReference> secretReferences) {
+        Map<String, SecretReference> secretReferences) {
       if (connectionConfigurationModel != null) {
         ConnectionConfigInfoDpo config =
             ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
@@ -339,6 +344,14 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         internalProperties.put(
             PolarisEntityConstants.getConnectionConfigInfoPropertyName(), config.serialize());
       }
+      return this;
+    }
+
+    public Builder setConnectionConfigInfoDpo(
+        @Nonnull ConnectionConfigInfoDpo connectionConfigInfoDpo) {
+      internalProperties.put(
+          PolarisEntityConstants.getConnectionConfigInfoPropertyName(),
+          connectionConfigInfoDpo.serialize());
       return this;
     }
 

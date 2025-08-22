@@ -185,126 +185,124 @@ class AwsCloudWatchEventListenerTest {
   void shouldSendEventToCloudWatch() {
     CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
     AwsCloudWatchEventListener listener = createListener(client);
-
-    // Start the listener
     listener.start();
+    try {
+      // Create and send a test event
+      TableIdentifier testTable = TableIdentifier.of("test_namespace", "test_table");
+      AfterTableRefreshedEvent event = new AfterTableRefreshedEvent(testTable);
+      listener.onAfterTableRefreshed(event);
 
-    // Create and send a test event
-    TableIdentifier testTable = TableIdentifier.of("test_namespace", "test_table");
-    AfterTableRefreshedEvent event = new AfterTableRefreshedEvent(testTable);
-    listener.onAfterTableRefreshed(event);
+      // Verify the event was sent to CloudWatch by reading the actual logs
+      GetLogEventsResponse logEvents;
+      int eventCount = 0;
+      long startTime = System.currentTimeMillis();
+      while (eventCount == 0) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          fail("Thread interrupted waiting for event");
+        }
+        if (System.currentTimeMillis() - startTime > 30_000) {
+          fail("Timeout exceeded while waiting for event to arrive");
+        }
+        logEvents =
+                client.getLogEvents(
+                                GetLogEventsRequest.builder()
+                                        .logGroupName(LOG_GROUP)
+                                        .logStreamName(LOG_STREAM)
+                                        .build())
+                        .join();
+        eventCount = logEvents.events().size();
+      }
 
-    // Verify the event was sent to CloudWatch by reading the actual logs
-    GetLogEventsResponse logEvents;
-    int eventCount = 0;
-    long startTime = System.currentTimeMillis();
-    while (eventCount == 0) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        fail("Thread interrupted waiting for event");
-      }
-      if (System.currentTimeMillis() - startTime > 30_000) {
-        fail("Timeout exceeded while waiting for event to arrive");
-      }
       logEvents =
-          client
-              .getLogEvents(
-                  GetLogEventsRequest.builder()
-                      .logGroupName(LOG_GROUP)
-                      .logStreamName(LOG_STREAM)
-                      .build())
-              .join();
-      eventCount = logEvents.events().size();
+              client
+                      .getLogEvents(
+                              GetLogEventsRequest.builder()
+                                      .logGroupName(LOG_GROUP)
+                                      .logStreamName(LOG_STREAM)
+                                      .build())
+                      .join();
+
+      assertThat(logEvents.events())
+              .hasSize(1)
+              .first()
+              .satisfies(
+                      logEvent -> {
+                        String message = logEvent.message();
+                        assertThat(message).contains(REALM);
+                        assertThat(message).contains(AfterTableRefreshedEvent.class.getSimpleName());
+                        assertThat(message).contains(TEST_USER);
+                        assertThat(message).contains(testTable.toString());
+                      });
+    } finally {
+      // Clean up
+      listener.shutdown();
+      client.close();
     }
-
-    logEvents =
-        client
-            .getLogEvents(
-                GetLogEventsRequest.builder()
-                    .logGroupName(LOG_GROUP)
-                    .logStreamName(LOG_STREAM)
-                    .build())
-            .join();
-
-    assertThat(logEvents.events())
-        .hasSize(1)
-        .first()
-        .satisfies(
-            logEvent -> {
-              String message = logEvent.message();
-              assertThat(message).contains(REALM);
-              assertThat(message).contains(AfterTableRefreshedEvent.class.getSimpleName());
-              assertThat(message).contains(TEST_USER);
-              assertThat(message).contains(testTable.toString());
-            });
-
-    // Clean up
-    listener.shutdown();
-    client.close();
   }
 
   @Test
-  void handleSynchronousModeCorrectly() {
+  void shouldSendEventInSynchronousMode() {
     CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
 
     // Test synchronous mode
     when(config.synchronousMode()).thenReturn(true);
     AwsCloudWatchEventListener syncListener = createListener(client);
     syncListener.start();
+    try {
+      // Create and send a test event synchronously
+      TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
+      AfterTableRefreshedEvent syncEvent = new AfterTableRefreshedEvent(syncTestTable);
+      syncListener.onAfterTableRefreshed(syncEvent);
 
-    // Create and send a test event synchronously
-    TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
-    AfterTableRefreshedEvent syncEvent = new AfterTableRefreshedEvent(syncTestTable);
-    syncListener.onAfterTableRefreshed(syncEvent);
+      // Verify both events were sent to CloudWatch
+      GetLogEventsResponse logEvents;
+      int eventCount = 0;
+      long startTime = System.currentTimeMillis();
+      while (eventCount == 0) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          fail("Thread interrupted waiting for event");
+        }
+        if (System.currentTimeMillis() - startTime > 30_000) {
+          fail("Timeout exceeded while waiting for event to arrive");
+        }
+        logEvents =
+                client
+                        .getLogEvents(
+                                GetLogEventsRequest.builder()
+                                        .logGroupName(LOG_GROUP)
+                                        .logStreamName(LOG_STREAM)
+                                        .build())
+                        .join();
+        eventCount = logEvents.events().size();
+      }
 
-    // Verify both events were sent to CloudWatch
-    GetLogEventsResponse logEvents;
-    int eventCount = 0;
-    long startTime = System.currentTimeMillis();
-    while (eventCount == 0) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        fail("Thread interrupted waiting for event");
-      }
-      if (System.currentTimeMillis() - startTime > 30_000) {
-        fail("Timeout exceeded while waiting for event to arrive");
-      }
       logEvents =
-          client
-              .getLogEvents(
-                  GetLogEventsRequest.builder()
-                      .logGroupName(LOG_GROUP)
-                      .logStreamName(LOG_STREAM)
-                      .build())
-              .join();
-      eventCount = logEvents.events().size();
+              client
+                      .getLogEvents(
+                              GetLogEventsRequest.builder()
+                                      .logGroupName(LOG_GROUP)
+                                      .logStreamName(LOG_STREAM)
+                                      .build())
+                      .join();
+
+      assertThat(logEvents.events()).hasSize(1);
+
+      // Verify sync event
+      assertThat(logEvents.events())
+              .anySatisfy(
+                      logEvent -> {
+                        String message = logEvent.message();
+                        assertThat(message).contains("test_table_sync");
+                        assertThat(message).contains("AfterTableRefreshedEvent");
+                      });
+    } finally {
+      // Clean up
+      syncListener.shutdown();
+      client.close();
     }
-
-    logEvents =
-        client
-            .getLogEvents(
-                GetLogEventsRequest.builder()
-                    .logGroupName(LOG_GROUP)
-                    .logStreamName(LOG_STREAM)
-                    .build())
-            .join();
-
-    assertThat(logEvents.events()).hasSize(1);
-
-    // Verify sync event
-    assertThat(logEvents.events())
-        .anySatisfy(
-            logEvent -> {
-              String message = logEvent.message();
-              assertThat(message).contains("test_table_sync");
-              assertThat(message).contains("AfterTableRefreshedEvent");
-            });
-
-    // Clean up
-    syncListener.shutdown();
-
-    client.close();
   }
 }

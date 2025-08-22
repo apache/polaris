@@ -29,7 +29,7 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import java.security.Principal;
 import java.util.Set;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -78,7 +78,7 @@ public class ActiveRolesAugmentorTest {
   public void testAugmentWithValidRoles(String rolesString) {
     // Given
     Set<String> roles = Set.of(rolesString.split(","));
-    AuthenticatedPolarisPrincipal polarisPrincipal = mock(AuthenticatedPolarisPrincipal.class);
+    PolarisPrincipal polarisPrincipal = mock(PolarisPrincipal.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder().setPrincipal(polarisPrincipal).build();
 
@@ -98,7 +98,7 @@ public class ActiveRolesAugmentorTest {
   public void testAugmentWithEmptyRoles() {
     // Given
     Set<String> roles = Set.of();
-    AuthenticatedPolarisPrincipal polarisPrincipal = mock(AuthenticatedPolarisPrincipal.class);
+    PolarisPrincipal polarisPrincipal = mock(PolarisPrincipal.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder().setPrincipal(polarisPrincipal).build();
 

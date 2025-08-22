@@ -89,7 +89,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
    * into the existing realm-based setup flow.
    */
   protected PolarisMetaStoreManager createNewMetaStoreManager(Clock clock) {
-    return new TransactionalMetaStoreManagerImpl(clock);
+    return new TransactionalMetaStoreManagerImpl(clock, diagnostics);
   }
 
   private void initializeForRealm(

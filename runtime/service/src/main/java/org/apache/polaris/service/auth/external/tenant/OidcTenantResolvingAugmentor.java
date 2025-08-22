@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth.external;
+package org.apache.polaris.service.auth.external.tenant;
 
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -25,7 +25,7 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
+import org.apache.polaris.service.auth.external.OidcPolarisCredentialAugmentor;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /**
@@ -37,8 +37,8 @@ public class OidcTenantResolvingAugmentor implements SecurityIdentityAugmentor {
 
   public static final String TENANT_CONFIG_ATTRIBUTE = "polaris-tenant-config";
 
-  // must run before PrincipalAuthInfoAugmentor
-  public static final int PRIORITY = PrincipalAuthInfoAugmentor.PRIORITY + 100;
+  // must run before OidcPolarisCredentialAugmentor
+  public static final int PRIORITY = OidcPolarisCredentialAugmentor.PRIORITY + 100;
 
   public static OidcTenantConfiguration getOidcTenantConfig(SecurityIdentity identity) {
     return identity.getAttribute(TENANT_CONFIG_ATTRIBUTE);

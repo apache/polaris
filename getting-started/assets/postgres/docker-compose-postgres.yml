@@ -19,7 +19,7 @@
 
 services:
   postgres:
-    image: postgres:17.5
+    image: postgres:17.6
     ports:
       - "5432:5432"
     # set shared memory limit when using docker-compose

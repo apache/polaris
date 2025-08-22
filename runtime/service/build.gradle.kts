@@ -36,6 +36,9 @@ dependencies {
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
 
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
@@ -93,7 +96,6 @@ dependencies {
   implementation(libs.microprofile.fault.tolerance.api)
 
   compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.spotbugs.annotations)
 
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
@@ -189,6 +191,10 @@ dependencies {
   testFixturesImplementation("com.azure:azure-core")
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
+
+  // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
+  // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
+  intTestRuntimeOnly(libs.keycloak.admin.client)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

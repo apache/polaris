@@ -68,6 +68,7 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
       @Nullable RootCredentialsSet rootCredentialsSet,
       @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
+        diagnostics,
         store,
         storageIntegrationProvider,
         realmContext,

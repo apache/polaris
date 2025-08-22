@@ -18,9 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
@@ -34,13 +31,10 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
 public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
-  /** mapper, allows to serialize/deserialize properties to/from JSON */
-  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   public static PolarisStorageConfigurationInfo extractStorageConfiguration(
       @Nonnull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {
-    Map<String, String> propMap =
-        PolarisObjectMapperUtil.deserializeProperties(reloadedEntity.getInternalProperties());
+    Map<String, String> propMap = reloadedEntity.getInternalPropertiesAsMap();
     String storageConfigInfoStr =
         propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
 
@@ -51,36 +45,6 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
         reloadedEntity.getCatalogId(),
         reloadedEntity.getId());
     return PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr);
-  }
-
-  /**
-   * Given the internal property as a map of key/value pairs, serialize it to a String
-   *
-   * @param properties a map of key/value pairs
-   * @return a String, the JSON representation of the map
-   */
-  public String serializeProperties(Map<String, String> properties) {
-    try {
-      // Deserialize the JSON string to a Map<String, String>
-      return MAPPER.writeValueAsString(properties);
-    } catch (JsonProcessingException ex) {
-      throw new RuntimeException("serializeProperties failed: " + ex.getMessage(), ex);
-    }
-  }
-
-  /**
-   * Given the serialized properties, deserialize those to a {@code Map<String, String>}
-   *
-   * @param properties a JSON string representing the set of properties
-   * @return a Map of string
-   */
-  public Map<String, String> deserializeProperties(String properties) {
-    try {
-      // Deserialize the JSON string to a Map<String, String>
-      return MAPPER.readValue(properties, new TypeReference<>() {});
-    } catch (JsonProcessingException ex) {
-      throw new RuntimeException("deserializeProperties failed: " + ex.getMessage(), ex);
-    }
   }
 
   /**

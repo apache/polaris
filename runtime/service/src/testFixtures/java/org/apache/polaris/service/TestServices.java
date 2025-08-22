@@ -22,6 +22,7 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
@@ -34,12 +35,13 @@ import java.util.function.BiFunction;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -88,6 +90,7 @@ public record TestServices(
     ResolutionManifestFactory resolutionManifestFactory,
     MetaStoreManagerFactory metaStoreManagerFactory,
     RealmContext realmContext,
+    RealmConfig realmConfig,
     SecurityContext securityContext,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
@@ -174,13 +177,13 @@ public record TestServices(
       CallContext callContext =
           new PolarisCallContext(
               realmContext, metaStoreSession, polarisDiagnostics, configurationStore);
+      RealmConfig realmConfig = callContext.getRealmConfig();
 
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
       EntityCache entityCache =
-          metaStoreManagerFactory.getOrCreateEntityCache(
-              realmContext, callContext.getRealmConfig());
+          metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
       ResolverFactory resolverFactory =
           (_callContext, securityContext, referenceCatalogName) ->
               new Resolver(
@@ -212,8 +215,12 @@ public record TestServices(
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
-      CatalogHandlerUtils catalogHandlerUtils =
-          new CatalogHandlerUtils(callContext.getRealmConfig());
+      CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(realmConfig);
+
+      @SuppressWarnings("unchecked")
+      Instance<ExternalCatalogFactory> externalCatalogFactory = Mockito.mock(Instance.class);
+      Mockito.when(externalCatalogFactory.select(Mockito.any())).thenReturn(externalCatalogFactory);
+      Mockito.when(externalCatalogFactory.isUnsatisfied()).thenReturn(true);
 
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
@@ -227,7 +234,8 @@ public record TestServices(
               authorizer,
               new DefaultCatalogPrefixParser(),
               reservedProperties,
-              catalogHandlerUtils);
+              catalogHandlerUtils,
+              externalCatalogFactory);
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
       IcebergRestConfigurationApi restConfigurationApi =
@@ -241,9 +249,8 @@ public record TestServices(
                   .setCreateTimestamp(Instant.now().toEpochMilli())
                   .setCredentialRotationRequiredState()
                   .build());
-      AuthenticatedPolarisPrincipal principal =
-          new AuthenticatedPolarisPrincipal(
-              PolarisEntity.of(createdPrincipal.getPrincipal()), Set.of());
+      PolarisPrincipal principal =
+          PolarisPrincipal.of(PrincipalEntity.of(createdPrincipal.getPrincipal()), Set.of());
 
       SecurityContext securityContext =
           new SecurityContext() {
@@ -291,6 +298,7 @@ public record TestServices(
           resolutionManifestFactory,
           metaStoreManagerFactory,
           realmContext,
+          realmConfig,
           securityContext,
           fileIOFactory,
           taskExecutor,

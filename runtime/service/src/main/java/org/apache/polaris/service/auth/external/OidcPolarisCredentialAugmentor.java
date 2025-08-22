@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.auth.external;
 
-import static org.apache.polaris.service.auth.external.OidcTenantResolvingAugmentor.getOidcTenantConfig;
+import static org.apache.polaris.service.auth.external.tenant.OidcTenantResolvingAugmentor.getOidcTenantConfig;
 
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -26,24 +26,24 @@ import io.quarkus.security.identity.SecurityIdentityAugmentor;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.mutiny.Uni;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Set;
 import org.apache.polaris.service.auth.AuthenticatingAugmentor;
-import org.apache.polaris.service.auth.PrincipalAuthInfo;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.external.mapping.PrincipalMapper;
 import org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper;
+import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
 /**
  * A {@link SecurityIdentityAugmentor} that maps the access token claims, as provided by the OIDC
- * authentication mechanism, to Polaris-specific properties (principal and principal roles).
+ * authentication mechanism, to a {@link PolarisCredential}.
  */
 @ApplicationScoped
-public class PrincipalAuthInfoAugmentor implements SecurityIdentityAugmentor {
+public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor {
 
   // must run before the authenticating augmentor
   public static final int PRIORITY = AuthenticatingAugmentor.PRIORITY + 100;
@@ -52,7 +52,7 @@ public class PrincipalAuthInfoAugmentor implements SecurityIdentityAugmentor {
   private final Instance<PrincipalRolesMapper> principalRoleMappers;
 
   @Inject
-  public PrincipalAuthInfoAugmentor(
+  public OidcPolarisCredentialAugmentor(
       @Any Instance<PrincipalMapper> principalMappers,
       @Any Instance<PrincipalRolesMapper> principalRoleMappers) {
     this.principalMappers = principalMappers;
@@ -77,11 +77,12 @@ public class PrincipalAuthInfoAugmentor implements SecurityIdentityAugmentor {
         principalRoleMappers
             .select(Identifier.Literal.of(config.principalRolesMapper().type()))
             .get();
-    return Uni.createFrom()
-        .item(() -> setPrincipalAuthInfo(identity, principalMapper, principalRolesMapper));
+    // The mappers may do expensive work, hence we run within a blocking context
+    return context.runBlocking(
+        () -> setPolarisCredential(identity, principalMapper, principalRolesMapper));
   }
 
-  protected SecurityIdentity setPrincipalAuthInfo(
+  protected SecurityIdentity setPolarisCredential(
       SecurityIdentity identity,
       PrincipalMapper principalMapper,
       PrincipalRolesMapper rolesMapper) {
@@ -89,15 +90,9 @@ public class PrincipalAuthInfoAugmentor implements SecurityIdentityAugmentor {
         principalMapper.mapPrincipalId(identity).stream().boxed().findFirst().orElse(null);
     String principalName = principalMapper.mapPrincipalName(identity).orElse(null);
     Set<String> principalRoles = rolesMapper.mapPrincipalRoles(identity);
-    var credential = new OidcPrincipalAuthInfo(principalId, principalName, principalRoles);
+    PolarisCredential credential = PolarisCredential.of(principalId, principalName, principalRoles);
     // Note: we don't change the identity roles here, this will be done later on
-    // by the ActiveRolesAugmentor, which will also validate them
+    // by the AuthenticatingAugmentor, which will also validate them.
     return QuarkusSecurityIdentity.builder(identity).addCredential(credential).build();
   }
-
-  protected record OidcPrincipalAuthInfo(
-      @Nullable Long getPrincipalId,
-      @Nullable String getPrincipalName,
-      Set<String> getPrincipalRoles)
-      implements PrincipalAuthInfo {}
 }

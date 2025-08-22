@@ -22,6 +22,7 @@ package org.apache.polaris.core.storage.aws;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class AwsStorageConfigurationInfoTest {
@@ -68,7 +69,8 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   private static ImmutableAwsStorageConfigurationInfo.Builder newBuilder() {
-    return AwsStorageConfigurationInfo.builder().roleARN("role");
+    return AwsStorageConfigurationInfo.builder()
+        .roleARN("arn:aws:iam::123456789012:role/polaris-test");
   }
 
   @Test
@@ -114,5 +116,22 @@ public class AwsStorageConfigurationInfoTest {
     assertThat(newBuilder().pathStyleAccess(null).build().getPathStyleAccess()).isNull();
     assertThat(newBuilder().pathStyleAccess(false).build().getPathStyleAccess()).isFalse();
     assertThat(newBuilder().pathStyleAccess(true).build().getPathStyleAccess()).isTrue();
+  }
+
+  @Test
+  public void testRoleArnParsing() {
+    AwsStorageConfigurationInfo awsConfig =
+        AwsStorageConfigurationInfo.builder()
+            .addAllowedLocation("s3://bucket/path/to/warehouse")
+            .roleARN("arn:aws:iam::012345678901:role/jdoe")
+            .region("us-east-2")
+            .build();
+
+    Assertions.assertThat(awsConfig)
+        .extracting(
+            AwsStorageConfigurationInfo::getRoleARN,
+            AwsStorageConfigurationInfo::getAwsAccountId,
+            AwsStorageConfigurationInfo::getAwsPartition)
+        .containsExactly("arn:aws:iam::012345678901:role/jdoe", "012345678901", "aws");
   }
 }

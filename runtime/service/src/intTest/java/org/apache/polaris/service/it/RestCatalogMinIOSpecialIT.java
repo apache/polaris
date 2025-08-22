@@ -92,6 +92,7 @@ public class RestCatalogMinIOSpecialIT {
   private static final String BUCKET_URI_PREFIX = "/minio-test";
   private static final String MINIO_ACCESS_KEY = "test-ak-123";
   private static final String MINIO_SECRET_KEY = "test-sk-123";
+  private static String adminToken;
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -132,7 +133,8 @@ public class RestCatalogMinIOSpecialIT {
     adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    managementApi = client.managementApi(credentials);
+    adminToken = client.obtainToken(credentials);
+    managementApi = client.managementApi(adminToken);
     storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
     endpoint = minioAccess.s3endpoint();
   }
@@ -148,7 +150,8 @@ public class RestCatalogMinIOSpecialIT {
     principalRoleName = client.newEntityName("test-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
 
-    catalogApi = client.catalogApi(principalCredentials);
+    String principalToken = client.obtainToken(principalCredentials);
+    catalogApi = client.catalogApi(principalToken);
 
     catalogName = client.newEntityName(testInfo.getTestMethod().orElseThrow().getName());
   }
@@ -165,9 +168,6 @@ public class RestCatalogMinIOSpecialIT {
       Optional<String> endpointInternal) {
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::123456789012:role/polaris-test")
-            .setExternalId("externalId123")
-            .setUserArn("arn:aws:iam::123456789012:user/polaris-test")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(pathStyleAccess)
             .setAllowedLocations(List.of(storageBase.toString()));
@@ -206,7 +206,7 @@ public class RestCatalogMinIOSpecialIT {
 
   @AfterEach
   public void cleanUp() {
-    client.cleanUp(adminCredentials);
+    client.cleanUp(adminToken);
   }
 
   @ParameterizedTest
