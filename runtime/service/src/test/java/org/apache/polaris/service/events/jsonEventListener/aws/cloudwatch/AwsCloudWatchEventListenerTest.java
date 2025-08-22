@@ -151,34 +151,36 @@ class AwsCloudWatchEventListenerTest {
     // Start the listener which should create the log group and stream
     listener.start();
 
-    // Verify log group exists
-    DescribeLogGroupsResponse groups =
-        client
-            .describeLogGroups(
-                DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
-            .join();
-    assertThat(groups.logGroups())
-        .hasSize(1)
-        .first()
-        .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(LOG_GROUP));
+    try {
+      // Verify log group exists
+      DescribeLogGroupsResponse groups =
+              client
+                      .describeLogGroups(
+                              DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
+                      .join();
+      assertThat(groups.logGroups())
+              .hasSize(1)
+              .first()
+              .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(LOG_GROUP));
 
-    // Verify log stream exists
-    DescribeLogStreamsResponse streams =
-        client
-            .describeLogStreams(
-                DescribeLogStreamsRequest.builder()
-                    .logGroupName(LOG_GROUP)
-                    .logStreamNamePrefix(LOG_STREAM)
-                    .build())
-            .join();
-    assertThat(streams.logStreams())
-        .hasSize(1)
-        .first()
-        .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
-
-    // Clean up
-    listener.shutdown();
-    client.close();
+      // Verify log stream exists
+      DescribeLogStreamsResponse streams =
+              client
+                      .describeLogStreams(
+                              DescribeLogStreamsRequest.builder()
+                                      .logGroupName(LOG_GROUP)
+                                      .logStreamNamePrefix(LOG_STREAM)
+                                      .build())
+                      .join();
+      assertThat(streams.logStreams())
+              .hasSize(1)
+              .first()
+              .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
+    } finally {
+      // Clean up
+      listener.shutdown();
+      client.close();
+    }
   }
 
   @Test
