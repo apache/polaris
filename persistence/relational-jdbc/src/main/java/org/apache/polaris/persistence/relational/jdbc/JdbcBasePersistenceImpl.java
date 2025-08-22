@@ -781,36 +781,19 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       long principalId,
       String customClientId,
       String customClientSecret) {
-    PolarisPrincipalSecrets principalSecrets = loadPrincipalSecrets(callCtx, clientId);
 
-    // should be found
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            principalSecrets,
-            "cannot_find_secrets",
-            "client_id={} principalId={}",
-            clientId,
-            principalId);
-
-    // ensure principal id is matching
-    callCtx
-        .getDiagServices()
-        .check(
-            principalId == principalSecrets.getPrincipalId(),
-            "principal_id_mismatch",
-            "expectedId={} id={}",
-            principalId,
-            principalSecrets.getPrincipalId());
-
-    principalSecrets = principalSecrets.resetSecrets(customClientId, customClientSecret);
-
-    Map<String, Object> params = Map.of("principal_client_id", clientId, "realm_id", realmId);
+    PolarisPrincipalSecrets principalSecrets;
+    if (customClientId == null) {
+      principalSecrets = new PolarisPrincipalSecrets(principalId, clientId, customClientSecret);
+    } else {
+      principalSecrets =
+          new PolarisPrincipalSecrets(principalId, customClientId, customClientSecret);
+    }
     try {
       ModelPrincipalAuthenticationData modelPrincipalAuthenticationData =
           ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets);
       datasourceOperations.executeUpdate(
-          QueryGenerator.generateUpdateQuery(
+          QueryGenerator.generateInsertQuery(
               ModelPrincipalAuthenticationData.ALL_COLUMNS,
               ModelPrincipalAuthenticationData.TABLE_NAME,
               modelPrincipalAuthenticationData
@@ -818,7 +801,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   .values()
                   .stream()
                   .toList(),
-              params));
+              realmId));
     } catch (SQLException e) {
       LOGGER.error(
           "Failed to reset PrincipalSecrets  for clientId: {}, due to {}",

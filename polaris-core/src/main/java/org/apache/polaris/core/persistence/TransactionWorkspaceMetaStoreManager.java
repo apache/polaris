@@ -151,7 +151,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public void deletePrincipalSecrets(
-          @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadPrincipalSecrets");
   }
 

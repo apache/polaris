@@ -139,6 +139,18 @@ public class PolarisPrincipalSecrets {
     this.secondarySecretHash = hashSecret(secondarySecret);
   }
 
+  public PolarisPrincipalSecrets(
+      long principalId, @Nullable String newClientId, @Nullable String newSecret) {
+    this.principalId = principalId;
+    this.principalClientId = newClientId;
+    this.mainSecret = (newSecret != null) ? newSecret : this.generateRandomHexString(32);
+    this.secondarySecret = this.generateRandomHexString(32);
+
+    this.secretSalt = this.generateRandomHexString(16);
+    this.mainSecretHash = hashSecret(mainSecret);
+    this.secondarySecretHash = hashSecret(secondarySecret);
+  }
+
   /** Rotate the main secrets */
   public void rotateSecrets(String newSecondaryHash) {
     this.secondarySecret = null;
@@ -146,21 +158,6 @@ public class PolarisPrincipalSecrets {
 
     this.mainSecret = this.generateRandomHexString(32);
     this.mainSecretHash = hashSecret(mainSecret);
-  }
-
-  public PolarisPrincipalSecrets resetSecrets(
-      @Nullable String newClientId, @Nullable String newSecret) {
-    String finalClientId = (newClientId != null) ? newClientId : this.principalClientId;
-    String finalSecret = (newSecret != null) ? newSecret : this.generateRandomHexString(32);
-    String finalSecondarySecret = this.secondarySecret; // keep existing secondary secret
-    return new PolarisPrincipalSecrets(
-        this.principalId,
-        finalClientId,
-        finalSecret,
-        finalSecondarySecret,
-        this.secretSalt, // reuse existing salt
-        null, // recompute mainSecretHash
-        this.secondarySecretHash);
   }
 
   public long getPrincipalId() {
