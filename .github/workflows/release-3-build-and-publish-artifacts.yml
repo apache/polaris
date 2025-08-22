@@ -49,45 +49,46 @@ jobs:
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
+          echo "## Mode" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "dry_run=1" >> $GITHUB_OUTPUT
-            echo "DRY_RUN mode enabled - no actual changes will be made"
+            echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
           else
             echo "DRY_RUN=0" >> $GITHUB_ENV
             echo "dry_run=0" >> $GITHUB_OUTPUT
-            echo "DRY_RUN mode disabled - actual changes will be made"
+            echo "DRY_RUN mode disabled - Performing actual operations" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Validate release candidate tag
         run: |
-          source "${LIBS_DIR}/_log.sh"
-          source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
 
-          print_info "Determining version from current git tag..."
+          echo "## Parameters" >> $GITHUB_STEP_SUMMARY
 
           if ! git_tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
-            print_error "Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first."
+            echo "❌ Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-          print_info "Found git tag: ${git_tag}"
 
           # Validate git tag format and extract version components
           if ! validate_and_extract_git_tag_version "${git_tag}"; then
-            print_error "Invalid git tag format: ${git_tag}"
-            print_error "Expected format: apache-polaris-x.y.z-incubating-rcN"
+            echo "❌ Invalid git tag format: \`${git_tag}\`. Expected format: apache-polaris-x.y.z-incubating-rcN." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-
-          print_info "Validated release candidate tag: ${git_tag}"
-          print_info "Version: ${version_without_rc}"
-          print_info "RC number: ${rc_number}"
 
           # Export variables for next steps
           echo "git_tag=${git_tag}" >> $GITHUB_ENV
           echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
           echo "rc_number=${rc_number}" >> $GITHUB_ENV
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          | Parameter | Value |
+          | --- | --- |
+          | Git tag | \`${git_tag}\` |
+          | Version | \`${version_without_rc}\` |
+          | RC number | \`${rc_number}\` |
+          EOT
 
       - name: Set up Java
         uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
@@ -118,66 +119,77 @@ jobs:
 
       - name: Build source and binary distributions
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Building source and binary distributions..."
           exec_process ./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
 
-          print_success "Source and binary distributions built successfully"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Build
+          Source and binary distributions built successfully
+          EOT
 
       - name: Stage artifacts to Apache dist dev repository
         env:
           SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
           SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Staging artifacts to Apache dist dev repository..."
-
           dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
-          print_info "Checking out ${APACHE_DIST_URL}${APACHE_DIST_PATH} to ${dist_dev_dir}..."
           exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
-          print_info "Copying files to destination directory..."
           version_dir="${dist_dev_dir}/${version_without_rc}"
           exec_process mkdir -p "${version_dir}"
           exec_process cp build/distributions/* "${version_dir}/"
           exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
 
-          print_info "Adding files to SVN..."
           exec_process cd "${dist_dev_dir}"
           exec_process svn add "${version_without_rc}"
 
-          print_info "Committing changes..."
           exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris ${version_without_rc} RC${rc_number}"
 
-          print_success "Artifacts staged to Apache dist dev repository successfully"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Staging to dist dev
+          Artifacts staged to Apache dist dev repository
+          EOT
 
       - name: Publish artifacts to Apache Nexus staging repository
         env:
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
           ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Publishing artifacts to Apache Nexus staging repository..."
           exec_process ./gradlew publishToApache -Prelease -PuseGpgAgent
 
-          print_success "Artifacts published to Apache staging repository successfully"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Staging to Nexus
+          Artifacts published to Apache Nexus staging repository
+          EOT
 
       - name: Close Nexus staging repository
         env:
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
           ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Closing Apache staging repository..."
           exec_process ./gradlew closeApacheStagingRepository
 
-          print_success "Apache staging repository closed successfully"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Summary
+          🎉 Artifacts built and published successfully:
+
+          | Name | Value |
+          | --- | --- |
+          | Version | \`${version_without_rc}\` |
+          | Git tag | \`${git_tag}\` |
+
+          | Operation | Status |
+          | --- | --- |
+          | Build source and binary distributions | ✅ |
+          | Stage artifacts to Apache dist dev repository | ✅ |
+          | Stage artifacts to Apache Nexus staging repository | ✅ |
+          | Close Nexus staging repository | ✅ |
+          EOT

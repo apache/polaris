@@ -90,28 +90,23 @@ jobs:
 
       - name: Validate release candidate tag
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
 
-          print_info "Determining version from current git tag..."
+          echo "## Parameters" >> $GITHUB_STEP_SUMMARY
 
           if ! git_tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
-            print_error "Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first."
+            echo "❌ Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-          print_info "Found git tag: ${git_tag}"
 
           # Validate git tag format and extract version components
           if ! validate_and_extract_git_tag_version "${git_tag}"; then
-            print_error "Invalid git tag format: ${git_tag}"
-            print_error "Expected format: apache-polaris-x.y.z-incubating-rcN"
+            echo "❌ Invalid git tag format: \`${git_tag}\`. Expected format: apache-polaris-x.y.z-incubating-rcN." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
-          print_info "Validated release candidate tag: ${git_tag}"
-          print_info "Version: ${version_without_rc}"
-          print_info "RC number: ${rc_number}"
+          echo "Git tag: \`${git_tag}\`" >> $GITHUB_STEP_SUMMARY
 
           # Export variables for next steps
           echo "git_tag=${git_tag}" >> $GITHUB_ENV
@@ -126,28 +121,31 @@ jobs:
 
       - name: Build Polaris Server Docker image
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Building Polaris Server Docker image..."
           exec_process ./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=false \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
             -Dquarkus.container-image.tag="${git_tag}"
 
-          print_success "Polaris Server Docker image built successfully"
-
       - name: Build Polaris Admin Tool Docker image
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Building Polaris Admin Tool Docker image..."
           exec_process ./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=false \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
             -Dquarkus.container-image.tag="${git_tag}"
 
-          print_success "Polaris Admin Tool Docker image built successfully"
+          echo "## Summary" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Docker images built successfully:
+
+          | Component | Status |
+          | --- | --- |
+          | Polaris Server Docker image | ✅ Built |
+          | Polaris Admin Tool Docker image | ✅ Built |
+          | Git tag | \`${git_tag}\` |
+          EOT

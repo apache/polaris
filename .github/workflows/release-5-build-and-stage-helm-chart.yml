@@ -90,28 +90,29 @@ jobs:
 
       - name: Validate release candidate tag
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
 
-          print_info "Determining version from current git tag..."
+          echo "## Parameters" >> $GITHUB_STEP_SUMMARY
 
           if ! git_tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
-            print_error "Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first."
+            echo "❌ Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-          print_info "Found git tag: ${git_tag}"
 
           # Validate git tag format and extract version components
           if ! validate_and_extract_git_tag_version "${git_tag}"; then
-            print_error "Invalid git tag format: ${git_tag}"
-            print_error "Expected format: apache-polaris-x.y.z-incubating-rcN"
+            echo "❌ Invalid git tag format: \`${git_tag}\`. Expected format: apache-polaris-x.y.z-incubating-rcN." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
-          print_info "Validated release candidate tag: ${git_tag}"
-          print_info "Version: ${version_without_rc}"
-          print_info "RC number: ${rc_number}"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          | Parameter | Value |
+          | --- | --- |
+          | Git tag | \`${git_tag}\` |
+          | Version | \`${version_without_rc}\` |
+          | RC number | \`${rc_number}\` |
+          EOT
 
           # Export variables for next steps
           echo "git_tag=${git_tag}" >> $GITHUB_ENV
@@ -151,10 +152,8 @@ jobs:
 
       - name: Create Helm package
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Creating Helm package..."
           exec_process cd helm
           exec_process helm package polaris
           exec_process helm gpg sign polaris-${version_without_rc}.tgz
@@ -163,37 +162,37 @@ jobs:
           calculate_sha512 polaris-${version_without_rc}.tgz.prov polaris-${version_without_rc}.tgz.prov.sha512
           exec_process gpg --armor --output polaris-${version_without_rc}.tgz.prov.asc --detach-sig polaris-${version_without_rc}.tgz.prov
 
-          print_success "Helm package created successfully"
-
       - name: Stage Helm chart to Apache dist dev repository
         env:
           SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
           SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Staging Helm chart to Apache dist dev repository..."
-
           dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
-          print_info "Checking out ${APACHE_DIST_URL}${APACHE_DIST_PATH} to ${dist_dev_dir}..."
           exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
-          print_info "Copying Helm package files..."
           exec_process mkdir -p "${dist_dev_dir}/helm-chart/${version_without_rc}"
           exec_process cp helm/polaris-${version_without_rc}.tgz* "${dist_dev_dir}/helm-chart/${version_without_rc}/"
 
-          print_info "Updating Helm index..."
           exec_process cd "${dist_dev_dir}/helm-chart"
           exec_process helm repo index .
 
-          print_info "Adding files to SVN..."
           exec_process cd "${dist_dev_dir}"
           exec_process svn add index.yaml
           exec_process svn add "helm-chart/${version_without_rc}"
 
-          print_info "Committing changes..."
           exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Helm chart ${version_without_rc} RC${rc_number}"
 
-          print_success "Helm chart staged to Apache dist dev repository successfully"
+          echo "## Summary" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Helm chart built and staged successfully:
+
+          | Component | Status |
+          | --- | --- |
+          | Helm package | ✅ Created and signed |
+          | Apache dist dev repository | ✅ Staged |
+          | Version | \`${version_without_rc}\` |
+          | Git tag | \`${git_tag}\` |
+          EOT

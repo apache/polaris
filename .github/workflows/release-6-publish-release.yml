@@ -54,64 +54,53 @@ jobs:
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
+          echo "## Mode" >> $GITHUB_STEP_SUMMARY
           if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
-            echo "DRY_RUN mode enabled - no actual changes will be made"
+            echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
           else
             echo "DRY_RUN=0" >> $GITHUB_ENV
-            echo "DRY_RUN mode disabled - actual changes will be made"
+            echo "DRY_RUN mode disabled - Performing actual operations" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Auto-determine release parameters from branch and Git state
         run: |
-          source "${LIBS_DIR}/_log.sh"
-          source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
 
           # Get the current branch name
           current_branch=$(git branch --show-current)
-          print_info "Current branch: ${current_branch}"
+
+          echo "## Parameters" >> $GITHUB_STEP_SUMMARY
 
           # Validate that we're on a release branch
           if [[ ! "${current_branch}" =~ ^release/(.+)$ ]]; then
-            print_error "This workflow must be run from a release branch (release/x.y.z-incubating)"
-            print_error "Current branch: ${current_branch}"
+            echo "❌ This workflow must be run from a release branch (release/x.y.z-incubating). Current branch: \`${current_branch}\`." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
           # Extract version from release branch name
           branch_version="${BASH_REMATCH[1]}"
-          print_info "Extracted version from branch: ${branch_version}"
 
           # Validate version format and extract components
           if ! validate_and_extract_branch_version "${branch_version}"; then
-            print_error "Invalid release branch version format: ${branch_version}"
-            print_error "Expected format: x.y.z-incubating"
+            echo "❌ Invalid release branch version format: \`${branch_version}\`. Expected format: x.y.z-incubating." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-
-          print_info "Parsed version components from branch:"
-          print_info "  Major: ${major}"
-          print_info "  Minor: ${minor}"
-          print_info "  Patch: ${patch}"
-          print_info "  Version without RC: ${version_without_rc}"
 
           # Find the latest RC tag for this version
           find_next_rc_number "${version_without_rc}"
           latest_rc=$((rc_number - 1))
 
           if [[ ${latest_rc} -lt 1 ]]; then
-            print_error "No RC tags found for version ${version_without_rc}"
-            print_error "Expected to find at least one RC tag like apache-polaris-${version_without_rc}-rc1"
+            echo "❌ No RC tags found for version \`${version_without_rc}\`. Expected at least one RC to be created before publishing a release." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
           rc_tag="apache-polaris-${version_without_rc}-rc${latest_rc}"
-          print_info "Found latest RC tag: ${rc_tag}"
 
           # Verify the RC tag exists
           if ! git rev-parse "${rc_tag}" >/dev/null 2>&1; then
-            print_error "RC tag ${rc_tag} does not exist in repository"
+            echo "❌ RC tag \`${rc_tag}\` does not exist in repository." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -120,8 +109,7 @@ jobs:
 
           # Check if final release tag already exists
           if git rev-parse "${final_release_tag}" >/dev/null 2>&1; then
-            print_error "Final release tag ${final_release_tag} already exists"
-            print_error "This release may have already been published"
+            echo "❌ Final release tag \`${final_release_tag}\` already exists. This release may have already been published." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -131,22 +119,22 @@ jobs:
           echo "final_release_tag=${final_release_tag}" >> $GITHUB_ENV
           echo "release_branch=${current_branch}" >> $GITHUB_ENV
 
-          print_success "Release parameters determined:"
-          print_info "  Version: ${version_without_rc}"
-          print_info "  RC tag to promote: ${rc_tag}"
-          print_info "  Final release tag: ${final_release_tag}"
-          print_info "  Release branch: ${current_branch}"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          | Parameter | Value |
+          | --- | --- |
+          | Version | \`${version_without_rc}\` |
+          | RC tag to promote | \`${rc_tag}\` |
+          | Final release tag | \`${final_release_tag}\` |
+          | Release branch | \`${current_branch}\` |
+          EOT
 
       - name: Copy distribution from SVN dev to release space
         env:
           SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
           SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
-
-          print_info "Copying distribution from SVN dev to release space..."
 
           # Define source and destination URLs
           dev_artifacts_url="${APACHE_DIST_URL}/dev/incubator/polaris/${version_without_rc}"
@@ -155,23 +143,18 @@ jobs:
           dev_helm_url="${APACHE_DIST_URL}/dev/incubator/polaris/helm-chart/${version_without_rc}"
           release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart/${version_without_rc}"
 
-          print_info "Moving artifacts from dev to release..."
-          print_info "  From: ${dev_artifacts_url}"
-          print_info "  To: ${release_artifacts_url}"
-
           exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_artifacts_url}" "${release_artifacts_url}" \
             -m "Release Apache Polaris ${version_without_rc}"
-
-          print_info "Moving Helm chart from dev to release..."
-          print_info "  From: ${dev_helm_url}"
-          print_info "  To: ${release_helm_url}"
 
           exec_process svn mv --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_helm_url}" "${release_helm_url}" \
             -m "Release Apache Polaris Helm chart ${version_without_rc}"
 
-          print_success "Distribution copied from dev to release space successfully"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Distribution
+          Artifacts and Helm chart moved from dist dev to dist release
+          EOT
 
       - name: Set up Helm
         uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4
@@ -183,80 +166,42 @@ jobs:
           SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
           SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
-
-          print_info "Updating Helm index in release space..."
 
           # Checkout the release Helm chart directory
           release_helm_dir="${RELEASEY_DIR}/polaris-dist-release-helm-chart"
           release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart"
 
-          print_info "Checking out ${release_helm_url} to ${release_helm_dir}..."
           exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" "${release_helm_dir}"
 
-          print_info "Updating Helm index..."
           exec_process cd "${release_helm_dir}"
           exec_process helm repo index .
-
-          print_info "Adding updated index to SVN..."
           exec_process svn add index.yaml
-
-          print_info "Committing Helm index update..."
           exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Update Helm index for ${version_without_rc} release"
 
-          print_success "Helm index updated in release space successfully"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Helm Index
+          Helm index updated in dist release
+          EOT
 
       - name: Create final release tag and push to Git repository
         run: |
-          source "${LIBS_DIR}/_log.sh"
-          source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
-
-          print_info "Creating final release tag and pushing to Git repository..."
 
           # Get the commit SHA that the RC tag points to
           rc_commit=$(git rev-parse "${rc_tag}")
-          print_info "RC tag ${rc_tag} points to commit: ${rc_commit}"
+          echo "rc_commit=${rc_commit}" >> $GITHUB_ENV
 
-          print_info "Creating final release tag: ${final_release_tag}"
           exec_process git tag -a "${final_release_tag}" "${rc_commit}" -m "Apache Polaris ${version_without_rc} Release"
-
-          print_info "Pushing final release tag to apache remote"
           exec_process git push apache "${final_release_tag}"
 
-          print_success "Final release tag ${final_release_tag} created and pushed successfully"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Git Release Tag
+          Final release tag \`${final_release_tag}\` created and pushed
+          EOT
 
-      - name: Update GitHub release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          source "${LIBS_DIR}/_log.sh"
-          source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Updating GitHub release..."
-
-          release_title="Release ${version_without_rc}"
-
-          # Find the existing pre-release created for this version
-          existing_release_tag=$(gh release list | grep "${release_title}" | head -1 | cut -f3)
-
-          if [[ -z "${existing_release_tag}" ]]; then
-            print_error "Could not find existing GitHub release with title: ${release_title}"
-            print_error "Expected to find a pre-release that was created during RC process"
-            exit 1
-          fi
-
-          print_info "Found existing GitHub release with tag: ${existing_release_tag}"
-
-          # Update the release to point to the final tag and remove prerelease flag
-          print_info "Updating GitHub release to final release..."
-          exec_process gh release edit "${existing_release_tag}" \
-            --tag "${final_release_tag}" \
-            --prerelease=false
-
-          print_success "GitHub release updated to final release: ${final_release_tag}"
 
       - name: Set up Java
         uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
@@ -273,44 +218,110 @@ jobs:
 
       - name: Publish Polaris Server Docker image to Docker Hub
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Publishing Polaris Server Docker image to Docker Hub..."
           exec_process ./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
             -Dquarkus.container-image.tag="${final_release_tag}"
 
-          print_success "Polaris Server Docker image published successfully"
-
       - name: Publish Polaris Admin Tool Docker image to Docker Hub
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Publishing Polaris Admin Tool Docker image to Docker Hub..."
           exec_process ./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
             -Dquarkus.container-image.tag="${final_release_tag}"
 
-          print_success "Polaris Admin Tool Docker image published successfully"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Docker Images
+          ✅ Polaris Server and Admin Tool Docker images published to Docker Hub
+          EOT
+
+      - name: Create GitHub release with artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          # Create a temporary directory for downloading artifacts
+          artifacts_dir="${RELEASEY_DIR}/release-artifacts"
+          exec_process mkdir -p "${artifacts_dir}"
+
+          # Download artifacts from Apache dist release space
+          release_artifacts_url="${APACHE_DIST_URL}/release/incubator/polaris/${version_without_rc}"
+          release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart/${version_without_rc}"
+
+          # Download main artifacts
+          exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+            "${release_artifacts_url}" "${artifacts_dir}/artifacts"
+
+          # Download Helm chart artifacts
+          exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+            "${release_helm_url}" "${artifacts_dir}/helm"
+
+          # Create GitHub release
+          release_title="Release ${version_without_rc}"
+          release_notes="Apache Polaris ${version_without_rc} Release
+
+          ## Release Artifacts
+          This release includes:
+          - Source and binary distributions
+          - Helm chart package
+          - Docker images published to Docker Hub
+          - Maven artifacts published to Maven Central
+
+          ## Verification
+          All artifacts have been signed with GPG and include SHA-512 checksums for verification.
+
+          ## Docker Images
+          - \`apache/polaris:${final_release_tag}\` - Polaris Server
+          - \`apache/polaris-admin:${final_release_tag}\` - Polaris Admin Tool"
+
+          # Create the release
+          exec_process gh release create "${final_release_tag}" \
+            --title "${release_title}" \
+            --notes "${release_notes}" \
+            --target "${rc_commit}"
+
+          # Attach all artifacts from the artifacts directory
+          find "${artifacts_dir}" -type f -name "*.tar.gz" -o -name "*.tgz" -o -name "*.asc" -o -name "*.sha512" -o -name "*.prov" | while read -r file; do
+            exec_process gh release upload "${final_release_tag}" "${file}"
+          done
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## GitHub Release
+          GitHub release created: \`${final_release_tag}\`
+          EOT
 
       - name: Release candidate repository on Nexus
         env:
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
           ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
-          print_info "Releasing candidate repository on Nexus..."
-
           # Use the Gradle task to release the Apache staging repository
-          print_info "Using Gradle task to release Apache staging repository..."
           exec_process ./gradlew releaseApacheStagingRepository
 
-          print_success "Nexus repository release completed"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Summary
+          🎉 Release published successfully:
+
+          | Component | Status |
+          | --- | --- |
+          | Distribution artifacts | ✅ Moved to release space |
+          | Helm chart and index | ✅ Updated in release space |
+          | Git release tag | ✅ Created and pushed |
+          | GitHub release | ✅ Created with artifacts attached |
+          | Docker images | ✅ Published to Docker Hub |
+          | Nexus repository | ✅ Released |
+          | Version | \`${version_without_rc}\` |
+          | Final release tag | \`${final_release_tag}\` |
+          EOT
