@@ -930,6 +930,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       String customClientSecret) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
+    // if not found, the principal must have been dropped
+    EntityResult loadEntityResult =
+        loadEntity(
+            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
+    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
     PolarisPrincipalSecrets secrets =
         ((IntegrationPersistence) ms)
             .resetPrincipalSecrets(

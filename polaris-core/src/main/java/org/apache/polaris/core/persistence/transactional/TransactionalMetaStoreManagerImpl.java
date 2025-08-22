@@ -1010,6 +1010,17 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       String customClientSecret) {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    // if not found, the principal must have been dropped
+    EntityResult loadEntityResult =
+        loadEntity(
+            callCtx,
+            ms,
+            PolarisEntityConstants.getNullId(),
+            principalId,
+            PolarisEntityType.PRINCIPAL.getCode());
+    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return null;
+    }
 
     // need to run inside a read/write transaction
     PolarisPrincipalSecrets secrets =
