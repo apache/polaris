@@ -83,11 +83,13 @@ jobs:
             echo "Retrieved upstream dry_run value: ${upstream_dry_run}"
           fi
 
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
       - name: Validate release candidate tag
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
@@ -149,9 +151,6 @@ jobs:
 
       - name: Create Helm package
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
@@ -171,16 +170,13 @@ jobs:
           SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
           SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
 
           print_info "Staging Helm chart to Apache dist dev repository..."
 
-          dist_dev_dir=${releasey_dir}/polaris-dist-dev
+          dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
           print_info "Checking out ${APACHE_DIST_URL}${APACHE_DIST_PATH} to ${dist_dev_dir}..."
           exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 

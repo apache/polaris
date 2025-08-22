@@ -49,8 +49,11 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Set DRY_RUN environment variable
+      - name: Set up environment variables
         run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
           if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "DRY_RUN mode enabled - no actual changes will be made"
@@ -61,9 +64,6 @@ jobs:
 
       - name: Auto-determine release parameters from branch and Git state
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
@@ -142,9 +142,6 @@ jobs:
           SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
           SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
@@ -186,9 +183,6 @@ jobs:
           SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
           SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
@@ -196,7 +190,7 @@ jobs:
           print_info "Updating Helm index in release space..."
 
           # Checkout the release Helm chart directory
-          release_helm_dir="${releasey_dir}/polaris-dist-release-helm-chart"
+          release_helm_dir="${RELEASEY_DIR}/polaris-dist-release-helm-chart"
           release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart"
 
           print_info "Checking out ${release_helm_url} to ${release_helm_dir}..."
@@ -216,9 +210,6 @@ jobs:
 
       - name: Create final release tag and push to Git repository
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
@@ -241,9 +232,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
@@ -285,9 +273,6 @@ jobs:
 
       - name: Publish Polaris Server Docker image to Docker Hub
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
@@ -302,9 +287,6 @@ jobs:
 
       - name: Publish Polaris Admin Tool Docker image to Docker Hub
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
@@ -322,9 +304,6 @@ jobs:
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
           ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 

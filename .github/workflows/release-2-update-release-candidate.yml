@@ -49,8 +49,11 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Set DRY_RUN environment variable
+      - name: Set up environment variables
         run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
           if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
             echo "DRY_RUN=1" >> $GITHUB_ENV
             echo "DRY_RUN mode enabled - no actual changes will be made"
@@ -61,9 +64,6 @@ jobs:
 
       - name: Auto-determine release branch and next RC number
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
@@ -122,9 +122,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
@@ -152,9 +149,6 @@ jobs:
 
       - name: Update project versions
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
@@ -167,9 +161,6 @@ jobs:
 
       - name: Update changelog
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
@@ -180,9 +171,6 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
@@ -205,9 +193,6 @@ jobs:
 
       - name: Create RC tag at new commit
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 

@@ -83,11 +83,13 @@ jobs:
             echo "Retrieved upstream dry_run value: ${upstream_dry_run}"
           fi
 
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
       - name: Validate release candidate tag
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
@@ -124,9 +126,6 @@ jobs:
 
       - name: Build Polaris Server Docker image
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 
@@ -141,9 +140,6 @@ jobs:
 
       - name: Build Polaris Admin Tool Docker image
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_exec.sh"
 

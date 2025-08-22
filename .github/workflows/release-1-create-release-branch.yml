@@ -48,26 +48,24 @@ jobs:
           # Use a token with write permissions
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+          fi
+
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Set DRY_RUN environment variable
-        run: |
-          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
-            echo "DRY_RUN=1" >> $GITHUB_ENV
-            echo "DRY_RUN mode enabled - no actual changes will be made"
-          else
-            echo "DRY_RUN=0" >> $GITHUB_ENV
-            echo "DRY_RUN mode disabled - actual changes will be made"
-          fi
-
       - name: Validate release parameters
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_version.sh"
@@ -88,9 +86,6 @@ jobs:
 
       - name: Create release branch
         run: |
-          releasey_dir="$(pwd)/releasey"
-          LIBS_DIR="${releasey_dir}/libs"
-
           source "${LIBS_DIR}/_log.sh"
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
