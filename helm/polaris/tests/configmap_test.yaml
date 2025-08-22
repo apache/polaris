@@ -168,16 +168,6 @@ tests:
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.authenticator.type=custom" }
 
-  - it: should configure default active roles provider
-    set: { authentication: { activeRolesProvider: { type: default } } }
-    asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.active-roles-provider.type=default" }
-
-  - it: should configure custom active roles provider
-    set: { authentication: { activeRolesProvider: { type: custom } } }
-    asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.active-roles-provider.type=custom" }
-
   - it: should configure default token service
     set: { authentication: { tokenService: { type: default } } }
     asserts:
@@ -209,18 +199,16 @@ tests:
     set:
       authentication:
         realmOverrides:
-          realm1: { type: mixed, authenticator: { type: custom1 }, activeRolesProvider: { type: custom1 }, tokenBroker: { type: custom1 }, tokenService: { type: custom1 } }
-          realm2: { type: external, authenticator: { type: custom2 }, activeRolesProvider: { type: custom2 } }
+          realm1: { type: mixed, authenticator: { type: custom1 }, tokenBroker: { type: custom1 }, tokenService: { type: custom1 } }
+          realm2: { type: external, authenticator: { type: custom2 } }
           "REALM 3": { type: internal, tokenBroker: { type: rsa-key-pair, secret: { name: polaris-auth } } }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"realm1\".type=mixed" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"realm1\".authenticator.type=custom1" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"realm1\".active-roles-provider.type=custom1" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"realm1\".token-broker.type=custom1" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"realm1\".token-service.type=custom1" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"realm2\".type=external" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"realm2\".authenticator.type=custom2" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"realm2\".active-roles-provider.type=custom2" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"REALM\\\\ 3\".type=internal" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"REALM\\\\ 3\".token-broker.type=rsa-key-pair" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.\"REALM\\\\ 3\".token-broker.rsa-key-pair.public-key-file=/deployments/config/REALM\\+3/public.pem" }

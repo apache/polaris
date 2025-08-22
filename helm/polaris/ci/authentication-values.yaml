@@ -31,8 +31,6 @@ authentication:
   type: internal
   authenticator:
     type: default
-  activeRolesProvider:
-    type: default
   tokenService:
     type: default
   tokenBroker:
