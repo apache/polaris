@@ -154,28 +154,28 @@ class AwsCloudWatchEventListenerTest {
     try {
       // Verify log group exists
       DescribeLogGroupsResponse groups =
-              client
-                      .describeLogGroups(
-                              DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
-                      .join();
+          client
+              .describeLogGroups(
+                  DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
+              .join();
       assertThat(groups.logGroups())
-              .hasSize(1)
-              .first()
-              .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(LOG_GROUP));
+          .hasSize(1)
+          .first()
+          .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(LOG_GROUP));
 
       // Verify log stream exists
       DescribeLogStreamsResponse streams =
-              client
-                      .describeLogStreams(
-                              DescribeLogStreamsRequest.builder()
-                                      .logGroupName(LOG_GROUP)
-                                      .logStreamNamePrefix(LOG_STREAM)
-                                      .build())
-                      .join();
+          client
+              .describeLogStreams(
+                  DescribeLogStreamsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamNamePrefix(LOG_STREAM)
+                      .build())
+              .join();
       assertThat(streams.logStreams())
-              .hasSize(1)
-              .first()
-              .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
+          .hasSize(1)
+          .first()
+          .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
     } finally {
       // Clean up
       listener.shutdown();
@@ -208,35 +208,36 @@ class AwsCloudWatchEventListenerTest {
           fail("Timeout exceeded while waiting for event to arrive");
         }
         logEvents =
-                client.getLogEvents(
-                                GetLogEventsRequest.builder()
-                                        .logGroupName(LOG_GROUP)
-                                        .logStreamName(LOG_STREAM)
-                                        .build())
-                        .join();
+            client
+                .getLogEvents(
+                    GetLogEventsRequest.builder()
+                        .logGroupName(LOG_GROUP)
+                        .logStreamName(LOG_STREAM)
+                        .build())
+                .join();
         eventCount = logEvents.events().size();
       }
 
       logEvents =
-              client
-                      .getLogEvents(
-                              GetLogEventsRequest.builder()
-                                      .logGroupName(LOG_GROUP)
-                                      .logStreamName(LOG_STREAM)
-                                      .build())
-                      .join();
+          client
+              .getLogEvents(
+                  GetLogEventsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamName(LOG_STREAM)
+                      .build())
+              .join();
 
       assertThat(logEvents.events())
-              .hasSize(1)
-              .first()
-              .satisfies(
-                      logEvent -> {
-                        String message = logEvent.message();
-                        assertThat(message).contains(REALM);
-                        assertThat(message).contains(AfterTableRefreshedEvent.class.getSimpleName());
-                        assertThat(message).contains(TEST_USER);
-                        assertThat(message).contains(testTable.toString());
-                      });
+          .hasSize(1)
+          .first()
+          .satisfies(
+              logEvent -> {
+                String message = logEvent.message();
+                assertThat(message).contains(REALM);
+                assertThat(message).contains(AfterTableRefreshedEvent.class.getSimpleName());
+                assertThat(message).contains(TEST_USER);
+                assertThat(message).contains(testTable.toString());
+              });
     } finally {
       // Clean up
       listener.shutdown();
@@ -272,35 +273,35 @@ class AwsCloudWatchEventListenerTest {
           fail("Timeout exceeded while waiting for event to arrive");
         }
         logEvents =
-                client
-                        .getLogEvents(
-                                GetLogEventsRequest.builder()
-                                        .logGroupName(LOG_GROUP)
-                                        .logStreamName(LOG_STREAM)
-                                        .build())
-                        .join();
+            client
+                .getLogEvents(
+                    GetLogEventsRequest.builder()
+                        .logGroupName(LOG_GROUP)
+                        .logStreamName(LOG_STREAM)
+                        .build())
+                .join();
         eventCount = logEvents.events().size();
       }
 
       logEvents =
-              client
-                      .getLogEvents(
-                              GetLogEventsRequest.builder()
-                                      .logGroupName(LOG_GROUP)
-                                      .logStreamName(LOG_STREAM)
-                                      .build())
-                      .join();
+          client
+              .getLogEvents(
+                  GetLogEventsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamName(LOG_STREAM)
+                      .build())
+              .join();
 
       assertThat(logEvents.events()).hasSize(1);
 
       // Verify sync event
       assertThat(logEvents.events())
-              .anySatisfy(
-                      logEvent -> {
-                        String message = logEvent.message();
-                        assertThat(message).contains("test_table_sync");
-                        assertThat(message).contains("AfterTableRefreshedEvent");
-                      });
+          .anySatisfy(
+              logEvent -> {
+                String message = logEvent.message();
+                assertThat(message).contains("test_table_sync");
+                assertThat(message).contains("AfterTableRefreshedEvent");
+              });
     } finally {
       // Clean up
       syncListener.shutdown();
