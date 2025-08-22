@@ -910,7 +910,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
     // need to run inside a read/write transaction
-    ms.deletePrincipalSecretsInCurrentTxn(callCtx, clientId, principalId);
+    ms.deletePrincipalSecrets(callCtx, clientId, principalId);
   }
 
   /** See {@link #} */
