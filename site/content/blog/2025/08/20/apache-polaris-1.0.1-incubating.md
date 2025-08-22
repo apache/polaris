@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,6 +17,25 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+title: Apache Polaris 1.0.1-incubating has been released!
+date: 2025-08-20
+---
 
-make client-regenerate
-docker-compose -f getting-started/spark/docker-compose.yml up
+The Apache Polaris team is pleased to announce Apache Polaris 1.0.1-incubating.
+
+This release is a maintenance release on the 1.0.1-incubating one, fixing a couple of issues on the Helm Chart:
+* remove db-kind in Helm Chart
+* add relational-jdbc to Helm Chart
+
+This release can be downloaded:
+* https://polaris.apache.org/downloads/
+
+The artifacts are available on Maven Central.
+
+The Docker images are available on Docker Hub:
+* https://hub.docker.com/r/apache/polaris/tags
+* https://hub.docker.com/r/apache/polaris-admin-tool/tags
+
+Enjoy !
+
+The Apache Polaris team.

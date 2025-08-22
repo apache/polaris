@@ -41,7 +41,8 @@ public class ResolverTest extends BaseResolverTest {
     if (callCtx == null) {
       TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
       TreeMapTransactionalPersistenceImpl metaStore =
-          new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
+          new TreeMapTransactionalPersistenceImpl(
+              diagServices, store, Mockito.mock(), RANDOM_SECRETS);
       callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
     }
     return callCtx;

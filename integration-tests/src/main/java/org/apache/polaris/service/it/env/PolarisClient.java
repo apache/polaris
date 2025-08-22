@@ -114,8 +114,7 @@ public final class PolarisClient implements AutoCloseable {
 
   /** Requests an access token from the Polaris server for the given credentials. */
   public String obtainToken(ClientCredentials credentials) {
-    OAuth2Api api = new OAuth2Api(client, endpoints.catalogApiEndpoint(), "v1/oauth/tokens");
-    return api.obtainAccessToken(credentials, "PRINCIPAL_ROLE:ALL");
+    return polarisServerManager().accessManager(client).obtainAccessToken(endpoints, credentials);
   }
 
   /**

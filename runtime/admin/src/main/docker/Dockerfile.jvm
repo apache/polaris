@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.23-6
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.23-6.1755674729
 
 LABEL org.opencontainers.image.source=https://github.com/apache/polaris
 LABEL org.opencontainers.image.description="Apache Polaris (incubating) Admin Tool"

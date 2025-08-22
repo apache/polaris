@@ -39,9 +39,6 @@ val distributionElements by
   }
 
 dependencies {
-  implementation(project(":polaris-core"))
-  implementation(project(":polaris-api-management-service"))
-  implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-runtime-service"))
 
   runtimeOnly(project(":polaris-eclipselink"))
