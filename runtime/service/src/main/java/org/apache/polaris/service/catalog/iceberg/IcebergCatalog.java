@@ -1111,12 +1111,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         throw new IllegalArgumentException(
             "Cannot create namespace without a parent storage configuration");
       }
-      System.out.println("#### Validating " + namespace.getName());
-      System.out.println("#### Parent location is a catalog");
-      System.out.println("#### New location is " + namespaceLocation);
-      for (var l : parentEntity.getStorageConfigurationInfo().getAllowedLocations()) {
-        System.out.println("#### parent location -> " + l);
-      }
       boolean allowed =
           parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
               .filter(java.util.Objects::nonNull)
@@ -1136,9 +1130,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           StorageLocation.of(
               resolveNamespaceLocation(
                   parentEntity.asNamespace(), parentEntity.getPropertiesAsMap()));
-      System.out.println("#### Validating " + namespace.getName());
-      System.out.println("#### Parent location is " + parentLocation);
-      System.out.println("#### New location is " + namespaceLocation);
       if (!namespaceLocation.isChildOf(parentLocation)) {
         throw new IllegalArgumentException(
             "Namespace location " + namespaceLocation + " is not within an allowed location");
