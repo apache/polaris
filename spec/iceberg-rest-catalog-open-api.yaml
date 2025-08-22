@@ -28,7 +28,7 @@ info:
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 0.0.1
+  version: 0.0.2
   description:
     Defines the specification for the first version of the REST Catalog API.
     Implementations should ideally support both Iceberg table specs v1 and v2, with priority given to v2.
@@ -79,7 +79,7 @@ paths:
           required: false
           schema:
             type: string
-          description: Warehouse location or identifier to request from the service
+          description: Warehouse location (Catalog name) or identifier to request from the service
       description:
         "
         All REST clients should first call this route to get catalog configuration
@@ -1827,7 +1827,7 @@ components:
       schema:
         type: string
       required: true
-      description: An optional prefix in the path
+      description: An optional prefix (Catalog name) in the path
 
     table:
       name: table
@@ -3193,7 +3193,7 @@ components:
       properties:
         prefix:
           type: string
-          description: Indicates a storage location prefix where the credential is relevant. Clients should choose the most
+          description: Indicates a storage location prefix (Catalog name) where the credential is relevant. Clients should choose the most
             specific prefix (by selecting the longest prefix) if several credentials of the same type are available.
         config:
           type: object
