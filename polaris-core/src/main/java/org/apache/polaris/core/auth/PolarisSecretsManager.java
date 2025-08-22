@@ -65,5 +65,5 @@ public interface PolarisSecretsManager {
 
   @Nonnull
   void deletePrincipalSecrets(
-          @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
 }

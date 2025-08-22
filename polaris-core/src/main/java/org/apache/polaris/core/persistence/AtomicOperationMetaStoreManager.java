@@ -860,11 +860,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public @Nonnull void deletePrincipalSecrets(
-          @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
     ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, principalId);
-
   }
 
   /** {@inheritDoc} */
@@ -931,30 +930,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       String customClientSecret) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
-
-    // if not found, the principal must have been dropped
-    EntityResult loadEntityResult =
-        loadEntity(
-            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
-    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
-    }
-
-    PolarisBaseEntity principal = loadEntityResult.getEntity();
     PolarisPrincipalSecrets secrets =
         ((IntegrationPersistence) ms)
             .resetPrincipalSecrets(
                 callCtx, clientId, principalId, customClientId, customClientSecret);
-
-    PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
-    var newEntityVersion =
-        (customClientId != null) ? principal.getEntityVersion() : principal.getEntityVersion() + 1;
-
-    principalBuilder.entityVersion(newEntityVersion);
-    // Only write if version changed
-    if (customClientId == null) {
-      ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
-    }
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);

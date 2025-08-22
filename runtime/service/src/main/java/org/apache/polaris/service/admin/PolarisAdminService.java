@@ -1078,7 +1078,10 @@ public class PolarisAdminService {
             .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
             .getPrincipalSecrets();
     if (currentSecrets != null) {
-      metaStoreManager.deletePrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId(), currentPrincipalEntity.getId());
+      metaStoreManager.deletePrincipalSecrets(
+          getCurrentPolarisContext(),
+          currentPrincipalEntity.getClientId(),
+          currentPrincipalEntity.getId());
     }
     PrincipalEntity newPrincipalEntity = currentPrincipalEntity;
     if (customClientId != null) {
@@ -1086,15 +1089,15 @@ public class PolarisAdminService {
       updateBuilder.setClientId(customClientId);
       PrincipalEntity updatedNewPrincipalEntity = updateBuilder.build();
       newPrincipalEntity =
-              Optional.ofNullable(
-                              PrincipalEntity.of(
-                                      PolarisEntity.of(
-                                              metaStoreManager.updateEntityPropertiesIfNotChanged(
-                                                      getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
-                      .orElseThrow(
-                              () ->
-                                      new CommitConflictException(
-                                              "Concurrent modification on Principal '%s'; retry later", principalName));
+          Optional.ofNullable(
+                  PrincipalEntity.of(
+                      PolarisEntity.of(
+                          metaStoreManager.updateEntityPropertiesIfNotChanged(
+                              getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
+              .orElseThrow(
+                  () ->
+                      new CommitConflictException(
+                          "Concurrent modification on Principal '%s'; retry later", principalName));
     }
 
     PolarisPrincipalSecrets newSecrets =
@@ -1103,7 +1106,7 @@ public class PolarisAdminService {
                 getCurrentPolarisContext(),
                 currentPrincipalEntity.getClientId(),
                 currentPrincipalEntity.getId(),
-                 customClientId,
+                customClientId,
                 customClientSecret)
             .getPrincipalSecrets();
     if (newSecrets == null) {

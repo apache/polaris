@@ -492,35 +492,15 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       long principalId,
       String customClientId,
       String customClientSecret) {
-    PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
+    PolarisPrincipalSecrets principalSecrets;
+    if (customClientId == null) {
+      principalSecrets = new PolarisPrincipalSecrets(principalId, clientId, customClientSecret);
+    } else {
+      principalSecrets =
+          new PolarisPrincipalSecrets(principalId, customClientId, customClientSecret);
+    }
 
-    // should be found
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            principalSecrets,
-            "cannot_find_secrets",
-            "client_id={} principalId={}",
-            clientId,
-            principalId);
-
-    // ensure principal id is matching
-    callCtx
-        .getDiagServices()
-        .check(
-            principalId == principalSecrets.getPrincipalId(),
-            "principal_id_mismatch",
-            "expectedId={} id={}",
-            principalId,
-            principalSecrets.getPrincipalId());
-
-    // reset the secrets
-    principalSecrets = principalSecrets.resetSecrets(customClientId, customClientSecret);
-
-    // write back new secrets
     this.store.getSlicePrincipalSecrets().write(principalSecrets);
-
-    // return those
     return principalSecrets;
   }
 

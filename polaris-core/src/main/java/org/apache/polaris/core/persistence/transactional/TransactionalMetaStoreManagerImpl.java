@@ -905,7 +905,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public @Nonnull void deletePrincipalSecrets(
-          @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
@@ -995,31 +995,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       long principalId,
       String customClientId,
       String customClientSecret) {
-    // if not found, the principal must have been dropped
-    EntityResult loadEntityResult =
-        loadEntity(
-            callCtx,
-            ms,
-            PolarisEntityConstants.getNullId(),
-            principalId,
-            PolarisEntityType.PRINCIPAL.getCode());
-    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return null;
-    }
-
-    PolarisBaseEntity principal = loadEntityResult.getEntity();
-    PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
     PolarisPrincipalSecrets secrets =
         ms.resetPrincipalSecrets(
             callCtx, clientId, principalId, customClientId, customClientSecret);
-    // To avoid incrementing entity version twice
-    var newEntityVersion =
-        (customClientId != null) ? principal.getEntityVersion() : principal.getEntityVersion() + 1;
-    principalBuilder.entityVersion(newEntityVersion);
-    // Only write if version changed
-    if (customClientId == null) {
-      ms.writeEntity(callCtx, principalBuilder.build(), true, principal);
-    }
     return secrets;
   }
 
@@ -1039,12 +1017,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             callCtx,
             () ->
                 this.resetPrincipalSecrets(
-                    callCtx,
-                    ms,
-                    clientId,
-                    principalId,
-                        customClientId,
-                    customClientSecret));
+                    callCtx, ms, clientId, principalId, customClientId, customClientSecret));
 
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
