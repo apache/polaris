@@ -46,12 +46,9 @@ polaris = "cli.polaris_cli:main"
 
 [tool.poetry]
 requires-poetry = "==2.1.4"
-packages = [
-    { include = "polaris" },
-    { include = "cli" }
-]
 include = [
-  "polaris/**"
+    { path = "polaris/**", format = "wheel" },
+    { path = "cli/**", format = "wheel" },
 ]
 
 [tool.poetry.group.dev.dependencies]
