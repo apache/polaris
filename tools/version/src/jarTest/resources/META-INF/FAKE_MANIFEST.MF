@@ -3,7 +3,4 @@ Apache-Polaris-Version: 0.1.2-incubating-SNAPSHOT
 Apache-Polaris-Is-Release: true
 Apache-Polaris-Build-Git-Head: 27cf81929cbb08e545c8fcb1ed27a53d7ef1af79
 Apache-Polaris-Build-Git-Describe: foo-tag-bar
-Apache-Polaris-Build-Timestamp: 2024-12-26-10:31:19+01:00
-Apache-Polaris-Build-System: Linux myawesomehost 6.12.6 #81 SMP PREEMPT_DY
- NAMIC Fri Dec 20 09:22:38 CET 2024 x86_64 x86_64 x86_64 GNU/Linux
-Apache-Polaris-Build-Java-Version: 21.0.5
+Apache-Polaris-Build-Java-Specification-Version: 21
