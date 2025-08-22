@@ -36,6 +36,10 @@ dependencies {
     api(project(":polaris-version"))
     api(project(":polaris-persistence-varint"))
 
+    api(project(":polaris-tasks-api"))
+    api(project(":polaris-tasks-spi"))
+    api(project(":polaris-tasks-store"))
+
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
