@@ -50,10 +50,9 @@ has the following securable objects:
 A principal role is a resource in Polaris that you can use to logically group Polaris service principals together and grant privileges on
 securable objects.
 
-Polaris supports a many-to-one relationship between service principals and principal roles. For example, to grant the same privileges to
-multiple service principals, you can grant a single principal role to those service principals. A service principal can be granted one
-principal role. When registering a service connection, the Polaris administrator specifies the principal role that is granted to the
-service principal.
+Polaris supports a many-to-one relationship between service principals and principal roles. For example, you can grant the same principal role
+to multiple service principals, or grant multiple principal roles to a single service principal. When registering a service connection, the 
+Polaris administrator specifies the principal role that is granted to the service principal.
 
 You don't grant privileges directly to a principal role. Instead, you configure object permissions at the catalog role level, and then grant
 catalog roles to a principal role.
