@@ -100,13 +100,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> ALLOW_NAMESPACE_LOCATION_ESCAPE =
+  public static final FeatureConfiguration<Boolean> ALLOW_NAMESPACE_CUSTOM_LOCATION =
       PolarisConfiguration.<Boolean>builder()
-          .key("ALLOW_NAMESPACE_LOCATION_ESCAPE")
-          .catalogConfig("polaris.config.namespace-location-escape.enabled")
-          .description(
-              "If set to true, allow namespaces to be created with locations outside of the parent catalog's"
-                  + "location.")
+          .key("ALLOW_NAMESPACE_CUSTOM_LOCATION")
+          .catalogConfig("polaris.config.namespace-custom-location.enabled")
+          .description("If set to true, allow namespaces with custom locations.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

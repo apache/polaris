@@ -170,7 +170,7 @@ def test_quickstart_flow():
             '--property',
             'foo=bar',
             '--location',
-            's3://fake-location/custom-namespace-location'
+            f's3://fake-location-{SALT}/custom-namespace-location/'
         ), checker=lambda s: s == '')
         check_output(cli(user_token)('namespaces', 'list', '--catalog', f'test_cli_catalog_{SALT}'),
                      checker=lambda s: f'test_cli_namespace_{SALT}' in s)
@@ -180,7 +180,7 @@ def test_quickstart_flow():
             '--catalog',
             f'test_cli_catalog_{SALT}',
             f'test_cli_namespace_{SALT}'
-        ), checker=lambda s: 's3://custom-namespace-location' in s and '"foo": "bar"' in s)
+        ), checker=lambda s: f's3://fake-location-{SALT}/custom-namespace-location/' in s and '"foo": "bar"' in s)
         check_output(cli(user_token)(
             'namespaces',
             'delete',

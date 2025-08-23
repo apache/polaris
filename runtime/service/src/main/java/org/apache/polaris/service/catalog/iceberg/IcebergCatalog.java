@@ -509,7 +509,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
     if (!realmConfig.getConfig(
-        FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_ESCAPE, catalogEntity)) {
+        FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
       LOGGER.debug("Validating that namespace {} has a location inside its parent", namespace);
       validateNamespaceLocation(entity, resolvedParent);
     }
@@ -677,7 +677,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
     if (!realmConfig.getConfig(
-        FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_ESCAPE, catalogEntity)) {
+        FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
       LOGGER.debug("Validating that namespace {} has a location inside its parent", namespace);
       validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
     }
@@ -1098,7 +1098,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       NamespaceEntity namespace, PolarisResolvedPathWrapper resolvedParent) {
     StorageLocation namespaceLocation =
         StorageLocation.of(
-            resolveNamespaceLocation(namespace.asNamespace(), namespace.getPropertiesAsMap()));
+            StorageLocation.ensureTrailingSlash(
+                resolveNamespaceLocation(namespace.asNamespace(), namespace.getPropertiesAsMap())));
     PolarisEntity parent = resolvedParent.getResolvedLeafEntity().getEntity();
     if (parent.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity parentEntity = CatalogEntity.of(parent);
@@ -1115,10 +1116,20 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
               .filter(java.util.Objects::nonNull)
               .map(StorageLocation::of)
-              .anyMatch(namespaceLocation::isChildOf);
+              .anyMatch(
+                  l -> {
+                    if (namespaceLocation.isChildOf(l)) {
+                      String defaultLocation =
+                          StorageLocation.ensureTrailingSlash(
+                              StorageLocation.ensureTrailingSlash(l.withoutScheme())
+                                  + namespace.getName());
+                      return defaultLocation.equals(namespaceLocation.withoutScheme());
+                    }
+                    return false;
+                  });
       if (!allowed) {
         throw new IllegalArgumentException(
-            "Namespace location " + namespaceLocation + " is not within an allowed location");
+            "Namespace " + namespace.getName() + " has a custom location, which is not enabled");
       }
     } else if (parent.getType().equals(PolarisEntityType.NAMESPACE)) {
       NamespaceEntity parentEntity = NamespaceEntity.of(parent);
@@ -1130,10 +1141,17 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           StorageLocation.of(
               resolveNamespaceLocation(
                   parentEntity.asNamespace(), parentEntity.getPropertiesAsMap()));
-      if (!namespaceLocation.isChildOf(parentLocation)) {
-        throw new IllegalArgumentException(
-            "Namespace location " + namespaceLocation + " is not within an allowed location");
+      if (namespaceLocation.isChildOf(parentLocation)) {
+        String defaultLocation =
+            StorageLocation.ensureTrailingSlash(
+                StorageLocation.ensureTrailingSlash(parentLocation.withoutScheme())
+                    + namespace.getName());
+        if (defaultLocation.equals(namespaceLocation.withoutScheme())) {
+          return;
+        }
       }
+      throw new IllegalArgumentException(
+          "Namespace " + namespace.getName() + " has a custom location, which is not enabled");
     } else {
       throw new IllegalArgumentException(
           "Failed to validate namespace "

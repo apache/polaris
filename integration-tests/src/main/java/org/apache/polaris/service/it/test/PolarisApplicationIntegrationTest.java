@@ -682,7 +682,7 @@ public class PolarisApplicationIntegrationTest {
             .build(),
         catalogLocation,
         ImmutableMap.of(
-            FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_ESCAPE.catalogConfig(),
+            FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION.catalogConfig(),
             String.valueOf(allowNamespaceLocationEscape)));
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
@@ -696,7 +696,7 @@ public class PolarisApplicationIntegrationTest {
       if (!allowNamespaceLocationEscape) {
         assertThatThrownBy(createBadNamespace)
             .isInstanceOf(BadRequestException.class)
-            .hasMessageContaining("location");
+            .hasMessageContaining("custom location");
       } else {
         assertThatCode(createBadNamespace).doesNotThrowAnyException();
       }
@@ -709,7 +709,7 @@ public class PolarisApplicationIntegrationTest {
       if (!allowNamespaceLocationEscape) {
         assertThatThrownBy(createBadChildGoodParent)
             .isInstanceOf(BadRequestException.class)
-            .hasMessageContaining("location");
+            .hasMessageContaining("custom location");
       } else {
         assertThatCode(createBadChildGoodParent).doesNotThrowAnyException();
       }

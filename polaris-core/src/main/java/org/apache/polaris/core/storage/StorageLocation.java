@@ -65,7 +65,7 @@ public class StorageLocation {
   }
 
   /** If a path doesn't end in `/`, this will add one */
-  protected static String ensureTrailingSlash(String location) {
+  public static String ensureTrailingSlash(String location) {
     if (location == null || location.endsWith("/")) {
       return location;
     } else {
