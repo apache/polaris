@@ -781,6 +781,13 @@ public class PolarisAdminService {
       throw new AlreadyExistsException(
           "Cannot create Catalog %s. Catalog already exists or resolution failed",
           entity.getName());
+    } else if (!catalogResult.isSuccess()) {
+      throw new IllegalStateException(
+          String.format(
+              "Cannot create Catalog %s: %s with extraInfo %s",
+              entity.getName(),
+              catalogResult.getReturnStatus(),
+              catalogResult.getExtraInformation()));
     }
     return PolarisEntity.of(catalogResult.getCatalog());
   }
