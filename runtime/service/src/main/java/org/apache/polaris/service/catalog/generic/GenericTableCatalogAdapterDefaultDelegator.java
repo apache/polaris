@@ -26,60 +26,66 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.admin.ApiBusinessLogic;
+import org.apache.polaris.service.admin.ApiBaseImplementation;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 
 @RequestScoped
 @Alternative
-@Priority(1000) // Will allow vendor-specific delegators to be added and used
-public class GenericTableCatalogAdapterDefaultDelegator implements PolarisCatalogGenericTableApiService, CatalogAdapter {
-    private final GenericTableCatalogAdapter delegate;
+@Priority(1000) // Will allow downstream project-specific delegators to be added and used
+public class GenericTableCatalogAdapterDefaultDelegator
+    implements PolarisCatalogGenericTableApiService, CatalogAdapter {
+  private final GenericTableCatalogAdapter delegate;
 
-    @Inject
-    public GenericTableCatalogAdapterDefaultDelegator(@ApiBusinessLogic GenericTableCatalogAdapter delegate) {
-        this.delegate = delegate;
-    }
+  @Inject
+  public GenericTableCatalogAdapterDefaultDelegator(
+      @ApiBaseImplementation GenericTableCatalogAdapter delegate) {
+    this.delegate = delegate;
+  }
 
-    @Override
-    public Response createGenericTable(
-            String prefix,
-            String namespace,
-            CreateGenericTableRequest createGenericTableRequest,
-            RealmContext realmContext,
-            SecurityContext securityContext) {
-        return delegate.createGenericTable(prefix, namespace, createGenericTableRequest, realmContext, securityContext);
-    }
+  @Override
+  public Response createGenericTable(
+      String prefix,
+      String namespace,
+      CreateGenericTableRequest createGenericTableRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.createGenericTable(
+        prefix, namespace, createGenericTableRequest, realmContext, securityContext);
+  }
 
-    @Override
-    public Response dropGenericTable(
-            String prefix,
-            String namespace,
-            String genericTable,
-            RealmContext realmContext,
-            SecurityContext securityContext) {
-        return delegate.dropGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
-    }
+  @Override
+  public Response dropGenericTable(
+      String prefix,
+      String namespace,
+      String genericTable,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.dropGenericTable(
+        prefix, namespace, genericTable, realmContext, securityContext);
+  }
 
-    @Override
-    public Response listGenericTables(
-            String prefix,
-            String namespace,
-            String pageToken,
-            Integer pageSize,
-            RealmContext realmContext,
-            SecurityContext securityContext) {
-        return delegate.listGenericTables(prefix, namespace, pageToken, pageSize, realmContext, securityContext);
-    }
+  @Override
+  public Response listGenericTables(
+      String prefix,
+      String namespace,
+      String pageToken,
+      Integer pageSize,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.listGenericTables(
+        prefix, namespace, pageToken, pageSize, realmContext, securityContext);
+  }
 
-    @Override
-    public Response loadGenericTable(
-            String prefix,
-            String namespace,
-            String genericTable,
-            RealmContext realmContext,
-            SecurityContext securityContext) {
-        return delegate.loadGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
-    }
+  @Override
+  public Response loadGenericTable(
+      String prefix,
+      String namespace,
+      String genericTable,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.loadGenericTable(
+        prefix, namespace, genericTable, realmContext, securityContext);
+  }
 }
