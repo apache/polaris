@@ -164,7 +164,7 @@ public class PolarisServiceImpl
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
     validateExternalCatalog(catalog);
-    Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
+    Catalog newCatalog = CatalogEntity.of(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();
   }

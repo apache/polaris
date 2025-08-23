@@ -49,13 +49,16 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 public class ManagementServiceTest {
   private TestServices services;
@@ -284,5 +287,45 @@ public class ManagementServiceTest {
     assertThat(catalogs)
         .extracting(Catalog::getName)
         .containsExactlyInAnyOrder("my-catalog-1", "my-catalog-2");
+  }
+
+  @Test
+  public void testCreateCatalogReturnErrorOnFailure() {
+    PolarisMetaStoreManager metaStoreManager = Mockito.spy(setupMetaStoreManager());
+    PolarisCallContext callContext = services.newCallContext();
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    CreateCatalogResult resultWithError =
+        new CreateCatalogResult(
+            BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unexpected Error Occurred");
+    Mockito.doAnswer(invocation -> resultWithError)
+        .when(metaStoreManager)
+        .createCatalog(Mockito.any(), Mockito.any(), Mockito.any());
+    Assertions.assertThatThrownBy(
+            () -> polarisAdminService.createCatalog(new CreateCatalogRequest(catalog)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage(
+            String.format(
+                "Cannot create Catalog %s: %s with extraInfo %s",
+                catalogName,
+                resultWithError.getReturnStatus(),
+                resultWithError.getExtraInformation()));
   }
 }
