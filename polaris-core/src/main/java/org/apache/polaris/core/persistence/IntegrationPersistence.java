@@ -94,18 +94,13 @@ public interface IntegrationPersistence {
   /**
    * Create an in-memory storage integration
    *
-   * @param callCtx the polaris calllctx
-   * @param catalogId the catalog id
-   * @param entityId the entity id
-   * @param polarisStorageConfigurationInfo the storage configuration information
+   * @param callCtx the polaris call context
+   * @param catalog the catalog entity, for which a storage integration object needs to be created
    * @return a storage integration object
    */
   @Nullable
   <T extends PolarisStorageConfigurationInfo> PolarisStorageIntegration<T> createStorageIntegration(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity catalog);
 
   /**
    * Persist a storage integration in the metastore

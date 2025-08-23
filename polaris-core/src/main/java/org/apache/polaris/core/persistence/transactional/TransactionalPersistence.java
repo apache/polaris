@@ -310,10 +310,7 @@ public interface TransactionalPersistence
   @Nullable
   <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity catalog);
 
   /**
    * See {@link

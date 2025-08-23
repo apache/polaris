@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -226,8 +227,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             (AwsStorageConfigurationInfo)
                 CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
             stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
+    when(storageIntegrationProvider.getStorageIntegration(any()))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.genericTableCatalog =

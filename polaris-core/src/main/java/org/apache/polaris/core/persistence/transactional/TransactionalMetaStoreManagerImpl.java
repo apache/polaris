@@ -981,12 +981,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // storageConfigInfo's presence is needed to create a storage integration
     // and the catalog should not have an internal property of storage identifier or id yet
     if (storageConfigInfoStr != null && integrationIdentifierOrId == null) {
-      integration =
-          ms.createStorageIntegrationInCurrentTxn(
-              callCtx,
-              catalog.getCatalogId(),
-              catalog.getId(),
-              PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr));
+      integration = ms.createStorageIntegrationInCurrentTxn(callCtx, catalog);
     } else {
       integration = null;
     }

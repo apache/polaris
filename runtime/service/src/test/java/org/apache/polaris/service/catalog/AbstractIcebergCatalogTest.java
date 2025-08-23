@@ -362,8 +362,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             (AwsStorageConfigurationInfo)
                 CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
             stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
+    when(storageIntegrationProvider.getStorageIntegration(any()))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());

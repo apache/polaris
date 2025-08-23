@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nullable;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 
 /**
  * Factory interface that knows how to construct a {@link PolarisStorageIntegration} given a {@link
@@ -26,6 +27,5 @@ import jakarta.annotation.Nullable;
  */
 public interface PolarisStorageIntegrationProvider {
   <T extends PolarisStorageConfigurationInfo>
-      @Nullable PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+      @Nullable PolarisStorageIntegration<T> getStorageIntegration(PolarisBaseEntity entity);
 }

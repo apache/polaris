@@ -518,12 +518,8 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Override
   public @Nullable <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegrationForConfig(
-        polarisStorageConfigurationInfo);
+          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity catalog) {
+    return storageIntegrationProvider.getStorageIntegration(catalog);
   }
 
   /** {@inheritDoc} */
@@ -531,9 +527,8 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   public @Nullable <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(getDiagnostics(), entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+    return BaseMetaStoreManager.toStorageIntegration(
+        getDiagnostics(), entity, storageIntegrationProvider);
   }
 
   @Override
