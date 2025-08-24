@@ -22,8 +22,8 @@ import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 
 import com.google.common.collect.ImmutableMap;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.util.Map;
-import org.apache.hadoop.fs.Path;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.RESTCatalog;
@@ -46,7 +46,6 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.assertj.core.api.AbstractBooleanAssert;
-import org.assertj.core.api.AbstractStringAssert;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.assertj.core.configuration.PreferredAssumptionException;
@@ -237,10 +236,15 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
         .isTrue();
     Assertions.assertThat(view.properties())
         .containsEntry("write.metadata.path", baseCustomWriteMetadataLocation);
-    ((AbstractStringAssert)
-            Assertions.assertThat(((BaseView) view).operations().current().metadataFileLocation())
-                .isNotNull())
-        .startsWith(new Path(baseCustomWriteMetadataLocation).toString());
+
+    Assertions.assertThat(((BaseView) view).operations().current().metadataFileLocation())
+        .isNotNull();
+    // Normalize paths, remove schema before comparing
+    String metadataFileLocationPath =
+        Path.of(((BaseView) view).operations().current().metadataFileLocation()).toUri().getPath();
+    String baseCustomWriteMetadataLocationPath =
+        Path.of(baseCustomWriteMetadataLocation).toUri().getPath();
+    Assertions.assertThat(metadataFileLocationPath).startsWith(baseCustomWriteMetadataLocationPath);
   }
 
   @Test

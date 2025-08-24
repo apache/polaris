@@ -20,22 +20,24 @@ package org.apache.polaris.service.it.test;
 
 import java.util.List;
 import org.apache.hadoop.fs.Path;
-import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
+import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.storage.StorageUtil;
 
-/** Runs PolarisRestCatalogViewIntegrationTest on GCP. */
-public abstract class PolarisRestCatalogViewGcpIntegrationTestBase
+/** Runs PolarisRestCatalogViewIntegrationTest on Azure. */
+public abstract class PolarisRestCatalogViewAdlsIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
-  public static final String SERVICE_ACCOUNT =
-      System.getenv("INTEGRATION_TEST_GCS_SERVICE_ACCOUNT");
-  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_GCS_PATH");
+  public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_ADLS_TENANT_ID");
+  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_ADLS_PATH");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
-    return GcpStorageConfigInfo.builder()
-        .setGcsServiceAccount(SERVICE_ACCOUNT)
-        .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-        .setAllowedLocations(List.of(new Path(BASE_LOCATION, POLARIS_IT_SUBDIR).toString()))
+    return AzureStorageConfigInfo.builder()
+        .setTenantId(TENANT_ID)
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+        .setAllowedLocations(
+            List.of(
+                StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, Path.SEPARATOR)))
         .build();
   }
 

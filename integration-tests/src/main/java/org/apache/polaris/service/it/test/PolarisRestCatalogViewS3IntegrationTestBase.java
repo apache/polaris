@@ -20,16 +20,17 @@ package org.apache.polaris.service.it.test;
 
 import java.util.List;
 import java.util.Optional;
+import org.apache.hadoop.fs.Path;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.storage.StorageUtil;
 
-/** Runs PolarisRestCatalogIntegrationBase test on AWS. */
-public abstract class PolarisRestCatalogAwsIntegrationTestBase
-    extends PolarisRestCatalogIntegrationBase {
+/** Runs PolarisRestCatalogViewIntegrationTest on AWS. */
+public abstract class PolarisRestCatalogViewS3IntegrationTestBase
+    extends PolarisRestCatalogViewIntegrationBase {
   public static final String ROLE_ARN =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
-          .or(() -> Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_ROLE_ARN")))
-          .orElse("arn:aws:iam::123456789012:role/my-role");
+      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN")) // Backward compatibility
+          .orElse(System.getenv("INTEGRATION_TEST_S3_ROLE_ARN"));
   public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_S3_PATH");
 
   @Override
@@ -37,7 +38,14 @@ public abstract class PolarisRestCatalogAwsIntegrationTestBase
     return AwsStorageConfigInfo.builder()
         .setRoleArn(ROLE_ARN)
         .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-        .setAllowedLocations(List.of(BASE_LOCATION))
+        .setAllowedLocations(
+            List.of(
+                StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, Path.SEPARATOR)))
         .build();
+  }
+
+  @Override
+  protected String getCustomMetadataLocationDir() {
+    return new Path(BASE_LOCATION, POLARIS_IT_CUSTOM_SUBDIR).toString();
   }
 }
