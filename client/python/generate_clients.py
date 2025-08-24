@@ -29,6 +29,8 @@ import os.path
 import subprocess
 from pathlib import Path
 import fnmatch
+import logging
+import argparse
 
 # Paths
 CLIENT_DIR = Path(__file__).parent
@@ -81,12 +83,14 @@ EXCLUDE_EXTENSIONS = [
     "gitignore",
 ]
 
+logger = logging.getLogger(__name__)
+
 
 def clean_old_tests() -> None:
-    print("Deleting old tests...")
+    logger.info("Deleting old tests...")
     test_dir = CLIENT_DIR / "test"
     if not test_dir.exists():
-        print(f"Test directory {test_dir} does not exist, skipping test cleanup.")
+        logger.info(f"Test directory {test_dir} does not exist, skipping test cleanup.")
         return
 
     for item in test_dir.rglob("*"):
@@ -96,20 +100,20 @@ def clean_old_tests() -> None:
             if relative_path not in KEEP_TEST_FILES:
                 try:
                     os.remove(item)
-                    print(f"{relative_path}: removed")
+                    logger.debug(f"{relative_path}: removed")
                 except OSError as e:
-                    print(f"Error removing {relative_path}: {e}")
+                    logger.error(f"Error removing {relative_path}: {e}")
             else:
-                print(f"{relative_path}: skipped")
+                logger.debug(f"{relative_path}: skipped")
 
     init_py_to_delete = CLIENT_DIR / "test" / "__init__.py"
     if init_py_to_delete.exists():
         try:
             os.remove(init_py_to_delete)
-            print(f"{init_py_to_delete.relative_to(CLIENT_DIR)}: removed")
+            logger.debug(f"{init_py_to_delete.relative_to(CLIENT_DIR)}: removed")
         except OSError as e:
-            print(f"Error removing {init_py_to_delete.relative_to(CLIENT_DIR)}: {e}")
-    print("Old test deletion complete.")
+            logger.error(f"Error removing {init_py_to_delete.relative_to(CLIENT_DIR)}: {e}")
+    logger.info("Old test deletion complete.")
 
 
 def generate_polaris_management_client() -> None:
@@ -126,7 +130,7 @@ def generate_polaris_management_client() -> None:
             PACKAGE_NAME_POLARIS_MANAGEMENT,
             "--additional-properties=apiNamePrefix=polaris",
             PYTHON_VERSION,
-            "--additional-properties=generateSourceCodeOnly=true",          
+            "--additional-properties=generateSourceCodeOnly=true",
             "--skip-validate-spec",
             "--ignore-file-override",
             OPEN_API_GENERATOR_IGNORE,
@@ -197,11 +201,11 @@ def _prepend_header_to_file(file_path: Path, header_file_path: Path) -> None:
             f.seek(0)
             f.write(header_content + original_content)
     except IOError as e:
-        print(f"Error prepending header to {file_path}: {e}")
+        logger.error(f"Error prepending header to {file_path}: {e}")
 
 
 def prepend_licenses() -> None:
-    print("Re-applying license headers...")
+    logger.info("Re-applying license headers...")
     for file_path in CLIENT_DIR.rglob("*"):
         if file_path.is_file():
             relative_file_path = file_path.relative_to(CLIENT_DIR)
@@ -219,7 +223,7 @@ def prepend_licenses() -> None:
 
             # Check if extension is excluded
             if file_extension in EXCLUDE_EXTENSIONS:
-                print(f"{relative_file_path}: skipped (extension excluded)")
+                logger.debug(f"{relative_file_path}: skipped (extension excluded)")
                 continue
 
             is_excluded = False
@@ -240,18 +244,18 @@ def prepend_licenses() -> None:
                     break
 
             if is_excluded:
-                print(f"{relative_file_path}: skipped (path excluded)")
+                logger.debug(f"{relative_file_path}: skipped (path excluded)")
                 continue
 
             header_file_path = HEADER_DIR / f"header-{file_extension}.txt"
 
             if header_file_path.is_file():
                 _prepend_header_to_file(file_path, header_file_path)
-                print(f"{relative_file_path}: updated")
+                logger.debug(f"{relative_file_path}: updated")
             else:
-                print(f"No header compatible with file {relative_file_path}")
+                logger.error(f"No header compatible with file {relative_file_path}")
                 sys.exit(2)
-    print("License fix complete.")
+    logger.info("License fix complete.")
 
 
 def build() -> None:
@@ -262,5 +266,23 @@ def build() -> None:
     prepend_licenses()
 
 
-if __name__ == "__main__":
+def main():
+    parser = argparse.ArgumentParser(description="Generate Polaris Python clients.")
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output for debugging.",
+    )
+    args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+    else:
+        logging.basicConfig(level=logging.INFO, format="%(message)s")
+
     build()
+
+
+if __name__ == "__main__":
+    main()
