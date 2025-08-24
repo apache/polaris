@@ -18,10 +18,9 @@
  */
 package org.apache.polaris.service.it.test;
 
-import com.google.common.base.Strings;
+import java.io.File;
 import java.util.List;
 import java.util.Optional;
-import org.apache.hadoop.fs.Path;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -41,12 +40,12 @@ public abstract class PolarisRestCatalogViewS3IntegrationTestBase
         .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
         .setAllowedLocations(
             List.of(
-                StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, Path.SEPARATOR)))
+                StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, File.separator)))
         .build();
   }
 
   @Override
   protected String getCustomMetadataLocationDir() {
-    return new Path(BASE_LOCATION, POLARIS_IT_CUSTOM_SUBDIR).toString();
+    return StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, File.separator);
   }
 }
