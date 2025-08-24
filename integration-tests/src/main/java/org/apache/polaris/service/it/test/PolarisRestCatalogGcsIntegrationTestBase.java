@@ -23,7 +23,7 @@ import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
 /** Runs PolarisRestCatalogIntegrationBase test on GCP. */
-public abstract class PolarisRestCatalogGcpIntegrationTestBase
+public abstract class PolarisRestCatalogGcsIntegrationTestBase
     extends PolarisRestCatalogIntegrationBase {
   public static final String SERVICE_ACCOUNT =
       System.getenv("INTEGRATION_TEST_GCS_SERVICE_ACCOUNT");

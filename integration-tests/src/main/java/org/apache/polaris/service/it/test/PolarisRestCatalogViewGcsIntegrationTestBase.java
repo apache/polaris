@@ -23,9 +23,10 @@ import java.util.List;
 import org.apache.hadoop.fs.Path;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.storage.StorageUtil;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on GCP. */
-public abstract class PolarisRestCatalogViewGcpIntegrationTestBase
+public abstract class PolarisRestCatalogViewGcsIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
   public static final String SERVICE_ACCOUNT =
       System.getenv("INTEGRATION_TEST_GCS_SERVICE_ACCOUNT");
@@ -36,7 +37,9 @@ public abstract class PolarisRestCatalogViewGcpIntegrationTestBase
     return GcpStorageConfigInfo.builder()
         .setGcsServiceAccount(SERVICE_ACCOUNT)
         .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-        .setAllowedLocations(List.of(new Path(BASE_LOCATION, POLARIS_IT_SUBDIR).toString()))
+        .setAllowedLocations(
+            List.of(
+                StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, Path.SEPARATOR)))
         .build();
   }
 

@@ -18,29 +18,22 @@
  */
 package org.apache.polaris.service.it.test;
 
-import com.google.common.base.Strings;
 import java.util.List;
-import org.apache.hadoop.fs.Path;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
-/** Runs PolarisRestCatalogViewIntegrationTest on Azure. */
-public abstract class PolarisRestCatalogViewAzureIntegrationTestBase
-    extends PolarisRestCatalogViewIntegrationBase {
-  public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_AZURE_TENANT_ID");
-  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_AZURE_PATH");
+/** Runs PolarisRestCatalogIntegrationBase test on Azure. */
+public abstract class PolarisRestCatalogAdlsIntegrationTestBase
+    extends PolarisRestCatalogIntegrationBase {
+  public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_ADLS_TENANT_ID");
+  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_ADLS_PATH");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
     return AzureStorageConfigInfo.builder()
         .setTenantId(TENANT_ID)
         .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
-        .setAllowedLocations(List.of(new Path(BASE_LOCATION, POLARIS_IT_SUBDIR).toString()))
+        .setAllowedLocations(List.of(BASE_LOCATION))
         .build();
-  }
-
-  @Override
-  protected String getCustomMetadataLocationDir() {
-    return new Path(BASE_LOCATION, POLARIS_IT_CUSTOM_SUBDIR).toString();
   }
 }

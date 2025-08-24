@@ -19,9 +19,23 @@
 package org.apache.polaris.service.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisRestCatalogAwsIntegrationTestBase;
+import java.lang.reflect.Field;
+import java.nio.file.Path;
+import org.apache.iceberg.view.ViewCatalogTests;
+import org.apache.polaris.service.it.test.PolarisRestCatalogViewS3IntegrationTestBase;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
 @EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_S3_PATH", matches = ".+")
-public class RestCatalogAwsIT extends PolarisRestCatalogAwsIntegrationTestBase {}
+public class RestCatalogViewS3IT extends PolarisRestCatalogViewS3IntegrationTestBase {
+
+  @BeforeEach
+  public void setUpTempDir(@TempDir Path tempDir) throws Exception {
+    // see https://github.com/quarkusio/quarkus/issues/13261
+    Field field = ViewCatalogTests.class.getDeclaredField("tempDir");
+    field.setAccessible(true);
+    field.set(this, tempDir);
+  }
+}

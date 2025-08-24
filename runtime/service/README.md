@@ -29,10 +29,10 @@ export INTEGRATION_TEST_S3_PATH="s3://bucket/subpath"
 export INTEGRATION_TEST_S3_ROLE_ARN="your-role-arn"
 ./gradlew :polaris-runtime-service:cloudTest
 ```
-For Azure:
+For ADLS:
 ```shell
-export INTEGRATION_TEST_AZURE_PATH="abfss://bucket/subpath"
-export INTEGRATION_TEST_AZURE_TENANT_ID="your-tenant-id"
+export INTEGRATION_TEST_ADLS_PATH="abfss://bucket/subpath"
+export INTEGRATION_TEST_ADLS_TENANT_ID="your-tenant-id"
 ./gradlew :polaris-runtime-service:cloudTest
 ``` 
 For GCS:

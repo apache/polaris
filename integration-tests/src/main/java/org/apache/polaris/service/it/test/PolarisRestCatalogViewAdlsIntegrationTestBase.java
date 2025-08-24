@@ -18,26 +18,32 @@
  */
 package org.apache.polaris.service.it.test;
 
+import com.google.common.base.Strings;
 import java.util.List;
-import java.util.Optional;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.hadoop.fs.Path;
+import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.storage.StorageUtil;
 
-/** Runs PolarisRestCatalogIntegrationBase test on AWS. */
-public abstract class PolarisRestCatalogAwsIntegrationTestBase
-    extends PolarisRestCatalogIntegrationBase {
-  public static final String ROLE_ARN =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
-          .or(() -> Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_ROLE_ARN")))
-          .orElse("arn:aws:iam::123456789012:role/my-role");
-  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_S3_PATH");
+/** Runs PolarisRestCatalogViewIntegrationTest on Azure. */
+public abstract class PolarisRestCatalogViewAdlsIntegrationTestBase
+    extends PolarisRestCatalogViewIntegrationBase {
+  public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_ADLS_TENANT_ID");
+  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_ADLS_PATH");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
-    return AwsStorageConfigInfo.builder()
-        .setRoleArn(ROLE_ARN)
-        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-        .setAllowedLocations(List.of(BASE_LOCATION))
+    return AzureStorageConfigInfo.builder()
+        .setTenantId(TENANT_ID)
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+        .setAllowedLocations(
+            List.of(
+                StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, Path.SEPARATOR)))
         .build();
+  }
+
+  @Override
+  protected String getCustomMetadataLocationDir() {
+    return new Path(BASE_LOCATION, POLARIS_IT_CUSTOM_SUBDIR).toString();
   }
 }
