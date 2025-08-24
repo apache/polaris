@@ -66,7 +66,7 @@ EXCLUDE_PATHS = [
     Path("polaris/catalog/api/__pycache__/"),
     Path("polaris/management/__pycache__/"),
     Path("polaris/management/models/__pycache__/"),
-    Path("polaris/management/api/__pycache__/"),    
+    Path("polaris/management/api/__pycache__/"),
     Path("integration_tests/"),
     Path(".github/workflows/python.yml"),
     Path(".gitlab-ci.yml"),
