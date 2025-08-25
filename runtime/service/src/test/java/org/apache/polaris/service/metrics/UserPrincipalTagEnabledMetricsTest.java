@@ -24,24 +24,22 @@ import io.quarkus.test.junit.TestProfile;
 import java.util.Map;
 
 @QuarkusTest
-@TestProfile(RealmIdTagEnabledMetricsTest.Profile.class)
-public class RealmIdTagEnabledMetricsTest extends MetricsTestBase {
+@TestProfile(UserPrincipalTagEnabledMetricsTest.Profile.class)
+public class UserPrincipalTagEnabledMetricsTest extends MetricsTestBase {
 
-  public static class Profile implements QuarkusTestProfile {
+    public static class Profile implements QuarkusTestProfile {
 
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.metrics.tags.environment",
-          "prod",
-          "polaris.realm-context.type",
-          "test",
-          "polaris.metrics.realm-id-tag.enable-in-api-metrics",
-          "true",
-          "polaris.metrics.realm-id-tag.enable-in-http-metrics",
-          "true",
-          "polaris.metrics.user-principal-tag.enable-in-api-metrics",
-          "true");
+        @Override
+        public Map<String, String> getConfigOverrides() {
+            return Map.of(
+                    "polaris.metrics.tags.environment",
+                    "prod",
+                    "polaris.metrics.user-principal-tag.enable-in-api-metrics",
+                    "true",
+                    "polaris.metrics.realm-id-tag.enable-in-api-metrics",
+                    "false",
+                    "polaris.metrics.realm-id-tag.enable-in-http-metrics",
+                    "false");
+        }
     }
-  }
 }

@@ -106,6 +106,11 @@ public abstract class MetricsTestBase {
                               ? fixture.realm
                               : ""),
                       Map.entry(
+                      "principal",
+                          metricsConfiguration.userPrincipalTag().enableInApiMetrics()
+                              ? "root"
+                              : ""),
+                      Map.entry(
                           "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
                       Map.entry("exception", "none"),
                       Map.entry("method", "getPrincipal"));
@@ -156,6 +161,11 @@ public abstract class MetricsTestBase {
                           metricsConfiguration.realmIdTag().enableInApiMetrics()
                               ? fixture.realm
                               : ""),
+                      Map.entry(
+                          "principal",
+                              metricsConfiguration.userPrincipalTag().enableInApiMetrics()
+                                  ? "root"
+                                  : ""),
                       Map.entry(
                           "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
                       Map.entry("exception", "NotFoundException"),
