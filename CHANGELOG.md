@@ -51,6 +51,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Added Catalog configuration for S3 and STS endpoints. This also allows using non-AWS S3 implementations.
+  The realm-level feature flag `ALLOW_SETTING_S3_ENDPOINTS` (default: true) may be used to disable this
+  functionality.
 
 - The `IMPLICIT` authentication type enables users to create federated catalogs without explicitly
 providing authentication parameters to Polaris. When the authentication type is set to `IMPLICIT`,

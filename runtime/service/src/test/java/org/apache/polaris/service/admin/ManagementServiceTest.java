@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -68,6 +69,7 @@ public class ManagementServiceTest {
     services =
         TestServices.builder()
             .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
+            .config(Map.of("ALLOW_SETTING_S3_ENDPOINTS", Boolean.FALSE))
             .build();
   }
 
@@ -95,6 +97,51 @@ public class ManagementServiceTest {
                         services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
+  }
+
+  @Test
+  public void testCreateCatalogWithDisallowedS3Endpoints() {
+    AwsStorageConfigInfo.Builder storageConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"));
+    String catalogName = "test-catalog";
+    Supplier<Catalog> catalog =
+        () ->
+            PolarisCatalog.builder()
+                .setType(Catalog.TypeEnum.INTERNAL)
+                .setName(catalogName)
+                .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+                .setStorageConfigInfo(storageConfig.build())
+                .build();
+    Supplier<Response> createCatalog =
+        () ->
+            services
+                .catalogsApi()
+                .createCatalog(
+                    new CreateCatalogRequest(catalog.get()),
+                    services.realmContext(),
+                    services.securityContext());
+
+    storageConfig.setEndpoint("http://example.com");
+    assertThatThrownBy(createCatalog::get)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+
+    storageConfig.setEndpoint(null);
+    storageConfig.setStsEndpoint("http://example.com");
+    assertThatThrownBy(createCatalog::get)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+
+    storageConfig.setStsEndpoint(null);
+    storageConfig.setEndpointInternal("http://example.com");
+    assertThatThrownBy(createCatalog::get)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
   }
 
   @Test
@@ -162,6 +209,23 @@ public class ManagementServiceTest {
                         services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
+
+    UpdateCatalogRequest update2 =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of(),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                .setEndpoint("http://example.com")
+                .build());
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .updateCatalog(
+                        catalogName, update2, services.realmContext(), services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
   }
 
   private PolarisMetaStoreManager setupMetaStoreManager() {

@@ -79,6 +79,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_SETTING_S3_ENDPOINTS")
+          .description(
+              "If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints.\n"
+                  + "If set to false, Polaris will not accept catalog create and update requests that contain \n"
+                  + "S3 endpoint properties.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
   @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
