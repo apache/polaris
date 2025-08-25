@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
  */
 @RequestScoped
 @Identifier("default")
+@Deprecated
 public class DefaultActiveRolesProvider implements ActiveRolesProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultActiveRolesProvider.class);
 
