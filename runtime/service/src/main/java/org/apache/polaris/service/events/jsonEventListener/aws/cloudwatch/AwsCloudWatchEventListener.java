@@ -134,7 +134,8 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
       LOGGER.error("Error processing event into JSON string: ", e);
       return;
     }
-    InputLogEvent inputLogEvent = createLogEvent(eventAsJson, getCurrentTimestamp());
+    InputLogEvent inputLogEvent =
+        InputLogEvent.builder().message(eventAsJson).timestamp(clock.millis()).build();
     PutLogEventsRequest.Builder requestBuilder =
         PutLogEventsRequest.builder()
             .logGroupName(logGroup)
@@ -153,13 +154,5 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
     if (synchronousMode) {
       future.join();
     }
-  }
-
-  private long getCurrentTimestamp() {
-    return clock.millis();
-  }
-
-  private InputLogEvent createLogEvent(String eventAsJson, long timestamp) {
-    return InputLogEvent.builder().message(eventAsJson).timestamp(timestamp).build();
   }
 }
