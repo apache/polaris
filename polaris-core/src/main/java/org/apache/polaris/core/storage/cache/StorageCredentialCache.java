@@ -133,7 +133,7 @@ public class StorageCredentialCache {
                   k.allowedListAction(),
                   k.allowedReadLocations(),
                   k.allowedWriteLocations(),
-                  refreshCredentialsEndpoint);
+                  k.refreshCredentialsEndpoint());
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmConfig());
             return new StorageCredentialCacheEntry(
