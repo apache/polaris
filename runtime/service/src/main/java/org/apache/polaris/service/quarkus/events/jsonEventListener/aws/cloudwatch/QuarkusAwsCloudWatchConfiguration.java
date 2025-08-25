@@ -44,7 +44,7 @@ public interface QuarkusAwsCloudWatchConfiguration extends AwsCloudWatchConfigur
    *
    * <p>Configuration property: {@code polaris.event-listener.aws-cloudwatch.log-group}
    *
-   * @return an Optional containing the log group name, or empty if not configured
+   * @return a String containing the log group name, or the default value if not configured
    */
   @WithName("log-group")
   @WithDefault("polaris-cloudwatch-default-group")
@@ -59,7 +59,7 @@ public interface QuarkusAwsCloudWatchConfiguration extends AwsCloudWatchConfigur
    *
    * <p>Configuration property: {@code polaris.event-listener.aws-cloudwatch.log-stream}
    *
-   * @return an Optional containing the log stream name, or empty if not configured
+   * @return a String containing the log stream name, or the default value if not configured
    */
   @WithName("log-stream")
   @WithDefault("polaris-cloudwatch-default-stream")
@@ -74,7 +74,7 @@ public interface QuarkusAwsCloudWatchConfiguration extends AwsCloudWatchConfigur
    *
    * <p>Configuration property: {@code polaris.event-listener.aws-cloudwatch.region}
    *
-   * @return an Optional containing the AWS region, or empty if not configured
+   * @return a String containing the AWS region, or the default value if not configured
    */
   @WithName("region")
   @WithDefault("us-east-1")
