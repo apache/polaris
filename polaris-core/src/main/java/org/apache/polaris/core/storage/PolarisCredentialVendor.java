@@ -38,6 +38,10 @@ public interface PolarisCredentialVendor {
    *     allowedWriteLocations
    * @param allowedReadLocations a set of allowed to read locations
    * @param allowedWriteLocations a set of allowed to write locations
+   * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
+   *     supported by the storage type it will be returned to the client in the appropriate
+   *     properties. The endpoint may be relative to the base URI and the client is responsible for
+   *     handling the relative path
    * @return an enum map containing the scoped credentials
    */
   @Nonnull
