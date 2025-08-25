@@ -18,14 +18,14 @@
  */
 package org.apache.polaris.service.it.test;
 
+import java.io.File;
 import java.util.List;
-import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.assertj.core.util.Strings;
+import org.apache.polaris.core.storage.StorageUtil;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on GCP. */
-public class PolarisRestCatalogViewGcpIntegrationTest
+public abstract class PolarisRestCatalogViewGcsIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
   public static final String SERVICE_ACCOUNT =
       System.getenv("INTEGRATION_TEST_GCS_SERVICE_ACCOUNT");
@@ -36,12 +36,14 @@ public class PolarisRestCatalogViewGcpIntegrationTest
     return GcpStorageConfigInfo.builder()
         .setGcsServiceAccount(SERVICE_ACCOUNT)
         .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-        .setAllowedLocations(List.of(BASE_LOCATION))
+        .setAllowedLocations(
+            List.of(
+                StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, File.separator)))
         .build();
   }
 
   @Override
-  protected boolean shouldSkip() {
-    return Stream.of(BASE_LOCATION, SERVICE_ACCOUNT).anyMatch(Strings::isNullOrEmpty);
+  protected String getCustomMetadataLocationDir() {
+    return StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, File.separator);
   }
 }
