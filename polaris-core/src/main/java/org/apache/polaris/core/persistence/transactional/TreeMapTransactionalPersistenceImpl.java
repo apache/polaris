@@ -486,7 +486,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   }
 
   @Override
-  public @Nonnull PolarisPrincipalSecrets resetPrincipalSecrets(
+  public @Nonnull PolarisPrincipalSecrets storePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
