@@ -49,7 +49,6 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
-import org.apache.iceberg.rest.credentials.Credential;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -268,16 +267,12 @@ public class RestCatalogMinIOSpecialIT {
 
     LoadTableResponse loadTableResponse =
         catalogApi.loadTableWithAccessDelegation(catalogName, id, "ALL");
-    assertThat(loadTableResponse.config()).containsKey("s3.endpoint");
-    assertThat(loadTableResponse.credentials().stream().map(Credential::config))
-        .allSatisfy(
-            c ->
-                assertThat(c)
-                    .containsEntry(
-                        AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, Boolean.TRUE.toString())
-                    .containsEntry(
-                        AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
-                        "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials"));
+    assertThat(loadTableResponse.config())
+        .containsKey("s3.endpoint")
+        .containsEntry(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, Boolean.TRUE.toString())
+        .containsEntry(
+            AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
+            "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials");
 
     restCatalog.dropTable(id);
     assertThat(restCatalog.tableExists(id)).isFalse();
