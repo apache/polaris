@@ -51,7 +51,7 @@ public enum StorageAccessProperty {
   AWS_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
-      "the endpoint to use for refreshing credentials",
+      "the endpoint to load vended credentials for a table from the catalog",
       false,
       false),
 
@@ -71,7 +71,7 @@ public enum StorageAccessProperty {
   GCS_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       GCPProperties.GCS_OAUTH2_REFRESH_CREDENTIALS_ENDPOINT,
-      "the endpoint to use for refreshing credentials",
+      "the endpoint to load vended credentials for a table from the catalog",
       false,
       false),
 
@@ -88,7 +88,7 @@ public enum StorageAccessProperty {
   AZURE_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       "adls.refresh-credentials-endpoint",
-      "the endpoint to use for refreshing credentials",
+      "the endpoint to load vended credentials for a table from the catalog",
       false,
       false),
   EXPIRATION_TIME(
