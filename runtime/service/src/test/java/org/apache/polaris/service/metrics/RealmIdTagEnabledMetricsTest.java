@@ -41,7 +41,7 @@ public class RealmIdTagEnabledMetricsTest extends MetricsTestBase {
           "polaris.metrics.realm-id-tag.enable-in-http-metrics",
           "true",
           "polaris.metrics.user-principal-tag.enable-in-api-metrics",
-          "true");
+          "false");
     }
   }
 }
