@@ -21,6 +21,7 @@ package org.apache.polaris.core.auth;
 import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import software.amazon.awssdk.annotations.NotNull;
 
 /** Manages secrets for Polaris principals. */
 public interface PolarisSecretsManager {
@@ -54,4 +55,38 @@ public interface PolarisSecretsManager {
       long principalId,
       boolean reset,
       @Nonnull String oldSecretHash);
+
+  /**
+   * Reset the secrets of a principal entity.
+   *
+   * <p>This operation makes the specified secrets (either provided by the caller or newly
+   * generated) the active credentials for the principal. It effectively overwrites any previous
+   * secrets and sets the provided values as the new client id/secret for the principal.
+   *
+   * @param callCtx call context
+   * @param principalId id of the principal
+   * @param resolvedClientId current principal client id
+   * @param customClientSecret optional new client secret to assign (may be {@code null} if
+   *     system-generated)
+   * @return the secrets associated with the principal, including the updated client id and secret
+   */
+  @Nonnull
+  PrincipalSecretsResult resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @NotNull String resolvedClientId,
+      String customClientSecret);
+
+  /**
+   * Permanently delete the secrets of a principal.
+   *
+   * <p>This operation removes all stored secrets associated with the given principal
+   *
+   * @param callCtx call context
+   * @param clientId principal client id
+   * @param principalId id of the principal whose secrets should be deleted
+   */
+  @Nonnull
+  void deletePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
 }
