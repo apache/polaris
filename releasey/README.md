@@ -19,8 +19,6 @@ under the License.
 
 # Releasey Scripts
 
-This directory contains scripts and libraries that are used exclusively by GitHub workflows to automate the Polaris release process.
-
 ## Important Notice
 
 ⚠️ **These scripts are designed for automation and should only be used by GitHub workflows.**
