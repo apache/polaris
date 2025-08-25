@@ -777,18 +777,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public PolarisPrincipalSecrets storePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
       long principalId,
-      String customClientId,
+      @Nonnull String resolvedClientId,
       String customClientSecret) {
-
-    PolarisPrincipalSecrets principalSecrets;
-    if (customClientId == null) {
-      principalSecrets = new PolarisPrincipalSecrets(principalId, clientId, customClientSecret);
-    } else {
-      principalSecrets =
-          new PolarisPrincipalSecrets(principalId, customClientId, customClientSecret);
-    }
+    PolarisPrincipalSecrets principalSecrets =
+        new PolarisPrincipalSecrets(principalId, resolvedClientId, customClientSecret);
     try {
       ModelPrincipalAuthenticationData modelPrincipalAuthenticationData =
           ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets);
@@ -805,11 +798,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       LOGGER.error(
           "Failed to reset PrincipalSecrets  for clientId: {}, due to {}",
-          clientId,
+          resolvedClientId,
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to reset PrincipalSecrets for clientId: %s", clientId), e);
+          String.format("Failed to reset PrincipalSecrets for clientId: %s", resolvedClientId), e);
     }
 
     // return those

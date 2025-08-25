@@ -21,6 +21,7 @@ package org.apache.polaris.core.auth;
 import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import software.amazon.awssdk.annotations.NotNull;
 
 /** Manages secrets for Polaris principals. */
 public interface PolarisSecretsManager {
@@ -63,10 +64,8 @@ public interface PolarisSecretsManager {
    * secrets and sets the provided values as the new client id/secret for the principal.
    *
    * @param callCtx call context
-   * @param clientId current principal client id
    * @param principalId id of the principal
-   * @param customClientId optional new client id to assign (may be {@code null} if
-   *     system-generated)
+   * @param resolvedClientId current principal client id
    * @param customClientSecret optional new client secret to assign (may be {@code null} if
    *     system-generated)
    * @return the secrets associated with the principal, including the updated client id and secret
@@ -74,9 +73,8 @@ public interface PolarisSecretsManager {
   @Nonnull
   PrincipalSecretsResult resetPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
       long principalId,
-      String customClientId,
+      @NotNull String resolvedClientId,
       String customClientSecret);
 
   /**
