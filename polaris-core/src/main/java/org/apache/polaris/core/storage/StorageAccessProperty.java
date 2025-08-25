@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import org.apache.iceberg.aws.AwsClientProperties;
+import org.apache.iceberg.gcp.GCPProperties;
 
 /**
  * A subset of Iceberg catalog properties recognized by Polaris.
@@ -61,6 +62,18 @@ public enum StorageAccessProperty {
       "the time the gcs access token expires, in milliseconds",
       true,
       true),
+  GCS_REFRESH_CREDENTIALS_ENABLED(
+      Boolean.class,
+      GCPProperties.GCS_OAUTH2_REFRESH_CREDENTIALS_ENABLED,
+      "whether to enable automatic refresh of credentials",
+      true,
+      false),
+  GCS_REFRESH_CREDENTIALS_ENDPOINT(
+      String.class,
+      GCPProperties.GCS_OAUTH2_REFRESH_CREDENTIALS_ENDPOINT,
+      "the endpoint to use for refreshing credentials",
+      true,
+      false),
 
   // Currently not using ACCESS TOKEN as the ResolvingFileIO is using ADLSFileIO for azure case and
   // it expects for SAS

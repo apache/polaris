@@ -60,6 +60,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   private final String gcsServiceKeyJsonFileLocation =
       System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
+  private static final String REFRESH_ENDPOINT = "get/credentials";
+
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testSubscope(boolean allowedListAction) throws Exception {
@@ -172,7 +174,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
-        Optional.empty());
+        Optional.of(REFRESH_ENDPOINT));
   }
 
   @Test
@@ -295,6 +297,22 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       }
     }
     return true;
+  }
+
+  @Test
+  public void testRefreshCredentialsEndpointIsReturned() throws IOException {
+    Assumptions.assumeThat(gcsServiceKeyJsonFileLocation)
+        .describedAs("Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits")
+        .isNotNull()
+        .isNotEmpty();
+
+    AccessConfig accessConfig =
+        subscopedCredsForOperations(
+            List.of("gs://bucket1/path/to/data"), List.of("gs://bucket1/path/to/data"), true);
+    assertThat(accessConfig.get(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT))
+        .isEqualTo(REFRESH_ENDPOINT);
+    assertThat(accessConfig.get(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENABLED))
+        .isEqualTo(Boolean.TRUE.toString());
   }
 
   private boolean isNotNull(JsonNode node) {

@@ -114,6 +114,13 @@ public class GcpCredentialsStorageIntegration
     accessConfig.put(
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
         String.valueOf(token.getExpirationTime().getTime()));
+
+    refreshCredentialsEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+          accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENABLED, "true");
+        });
+
     return accessConfig.build();
   }
 
