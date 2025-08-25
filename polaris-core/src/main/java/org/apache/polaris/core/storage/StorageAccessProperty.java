@@ -46,13 +46,13 @@ public enum StorageAccessProperty {
       Boolean.class,
       AwsClientProperties.REFRESH_CREDENTIALS_ENABLED,
       "whether to enable automatic refresh of credentials",
-      true,
+      false,
       false),
   AWS_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
       "the endpoint to use for refreshing credentials",
-      true,
+      false,
       false),
 
   GCS_ACCESS_TOKEN(String.class, "gcs.oauth2.token", "the gcs scoped access token"),
@@ -66,13 +66,13 @@ public enum StorageAccessProperty {
       Boolean.class,
       GCPProperties.GCS_OAUTH2_REFRESH_CREDENTIALS_ENABLED,
       "whether to enable automatic refresh of credentials",
-      true,
+      false,
       false),
   GCS_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       GCPProperties.GCS_OAUTH2_REFRESH_CREDENTIALS_ENDPOINT,
       "the endpoint to use for refreshing credentials",
-      true,
+      false,
       false),
 
   // Currently not using ACCESS TOKEN as the ResolvingFileIO is using ADLSFileIO for azure case and
@@ -83,13 +83,13 @@ public enum StorageAccessProperty {
       Boolean.class,
       "adls.refresh-credentials-enabled",
       "whether to enable automatic refresh of credentials",
-      true,
+      false,
       false),
   AZURE_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       "adls.refresh-credentials-endpoint",
       "the endpoint to use for refreshing credentials",
-      true,
+      false,
       false),
   EXPIRATION_TIME(
       Long.class,
