@@ -508,6 +508,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     } else {
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
+    if (!realmConfig.getConfig(
+        FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
+      LOGGER.debug("Validating that namespace {} has a location inside its parent", namespace);
+      validateNamespaceLocation(entity, resolvedParent);
+    }
     PolarisEntity returnedEntity =
         PolarisEntity.of(
             getMetaStoreManager()
@@ -670,6 +675,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           NamespaceEntity.of(updatedEntity), resolvedEntities.getRawParentPath());
     } else {
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
+    }
+    if (!realmConfig.getConfig(
+        FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
+      LOGGER.debug("Validating that namespace {} has a location inside its parent", namespace);
+      validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
     }
 
     List<PolarisEntity> parentPath = resolvedEntities.getRawFullPath();
@@ -1080,6 +1090,74 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                   .build());
 
       validateNoLocationOverlap(virtualEntity, resolvedNamespace);
+    }
+  }
+
+  /** Checks whether the location of a namespace is valid given its parent */
+  private void validateNamespaceLocation(
+      NamespaceEntity namespace, PolarisResolvedPathWrapper resolvedParent) {
+    StorageLocation namespaceLocation =
+        StorageLocation.of(
+            StorageLocation.ensureTrailingSlash(
+                resolveNamespaceLocation(namespace.asNamespace(), namespace.getPropertiesAsMap())));
+    PolarisEntity parent = resolvedParent.getResolvedLeafEntity().getEntity();
+    if (parent.getType().equals(PolarisEntityType.CATALOG)) {
+      CatalogEntity parentEntity = CatalogEntity.of(parent);
+      LOGGER.debug(
+          "Validating namespace {} given parent catalog {}",
+          namespace.getName(),
+          parentEntity.getName());
+      var storageConfigInfo = parentEntity.getStorageConfigurationInfo();
+      if (storageConfigInfo == null) {
+        throw new IllegalArgumentException(
+            "Cannot create namespace without a parent storage configuration");
+      }
+      List<StorageLocation> defaultLocations =
+          parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
+              .filter(java.util.Objects::nonNull)
+              .map(
+                  l -> {
+                    return StorageLocation.ensureTrailingSlash(
+                        StorageLocation.ensureTrailingSlash(l) + namespace.getName());
+                  })
+              .map(StorageLocation::of)
+              .toList();
+      if (!defaultLocations.contains(namespaceLocation)) {
+        throw new IllegalArgumentException(
+            "Namespace "
+                + namespace.getName()
+                + " has a custom location, "
+                + "which is not enabled. Expected a location in: ["
+                + String.join(
+                    ", ", defaultLocations.stream().map(StorageLocation::toString).toList())
+                + "]");
+      }
+    } else if (parent.getType().equals(PolarisEntityType.NAMESPACE)) {
+      NamespaceEntity parentEntity = NamespaceEntity.of(parent);
+      LOGGER.debug(
+          "Validating namespace {} given parent namespace {}",
+          namespace.getName(),
+          parentEntity.getName());
+      String parentLocation =
+          resolveNamespaceLocation(parentEntity.asNamespace(), parentEntity.getPropertiesAsMap());
+      StorageLocation defaultLocation =
+          StorageLocation.of(
+              StorageLocation.ensureTrailingSlash(
+                  StorageLocation.ensureTrailingSlash(parentLocation) + namespace.getName()));
+      if (!defaultLocation.equals(namespaceLocation)) {
+        throw new IllegalArgumentException(
+            "Namespace "
+                + namespace.getName()
+                + " has a custom location, "
+                + "which is not enabled. Expected location: "
+                + defaultLocation);
+      }
+    } else {
+      throw new IllegalArgumentException(
+          "Failed to validate namespace "
+              + namespace.getName()
+              + " given parent "
+              + parent.getName());
     }
   }
 

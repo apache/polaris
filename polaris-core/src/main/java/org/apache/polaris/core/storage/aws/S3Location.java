@@ -67,4 +67,19 @@ public class S3Location extends StorageLocation {
   public String withoutScheme() {
     return locationWithoutScheme;
   }
+
+  @Override
+  public int hashCode() {
+    return withoutScheme().hashCode();
+  }
+
+  /** Checks if two S3Location instances represent the same physical location. */
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof S3Location) {
+      return withoutScheme().equals(((StorageLocation) obj).withoutScheme());
+    } else {
+      return false;
+    }
+  }
 }
