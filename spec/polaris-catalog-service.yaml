@@ -24,7 +24,7 @@ info:
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 0.0.1
+  version: 0.0.2
   description:
     Defines the specification for the Polaris Catalog API, which encompasses both the Iceberg REST Catalog API 
     and Polaris-native API.
@@ -36,28 +36,28 @@ servers:
     variables:
       scheme:
         description: The scheme of the URI, either http or https.
-        default: https
+        default: http
       host:
         description: The host address for the specified server
-        default: localhost
+        default: localhost:8181
       basePath:
         description: Optional prefix to be appended to all routes
-        default: ""
+        default: api/catalog
   - url: "{scheme}://{host}:{port}/{basePath}"
     description: Generic base server URL, with all parts configurable
     variables:
       scheme:
         description: The scheme of the URI, either http or https.
-        default: https
+        default: http
       host:
         description: The host address for the specified server
         default: localhost
       port:
         description: The port used when addressing the host
-        default: "443"
+        default: "8181"
       basePath:
         description: Optional prefix to be appended to all routes
-        default: ""
+        default: api/catalog
 
 # The security configuration is sourced from iceberg-rest-catalog-open-api.yaml
 # All routes are currently configured using an Authorization header.

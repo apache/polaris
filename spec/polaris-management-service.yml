@@ -19,7 +19,7 @@
 openapi: 3.0.3
 info:
   title: Polaris Management Service
-  version: 0.0.1
+  version: 0.0.2
   description:
     Defines the management APIs for using Polaris to create and manage Iceberg catalogs and their principals
 servers:
@@ -28,10 +28,10 @@ servers:
     variables:
       scheme:
         description: The scheme of the URI, either http or https.
-        default: https
+        default: http
       host:
         description: The host address for the specified server
-        default: localhost
+        default: localhost:8181
 # All routes are currently configured using an Authorization header.
 security:
   - OAuth2: []
@@ -41,6 +41,7 @@ paths:
     get:
       operationId: listCatalogs
       description: List all catalogs in this polaris service
+      tags: [ Catalogs Management API ]
       responses:
         200:
           description: List of catalogs in the polaris service
@@ -53,6 +54,7 @@ paths:
     post:
       operationId: createCatalog
       description: Add a new Catalog
+      tags: [ Catalogs Management API ]
       requestBody:
         description: The Catalog to create
         required: true
@@ -84,6 +86,7 @@ paths:
     get:
       operationId: getCatalog
       description: Get the details of a catalog
+      tags: [ Catalogs Management API ]
       responses:
         200:
           description: The catalog details
@@ -99,6 +102,7 @@ paths:
     put:
       operationId: updateCatalog
       description: Update an existing catalog
+      tags: [ Catalogs Management API ]
       requestBody:
         description: The catalog details to use in the update
         required: true
@@ -123,6 +127,7 @@ paths:
     delete:
       operationId: deleteCatalog
       description: Delete an existing catalog. The catalog must be empty.
+      tags: [ Catalogs Management API ]
       responses:
         204:
           description: "Success, no content"
@@ -135,6 +140,7 @@ paths:
     get:
       operationId: listPrincipals
       description: List the principals for the current catalog
+      tags: [ Principals Management API ]
       responses:
         200:
           description: List of principals for this catalog
@@ -150,6 +156,7 @@ paths:
     post:
       operationId: createPrincipal
       description: Create a principal
+      tags: [ Principals Management API ]
       requestBody:
         description: The principal to create
         required: true
@@ -187,6 +194,7 @@ paths:
     get:
       operationId: getPrincipal
       description: Get the principal details
+      tags: [ Principals Management API ]
       responses:
         200:
           description: The requested principal
@@ -202,6 +210,7 @@ paths:
     put:
       operationId: updatePrincipal
       description: Update an existing principal
+      tags: [ Principals Management API ]
       requestBody:
         description: The principal details to use in the update
         required: true
@@ -226,6 +235,7 @@ paths:
     delete:
       operationId: deletePrincipal
       description: Remove a principal from polaris
+      tags: [ Principals Management API ]
       responses:
         204:
           description: "Success, no content"
@@ -249,6 +259,7 @@ paths:
       operationId: rotateCredentials
       description: Rotate a principal's credentials. The new credentials will be returned in the response. This is the only
         API, aside from createPrincipal, that returns the user's credentials. This API is *not* idempotent.
+      tags: [ Principals Management API ]
       responses:
         200:
           description: The principal details along with the newly rotated credentials
@@ -275,6 +286,7 @@ paths:
     get:
       operationId: listPrincipalRolesAssigned
       description: List the roles assigned to the principal
+      tags: [ Principals Management API ]
       responses:
         200:
           description: List of roles assigned to this principal
@@ -290,6 +302,7 @@ paths:
     put:
       operationId: assignPrincipalRole
       description: Add a role to the principal
+      tags: [ Principals Management API ]
       requestBody:
         description: The principal role to assign
         required: true
@@ -328,6 +341,7 @@ paths:
     delete:
       operationId: revokePrincipalRole
       description: Remove a role from a catalog principal
+      tags: [ Principals Management API ]
       responses:
         204:
           description: "Success, no content"
@@ -340,6 +354,7 @@ paths:
     get:
       operationId: listPrincipalRoles
       description: List the principal roles
+      tags: [ Principal Roles Management API ]
       responses:
         200:
           description: List of principal roles
@@ -355,6 +370,7 @@ paths:
     post:
       operationId: createPrincipalRole
       description: Create a principal role
+      tags: [ Principal Roles Management API ]
       requestBody:
         description: The principal to create
         required: true
@@ -382,6 +398,7 @@ paths:
     get:
       operationId: getPrincipalRole
       description: Get the principal role details
+      tags: [ Principal Roles Management API ]
       responses:
         200:
           description: The requested principal role
@@ -397,6 +414,7 @@ paths:
     put:
       operationId: updatePrincipalRole
       description: Update an existing principalRole
+      tags: [ Principal Roles Management API ]
       requestBody:
         description: The principalRole details to use in the update
         required: true
@@ -421,6 +439,7 @@ paths:
     delete:
       operationId: deletePrincipalRole
       description: Remove a principal role from polaris
+      tags: [ Principal Roles Management API ]
       responses:
         204:
           description: "Success, no content"
@@ -443,6 +462,7 @@ paths:
     get:
       operationId: listAssigneePrincipalsForPrincipalRole
       description: List the Principals to whom the target principal role has been assigned
+      tags: [ Principal Roles Management API ]
       responses:
         200:
           description: List the Principals to whom the target principal role has been assigned
@@ -478,6 +498,7 @@ paths:
     get:
       operationId: listCatalogRolesForPrincipalRole
       description: Get the catalog roles mapped to the principal role
+      tags: [ Principal Roles Management API ]
       responses:
         200:
           description: The list of catalog roles mapped to the principal role
@@ -493,6 +514,7 @@ paths:
     put:
       operationId: assignCatalogRoleToPrincipalRole
       description: Assign a catalog role to a principal role
+      tags: [ Principal Roles Management API ]
       requestBody:
         description: The principal to create
         required: true
@@ -538,6 +560,7 @@ paths:
     delete:
       operationId: revokeCatalogRoleFromPrincipalRole
       description: Remove a catalog role from a principal role
+      tags: [ Principal Roles Management API ]
       responses:
         204:
           description: "Success, no content"
@@ -560,6 +583,7 @@ paths:
     get:
       operationId: listCatalogRoles
       description: List existing roles in the catalog
+      tags: [ Catalog Roles Management API ]
       responses:
         200:
           description: The list of roles that exist in this catalog
@@ -570,6 +594,7 @@ paths:
     post:
       operationId: createCatalogRole
       description: Create a new role in the catalog
+      tags: [ Catalog Roles Management API ]
       requestBody:
         content:
           application/json:
@@ -606,6 +631,7 @@ paths:
     get:
       operationId: getCatalogRole
       description: Get the details of an existing role
+      tags: [ Catalog Roles Management API ]
       responses:
         200:
           description: The specified role details
@@ -621,6 +647,7 @@ paths:
     put:
       operationId: updateCatalogRole
       description: Update an existing role in the catalog
+      tags: [ Catalog Roles Management API ]
       requestBody:
         content:
           application/json:
@@ -643,6 +670,7 @@ paths:
     delete:
       operationId: deleteCatalogRole
       description: Delete an existing role from the catalog. All associated grants will also be deleted
+      tags: [ Catalog Roles Management API ]
       responses:
         204:
           description: "Success, no content"
@@ -674,6 +702,7 @@ paths:
     get:
       operationId: listAssigneePrincipalRolesForCatalogRole
       description: List the PrincipalRoles to which the target catalog role has been assigned
+      tags: [ Catalog Roles Management API ]
       responses:
         200:
           description: List the PrincipalRoles to which the target catalog role has been assigned
@@ -709,6 +738,7 @@ paths:
     get:
       operationId: listGrantsForCatalogRole
       description: List the grants the catalog role holds
+      tags: [ Catalog Roles Management API ]
       responses:
         200:
           description: List of all grants given to the role in this catalog
@@ -719,6 +749,7 @@ paths:
     put:
       operationId: addGrantToCatalogRole
       description: Add a new grant to the catalog role
+      tags: [ Catalog Roles Management API ]
       requestBody:
         content:
           application/json:
@@ -739,6 +770,7 @@ paths:
         will have a cascading effect - that is, if a principal has specific grants on a subresource, and grants are revoked
         on a parent resource, the grants present on the subresource will be revoked as well. By default, this behavior
         is disabled and grant revocation only affects the specified resource.
+      tags: [ Catalog Roles Management API ]
       parameters:
         - name: cascade
           in: query
@@ -895,7 +927,7 @@ components:
       properties:
         remoteCatalogName:
           type: string
-          description: The name of a remote catalog instance within the remote catalog service; in some older systems
+          description: The **name of a remote catalog** instance within the remote catalog service; in some older systems
             this is specified as the 'warehouse' when multiple logical catalogs are served under the same base
             uri, and often translates into a 'prefix' added to all REST resource paths
 

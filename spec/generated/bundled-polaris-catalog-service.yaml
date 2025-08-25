@@ -4,7 +4,7 @@ info:
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 0.0.1
+  version: 0.0.2
   description: Defines the specification for the Polaris Catalog API, which encompasses both the Iceberg REST Catalog API and Polaris-native API.
 servers:
   - url: '{scheme}://{host}/{basePath}'
@@ -12,28 +12,28 @@ servers:
     variables:
       scheme:
         description: The scheme of the URI, either http or https.
-        default: https
+        default: http
       host:
         description: The host address for the specified server
-        default: localhost
+        default: localhost:8181
       basePath:
         description: Optional prefix to be appended to all routes
-        default: ''
+        default: api/catalog
   - url: '{scheme}://{host}:{port}/{basePath}'
     description: Generic base server URL, with all parts configurable
     variables:
       scheme:
         description: The scheme of the URI, either http or https.
-        default: https
+        default: http
       host:
         description: The host address for the specified server
         default: localhost
       port:
         description: The port used when addressing the host
-        default: '443'
+        default: '8181'
       basePath:
         description: Optional prefix to be appended to all routes
-        default: ''
+        default: api/catalog
 security:
   - OAuth2:
       - catalog
@@ -51,7 +51,7 @@ paths:
           required: false
           schema:
             type: string
-          description: Warehouse location or identifier to request from the service
+          description: Warehouse location (Catalog name) or identifier to request from the service
       description: |2-
          All REST clients should first call this route to get catalog configuration properties from the server to configure the catalog and its HTTP client. Configuration from the server consists of two sets of key/value pairs.
         - defaults -  properties that should be used as default configuration; applied before client configuration
@@ -2781,7 +2781,7 @@ components:
       properties:
         prefix:
           type: string
-          description: Indicates a storage location prefix where the credential is relevant. Clients should choose the most specific prefix (by selecting the longest prefix) if several credentials of the same type are available.
+          description: Indicates a storage location prefix (Catalog name) where the credential is relevant. Clients should choose the most specific prefix (by selecting the longest prefix) if several credentials of the same type are available.
         config:
           type: object
           additionalProperties:
@@ -4342,7 +4342,7 @@ components:
       schema:
         type: string
       required: true
-      description: An optional prefix in the path
+      description: An optional prefix (Catalog name) in the path
     page-token:
       name: pageToken
       in: query
