@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.file.attribute.FileTime
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 import org.gradle.api.Project
 import org.gradle.process.JavaForkOptions
 
@@ -60,4 +65,42 @@ fun JavaForkOptions.addSparkJvmOptions() {
         // Spark 3.4+
         "-Djdk.reflect.useDirectMethodHandle=false",
       )
+}
+
+/**
+ * Rewrites the given ZIP file.
+ *
+ * The timestamps of all entries are set to `1980-02-01 00:00`, zip entries appear in a
+ * deterministic order.
+ */
+fun makeZipReproducible(source: File) {
+  val t = FileTime.fromMillis(318211200_000) // 1980-02-01 00:00 GMT
+
+  val outFile = File(source.absolutePath + ".tmp.out")
+
+  val names = mutableListOf<String>()
+  ZipFile(source).use { zip -> zip.stream().forEach { e -> names.add(e.name) } }
+  names.sort()
+
+  ZipOutputStream(FileOutputStream(outFile)).use { dst ->
+    ZipFile(source).use { zip ->
+      names.forEach { n ->
+        val e = zip.getEntry(n)
+        zip.getInputStream(e).use { src ->
+          e.setCreationTime(t)
+          e.setLastAccessTime(t)
+          e.setLastModifiedTime(t)
+          dst.putNextEntry(e)
+          src.copyTo(dst)
+          dst.closeEntry()
+          src.close()
+        }
+      }
+    }
+  }
+
+  val origFile = File(source.absolutePath + ".tmp.orig")
+  source.renameTo(origFile)
+  outFile.renameTo(source)
+  origFile.delete()
 }

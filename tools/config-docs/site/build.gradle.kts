@@ -19,6 +19,7 @@
 
 plugins {
   `java-library`
+  id("polaris-reproducible")
 }
 
 description = "Polaris site - reference docs"
