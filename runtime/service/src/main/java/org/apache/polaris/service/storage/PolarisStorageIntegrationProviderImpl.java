@@ -113,7 +113,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                   @Nonnull RealmConfig realmConfig,
                   boolean allowListOperation,
                   @Nonnull Set<String> allowedReadLocations,
-                  @Nonnull Set<String> allowedWriteLocations) {
+                  @Nonnull Set<String> allowedWriteLocations,
+                  Optional<String> refreshCredentialsEndpoint) {
                 return AccessConfig.builder().build();
               }
 

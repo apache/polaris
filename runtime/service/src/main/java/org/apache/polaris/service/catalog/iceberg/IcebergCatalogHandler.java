@@ -393,7 +393,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
   public LoadTableResponse createTableDirectWithWriteDelegation(
-      Namespace namespace, CreateTableRequest request) {
+      Namespace namespace,
+      CreateTableRequest request,
+      Optional<String> refreshCredentialsEndpoint) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
@@ -432,7 +434,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
                   PolarisStorageActions.LIST),
-              SNAPSHOTS_ALL)
+              SNAPSHOTS_ALL,
+              refreshCredentialsEndpoint)
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -500,7 +503,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadTableResponse createTableStagedWithWriteDelegation(
-      Namespace namespace, CreateTableRequest request) {
+      Namespace namespace,
+      CreateTableRequest request,
+      Optional<String> refreshCredentialsEndpoint) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
@@ -514,7 +519,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(
-            ident, metadata, Set.of(PolarisStorageActions.ALL), SNAPSHOTS_ALL)
+            ident,
+            metadata,
+            Set.of(PolarisStorageActions.ALL),
+            SNAPSHOTS_ALL,
+            refreshCredentialsEndpoint)
         .build();
   }
 
@@ -623,8 +632,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String snapshots) {
-    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get();
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      Optional<String> refreshCredentialsEndpoint) {
+    return loadTableWithAccessDelegationIfStale(
+            tableIdentifier, null, snapshots, refreshCredentialsEndpoint)
+        .get();
   }
 
   /**
@@ -638,7 +651,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    *     load table response, otherwise
    */
   public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
-      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
+      TableIdentifier tableIdentifier,
+      IfNoneMatch ifNoneMatch,
+      String snapshots,
+      Optional<String> refreshCredentialsEndpoint) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -708,7 +724,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       TableMetadata tableMetadata = baseTable.operations().current();
       return Optional.of(
           buildLoadTableResponseWithDelegationCredentials(
-                  tableIdentifier, tableMetadata, actionsRequested, snapshots)
+                  tableIdentifier,
+                  tableMetadata,
+                  actionsRequested,
+                  snapshots,
+                  refreshCredentialsEndpoint)
               .build());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -722,7 +742,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> actions,
-      String snapshots) {
+      String snapshots,
+      Optional<String> refreshCredentialsEndpoint) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
@@ -732,7 +753,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .addKeyValue("tableLocation", tableMetadata.location())
           .log("Fetching client credentials for table");
       AccessConfig accessConfig =
-          credentialDelegation.getAccessConfig(tableIdentifier, tableMetadata, actions);
+          credentialDelegation.getAccessConfig(
+              tableIdentifier, tableMetadata, actions, refreshCredentialsEndpoint);
       Map<String, String> credentialConfig = accessConfig.credentials();
       responseBuilder.addAllConfig(credentialConfig);
       responseBuilder.addAllConfig(accessConfig.extraProperties());

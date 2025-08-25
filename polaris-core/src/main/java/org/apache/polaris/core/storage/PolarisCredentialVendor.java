@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -37,6 +38,10 @@ public interface PolarisCredentialVendor {
    *     allowedWriteLocations
    * @param allowedReadLocations a set of allowed to read locations
    * @param allowedWriteLocations a set of allowed to write locations
+   * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
+   *     supported by the storage type it will be returned to the client in the appropriate
+   *     properties. The endpoint may be relative to the base URI and the client is responsible for
+   *     handling the relative path
    * @return an enum map containing the scoped credentials
    */
   @Nonnull
@@ -47,5 +52,6 @@ public interface PolarisCredentialVendor {
       PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations);
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint);
 }

@@ -105,7 +105,8 @@ public class StorageCredentialCache {
       @Nonnull PolarisEntity polarisEntity,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
     if (!isTypeSupported(polarisEntity.getType())) {
       callCtx
           .getDiagServices()
@@ -117,7 +118,8 @@ public class StorageCredentialCache {
             polarisEntity,
             allowListOperation,
             allowedReadLocations,
-            allowedWriteLocations);
+            allowedWriteLocations,
+            refreshCredentialsEndpoint);
     LOGGER.atDebug().addKeyValue("key", key).log("subscopedCredsCache");
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
@@ -130,7 +132,8 @@ public class StorageCredentialCache {
                   polarisEntity.getType(),
                   k.allowedListAction(),
                   k.allowedReadLocations(),
-                  k.allowedWriteLocations());
+                  k.allowedWriteLocations(),
+                  k.refreshCredentialsEndpoint());
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmConfig());
             return new StorageCredentialCacheEntry(

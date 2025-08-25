@@ -75,6 +75,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
+import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
@@ -359,12 +360,18 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
+          Optional<String> refreshCredentialsEndpoint =
+              getRefreshCredentialsEndpoint(
+                  delegationModes,
+                  prefix,
+                  TableIdentifier.of(namespace, createTableRequest.name()));
           if (createTableRequest.stageCreate()) {
             if (delegationModes.isEmpty()) {
               return Response.ok(catalog.createTableStaged(ns, createTableRequest)).build();
             } else {
               return Response.ok(
-                      catalog.createTableStagedWithWriteDelegation(ns, createTableRequest))
+                      catalog.createTableStagedWithWriteDelegation(
+                          ns, createTableRequest, refreshCredentialsEndpoint))
                   .build();
             }
           } else if (delegationModes.isEmpty()) {
@@ -374,7 +381,8 @@ public class IcebergCatalogAdapter
                 .build();
           } else {
             LoadTableResponse response =
-                catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
+                catalog.createTableDirectWithWriteDelegation(
+                    ns, createTableRequest, refreshCredentialsEndpoint);
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
@@ -430,14 +438,26 @@ public class IcebergCatalogAdapter
                     .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           } else {
+            Optional<String> refreshCredentialsEndpoint =
+                getRefreshCredentialsEndpoint(delegationModes, prefix, tableIdentifier);
             response =
                 catalog
-                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                    .loadTableWithAccessDelegationIfStale(
+                        tableIdentifier, ifNoneMatch, snapshots, refreshCredentialsEndpoint)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           }
 
           return tryInsertETagHeader(Response.ok(response), response, namespace, table).build();
         });
+  }
+
+  private static Optional<String> getRefreshCredentialsEndpoint(
+      EnumSet<AccessDelegationMode> delegationModes,
+      String prefix,
+      TableIdentifier tableIdentifier) {
+    return delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
+        ? Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier))
+        : Optional.empty();
   }
 
   @Override
@@ -599,7 +619,10 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(tableIdentifier, "all");
+              catalog.loadTableWithAccessDelegation(
+                  tableIdentifier,
+                  "all",
+                  Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier)));
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
                       .credentials(loadTableResponse.credentials())
