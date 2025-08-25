@@ -25,7 +25,7 @@
 LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source "$LIBS_DIR/_constants.sh"
-source "$LIBS_DIR/_log.sh"
+source "$LIBS_DIR/_exec.sh"
 
 function validate_and_extract_branch_version {
   # This function validates the format of a release branch version and extracts its components (major.minor.patch).
