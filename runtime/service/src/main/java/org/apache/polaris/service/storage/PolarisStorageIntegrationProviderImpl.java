@@ -32,6 +32,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -72,14 +74,21 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     this.gcpCredsProvider = gcpCredsProvider;
   }
 
-  @Override
   @SuppressWarnings("unchecked")
+  @Override
+  @Nullable
   public <T extends PolarisStorageConfigurationInfo>
-      @Nullable PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    if (polarisStorageConfigurationInfo == null) {
+      PolarisStorageIntegration<T> getStorageIntegration(PolarisBaseEntity entity) {
+    Map<String, String> propMap = entity.getInternalPropertiesAsMap();
+    String storageConfigInfoStr =
+        propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+    if (storageConfigInfoStr == null) {
       return null;
     }
+
+    PolarisStorageConfigurationInfo polarisStorageConfigurationInfo =
+        PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr);
+
     PolarisStorageIntegration<T> storageIntegration;
     switch (polarisStorageConfigurationInfo.getStorageType()) {
       case S3:

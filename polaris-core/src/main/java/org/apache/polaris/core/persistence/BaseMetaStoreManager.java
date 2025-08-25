@@ -19,7 +19,6 @@
 package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
-import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -28,23 +27,26 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
 public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
 
-  public static PolarisStorageConfigurationInfo extractStorageConfiguration(
-      @Nonnull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {
-    Map<String, String> propMap = reloadedEntity.getInternalPropertiesAsMap();
-    String storageConfigInfoStr =
-        propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-
+  public static <T extends PolarisStorageConfigurationInfo>
+      PolarisStorageIntegration<T> toStorageIntegration(
+          @Nonnull PolarisDiagnostics diagnostics,
+          PolarisBaseEntity reloadedEntity,
+          PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    PolarisStorageIntegration<T> storageIntegration =
+        storageIntegrationProvider.getStorageIntegration(reloadedEntity);
     diagnostics.check(
-        storageConfigInfoStr != null,
+        storageIntegration != null,
         "missing_storage_configuration_info",
         "catalogId={}, entityId={}",
         reloadedEntity.getCatalogId(),
         reloadedEntity.getId());
-    return PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr);
+    return storageIntegration;
   }
 
   /**

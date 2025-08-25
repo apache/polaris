@@ -25,6 +25,7 @@ import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_R
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -245,8 +246,7 @@ public abstract class AbstractPolicyCatalogTest {
             (AwsStorageConfigurationInfo)
                 CatalogEntity.of(catalogEntity).getStorageConfigurationInfo(),
             stsClient);
-    when(storageIntegrationProvider.getStorageIntegrationForConfig(
-            isA(AwsStorageConfigurationInfo.class)))
+    when(storageIntegrationProvider.getStorageIntegration(any()))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.policyCatalog = new PolicyCatalog(metaStoreManager, polarisContext, passthroughView);
