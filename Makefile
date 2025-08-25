@@ -38,8 +38,22 @@ POETRY_VERSION := $(shell cat client/python/pyproject.toml | grep requires-poetr
 ##@ General
 
 .PHONY: help
-help: ## Display this help
+help: version ## Display this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9\.-]+:.*?##/ { printf "  \033[36m%-40s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+	@printf "\n\033[1mConfigurable Variables:\033[0m\n"
+	@printf "  \033[36m%-30s\033[0m \033[33m%-25s\033[0m %s\n" "BUILD_IMAGE" "$(BUILD_IMAGE)" "Build container images (true/false)"
+	@printf "  \033[36m%-30s\033[0m \033[33m%-25s\033[0m %s\n" "DOCKER" "$(DOCKER)" "Docker command to use (docker/podman)"
+	@printf "  \033[36m%-30s\033[0m \033[33m%-25s\033[0m %s\n" "MINIKUBE_PROFILE" "$(MINIKUBE_PROFILE)" "Minikube profile name"
+	@printf "  \033[36m%-30s\033[0m \033[33m%-25s\033[0m %s\n" "DEPENDENCIES" "$(DEPENDENCIES)" "Required dependencies for targets"
+	@printf "  \033[36m%-30s\033[0m \033[33m%-25s\033[0m %s\n" "OPTIONAL_DEPENDENCIES" "$(OPTIONAL_DEPENDENCIES)" "Optional dependencies"
+	@printf "  \033[36m%-30s\033[0m \033[33m%-25s\033[0m %s\n" "VENV_DIR" "$(VENV_DIR)" "Python virtual environment directory"
+	@printf "  \033[36m%-30s\033[0m \033[33m%-25s\033[0m %s\n" "PYTHON_CLIENT_DIR" "$(PYTHON_CLIENT_DIR)" "Python client source directory"
+	@printf "  \033[36m%-30s\033[0m \033[33m%-25s\033[0m %s\n" "ACTIVATE_AND_CD" "$(shell echo '$(ACTIVATE_AND_CD)' | cut -c1-25)..." "Python venv activation command"
+	@printf "\n\033[1mUsage Examples:\033[0m\n"
+	@printf "  \033[32mmake build BUILD_IMAGE=false\033[0m          # Build without container images\n"
+	@printf "  \033[32mmake build DOCKER=podman\033[0m               # Use podman instead of docker\n"
+	@printf "  \033[32mmake minikube-start-cluster MINIKUBE_PROFILE=dev\033[0m  # Use 'dev' profile\n"
+
 
 .PHONY: version
 version: ## Display version information

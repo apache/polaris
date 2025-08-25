@@ -44,17 +44,37 @@ Then, use git to clone the Polaris repo:
 git clone https://github.com/apache/polaris.git ~/polaris
 ```
 
-## Docker
+## Docker Container Runtime & Docker Compose
+It is recommended to deploy Polaris inside Docker Compatible Container Runtime for the Quickstart workflow. Instructions for deploying the Quickstart workflow on the supported Cloud Providers (AWS, Azure, GCP) will be provided only with Docker. However, non-Docker deployment instructions for local deployments can also be followed on Cloud Providers.
 
-It is recommended to deploy Polaris inside [Docker](https://www.docker.com/) for the Quickstart workflow. Instructions for deploying the Quickstart workflow on the supported Cloud Providers (AWS, Azure, GCP) will be provided only with Docker. However, non-Docker deployment instructions for local deployments can also be followed on Cloud Providers.
-
+### Docker Desktop
 Instructions to install Docker can be found on the [Docker website](https://docs.docker.com/engine/install/). Ensure that Docker and the Docker Compose plugin are both installed.
 
-### Docker on MacOS
+#### Docker on MacOS
 Docker can be installed using [homebrew](https://brew.sh/):
 
 ```shell
 brew install --cask docker
+```
+
+#### Docker Compose on MacOS
+```shell
+brew install docker-compose
+```
+
+Compose is a Docker plugin. For Docker to find the plugin, add `"cliPluginsExtraDirs"` to `~/.docker/config.json`:
+```
+"cliPluginsExtraDirs": [
+  "/opt/homebrew/lib/docker/cli-plugins"
+]
+```
+
+```shell
+docker info | grep compose
+```
+```
+  compose: Docker Compose (Docker Inc.)
+    Path:     /opt/homebrew/lib/docker/cli-plugins/docker-compose
 ```
 
 There could be a [Docker permission issues](https://github.com/apache/polaris/pull/971) related to seccomp configuration. To resolve these issues, set the `seccomp` profile to "unconfined" when running a container. For example:
@@ -65,7 +85,7 @@ docker run --security-opt seccomp=unconfined apache/polaris:latest
 
 Note: Setting the seccomp profile to "unconfined" disables the default system call filtering, which may pose security risks. Use this configuration with caution, especially in production environments.
 
-### Docker on Amazon Linux
+#### Docker on Amazon Linux
 Docker can be installed using a modification to the CentOS instructions. For example:
 
 ```shell
@@ -82,7 +102,19 @@ sudo sed -i 's/$releasever/9/g' /etc/yum.repos.d/docker-ce.repo
 sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-### Confirm Docker Installation
+### Podman
+Docker Desktop may not be suitable for you due to licensing restrictions (check https://docs.docker.com/subscription/desktop-license/), so you can use alternative Container Tool versions compatible with Docker, for example [podman](https://podman.io/).
+
+#### Podman on MacOS
+
+```shell
+brew install podman
+podman machine init
+podman machine set --rootful
+podman machine start
+```
+
+### Confirm Container Runtime Installation
 
 Once installed, make sure that both Docker and the Docker Compose plugin are installed:
 
