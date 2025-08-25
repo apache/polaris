@@ -87,7 +87,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, this.resolutionManifest);
   }
 
-  public ListPoliciesResponse listPolicies(Namespace parent, PolicyType policyType) {
+  public ListPoliciesResponse listPolicies(Namespace parent, @Nullable PolicyType policyType) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_POLICY;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
