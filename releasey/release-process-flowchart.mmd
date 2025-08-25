@@ -5,16 +5,9 @@ flowchart TD
 
     C --> D["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/><br/>• Verify that all Github checks are passing<br/>• Update the project version files<br/>• Finalize the changelog for the release<br/>• Commit the changes to release branch<br/>• Create the RC tag<br/>• Push the branch and the tag"]
 
-    D --> E["🤖 GitHub Workflow<br/>⚡ Automated on version update workflow<br/><br/>• Build the source and binary artifacts<br/>• Stage artifacts to dist dev repository<br/>• Publish artifacts to Nexus staging repository<br/>• Close Nexus staging repository"]
-
-    E --> F["🤖 GitHub Workflow<br/>⚡ Automated on binary artifacts build workflow<br/><br/>• Build Docker images for server and admin tool"]
-
-    F --> G["🤖 GitHub Workflow<br/>⚡ Automated on Docker images build workflow<br/><br/>• Build the Helm chart<br/>• Create signature and checksum for Helm package files<br/>• Copy package files to dist dev repository"]
+    D --> E["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/>• Build the source and binary artifacts<br/>• Stage artifacts to dist dev repository<br/>• Publish artifacts to Nexus staging repository<br/>• Close Nexus staging repository<br/>• Build Docker images for server and admin tool<br/>• Build the Helm chart<br/>• Create signature and checksum for Helm package files<br/>• Copy package files to dist dev repository"]
 
     E --> H["👤 Release Manager<br/><br/>• Start vote thread on dev mailing list<br/>• Wait for the vote to pass<br/>• Start vote thread on incubator mailing list<br/>• Wait for the vote to pass"]
-
-    F --> H
-    G --> H
 
     H --> I["🤖 GitHub Workflow<br/>🔧 Manual trigger from release manager<br/><br/>• Copy distribution from dist dev to dist release space<br/>• Create a final release tag to Git repository<br/>• Create the GitHub release<br/>• Publish Docker images to DockerHub<br/>• Release the candidate repository on Nexus"]
 
@@ -26,4 +19,4 @@ flowchart TD
     classDef leftAlign text-align:left;
 
     %% Apply left-align class to all nodes
-    class A,B,C,D,E,F,G,H,I,J,K leftAlign;
+    class B,C,D,E,H,I,J,K leftAlign;

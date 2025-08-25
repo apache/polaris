@@ -29,13 +29,16 @@ on:
         default: true
 
 jobs:
-  build-and-publish-artifacts:
-    name: Release - 3 - Build and Publish Release Artifacts
+  prerequisite-checks:
+    name: Prerequisite Checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
       dry_run: ${{ steps.set-outputs.outputs.dry_run }}
+      git_tag: ${{ steps.validate-tag.outputs.git_tag }}
+      version_without_rc: ${{ steps.validate-tag.outputs.version_without_rc }}
+      rc_number: ${{ steps.validate-tag.outputs.rc_number }}
 
     steps:
       - name: Checkout repository
@@ -61,6 +64,7 @@ jobs:
           fi
 
       - name: Validate release candidate tag
+        id: validate-tag
         run: |
           source "${LIBS_DIR}/_version.sh"
 
@@ -77,10 +81,14 @@ jobs:
             exit 1
           fi
 
-          # Export variables for next steps
+          # Export variables for next steps and job outputs
           echo "git_tag=${git_tag}" >> $GITHUB_ENV
           echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
           echo "rc_number=${rc_number}" >> $GITHUB_ENV
+
+          echo "git_tag=${git_tag}" >> $GITHUB_OUTPUT
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_OUTPUT
+          echo "rc_number=${rc_number}" >> $GITHUB_OUTPUT
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           | Parameter | Value |
@@ -89,6 +97,29 @@ jobs:
           | Version | \`${version_without_rc}\` |
           | RC number | \`${rc_number}\` |
           EOT
+
+  build-and-publish-artifacts:
+    name: Build and Publish Release Artifacts
+    runs-on: ubuntu-latest
+    needs: prerequisite-checks
+    permissions:
+      contents: read
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Java
         uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
@@ -103,19 +134,6 @@ jobs:
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
           git_user_signingkey: true
           git_commit_gpgsign: true
-
-      - name: Test and configure GPG key
-        env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          echo "use-agent" >> ~/.gnupg/gpg.conf
-          gpg-connect-agent reloadagent /bye
-
-          # Test that GPG can sign (this will cache the passphrase)
-          echo "test" | gpg --batch --yes --passphrase "$GPG_PASSPHRASE" --pinentry-mode loopback --armor --detach-sign
-
-          mkdir -p ~/.gradle
-          echo "signing.gnupg.keyName=$(gpg --list-secret-keys --keyid-format LONG | grep sec | head -1 | sed 's/.*\/\([A-F0-9]*\).*/\1/')" >> ~/.gradle/gradle.properties
 
       - name: Build source and binary distributions
         run: |
@@ -192,4 +210,152 @@ jobs:
           | Stage artifacts to Apache dist dev repository | ✅ |
           | Stage artifacts to Apache Nexus staging repository | ✅ |
           | Close Nexus staging repository | ✅ |
+          EOT
+
+  build-docker:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [prerequisite-checks, build-and-publish-artifacts]
+    permissions:
+      contents: read
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Set up Java
+        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Build Polaris Server Docker image
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.push=false \
+            -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
+            -Dquarkus.container-image.tag="${git_tag}"
+
+      - name: Build Polaris Admin Tool Docker image
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.push=false \
+            -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
+            -Dquarkus.container-image.tag="${git_tag}"
+
+          echo "## Docker Images Summary" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Docker images built successfully:
+
+          | Component | Status |
+          | --- | --- |
+          | Polaris Server Docker image | ✅ Built |
+          | Polaris Admin Tool Docker image | ✅ Built |
+          | Git tag | \`${git_tag}\` |
+          EOT
+
+  build-and-stage-helm-chart:
+    name: Build and Stage Helm Chart
+    runs-on: ubuntu-latest
+    needs: [prerequisite-checks, build-docker]
+    permissions:
+      contents: read
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Set up Helm
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4
+        with:
+          version: 'latest'
+
+      - name: Install Helm GPG plugin
+        run: |
+          helm plugin install https://github.com/technosophos/helm-gpg || true
+          helm plugin list
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Create Helm package
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process cd helm
+          exec_process helm package polaris
+          exec_process helm gpg sign polaris-${version_without_rc}.tgz
+          calculate_sha512 polaris-${version_without_rc}.tgz polaris-${version_without_rc}.tgz.sha512
+          exec_process gpg --armor --output polaris-${version_without_rc}.tgz.asc --detach-sig polaris-${version_without_rc}.tgz
+          calculate_sha512 polaris-${version_without_rc}.tgz.prov polaris-${version_without_rc}.tgz.prov.sha512
+          exec_process gpg --armor --output polaris-${version_without_rc}.tgz.prov.asc --detach-sig polaris-${version_without_rc}.tgz.prov
+
+      - name: Stage Helm chart to Apache dist dev repository
+        env:
+          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
+          exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
+
+          exec_process mkdir -p "${dist_dev_dir}/helm-chart/${version_without_rc}"
+          exec_process cp helm/polaris-${version_without_rc}.tgz* "${dist_dev_dir}/helm-chart/${version_without_rc}/"
+
+          exec_process cd "${dist_dev_dir}/helm-chart"
+          exec_process helm repo index .
+
+          exec_process cd "${dist_dev_dir}"
+          exec_process svn add index.yaml
+          exec_process svn add "helm-chart/${version_without_rc}"
+
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Helm chart ${version_without_rc} RC${rc_number}"
+
+          echo "## Helm Chart Summary" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Helm chart built and staged successfully:
+
+          | Component | Status |
+          | --- | --- |
+          | Helm package | ✅ Created and signed |
+          | Apache dist dev repository | ✅ Staged |
+          | Version | \`${version_without_rc}\` |
+          | Git tag | \`${git_tag}\` |
           EOT
