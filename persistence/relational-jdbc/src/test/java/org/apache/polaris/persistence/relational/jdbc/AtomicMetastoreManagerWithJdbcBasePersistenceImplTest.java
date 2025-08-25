@@ -69,7 +69,8 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             Mockito.mock(),
             realmContext.getRealmIdentifier(),
             schemaVersion);
-    AtomicOperationMetaStoreManager metaStoreManager = new AtomicOperationMetaStoreManager(clock);
+    AtomicOperationMetaStoreManager metaStoreManager =
+        new AtomicOperationMetaStoreManager(clock, diagServices);
     PolarisCallContext callCtx =
         new PolarisCallContext(realmContext, basePersistence, diagServices);
     return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);

@@ -87,7 +87,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   protected PolarisMetaStoreManager createNewMetaStoreManager() {
-    return new AtomicOperationMetaStoreManager(clock);
+    return new AtomicOperationMetaStoreManager(clock, diagnostics);
   }
 
   private void initializeForRealm(

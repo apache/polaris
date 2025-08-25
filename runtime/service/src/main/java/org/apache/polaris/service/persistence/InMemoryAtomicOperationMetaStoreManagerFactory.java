@@ -50,7 +50,8 @@ public class InMemoryAtomicOperationMetaStoreManagerFactory
   }
 
   @Override
-  protected PolarisMetaStoreManager createNewMetaStoreManager(Clock clock) {
-    return new AtomicOperationMetaStoreManager(clock);
+  protected PolarisMetaStoreManager createNewMetaStoreManager(
+      Clock clock, PolarisDiagnostics diagnostics) {
+    return new AtomicOperationMetaStoreManager(clock, diagnostics);
   }
 }
