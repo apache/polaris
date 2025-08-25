@@ -21,12 +21,12 @@ package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
 import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +35,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -194,31 +195,23 @@ class AwsCloudWatchEventListenerTest {
       AfterTableRefreshedEvent event = new AfterTableRefreshedEvent(testTable);
       listener.onAfterTableRefreshed(event);
 
-      // Verify the event was sent to CloudWatch by reading the actual logs
-      GetLogEventsResponse logEvents;
-      int eventCount = 0;
-      long startTime = System.currentTimeMillis();
-      while (eventCount == 0) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          fail("Thread interrupted waiting for event");
-        }
-        if (System.currentTimeMillis() - startTime > 30_000) {
-          fail("Timeout exceeded while waiting for event to arrive");
-        }
-        logEvents =
-            client
-                .getLogEvents(
-                    GetLogEventsRequest.builder()
-                        .logGroupName(LOG_GROUP)
-                        .logStreamName(LOG_STREAM)
-                        .build())
-                .join();
-        eventCount = logEvents.events().size();
-      }
-
-      logEvents =
+      Awaitility.await("expected amount of records should be sent to CloudWatch")
+          .atMost(Duration.ofSeconds(30))
+          .pollDelay(Duration.ofMillis(100))
+          .pollInterval(Duration.ofMillis(100))
+          .untilAsserted(
+              () -> {
+                GetLogEventsResponse resp =
+                    client
+                        .getLogEvents(
+                            GetLogEventsRequest.builder()
+                                .logGroupName(LOG_GROUP)
+                                .logStreamName(LOG_STREAM)
+                                .build())
+                        .join();
+                assertThat(resp.events().size()).isGreaterThan(0);
+              });
+      GetLogEventsResponse logEvents =
           client
               .getLogEvents(
                   GetLogEventsRequest.builder()
@@ -259,31 +252,24 @@ class AwsCloudWatchEventListenerTest {
       AfterTableRefreshedEvent syncEvent = new AfterTableRefreshedEvent(syncTestTable);
       syncListener.onAfterTableRefreshed(syncEvent);
 
-      // Verify both events were sent to CloudWatch
-      GetLogEventsResponse logEvents;
-      int eventCount = 0;
-      long startTime = System.currentTimeMillis();
-      while (eventCount == 0) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          fail("Thread interrupted waiting for event");
-        }
-        if (System.currentTimeMillis() - startTime > 30_000) {
-          fail("Timeout exceeded while waiting for event to arrive");
-        }
-        logEvents =
-            client
-                .getLogEvents(
-                    GetLogEventsRequest.builder()
-                        .logGroupName(LOG_GROUP)
-                        .logStreamName(LOG_STREAM)
-                        .build())
-                .join();
-        eventCount = logEvents.events().size();
-      }
+      Awaitility.await("expected amount of records should be sent to CloudWatch")
+          .atMost(Duration.ofSeconds(30))
+          .pollDelay(Duration.ofMillis(100))
+          .pollInterval(Duration.ofMillis(100))
+          .untilAsserted(
+              () -> {
+                GetLogEventsResponse resp =
+                    client
+                        .getLogEvents(
+                            GetLogEventsRequest.builder()
+                                .logGroupName(LOG_GROUP)
+                                .logStreamName(LOG_STREAM)
+                                .build())
+                        .join();
+                assertThat(resp.events().size()).isGreaterThan(0);
+              });
 
-      logEvents =
+      GetLogEventsResponse logEvents =
           client
               .getLogEvents(
                   GetLogEventsRequest.builder()
