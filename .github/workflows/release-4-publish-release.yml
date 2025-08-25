@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: Release - 6 - Publish Release After Vote Success
+name: Release - 4 - Publish Release After Vote Success
 
 on:
   workflow_dispatch:
