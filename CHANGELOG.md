@@ -81,6 +81,9 @@ at locations that better optimize for object storage.
 
 - Introduced bootstrap command options to specify custom schema files for database initialization.
 
+- Added refresh credentials endpoint configuration to LoadTableResponse for AWS, Azure, and GCP. Enabling
+automatic credential refresh per table on the client side.
+
 ### Changes
 
 - Polaris Management API clients must be prepared to deal with new attributes in `AwsStorageConfigInfo` objects.
