@@ -19,7 +19,7 @@
 
 plugins {
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
   id("java-test-fixtures")
 }

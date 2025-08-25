@@ -22,7 +22,7 @@ import io.quarkus.gradle.tasks.QuarkusRun
 
 plugins {
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   alias(libs.plugins.openapi.generator)
   id("polaris-runtime")
   // id("polaris-license-report")

@@ -23,6 +23,8 @@ import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.named
+import org.kordamp.gradle.plugin.jandex.JandexExtension
+import org.kordamp.gradle.plugin.jandex.JandexPlugin
 import publishing.PublishingHelperPlugin
 
 plugins {
@@ -37,6 +39,20 @@ plugins {
 }
 
 apply<PublishingHelperPlugin>()
+
+plugins.withType<JandexPlugin>().configureEach {
+  extensions.getByType(JandexExtension::class).run {
+    version =
+      versionCatalogs
+        .named("libs")
+        .findLibrary("jandex")
+        .orElseThrow { GradleException("jandex version not found in libs.versions.toml") }
+        .get()
+        .version
+    // https://smallrye.io/jandex/jandex/3.4.0/index.html#persistent_index_format_versions
+    indexVersion = 12
+  }
+}
 
 checkstyle {
   val checkstyleVersion =
