@@ -935,7 +935,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       String customClientId,
       String customClientSecret) {
     PolarisPrincipalSecrets secrets =
-        ms.resetPrincipalSecrets(
+        ms.storePrincipalSecrets(
             callCtx, clientId, principalId, customClientId, customClientSecret);
     return secrets;
   }
@@ -952,13 +952,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // if not found, the principal must have been dropped
     EntityResult loadEntityResult =
         loadEntity(
-            callCtx,
-            ms,
-            PolarisEntityConstants.getNullId(),
-            principalId,
-            PolarisEntityType.PRINCIPAL.getCode());
+            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
     if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
-      return null;
+      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // need to run inside a read/write transaction

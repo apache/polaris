@@ -751,7 +751,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   @Nullable
   @Override
-  public PolarisPrincipalSecrets resetPrincipalSecrets(
+  public PolarisPrincipalSecrets storePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,

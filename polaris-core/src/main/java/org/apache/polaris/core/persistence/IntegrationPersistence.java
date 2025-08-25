@@ -82,17 +82,19 @@ public interface IntegrationPersistence {
       @Nonnull String oldSecretHash);
 
   /**
-   * Reset the secrets of a principal entity, i.e. make the specified secrets as main and secondary
-   * and assign a new client id
+   * Store the secrets of a principal entity.
+   *
+   * <p>This method creates and persists new credentials for the given client ID. The credentials
+   * are expected not to already exist for the given client ID.
    *
    * @param callCtx call context
-   * @param clientId principal client id
-   * @param principalId principal id
-   * @param customClientId the principal secret's old main secret hash
-   * @param customClientSecret the principal secret's old main secret hash
+   * @param clientId the principal client id
+   * @param principalId the principal id
+   * @param customClientSecret the secret for the principal
+   * @return the stored principal secrets
    */
   @Nullable
-  PolarisPrincipalSecrets resetPrincipalSecrets(
+  PolarisPrincipalSecrets storePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
