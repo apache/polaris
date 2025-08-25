@@ -1112,24 +1112,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         throw new IllegalArgumentException(
             "Cannot create namespace without a parent storage configuration");
       }
-      boolean allowed =
+      List<String> defaultLocations =
           parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
               .filter(java.util.Objects::nonNull)
-              .map(StorageLocation::of)
-              .anyMatch(
+              .map(
                   l -> {
-                    if (namespaceLocation.isChildOf(l)) {
-                      String defaultLocation =
-                          StorageLocation.ensureTrailingSlash(
-                              StorageLocation.ensureTrailingSlash(l.withoutScheme())
-                                  + namespace.getName());
-                      return defaultLocation.equals(namespaceLocation.withoutScheme());
-                    }
-                    return false;
-                  });
-      if (!allowed) {
+                    return StorageLocation.ensureTrailingSlash(
+                        StorageLocation.ensureTrailingSlash(StorageLocation.of(l).withoutScheme())
+                            + namespace.getName());
+                  })
+              .toList();
+      if (defaultLocations.stream()
+          .noneMatch(l -> namespaceLocation.isChildOf(StorageLocation.of(l)))) {
         throw new IllegalArgumentException(
-            "Namespace " + namespace.getName() + " has a custom location, which is not enabled");
+            "Namespace "
+                + namespace.getName()
+                + " has a custom location, "
+                + "which is not enabled. Expected a location in: ["
+                + String.join(", ", defaultLocations)
+                + "]");
       }
     } else if (parent.getType().equals(PolarisEntityType.NAMESPACE)) {
       NamespaceEntity parentEntity = NamespaceEntity.of(parent);
@@ -1141,17 +1142,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           StorageLocation.of(
               resolveNamespaceLocation(
                   parentEntity.asNamespace(), parentEntity.getPropertiesAsMap()));
+      String defaultLocation =
+          StorageLocation.ensureTrailingSlash(
+              StorageLocation.ensureTrailingSlash(parentLocation.withoutScheme())
+                  + namespace.getName());
       if (namespaceLocation.isChildOf(parentLocation)) {
-        String defaultLocation =
-            StorageLocation.ensureTrailingSlash(
-                StorageLocation.ensureTrailingSlash(parentLocation.withoutScheme())
-                    + namespace.getName());
         if (defaultLocation.equals(namespaceLocation.withoutScheme())) {
           return;
         }
       }
       throw new IllegalArgumentException(
-          "Namespace " + namespace.getName() + " has a custom location, which is not enabled");
+          "Namespace "
+              + namespace.getName()
+              + " has a custom location, "
+              + "which is not enabled. Expected location: "
+              + defaultLocation);
     } else {
       throw new IllegalArgumentException(
           "Failed to validate namespace "
