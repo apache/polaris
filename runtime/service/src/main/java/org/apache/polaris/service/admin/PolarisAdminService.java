@@ -1102,14 +1102,16 @@ public class PolarisAdminService {
                           "Concurrent modification on Principal '%s'; retry later", principalName));
     }
 
+    String resolvedClientId =
+        (customClientId != null) ? customClientId : currentPrincipalEntity.getClientId();
+
     // generate new secrets
     PolarisPrincipalSecrets newSecrets =
         metaStoreManager
             .resetPrincipalSecrets(
                 getCurrentPolarisContext(),
-                currentPrincipalEntity.getClientId(),
                 currentPrincipalEntity.getId(),
-                customClientId,
+                resolvedClientId,
                 customClientSecret)
             .getPrincipalSecrets();
 

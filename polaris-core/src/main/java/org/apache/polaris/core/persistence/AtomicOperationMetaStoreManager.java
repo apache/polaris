@@ -924,9 +924,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   @Override
   public @Nonnull PrincipalSecretsResult resetPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
       long principalId,
-      String customClientId,
+      @Nonnull String resolvedClientId,
       String customClientSecret) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
@@ -940,8 +939,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     PolarisPrincipalSecrets secrets =
         ((IntegrationPersistence) ms)
-            .storePrincipalSecrets(
-                callCtx, clientId, principalId, customClientId, customClientSecret);
+            .storePrincipalSecrets(callCtx, principalId, resolvedClientId, customClientSecret);
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);

@@ -88,17 +88,16 @@ public interface IntegrationPersistence {
    * are expected not to already exist for the given client ID.
    *
    * @param callCtx call context
-   * @param clientId the principal client id
    * @param principalId the principal id
+   * @param resolvedClientId
    * @param customClientSecret the secret for the principal
    * @return the stored principal secrets
    */
   @Nullable
   PolarisPrincipalSecrets storePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
       long principalId,
-      String customClientId,
+      @Nonnull String resolvedClientId,
       String customClientSecret);
 
   /**

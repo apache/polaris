@@ -181,9 +181,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   @Override
   public PrincipalSecretsResult resetPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
       long principalId,
-      String customClientId,
+      @Nonnull String resolvedClientId,
       String customClientSecret) {
     callCtx
         .getDiagServices()

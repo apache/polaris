@@ -996,17 +996,15 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       String customClientId,
       String customClientSecret) {
     PolarisPrincipalSecrets secrets =
-        ms.storePrincipalSecrets(
-            callCtx, clientId, principalId, customClientId, customClientSecret);
+        ms.storePrincipalSecrets(callCtx, principalId, customClientId, customClientSecret);
     return secrets;
   }
 
   @Override
   public @Nonnull PrincipalSecretsResult resetPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
       long principalId,
-      String customClientId,
+      @Nonnull String resolvedClientId,
       String customClientSecret) {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
@@ -1024,7 +1022,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             callCtx,
             () ->
                 this.resetPrincipalSecrets(
-                    callCtx, ms, clientId, principalId, customClientId, customClientSecret));
+                    callCtx,
+                    ms,
+                    resolvedClientId,
+                    principalId,
+                    resolvedClientId,
+                    customClientSecret));
 
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)

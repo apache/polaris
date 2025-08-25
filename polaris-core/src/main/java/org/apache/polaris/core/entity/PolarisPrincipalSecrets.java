@@ -139,8 +139,7 @@ public class PolarisPrincipalSecrets {
     this.secondarySecretHash = hashSecret(secondarySecret);
   }
 
-  public PolarisPrincipalSecrets(
-      long principalId, @Nullable String newClientId, @Nullable String newSecret) {
+  public PolarisPrincipalSecrets(long principalId, String newClientId, @Nullable String newSecret) {
     this.principalId = principalId;
     this.principalClientId = newClientId;
     this.mainSecret = (newSecret != null) ? newSecret : this.generateRandomHexString(32);

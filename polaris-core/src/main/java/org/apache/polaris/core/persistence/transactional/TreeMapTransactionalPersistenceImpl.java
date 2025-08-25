@@ -488,17 +488,12 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Override
   public @Nonnull PolarisPrincipalSecrets storePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
       long principalId,
-      String customClientId,
+      @Nonnull String resolvedClientId,
       String customClientSecret) {
-    PolarisPrincipalSecrets principalSecrets;
-    if (customClientId == null) {
-      principalSecrets = new PolarisPrincipalSecrets(principalId, clientId, customClientSecret);
-    } else {
-      principalSecrets =
-          new PolarisPrincipalSecrets(principalId, customClientId, customClientSecret);
-    }
+    PolarisPrincipalSecrets principalSecrets =
+        new PolarisPrincipalSecrets(principalId, resolvedClientId, customClientSecret);
+
     // write back new secrets
     this.store.getSlicePrincipalSecrets().write(principalSecrets);
 
