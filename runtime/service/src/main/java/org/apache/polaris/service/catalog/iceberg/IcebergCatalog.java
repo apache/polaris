@@ -1112,24 +1112,24 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         throw new IllegalArgumentException(
             "Cannot create namespace without a parent storage configuration");
       }
-      List<String> defaultLocations =
+      List<StorageLocation> defaultLocations =
           parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
               .filter(java.util.Objects::nonNull)
               .map(
                   l -> {
                     return StorageLocation.ensureTrailingSlash(
-                        StorageLocation.ensureTrailingSlash(StorageLocation.of(l).withoutScheme())
-                            + namespace.getName());
+                        StorageLocation.ensureTrailingSlash(l) + namespace.getName());
                   })
+              .map(StorageLocation::of)
               .toList();
-      if (defaultLocations.stream()
-          .noneMatch(l -> namespaceLocation.isChildOf(StorageLocation.of(l)))) {
+      if (!defaultLocations.contains(namespaceLocation)) {
         throw new IllegalArgumentException(
             "Namespace "
                 + namespace.getName()
                 + " has a custom location, "
                 + "which is not enabled. Expected a location in: ["
-                + String.join(", ", defaultLocations)
+                + String.join(
+                    ", ", defaultLocations.stream().map(StorageLocation::toString).toList())
                 + "]");
       }
     } else if (parent.getType().equals(PolarisEntityType.NAMESPACE)) {
@@ -1138,25 +1138,20 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           "Validating namespace {} given parent namespace {}",
           namespace.getName(),
           parentEntity.getName());
-      StorageLocation parentLocation =
+      String parentLocation =
+          resolveNamespaceLocation(parentEntity.asNamespace(), parentEntity.getPropertiesAsMap());
+      StorageLocation defaultLocation =
           StorageLocation.of(
-              resolveNamespaceLocation(
-                  parentEntity.asNamespace(), parentEntity.getPropertiesAsMap()));
-      String defaultLocation =
-          StorageLocation.ensureTrailingSlash(
-              StorageLocation.ensureTrailingSlash(parentLocation.withoutScheme())
-                  + namespace.getName());
-      if (namespaceLocation.isChildOf(parentLocation)) {
-        if (defaultLocation.equals(namespaceLocation.withoutScheme())) {
-          return;
-        }
+              StorageLocation.ensureTrailingSlash(
+                  StorageLocation.ensureTrailingSlash(parentLocation) + namespace.getName()));
+      if (!defaultLocation.equals(namespaceLocation)) {
+        throw new IllegalArgumentException(
+            "Namespace "
+                + namespace.getName()
+                + " has a custom location, "
+                + "which is not enabled. Expected location: "
+                + defaultLocation);
       }
-      throw new IllegalArgumentException(
-          "Namespace "
-              + namespace.getName()
-              + " has a custom location, "
-              + "which is not enabled. Expected location: "
-              + defaultLocation);
     } else {
       throw new IllegalArgumentException(
           "Failed to validate namespace "

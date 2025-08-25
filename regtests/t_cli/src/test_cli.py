@@ -110,6 +110,8 @@ def test_quickstart_flow():
             ROLE_ARN,
             '--default-base-location',
             f's3://fake-location-{SALT}',
+            '--property',
+            'polaris.config.namespace-custom-location.enabled=true',
             f'test_cli_catalog_{SALT}'), checker=lambda s: s == '')
         check_output(root_cli('catalogs', 'list'),
                      checker=lambda s: f'test_cli_catalog_{SALT}' in s)
