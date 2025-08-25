@@ -48,16 +48,17 @@ public class AzureCredentialsStorageIntegrationTest {
             "some_account." + AzureLocation.ADLS_ENDPOINT,
             expiresAt,
             Optional.of("endpoint/credentials"));
-    Assertions.assertThat(adlsSuffixResult.credentials()).hasSize(5);
+    Assertions.assertThat(adlsSuffixResult.credentials()).hasSize(3);
     Assertions.assertThat(adlsSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account");
     Assertions.assertThat(adlsSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account." + AzureLocation.ADLS_ENDPOINT);
-    Assertions.assertThat(adlsSuffixResult.credentials())
+
+    Assertions.assertThat(adlsSuffixResult.extraProperties())
         .containsEntry(
             StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
             "endpoint/credentials");
-    Assertions.assertThat(adlsSuffixResult.credentials())
+    Assertions.assertThat(adlsSuffixResult.extraProperties())
         .containsEntry(
             StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENABLED.getPropertyName(), "true");
 

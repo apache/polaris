@@ -104,13 +104,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
         .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
         .containsEntry(
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
+            String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    assertThat(accessConfig.extraProperties())
+        .containsEntry(
             StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENABLED.getPropertyName(), "true")
         .containsEntry(
             StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
-            "/namespace/table/credentials")
-        .containsEntry(
-            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
-            String.valueOf(EXPIRE_TIME.toEpochMilli()));
+            "/namespace/table/credentials");
   }
 
   @ParameterizedTest
