@@ -23,6 +23,7 @@ import io.micrometer.common.lang.Nullable;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
 
 @ApplicationScoped
@@ -39,6 +40,13 @@ public class PolarisValueExpressionResolver implements ValueExpressionResolver {
         && expression.equals("realmIdentifier")) {
       return realmContext.getRealmIdentifier();
     }
+
+    if (metricsConfiguration.userPrincipalTag().enableInApiMetrics() &&
+            parameter instanceof SecurityContext securityContext
+            && expression.equals("userPrincipal") && securityContext.getUserPrincipal() != null) {
+      return securityContext.getUserPrincipal().getName();
+    }
     return null;
   }
+
 }
