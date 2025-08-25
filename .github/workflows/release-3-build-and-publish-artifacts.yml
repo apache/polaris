@@ -139,7 +139,7 @@ jobs:
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          exec_process ./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest
+          exec_process ./gradlew assemble sourceTarball -Prelease -PuseGpgAgent
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Build
