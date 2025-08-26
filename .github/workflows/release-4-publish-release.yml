@@ -30,7 +30,7 @@ on:
 
 jobs:
   publish-release:
-    name: Release - 6 - Publish Release After Vote Success
+    name: Release - 4 - Publish Release After Vote Success
     runs-on: ubuntu-latest
     permissions:
       contents: write
