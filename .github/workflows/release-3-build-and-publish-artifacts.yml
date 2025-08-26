@@ -199,11 +199,6 @@ jobs:
           ## Summary
           🎉 Artifacts built and published successfully:
 
-          | Name | Value |
-          | --- | --- |
-          | Version | \`${version_without_rc}\` |
-          | Git tag | \`${git_tag}\` |
-
           | Operation | Status |
           | --- | --- |
           | Build source and binary distributions | ✅ |
@@ -269,7 +264,6 @@ jobs:
           | --- | --- |
           | Polaris Server Docker image | ✅ Built |
           | Polaris Admin Tool Docker image | ✅ Built |
-          | Git tag | \`${git_tag}\` |
           EOT
 
   build-and-stage-helm-chart:
@@ -356,6 +350,4 @@ jobs:
           | --- | --- |
           | Helm package | ✅ Created and signed |
           | Apache dist dev repository | ✅ Staged |
-          | Version | \`${version_without_rc}\` |
-          | Git tag | \`${git_tag}\` |
           EOT
