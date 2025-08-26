@@ -115,17 +115,25 @@ public class ProductionReadinessChecks {
   }
 
   @Produces
-  public ProductionReadinessCheck checkMetricTags(MetricsConfiguration config) {
+  public ProductionReadinessCheck checkUserPrincipalMetricTag(MetricsConfiguration config) {
+    if (config.userPrincipalTag().enableInApiMetrics()) {
+      return ProductionReadinessCheck.of(
+          Error.of(
+              "Metrics configuration includes user principal name and this could have security implications.",
+              "polaris.metrics.user-principal-tag.enable-in-api-metrics"));
+    }
+    return ProductionReadinessCheck.OK;
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkUserPrincipalAndRealmIdMetricTags(
+      MetricsConfiguration config) {
     if (config.userPrincipalTag().enableInApiMetrics()
         && config.realmIdTag().enableInApiMetrics()) {
       return ProductionReadinessCheck.of(
           Error.of(
-              "Metrics configuration includes both user principal name and realm id in tags this could cause performance implications.",
+              "Metrics configuration includes both user principal name and realm id in tags and this could have performance implications.",
               "polaris.metrics.user-principal-tag.enable-in-api-metrics"));
-    } else {
-      LOGGER.warn(
-          "Metrics configuration includes user principal name in tags. "
-              + "This could have performance implications.");
     }
     return ProductionReadinessCheck.OK;
   }
