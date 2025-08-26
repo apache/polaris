@@ -174,8 +174,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
           "polaris.config.allow.unstructured.table.location", "true",
           "polaris.config.allow.external.table.location", "true",
           "polaris.config.list-pagination-enabled", "true",
-          "polaris.config.namespace-custom-location.enabled", "true"
-      );
+          "polaris.config.namespace-custom-location.enabled", "true");
 
   /**
    * Get the storage configuration information for the catalog.
