@@ -83,7 +83,7 @@ at locations that better optimize for object storage.
 
 - Added refresh credentials endpoint configuration to LoadTableResponse for AWS, Azure, and GCP. Enabling
 automatic storage credential refresh per table on the client side. Java client version >= 1.8.0 is required.
-The endpoint path is always returned when using vended credentials, but the client must configure 
+The endpoint path is always returned when using vended credentials, but the client must configure
 REFRESH\_ENDPOINT\_ENABLED = "true" in the catalog properties for the client to use the endpoint.
 
 ### Changes
