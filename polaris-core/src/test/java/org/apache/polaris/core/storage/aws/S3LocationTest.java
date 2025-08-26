@@ -47,6 +47,7 @@ class S3LocationTest {
     Assertions.assertThat(loc1.isChildOf(loc2)).isTrue();
 
     StorageLocation loc3 = StorageLocation.of(childScheme + "://bucket/schema1");
-    Assertions.assertThat(loc2.equals(loc3)).isFalse();
+    Assertions.assertThat(loc2.toString().equals(loc3.toString())).isFalse();
+    Assertions.assertThat(loc2.equals(loc3)).isTrue();
   }
 }

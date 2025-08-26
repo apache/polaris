@@ -510,7 +510,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     if (!realmConfig.getConfig(
         FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
-      LOGGER.debug("Validating that namespace {} has a location inside its parent", namespace);
       validateNamespaceLocation(entity, resolvedParent);
     }
     PolarisEntity returnedEntity =
@@ -678,7 +677,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     if (!realmConfig.getConfig(
         FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
-      LOGGER.debug("Validating that namespace {} has a location inside its parent", namespace);
       validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
     }
 
@@ -1101,6 +1099,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             StorageLocation.ensureTrailingSlash(
                 resolveNamespaceLocation(namespace.asNamespace(), namespace.getPropertiesAsMap())));
     PolarisEntity parent = resolvedParent.getResolvedLeafEntity().getEntity();
+    Preconditions.checkArgument(
+        parent.getType().equals(PolarisEntityType.CATALOG) || parent.getType().equals(PolarisEntityType.NAMESPACE),
+        "Invalid parent type");
     if (parent.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity parentEntity = CatalogEntity.of(parent);
       LOGGER.debug(
@@ -1130,7 +1131,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 + "which is not enabled. Expected a location in: ["
                 + String.join(
                     ", ", defaultLocations.stream().map(StorageLocation::toString).toList())
-                + "]");
+                + "]. Got location: " + namespaceLocation + "]");
       }
     } else if (parent.getType().equals(PolarisEntityType.NAMESPACE)) {
       NamespaceEntity parentEntity = NamespaceEntity.of(parent);
@@ -1149,15 +1150,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             "Namespace "
                 + namespace.getName()
                 + " has a custom location, "
-                + "which is not enabled. Expected location: "
-                + defaultLocation);
+                + "which is not enabled. Expected location: ["
+                + defaultLocation + "]. Got location: [" + namespaceLocation + "]");
       }
-    } else {
-      throw new IllegalArgumentException(
-          "Failed to validate namespace "
-              + namespace.getName()
-              + " given parent "
-              + parent.getName());
     }
   }
 
