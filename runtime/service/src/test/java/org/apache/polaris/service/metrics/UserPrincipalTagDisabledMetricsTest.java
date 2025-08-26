@@ -27,12 +27,12 @@ import java.util.Map;
 @TestProfile(UserPrincipalTagDisabledMetricsTest.Profile.class)
 public class UserPrincipalTagDisabledMetricsTest extends MetricsTestBase {
 
-    public static class Profile implements QuarkusTestProfile {
+  public static class Profile implements QuarkusTestProfile {
 
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of(
-                    "polaris.metrics.tags.environment", "prod", "polaris.realm-context.type", "test");
-        }
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.metrics.tags.environment", "prod", "polaris.realm-context.type", "test");
     }
+  }
 }

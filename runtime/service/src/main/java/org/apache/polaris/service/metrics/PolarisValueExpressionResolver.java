@@ -41,12 +41,12 @@ public class PolarisValueExpressionResolver implements ValueExpressionResolver {
       return realmContext.getRealmIdentifier();
     }
 
-    if (metricsConfiguration.userPrincipalTag().enableInApiMetrics() &&
-            parameter instanceof SecurityContext securityContext
-            && expression.equals("userPrincipal") && securityContext.getUserPrincipal() != null) {
+    if (metricsConfiguration.userPrincipalTag().enableInApiMetrics()
+        && parameter instanceof SecurityContext securityContext
+        && expression.equals("userPrincipal")
+        && securityContext.getUserPrincipal() != null) {
       return securityContext.getUserPrincipal().getName();
     }
     return null;
   }
-
 }

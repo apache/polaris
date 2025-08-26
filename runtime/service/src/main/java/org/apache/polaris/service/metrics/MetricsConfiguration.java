@@ -79,6 +79,5 @@ public interface MetricsConfiguration {
      */
     @WithDefault("false")
     boolean enableInApiMetrics();
-
   }
 }
