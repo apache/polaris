@@ -22,6 +22,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
+import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -34,24 +35,26 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.admin.ApiBaseImplementation;
+import org.apache.polaris.service.admin.EventsServiceDelegator;
+import org.apache.polaris.service.admin.MainService;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
-import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
 
 @RequestScoped
+@Default
+@EventsServiceDelegator
 @Alternative
 @Priority(1000) // Will allow downstream project-specific delegators to be added and used
-public class IcebergCatalogAdapterDefaultDelegator
-    implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService, CatalogAdapter {
+public class IcebergRestCatalogServiceDefaultDelegator
+    implements IcebergRestCatalogApiService, CatalogAdapter {
   private final IcebergCatalogAdapter delegate;
 
   @Inject
-  public IcebergCatalogAdapterDefaultDelegator(
-      @ApiBaseImplementation IcebergCatalogAdapter catalogAdapter) {
+  public IcebergRestCatalogServiceDefaultDelegator(
+      @MainService IcebergCatalogAdapter catalogAdapter) {
     this.delegate = catalogAdapter;
   }
 
@@ -319,12 +322,5 @@ public class IcebergCatalogAdapterDefaultDelegator
       SecurityContext securityContext) {
     return delegate.sendNotification(
         prefix, namespace, table, notificationRequest, realmContext, securityContext);
-  }
-
-  /** From IcebergRestConfigurationApiService. */
-  @Override
-  public Response getConfig(
-      String warehouse, RealmContext realmContext, SecurityContext securityContext) {
-    return delegate.getConfig(warehouse, realmContext, securityContext);
   }
 }

@@ -29,7 +29,8 @@ import jakarta.inject.Qualifier;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+// Used to annotate delegator classes, which are emitting events
 @Qualifier
 @Retention(RUNTIME)
 @Target({TYPE, METHOD, FIELD, PARAMETER})
-public @interface ApiBaseImplementation {}
+public @interface EventsServiceDelegator {}

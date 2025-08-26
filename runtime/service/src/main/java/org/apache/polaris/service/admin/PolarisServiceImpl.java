@@ -89,7 +89,7 @@ import org.slf4j.LoggerFactory;
 
 /** Concrete implementation of the Polaris API services */
 @RequestScoped
-@ApiBaseImplementation
+@MainService
 public class PolarisServiceImpl
     implements PolarisCatalogsApiService,
         PolarisPrincipalsApiService,

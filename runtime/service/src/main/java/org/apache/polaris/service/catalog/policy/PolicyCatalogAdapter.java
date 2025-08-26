@@ -36,7 +36,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.service.admin.ApiBaseImplementation;
+import org.apache.polaris.service.admin.MainService;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogPolicyApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
@@ -52,7 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @RequestScoped
-@ApiBaseImplementation
+@MainService
 public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, CatalogAdapter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolicyCatalogAdapter.class);
 
