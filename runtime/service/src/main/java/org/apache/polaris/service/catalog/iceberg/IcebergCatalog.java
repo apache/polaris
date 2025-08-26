@@ -1100,7 +1100,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 resolveNamespaceLocation(namespace.asNamespace(), namespace.getPropertiesAsMap())));
     PolarisEntity parent = resolvedParent.getResolvedLeafEntity().getEntity();
     Preconditions.checkArgument(
-        parent.getType().equals(PolarisEntityType.CATALOG) || parent.getType().equals(PolarisEntityType.NAMESPACE),
+        parent.getType().equals(PolarisEntityType.CATALOG)
+            || parent.getType().equals(PolarisEntityType.NAMESPACE),
         "Invalid parent type");
     if (parent.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity parentEntity = CatalogEntity.of(parent);
@@ -1131,7 +1132,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 + "which is not enabled. Expected a location in: ["
                 + String.join(
                     ", ", defaultLocations.stream().map(StorageLocation::toString).toList())
-                + "]. Got location: " + namespaceLocation + "]");
+                + "]. Got location: "
+                + namespaceLocation
+                + "]");
       }
     } else if (parent.getType().equals(PolarisEntityType.NAMESPACE)) {
       NamespaceEntity parentEntity = NamespaceEntity.of(parent);
@@ -1151,7 +1154,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 + namespace.getName()
                 + " has a custom location, "
                 + "which is not enabled. Expected location: ["
-                + defaultLocation + "]. Got location: [" + namespaceLocation + "]");
+                + defaultLocation
+                + "]. Got location: ["
+                + namespaceLocation
+                + "]");
       }
     }
   }
