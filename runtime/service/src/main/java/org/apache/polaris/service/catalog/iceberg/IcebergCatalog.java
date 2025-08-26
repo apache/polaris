@@ -1118,10 +1118,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           parentEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
               .filter(java.util.Objects::nonNull)
               .map(
-                  l -> {
-                    return StorageLocation.ensureTrailingSlash(
-                        StorageLocation.ensureTrailingSlash(l) + namespace.getName());
-                  })
+                  l ->
+                      StorageLocation.ensureTrailingSlash(
+                          StorageLocation.ensureTrailingSlash(l) + namespace.getName()))
               .map(StorageLocation::of)
               .toList();
       if (!defaultLocations.contains(namespaceLocation)) {
