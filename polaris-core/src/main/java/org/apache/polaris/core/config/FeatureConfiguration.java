@@ -104,8 +104,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_NAMESPACE_CUSTOM_LOCATION")
           .catalogConfig("polaris.config.namespace-custom-location.enabled")
-          .description("If set to true, allow namespaces with arbitrary locations, even those which escape " +
-              "from the parent/allowed locations. This may impact credential vending when enabled.")
+          .description(
+              "If set to true, allow namespaces with arbitrary locations, even those which escape "
+                  + "from the parent/allowed locations. This may impact credential vending when enabled.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
