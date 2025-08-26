@@ -58,9 +58,6 @@ public class AzureCredentialsStorageIntegrationTest {
         .containsEntry(
             StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
             "endpoint/credentials");
-    Assertions.assertThat(adlsSuffixResult.extraProperties())
-        .containsEntry(
-            StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENABLED.getPropertyName(), "true");
 
     AccessConfig blobSuffixResult =
         toAccessConfig(

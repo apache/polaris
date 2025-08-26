@@ -123,7 +123,6 @@ public class AwsCredentialsStorageIntegration
 
     refreshCredentialsEndpoint.ifPresent(
         endpoint -> {
-          accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENABLED, "true");
           accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
         });
 

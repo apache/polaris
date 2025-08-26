@@ -188,7 +188,6 @@ public class AzureCredentialsStorageIntegration
     refreshCredentialsEndpoint.ifPresent(
         endpoint -> {
           accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-          accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENABLED, "true");
         });
     return accessConfig.build();
   }

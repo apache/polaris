@@ -118,7 +118,6 @@ public class GcpCredentialsStorageIntegration
     refreshCredentialsEndpoint.ifPresent(
         endpoint -> {
           accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
-          accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENABLED, "true");
         });
 
     return accessConfig.build();

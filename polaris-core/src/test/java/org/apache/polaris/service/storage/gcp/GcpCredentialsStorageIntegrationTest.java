@@ -311,8 +311,6 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             List.of("gs://bucket1/path/to/data"), List.of("gs://bucket1/path/to/data"), true);
     assertThat(accessConfig.get(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT))
         .isEqualTo(REFRESH_ENDPOINT);
-    assertThat(accessConfig.get(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENABLED))
-        .isEqualTo(Boolean.TRUE.toString());
   }
 
   private boolean isNotNull(JsonNode node) {

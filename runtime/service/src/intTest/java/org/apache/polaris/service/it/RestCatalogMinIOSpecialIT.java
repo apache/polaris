@@ -269,7 +269,6 @@ public class RestCatalogMinIOSpecialIT {
         catalogApi.loadTableWithAccessDelegation(catalogName, id, "ALL");
     assertThat(loadTableResponse.config())
         .containsKey("s3.endpoint")
-        .containsEntry(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, Boolean.TRUE.toString())
         .containsEntry(
             AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
             "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials");
