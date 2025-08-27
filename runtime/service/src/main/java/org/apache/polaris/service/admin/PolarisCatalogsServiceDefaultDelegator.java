@@ -19,10 +19,10 @@
 
 package org.apache.polaris.service.admin;
 
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.RequestScoped;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.decorator.Decorator;
+import jakarta.decorator.Delegate;
 import jakarta.enterprise.inject.Default;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
@@ -34,17 +34,12 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 
-@RequestScoped
-@Default
 @EventsServiceDelegator
-@Alternative
-@Priority(1000) // Will allow downstream project-specific delegators to be added and used
+@Default
+@Decorator
 public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsApiService {
-  private final PolarisCatalogsApiService delegate;
 
-  public PolarisCatalogsServiceDefaultDelegator(@MainService PolarisCatalogsApiService delegate) {
-    this.delegate = delegate;
-  }
+  @Inject @Delegate PolarisCatalogsApiService delegate;
 
   /** From PolarisCatalogsApiService */
   @Override

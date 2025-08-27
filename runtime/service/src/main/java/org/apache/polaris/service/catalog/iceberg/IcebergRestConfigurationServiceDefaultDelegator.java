@@ -19,33 +19,23 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.RequestScoped;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.decorator.Decorator;
+import jakarta.decorator.Delegate;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.EventsServiceDelegator;
-import org.apache.polaris.service.admin.MainService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
-import org.apache.polaris.service.catalog.common.CatalogAdapter;
 
-@RequestScoped
 @Default
 @EventsServiceDelegator
-@Alternative
-@Priority(1000) // Will allow downstream project-specific delegators to be added and used
+@Decorator
 public class IcebergRestConfigurationServiceDefaultDelegator
-    implements IcebergRestConfigurationApiService, CatalogAdapter {
-  private final IcebergCatalogAdapter delegate;
+    implements IcebergRestConfigurationApiService {
 
-  @Inject
-  public IcebergRestConfigurationServiceDefaultDelegator(
-      @MainService IcebergCatalogAdapter catalogAdapter) {
-    this.delegate = catalogAdapter;
-  }
+  @Inject @Delegate IcebergCatalogAdapter delegate;
 
   @Override
   public Response getConfig(

@@ -19,34 +19,25 @@
 
 package org.apache.polaris.service.catalog.generic;
 
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.RequestScoped;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.decorator.Decorator;
+import jakarta.decorator.Delegate;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.EventsServiceDelegator;
-import org.apache.polaris.service.admin.MainService;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 
-@RequestScoped
 @Default
 @EventsServiceDelegator
-@Alternative
-@Priority(1000) // Will allow downstream project-specific delegators to be added and used
+@Decorator
 public class CatalogGenericTableServiceDefaultDelegator
     implements PolarisCatalogGenericTableApiService, CatalogAdapter {
-  private final GenericTableCatalogAdapter delegate;
 
-  @Inject
-  public CatalogGenericTableServiceDefaultDelegator(
-      @MainService GenericTableCatalogAdapter delegate) {
-    this.delegate = delegate;
-  }
+  @Inject @Delegate GenericTableCatalogAdapter delegate;
 
   @Override
   public Response createGenericTable(

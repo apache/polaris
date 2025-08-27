@@ -19,9 +19,8 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.RequestScoped;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.decorator.Decorator;
+import jakarta.decorator.Delegate;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
@@ -36,27 +35,17 @@ import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.EventsServiceDelegator;
-import org.apache.polaris.service.admin.MainService;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
-import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
 
-@RequestScoped
 @Default
 @EventsServiceDelegator
-@Alternative
-@Priority(1000) // Will allow downstream project-specific delegators to be added and used
-public class IcebergRestCatalogServiceDefaultDelegator
-    implements IcebergRestCatalogApiService, CatalogAdapter {
-  private final IcebergCatalogAdapter delegate;
+@Decorator
+public class IcebergRestCatalogServiceDefaultDelegator implements IcebergRestCatalogApiService {
 
-  @Inject
-  public IcebergRestCatalogServiceDefaultDelegator(
-      @MainService IcebergCatalogAdapter catalogAdapter) {
-    this.delegate = catalogAdapter;
-  }
+  @Inject @Delegate IcebergCatalogAdapter delegate;
 
   @Override
   public Response createNamespace(

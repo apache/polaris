@@ -19,10 +19,10 @@
 
 package org.apache.polaris.service.admin;
 
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.RequestScoped;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.decorator.Decorator;
+import jakarta.decorator.Delegate;
 import jakarta.enterprise.inject.Default;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
@@ -31,18 +31,12 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 
-@RequestScoped
 @Default
 @EventsServiceDelegator
-@Alternative
-@Priority(1000) // Will allow downstream project-specific delegators to be added and used
+@Decorator
 public class PolarisPrincipalsServiceDefaultDelegator implements PolarisPrincipalsApiService {
-  private final PolarisPrincipalsApiService delegate;
 
-  public PolarisPrincipalsServiceDefaultDelegator(
-      @MainService PolarisPrincipalsApiService delegate) {
-    this.delegate = delegate;
-  }
+  @Inject @Delegate PolarisPrincipalsApiService delegate;
 
   /** From PolarisPrincipalsApiService */
   @Override
