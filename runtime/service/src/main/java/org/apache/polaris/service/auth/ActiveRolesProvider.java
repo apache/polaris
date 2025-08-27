@@ -25,6 +25,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
  * Provides the active roles for a given principal. Implementations may rely on the active request
  * or SecurityContext to determine the active roles.
  */
+@Deprecated
 public interface ActiveRolesProvider {
   /**
    * Returns the active roles for the given principal.

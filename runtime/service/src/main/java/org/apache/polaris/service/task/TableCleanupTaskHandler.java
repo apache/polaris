@@ -21,6 +21,7 @@ package org.apache.polaris.service.task;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -36,7 +37,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
@@ -71,21 +71,19 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
   @Override
   public boolean canHandleTask(TaskEntity task) {
-    return task.getTaskType() == AsyncTaskType.ENTITY_CLEANUP_SCHEDULER && taskEntityIsTable(task);
+    return task.getTaskType() == AsyncTaskType.ENTITY_CLEANUP_SCHEDULER
+        && tryGetTableEntity(task).isPresent();
   }
 
-  private boolean taskEntityIsTable(TaskEntity task) {
-    PolarisEntity entity = PolarisEntity.of((task.readData(PolarisBaseEntity.class)));
-    return entity.getType().equals(PolarisEntityType.TABLE_LIKE);
+  private Optional<IcebergTableLikeEntity> tryGetTableEntity(TaskEntity task) {
+    return Optional.ofNullable(task.readData(PolarisBaseEntity.class))
+        .filter(entity -> entity.getType().equals(PolarisEntityType.TABLE_LIKE))
+        .map(IcebergTableLikeEntity::of);
   }
 
   @Override
   public boolean handleTask(TaskEntity cleanupTask, CallContext callContext) {
-    PolarisBaseEntity entity = cleanupTask.readData(PolarisBaseEntity.class);
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
-    IcebergTableLikeEntity tableEntity = IcebergTableLikeEntity.of(entity);
-    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    IcebergTableLikeEntity tableEntity = tryGetTableEntity(cleanupTask).orElseThrow();
     LOGGER
         .atInfo()
         .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
@@ -95,7 +93,8 @@ public class TableCleanupTaskHandler implements TaskHandler {
     // It's likely the cleanupTask has already been completed, but wasn't dropped successfully.
     // Log a
     // warning and move on
-    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, callContext)) {
+    try (FileIO fileIO =
+        fileIOSupplier.apply(cleanupTask, tableEntity.getTableIdentifier(), callContext)) {
       if (!TaskUtils.exists(tableEntity.getMetadataLocation(), fileIO)) {
         LOGGER
             .atWarn()
@@ -107,6 +106,10 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
       TableMetadata tableMetadata =
           TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
+
+      PolarisMetaStoreManager metaStoreManager =
+          metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
+      PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
 
       Stream<TaskEntity> manifestCleanupTasks =
           getManifestTaskStream(

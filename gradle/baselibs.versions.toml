@@ -19,7 +19,7 @@
 
 [libraries]
 errorprone = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version = "4.3.0" }
-idea-ext = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version = "1.2" }
+idea-ext = { module = "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext", version = "1.3" }
 jandex = { module = "org.kordamp.gradle:jandex-gradle-plugin", version = "2.2.0" }
 license-report = { module = "com.github.jk1:gradle-license-report", version = "2.9" }
 nexus-publish = { module = "io.github.gradle-nexus:publish-plugin", version = "2.0.0" }

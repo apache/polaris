@@ -93,7 +93,7 @@ public class {{classname}}  {
   {{#authMethods}}{{#isOAuth}}@RolesAllowed("**"){{/isOAuth}}{{/authMethods}}{{/hasAuthMethods}}
   @Timed("{{metricsPrefix}}.{{baseName}}.{{nickname}}")
   @Timeout
-  public Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>queryParams}}{{>pathParams}}{{>headerParams}}{{>bodyParams}}{{^isMultipart}}{{>formParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}@Context @MeterTag(key="realm_id",expression="realmIdentifier") RealmContext realmContext,@Context SecurityContext securityContext) {
+  public Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>queryParams}}{{>pathParams}}{{>headerParams}}{{>bodyParams}}{{^isMultipart}}{{>formParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}@Context @MeterTag(key="realm_id",expression="realmIdentifier") RealmContext realmContext,@Context @MeterTag(key="principal",expression="userPrincipal") SecurityContext securityContext) {
 {{! Don't log form or header params in case there are secrets, e.g., OAuth tokens }}
     LOGGER.atDebug().setMessage("Invoking {{baseName}} with params")
       .addKeyValue("operation", "{{nickname}}"){{#allParams}}{{^isHeaderParam}}{{^isFormParam}}

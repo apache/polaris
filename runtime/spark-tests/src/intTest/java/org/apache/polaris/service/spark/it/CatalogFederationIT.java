@@ -16,32 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.metrics;
+package org.apache.polaris.service.spark.it;
 
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import java.util.Map;
+import org.apache.polaris.service.it.test.CatalogFederationIntegrationTest;
 
-@QuarkusTest
-@TestProfile(RealmIdTagEnabledMetricsTest.Profile.class)
-public class RealmIdTagEnabledMetricsTest extends MetricsTestBase {
+@TestProfile(CatalogFederationIT.CatalogFederationProfile.class)
+@QuarkusIntegrationTest
+public class CatalogFederationIT extends CatalogFederationIntegrationTest {
 
-  public static class Profile implements QuarkusTestProfile {
-
+  public static class CatalogFederationProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.metrics.tags.environment",
-          "prod",
-          "polaris.realm-context.type",
-          "test",
-          "polaris.metrics.realm-id-tag.enable-in-api-metrics",
-          "true",
-          "polaris.metrics.realm-id-tag.enable-in-http-metrics",
-          "true",
-          "polaris.metrics.user-principal-tag.enable-in-api-metrics",
-          "false");
+          "polaris.features.\"ENABLE_CATALOG_FEDERATION\"", "true",
+          "polaris.features.\"SUPPORTED_CATALOG_CONNECTION_TYPES\"", "[\"ICEBERG_REST\"]",
+          "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true");
     }
   }
 }
