@@ -31,7 +31,8 @@ public interface AuthenticationRealmConfiguration {
 
   /**
    * The configuration for the authenticator. The authenticator is responsible for validating token
-   * credentials and mapping those credentials to an existing Polaris principal.
+   * credentials and mapping those credentials to an existing principal and validated principal
+   * roles.
    */
   AuthenticatorConfiguration authenticator();
 
@@ -40,23 +41,6 @@ public interface AuthenticationRealmConfiguration {
     /**
      * The type of the identity provider. Must be a registered {@link
      * org.apache.polaris.service.auth.Authenticator} identifier.
-     */
-    @WithDefault("default")
-    String type();
-  }
-
-  /**
-   * The configuration for the active roles provider. The active roles provider is responsible for
-   * determining the active roles for a given Polaris principal.
-   */
-  @Deprecated
-  ActiveRolesProviderConfiguration activeRolesProvider();
-
-  interface ActiveRolesProviderConfiguration {
-
-    /**
-     * The type of the active roles provider. Must be a registered {@link
-     * org.apache.polaris.service.auth.ActiveRolesProvider} identifier.
      */
     @WithDefault("default")
     String type();

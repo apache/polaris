@@ -72,7 +72,17 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
       SecurityIdentity identity, PolarisCredential polarisCredential) {
     try {
       PolarisPrincipal polarisPrincipal = authenticator.authenticate(polarisCredential);
-      return QuarkusSecurityIdentity.builder(identity).setPrincipal(polarisPrincipal).build();
+      QuarkusSecurityIdentity.Builder builder =
+          QuarkusSecurityIdentity.builder()
+              .setAnonymous(false)
+              .setPrincipal(polarisPrincipal)
+              .addRoles(polarisPrincipal.getRoles())
+              .addCredentials(identity.getCredentials())
+              .addAttributes(identity.getAttributes())
+              .addPermissionChecker(identity::checkPermission);
+      // Also include the Polaris principal properties as attributes of the identity
+      polarisPrincipal.getProperties().forEach(builder::addAttribute);
+      return builder.build();
     } catch (RuntimeException e) {
       throw new AuthenticationFailedException(e);
     }
