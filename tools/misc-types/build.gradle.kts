@@ -18,7 +18,7 @@
  */
 
 plugins {
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   id("polaris-client")
 }
 
