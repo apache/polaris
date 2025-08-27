@@ -1181,6 +1181,8 @@ public class PolarisAdminService {
 
   public @Nonnull PrincipalWithCredentials resetCredentials(
       String principalName, ResetPrincipalRequest resetPrincipalRequest) {
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        realmConfig, FeatureConfiguration.ENABLE_CREDENTIAL_RESET);
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.RESET_CREDENTIALS;
     authorizeBasicTopLevelEntityOperationOrThrow(op, principalName, PolarisEntityType.PRINCIPAL);
     var customClientId = resetPrincipalRequest.getClientId();
