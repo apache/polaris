@@ -141,7 +141,7 @@ public class PolarisServiceImpl
         reservedProperties);
   }
 
-  private static Response toResponse(BaseResult result, Response.Status successStatus) {
+  private static Response toResponse(BaseResult result, Response.Status successStatus, Object entity) {
     if (!result.isSuccess()) {
       ErrorResponse icebergErrorResponse =
           ErrorResponse.builder()
@@ -154,7 +154,11 @@ public class PolarisServiceImpl
           .entity(icebergErrorResponse)
           .build();
     }
-    return Response.status(successStatus).build();
+    Response.ResponseBuilder responseBuilder = Response.status(successStatus);
+    if (entity != null) {
+      responseBuilder.entity(entity);
+    }
+    return responseBuilder.build();
   }
 
   /** From PolarisCatalogsApiService */
@@ -167,7 +171,7 @@ public class PolarisServiceImpl
     validateExternalCatalog(catalog);
     Catalog newCatalog = CatalogEntity.of(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
-    return Response.status(Response.Status.CREATED).build();
+    return Response.status(Response.Status.CREATED).entity(newCatalog).build();
   }
 
   private void validateStorageConfig(StorageConfigInfo storageConfigInfo) {
@@ -357,7 +361,7 @@ public class PolarisServiceImpl
     PrincipalRole newPrincipalRole =
         new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
     LOGGER.info("Created new principalRole {}", newPrincipalRole);
-    return Response.status(Response.Status.CREATED).build();
+    return Response.status(Response.Status.CREATED).entity(newPrincipalRole).build();
   }
 
   /** From PolarisPrincipalRolesApiService */
@@ -418,7 +422,7 @@ public class PolarisServiceImpl
     CatalogRole newCatalogRole =
         new CatalogRoleEntity(adminService.createCatalogRole(catalogName, entity)).asCatalogRole();
     LOGGER.info("Created new catalogRole {}", newCatalogRole);
-    return Response.status(Response.Status.CREATED).build();
+    return Response.status(Response.Status.CREATED).entity(newCatalogRole).build();
   }
 
   /** From PolarisCatalogsApiService */
@@ -486,7 +490,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result =
         adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
-    return toResponse(result, Response.Status.CREATED);
+    return toResponse(result, Response.Status.CREATED, null);
   }
 
   /** From PolarisPrincipalsApiService */
@@ -499,7 +503,7 @@ public class PolarisServiceImpl
     LOGGER.info("Revoking principalRole {} from principal {}", principalRoleName, principalName);
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result = adminService.revokePrincipalRole(principalName, principalRoleName);
-    return toResponse(result, Response.Status.NO_CONTENT);
+    return toResponse(result, Response.Status.NO_CONTENT, null);
   }
 
   /** From PolarisPrincipalsApiService */
@@ -534,7 +538,7 @@ public class PolarisServiceImpl
     PrivilegeResult result =
         adminService.assignCatalogRoleToPrincipalRole(
             principalRoleName, catalogName, request.getCatalogRole().getName());
-    return toResponse(result, Response.Status.CREATED);
+    return toResponse(result, Response.Status.CREATED, null);
   }
 
   /** From PolarisPrincipalRolesApiService */
@@ -554,7 +558,7 @@ public class PolarisServiceImpl
     PrivilegeResult result =
         adminService.revokeCatalogRoleFromPrincipalRole(
             principalRoleName, catalogName, catalogRoleName);
-    return toResponse(result, Response.Status.NO_CONTENT);
+    return toResponse(result, Response.Status.NO_CONTENT, null);
   }
 
   /** From PolarisPrincipalRolesApiService */
@@ -590,6 +594,9 @@ public class PolarisServiceImpl
     return Response.ok(catalogRoles).build();
   }
 
+  record AddGrantToCatalogRoleEntityWrapper(PolarisPrivilege polarisPrivilege, GrantResource grantResource) {}
+  record RevokeGrantFromCatalogRoleEntityWrapper(PolarisPrivilege polarisPrivilege, GrantResource grantResource, boolean cascade) {}
+
   /** From PolarisCatalogsApiService */
   @Override
   public Response addGrantToCatalogRole(
@@ -605,13 +612,13 @@ public class PolarisServiceImpl
         catalogName);
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result;
+    PolarisPrivilege privilege;
     switch (grantRequest.getGrant()) {
       // The per-securable-type Privilege enums must be exact String match for a subset of all
       // PolarisPrivilege values.
       case ViewGrant viewGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
           String viewName = viewGrant.getViewName();
           String[] namespaceParts = viewGrant.getNamespace().toArray(new String[0]);
           result =
@@ -624,8 +631,7 @@ public class PolarisServiceImpl
         }
       case TableGrant tableGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
           String tableName = tableGrant.getTableName();
           String[] namespaceParts = tableGrant.getNamespace().toArray(new String[0]);
           result =
@@ -638,8 +644,7 @@ public class PolarisServiceImpl
         }
       case NamespaceGrant namespaceGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
           String[] namespaceParts = namespaceGrant.getNamespace().toArray(new String[0]);
           result =
               adminService.grantPrivilegeOnNamespaceToRole(
@@ -648,16 +653,14 @@ public class PolarisServiceImpl
         }
       case CatalogGrant catalogGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
           result =
               adminService.grantPrivilegeOnCatalogToRole(catalogName, catalogRoleName, privilege);
           break;
         }
       case PolicyGrant policyGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
           String policyName = policyGrant.getPolicyName();
           String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
           result =
@@ -676,7 +679,7 @@ public class PolarisServiceImpl
             .log("Don't know how to handle privilege grant: {}", grantRequest);
         return Response.status(Response.Status.BAD_REQUEST).build();
     }
-    return toResponse(result, Response.Status.CREATED);
+    return toResponse(result, Response.Status.CREATED, new AddGrantToCatalogRoleEntityWrapper(privilege, grantRequest.getGrant()));
   }
 
   /** From PolarisCatalogsApiService */
@@ -700,13 +703,13 @@ public class PolarisServiceImpl
 
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result;
+    PolarisPrivilege privilege;
     switch (grantRequest.getGrant()) {
       // The per-securable-type Privilege enums must be exact String match for a subset of all
       // PolarisPrivilege values.
       case ViewGrant viewGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
           String viewName = viewGrant.getViewName();
           String[] namespaceParts = viewGrant.getNamespace().toArray(new String[0]);
           result =
@@ -719,8 +722,7 @@ public class PolarisServiceImpl
         }
       case TableGrant tableGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
           String tableName = tableGrant.getTableName();
           String[] namespaceParts = tableGrant.getNamespace().toArray(new String[0]);
           result =
@@ -733,8 +735,7 @@ public class PolarisServiceImpl
         }
       case NamespaceGrant namespaceGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
           String[] namespaceParts = namespaceGrant.getNamespace().toArray(new String[0]);
           result =
               adminService.revokePrivilegeOnNamespaceFromRole(
@@ -743,8 +744,7 @@ public class PolarisServiceImpl
         }
       case CatalogGrant catalogGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
           result =
               adminService.revokePrivilegeOnCatalogFromRole(
                   catalogName, catalogRoleName, privilege);
@@ -752,8 +752,7 @@ public class PolarisServiceImpl
         }
       case PolicyGrant policyGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
           String policyName = policyGrant.getPolicyName();
           String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
           result =
@@ -772,7 +771,7 @@ public class PolarisServiceImpl
             .log("Don't know how to handle privilege revocation: {}", grantRequest);
         return Response.status(Response.Status.BAD_REQUEST).build();
     }
-    return toResponse(result, Response.Status.CREATED);
+    return toResponse(result, Response.Status.CREATED, new RevokeGrantFromCatalogRoleEntityWrapper(privilege, grantRequest.getGrant(), cascade));
   }
 
   /** From PolarisCatalogsApiService */
