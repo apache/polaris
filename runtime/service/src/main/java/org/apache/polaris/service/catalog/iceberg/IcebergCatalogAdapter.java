@@ -777,8 +777,8 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          catalog.sendNotification(tableIdentifier, notificationRequest);
-          return Response.status(Response.Status.NO_CONTENT).build();
+          boolean notificationSent = catalog.sendNotification(tableIdentifier, notificationRequest);
+          return Response.status(Response.Status.NO_CONTENT).entity(notificationSent).build();
         });
   }
 
