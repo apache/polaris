@@ -524,15 +524,9 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   @Nullable
   public <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> createStorageIntegration(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
+          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity catalog) {
     return runInTransaction(
-        callCtx,
-        () ->
-            this.createStorageIntegrationInCurrentTxn(
-                callCtx, catalogId, entityId, polarisStorageConfigurationInfo));
+        callCtx, () -> this.createStorageIntegrationInCurrentTxn(callCtx, catalog));
   }
 
   /** {@inheritDoc} */

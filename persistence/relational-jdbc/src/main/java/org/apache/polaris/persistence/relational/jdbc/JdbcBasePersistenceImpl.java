@@ -1099,12 +1099,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> createStorageIntegration(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-    return storageIntegrationProvider.getStorageIntegrationForConfig(
-        polarisStorageConfigurationInfo);
+          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity catalog) {
+    return storageIntegrationProvider.getStorageIntegration(catalog);
   }
 
   @Override
@@ -1118,9 +1114,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   public <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity) {
-    PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callContext.getDiagServices(), entity);
-    return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
+    return BaseMetaStoreManager.toStorageIntegration(
+        callContext.getDiagServices(), entity, storageIntegrationProvider);
   }
 
   @FunctionalInterface
