@@ -19,14 +19,14 @@
 
 package org.apache.polaris.service.catalog.policy;
 
+import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Default;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.admin.EventsServiceDelegator;
 import org.apache.polaris.service.catalog.api.PolarisCatalogPolicyApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.types.AttachPolicyRequest;
@@ -34,10 +34,10 @@ import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
 import org.apache.polaris.service.types.UpdatePolicyRequest;
 
-@Default
-@EventsServiceDelegator
 @Decorator
-public class CatalogPolicyServiceDefaultDelegator
+@Priority(1000)
+@Alternative
+public class CatalogPolicyEventServiceDelegator
     implements PolarisCatalogPolicyApiService, CatalogAdapter {
 
   @Inject @Delegate PolicyCatalogAdapter delegate;

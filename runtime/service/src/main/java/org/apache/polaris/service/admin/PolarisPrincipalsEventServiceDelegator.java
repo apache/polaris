@@ -19,9 +19,10 @@
 
 package org.apache.polaris.service.admin;
 
+import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Default;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -31,35 +32,31 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 
-@Default
-@EventsServiceDelegator
 @Decorator
-public class PolarisPrincipalsServiceDefaultDelegator implements PolarisPrincipalsApiService {
+@Priority(1000)
+@Alternative
+public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipalsApiService {
 
   @Inject @Delegate PolarisPrincipalsApiService delegate;
 
-  /** From PolarisPrincipalsApiService */
   @Override
   public Response createPrincipal(
       CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.createPrincipal(request, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalsApiService */
   @Override
   public Response deletePrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.deletePrincipal(principalName, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalsApiService */
   @Override
   public Response getPrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.getPrincipal(principalName, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalsApiService */
   @Override
   public Response updatePrincipal(
       String principalName,
@@ -69,20 +66,17 @@ public class PolarisPrincipalsServiceDefaultDelegator implements PolarisPrincipa
     return delegate.updatePrincipal(principalName, updateRequest, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalsApiService */
   @Override
   public Response rotateCredentials(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.rotateCredentials(principalName, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalsApiService */
   @Override
   public Response listPrincipals(RealmContext realmContext, SecurityContext securityContext) {
     return delegate.listPrincipals(realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalsApiService */
   @Override
   public Response assignPrincipalRole(
       String principalName,
@@ -92,7 +86,6 @@ public class PolarisPrincipalsServiceDefaultDelegator implements PolarisPrincipa
     return delegate.assignPrincipalRole(principalName, request, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalsApiService */
   @Override
   public Response revokePrincipalRole(
       String principalName,
@@ -103,7 +96,6 @@ public class PolarisPrincipalsServiceDefaultDelegator implements PolarisPrincipa
         principalName, principalRoleName, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalsApiService */
   @Override
   public Response listPrincipalRolesAssigned(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {

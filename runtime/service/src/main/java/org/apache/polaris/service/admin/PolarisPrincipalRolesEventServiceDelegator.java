@@ -19,9 +19,10 @@
 
 package org.apache.polaris.service.admin;
 
+import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Default;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -31,15 +32,13 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 
-@Default
-@EventsServiceDelegator
 @Decorator
-public class PolarisPrincipalRolesServiceDefaultDelegator
-    implements PolarisPrincipalRolesApiService {
+@Priority(1000)
+@Alternative
+public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrincipalRolesApiService {
 
   @Inject @Delegate PolarisPrincipalRolesApiService delegate;
 
-  /** From PolarisPrincipalRolesApiService */
   @Override
   public Response createPrincipalRole(
       CreatePrincipalRoleRequest request,
@@ -48,21 +47,18 @@ public class PolarisPrincipalRolesServiceDefaultDelegator
     return delegate.createPrincipalRole(request, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalRolesApiService */
   @Override
   public Response deletePrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.deletePrincipalRole(principalRoleName, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalRolesApiService */
   @Override
   public Response getPrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.getPrincipalRole(principalRoleName, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalRolesApiService */
   @Override
   public Response updatePrincipalRole(
       String principalRoleName,
@@ -73,13 +69,11 @@ public class PolarisPrincipalRolesServiceDefaultDelegator
         principalRoleName, updateRequest, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalRolesApiService */
   @Override
   public Response listPrincipalRoles(RealmContext realmContext, SecurityContext securityContext) {
     return delegate.listPrincipalRoles(realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalRolesApiService */
   @Override
   public Response assignCatalogRoleToPrincipalRole(
       String principalRoleName,
@@ -91,7 +85,6 @@ public class PolarisPrincipalRolesServiceDefaultDelegator
         principalRoleName, catalogName, request, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalRolesApiService */
   @Override
   public Response revokeCatalogRoleFromPrincipalRole(
       String principalRoleName,
@@ -103,7 +96,6 @@ public class PolarisPrincipalRolesServiceDefaultDelegator
         principalRoleName, catalogName, catalogRoleName, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalRolesApiService */
   @Override
   public Response listAssigneePrincipalsForPrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
@@ -111,7 +103,6 @@ public class PolarisPrincipalRolesServiceDefaultDelegator
         principalRoleName, realmContext, securityContext);
   }
 
-  /** From PolarisPrincipalRolesApiService */
   @Override
   public Response listCatalogRolesForPrincipalRole(
       String principalRoleName,

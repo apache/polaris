@@ -19,9 +19,10 @@
 
 package org.apache.polaris.service.admin;
 
+import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Default;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -34,35 +35,31 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 
-@EventsServiceDelegator
-@Default
 @Decorator
-public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsApiService {
+@Priority(1000)
+@Alternative
+public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiService {
 
   @Inject @Delegate PolarisCatalogsApiService delegate;
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.createCatalog(request, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response deleteCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.deleteCatalog(catalogName, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response getCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.getCatalog(catalogName, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response updateCatalog(
       String catalogName,
@@ -72,13 +69,11 @@ public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsAp
     return delegate.updateCatalog(catalogName, updateRequest, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
     return delegate.listCatalogs(realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response createCatalogRole(
       String catalogName,
@@ -88,7 +83,6 @@ public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsAp
     return delegate.createCatalogRole(catalogName, request, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response deleteCatalogRole(
       String catalogName,
@@ -98,7 +92,6 @@ public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsAp
     return delegate.deleteCatalogRole(catalogName, catalogRoleName, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response getCatalogRole(
       String catalogName,
@@ -108,7 +101,6 @@ public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsAp
     return delegate.getCatalogRole(catalogName, catalogRoleName, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response updateCatalogRole(
       String catalogName,
@@ -120,14 +112,12 @@ public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsAp
         catalogName, catalogRoleName, updateRequest, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response listCatalogRoles(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.listCatalogRoles(catalogName, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response addGrantToCatalogRole(
       String catalogName,
@@ -139,7 +129,6 @@ public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsAp
         catalogName, catalogRoleName, grantRequest, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response revokeGrantFromCatalogRole(
       String catalogName,
@@ -152,7 +141,6 @@ public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsAp
         catalogName, catalogRoleName, cascade, grantRequest, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response listAssigneePrincipalRolesForCatalogRole(
       String catalogName,
@@ -163,7 +151,6 @@ public class PolarisCatalogsServiceDefaultDelegator implements PolarisCatalogsAp
         catalogName, catalogRoleName, realmContext, securityContext);
   }
 
-  /** From PolarisCatalogsApiService */
   @Override
   public Response listGrantsForCatalogRole(
       String catalogName,

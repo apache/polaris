@@ -19,20 +19,20 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Default;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.admin.EventsServiceDelegator;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 
-@Default
-@EventsServiceDelegator
 @Decorator
-public class IcebergRestConfigurationServiceDefaultDelegator
+@Priority(1000)
+@Alternative
+public class IcebergRestConfigurationEventServiceDelegator
     implements IcebergRestConfigurationApiService {
 
   @Inject @Delegate IcebergCatalogAdapter delegate;

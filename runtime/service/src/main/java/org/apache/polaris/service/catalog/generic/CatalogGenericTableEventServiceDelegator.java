@@ -19,22 +19,22 @@
 
 package org.apache.polaris.service.catalog.generic;
 
+import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Default;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.admin.EventsServiceDelegator;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 
-@Default
-@EventsServiceDelegator
 @Decorator
-public class CatalogGenericTableServiceDefaultDelegator
+@Priority(1000)
+@Alternative
+public class CatalogGenericTableEventServiceDelegator
     implements PolarisCatalogGenericTableApiService, CatalogAdapter {
 
   @Inject @Delegate GenericTableCatalogAdapter delegate;

@@ -19,9 +19,10 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Default;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -34,16 +35,15 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.admin.EventsServiceDelegator;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
 
-@Default
-@EventsServiceDelegator
 @Decorator
-public class IcebergRestCatalogServiceDefaultDelegator implements IcebergRestCatalogApiService {
+@Priority(1000)
+@Alternative
+public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatalogApiService {
 
   @Inject @Delegate IcebergCatalogAdapter delegate;
 
