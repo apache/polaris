@@ -34,6 +34,7 @@ plugins {
   `jvm-test-suite`
   checkstyle
   id("polaris-spotless")
+  id("polaris-reproducible")
   id("jacoco-report-aggregation")
   id("net.ltgt.errorprone")
 }
@@ -253,9 +254,20 @@ configurations.all {
     }
 }
 
-// ensure jars conform to reproducible builds
-// (https://docs.gradle.org/current/userguide/working_with_files.html#sec:reproducible_archives)
-tasks.withType<AbstractArchiveTask>().configureEach {
-  isPreserveFileTimestamps = false
-  isReproducibleFileOrder = true
+if (plugins.hasPlugin("io.quarkus")) {
+  tasks.named("quarkusBuild") {
+    actions.addLast {
+      listOf(
+          "quarkus-app/quarkus-run.jar",
+          "quarkus-app/quarkus/generated-bytecode.jar",
+          "quarkus-app/quarkus/transformed-bytecode.jar",
+        )
+        .forEach { name ->
+          val file = project.layout.buildDirectory.get().file(name).asFile
+          if (file.exists()) {
+            makeZipReproducible(file)
+          }
+        }
+    }
+  }
 }
