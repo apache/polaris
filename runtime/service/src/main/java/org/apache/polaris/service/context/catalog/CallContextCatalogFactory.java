@@ -20,7 +20,7 @@ package org.apache.polaris.service.context.catalog;
 
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Catalog;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
@@ -28,7 +28,7 @@ public interface CallContextCatalogFactory {
 
   Catalog createCallContextCatalog(
       CallContext context,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      PolarisPrincipal polarisPrincipal,
       SecurityContext securityContext,
       PolarisResolutionManifest resolvedManifest);
 }

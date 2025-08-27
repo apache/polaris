@@ -19,7 +19,6 @@
 package org.apache.polaris.service.auth.external.tenant;
 
 import io.quarkus.security.identity.SecurityIdentity;
-import org.apache.polaris.service.auth.external.OidcTenantConfiguration;
 
 /** Resolves the Polaris OIDC tenant to use for the given {@link SecurityIdentity}. */
 public interface OidcTenantResolver {

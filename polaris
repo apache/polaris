@@ -30,11 +30,6 @@ for arg in "$@"; do
   fi
 done
 
-# Check if the python client needs regeneration
-if [ "$repair" == true ] || [ ! -f "${dir}/client/python/polaris/catalog/__init__.py" ]; then
-  "${dir}/gradlew" regeneratePythonClient
-fi
-
 if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
   rm -f "${dir}"/poetry.lock
   rm -f "${dir}/client/python/poetry.lock"
@@ -69,6 +64,13 @@ fi
 
 # Check if the correct virtual environment is already active, if not, activate it.
 if [ -z "$VIRTUAL_ENV" ] || [ "$(realpath "$VIRTUAL_ENV")" != "$(realpath "${dir}/polaris-venv")" ]; then
+  source "${dir}/polaris-venv/bin/activate"
+fi
+
+# If polaris is not found after activating the venv, it's likely the venv is old and needs a repair
+if ! command -v polaris &> /dev/null; then
+  echo "Polaris executable not found. Forcing a repair..." >&2
+  "${dir}/polaris" --repair
   source "${dir}/polaris-venv/bin/activate"
 fi
 

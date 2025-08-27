@@ -24,7 +24,7 @@ import java.nio.charset.Charset;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 
 /**
  * A common interface for adapters between the REST interface and {@link CatalogHandler}
@@ -36,7 +36,7 @@ public interface CatalogAdapter {
   }
 
   default void validatePrincipal(SecurityContext securityContext) {
-    var authenticatedPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+    var authenticatedPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     if (authenticatedPrincipal == null) {
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
     }

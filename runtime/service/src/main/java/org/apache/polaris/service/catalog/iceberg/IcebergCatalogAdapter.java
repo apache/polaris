@@ -27,6 +27,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.HttpHeaders;
@@ -59,8 +61,10 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -136,6 +140,7 @@ public class IcebergCatalogAdapter
 
   private final RealmContext realmContext;
   private final CallContext callContext;
+  private final RealmConfig realmConfig;
   private final CallContextCatalogFactory catalogFactory;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final ResolverFactory resolverFactory;
@@ -145,6 +150,7 @@ public class IcebergCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
+  private final Instance<ExternalCatalogFactory> externalCatalogFactories;
   private final PolarisEventListener polarisEventListener;
 
   @Inject
@@ -160,9 +166,11 @@ public class IcebergCatalogAdapter
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
+      @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener) {
     this.realmContext = realmContext;
     this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.catalogFactory = catalogFactory;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.resolverFactory = resolverFactory;
@@ -172,6 +180,7 @@ public class IcebergCatalogAdapter
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
+    this.externalCatalogFactories = externalCatalogFactories;
     this.polarisEventListener = polarisEventListener;
   }
 
@@ -210,6 +219,7 @@ public class IcebergCatalogAdapter
         polarisAuthorizer,
         reservedProperties,
         catalogHandlerUtils,
+        externalCatalogFactories,
         polarisEventListener);
   }
 
@@ -219,7 +229,7 @@ public class IcebergCatalogAdapter
       CreateNamespaceRequest createNamespaceRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    validateIcebergProperties(callContext, createNamespaceRequest.properties());
+    validateIcebergProperties(realmConfig, createNamespaceRequest.properties());
     return withCatalog(
         securityContext,
         prefix,
@@ -311,7 +321,7 @@ public class IcebergCatalogAdapter
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    validateIcebergProperties(callContext, updateNamespacePropertiesRequest.updates());
+    validateIcebergProperties(realmConfig, updateNamespacePropertiesRequest.updates());
     Namespace ns = decodeNamespace(namespace);
     UpdateNamespacePropertiesRequest revisedRequest =
         UpdateNamespacePropertiesRequest.builder()
@@ -346,7 +356,7 @@ public class IcebergCatalogAdapter
       String accessDelegationMode,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    validateIcebergProperties(callContext, createTableRequest.properties());
+    validateIcebergProperties(realmConfig, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
@@ -521,7 +531,7 @@ public class IcebergCatalogAdapter
     commitTableRequest.updates().stream()
         .filter(MetadataUpdate.SetProperties.class::isInstance)
         .map(MetadataUpdate.SetProperties.class::cast)
-        .forEach(setProperties -> validateIcebergProperties(callContext, setProperties.updated()));
+        .forEach(setProperties -> validateIcebergProperties(realmConfig, setProperties.updated()));
 
     UpdateTableRequest revisedRequest =
         UpdateTableRequest.create(
@@ -552,7 +562,7 @@ public class IcebergCatalogAdapter
       CreateViewRequest createViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    validateIcebergProperties(callContext, createViewRequest.properties());
+    validateIcebergProperties(realmConfig, createViewRequest.properties());
 
     CreateViewRequest revisedRequest =
         ImmutableCreateViewRequest.copyOf(createViewRequest)
@@ -700,7 +710,7 @@ public class IcebergCatalogAdapter
         .flatMap(updateTableRequest -> updateTableRequest.updates().stream())
         .filter(MetadataUpdate.SetProperties.class::isInstance)
         .map(MetadataUpdate.SetProperties.class::cast)
-        .forEach(setProperties -> validateIcebergProperties(callContext, setProperties.updated()));
+        .forEach(setProperties -> validateIcebergProperties(realmConfig, setProperties.updated()));
 
     CommitTransactionRequest revisedRequest =
         new CommitTransactionRequest(
@@ -769,8 +779,7 @@ public class IcebergCatalogAdapter
     //    the catalog being accessed.
     // TODO: Push this down into PolarisCatalogHandlerWrapper for authorizing "any" catalog
     // role in this catalog.
-    AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+    PolarisPrincipal authenticatedPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     if (authenticatedPrincipal == null) {
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
     }
@@ -796,8 +805,8 @@ public class IcebergCatalogAdapter
                         .addAll(DEFAULT_ENDPOINTS)
                         .addAll(VIEW_ENDPOINTS)
                         .addAll(COMMIT_ENDPOINT)
-                        .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(callContext))
-                        .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(callContext))
+                        .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig))
+                        .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig))
                         .build())
                 .build())
         .build();

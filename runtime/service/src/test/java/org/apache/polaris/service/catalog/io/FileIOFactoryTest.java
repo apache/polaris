@@ -176,7 +176,7 @@ public class FileIOFactoryTest {
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     FileIO fileIO =
-        new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, callContext);
+        new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, TABLE, callContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
         .isInstanceOf(InMemoryFileIO.class);

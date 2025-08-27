@@ -32,18 +32,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisCallContext;
+import java.util.Set;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -121,7 +117,7 @@ public abstract class PolarisStorageConfigurationInfo {
   }
 
   public static Optional<PolarisStorageConfigurationInfo> forEntityPath(
-      PolarisCallContext callContext, List<PolarisEntity> entityPath) {
+      RealmConfig realmConfig, List<PolarisEntity> entityPath) {
     return findStorageInfoFromHierarchy(entityPath)
         .map(
             storageInfo ->
@@ -146,9 +142,8 @@ public abstract class PolarisStorageConfigurationInfo {
                       .orElse(null);
               CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
               boolean allowEscape =
-                  callContext
-                      .getRealmConfig()
-                      .getConfig(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION, catalog);
+                  realmConfig.getConfig(
+                      FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION, catalog);
               if (!allowEscape
                   && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
                   && baseLocation != null) {
@@ -162,28 +157,17 @@ public abstract class PolarisStorageConfigurationInfo {
                     entityPathReversed.get(0).getName());
 
                 // TODO: figure out the purpose of adding `userSpecifiedWriteLocations`
-                List<String> locs =
-                    userSpecifiedWriteLocations(entityPathReversed.get(0).getPropertiesAsMap());
+                Set<String> locations =
+                    StorageUtil.getLocationsAllowedToBeAccessed(
+                        null, entityPathReversed.get(0).getPropertiesAsMap());
                 return new StorageConfigurationOverride(
                     configInfo,
                     ImmutableList.<String>builder()
                         .addAll(configInfo.getAllowedLocations())
-                        .addAll(locs)
+                        .addAll(locations)
                         .build());
               }
             });
-  }
-
-  private static List<String> userSpecifiedWriteLocations(Map<String, String> properties) {
-    return Optional.ofNullable(properties)
-        .map(
-            p ->
-                Stream.of(
-                        p.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
-                        p.get(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList()))
-        .orElse(List.of());
   }
 
   private static @Nonnull Optional<PolarisEntity> findStorageInfoFromHierarchy(

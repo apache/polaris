@@ -1,0 +1,61 @@
+=== Setting up Catalog Federation Test ===
+Creating new principal...
+Creating local catalog...
+Create local catalog response code: 201
+Setting up permissions...
+Grant TABLE_WRITE_DATA to catalog_admin response code: 201
+Assign catalog_admin to service_admin response code: 201
+Assign service_admin to new-user response code: 201
+Creating external catalog (passthrough facade)...
+Create external catalog response code: 201
+Setting up permissions for external catalog...
+Grant TABLE_WRITE_DATA to external catalog_admin response code: 201
+Assign catalog_admin to service_admin for external catalog response code: 201
+Catalogs created successfully
+
+=== Starting federation test ===
+=== Creating data via LOCAL catalog ===
+spark-sql ()> use polaris;
+spark-sql ()> create namespace if not exists ns1;
+spark-sql ()> create table if not exists ns1.test_table (id int, name string);
+spark-sql ()> insert into ns1.test_table values (1, 'Alice');
+spark-sql ()> insert into ns1.test_table values (2, 'Bob');
+spark-sql ()> create namespace if not exists ns2;
+spark-sql ()> create table if not exists ns2.test_table (id int, name string);
+spark-sql ()> insert into ns2.test_table values (1, 'Apache Spark');
+spark-sql ()> insert into ns2.test_table values (2, 'Apache Iceberg');
+spark-sql ()> 
+=== Accessing data via EXTERNAL catalog ===
+spark-sql ()> use polaris;
+spark-sql ()> show namespaces;
+ns1
+ns2
+spark-sql ()> select * from ns1.test_table order by id;
+1	Alice
+2	Bob
+spark-sql ()> insert into ns1.test_table values (3, 'Charlie');
+spark-sql ()> select * from ns2.test_table order by id;
+1	Apache Spark
+2	Apache Iceberg
+spark-sql ()> insert into ns2.test_table values (3, 'Apache Polaris');
+spark-sql ()> 
+=== Verifying federation via LOCAL catalog ===
+spark-sql ()> use polaris;
+spark-sql ()> select * from ns1.test_table order by id;
+1	Alice
+2	Bob
+3	Charlie
+spark-sql ()> select * from ns2.test_table order by id;
+1	Apache Spark
+2	Apache Iceberg
+3	Apache Polaris
+spark-sql ()> drop table ns1.test_table;
+spark-sql ()> drop table ns2.test_table;
+spark-sql ()> drop namespace ns1;
+spark-sql ()> drop namespace ns2;
+spark-sql ()> 
+=== Cleaning up catalogs and principal ===
+Delete external catalog response code: 204
+Delete local catalog response code: 204
+Delete principal response code: 204
+Catalog federation test completed successfully!

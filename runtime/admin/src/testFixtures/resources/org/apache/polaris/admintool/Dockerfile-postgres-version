@@ -19,4 +19,4 @@
 
 # Dockerfile to provide the image name and tag to a test.
 # Version is managed by Renovate - do not edit.
-FROM postgres:17.5-alpine
+FROM postgres:17.6-alpine

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.it.env;
 
+import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 
 /**
@@ -25,4 +26,13 @@ import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
  * representing an admin user is injected into test parameters by {@link
  * PolarisIntegrationTestExtension}.
  */
-public record ClientCredentials(String clientId, String clientSecret) {}
+public record ClientCredentials(String clientId, String clientSecret) {
+
+  /**
+   * Creates a {@link ClientCredentials} from an instance of the Admin API model {@link
+   * PrincipalWithCredentialsCredentials}.
+   */
+  public ClientCredentials(PrincipalWithCredentialsCredentials credentials) {
+    this(credentials.getClientId(), credentials.getClientSecret());
+  }
+}

@@ -36,7 +36,6 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -64,7 +63,8 @@ public class StorageCredentialCacheTest {
     TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
     // to interact with the metastore
     TransactionalPersistence metaStore =
-        new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
+        new TreeMapTransactionalPersistenceImpl(
+            diagServices, store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
     storageCredentialCacheConfig = () -> 10_000;
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
@@ -246,9 +246,7 @@ public class StorageCredentialCacheTest {
       internalMap.put(
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
-          new PolarisBaseEntity.Builder(entity)
-              .internalProperties(PolarisObjectMapperUtil.serializeProperties(internalMap))
-              .build();
+          new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,
@@ -286,9 +284,7 @@ public class StorageCredentialCacheTest {
       internalMap.put(
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
-          new PolarisBaseEntity.Builder(entity)
-              .internalProperties(PolarisObjectMapperUtil.serializeProperties(internalMap))
-              .build();
+          new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,

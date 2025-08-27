@@ -32,6 +32,9 @@ public interface MetricsConfiguration {
   /** Configuration for the Realm ID metric tag. */
   RealmIdTag realmIdTag();
 
+  /** Configuration for the user principal metric tag. */
+  UserPrincipalTag userPrincipalTag();
+
   interface RealmIdTag {
 
     /**
@@ -64,5 +67,17 @@ public interface MetricsConfiguration {
     @WithDefault("100")
     @Min(1)
     int httpMetricsMaxCardinality();
+  }
+
+  interface UserPrincipalTag {
+
+    /**
+     * Whether to include the User Principal tag in the API request metrics.
+     *
+     * <p>Beware that if the cardinality of this tag is too high, it can cause performance issues or
+     * even crash the server.
+     */
+    @WithDefault("false")
+    boolean enableInApiMetrics();
   }
 }

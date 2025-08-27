@@ -67,6 +67,7 @@ import org.junit.jupiter.api.io.TempDir;
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogTests<RESTCatalog> {
+
   static {
     Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
   }
@@ -81,7 +82,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
           org.apache.iceberg.CatalogProperties.VIEW_OVERRIDE_PREFIX + "key4",
               "catalog-override-key4");
 
-  private static ClientCredentials adminCredentials;
+  private static String adminToken;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
@@ -90,10 +91,10 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
-    adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    managementApi = client.managementApi(credentials);
+    adminToken = client.obtainToken(credentials);
+    managementApi = client.managementApi(adminToken);
   }
 
   @AfterAll
@@ -140,12 +141,15 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
     restCatalog =
         IcebergHelper.restCatalog(
-            client, endpoints, principalCredentials, catalogName, DEFAULT_REST_CATALOG_CONFIG);
+            endpoints,
+            catalogName,
+            DEFAULT_REST_CATALOG_CONFIG,
+            client.obtainToken(principalCredentials));
   }
 
   @AfterEach
   public void cleanUp() {
-    client.cleanUp(adminCredentials);
+    client.cleanUp(adminToken);
   }
 
   /**

@@ -25,7 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -71,7 +71,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   @Override
   public Catalog createCallContextCatalog(
       CallContext context,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      PolarisPrincipal polarisPrincipal,
       SecurityContext securityContext,
       final PolarisResolutionManifest resolvedManifest) {
     PolarisBaseEntity baseCatalogEntity =

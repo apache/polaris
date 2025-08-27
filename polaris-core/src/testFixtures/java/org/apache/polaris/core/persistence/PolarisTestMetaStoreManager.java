@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import static org.apache.polaris.core.entity.PolarisBaseEntity.convertPropertiesToJson;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -419,11 +417,8 @@ public class PolarisTestMetaStoreManager {
             .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
             .parentId(PolarisEntityConstants.getRootEntityId())
             .name(name)
-            .internalProperties(
-                PolarisObjectMapperUtil.serializeProperties(
-                    Map.of(
-                        PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE,
-                        "true")))
+            .internalPropertiesAsMap(
+                Map.of(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true"))
             .build();
 
     CreatePrincipalResult createPrincipalResult =
@@ -466,8 +461,7 @@ public class PolarisTestMetaStoreManager {
         .isEqualTo(secrets.getSecondarySecretHash());
 
     Map<String, String> internalProperties =
-        PolarisObjectMapperUtil.deserializeProperties(
-            createPrincipalResult.getPrincipal().getInternalProperties());
+        createPrincipalResult.getPrincipal().getInternalPropertiesAsMap();
     Assertions.assertThat(
             internalProperties.get(
                 PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE))
@@ -510,8 +504,7 @@ public class PolarisTestMetaStoreManager {
                 createPrincipalResult.getPrincipal().getId(),
                 createPrincipalResult.getPrincipal().getType())
             .getEntity();
-    internalProperties =
-        PolarisObjectMapperUtil.deserializeProperties(reloadPrincipal.getInternalProperties());
+    internalProperties = reloadPrincipal.getInternalPropertiesAsMap();
     Assertions.assertThat(
             internalProperties.get(
                 PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE))
@@ -567,8 +560,7 @@ public class PolarisTestMetaStoreManager {
             .loadEntity(
                 this.polarisCallContext, 0L, principalEntity.getId(), principalEntity.getType())
             .getEntity();
-    internalProperties =
-        PolarisObjectMapperUtil.deserializeProperties(newPrincipal.getInternalProperties());
+    internalProperties = newPrincipal.getInternalPropertiesAsMap();
     Assertions.assertThat(
             internalProperties.get(
                 PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE))
@@ -601,8 +593,7 @@ public class PolarisTestMetaStoreManager {
             .loadEntity(
                 this.polarisCallContext, 0L, principalEntity.getId(), principalEntity.getType())
             .getEntity();
-    internalProperties =
-        PolarisObjectMapperUtil.deserializeProperties(finalPrincipal.getInternalProperties());
+    internalProperties = finalPrincipal.getInternalPropertiesAsMap();
     Assertions.assertThat(
             internalProperties.get(
                 PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE))
@@ -669,7 +660,7 @@ public class PolarisTestMetaStoreManager {
             .subTypeCode(entitySubType.getCode())
             .parentId(parentId)
             .name(name)
-            .properties(convertPropertiesToJson(properties))
+            .propertiesAsMap(properties)
             .build();
     PolarisBaseEntity entity =
         polarisMetaStoreManager
@@ -870,11 +861,9 @@ public class PolarisTestMetaStoreManager {
       Assertions.assertThat(cleanupTask).isNotNull();
       Assertions.assertThat(cleanupTask.getType()).isEqualTo(PolarisEntityType.TASK);
       Assertions.assertThat(cleanupTask.getInternalProperties()).isNotNull();
-      Map<String, String> internalProperties =
-          PolarisObjectMapperUtil.deserializeProperties(cleanupTask.getInternalProperties());
+      Map<String, String> internalProperties = cleanupTask.getInternalPropertiesAsMap();
       Assertions.assertThat(internalProperties).isEqualTo(cleanupProperties);
-      Map<String, String> properties =
-          PolarisObjectMapperUtil.deserializeProperties(cleanupTask.getProperties());
+      Map<String, String> properties = cleanupTask.getPropertiesAsMap();
       Assertions.assertThat(properties).isNotNull();
       Assertions.assertThat(properties.get(PolarisTaskConstants.TASK_DATA)).isNotNull();
       PolarisBaseEntity droppedEntity =
