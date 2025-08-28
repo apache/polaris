@@ -65,6 +65,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookup;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
@@ -421,38 +422,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         .collect(Collectors.toList());
   }
 
-  @Nonnull
-  @Override
-  public Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
+  private PreparedQuery buildEntityQuery(
       long catalogId,
       long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull PageToken pageToken) {
-    // TODO: only fetch the properties required for creating an EntityNameLookupRecord
-    return loadEntities(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        entitySubType,
-        entity -> true,
-        EntityNameLookupRecord::new,
-        pageToken);
-  }
-
-  @Nonnull
-  @Override
-  public <T> Page<T> loadEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer,
-      @Nonnull PageToken pageToken) {
+      PolarisEntityType entityType,
+      PolarisEntitySubType entitySubType,
+      PageToken pageToken,
+      List<String> queryProjections) {
     Map<String, Object> whereEquals =
         Map.of(
             "catalog_id",
@@ -463,7 +439,6 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             entityType.getCode(),
             "realm_id",
             realmId);
-    Map<String, Object> whereGreater;
 
     if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
       Map<String, Object> updatedWhereEquals = new HashMap<>(whereEquals);
@@ -471,9 +446,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       whereEquals = updatedWhereEquals;
     }
 
-    // Limit can't be pushed down, due to client side filtering
-    // absence of transaction.
     String orderByColumnName = null;
+    Map<String, Object> whereGreater;
     if (pageToken.paginationRequested()) {
       orderByColumnName = ModelEntity.ID_COLUMN;
       whereGreater =
@@ -487,14 +461,58 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       whereGreater = Map.of();
     }
 
+    return QueryGenerator.generateSelectQuery(
+        queryProjections, ModelEntity.TABLE_NAME, whereEquals, whereGreater, orderByColumnName);
+  }
+
+  @Nonnull
+  @Override
+  public Page<EntityNameLookupRecord> listEntities(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
     try {
       PreparedQuery query =
-          QueryGenerator.generateSelectQuery(
-              ModelEntity.ALL_COLUMNS,
-              ModelEntity.TABLE_NAME,
-              whereEquals,
-              whereGreater,
-              orderByColumnName);
+          buildEntityQuery(
+              catalogId,
+              parentId,
+              entityType,
+              entitySubType,
+              pageToken,
+              ModelEntity.ENTITY_LOOKUP_COLUMNS);
+      AtomicReference<Page<EntityNameLookupRecord>> results = new AtomicReference<>();
+      datasourceOperations.executeSelectOverStream(
+          query,
+          new EntityNameLookup(),
+          stream -> {
+            results.set(
+                Page.mapped(pageToken, stream, Function.identity(), EntityIdToken::fromEntity));
+          });
+      return results.get();
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Nonnull
+  @Override
+  public <T> Page<T> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
+    try {
+      PreparedQuery query =
+          buildEntityQuery(
+              catalogId, parentId, entityType, entitySubType, pageToken, ModelEntity.ALL_COLUMNS);
       AtomicReference<Page<T>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,

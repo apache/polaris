@@ -22,7 +22,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 
-public class EntityNameLookupRecord {
+public class EntityNameLookupRecord implements HasEntityId {
   // entity catalog id
   private final long catalogId;
 
@@ -41,10 +41,12 @@ public class EntityNameLookupRecord {
   // code representing the subtype of that entity
   private final int subTypeCode;
 
+  @Override
   public long getCatalogId() {
     return catalogId;
   }
 
+  @Override
   public long getId() {
     return id;
   }

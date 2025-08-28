@@ -54,6 +54,9 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
           "grant_records_version",
           "location_without_scheme");
 
+  public static final List<String> ENTITY_LOOKUP_COLUMNS =
+      List.of("id", "catalog_id", "parent_id", "type_code", "name", "sub_type_code");
+
   // the id of the catalog associated to that entity. use 0 if this entity is top-level
   // like a catalog
   private long catalogId;
