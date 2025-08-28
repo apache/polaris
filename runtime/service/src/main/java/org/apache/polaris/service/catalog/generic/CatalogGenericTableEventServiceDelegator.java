@@ -22,7 +22,6 @@ package org.apache.polaris.service.catalog.generic;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -33,7 +32,6 @@ import org.apache.polaris.service.types.CreateGenericTableRequest;
 
 @Decorator
 @Priority(1000)
-@Alternative
 public class CatalogGenericTableEventServiceDelegator
     implements PolarisCatalogGenericTableApiService, CatalogAdapter {
 

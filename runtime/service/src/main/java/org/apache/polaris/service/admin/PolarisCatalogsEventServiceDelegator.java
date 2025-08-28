@@ -22,7 +22,6 @@ package org.apache.polaris.service.admin;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -37,7 +36,6 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 
 @Decorator
 @Priority(1000)
-@Alternative
 public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiService {
 
   @Inject @Delegate PolarisCatalogsApiService delegate;

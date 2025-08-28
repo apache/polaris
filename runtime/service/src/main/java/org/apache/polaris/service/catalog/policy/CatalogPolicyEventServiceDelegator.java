@@ -22,7 +22,6 @@ package org.apache.polaris.service.catalog.policy;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -36,7 +35,6 @@ import org.apache.polaris.service.types.UpdatePolicyRequest;
 
 @Decorator
 @Priority(1000)
-@Alternative
 public class CatalogPolicyEventServiceDelegator
     implements PolarisCatalogPolicyApiService, CatalogAdapter {
 

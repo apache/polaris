@@ -22,7 +22,6 @@ package org.apache.polaris.service.catalog.iceberg;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -31,7 +30,6 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService
 
 @Decorator
 @Priority(1000)
-@Alternative
 public class IcebergRestConfigurationEventServiceDelegator
     implements IcebergRestConfigurationApiService {
 
