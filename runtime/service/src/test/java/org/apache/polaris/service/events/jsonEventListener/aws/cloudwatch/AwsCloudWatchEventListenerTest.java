@@ -49,6 +49,8 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsAsyncClient;
+import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogGroupsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogGroupsResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsRequest;
@@ -153,34 +155,27 @@ class AwsCloudWatchEventListenerTest {
     listener.start();
 
     try {
-      // Verify log group exists
-      DescribeLogGroupsResponse groups =
-          client
-              .describeLogGroups(
-                  DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
-              .join();
-      assertThat(groups.logGroups())
-          .hasSize(1)
-          .first()
-          .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(LOG_GROUP));
-
-      // Verify log stream exists
-      DescribeLogStreamsResponse streams =
-          client
-              .describeLogStreams(
-                  DescribeLogStreamsRequest.builder()
-                      .logGroupName(LOG_GROUP)
-                      .logStreamNamePrefix(LOG_STREAM)
-                      .build())
-              .join();
-      assertThat(streams.logStreams())
-          .hasSize(1)
-          .first()
-          .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
+      verifyLogGroupAndStreamExist(client);
     } finally {
-      // Clean up
-      listener.shutdown();
       client.close();
+      listener.shutdown();
+    }
+  }
+
+  @Test
+  void shouldAcceptPreviouslyCreatedLogGroupAndStream() {
+    CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
+    client.createLogGroup(CreateLogGroupRequest.builder().logGroupName(LOG_GROUP).build()).join();
+    client.createLogStream(CreateLogStreamRequest.builder().logGroupName(LOG_GROUP).logStreamName(LOG_STREAM).build()).join();
+    verifyLogGroupAndStreamExist(client);
+
+    AwsCloudWatchEventListener listener = createListener(client);
+    listener.start();
+    try {
+      verifyLogGroupAndStreamExist(client);
+    } finally {
+      client.close();
+      listener.shutdown();
     }
   }
 
@@ -293,5 +288,32 @@ class AwsCloudWatchEventListenerTest {
       syncListener.shutdown();
       client.close();
     }
+  }
+
+  private void verifyLogGroupAndStreamExist(CloudWatchLogsAsyncClient client) {
+    // Verify log group exists
+    DescribeLogGroupsResponse groups =
+            client
+                    .describeLogGroups(
+                            DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
+                    .join();
+    assertThat(groups.logGroups())
+            .hasSize(1)
+            .first()
+            .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(LOG_GROUP));
+
+    // Verify log stream exists
+    DescribeLogStreamsResponse streams =
+            client
+                    .describeLogStreams(
+                            DescribeLogStreamsRequest.builder()
+                                    .logGroupName(LOG_GROUP)
+                                    .logStreamNamePrefix(LOG_STREAM)
+                                    .build())
+                    .join();
+    assertThat(streams.logStreams())
+            .hasSize(1)
+            .first()
+            .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
   }
 }
