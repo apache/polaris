@@ -166,7 +166,13 @@ class AwsCloudWatchEventListenerTest {
   void shouldAcceptPreviouslyCreatedLogGroupAndStream() {
     CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
     client.createLogGroup(CreateLogGroupRequest.builder().logGroupName(LOG_GROUP).build()).join();
-    client.createLogStream(CreateLogStreamRequest.builder().logGroupName(LOG_GROUP).logStreamName(LOG_STREAM).build()).join();
+    client
+        .createLogStream(
+            CreateLogStreamRequest.builder()
+                .logGroupName(LOG_GROUP)
+                .logStreamName(LOG_STREAM)
+                .build())
+        .join();
     verifyLogGroupAndStreamExist(client);
 
     AwsCloudWatchEventListener listener = createListener(client);
@@ -293,27 +299,27 @@ class AwsCloudWatchEventListenerTest {
   private void verifyLogGroupAndStreamExist(CloudWatchLogsAsyncClient client) {
     // Verify log group exists
     DescribeLogGroupsResponse groups =
-            client
-                    .describeLogGroups(
-                            DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
-                    .join();
+        client
+            .describeLogGroups(
+                DescribeLogGroupsRequest.builder().logGroupNamePrefix(LOG_GROUP).build())
+            .join();
     assertThat(groups.logGroups())
-            .hasSize(1)
-            .first()
-            .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(LOG_GROUP));
+        .hasSize(1)
+        .first()
+        .satisfies(group -> assertThat(group.logGroupName()).isEqualTo(LOG_GROUP));
 
     // Verify log stream exists
     DescribeLogStreamsResponse streams =
-            client
-                    .describeLogStreams(
-                            DescribeLogStreamsRequest.builder()
-                                    .logGroupName(LOG_GROUP)
-                                    .logStreamNamePrefix(LOG_STREAM)
-                                    .build())
-                    .join();
+        client
+            .describeLogStreams(
+                DescribeLogStreamsRequest.builder()
+                    .logGroupName(LOG_GROUP)
+                    .logStreamNamePrefix(LOG_STREAM)
+                    .build())
+            .join();
     assertThat(streams.logStreams())
-            .hasSize(1)
-            .first()
-            .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
+        .hasSize(1)
+        .first()
+        .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
   }
 }
