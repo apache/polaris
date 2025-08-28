@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -1828,7 +1829,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 taskEntity.getType(),
                 true,
                 Set.of(tableMetadata.location()),
-                Set.of(tableMetadata.location()))
+                Set.of(tableMetadata.location()),
+                Optional.empty())
             .getAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)

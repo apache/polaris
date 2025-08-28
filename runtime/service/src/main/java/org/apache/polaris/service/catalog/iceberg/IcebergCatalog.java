@@ -830,7 +830,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   public AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      Set<PolarisStorageActions> storageActions) {
+      Set<PolarisStorageActions> storageActions,
+      Optional<String> refreshCredentialsEndpoint) {
     Optional<PolarisEntity> storageInfo = findStorageInfo(tableIdentifier);
     if (storageInfo.isEmpty()) {
       LOGGER
@@ -846,7 +847,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         tableIdentifier,
         StorageUtil.getLocationsAllowedToBeAccessed(tableMetadata),
         storageActions,
-        storageInfo.get());
+        storageInfo.get(),
+        refreshCredentialsEndpoint);
   }
 
   private String buildPrefixedLocation(TableIdentifier tableIdentifier) {

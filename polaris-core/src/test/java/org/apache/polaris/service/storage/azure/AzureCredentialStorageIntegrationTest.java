@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
@@ -352,7 +353,8 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         EMPTY_REALM_CONFIG,
         allowListAction,
         new HashSet<>(allowedReadLoc),
-        new HashSet<>(allowedWriteLoc));
+        new HashSet<>(allowedWriteLoc),
+        Optional.empty());
   }
 
   private BlobContainerClient createContainerClient(

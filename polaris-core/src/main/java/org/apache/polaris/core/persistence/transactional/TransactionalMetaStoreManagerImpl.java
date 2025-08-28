@@ -2040,7 +2040,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
 
     // get meta store session we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
@@ -2075,7 +2076,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               callCtx.getRealmConfig(),
               allowListOperation,
               allowedReadLocations,
-              allowedWriteLocations);
+              allowedWriteLocations,
+              refreshCredentialsEndpoint);
       return new ScopedCredentialsResult(accessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(

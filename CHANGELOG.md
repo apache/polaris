@@ -83,6 +83,11 @@ at locations that better optimize for object storage.
 
 - Introduced bootstrap command options to specify custom schema files for database initialization.
 
+- Added refresh credentials endpoint configuration to LoadTableResponse for AWS, Azure, and GCP. Enabling
+automatic storage credential refresh per table on the client side. Java client version >= 1.8.0 is required.
+The endpoint path is always returned when using vended credentials, but clients must enable the 
+refresh-credentials flag for the desired storage provider.
+
 ### Changes
 
 - Polaris Management API clients must be prepared to deal with new attributes in `AwsStorageConfigInfo` objects.
