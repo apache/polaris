@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.policy;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.service.catalog.Profiles;
 
 @QuarkusTest
 @TestProfile(Profiles.DefaultProfile.class)
-public class PolarisGenericTableCatalogRelationalTest
-    extends AbstractPolarisGenericTableCatalogTest {}
+public class PolicyCatalogRelationalTest extends AbstractPolicyCatalogTest {}

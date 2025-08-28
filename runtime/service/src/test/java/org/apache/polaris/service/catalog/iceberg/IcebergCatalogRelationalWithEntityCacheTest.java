@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.iceberg;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -27,12 +27,12 @@ import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 
 @QuarkusTest
 @TestProfile(AbstractIcebergCatalogTest.Profile.class)
-public class IcebergCatalogRelationalNoEntityCacheTest extends AbstractIcebergCatalogTest {
+public class IcebergCatalogRelationalWithEntityCacheTest extends AbstractIcebergCatalogTest {
 
   @Nullable
   @Override
   protected InMemoryEntityCache createEntityCache(
       RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager) {
-    return null;
+    return new InMemoryEntityCache(realmConfig, metaStoreManager);
   }
 }
