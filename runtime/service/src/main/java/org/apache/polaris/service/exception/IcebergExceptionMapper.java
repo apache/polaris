@@ -23,6 +23,7 @@ import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.BaseServiceException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
@@ -34,7 +35,6 @@ import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CherrypickAncestorCommitException;
 import org.apache.iceberg.exceptions.CleanableFailure;
@@ -156,7 +156,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   static int mapExceptionToResponseCode(RuntimeException rex) {
-    for (Throwable t : ExceptionUtils.getThrowables(rex)) {
+    for (Throwable t : Throwables.getCausalChain(rex)) {
       // Cloud exceptions can be wrapped by the Iceberg SDK
       Optional<Integer> code = mapCloudExceptionToResponseCode(t);
       if (code.isPresent()) {

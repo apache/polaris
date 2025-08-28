@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.service.it.test;
 
+import com.google.common.base.Strings;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.assertj.core.util.Strings;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on AWS. */
 public class PolarisRestCatalogViewAwsIntegrationTest
