@@ -28,9 +28,7 @@ import java.io.IOException;
 import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.ManifestFile;
-import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
@@ -136,9 +134,8 @@ class TableCleanupTaskHandlerTest {
                     .extracting(TaskEntity::of)
                     .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -290,9 +287,8 @@ class TableCleanupTaskHandlerTest {
                     .extracting(TaskEntity::of)
                     .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -302,9 +298,8 @@ class TableCleanupTaskHandlerTest {
                     .extracting(TaskEntity::of)
                     .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
@@ -421,9 +416,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile1))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile1),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -432,9 +426,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile2))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile2),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -443,9 +436,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile3))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile3),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
@@ -592,9 +584,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile1))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile1),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -603,9 +594,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile2))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile2),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -614,9 +604,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile3))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile3),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));

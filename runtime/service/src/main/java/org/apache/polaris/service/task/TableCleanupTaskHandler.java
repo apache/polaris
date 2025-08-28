@@ -193,8 +193,8 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .setCreateTimestamp(clock.millis())
                   .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
                   .withData(
-                      new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                          tableEntity.getTableIdentifier(), TaskUtils.encodeManifestFile(mf)))
+                      ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                          tableEntity.getTableIdentifier(), mf))
                   .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
                   // copy the internal properties, which will have storage info
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
