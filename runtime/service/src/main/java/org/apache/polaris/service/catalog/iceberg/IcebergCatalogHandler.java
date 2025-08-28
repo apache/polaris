@@ -94,12 +94,14 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.storage.s3.sign.S3RemoteSigningCatalogHandler;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -395,6 +397,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   public LoadTableResponse createTableDirectWithWriteDelegation(
       Namespace namespace,
       CreateTableRequest request,
+      Set<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
@@ -434,7 +437,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
                   PolarisStorageActions.LIST),
-              SNAPSHOTS_ALL,
+              delegationModes,
+              catalog,
               refreshCredentialsEndpoint)
           .build();
     } else if (table instanceof BaseMetadataTable) {
@@ -505,6 +509,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   public LoadTableResponse createTableStagedWithWriteDelegation(
       Namespace namespace,
       CreateTableRequest request,
+      Set<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION;
@@ -522,7 +527,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             ident,
             metadata,
             Set.of(PolarisStorageActions.ALL),
-            SNAPSHOTS_ALL,
+            delegationModes,
+            catalog,
             refreshCredentialsEndpoint)
         .build();
   }
@@ -633,10 +639,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public LoadTableResponse loadTableWithAccessDelegation(
       TableIdentifier tableIdentifier,
-      String snapshots,
+      Set<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
     return loadTableWithAccessDelegationIfStale(
-            tableIdentifier, null, snapshots, refreshCredentialsEndpoint)
+            tableIdentifier, null, delegationModes, refreshCredentialsEndpoint)
         .get();
   }
 
@@ -646,14 +652,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    *
    * @param tableIdentifier The identifier of the table to load
    * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
-   * @param snapshots
    * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
    *     load table response, otherwise
    */
   public Optional<LoadTableResponse> loadTableWithAccessDelegationIfStale(
       TableIdentifier tableIdentifier,
       IfNoneMatch ifNoneMatch,
-      String snapshots,
+      Set<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
@@ -680,20 +685,18 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
 
-    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
-    LOGGER.info(
-        "allow external catalog credential vending: {}",
-        realmConfig.getConfig(
-            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
-    if (catalogEntity
-            .getCatalogType()
-            .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
-        && !realmConfig.getConfig(
-            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
-      throw new ForbiddenException(
-          "Access Delegation is not enabled for this catalog. Please consult applicable "
-              + "documentation for the catalog config property '%s' to enable this feature",
-          FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+    if (delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
+      boolean allowExternalCatalogCredentialVending =
+          realmConfig.getConfig(
+              FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity);
+      LOGGER.info(
+          "allow external catalog credential vending: {}", allowExternalCatalogCredentialVending);
+      if (catalogEntity.isExternal() && !allowExternalCatalogCredentialVending) {
+        throw new ForbiddenException(
+            "Access Delegation is not enabled for this catalog. Please consult applicable "
+                + "documentation for the catalog config property '%s' to enable this feature",
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+      }
     }
 
     if (ifNoneMatch != null) {
@@ -727,7 +730,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                   tableIdentifier,
                   tableMetadata,
                   actionsRequested,
-                  snapshots,
+                  delegationModes,
+                  catalogEntity,
                   refreshCredentialsEndpoint)
               .build());
     } else if (table instanceof BaseMetadataTable) {
@@ -738,23 +742,49 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
+  private CatalogEntity getCatalogEntity() {
+    PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
+    callContext
+        .getPolarisCallContext()
+        .getDiagServices()
+        .checkNotNull(catalogPath, "No catalog available for loadTable request");
+    CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
+    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
+    return catalogEntity;
+  }
+
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> actions,
-      String snapshots,
+      Set<AccessDelegationMode> delegationModes,
+      CatalogEntity catalogEntity,
       Optional<String> refreshCredentialsEndpoint) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
-    if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
+    AccessConfig accessConfig = null;
+    if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation
+        && delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
       LOGGER
           .atDebug()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .addKeyValue("tableLocation", tableMetadata.location())
           .log("Fetching client credentials for table");
-      AccessConfig accessConfig =
-          credentialDelegation.getAccessConfig(
+      accessConfig =
+          credentialDelegation.getAccessConfigForCredentialDelegation(
               tableIdentifier, tableMetadata, actions, refreshCredentialsEndpoint);
+    } else if (baseCatalog instanceof SupportsRemoteSigning remoteSigning
+        && delegationModes.contains(AccessDelegationMode.REMOTE_SIGNING)) {
+      S3RemoteSigningCatalogHandler.throwIfRemoteSigningNotEnabled(
+          callContext.getRealmConfig(), catalogEntity);
+      LOGGER
+          .atDebug()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue("tableLocation", tableMetadata.location())
+          .log("Enabling remote signing for table");
+      accessConfig = remoteSigning.getAccessConfigForRemoteSigning(tableIdentifier);
+    }
+    if (accessConfig != null) {
       Map<String, String> credentialConfig = accessConfig.credentials();
       responseBuilder.addAllConfig(credentialConfig);
       responseBuilder.addAllConfig(accessConfig.extraProperties());

@@ -73,7 +73,7 @@ public class PolarisS3InteroperabilityTest {
 
   public PolarisS3InteroperabilityTest() {
     TestServices.FileIOFactorySupplier fileIOFactorySupplier =
-        (storageCredentialCache, metaStoreManagerFactory) ->
+        (storageConfiguration, storageCredentialCache, metaStoreManagerFactory, clock) ->
             (FileIOFactory)
                 (callContext,
                     ioImplClassName,

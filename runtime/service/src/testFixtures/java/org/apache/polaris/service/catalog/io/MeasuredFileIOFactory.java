@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.io;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.inject.Vetoed;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.service.storage.StorageConfiguration;
 
 /**
  * A FileIOFactory that measures the number of bytes read, files written, and files deleted. It can
@@ -53,10 +55,13 @@ public class MeasuredFileIOFactory implements FileIOFactory {
 
   @Inject
   public MeasuredFileIOFactory(
+      StorageConfiguration storageConfiguration,
       StorageCredentialCache storageCredentialCache,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      Clock clock) {
     defaultFileIOFactory =
-        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+        new DefaultFileIOFactory(
+            storageConfiguration, storageCredentialCache, metaStoreManagerFactory, clock);
   }
 
   @Override
