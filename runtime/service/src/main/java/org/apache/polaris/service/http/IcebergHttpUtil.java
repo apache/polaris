@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.http;
 
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.polaris.core.DigestUtils;
 
 /** Utility class that encapsulates logic pertaining to Iceberg REST specific concepts. */
 public class IcebergHttpUtil {
