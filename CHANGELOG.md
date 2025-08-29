@@ -88,6 +88,8 @@ automatic storage credential refresh per table on the client side. Java client v
 The endpoint path is always returned when using vended credentials, but clients must enable the 
 refresh-credentials flag for the desired storage provider.
 
+- Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
+
 ### Changes
 
 - Polaris Management API clients must be prepared to deal with new attributes in `AwsStorageConfigInfo` objects.

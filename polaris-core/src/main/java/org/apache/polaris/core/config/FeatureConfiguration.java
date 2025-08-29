@@ -367,4 +367,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "it is still possible to enforce the uniqueness of table locations within a catalog.")
           .defaultValue(false)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_CREDENTIAL_RESET =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_CREDENTIAL_RESET")
+          .description(
+              "Flag to enable or disable the API to reset principal credentials. "
+                  + "Defaults to enabled, but service providers may want to disable it.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
 }

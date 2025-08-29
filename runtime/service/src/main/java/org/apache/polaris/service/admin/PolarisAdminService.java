@@ -66,6 +66,7 @@ import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
+import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -251,8 +252,7 @@ public class PolarisAdminService {
     // be extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
     if (topLevelEntityWrapper.getResolvedLeafEntity().getEntity().getId()
             == polarisPrincipal.getId()
-        && (op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS)
-            || op.equals(PolarisAuthorizableOperation.RESET_CREDENTIALS))) {
+        && (op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS))) {
       LOGGER
           .atDebug()
           .addKeyValue("principalName", topLevelEntityName)
@@ -1063,6 +1063,69 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
+  private @Nonnull PrincipalWithCredentials resetCredentialsHelper(
+      String principalName, String customClientId, String customClientSecret) {
+    PrincipalEntity currentPrincipalEntity =
+        findPrincipalByName(principalName)
+            .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
+
+    if (FederatedEntities.isFederated(currentPrincipalEntity)) {
+      throw new ValidationException(
+          "Cannot reset credentials for a federated principal: %s", principalName);
+    }
+    PolarisPrincipalSecrets currentSecrets =
+        metaStoreManager
+            .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
+            .getPrincipalSecrets();
+    // delete the existing creds if present
+    if (currentSecrets != null) {
+      metaStoreManager.deletePrincipalSecrets(
+          getCurrentPolarisContext(),
+          currentPrincipalEntity.getClientId(),
+          currentPrincipalEntity.getId());
+    }
+    PrincipalEntity newPrincipalEntity = currentPrincipalEntity;
+    // update the clientId tied to the principal entity
+    if (customClientId != null) {
+      PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(newPrincipalEntity);
+      updateBuilder.setClientId(customClientId);
+      PrincipalEntity updatedNewPrincipalEntity = updateBuilder.build();
+      newPrincipalEntity =
+          Optional.ofNullable(
+                  PrincipalEntity.of(
+                      PolarisEntity.of(
+                          metaStoreManager.updateEntityPropertiesIfNotChanged(
+                              getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
+              .orElseThrow(
+                  () ->
+                      new CommitConflictException(
+                          "Concurrent modification on Principal '%s'; retry later", principalName));
+    }
+
+    String resolvedClientId =
+        (customClientId != null) ? customClientId : currentPrincipalEntity.getClientId();
+
+    // generate new secrets
+    PolarisPrincipalSecrets newSecrets =
+        metaStoreManager
+            .resetPrincipalSecrets(
+                getCurrentPolarisContext(),
+                currentPrincipalEntity.getId(),
+                resolvedClientId,
+                customClientSecret)
+            .getPrincipalSecrets();
+
+    if (newSecrets == null) {
+      throw new IllegalStateException(
+          String.format("Failed to %s secrets for principal '%s'", "reset", principalName));
+    }
+
+    return new PrincipalWithCredentials(
+        newPrincipalEntity.asPrincipal(),
+        new PrincipalWithCredentialsCredentials(
+            newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
+  }
+
   private @Nonnull PrincipalWithCredentials rotateOrResetCredentialsHelper(
       String principalName, boolean shouldReset) {
     PrincipalEntity currentPrincipalEntity =
@@ -1116,11 +1179,15 @@ public class PolarisAdminService {
     return rotateOrResetCredentialsHelper(principalName, false);
   }
 
-  public @Nonnull PrincipalWithCredentials resetCredentials(String principalName) {
+  public @Nonnull PrincipalWithCredentials resetCredentials(
+      String principalName, ResetPrincipalRequest resetPrincipalRequest) {
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        realmConfig, FeatureConfiguration.ENABLE_CREDENTIAL_RESET);
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.RESET_CREDENTIALS;
     authorizeBasicTopLevelEntityOperationOrThrow(op, principalName, PolarisEntityType.PRINCIPAL);
-
-    return rotateOrResetCredentialsHelper(principalName, true);
+    var customClientId = resetPrincipalRequest.getClientId();
+    var customClientSecret = resetPrincipalRequest.getClientSecret();
+    return resetCredentialsHelper(principalName, customClientId, customClientSecret);
   }
 
   public List<Principal> listPrincipals() {

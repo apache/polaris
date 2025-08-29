@@ -859,6 +859,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
+  public @Nonnull void deletePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+    ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, principalId);
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public @Nonnull PrincipalSecretsResult rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
@@ -907,6 +916,30 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // TODO: Rethink the atomicity of the relationship between principalSecrets and principal
 
+    return (secrets == null)
+        ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
+        : new PrincipalSecretsResult(secrets);
+  }
+
+  @Override
+  public @Nonnull PrincipalSecretsResult resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret) {
+    // get metastore we should be using
+    BasePersistence ms = callCtx.getMetaStore();
+    // if not found, the principal must have been dropped
+    EntityResult loadEntityResult =
+        loadEntity(
+            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
+    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    PolarisPrincipalSecrets secrets =
+        ((IntegrationPersistence) ms)
+            .storePrincipalSecrets(callCtx, principalId, resolvedClientId, customClientSecret);
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);
