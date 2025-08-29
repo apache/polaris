@@ -22,7 +22,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nullable;
 import java.security.SecureRandom;
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.polaris.core.DigestUtils;
 
 /**
  * Simple class to represent the secrets used to authenticate a catalog principal, These secrets are

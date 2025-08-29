@@ -46,7 +46,6 @@ awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.33.0" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.38" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
-commons-codec = { module = "commons-codec:commons-codec", version = "1.19.0" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.18.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.14.0" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.7" }
