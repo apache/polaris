@@ -74,7 +74,14 @@ public class ProductionReadinessChecks {
       @Observes Startup event,
       Instance<ProductionReadinessCheck> checks,
       ReadinessConfiguration config) {
-    List<Error> errors = checks.stream().flatMap(check -> check.getErrors().stream()).toList();
+    List<Error> errors =
+        checks.stream()
+            .flatMap(check -> check.getErrors().stream())
+            .filter(
+                error ->
+                    config.ignoreOffendingProperties().stream()
+                        .noneMatch(prop -> prop.equalsIgnoreCase(error.offendingProperty())))
+            .toList();
     if (!errors.isEmpty()) {
       var utf8 = Charset.defaultCharset().equals(StandardCharsets.UTF_8);
       var warning = utf8 ? WARNING_SIGN_UTF_8 : WARNING_SIGN_PLAIN;
