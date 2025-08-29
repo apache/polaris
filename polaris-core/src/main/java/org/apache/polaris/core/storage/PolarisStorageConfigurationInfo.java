@@ -26,14 +26,12 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -150,23 +148,13 @@ public abstract class PolarisStorageConfigurationInfo {
                 LOGGER.debug(
                     "Not allowing unstructured table location for entity: {}",
                     entityPathReversed.get(0).getName());
-                return new LocationRestrictions(
-                    configInfo, configInfo.getAllowedLocations(), baseLocation);
+                return new LocationRestrictions(configInfo, baseLocation);
               } else {
                 LOGGER.debug(
                     "Allowing unstructured table location for entity: {}",
                     entityPathReversed.get(0).getName());
 
-                // TODO: figure out the purpose of adding `userSpecifiedWriteLocations`
-                Set<String> locations =
-                    StorageUtil.getLocationsAllowedToBeAccessed(
-                        null, entityPathReversed.get(0).getPropertiesAsMap());
-                return new LocationRestrictions(
-                    configInfo,
-                    ImmutableList.<String>builder()
-                        .addAll(configInfo.getAllowedLocations())
-                        .addAll(locations)
-                        .build());
+                return new LocationRestrictions(configInfo);
               }
             });
   }

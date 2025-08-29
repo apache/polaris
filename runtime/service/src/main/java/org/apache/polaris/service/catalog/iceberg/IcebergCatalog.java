@@ -843,7 +843,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         storageCredentialCache,
         getCredentialVendor(),
         tableIdentifier,
-        StorageUtil.getLocationsAllowedToBeAccessed(tableMetadata),
+        StorageUtil.getLocationsUsedByTable(tableMetadata),
         storageActions,
         storageInfo.get(),
         refreshCredentialsEndpoint);
@@ -1411,7 +1411,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
-              StorageUtil.getLocationsAllowedToBeAccessed(metadata),
+              StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
               new HashMap<>(metadata.properties()),
               Set.of(
@@ -1434,7 +1434,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
         Set<String> dataLocations =
-            StorageUtil.getLocationsAllowedToBeAccessed(metadata.location(), metadata.properties());
+            StorageUtil.getLocationsUsedByTable(metadata.location(), metadata.properties());
         validateLocationsForTableLike(tableIdentifier, dataLocations, resolvedStorageEntity);
         // also validate that the table location doesn't overlap an existing table
         dataLocations.forEach(
@@ -1795,7 +1795,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       viewFileIO =
           loadFileIOForTableLike(
               identifier,
-              StorageUtil.getLocationsAllowedToBeAccessed(metadata),
+              StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
               tableProperties,
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));

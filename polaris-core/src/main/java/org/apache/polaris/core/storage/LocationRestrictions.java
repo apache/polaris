@@ -53,18 +53,14 @@ public class LocationRestrictions {
   private final String parentLocation;
 
   public LocationRestrictions(
-      @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo,
-      List<String> allowedLocations,
-      String parentLocation) {
-    this.allowedLocations = List.copyOf(allowedLocations);
+      @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo, String parentLocation) {
+    this.allowedLocations = storageConfigurationInfo.getAllowedLocations();
     allowedLocations.forEach(storageConfigurationInfo::validatePrefixForStorageType);
     this.parentLocation = parentLocation;
   }
 
-  public LocationRestrictions(
-      @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo,
-      List<String> allowedLocations) {
-    this(storageConfigurationInfo, allowedLocations, null);
+  public LocationRestrictions(@Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo) {
+    this(storageConfigurationInfo, null);
   }
 
   /**
