@@ -22,11 +22,11 @@ import java.util.Optional;
 
 /**
  * Internal configuration flags for non-feature behavior changes in Polaris. These flags control
- * subtle behavior adjustments and bug fixes, not user-facing catalog settings. They are intended
- * for internal use only, are inherently unstable, and may be removed at any time. When introducing
- * a new flag, consider the trade-off between maintenance burden and the risk of an unguarded
- * behavior change. Flags here are generally short-lived and should either be removed or promoted to
- * stable feature flags before the next release.
+ * subtle behavior adjustments and bug fixes, not user-facing settings. They are intended for
+ * internal use only, are inherently unstable, and may be removed at any time. When introducing a
+ * new flag, consider the trade-off between maintenance burden and the risk of an unguarded behavior
+ * change. Flags here are generally short-lived and should either be removed or promoted to stable
+ * feature flags before the next release.
  *
  * @param <T> The type of the configuration
  */
@@ -80,8 +80,8 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
           .key("ALLOW_NAMESPACE_CUSTOM_LOCATION")
           .catalogConfig("polaris.config.namespace-custom-location.enabled")
           .description(
-              "If set to true, allow namespaces with completely arbitrary locations. This should not affect" +
-                      " credential vending.")
+              "If set to true, allow namespaces with completely arbitrary locations. This should not affect"
+                  + " credential vending.")
           .defaultValue(false)
           .buildBehaviorChangeConfiguration();
 }

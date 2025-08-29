@@ -677,7 +677,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     if (!realmConfig.getConfig(
         BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
-      validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
+      if (properties.containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)) {
+        validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
+      }
     }
 
     List<PolarisEntity> parentPath = resolvedEntities.getRawFullPath();
