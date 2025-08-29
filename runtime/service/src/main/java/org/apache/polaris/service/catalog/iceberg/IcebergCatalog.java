@@ -509,7 +509,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
     if (!realmConfig.getConfig(
-        FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
+        BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
       validateNamespaceLocation(entity, resolvedParent);
     }
     PolarisEntity returnedEntity =
@@ -676,7 +676,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
     if (!realmConfig.getConfig(
-        FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
+        BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
       validateNamespaceLocation(NamespaceEntity.of(entity), resolvedEntities);
     }
 

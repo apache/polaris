@@ -100,16 +100,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Boolean> ALLOW_NAMESPACE_CUSTOM_LOCATION =
-      PolarisConfiguration.<Boolean>builder()
-          .key("ALLOW_NAMESPACE_CUSTOM_LOCATION")
-          .catalogConfig("polaris.config.namespace-custom-location.enabled")
-          .description(
-              "If set to true, allow namespaces with arbitrary locations, even those which escape "
-                  + "from the parent/allowed locations. This may impact credential vending when enabled.")
-          .defaultValue(false)
-          .buildFeatureConfiguration();
-
   public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_METADATA_FILE_LOCATION")

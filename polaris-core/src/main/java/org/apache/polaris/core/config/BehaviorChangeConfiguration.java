@@ -74,4 +74,14 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
                       + " the committed metadata again.")
               .defaultValue(true)
               .buildBehaviorChangeConfiguration();
+
+  public static final BehaviorChangeConfiguration<Boolean> ALLOW_NAMESPACE_CUSTOM_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_NAMESPACE_CUSTOM_LOCATION")
+          .catalogConfig("polaris.config.namespace-custom-location.enabled")
+          .description(
+              "If set to true, allow namespaces with completely arbitrary locations. This should not affect" +
+                      " credential vending.")
+          .defaultValue(false)
+          .buildBehaviorChangeConfiguration();
 }

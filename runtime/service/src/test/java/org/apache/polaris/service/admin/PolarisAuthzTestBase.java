@@ -119,7 +119,7 @@ public abstract class PolarisAuthzTestBase {
               "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
               "true")
           .put("polaris.features.\"DROP_WITH_PURGE_ENABLED\"", "true")
-          .put("polaris.features.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
+          .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
           .build();
     }
   }

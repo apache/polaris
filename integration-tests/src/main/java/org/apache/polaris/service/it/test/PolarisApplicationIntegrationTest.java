@@ -69,7 +69,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientPrincipal;
@@ -682,7 +682,7 @@ public class PolarisApplicationIntegrationTest {
             .build(),
         catalogLocation,
         ImmutableMap.of(
-            FeatureConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION.catalogConfig(),
+            BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION.catalogConfig(),
             String.valueOf(allowNamespaceLocationEscape)));
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
