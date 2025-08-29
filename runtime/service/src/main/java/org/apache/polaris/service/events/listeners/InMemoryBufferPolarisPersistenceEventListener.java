@@ -29,18 +29,22 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.ArrayList;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,10 +57,10 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   private static final String REQUEST_ID_KEY = "requestId";
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
-  private final ConcurrentHashMap<String, ConcurrentLinkedQueue<EventAndContext>> buffer =
+  private final ConcurrentHashMap<String, ConcurrentLinkedQueueWithApproximateSize<PolarisEvent>> buffer =
       new ConcurrentHashMap<>();
   private final ScheduledExecutorService executor;
-  private final ConcurrentHashMap<Future<?>, Integer> futures = new ConcurrentHashMap<>();
+  private final Set<Future<?>> futures = ConcurrentHashMap.newKeySet();
   private final Duration timeToFlush;
   private final int maxBufferSize;
 
@@ -64,8 +68,7 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   @Inject Clock clock;
   @Context SecurityContext securityContext;
   @Context ContainerRequestContext containerRequestContext;
-
-  private record EventAndContext(PolarisEvent polarisEvent, PolarisCallContext callContext) {}
+  @Inject PolarisDiagnostics polarisDiagnostics;
 
   @Inject
   public InMemoryBufferPolarisPersistenceEventListener(
@@ -82,10 +85,9 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
 
   @PostConstruct
   void start() {
-    futures.put(
+    futures.add(
         executor.scheduleAtFixedRate(
-            this::runCleanup, 0, timeToFlush.toMillis(), TimeUnit.MILLISECONDS),
-        1);
+            this::runCleanup, 0, timeToFlush.toMillis(), TimeUnit.MILLISECONDS));
   }
 
   void runCleanup() {
@@ -98,7 +100,7 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
     }
     // Clean up futures
     try {
-      futures.keySet().removeIf(future -> future.isCancelled() || future.isDone());
+      futures.removeIf(Future::isDone);
     } catch (Exception e) {
       LOGGER.debug("Futures reaper task failed.");
     }
@@ -106,14 +108,18 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
 
   @PreDestroy
   void shutdown() {
-    futures.keySet().forEach(future -> future.cancel(false));
-    executor.shutdownNow();
+    futures.forEach(future -> future.cancel(false));
+    executor.shutdown();
 
     try {
       if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-        LOGGER.warn("Executor did not shut down cleanly");
+        executor.shutdownNow();
+        if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+          LOGGER.warn("Executor did not shut down cleanly");
+        }
       }
     } catch (InterruptedException e) {
+      executor.shutdownNow();
       Thread.currentThread().interrupt();
     } finally {
       for (String realmId : buffer.keySet()) {
@@ -135,44 +141,42 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   }
 
   @Override
-  void addToBuffer(PolarisEvent polarisEvent) {
+  void processEvent(PolarisEvent polarisEvent) {
     String realmId = callContext.getRealmContext().getRealmIdentifier();
 
-    buffer
-        .computeIfAbsent(realmId, k -> new ConcurrentLinkedQueue<>())
-        .add(new EventAndContext(polarisEvent, callContext.getPolarisCallContext().copy()));
-    if (buffer.get(realmId).size() >= maxBufferSize) {
-      futures.put(executor.submit(() -> checkAndFlushBufferIfNecessary(realmId, true)), 1);
+    ConcurrentLinkedQueueWithApproximateSize<PolarisEvent> realmQueue = buffer.computeIfAbsent(realmId, k -> new ConcurrentLinkedQueueWithApproximateSize<>());
+    realmQueue.add(polarisEvent);
+    if (realmQueue.size() >= maxBufferSize) {
+      futures.add(executor.submit(() -> checkAndFlushBufferIfNecessary(realmId, true)));
     }
   }
 
   @VisibleForTesting
   void checkAndFlushBufferIfNecessary(String realmId, boolean forceFlush) {
-    ConcurrentLinkedQueue<EventAndContext> queue = buffer.get(realmId);
+    ConcurrentLinkedQueueWithApproximateSize<PolarisEvent> queue = buffer.get(realmId);
     if (queue == null || queue.isEmpty()) {
       return;
     }
 
-    EventAndContext head = queue.peek();
+    PolarisEvent head = queue.peek();
     if (head == null) {
       return;
     }
 
-    Duration elapsed = Duration.ofMillis(clock.millis() - head.polarisEvent.getTimestampMs());
+    Duration elapsed = Duration.ofMillis(clock.millis() - head.getTimestampMs());
 
     if (elapsed.compareTo(timeToFlush) > 0 || queue.size() >= maxBufferSize || forceFlush) {
       // Atomically replace old queue with new queue
-      boolean replaced = buffer.replace(realmId, queue, new ConcurrentLinkedQueue<>());
+      boolean replaced = buffer.replace(realmId, queue, new ConcurrentLinkedQueueWithApproximateSize<>());
       if (!replaced) {
         // Another thread concurrently modified the buffer, so do not continue
         return;
       }
 
-      metaStoreManagerFactory
-          .getOrCreateMetaStoreManager(() -> realmId)
-          .writeEvents(
-              head.callContext(),
-              new ArrayList<>(queue.stream().map(EventAndContext::polarisEvent).toList()));
+      RealmContext realmContext = () -> realmId;
+      PolarisMetaStoreManager metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+      BasePersistence basePersistence = metaStoreManagerFactory.getOrCreateSession(realmContext);
+      metaStoreManager.writeEvents(new PolarisCallContext(realmContext, basePersistence, polarisDiagnostics), queue.stream().toList());
     }
   }
 

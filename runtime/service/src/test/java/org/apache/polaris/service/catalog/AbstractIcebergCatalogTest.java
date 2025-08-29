@@ -2230,8 +2230,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     var beforeTableEvent = testPolarisEventListener.getLatest(BeforeTableCommitedEvent.class);
     Assertions.assertThat(beforeTableEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(beforeTableEvent.base().properties().get(key)).isEqualTo(valOld);
-    Assertions.assertThat(beforeTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
+    Assertions.assertThat(beforeTableEvent.metadataBefore().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(beforeTableEvent.metadataAfter().properties().get(key)).isEqualTo(valNew);
 
     var afterTableEvent = testPolarisEventListener.getLatest(AfterTableCommitedEvent.class);
     Assertions.assertThat(afterTableEvent.identifier()).isEqualTo(TestData.TABLE);

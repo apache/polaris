@@ -20,7 +20,10 @@
 package org.apache.polaris.service.events.listeners;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.refEq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,14 +38,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Collectors;
+
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.threeten.extra.MutableClock;
 
@@ -60,11 +67,10 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     callContext = Mockito.mock(CallContext.class);
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.copy()).thenReturn(polarisCallContext);
 
     MetaStoreManagerFactory metaStoreManagerFactory = Mockito.mock(MetaStoreManagerFactory.class);
     polarisMetaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
-    when(metaStoreManagerFactory.getOrCreateMetaStoreManager(Mockito.any()))
+    when(metaStoreManagerFactory.getOrCreateMetaStoreManager(any()))
         .thenReturn(polarisMetaStoreManager);
 
     InMemoryBufferEventListenerConfiguration eventListenerConfiguration =
@@ -80,19 +86,11 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
         new InMemoryBufferPolarisPersistenceEventListener(
             metaStoreManagerFactory, clock, eventListenerConfiguration);
 
-    // Use reflection to set the callContext field
-    try {
-      java.lang.reflect.Field field =
-          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField("callContext");
-      field.setAccessible(true);
-      field.set(eventListener, callContext);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to set callContext field", e);
-    }
+    eventListener.callContext = callContext;
   }
 
   @Test
-  public void testAddToBufferFlushesAfterConfiguredTime() {
+  public void testProcessEventFlushesAfterConfiguredTime() {
     String realmId = "realm1";
     List<PolarisEvent> eventsAddedToBuffer = addEventsWithoutTriggeringFlush(realmId);
 
@@ -100,11 +98,11 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     clock.add(CONFIG_TIME_TO_FLUSH_IN_MS.multipliedBy(2));
     eventListener.checkAndFlushBufferIfNecessary(realmId, false);
     verify(polarisMetaStoreManager, times(1))
-        .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBuffer));
+        .writeEvents(any(), eq(eventsAddedToBuffer));
   }
 
   @Test
-  public void testAddToBufferFlushesAfterMaxEvents() {
+  public void testProcessEventFlushesAfterMaxEvents() {
     String realm1 = "realm1";
     List<PolarisEvent> eventsAddedToBuffer = addEventsWithoutTriggeringFlush(realm1);
     List<PolarisEvent> eventsAddedToBufferRealm2 = addEventsWithoutTriggeringFlush("realm2");
@@ -113,16 +111,14 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     PolarisEvent triggeringEvent = createSampleEvent();
     RealmContext realmContext = () -> realm1;
     when(callContext.getRealmContext()).thenReturn(realmContext);
-    eventListener.addToBuffer(triggeringEvent);
+    eventListener.processEvent(triggeringEvent);
     eventsAddedToBuffer.add(triggeringEvent);
 
     // Calling checkAndFlushBufferIfNecessary manually to replicate the behavior of the executor
     // service
     eventListener.checkAndFlushBufferIfNecessary(realm1, false);
-    verify(polarisMetaStoreManager, times(1))
-        .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBuffer));
-    verify(polarisMetaStoreManager, times(0))
-        .writeEvents(eq(callContext.getPolarisCallContext()), eq(eventsAddedToBufferRealm2));
+    verify(polarisMetaStoreManager, times(1)).writeEvents(any(), eq(eventsAddedToBuffer));
+    verify(polarisMetaStoreManager, times(0)).writeEvents(any(), eq(eventsAddedToBufferRealm2));
   }
 
   @Test
@@ -163,8 +159,60 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
           "Exceptions occurred in concurrent checkAndFlushBufferIfNecessary: ", exceptions.peek());
     }
     // Only one flush should occur
-    verify(polarisMetaStoreManager, times(1))
-        .writeEvents(eq(callContext.getPolarisCallContext()), eq(events));
+    verify(polarisMetaStoreManager, times(1)).writeEvents(any(), eq(events));
+  }
+
+  @Test
+  public void testProcessEventIsThreadSafe() throws Exception {
+    String realmId = "realm1";
+    when(callContext.getRealmContext()).thenReturn(() -> realmId);
+    int threadCount = 10;
+    List<Thread> threads = new ArrayList<>();
+    ConcurrentLinkedQueue<Exception> exceptions = new ConcurrentLinkedQueue<>();
+    ConcurrentLinkedQueue<PolarisEvent> allEvents = new ConcurrentLinkedQueue<>();
+
+    for (int i = 0; i < threadCount; i++) {
+      Thread t =
+              new Thread(
+                      () -> {
+                        try {
+                          for (int j = 0; j < 10; j++) {
+                            PolarisEvent event = createSampleEvent();
+                            allEvents.add(event);
+                            eventListener.processEvent(event);
+                          }
+                        } catch (Exception e) {
+                          exceptions.add(e);
+                        }
+                      });
+      threads.add(t);
+    }
+
+    // Start all threads
+    threads.forEach(Thread::start);
+    // Wait for all threads to finish
+    for (Thread t : threads) {
+      t.join();
+    }
+    // There should be no exceptions
+    if (!exceptions.isEmpty()) {
+      throw new AssertionError("Exceptions occurred in concurrent checkAndFlushBufferIfNecessary: ", exceptions.peek());
+    }
+
+    ArgumentCaptor<List<PolarisEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(polarisMetaStoreManager, atLeastOnce()).writeEvents(any(), eventsCaptor.capture());
+    Awaitility.await("expected amount of records should be processed")
+            .atMost(Duration.ofSeconds(30))
+            .pollDelay(Duration.ofMillis(500))
+            .pollInterval(Duration.ofMillis(500))
+            .untilAsserted(
+                    () -> {
+                      List<PolarisEvent> eventsProcessed = eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
+                      assertThat(eventsProcessed.size()).isEqualTo(allEvents.size());
+                    });
+    List<PolarisEvent> seenEvents = eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
+    assertThat(seenEvents.size()).isEqualTo(allEvents.size());
+    assertThat(seenEvents).hasSameElementsAs(allEvents);
   }
 
   @Test
@@ -177,16 +225,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     when(mockContainerRequestContext.hasProperty("requestId")).thenReturn(true);
     when(mockContainerRequestContext.getProperty("requestId")).thenReturn(expectedRequestId);
 
-    // Use reflection to set the containerRequestContext field
-    try {
-      java.lang.reflect.Field field =
-          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField(
-              "containerRequestContext");
-      field.setAccessible(true);
-      field.set(eventListener, mockContainerRequestContext);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to set containerRequestContext field", e);
-    }
+    eventListener.containerRequestContext = mockContainerRequestContext;
 
     String actualRequestId = eventListener.getRequestId();
     assertThat(actualRequestId)
@@ -230,16 +269,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     ContainerRequestContext mockContainerRequestContext =
         Mockito.mock(ContainerRequestContext.class);
     when(mockContainerRequestContext.hasProperty("requestId")).thenReturn(false);
-
-    try {
-      java.lang.reflect.Field field =
-          InMemoryBufferPolarisPersistenceEventListener.class.getDeclaredField(
-              "containerRequestContext");
-      field.setAccessible(true);
-      field.set(eventListener, mockContainerRequestContext);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to set containerRequestContext field", e);
-    }
+    eventListener.containerRequestContext = mockContainerRequestContext;
 
     String requestId = eventListener.getRequestId();
 
@@ -260,9 +290,9 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     RealmContext realmContext = () -> realmId;
     when(callContext.getRealmContext()).thenReturn(realmContext);
     for (PolarisEvent realmEvent : realmEvents) {
-      eventListener.addToBuffer(realmEvent);
+      eventListener.processEvent(realmEvent);
     }
-    verify(polarisMetaStoreManager, times(0)).writeEvents(Mockito.any(), Mockito.any());
+    verify(polarisMetaStoreManager, times(0)).writeEvents(any(), any());
     return realmEvents;
   }
 

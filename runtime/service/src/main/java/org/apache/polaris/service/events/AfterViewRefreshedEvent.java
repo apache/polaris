@@ -23,7 +23,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
 /**
  * Emitted after Polaris refreshes its known version of a view's metadata by fetching the latest.
  *
+ * @param catalogName
  * @param viewIdentifier The identifier of the view that was refreshed.
  */
-public record AfterViewRefreshedEvent(String eventId, TableIdentifier viewIdentifier)
+public record AfterViewRefreshedEvent(String catalogName, TableIdentifier viewIdentifier)
     implements PolarisEvent {}

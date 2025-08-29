@@ -24,7 +24,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
  * Emitted when Polaris intends to refresh its known version of a table's metadata by fetching the
  * latest.
  *
+ * @param catalogName     The name of the catalog where the view is located.
  * @param tableIdentifier The identifier of the table being refreshed.
  */
-public record BeforeTableRefreshedEvent(String eventId, TableIdentifier tableIdentifier)
+public record BeforeTableRefreshedEvent(String catalogName, TableIdentifier tableIdentifier)
     implements PolarisEvent {}

@@ -75,10 +75,10 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
   @Override
   public void onAfterTableCreated(AfterTableCreatedEvent event) {
     ContextSpecificInformation contextSpecificInformation = getContextSpecificInformation();
-    org.apache.polaris.core.entity.PolarisEvent polarisEvent =
-        new org.apache.polaris.core.entity.PolarisEvent(
+    PolarisEvent polarisEvent =
+        new PolarisEvent(
             event.catalogName(),
-            event.eventId(),
+            org.apache.polaris.service.events.PolarisEvent.createEventId(),
             getRequestId(),
             event.getClass().getSimpleName(),
             contextSpecificInformation.timestamp(),
@@ -92,23 +92,23 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
             "metadata",
             TableMetadataParser.toJson(event.metadata()));
     polarisEvent.setAdditionalProperties(additionalParameters);
-    addToBuffer(polarisEvent);
+    processEvent(polarisEvent);
   }
 
   @Override
   public void onAfterCatalogCreated(AfterCatalogCreatedEvent event) {
     ContextSpecificInformation contextSpecificInformation = getContextSpecificInformation();
-    org.apache.polaris.core.entity.PolarisEvent polarisEvent =
+    PolarisEvent polarisEvent =
         new PolarisEvent(
             event.catalogName(),
-            event.eventId(),
+            org.apache.polaris.service.events.PolarisEvent.createEventId(),
             getRequestId(),
             event.getClass().getSimpleName(),
             contextSpecificInformation.timestamp(),
             contextSpecificInformation.principalName(),
             PolarisEvent.ResourceType.CATALOG,
             event.catalogName());
-    addToBuffer(polarisEvent);
+    processEvent(polarisEvent);
   }
 
   protected record ContextSpecificInformation(long timestamp, String principalName) {}
@@ -117,5 +117,5 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
 
   abstract String getRequestId();
 
-  abstract void addToBuffer(org.apache.polaris.core.entity.PolarisEvent event);
+  abstract void processEvent(PolarisEvent event);
 }

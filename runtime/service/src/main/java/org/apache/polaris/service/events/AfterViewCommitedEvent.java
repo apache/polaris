@@ -25,10 +25,10 @@ import org.apache.iceberg.view.ViewMetadata;
  * Emitted after Polaris performs a commit to a view. This is not emitted if there's an exception
  * while committing.
  *
- * @param identifier The identifier.
- * @param base The old metadata.
- * @param metadata The new metadata.
+ * @param catalogName The catalog name where the view is located
+ * @param identifier  The identifier.
+ * @param base        The old metadata.
+ * @param metadata    The new metadata.
  */
-public record AfterViewCommitedEvent(
-    String eventId, TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata)
+public record AfterViewCommitedEvent(String catalogName, TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata)
     implements PolarisEvent {}

@@ -1384,7 +1384,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         disableRefresh();
       } else {
         polarisEventListener.onBeforeTableRefreshed(
-            new BeforeTableRefreshedEvent(PolarisEvent.createEventId(), tableIdentifier));
+            new BeforeTableRefreshedEvent(catalogName, tableIdentifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1405,17 +1405,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
         polarisEventListener.onAfterTableRefreshed(
-            new AfterTableRefreshedEvent(PolarisEvent.createEventId(), tableIdentifier));
+            new AfterTableRefreshedEvent(catalogName, tableIdentifier));
       }
     }
 
     public void doCommit(TableMetadata base, TableMetadata metadata) {
-      polarisEventListener.onBeforeTableCommited(
-          new BeforeTableCommitedEvent(
-              PolarisEvent.createEventId(), tableIdentifier, base, metadata));
+      polarisEventListener.onBeforeTableCommited(new BeforeTableCommitedEvent(tableIdentifier, base, metadata));
 
       LOGGER.debug(
-          "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
+          "doCommit for table {} with metadataBefore {}, metadataAfter {}", tableIdentifier, base, metadata);
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       if (null == base && !namespaceExists(tableIdentifier.namespace())) {
         throw new NoSuchNamespaceException(
@@ -1553,9 +1551,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         updateTableLike(tableIdentifier, entity);
       }
 
-      polarisEventListener.onAfterTableCommited(
-          new AfterTableCommitedEvent(
-              PolarisEvent.createEventId(), tableIdentifier, base, metadata));
+      polarisEventListener.onAfterTableCommited(new AfterTableCommitedEvent(catalogName, tableIdentifier, base, metadata));
     }
 
     @Override
@@ -1746,8 +1742,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onBeforeViewRefreshed(
-            new BeforeViewRefreshedEvent(PolarisEvent.createEventId(), identifier));
+        polarisEventListener.onBeforeViewRefreshed(new BeforeViewRefreshedEvent(catalogName, identifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1769,17 +1764,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
-        polarisEventListener.onAfterViewRefreshed(
-            new AfterViewRefreshedEvent(PolarisEvent.createEventId(), identifier));
+        polarisEventListener.onAfterViewRefreshed(new AfterViewRefreshedEvent(catalogName, identifier));
       }
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
-      polarisEventListener.onBeforeViewCommited(
-          new BeforeViewCommitedEvent(PolarisEvent.createEventId(), identifier, base, metadata));
+      polarisEventListener.onBeforeViewCommited(new BeforeViewCommitedEvent(catalogName, identifier, base, metadata));
 
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
-      LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
+      LOGGER.debug("doCommit for view {} with metadataBefore {}, metadataAfter {}", identifier, base, metadata);
       if (null == base && !namespaceExists(identifier.namespace())) {
         throw new NoSuchNamespaceException(
             "Cannot create view '%s'. Namespace does not exist: '%s'",
@@ -1872,8 +1865,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         updateTableLike(identifier, entity);
       }
 
-      polarisEventListener.onAfterViewCommited(
-          new AfterViewCommitedEvent(PolarisEvent.createEventId(), identifier, base, metadata));
+      polarisEventListener.onAfterViewCommited(new AfterViewCommitedEvent(catalogName, identifier, base, metadata));
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {

@@ -16,19 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.catalog.TableIdentifier;
+package org.apache.polaris.service.events.listeners;
 
-/**
- * Emitted when Polaris intends to perform a commit to a table. There is no guarantee on the order
- * of this event relative to the validation checks we've performed, which means the commit may still
- * fail Polaris-side validation checks.
- *
- * @param tableIdentifier The identifier.
- * @param metadataBefore The old metadata.
- * @param metadataAfter The new metadata.
- */
-public record BeforeTableCommitedEvent(TableIdentifier tableIdentifier, TableMetadata metadataBefore, TableMetadata metadataAfter)
-    implements PolarisEvent {}
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
+
+public class ConcurrentLinkedQueueWithApproximateSize<T> {
+    private final ConcurrentLinkedQueue<T> queue = new ConcurrentLinkedQueue<>();
+    private final AtomicInteger size = new AtomicInteger();
+
+    public void add(T event) {
+        queue.add(event);
+        size.getAndIncrement();
+    }
+
+    public boolean isEmpty() {
+        return queue.isEmpty();
+    }
+
+    public T peek() {
+        return queue.peek();
+    }
+
+    public int size() {
+        return size.get();
+    }
+
+    public Stream<T> stream() {
+        return queue.stream();
+    }
+}

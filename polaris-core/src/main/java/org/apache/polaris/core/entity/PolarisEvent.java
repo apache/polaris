@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 
 public class PolarisEvent {
+  // TODO: Look into using the CDI-managed `ObjectMapper` object
   public static final String EMPTY_MAP_STRING = "{}";
 
   // to serialize/deserialize properties

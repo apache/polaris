@@ -25,5 +25,5 @@ package org.apache.polaris.service.events;
  * @param attempt The attempt number. Each retry of the task will have its own attempt number. The
  *     initial (non-retried) attempt starts counting from 1.
  */
-public record BeforeTaskAttemptedEvent(String eventId, long taskEntityId, int attempt)
+public record BeforeTaskAttemptedEvent(long taskEntityId, int attempt)
     implements PolarisEvent {}

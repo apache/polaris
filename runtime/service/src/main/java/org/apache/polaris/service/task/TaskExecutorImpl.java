@@ -144,8 +144,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   }
 
   protected void handleTask(long taskEntityId, CallContext ctx, int attempt) {
-    polarisEventListener.onBeforeTaskAttempted(
-        new BeforeTaskAttemptedEvent(PolarisEvent.createEventId(), taskEntityId, attempt));
+    polarisEventListener.onBeforeTaskAttempted(new BeforeTaskAttemptedEvent(taskEntityId, attempt));
 
     boolean success = false;
     try {
@@ -188,9 +187,7 @@ public class TaskExecutorImpl implements TaskExecutor {
             .log("Unable to execute async task");
       }
     } finally {
-      polarisEventListener.onAfterTaskAttempted(
-          new AfterTaskAttemptedEvent(
-              PolarisEvent.createEventId(), taskEntityId, attempt, success));
+      polarisEventListener.onAfterTaskAttempted(new AfterTaskAttemptedEvent(taskEntityId, attempt, success));
     }
   }
 

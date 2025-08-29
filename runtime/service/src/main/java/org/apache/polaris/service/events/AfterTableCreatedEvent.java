@@ -24,5 +24,5 @@ import org.apache.iceberg.catalog.TableIdentifier;
 
 /** Emitted when Polaris creates a table. */
 public record AfterTableCreatedEvent(
-    String eventId, String catalogName, TableMetadata metadata, TableIdentifier identifier)
+        String catalogName, TableIdentifier identifier, TableMetadata metadata)
     implements PolarisEvent {}

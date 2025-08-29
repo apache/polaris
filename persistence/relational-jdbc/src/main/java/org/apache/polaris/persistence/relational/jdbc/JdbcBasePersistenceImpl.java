@@ -258,7 +258,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           QueryGenerator.generateInsertQuery(
               ModelEvent.ALL_COLUMNS,
               ModelEvent.TABLE_NAME,
-              ModelEvent.fromEvent(events.get(0))
+              ModelEvent.fromEvent(events.getFirst())
                   .toMap(datasourceOperations.getDatabaseType())
                   .values()
                   .stream()

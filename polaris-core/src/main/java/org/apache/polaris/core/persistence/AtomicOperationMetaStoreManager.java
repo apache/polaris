@@ -1960,14 +1960,4 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             .collect(Collectors.toList());
     return ms.lookupEntities(callCtx, policyEntityIds);
   }
-
-  @Nonnull
-  @Override
-  public void writeEvents(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
-    // get metastore we should be using
-    BasePersistence ms = callCtx.getMetaStore();
-
-    ms.writeEvents(polarisEvents);
-  }
 }
