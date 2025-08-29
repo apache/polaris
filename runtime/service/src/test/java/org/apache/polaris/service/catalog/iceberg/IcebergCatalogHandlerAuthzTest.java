@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.PartitionSpec;
@@ -1785,7 +1784,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
 
-            FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), new Configuration());
+            FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), null);
             TableMetadata tableMetadata =
                 TableMetadata.buildFromEmpty()
                     .addSchema(SCHEMA)
