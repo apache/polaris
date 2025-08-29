@@ -42,6 +42,8 @@ public class RestCatalogFileIntegrationTest extends PolarisRestCatalogFileIntegr
           "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\",\"S3\"]",
           "polaris.readiness.ignore-severe-issues",
+          "true",
+          "polaris.features.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"",
           "true");
     }
   }
