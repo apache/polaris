@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth;
 
+import com.google.common.base.Throwables;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -25,7 +26,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.PolarisCallContext;
@@ -61,7 +61,7 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
       LOGGER.error(
           "Expected an PersistedPolarisPrincipal, but got {}: {}",
           principal.getClass().getName(),
-          ExceptionUtils.getStackTrace(new ServiceFailureException("Invalid principal type")));
+          Throwables.getStackTraceAsString(new ServiceFailureException("Invalid principal type")));
       throw new NotAuthorizedException("Unable to authenticate");
     }
     List<PrincipalRoleEntity> activeRoles =

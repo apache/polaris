@@ -16,14 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.catalog.iceberg;
 
-plugins {
-  id("org.kordamp.gradle.jandex")
-  id("polaris-server")
-}
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Nullable;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
 
-dependencies {
-  implementation(libs.slf4j.api)
-  api(platform(libs.testcontainers.bom))
-  api("org.testcontainers:testcontainers")
+@QuarkusTest
+@TestProfile(AbstractIcebergCatalogTest.Profile.class)
+public class IcebergCatalogRelationalNoEntityCacheTest extends AbstractIcebergCatalogTest {
+
+  @Nullable
+  @Override
+  protected InMemoryEntityCache createEntityCache(
+      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager) {
+    return null;
+  }
 }

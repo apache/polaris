@@ -1583,7 +1583,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
 
     // get meta store session we should be using
     BasePersistence ms = callCtx.getMetaStore();
@@ -1623,7 +1624,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               callCtx.getRealmConfig(),
               allowListOperation,
               allowedReadLocations,
-              allowedWriteLocations);
+              allowedWriteLocations,
+              refreshCredentialsEndpoint);
       return new ScopedCredentialsResult(accessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(

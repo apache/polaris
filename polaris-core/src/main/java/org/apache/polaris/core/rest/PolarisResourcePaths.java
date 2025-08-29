@@ -57,6 +57,17 @@ public class PolarisResourcePaths {
         "polaris", "v1", prefix, "namespaces", RESTUtil.encodeNamespace(ns), "generic-tables");
   }
 
+  public String credentialsPath(TableIdentifier ident) {
+    return SLASH.join(
+        "v1",
+        prefix,
+        "namespaces",
+        RESTUtil.encodeNamespace(ident.namespace()),
+        "tables",
+        RESTUtil.encodeString(ident.name()),
+        "credentials");
+  }
+
   public String genericTable(TableIdentifier ident) {
     return SLASH.join(
         "polaris",

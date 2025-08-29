@@ -50,7 +50,7 @@ commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.18.0
 commons-text = { module = "org.apache.commons:commons-text", version = "1.14.0" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.7" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.41.0" }
-google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.55.0" }
+google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.56.0" }
 guava = { module = "com.google.guava:guava", version = "33.4.8-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }
 dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
@@ -72,6 +72,7 @@ jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-ap
 jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version = "6.1.0" }
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.1" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
+jandex = { module = "io.smallrye.jandex:jandex", version ="3.4.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.13.4" }
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.6" }
@@ -81,7 +82,7 @@ microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-to
 mockito-core = { module = "org.mockito:mockito-core", version = "5.19.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.19.0" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.53.0" }
-opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.34.0" }
+opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.37.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.7" }
@@ -101,7 +102,6 @@ testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]
-jandex = { id = "org.kordamp.gradle.jandex", version = "2.2.0" }
 openapi-generator = { id = "org.openapi.generator", version = "7.12.0" }
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }

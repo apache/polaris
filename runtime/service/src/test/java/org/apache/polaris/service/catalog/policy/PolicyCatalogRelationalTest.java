@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.catalog.policy;
 
-plugins {
-  id("org.kordamp.gradle.jandex")
-  id("polaris-server")
-}
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.service.catalog.Profiles;
 
-dependencies {
-  implementation(libs.slf4j.api)
-  api(platform(libs.testcontainers.bom))
-  api("org.testcontainers:testcontainers")
-}
+@QuarkusTest
+@TestProfile(Profiles.DefaultProfile.class)
+public class PolicyCatalogRelationalTest extends AbstractPolicyCatalogTest {}
