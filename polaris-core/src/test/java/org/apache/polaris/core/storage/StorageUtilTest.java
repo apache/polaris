@@ -73,8 +73,7 @@ public class StorageUtilTest {
   public void getLocationsUsedByTable() {
     Assertions.assertThat(StorageUtil.getLocationsUsedByTable(null, Map.of())).isEmpty();
     Assertions.assertThat(StorageUtil.getLocationsUsedByTable("", Map.of())).isNotEmpty();
-    Assertions.assertThat(StorageUtil.getLocationsUsedByTable("/foo/", Map.of()))
-        .contains("/foo/");
+    Assertions.assertThat(StorageUtil.getLocationsUsedByTable("/foo/", Map.of())).contains("/foo/");
     Assertions.assertThat(
             StorageUtil.getLocationsUsedByTable(
                 "/foo/",
