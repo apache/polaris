@@ -53,16 +53,15 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
    *     implementation, all actions have the same validation result, as we only verify the
    *     locations are equal to or subdirectories of the allowed locations.
    */
-  public static Map<String, Map<PolarisStorageActions, ValidationResult>>
-      validateSubpathsOfAllowedLocations(
-          @Nonnull RealmConfig realmConfig,
-          @Nonnull PolarisStorageConfigurationInfo storageConfig,
-          @Nonnull Set<PolarisStorageActions> actions,
-          @Nonnull Set<String> locations) {
+  public static Map<String, Map<PolarisStorageActions, ValidationResult>> validateAllowedLocations(
+      @Nonnull RealmConfig realmConfig,
+      @Nonnull List<String> allowedLocationsToValid,
+      @Nonnull Set<PolarisStorageActions> actions,
+      @Nonnull Set<String> locations) {
     // trim trailing / from allowed locations so that locations missing the trailing slash still
     // match
     Set<String> allowedLocationStrings =
-        storageConfig.getAllowedLocations().stream()
+        allowedLocationsToValid.stream()
             .map(
                 str -> {
                   if (str.endsWith("/") && str.length() > 1) {
@@ -123,6 +122,7 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
       @Nonnull T storageConfig,
       @Nonnull Set<PolarisStorageActions> actions,
       @Nonnull Set<String> locations) {
-    return validateSubpathsOfAllowedLocations(realmConfig, storageConfig, actions, locations);
+    return validateAllowedLocations(
+        realmConfig, storageConfig.getAllowedLocations(), actions, locations);
   }
 }

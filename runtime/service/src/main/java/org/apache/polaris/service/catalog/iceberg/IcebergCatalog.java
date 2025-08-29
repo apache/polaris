@@ -119,11 +119,9 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -845,7 +843,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         storageCredentialCache,
         getCredentialVendor(),
         tableIdentifier,
-        StorageUtil.getLocationsAllowedToBeAccessed(tableMetadata),
+        StorageUtil.getLocationsUsedByTable(tableMetadata),
         storageActions,
         storageInfo.get(),
         refreshCredentialsEndpoint);
@@ -1006,51 +1004,27 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TableIdentifier identifier,
       Set<String> locations,
       PolarisResolvedPathWrapper resolvedStorageEntity) {
-    Optional<PolarisStorageConfigurationInfo> optStorageConfiguration =
-        PolarisStorageConfigurationInfo.forEntityPath(
-            realmConfig, resolvedStorageEntity.getRawFullPath());
 
-    optStorageConfiguration.ifPresentOrElse(
-        storageConfigInfo -> {
-          Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>>
-              validationResults =
-                  InMemoryStorageIntegration.validateSubpathsOfAllowedLocations(
-                      realmConfig, storageConfigInfo, Set.of(PolarisStorageActions.ALL), locations);
-          validationResults
-              .values()
-              .forEach(
-                  actionResult ->
-                      actionResult
-                          .values()
-                          .forEach(
-                              result -> {
-                                if (!result.isSuccess()) {
-                                  throw new ForbiddenException(
-                                      "Invalid locations '%s' for identifier '%s': %s",
-                                      locations, identifier, result.getMessage());
-                                } else {
-                                  LOGGER.debug(
-                                      "Validated locations '{}' for identifier '{}'",
-                                      locations,
-                                      identifier);
-                                }
-                              }));
-        },
-        () -> {
-          List<String> allowedStorageTypes =
-              realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
-          if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
-            List<String> invalidLocations =
-                locations.stream()
-                    .filter(location -> location.startsWith("file:") || location.startsWith("http"))
-                    .collect(Collectors.toList());
-            if (!invalidLocations.isEmpty()) {
-              throw new ForbiddenException(
-                  "Invalid locations '%s' for identifier '%s': File locations are not allowed",
-                  invalidLocations, identifier);
-            }
-          }
-        });
+    PolarisStorageConfigurationInfo.forEntityPath(
+            realmConfig, resolvedStorageEntity.getRawFullPath())
+        .ifPresentOrElse(
+            restrictions -> restrictions.validate(realmConfig, identifier, locations),
+            () -> {
+              List<String> allowedStorageTypes =
+                  realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+              if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
+                List<String> invalidLocations =
+                    locations.stream()
+                        .filter(
+                            location -> location.startsWith("file:") || location.startsWith("http"))
+                        .collect(Collectors.toList());
+                if (!invalidLocations.isEmpty()) {
+                  throw new ForbiddenException(
+                      "Invalid locations '%s' for identifier '%s': File locations are not allowed",
+                      invalidLocations, identifier);
+                }
+              }
+            });
   }
 
   /**
@@ -1437,7 +1411,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       tableFileIO =
           loadFileIOForTableLike(
               tableIdentifier,
-              StorageUtil.getLocationsAllowedToBeAccessed(metadata),
+              StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
               new HashMap<>(metadata.properties()),
               Set.of(
@@ -1460,7 +1434,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
         Set<String> dataLocations =
-            StorageUtil.getLocationsAllowedToBeAccessed(metadata.location(), metadata.properties());
+            StorageUtil.getLocationsUsedByTable(metadata.location(), metadata.properties());
         validateLocationsForTableLike(tableIdentifier, dataLocations, resolvedStorageEntity);
         // also validate that the table location doesn't overlap an existing table
         dataLocations.forEach(
@@ -1821,7 +1795,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       viewFileIO =
           loadFileIOForTableLike(
               identifier,
-              StorageUtil.getLocationsAllowedToBeAccessed(metadata),
+              StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
               tableProperties,
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
