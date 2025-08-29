@@ -125,7 +125,7 @@ public class PolarisConfigurationStoreTest {
   }
 
   @Test
-  public void gtestBehaviorAndFeatureConfigs() {
+  public void testBehaviorAndFeatureConfigs() {
     PolarisConfigurationConsumer consumer =
         new PolarisConfigurationConsumer(testRealmContext, new PolarisConfigurationStore() {});
 
