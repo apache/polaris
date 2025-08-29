@@ -199,7 +199,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
           "Exceptions occurred in concurrent processEvent: ", exceptions.peek());
     }
 
-    ArgumentCaptor<List<PolarisEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<List<PolarisEvent>> eventsCaptor = ArgumentCaptor.captor();
     verify(polarisMetaStoreManager, atLeastOnce()).writeEvents(any(), eventsCaptor.capture());
     Awaitility.await("expected amount of records should be processed")
         .atMost(Duration.ofSeconds(30))

@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
-public class ConcurrentLinkedQueueWithApproximateSize<T> {
+class ConcurrentLinkedQueueWithApproximateSize<T> {
   private final ConcurrentLinkedQueue<T> queue = new ConcurrentLinkedQueue<>();
   private final AtomicInteger size = new AtomicInteger();
 
