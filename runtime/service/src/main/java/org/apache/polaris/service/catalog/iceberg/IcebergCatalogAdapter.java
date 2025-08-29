@@ -84,6 +84,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.CommitTableRequest;
@@ -151,6 +152,7 @@ public class IcebergCatalogAdapter
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
+  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -165,7 +167,8 @@ public class IcebergCatalogAdapter
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
-      @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
+      @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
+      PolarisEventListener polarisEventListener) {
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
@@ -179,6 +182,7 @@ public class IcebergCatalogAdapter
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.externalCatalogFactories = externalCatalogFactories;
+    this.polarisEventListener = polarisEventListener;
   }
 
   /**
@@ -216,7 +220,8 @@ public class IcebergCatalogAdapter
         polarisAuthorizer,
         reservedProperties,
         catalogHandlerUtils,
-        externalCatalogFactories);
+        externalCatalogFactories,
+        polarisEventListener);
   }
 
   @Override

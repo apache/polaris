@@ -16,12 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
-
-/** Event listener that does nothing. */
-@ApplicationScoped
-@Identifier("no-op")
-public class NoOpPolarisEventListener extends PolarisEventListener {}
+/** Emitted Polaris creates a catalog. */
+public record AfterCatalogCreatedEvent(String catalogName) implements PolarisEvent {}

@@ -16,16 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.events.listeners;
 
-import org.apache.iceberg.catalog.TableIdentifier;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
 
-/**
- * Emitted when Polaris intends to refresh its known version of a view's metadata by fetching the
- * latest.
- *
- * @param catalogName The name of the catalog where the view is located.
- * @param viewIdentifier The identifier of the view being refreshed.
- */
-public record BeforeViewRefreshedEvent(String catalogName, TableIdentifier viewIdentifier)
-    implements PolarisEvent {}
+/** Event listener that does nothing. */
+@ApplicationScoped
+@Identifier("no-op")
+public class NoOpPolarisEventListener extends PolarisEventListener {}

@@ -16,16 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
 
-/**
- * Emitted when Polaris intends to refresh its known version of a view's metadata by fetching the
- * latest.
- *
- * @param catalogName The name of the catalog where the view is located.
- * @param viewIdentifier The identifier of the view being refreshed.
- */
-public record BeforeViewRefreshedEvent(String catalogName, TableIdentifier viewIdentifier)
+/** Emitted when Polaris creates a table. */
+public record AfterTableCreatedEvent(
+    String catalogName, TableIdentifier identifier, TableMetadata metadata)
     implements PolarisEvent {}
