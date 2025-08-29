@@ -21,6 +21,7 @@ package org.apache.polaris.service.admin;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
+import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
@@ -37,7 +38,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -781,6 +781,13 @@ public class PolarisAdminService {
       throw new AlreadyExistsException(
           "Cannot create Catalog %s. Catalog already exists or resolution failed",
           entity.getName());
+    } else if (!catalogResult.isSuccess()) {
+      throw new IllegalStateException(
+          String.format(
+              "Cannot create Catalog %s: %s with extraInfo %s",
+              entity.getName(),
+              catalogResult.getReturnStatus(),
+              catalogResult.getExtraInformation()));
     }
     return PolarisEntity.of(catalogResult.getCatalog());
   }
@@ -900,14 +907,14 @@ public class PolarisAdminService {
       // additionalProperties while neglecting to "echo" the default-base-location from the
       // fetched catalog, it's most user-friendly to treat a null or empty default-base-location
       // as meaning no intended change to the default-base-location.
-      if (StringUtils.isNotEmpty(newDefaultBaseLocation)) {
-        // New base location is already in the updated properties; we'll also potentially
-        // plumb it into the logic for setting an updated StorageConfigurationInfo.
-        defaultBaseLocation = newDefaultBaseLocation;
-      } else {
+      if (Strings.isNullOrEmpty(newDefaultBaseLocation)) {
         // No default-base-location present at all in the properties of the update request,
         // so we must restore it explicitly in the updateBuilder.
         updateBuilder.setDefaultBaseLocation(defaultBaseLocation);
+      } else {
+        // New base location is already in the updated properties; we'll also potentially
+        // plumb it into the logic for setting an updated StorageConfigurationInfo.
+        defaultBaseLocation = newDefaultBaseLocation;
       }
     }
     if (updateRequest.getStorageConfigInfo() != null) {

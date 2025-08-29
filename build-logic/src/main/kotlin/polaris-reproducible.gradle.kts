@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-
-@QuarkusTest
-@TestProfile(Profiles.DefaultProfile.class)
-public class PolicyCatalogRelationalTest extends AbstractPolicyCatalogTest {}
+// ensure jars conform to reproducible builds
+// (https://docs.gradle.org/current/userguide/working_with_files.html#sec:reproducible_archives)
+tasks.withType<AbstractArchiveTask>().configureEach {
+  isPreserveFileTimestamps = false
+  isReproducibleFileOrder = true
+}

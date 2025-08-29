@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -49,13 +50,16 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 public class ManagementServiceTest {
   private TestServices services;
@@ -65,6 +69,7 @@ public class ManagementServiceTest {
     services =
         TestServices.builder()
             .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
+            .config(Map.of("ALLOW_SETTING_S3_ENDPOINTS", Boolean.FALSE))
             .build();
   }
 
@@ -92,6 +97,51 @@ public class ManagementServiceTest {
                         services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
+  }
+
+  @Test
+  public void testCreateCatalogWithDisallowedS3Endpoints() {
+    AwsStorageConfigInfo.Builder storageConfig =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"));
+    String catalogName = "test-catalog";
+    Supplier<Catalog> catalog =
+        () ->
+            PolarisCatalog.builder()
+                .setType(Catalog.TypeEnum.INTERNAL)
+                .setName(catalogName)
+                .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+                .setStorageConfigInfo(storageConfig.build())
+                .build();
+    Supplier<Response> createCatalog =
+        () ->
+            services
+                .catalogsApi()
+                .createCatalog(
+                    new CreateCatalogRequest(catalog.get()),
+                    services.realmContext(),
+                    services.securityContext());
+
+    storageConfig.setEndpoint("http://example.com");
+    assertThatThrownBy(createCatalog::get)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+
+    storageConfig.setEndpoint(null);
+    storageConfig.setStsEndpoint("http://example.com");
+    assertThatThrownBy(createCatalog::get)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+
+    storageConfig.setStsEndpoint(null);
+    storageConfig.setEndpointInternal("http://example.com");
+    assertThatThrownBy(createCatalog::get)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
   }
 
   @Test
@@ -159,6 +209,23 @@ public class ManagementServiceTest {
                         services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
+
+    UpdateCatalogRequest update2 =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of(),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                .setEndpoint("http://example.com")
+                .build());
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .updateCatalog(
+                        catalogName, update2, services.realmContext(), services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly setting S3 endpoints is not allowed.");
   }
 
   private PolarisMetaStoreManager setupMetaStoreManager() {
@@ -284,5 +351,45 @@ public class ManagementServiceTest {
     assertThat(catalogs)
         .extracting(Catalog::getName)
         .containsExactlyInAnyOrder("my-catalog-1", "my-catalog-2");
+  }
+
+  @Test
+  public void testCreateCatalogReturnErrorOnFailure() {
+    PolarisMetaStoreManager metaStoreManager = Mockito.spy(setupMetaStoreManager());
+    PolarisCallContext callContext = services.newCallContext();
+    PolarisAdminService polarisAdminService =
+        setupPolarisAdminService(metaStoreManager, callContext);
+
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    CreateCatalogResult resultWithError =
+        new CreateCatalogResult(
+            BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unexpected Error Occurred");
+    Mockito.doAnswer(invocation -> resultWithError)
+        .when(metaStoreManager)
+        .createCatalog(Mockito.any(), Mockito.any(), Mockito.any());
+    Assertions.assertThatThrownBy(
+            () -> polarisAdminService.createCatalog(new CreateCatalogRequest(catalog)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage(
+            String.format(
+                "Cannot create Catalog %s: %s with extraInfo %s",
+                catalogName,
+                resultWithError.getReturnStatus(),
+                resultWithError.getExtraInformation()));
   }
 }

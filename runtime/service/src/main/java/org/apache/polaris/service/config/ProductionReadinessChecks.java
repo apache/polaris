@@ -44,6 +44,7 @@ import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.metrics.MetricsConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigValue;
@@ -111,6 +112,30 @@ public class ProductionReadinessChecks {
             severe);
       }
     }
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkUserPrincipalMetricTag(MetricsConfiguration config) {
+    if (config.userPrincipalTag().enableInApiMetrics()) {
+      return ProductionReadinessCheck.of(
+          Error.of(
+              "Metrics configuration includes user principal name and this could have security implications.",
+              "polaris.metrics.user-principal-tag.enable-in-api-metrics"));
+    }
+    return ProductionReadinessCheck.OK;
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkUserPrincipalAndRealmIdMetricTags(
+      MetricsConfiguration config) {
+    if (config.userPrincipalTag().enableInApiMetrics()
+        && config.realmIdTag().enableInApiMetrics()) {
+      return ProductionReadinessCheck.of(
+          Error.of(
+              "Metrics configuration includes both user principal name and realm id in tags and this could have performance implications.",
+              "polaris.metrics.user-principal-tag.enable-in-api-metrics"));
+    }
+    return ProductionReadinessCheck.OK;
   }
 
   @Produces
