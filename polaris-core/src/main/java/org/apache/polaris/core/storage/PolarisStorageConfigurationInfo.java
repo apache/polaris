@@ -116,7 +116,7 @@ public abstract class PolarisStorageConfigurationInfo {
     }
   }
 
-  public static Optional<PolarisStorageConfigurationInfo> forEntityPath(
+  public static Optional<LocationRestrictions> forEntityPath(
       RealmConfig realmConfig, List<PolarisEntity> entityPath) {
     return findStorageInfoFromHierarchy(entityPath)
         .map(
@@ -150,7 +150,8 @@ public abstract class PolarisStorageConfigurationInfo {
                 LOGGER.debug(
                     "Not allowing unstructured table location for entity: {}",
                     entityPathReversed.get(0).getName());
-                return new StorageConfigurationOverride(configInfo, List.of(baseLocation));
+                return new LocationRestrictions(
+                    configInfo, configInfo.getAllowedLocations(), baseLocation);
               } else {
                 LOGGER.debug(
                     "Allowing unstructured table location for entity: {}",
@@ -160,7 +161,7 @@ public abstract class PolarisStorageConfigurationInfo {
                 Set<String> locations =
                     StorageUtil.getLocationsAllowedToBeAccessed(
                         null, entityPathReversed.get(0).getPropertiesAsMap());
-                return new StorageConfigurationOverride(
+                return new LocationRestrictions(
                     configInfo,
                     ImmutableList.<String>builder()
                         .addAll(configInfo.getAllowedLocations())

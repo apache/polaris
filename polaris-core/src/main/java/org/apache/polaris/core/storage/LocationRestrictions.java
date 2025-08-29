@@ -1,0 +1,106 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.polaris.core.storage;
+
+import jakarta.annotation.Nonnull;
+import java.util.List;
+import java.util.Set;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.config.RealmConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/** Defines storage location access restrictions for Polaris entities within a specific context. */
+public class LocationRestrictions {
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocationRestrictions.class);
+
+  /**
+   * The complete set of storage locations that are permitted for access.
+   *
+   * <p>This list contains all storage URIs that entities can read from or write to, including both
+   * catalog-level allowed locations and any additional user-specified locations when unstructured
+   * table access is enabled.
+   *
+   * <p>All locations in this list have been validated to conform to the storage type's URI scheme
+   * requirements during construction.
+   */
+  private final List<String> allowedLocations;
+
+  /**
+   * The parent location for structured table enforcement.
+   *
+   * <p>When non-null, this location represents the root under which all new tables must be created,
+   * enforcing a structured hierarchy. When null, table creation is allowed anywhere within the
+   * {@code allowedLocations}.
+   */
+  private final String parentLocation;
+
+  public LocationRestrictions(
+      @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo,
+      List<String> allowedLocations,
+      String parentLocation) {
+    this.allowedLocations = List.copyOf(allowedLocations);
+    allowedLocations.forEach(storageConfigurationInfo::validatePrefixForStorageType);
+    this.parentLocation = parentLocation;
+  }
+
+  public LocationRestrictions(
+      @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo,
+      List<String> allowedLocations) {
+    this(storageConfigurationInfo, allowedLocations, null);
+  }
+
+  public void validate(RealmConfig realmConfig, TableIdentifier identifier, Set<String> locations) {
+    if (parentLocation != null) {
+      validateLocations(realmConfig, List.of(parentLocation), locations, identifier);
+    }
+
+    validateLocations(realmConfig, allowedLocations, locations, identifier);
+  }
+
+  private void validateLocations(
+      RealmConfig realmConfig,
+      List<String> allowedLocations,
+      Set<String> locations,
+      TableIdentifier identifier) {
+    var validationResults =
+        InMemoryStorageIntegration.validateAllowedLocations(
+            realmConfig, allowedLocations, Set.of(PolarisStorageActions.ALL), locations);
+    validationResults
+        .values()
+        .forEach(
+            actionResult ->
+                actionResult
+                    .values()
+                    .forEach(
+                        result -> {
+                          if (!result.isSuccess()) {
+                            throw new ForbiddenException(
+                                "Invalid locations '%s' for identifier '%s': %s",
+                                locations, identifier, result.getMessage());
+                          } else {
+                            LOGGER.debug(
+                                "Validated locations '{}' for identifier '{}'",
+                                locations,
+                                identifier);
+                          }
+                        }));
+  }
+}
