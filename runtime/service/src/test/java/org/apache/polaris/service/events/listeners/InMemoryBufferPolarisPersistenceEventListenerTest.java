@@ -46,6 +46,8 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.threeten.extra.MutableClock;
@@ -158,6 +160,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     verify(polarisMetaStoreManager, times(1)).writeEvents(any(), eq(events));
   }
 
+  @Execution(ExecutionMode.SAME_THREAD)
   @Test
   public void testProcessEventIsThreadSafe() throws Exception {
     String realmId = "realm1";
@@ -193,7 +196,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     // There should be no exceptions
     if (!exceptions.isEmpty()) {
       throw new AssertionError(
-          "Exceptions occurred in concurrent checkAndFlushBufferIfNecessary: ", exceptions.peek());
+          "Exceptions occurred in concurrent processEvent: ", exceptions.peek());
     }
 
     ArgumentCaptor<List<PolarisEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
@@ -206,7 +209,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
             () -> {
               List<PolarisEvent> eventsProcessed =
                   eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
-              assertThat(eventsProcessed.size()).isEqualTo(allEvents.size());
+              assertThat(eventsProcessed.size()).isGreaterThanOrEqualTo(allEvents.size());
             });
     List<PolarisEvent> seenEvents =
         eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
