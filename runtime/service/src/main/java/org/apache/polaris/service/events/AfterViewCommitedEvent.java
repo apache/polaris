@@ -26,9 +26,10 @@ import org.apache.iceberg.view.ViewMetadata;
  * while committing.
  *
  * @param catalogName The catalog name where the view is located
- * @param identifier  The identifier.
- * @param base        The old metadata.
- * @param metadata    The new metadata.
+ * @param identifier The identifier.
+ * @param base The old metadata.
+ * @param metadata The new metadata.
  */
-public record AfterViewCommitedEvent(String catalogName, TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata)
+public record AfterViewCommitedEvent(
+    String catalogName, TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata)
     implements PolarisEvent {}

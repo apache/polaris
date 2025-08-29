@@ -45,7 +45,6 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
 import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
-import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.slf4j.Logger;
@@ -187,7 +186,8 @@ public class TaskExecutorImpl implements TaskExecutor {
             .log("Unable to execute async task");
       }
     } finally {
-      polarisEventListener.onAfterTaskAttempted(new AfterTaskAttemptedEvent(taskEntityId, attempt, success));
+      polarisEventListener.onAfterTaskAttempted(
+          new AfterTaskAttemptedEvent(taskEntityId, attempt, success));
     }
   }
 

@@ -27,9 +27,10 @@ import org.apache.iceberg.view.ViewMetadata;
  * fail Polaris-side validation checks.
  *
  * @param catalogName The name of the catalog where the view is located.
- * @param identifier  The identifier.
- * @param base        The old metadata.
- * @param metadata    The new metadata.
+ * @param identifier The identifier.
+ * @param base The old metadata.
+ * @param metadata The new metadata.
  */
-public record BeforeViewCommitedEvent(String catalogName, TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata)
+public record BeforeViewCommitedEvent(
+    String catalogName, TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata)
     implements PolarisEvent {}

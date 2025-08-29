@@ -20,5 +20,4 @@
 package org.apache.polaris.service.events;
 
 /** Emitted Polaris creates a catalog. */
-public record AfterCatalogCreatedEvent(String catalogName)
-    implements PolarisEvent {}
+public record AfterCatalogCreatedEvent(String catalogName) implements PolarisEvent {}

@@ -99,7 +99,6 @@ import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.AfterTableCreatedEvent;
-import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -389,7 +388,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .build();
     LoadTableResponse resp =
         catalogHandlerUtils.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
-    polarisEventListener.onAfterTableCreated(new AfterTableCreatedEvent(catalogName, identifier, resp.tableMetadata()));
+    polarisEventListener.onAfterTableCreated(
+        new AfterTableCreatedEvent(catalogName, identifier, resp.tableMetadata()));
     return resp;
   }
 

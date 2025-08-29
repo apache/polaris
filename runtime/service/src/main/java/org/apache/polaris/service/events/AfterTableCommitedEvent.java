@@ -26,10 +26,10 @@ import org.apache.iceberg.catalog.TableIdentifier;
  * while committing.
  *
  * @param catalogName The catalog name where this table exists.
- * @param identifier  The identifier.
- * @param base        The old metadata.
- * @param metadata    The new metadata.
+ * @param identifier The identifier.
+ * @param base The old metadata.
+ * @param metadata The new metadata.
  */
 public record AfterTableCommitedEvent(
-        String catalogName, TableIdentifier identifier, TableMetadata base, TableMetadata metadata)
+    String catalogName, TableIdentifier identifier, TableMetadata base, TableMetadata metadata)
     implements PolarisEvent {}

@@ -22,7 +22,6 @@ package org.apache.polaris.service.events.listeners;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.refEq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -38,8 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.Collectors;
-
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -97,8 +94,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     // Push clock forwards to flush the buffer
     clock.add(CONFIG_TIME_TO_FLUSH_IN_MS.multipliedBy(2));
     eventListener.checkAndFlushBufferIfNecessary(realmId, false);
-    verify(polarisMetaStoreManager, times(1))
-        .writeEvents(any(), eq(eventsAddedToBuffer));
+    verify(polarisMetaStoreManager, times(1)).writeEvents(any(), eq(eventsAddedToBuffer));
   }
 
   @Test
@@ -173,18 +169,18 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
 
     for (int i = 0; i < threadCount; i++) {
       Thread t =
-              new Thread(
-                      () -> {
-                        try {
-                          for (int j = 0; j < 10; j++) {
-                            PolarisEvent event = createSampleEvent();
-                            allEvents.add(event);
-                            eventListener.processEvent(event);
-                          }
-                        } catch (Exception e) {
-                          exceptions.add(e);
-                        }
-                      });
+          new Thread(
+              () -> {
+                try {
+                  for (int j = 0; j < 10; j++) {
+                    PolarisEvent event = createSampleEvent();
+                    allEvents.add(event);
+                    eventListener.processEvent(event);
+                  }
+                } catch (Exception e) {
+                  exceptions.add(e);
+                }
+              });
       threads.add(t);
     }
 
@@ -196,21 +192,24 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     }
     // There should be no exceptions
     if (!exceptions.isEmpty()) {
-      throw new AssertionError("Exceptions occurred in concurrent checkAndFlushBufferIfNecessary: ", exceptions.peek());
+      throw new AssertionError(
+          "Exceptions occurred in concurrent checkAndFlushBufferIfNecessary: ", exceptions.peek());
     }
 
     ArgumentCaptor<List<PolarisEvent>> eventsCaptor = ArgumentCaptor.forClass(List.class);
     verify(polarisMetaStoreManager, atLeastOnce()).writeEvents(any(), eventsCaptor.capture());
     Awaitility.await("expected amount of records should be processed")
-            .atMost(Duration.ofSeconds(30))
-            .pollDelay(Duration.ofMillis(500))
-            .pollInterval(Duration.ofMillis(500))
-            .untilAsserted(
-                    () -> {
-                      List<PolarisEvent> eventsProcessed = eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
-                      assertThat(eventsProcessed.size()).isEqualTo(allEvents.size());
-                    });
-    List<PolarisEvent> seenEvents = eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              List<PolarisEvent> eventsProcessed =
+                  eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
+              assertThat(eventsProcessed.size()).isEqualTo(allEvents.size());
+            });
+    List<PolarisEvent> seenEvents =
+        eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
     assertThat(seenEvents.size()).isEqualTo(allEvents.size());
     assertThat(seenEvents).hasSameElementsAs(allEvents);
   }

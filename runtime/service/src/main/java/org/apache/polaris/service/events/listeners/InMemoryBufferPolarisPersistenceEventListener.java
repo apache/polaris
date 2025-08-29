@@ -36,7 +36,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
@@ -57,8 +56,8 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   private static final String REQUEST_ID_KEY = "requestId";
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
-  private final ConcurrentHashMap<String, ConcurrentLinkedQueueWithApproximateSize<PolarisEvent>> buffer =
-      new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, ConcurrentLinkedQueueWithApproximateSize<PolarisEvent>>
+      buffer = new ConcurrentHashMap<>();
   private final ScheduledExecutorService executor;
   private final Set<Future<?>> futures = ConcurrentHashMap.newKeySet();
   private final Duration timeToFlush;
@@ -144,7 +143,8 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   void processEvent(PolarisEvent polarisEvent) {
     String realmId = callContext.getRealmContext().getRealmIdentifier();
 
-    ConcurrentLinkedQueueWithApproximateSize<PolarisEvent> realmQueue = buffer.computeIfAbsent(realmId, k -> new ConcurrentLinkedQueueWithApproximateSize<>());
+    ConcurrentLinkedQueueWithApproximateSize<PolarisEvent> realmQueue =
+        buffer.computeIfAbsent(realmId, k -> new ConcurrentLinkedQueueWithApproximateSize<>());
     realmQueue.add(polarisEvent);
     if (realmQueue.size() >= maxBufferSize) {
       futures.add(executor.submit(() -> checkAndFlushBufferIfNecessary(realmId, true)));
@@ -167,16 +167,20 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
 
     if (elapsed.compareTo(timeToFlush) > 0 || queue.size() >= maxBufferSize || forceFlush) {
       // Atomically replace old queue with new queue
-      boolean replaced = buffer.replace(realmId, queue, new ConcurrentLinkedQueueWithApproximateSize<>());
+      boolean replaced =
+          buffer.replace(realmId, queue, new ConcurrentLinkedQueueWithApproximateSize<>());
       if (!replaced) {
         // Another thread concurrently modified the buffer, so do not continue
         return;
       }
 
       RealmContext realmContext = () -> realmId;
-      PolarisMetaStoreManager metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+      PolarisMetaStoreManager metaStoreManager =
+          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
       BasePersistence basePersistence = metaStoreManagerFactory.getOrCreateSession(realmContext);
-      metaStoreManager.writeEvents(new PolarisCallContext(realmContext, basePersistence, polarisDiagnostics), queue.stream().toList());
+      metaStoreManager.writeEvents(
+          new PolarisCallContext(realmContext, basePersistence, polarisDiagnostics),
+          queue.stream().toList());
     }
   }
 

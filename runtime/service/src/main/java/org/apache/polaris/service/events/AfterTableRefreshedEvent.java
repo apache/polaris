@@ -23,7 +23,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 /**
  * Emitted after Polaris refreshes its known version of a table's metadata by fetching the latest.
  *
- * @param catalogName     The name of the catalog where the table is located
+ * @param catalogName The name of the catalog where the table is located
  * @param tableIdentifier The identifier of the table that was refreshed.
  */
 public record AfterTableRefreshedEvent(String catalogName, TableIdentifier tableIdentifier)

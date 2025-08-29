@@ -30,5 +30,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
  * @param metadataBefore The old metadata.
  * @param metadataAfter The new metadata.
  */
-public record BeforeTableCommitedEvent(TableIdentifier tableIdentifier, TableMetadata metadataBefore, TableMetadata metadataAfter)
+public record BeforeTableCommitedEvent(
+    TableIdentifier tableIdentifier, TableMetadata metadataBefore, TableMetadata metadataAfter)
     implements PolarisEvent {}

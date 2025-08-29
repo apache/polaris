@@ -172,8 +172,7 @@ public class PolarisServiceImpl
     validateExternalCatalog(catalog);
     Catalog newCatalog = CatalogEntity.of(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
-    polarisEventListener.onAfterCatalogCreated(
-        new AfterCatalogCreatedEvent(newCatalog.getName()));
+    polarisEventListener.onAfterCatalogCreated(new AfterCatalogCreatedEvent(newCatalog.getName()));
     return Response.status(Response.Status.CREATED).build();
   }
 
