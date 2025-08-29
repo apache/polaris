@@ -47,8 +47,8 @@ public class LocationRestrictions {
    * The parent location for structured table enforcement.
    *
    * <p>When non-null, this location represents the root under which all new tables must be created,
-   * enforcing a structured hierarchy. When null, table creation is allowed anywhere within the
-   * {@code allowedLocations}.
+   * enforcing a structured hierarchy in addition to residing under {@code allowedLocations}. When
+   * null, table creation is allowed anywhere within the {@code allowedLocations}.
    */
   private final String parentLocation;
 
@@ -67,22 +67,43 @@ public class LocationRestrictions {
     this(storageConfigurationInfo, allowedLocations, null);
   }
 
-  public void validate(RealmConfig realmConfig, TableIdentifier identifier, Set<String> locations) {
+  /**
+   * Validates that the requested storage locations are permitted for the given table identifier.
+   *
+   * <p>This method performs location validation by checking the requested locations against:
+   *
+   * <ul>
+   *   <li>The parent location (if configured) for structured table enforcement
+   *   <li>The allowed locations list for general access permissions
+   * </ul>
+   *
+   * <p>The validation ensures that all requested locations conform to the storage access
+   * restrictions defined for this context. If a parent location is configured, all requests must be
+   * under that location hierarchy in addition to being within the allowed locations.
+   *
+   * @param realmConfig the realm configuration containing storage validation rules
+   * @param identifier the table identifier for which locations are being validated
+   * @param requestLocations the set of storage locations that need validation
+   * @throws ForbiddenException if any of the requested locations violate the configured
+   *     restrictions
+   */
+  public void validate(
+      RealmConfig realmConfig, TableIdentifier identifier, Set<String> requestLocations) {
     if (parentLocation != null) {
-      validateLocations(realmConfig, List.of(parentLocation), locations, identifier);
+      validateLocations(realmConfig, List.of(parentLocation), requestLocations, identifier);
     }
 
-    validateLocations(realmConfig, allowedLocations, locations, identifier);
+    validateLocations(realmConfig, allowedLocations, requestLocations, identifier);
   }
 
   private void validateLocations(
       RealmConfig realmConfig,
       List<String> allowedLocations,
-      Set<String> locations,
+      Set<String> requestLocations,
       TableIdentifier identifier) {
     var validationResults =
         InMemoryStorageIntegration.validateAllowedLocations(
-            realmConfig, allowedLocations, Set.of(PolarisStorageActions.ALL), locations);
+            realmConfig, allowedLocations, Set.of(PolarisStorageActions.ALL), requestLocations);
     validationResults
         .values()
         .forEach(
@@ -94,11 +115,11 @@ public class LocationRestrictions {
                           if (!result.isSuccess()) {
                             throw new ForbiddenException(
                                 "Invalid locations '%s' for identifier '%s': %s",
-                                locations, identifier, result.getMessage());
+                                requestLocations, identifier, result.getMessage());
                           } else {
                             LOGGER.debug(
                                 "Validated locations '{}' for identifier '{}'",
-                                locations,
+                                requestLocations,
                                 identifier);
                           }
                         }));
