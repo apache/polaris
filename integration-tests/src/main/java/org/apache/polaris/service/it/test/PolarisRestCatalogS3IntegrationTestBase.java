@@ -24,7 +24,7 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
 /** Runs PolarisRestCatalogIntegrationBase test on AWS. */
-public abstract class PolarisRestCatalogAwsIntegrationTestBase
+public abstract class PolarisRestCatalogS3IntegrationTestBase
     extends PolarisRestCatalogIntegrationBase {
   public static final String ROLE_ARN =
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))

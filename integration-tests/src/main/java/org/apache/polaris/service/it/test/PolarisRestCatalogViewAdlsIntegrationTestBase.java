@@ -18,32 +18,31 @@
  */
 package org.apache.polaris.service.it.test;
 
-import com.google.common.base.Strings;
+import java.io.File;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.storage.StorageUtil;
 
-/** Runs PolarisRestCatalogViewIntegrationTest on AWS. */
-public class PolarisRestCatalogViewAwsIntegrationTest
+/** Runs PolarisRestCatalogViewIntegrationTest on Azure. */
+public abstract class PolarisRestCatalogViewAdlsIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
-  public static final String ROLE_ARN =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN")) // Backward compatibility
-          .orElse(System.getenv("INTEGRATION_TEST_S3_ROLE_ARN"));
-  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_S3_PATH");
+  public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_ADLS_TENANT_ID");
+  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_ADLS_PATH");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
-    return AwsStorageConfigInfo.builder()
-        .setRoleArn(ROLE_ARN)
-        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-        .setAllowedLocations(List.of(BASE_LOCATION))
+    return AzureStorageConfigInfo.builder()
+        .setTenantId(TENANT_ID)
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+        .setAllowedLocations(
+            List.of(
+                StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, File.separator)))
         .build();
   }
 
   @Override
-  protected boolean shouldSkip() {
-    return Stream.of(BASE_LOCATION, ROLE_ARN).anyMatch(Strings::isNullOrEmpty);
+  protected String getCustomMetadataLocationDir() {
+    return StorageUtil.concatFilePrefixes(BASE_LOCATION, POLARIS_IT_SUBDIR, File.separator);
   }
 }
