@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.annotation.Nullable;
+import org.apache.polaris.core.entity.HasEntityId;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
 
@@ -41,7 +42,7 @@ public interface EntityIdToken extends Token {
     return ID;
   }
 
-  static @Nullable EntityIdToken fromEntity(PolarisBaseEntity entity) {
+  static @Nullable EntityIdToken fromEntity(HasEntityId entity) {
     if (entity == null) {
       return null;
     }
