@@ -102,7 +102,11 @@ public class PolarisIntegrationTestFixture {
     RealmContext realmContext =
         helper
             .realmContextResolver
-            .resolveRealmContext(baseUri.toString(), "GET", "/", Map.of(REALM_PROPERTY_KEY, realm))
+            .resolveRealmContext(
+                baseUri.toString(),
+                "GET",
+                "/",
+                k -> REALM_PROPERTY_KEY.equalsIgnoreCase(k) ? realm : null)
             .toCompletableFuture()
             .join();
 

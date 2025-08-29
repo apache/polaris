@@ -21,10 +21,7 @@ package org.apache.polaris.service.context;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
-import org.apache.polaris.core.context.RealmContext;
 
 @ApplicationScoped
 @Identifier("default")
@@ -38,17 +35,8 @@ public class DefaultRealmContextResolver implements RealmContextResolver {
   }
 
   @Override
-  public CompletionStage<RealmContext> resolveRealmContext(
+  public String resolveRealmId(
       String requestURL, String method, String path, Function<String, String> headers) {
-    try {
-      String realm = resolveRealmIdentifier(headers);
-      return CompletableFuture.completedFuture(() -> realm);
-    } catch (Exception e) {
-      return CompletableFuture.failedFuture(e);
-    }
-  }
-
-  private String resolveRealmIdentifier(Function<String, String> headers) {
     String realm = headers.apply(configuration.headerName());
     if (realm != null) {
       if (!configuration.realms().contains(realm)) {

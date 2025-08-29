@@ -30,9 +30,6 @@ import org.apache.polaris.core.config.RealmConfig;
  * underlying nature of the persistence layer may differ between different realms.
  */
 public interface CallContext {
-  /** Copy the {@link CallContext}. */
-  CallContext copy();
-
   RealmContext getRealmContext();
 
   /**

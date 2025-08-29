@@ -19,6 +19,7 @@
 package org.apache.polaris.service.context;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import org.apache.commons.collections.map.CaseInsensitiveMap;
@@ -43,13 +44,40 @@ import org.apache.polaris.core.context.RealmContext;
 public interface RealmContextResolver {
 
   /**
-   * Resolves the realm context for the given request, and returns a {@link CompletionStage} that
+   * Resolves the realm context for the given realm ID, and returns a {@link CompletionStage} that
    * completes with the resolved realm context.
    *
    * @return a {@link CompletionStage} that completes with the resolved realm context
    */
-  CompletionStage<RealmContext> resolveRealmContext(
+  default CompletionStage<RealmContext> resolveRealmContext(String realmId) {
+    return CompletableFuture.completedFuture(() -> realmId);
+  }
+
+  /**
+   * Resolves the realm context for the given HTTP/REST request parameters, and returns a {@link
+   * CompletionStage} that completes with the resolved realm identifier.
+   *
+   * @return a {@link CompletionStage} that completes with the resolved realm identifier
+   */
+  String resolveRealmId(
       String requestURL, String method, String path, Function<String, String> headers);
+
+  /**
+   * Resolves the realm context for the given request, and returns a {@link CompletionStage} that
+   * completes with the resolved realm context.
+   *
+   * <p>This is a convenience function combining {@link #resolveRealmContext(String)} with the
+   * result of {@link #resolveRealmId(String, String, String, Function)}.
+   *
+   * @return a {@link CompletionStage} that completes with the resolved realm context or an
+   *     exception.
+   * @throws RuntimeException propagated directly from {@link #resolveRealmId(String, String,
+   *     String, Function)}
+   */
+  default CompletionStage<RealmContext> resolveRealmContext(
+      String requestURL, String method, String path, Function<String, String> headers) {
+    return resolveRealmContext(resolveRealmId(requestURL, method, path, headers));
+  }
 
   /**
    * Resolves the realm context for the given request, and returns a {@link CompletionStage} that
@@ -57,6 +85,7 @@ public interface RealmContextResolver {
    *
    * @return a {@link CompletionStage} that completes with the resolved realm context
    */
+  @Deprecated(forRemoval = true) // Only used in tests
   default CompletionStage<RealmContext> resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers) {
     CaseInsensitiveMap caseInsensitiveMap = new CaseInsensitiveMap(headers);
