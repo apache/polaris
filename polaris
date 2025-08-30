@@ -74,5 +74,4 @@ if ! command -v polaris &> /dev/null; then
   source "${dir}/polaris-venv/bin/activate"
 fi
 
-export SCRIPT_DIR="${dir}"
 exec polaris "$@"

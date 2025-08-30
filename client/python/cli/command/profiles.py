@@ -56,6 +56,7 @@ class ProfilesCommand(Command):
         if not os.path.exists(CONFIG_FILE):
             return {}
         with open(CONFIG_FILE, "r") as f:
+            print(f"Loading profiles from {CONFIG_FILE}")
             return json.load(f)
 
     def _save_profiles(self, profiles: Dict[str, Dict[str, str]]) -> None:
