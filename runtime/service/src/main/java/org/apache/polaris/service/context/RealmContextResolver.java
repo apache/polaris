@@ -18,10 +18,11 @@
  */
 package org.apache.polaris.service.context;
 
+import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
-import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.polaris.core.context.RealmContext;
 
 /**
@@ -59,8 +60,11 @@ public interface RealmContextResolver {
    */
   default CompletionStage<RealmContext> resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers) {
-    CaseInsensitiveMap caseInsensitiveMap = new CaseInsensitiveMap(headers);
+    Map<String, String> caseInsensitiveMap = new HashMap<>();
+    for (Map.Entry<String, String> entry : headers.entrySet()) {
+      caseInsensitiveMap.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue());
+    }
     return resolveRealmContext(
-        requestURL, method, path, (key) -> (String) caseInsensitiveMap.get(key));
+        requestURL, method, path, (key) -> caseInsensitiveMap.get(key.toLowerCase(Locale.ROOT)));
   }
 }

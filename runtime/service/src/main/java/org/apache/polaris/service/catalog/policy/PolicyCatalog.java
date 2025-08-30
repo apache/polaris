@@ -24,6 +24,7 @@ import static org.apache.polaris.service.types.PolicyAttachmentTarget.TypeEnum.C
 
 import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -43,13 +44,16 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -71,8 +75,8 @@ public class PolicyCatalog {
   private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
-  private long catalogId = -1;
-  private PolarisMetaStoreManager metaStoreManager;
+  private final long catalogId;
+  private final PolarisMetaStoreManager metaStoreManager;
 
   public PolicyCatalog(
       PolarisMetaStoreManager metaStoreManager,
@@ -153,24 +157,46 @@ public class PolicyCatalog {
     return constructPolicy(resultEntity);
   }
 
-  public List<PolicyIdentifier> listPolicies(Namespace namespace, PolicyType policyType) {
+  public List<PolicyIdentifier> listPolicies(Namespace namespace, @Nullable PolicyType policyType) {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       throw new IllegalStateException(
           String.format("Failed to fetch resolved namespace '%s'", namespace));
     }
 
-    List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
-    // TODO: when the "policyType" filter is null we should only call "listEntities" instead
+    List<PolarisEntityCore> catalogPath =
+        PolarisEntity.toCoreList(resolvedEntities.getRawFullPath());
+    if (policyType == null) {
+      // without a policyType filter we can call listEntities to acquire the entity names
+      ListEntitiesResult listEntitiesResult =
+          metaStoreManager.listEntities(
+              callContext.getPolarisCallContext(),
+              catalogPath,
+              PolarisEntityType.POLICY,
+              PolarisEntitySubType.NULL_SUBTYPE,
+              PageToken.readEverything());
+      if (!listEntitiesResult.isSuccess()) {
+        throw new IllegalStateException("Failed to list policies in namespace: " + namespace);
+      }
+      return listEntitiesResult.getEntities().stream()
+          .map(
+              entity ->
+                  PolicyIdentifier.builder()
+                      .setNamespace(namespace)
+                      .setName(entity.getName())
+                      .build())
+          .toList();
+    }
+    // with a policyType filter we need to load the full PolicyEntity to apply the filter
     return metaStoreManager
         .loadEntitiesAll(
             callContext.getPolarisCallContext(),
-            PolarisEntity.toCoreList(catalogPath),
+            catalogPath,
             PolarisEntityType.POLICY,
             PolarisEntitySubType.NULL_SUBTYPE)
         .stream()
         .map(PolicyEntity::of)
-        .filter(policyEntity -> policyType == null || policyEntity.getPolicyType() == policyType)
+        .filter(policyEntity -> policyEntity.getPolicyType() == policyType)
         .map(
             entity ->
                 PolicyIdentifier.builder()

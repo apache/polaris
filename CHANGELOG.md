@@ -51,6 +51,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Added Catalog configuration for S3 and STS endpoints. This also allows using non-AWS S3 implementations.
+  The realm-level feature flag `ALLOW_SETTING_S3_ENDPOINTS` (default: true) may be used to disable this
+  functionality.
 
 - The `IMPLICIT` authentication type enables users to create federated catalogs without explicitly
 providing authentication parameters to Polaris. When the authentication type is set to `IMPLICIT`,
@@ -81,6 +83,11 @@ at locations that better optimize for object storage.
 
 - Introduced bootstrap command options to specify custom schema files for database initialization.
 
+- Added refresh credentials endpoint configuration to LoadTableResponse for AWS, Azure, and GCP. Enabling
+automatic storage credential refresh per table on the client side. Java client version >= 1.8.0 is required.
+The endpoint path is always returned when using vended credentials, but clients must enable the 
+refresh-credentials flag for the desired storage provider.
+
 ### Changes
 
 - Polaris Management API clients must be prepared to deal with new attributes in `AwsStorageConfigInfo` objects.
@@ -89,9 +96,8 @@ at locations that better optimize for object storage.
 
 ### Deprecations
 
-* The property `polaris.active-roles-provider.type` is deprecated in favor of
-  `polaris.authentication.active-roles-provider.type`. The old property is still supported, but will be removed in a
-  future release.
+- The property `polaris.active-roles-provider.type` is deprecated for removal.
+- The `ActiveRolesProvider` interface is deprecated for removal.
 
 ### Fixes
 

@@ -35,6 +35,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
  * authentication.
  */
 @ApplicationScoped
+@Deprecated
 public class ActiveRolesAugmentor implements SecurityIdentityAugmentor {
 
   // must run after AuthenticatingAugmentor

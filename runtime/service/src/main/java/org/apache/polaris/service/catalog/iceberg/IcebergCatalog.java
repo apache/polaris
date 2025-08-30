@@ -24,6 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -47,7 +48,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
@@ -165,7 +165,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             && !(ex instanceof ForbiddenException)
             && !(ex instanceof UnprocessableEntityException)
             && (isStorageProviderRetryableException(ex)
-                || isStorageProviderRetryableException(ExceptionUtils.getRootCause(ex)));
+                || isStorageProviderRetryableException(Throwables.getRootCause(ex)));
       };
 
   private final StorageCredentialCache storageCredentialCache;
@@ -830,7 +830,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   public AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      Set<PolarisStorageActions> storageActions) {
+      Set<PolarisStorageActions> storageActions,
+      Optional<String> refreshCredentialsEndpoint) {
     Optional<PolarisEntity> storageInfo = findStorageInfo(tableIdentifier);
     if (storageInfo.isEmpty()) {
       LOGGER
@@ -846,7 +847,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         tableIdentifier,
         StorageUtil.getLocationsAllowedToBeAccessed(tableMetadata),
         storageActions,
-        storageInfo.get());
+        storageInfo.get(),
+        refreshCredentialsEndpoint);
   }
 
   private String buildPrefixedLocation(TableIdentifier tableIdentifier) {

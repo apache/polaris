@@ -19,9 +19,9 @@
 package org.apache.polaris.service.catalog.io;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import java.net.UnknownHostException;
 import java.util.Map;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
@@ -36,7 +36,7 @@ public class ExceptionMappingFileIO implements FileIO {
   }
 
   private void handleException(RuntimeException e) {
-    for (Throwable t : ExceptionUtils.getThrowables(e)) {
+    for (Throwable t : Throwables.getCausalChain(e)) {
       // UnknownHostException isn't a RuntimeException so it's always wrapped
       if (t instanceof UnknownHostException) {
         throw new FileIOUnknownHostException("UnknownHostException during File IO", t);

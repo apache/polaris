@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.core.storage;
 
+import org.apache.iceberg.aws.AwsClientProperties;
+import org.apache.iceberg.gcp.GCPProperties;
+
 /**
  * A subset of Iceberg catalog properties recognized by Polaris.
  *
@@ -39,6 +42,12 @@ public enum StorageAccessProperty {
       Boolean.class, "s3.path-style-access", "whether to use S3 path style access", false),
   CLIENT_REGION(
       String.class, "client.region", "region to configure client for making requests to AWS"),
+  AWS_REFRESH_CREDENTIALS_ENDPOINT(
+      String.class,
+      AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
+      "the endpoint to load vended credentials for a table from the catalog",
+      false,
+      false),
 
   GCS_ACCESS_TOKEN(String.class, "gcs.oauth2.token", "the gcs scoped access token"),
   GCS_ACCESS_TOKEN_EXPIRES_AT(
@@ -47,11 +56,23 @@ public enum StorageAccessProperty {
       "the time the gcs access token expires, in milliseconds",
       true,
       true),
+  GCS_REFRESH_CREDENTIALS_ENDPOINT(
+      String.class,
+      GCPProperties.GCS_OAUTH2_REFRESH_CREDENTIALS_ENDPOINT,
+      "the endpoint to load vended credentials for a table from the catalog",
+      false,
+      false),
 
   // Currently not using ACCESS TOKEN as the ResolvingFileIO is using ADLSFileIO for azure case and
   // it expects for SAS
   AZURE_ACCESS_TOKEN(String.class, "", "the azure scoped access token"),
   AZURE_SAS_TOKEN(String.class, "adls.sas-token.", "an azure shared access signature token"),
+  AZURE_REFRESH_CREDENTIALS_ENDPOINT(
+      String.class,
+      "adls.refresh-credentials-endpoint",
+      "the endpoint to load vended credentials for a table from the catalog",
+      false,
+      false),
   EXPIRATION_TIME(
       Long.class,
       "expiration-time",

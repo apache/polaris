@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.commons.lang3.function.TriFunction;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
@@ -37,8 +36,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 
 @ApplicationScoped
-public class TaskFileIOSupplier
-    implements TriFunction<TaskEntity, TableIdentifier, CallContext, FileIO> {
+public class TaskFileIOSupplier {
   private final FileIOFactory fileIOFactory;
 
   @Inject
@@ -46,7 +44,6 @@ public class TaskFileIOSupplier
     this.fileIOFactory = fileIOFactory;
   }
 
-  @Override
   public FileIO apply(TaskEntity task, TableIdentifier identifier, CallContext callContext) {
     Map<String, String> internalProperties = task.getInternalPropertiesAsMap();
     Map<String, String> properties = new HashMap<>(internalProperties);
