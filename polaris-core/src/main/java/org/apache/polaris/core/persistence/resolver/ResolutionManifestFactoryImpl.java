@@ -22,13 +22,17 @@ package org.apache.polaris.core.persistence.resolver;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 
 public class ResolutionManifestFactoryImpl implements ResolutionManifestFactory {
 
+  private final PolarisDiagnostics diagnostics;
   private final ResolverFactory resolverFactory;
 
-  public ResolutionManifestFactoryImpl(@Nonnull ResolverFactory resolverFactory) {
+  public ResolutionManifestFactoryImpl(
+      @Nonnull PolarisDiagnostics diagnostics, @Nonnull ResolverFactory resolverFactory) {
+    this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
   }
 
@@ -39,6 +43,6 @@ public class ResolutionManifestFactoryImpl implements ResolutionManifestFactory 
       @Nonnull SecurityContext securityContext,
       @Nullable String referenceCatalogName) {
     return new PolarisResolutionManifest(
-        callContext, resolverFactory, securityContext, referenceCatalogName);
+        diagnostics, callContext, resolverFactory, securityContext, referenceCatalogName);
   }
 }

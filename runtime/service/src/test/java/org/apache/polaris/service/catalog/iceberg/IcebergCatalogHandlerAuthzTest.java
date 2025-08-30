@@ -101,6 +101,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     return new IcebergCatalogHandler(
+        diagServices,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
@@ -240,6 +241,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     IcebergCatalogHandler wrapper =
         new IcebergCatalogHandler(
+            diagServices,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -276,6 +278,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PrincipalEntity.of(refreshPrincipal), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     IcebergCatalogHandler refreshedWrapper =
         new IcebergCatalogHandler(
+            diagServices,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -1765,6 +1768,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
     PolarisCallContextCatalogFactory factory =
         new PolarisCallContextCatalogFactory(
+            diagServices,
             storageCredentialCache,
             resolverFactory,
             managerFactory,

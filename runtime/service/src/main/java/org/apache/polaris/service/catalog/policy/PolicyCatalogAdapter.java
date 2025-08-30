@@ -26,6 +26,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -54,6 +55,7 @@ import org.slf4j.LoggerFactory;
 public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, CatalogAdapter {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolicyCatalogAdapter.class);
 
+  private final PolarisDiagnostics diagnostics;
   private final RealmContext realmContext;
   private final RealmConfig realmConfig;
   private final CallContext callContext;
@@ -66,6 +68,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
 
   @Inject
   public PolicyCatalogAdapter(
+      PolarisDiagnostics diagnostics,
       RealmContext realmContext,
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
@@ -74,6 +77,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       CatalogPrefixParser prefixParser,
       UserSecretsManager userSecretsManager,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
+    this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
@@ -91,6 +95,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
     validatePrincipal(securityContext);
 
     return new PolicyCatalogHandler(
+        diagnostics,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,

@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Nullable;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
@@ -32,7 +33,9 @@ public class IcebergCatalogRelationalWithEntityCacheTest extends AbstractIceberg
   @Nullable
   @Override
   protected InMemoryEntityCache createEntityCache(
-      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager) {
-    return new InMemoryEntityCache(realmConfig, metaStoreManager);
+      PolarisDiagnostics diagnostics,
+      RealmConfig realmConfig,
+      PolarisMetaStoreManager metaStoreManager) {
+    return new InMemoryEntityCache(diagnostics, realmConfig, metaStoreManager);
   }
 }

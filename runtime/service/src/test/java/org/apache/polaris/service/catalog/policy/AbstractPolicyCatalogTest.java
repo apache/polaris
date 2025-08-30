@@ -173,7 +173,6 @@ public abstract class AbstractPolicyCatalogTest {
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
 
@@ -190,6 +189,7 @@ public abstract class AbstractPolicyCatalogTest {
 
     adminService =
         new PolarisAdminService(
+            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -252,6 +252,7 @@ public abstract class AbstractPolicyCatalogTest {
     this.policyCatalog = new PolicyCatalog(metaStoreManager, polarisContext, passthroughView);
     this.icebergCatalog =
         new IcebergCatalog(
+            diagServices,
             storageCredentialCache,
             resolverFactory,
             metaStoreManager,

@@ -137,7 +137,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
-    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "loadEntities");
+    diagnostics.fail("illegal_method_in_transaction_workspace", "loadEntities");
     return null;
   }
 

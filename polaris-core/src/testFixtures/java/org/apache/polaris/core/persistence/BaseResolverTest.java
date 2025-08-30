@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -51,6 +52,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public abstract class BaseResolverTest {
+  protected final PolarisDefaultDiagServiceImpl diagServices = new PolarisDefaultDiagServiceImpl();
 
   // Principal P1
   protected PolarisBaseEntity P1;
@@ -467,7 +469,8 @@ public abstract class BaseResolverTest {
 
     // create a new cache if needs be
     if (cache == null) {
-      this.cache = new InMemoryEntityCache(callCtx().getRealmConfig(), metaStoreManager());
+      this.cache =
+          new InMemoryEntityCache(diagServices, callCtx().getRealmConfig(), metaStoreManager());
     }
     boolean allRoles = principalRolesScope == null;
     Optional<List<PrincipalRoleEntity>> roleEntities =
@@ -485,6 +488,7 @@ public abstract class BaseResolverTest {
         PolarisPrincipal.of(
             PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()));
     return new Resolver(
+        diagServices,
         callCtx(),
         metaStoreManager(),
         new SecurityContext() {
