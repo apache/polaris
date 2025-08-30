@@ -371,5 +371,5 @@ CLIENT_SECRET_ENV = "CLIENT_SECRET"
 CLIENT_PROFILE_ENV = "CLIENT_PROFILE"
 DEFAULT_HOSTNAME = "localhost"
 DEFAULT_PORT = 8181
-CONFIG_DIR = os.path.expanduser("~/.polaris")
+CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduser("~/.polaris")
 CONFIG_FILE = os.path.join(CONFIG_DIR, ".polaris.json")
