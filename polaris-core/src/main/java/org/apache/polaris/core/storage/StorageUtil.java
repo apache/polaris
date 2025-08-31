@@ -70,12 +70,12 @@ public class StorageUtil {
   }
 
   /** Given a TableMetadata, extracts the locations where the table's [meta]data might be found. */
-  public static @Nonnull Set<String> getLocationsAllowedToBeAccessed(TableMetadata tableMetadata) {
-    return getLocationsAllowedToBeAccessed(tableMetadata.location(), tableMetadata.properties());
+  public static @Nonnull Set<String> getLocationsUsedByTable(TableMetadata tableMetadata) {
+    return getLocationsUsedByTable(tableMetadata.location(), tableMetadata.properties());
   }
 
   /** Given a baseLocation and entity (table?) properties, extracts the relevant locations */
-  public static @Nonnull Set<String> getLocationsAllowedToBeAccessed(
+  public static @Nonnull Set<String> getLocationsUsedByTable(
       String baseLocation, Map<String, String> properties) {
     Set<String> locations = new HashSet<>();
     locations.add(baseLocation);
@@ -87,7 +87,7 @@ public class StorageUtil {
   }
 
   /** Given a ViewMetadata, extracts the locations where the view's [meta]data might be found. */
-  public static @Nonnull Set<String> getLocationsAllowedToBeAccessed(ViewMetadata viewMetadata) {
+  public static @Nonnull Set<String> getLocationsUsedByTable(ViewMetadata viewMetadata) {
     return Set.of(viewMetadata.location());
   }
 
