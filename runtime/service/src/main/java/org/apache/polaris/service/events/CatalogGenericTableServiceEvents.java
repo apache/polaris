@@ -23,15 +23,20 @@ import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
 
 public class CatalogGenericTableServiceEvents {
-    public record BeforeCreateGenericTableEvent(String prefix, String namespace, CreateGenericTableRequest request) {}
-    public record AfterCreateGenericTableEvent(GenericTable table) {}
+  public record BeforeCreateGenericTableEvent(
+      String prefix, String namespace, CreateGenericTableRequest request) {}
 
-    public record BeforeDropGenericTableEvent(String prefix, String namespace, String tableName) {}
-    public record AfterDropGenericTableEvent(String prefix, String namespace, String tableName) {}
+  public record AfterCreateGenericTableEvent(GenericTable table) {}
 
-    public record BeforeListGenericTablesEvent(String prefix, String namespace) {}
-    public record AfterListGenericTablesEvent(String prefix, String namespace) {}
+  public record BeforeDropGenericTableEvent(String prefix, String namespace, String tableName) {}
 
-    public record BeforeLoadGenericTableEvent(String prefix, String namespace, String tableName) {}
-    public record AfterLoadGenericTableEvent(GenericTable table) {}
+  public record AfterDropGenericTableEvent(String prefix, String namespace, String tableName) {}
+
+  public record BeforeListGenericTablesEvent(String prefix, String namespace) {}
+
+  public record AfterListGenericTablesEvent(String prefix, String namespace) {}
+
+  public record BeforeLoadGenericTableEvent(String prefix, String namespace, String tableName) {}
+
+  public record AfterLoadGenericTableEvent(GenericTable table) {}
 }
