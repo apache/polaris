@@ -42,9 +42,11 @@ public class IcebergRestConfigurationEventServiceDelegator
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeGetConfig(new IcebergRestCatalogEvents.BeforeGetConfigEvent(warehouse));
+    polarisEventListener.onBeforeGetConfig(
+        new IcebergRestCatalogEvents.BeforeGetConfigEvent(warehouse));
     Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
-    polarisEventListener.onAfterGetConfig(new IcebergRestCatalogEvents.AfterGetConfigEvent(resp.readEntity(ConfigResponse.class)));
+    polarisEventListener.onAfterGetConfig(
+        new IcebergRestCatalogEvents.AfterGetConfigEvent(resp.readEntity(ConfigResponse.class)));
     return resp;
   }
 }

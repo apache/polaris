@@ -70,16 +70,20 @@ public abstract class PolarisEventListener {
   public void onAfterListNamespaces(IcebergRestCatalogEvents.AfterListNamespacesEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeLoadNamespaceMetadataEvent} */
-  public void onBeforeLoadNamespaceMetadata(IcebergRestCatalogEvents.BeforeLoadNamespaceMetadataEvent event) {}
+  public void onBeforeLoadNamespaceMetadata(
+      IcebergRestCatalogEvents.BeforeLoadNamespaceMetadataEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterLoadNamespaceMetadataEvent} */
-  public void onAfterLoadNamespaceMetadata(IcebergRestCatalogEvents.AfterLoadNamespaceMetadataEvent event) {}
+  public void onAfterLoadNamespaceMetadata(
+      IcebergRestCatalogEvents.AfterLoadNamespaceMetadataEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeCheckNamespaceExistsEvent} */
-  public void onBeforeCheckNamespaceExists(IcebergRestCatalogEvents.BeforeCheckNamespaceExistsEvent event) {}
+  public void onBeforeCheckNamespaceExists(
+      IcebergRestCatalogEvents.BeforeCheckNamespaceExistsEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCheckNamespaceExistsEvent} */
-  public void onAfterCheckNamespaceExists(IcebergRestCatalogEvents.AfterCheckNamespaceExistsEvent event) {}
+  public void onAfterCheckNamespaceExists(
+      IcebergRestCatalogEvents.AfterCheckNamespaceExistsEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeDropNamespaceEvent} */
   public void onBeforeDropNamespace(IcebergRestCatalogEvents.BeforeDropNamespaceEvent event) {}
@@ -88,10 +92,12 @@ public abstract class PolarisEventListener {
   public void onAfterDropNamespace(IcebergRestCatalogEvents.AfterDropNamespaceEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeUpdateNamespacePropertiesEvent} */
-  public void onBeforeUpdateNamespaceProperties(IcebergRestCatalogEvents.BeforeUpdateNamespacePropertiesEvent event) {}
+  public void onBeforeUpdateNamespaceProperties(
+      IcebergRestCatalogEvents.BeforeUpdateNamespacePropertiesEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterUpdateNamespacePropertiesEvent} */
-  public void onAfterUpdateNamespaceProperties(IcebergRestCatalogEvents.AfterUpdateNamespacePropertiesEvent event) {}
+  public void onAfterUpdateNamespaceProperties(
+      IcebergRestCatalogEvents.AfterUpdateNamespacePropertiesEvent event) {}
 
   // Iceberg REST Catalog Table Events
   /** {@link IcebergRestCatalogEvents.BeforeCreateTableEvent} */
@@ -113,7 +119,8 @@ public abstract class PolarisEventListener {
   public void onAfterLoadTable(IcebergRestCatalogEvents.AfterLoadTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeCheckTableExistsEvent} */
-  public void onBeforeCheckTableExists(IcebergRestCatalogEvents.BeforeCheckTableExistsEvent event) {}
+  public void onBeforeCheckTableExists(
+      IcebergRestCatalogEvents.BeforeCheckTableExistsEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCheckTableExistsEvent} */
   public void onAfterCheckTableExists(IcebergRestCatalogEvents.AfterCheckTableExistsEvent event) {}
@@ -194,7 +201,8 @@ public abstract class PolarisEventListener {
 
   // Iceberg REST Catalog Notification Events
   /** {@link IcebergRestCatalogEvents.BeforeSendNotificationEvent} */
-  public void onBeforeSendNotification(IcebergRestCatalogEvents.BeforeSendNotificationEvent event) {}
+  public void onBeforeSendNotification(
+      IcebergRestCatalogEvents.BeforeSendNotificationEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterSendNotificationEvent} */
   public void onAfterSendNotification(IcebergRestCatalogEvents.AfterSendNotificationEvent event) {}
