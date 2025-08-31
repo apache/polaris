@@ -21,8 +21,8 @@ apiVersion: v2
 name: polaris
 description: A Helm chart for Apache Polaris (incubating)
 type: application
-version: 1.1.0-incubating-SNAPSHOT
-appVersion: 1.1.0-incubating-SNAPSHOT
+version: 1.1.0-incubating
+appVersion: 1.1.0-incubating
 home: https://polaris.apache.org/
 icon: https://raw.githubusercontent.com/apache/polaris/main/site/static/img/logos/polaris-brandmark.png
 sources:

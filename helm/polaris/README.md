@@ -30,7 +30,7 @@ weight: 675
   helm-docs --chart-search-root=helm
 -->
 
-![Version: 1.1.0-incubating-SNAPSHOT](https://img.shields.io/badge/Version-1.1.0--incubating--SNAPSHOT-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.1.0--incubating--SNAPSHOT-informational?style=flat-square)
+![Version: 1.1.0-incubating](https://img.shields.io/badge/Version-1.1.0--incubating--informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.0-incubating](https://img.shields.io/badge/AppVersion-1.1.0--incubating--informational?style=flat-square)
 
 A Helm chart for Apache Polaris (incubating).
 
