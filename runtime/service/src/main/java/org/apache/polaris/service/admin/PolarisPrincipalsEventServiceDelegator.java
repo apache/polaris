@@ -49,7 +49,8 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PrincipalsServiceEvents.BeforePrincipalCreateEvent(request.getPrincipal().getName()));
     Response resp = delegate.createPrincipal(request, realmContext, securityContext);
     polarisEventListener.onAfterPrincipalCreate(
-        new PrincipalsServiceEvents.AfterPrincipalCreateEvent(resp.readEntity(Principal.class)));
+        new PrincipalsServiceEvents.AfterPrincipalCreateEvent(
+            resp.readEntity(PrincipalWithCredentials.class).getPrincipal()));
     return resp;
   }
 
