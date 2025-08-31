@@ -200,6 +200,8 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
               catalogRoleName,
               entityWrapper.polarisPrivilege(),
               entityWrapper.grantResource()));
+      // Don't return back the custom entity
+      return Response.status(Response.Status.CREATED).build();
     }
     return resp;
   }
