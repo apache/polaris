@@ -141,7 +141,8 @@ public class PolarisServiceImpl
         reservedProperties);
   }
 
-  private static Response toResponse(BaseResult result, Response.Status successStatus, Object entity) {
+  private static Response toResponse(
+      BaseResult result, Response.Status successStatus, Object entity) {
     if (!result.isSuccess()) {
       ErrorResponse icebergErrorResponse =
           ErrorResponse.builder()
@@ -594,8 +595,11 @@ public class PolarisServiceImpl
     return Response.ok(catalogRoles).build();
   }
 
-  record AddGrantToCatalogRoleEntityWrapper(PolarisPrivilege polarisPrivilege, GrantResource grantResource) {}
-  record RevokeGrantFromCatalogRoleEntityWrapper(PolarisPrivilege polarisPrivilege, GrantResource grantResource, boolean cascade) {}
+  record AddGrantToCatalogRoleEntityWrapper(
+      PolarisPrivilege polarisPrivilege, GrantResource grantResource) {}
+
+  record RevokeGrantFromCatalogRoleEntityWrapper(
+      PolarisPrivilege polarisPrivilege, GrantResource grantResource, boolean cascade) {}
 
   /** From PolarisCatalogsApiService */
   @Override
@@ -679,7 +683,10 @@ public class PolarisServiceImpl
             .log("Don't know how to handle privilege grant: {}", grantRequest);
         return Response.status(Response.Status.BAD_REQUEST).build();
     }
-    return toResponse(result, Response.Status.CREATED, new AddGrantToCatalogRoleEntityWrapper(privilege, grantRequest.getGrant()));
+    return toResponse(
+        result,
+        Response.Status.CREATED,
+        new AddGrantToCatalogRoleEntityWrapper(privilege, grantRequest.getGrant()));
   }
 
   /** From PolarisCatalogsApiService */
@@ -771,7 +778,10 @@ public class PolarisServiceImpl
             .log("Don't know how to handle privilege revocation: {}", grantRequest);
         return Response.status(Response.Status.BAD_REQUEST).build();
     }
-    return toResponse(result, Response.Status.CREATED, new RevokeGrantFromCatalogRoleEntityWrapper(privilege, grantRequest.getGrant(), cascade));
+    return toResponse(
+        result,
+        Response.Status.CREATED,
+        new RevokeGrantFromCatalogRoleEntityWrapper(privilege, grantRequest.getGrant(), cascade));
   }
 
   /** From PolarisCatalogsApiService */

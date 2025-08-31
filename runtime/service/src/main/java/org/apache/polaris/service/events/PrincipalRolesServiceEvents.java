@@ -24,40 +24,55 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 
 public class PrincipalRolesServiceEvents {
-    public record AfterPrincipalRoleCreateEvent(PrincipalRole principalRole) implements PolarisEvent {}
-    public record BeforePrincipalRoleCreateEvent(CreatePrincipalRoleRequest createPrincipalRoleRequest)
-            implements PolarisEvent {}
+  public record AfterPrincipalRoleCreateEvent(PrincipalRole principalRole)
+      implements PolarisEvent {}
 
-    public record AfterPrincipalRoleDeleteEvent(String principalRoleName) implements PolarisEvent {}
-    public record BeforePrincipalRoleDeleteEvent(String principalRoleName) implements PolarisEvent {}
+  public record BeforePrincipalRoleCreateEvent(
+      CreatePrincipalRoleRequest createPrincipalRoleRequest) implements PolarisEvent {}
 
-    public record AfterPrincipalRoleGetEvent(PrincipalRole principalRole) implements PolarisEvent {}
-    public record BeforePrincipalRoleGetEvent(String principalRoleName) implements PolarisEvent {}
+  public record AfterPrincipalRoleDeleteEvent(String principalRoleName) implements PolarisEvent {}
 
-    public record AfterPrincipalRoleUpdateEvent(PrincipalRole updatedPrincipalRole)
-            implements PolarisEvent {}
-    public record BeforePrincipalRoleUpdateEvent(
-            String principalRoleName, UpdatePrincipalRoleRequest updateRequest) implements PolarisEvent {}
+  public record BeforePrincipalRoleDeleteEvent(String principalRoleName) implements PolarisEvent {}
 
-    public record AfterPrincipalRolesListEvent() implements PolarisEvent {}
-    public record BeforePrincipalRolesListEvent() implements PolarisEvent {}
+  public record AfterPrincipalRoleGetEvent(PrincipalRole principalRole) implements PolarisEvent {}
 
-    public record AfterCatalogRoleAssignToPrincipalRoleEvent(
-            String principalRoleName, String catalogName, String catalogRoleName) implements PolarisEvent {}
-    public record BeforeCatalogRoleAssignToPrincipalRoleEvent(
-            String principalRoleName, String catalogName, String catalogRoleName)
-            implements PolarisEvent {}
+  public record BeforePrincipalRoleGetEvent(String principalRoleName) implements PolarisEvent {}
 
-    public record AfterCatalogRoleRevokeFromPrincipalRoleEvent(
-            String principalRoleName, String catalogName, String catalogRoleName) implements PolarisEvent {}
-    public record BeforeCatalogRoleRevokeFromPrincipalRoleEvent(
-            String principalRoleName, String catalogName, String catalogRoleName) implements PolarisEvent {}
+  public record AfterPrincipalRoleUpdateEvent(PrincipalRole updatedPrincipalRole)
+      implements PolarisEvent {}
 
-    public record AfterListAssigneePrincipalsForPrincipalRoleEvent(String principalRoleName) implements PolarisEvent {}
-    public record BeforeListAssigneePrincipalsForPrincipalRoleEvent(String principalRoleName) implements PolarisEvent {}
+  public record BeforePrincipalRoleUpdateEvent(
+      String principalRoleName, UpdatePrincipalRoleRequest updateRequest) implements PolarisEvent {}
 
-    public record AfterListCatalogRolesForPrincipalRoleEvent(
-            String principalRoleName, String catalogName) implements PolarisEvent {}
-    public record BeforeListCatalogRolesForPrincipalRoleEvent(
-            String principalRoleName, String catalogName) implements PolarisEvent {}
+  public record AfterPrincipalRolesListEvent() implements PolarisEvent {}
+
+  public record BeforePrincipalRolesListEvent() implements PolarisEvent {}
+
+  public record AfterCatalogRoleAssignToPrincipalRoleEvent(
+      String principalRoleName, String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
+
+  public record BeforeCatalogRoleAssignToPrincipalRoleEvent(
+      String principalRoleName, String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
+
+  public record AfterCatalogRoleRevokeFromPrincipalRoleEvent(
+      String principalRoleName, String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
+
+  public record BeforeCatalogRoleRevokeFromPrincipalRoleEvent(
+      String principalRoleName, String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
+
+  public record AfterListAssigneePrincipalsForPrincipalRoleEvent(String principalRoleName)
+      implements PolarisEvent {}
+
+  public record BeforeListAssigneePrincipalsForPrincipalRoleEvent(String principalRoleName)
+      implements PolarisEvent {}
+
+  public record AfterListCatalogRolesForPrincipalRoleEvent(
+      String principalRoleName, String catalogName) implements PolarisEvent {}
+
+  public record BeforeListCatalogRolesForPrincipalRoleEvent(
+      String principalRoleName, String catalogName) implements PolarisEvent {}
 }

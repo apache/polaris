@@ -29,98 +29,120 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 
 public class CatalogsServiceEvents {
-    public record BeforeCatalogCreatedEvent(String catalogName) implements PolarisEvent {}
-    public record AfterCatalogCreatedEvent(Catalog catalog) implements PolarisEvent {}
+  public record BeforeCatalogCreatedEvent(String catalogName) implements PolarisEvent {}
 
-    public record BeforeCatalogDeletedEvent(String catalogName) implements PolarisEvent {}
-    public record AfterCatalogDeletedEvent(String catalogName) implements PolarisEvent {}
+  public record AfterCatalogCreatedEvent(Catalog catalog) implements PolarisEvent {}
 
-    public record BeforeCatalogGetEvent(String catalogName) implements PolarisEvent {}
-    public record AfterCatalogGetEvent(Catalog catalog) implements PolarisEvent {}
+  public record BeforeCatalogDeletedEvent(String catalogName) implements PolarisEvent {}
 
-    public record BeforeCatalogUpdatedEvent(String catalogName, UpdateCatalogRequest updateRequest) implements PolarisEvent {}
-    public record AfterCatalogUpdatedEvent(Catalog catalog) implements PolarisEvent {}
+  public record AfterCatalogDeletedEvent(String catalogName) implements PolarisEvent {}
 
-    public record BeforeCatalogListEvent() implements PolarisEvent {}
-    public record AfterCatalogListEvent() implements PolarisEvent {}
+  public record BeforeCatalogGetEvent(String catalogName) implements PolarisEvent {}
 
-    public record BeforeCatalogRoleCreateEvent(String catalogName, String catalogRoleName) implements PolarisEvent {}
-    public record AfterCatalogRoleCreateEvent(String catalogName, CatalogRole catalogRole) implements PolarisEvent {}
+  public record AfterCatalogGetEvent(Catalog catalog) implements PolarisEvent {}
 
-    public record BeforeCatalogRoleDeleteEvent(String catalogName, String catalogRoleName) implements PolarisEvent {}
-    public record AfterCatalogRoleDeleteEvent(String catalogName, String catalogRoleName) implements PolarisEvent {}
+  public record BeforeCatalogUpdatedEvent(String catalogName, UpdateCatalogRequest updateRequest)
+      implements PolarisEvent {}
 
-    public record BeforeCatalogRoleGetEvent(String catalogName, String catalogRoleName) implements PolarisEvent {}
-    public record AfterCatalogRoleGetEvent(String catalogName, CatalogRole catalogRole) implements PolarisEvent {}
+  public record AfterCatalogUpdatedEvent(Catalog catalog) implements PolarisEvent {}
 
-    public record BeforeCatalogRoleUpdateEvent(
-            String catalogName, String catalogRoleName, UpdateCatalogRoleRequest updateRequest)
-            implements PolarisEvent {}
-    public record AfterCatalogRoleUpdateEvent(String catalogName, CatalogRole updatedCatalogRole) implements PolarisEvent {}
+  public record BeforeCatalogListEvent() implements PolarisEvent {}
 
-    public record BeforeCatalogRolesListEvent(String catalogName) implements PolarisEvent {}
-    public record AfterCatalogRolesListEvent(String catalogName) implements PolarisEvent {}
+  public record AfterCatalogListEvent() implements PolarisEvent {}
 
-    /**
-     * Event fired before a grant is added to a catalog role in Polaris.
-     *
-     * @param catalogName the name of the catalog
-     * @param catalogRoleName the name of the catalog role
-     * @param grantRequest the grant request
-     */
-    public record BeforeAddGrantToCatalogRoleEvent(
-            String catalogName, String catalogRoleName, AddGrantRequest grantRequest)
-            implements PolarisEvent {}
-    /**
-     * Event fired after a grant is added to a catalog role in Polaris.
-     *
-     * @param catalogName the name of the catalog
-     * @param catalogRoleName the name of the catalog role
-     * @param privilege the privilege granted
-     * @param grantResource the grant resource
-     */
-    public record AfterAddGrantToCatalogRoleEvent(
-            String catalogName,
-            String catalogRoleName,
-            PolarisPrivilege privilege,
-            GrantResource grantResource)
-            implements PolarisEvent {}
+  public record BeforeCatalogRoleCreateEvent(String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
 
-    /**
-     * Event fired before a grant is revoked from a catalog role in Polaris.
-     *
-     * @param catalogName the name of the catalog
-     * @param catalogRoleName the name of the catalog role
-     * @param grantRequest the revoke grant request
-     * @param cascade whether the revoke is cascading
-     */
-    public record BeforeRevokeGrantFromCatalogRoleEvent(
-            String catalogName, String catalogRoleName, RevokeGrantRequest grantRequest, Boolean cascade)
-            implements PolarisEvent {}
-    /**
-     * Event fired after a grant is revoked from a catalog role in Polaris.
-     *
-     * @param catalogName the name of the catalog
-     * @param catalogRoleName the name of the catalog role
-     * @param privilege the privilege revoked
-     * @param grantResource the revoke grant resource
-     * @param cascade whether to cascade the revocation
-     */
-    public record AfterRevokeGrantFromCatalogRoleEvent(
-            String catalogName,
-            String catalogRoleName,
-            PolarisPrivilege privilege,
-            GrantResource grantResource,
-            Boolean cascade)
-            implements PolarisEvent {}
+  public record AfterCatalogRoleCreateEvent(String catalogName, CatalogRole catalogRole)
+      implements PolarisEvent {}
 
-    public record BeforeListAssigneePrincipalRolesForCatalogRoleEvent(
-            String catalogName, String catalogRoleName) implements PolarisEvent {}
-    public record AfterListAssigneePrincipalRolesForCatalogRoleEvent(
-            String catalogName, String catalogRoleName) implements PolarisEvent {}
+  public record BeforeCatalogRoleDeleteEvent(String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
 
-    public record BeforeListGrantsForCatalogRoleEvent(String catalogName, String catalogRoleName)
-            implements PolarisEvent {}
-    public record AfterListGrantsForCatalogRoleEvent(String catalogName, String catalogRoleName)
-            implements PolarisEvent {}
+  public record AfterCatalogRoleDeleteEvent(String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
+
+  public record BeforeCatalogRoleGetEvent(String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
+
+  public record AfterCatalogRoleGetEvent(String catalogName, CatalogRole catalogRole)
+      implements PolarisEvent {}
+
+  public record BeforeCatalogRoleUpdateEvent(
+      String catalogName, String catalogRoleName, UpdateCatalogRoleRequest updateRequest)
+      implements PolarisEvent {}
+
+  public record AfterCatalogRoleUpdateEvent(String catalogName, CatalogRole updatedCatalogRole)
+      implements PolarisEvent {}
+
+  public record BeforeCatalogRolesListEvent(String catalogName) implements PolarisEvent {}
+
+  public record AfterCatalogRolesListEvent(String catalogName) implements PolarisEvent {}
+
+  /**
+   * Event fired before a grant is added to a catalog role in Polaris.
+   *
+   * @param catalogName the name of the catalog
+   * @param catalogRoleName the name of the catalog role
+   * @param grantRequest the grant request
+   */
+  public record BeforeAddGrantToCatalogRoleEvent(
+      String catalogName, String catalogRoleName, AddGrantRequest grantRequest)
+      implements PolarisEvent {}
+
+  /**
+   * Event fired after a grant is added to a catalog role in Polaris.
+   *
+   * @param catalogName the name of the catalog
+   * @param catalogRoleName the name of the catalog role
+   * @param privilege the privilege granted
+   * @param grantResource the grant resource
+   */
+  public record AfterAddGrantToCatalogRoleEvent(
+      String catalogName,
+      String catalogRoleName,
+      PolarisPrivilege privilege,
+      GrantResource grantResource)
+      implements PolarisEvent {}
+
+  /**
+   * Event fired before a grant is revoked from a catalog role in Polaris.
+   *
+   * @param catalogName the name of the catalog
+   * @param catalogRoleName the name of the catalog role
+   * @param grantRequest the revoke grant request
+   * @param cascade whether the revoke is cascading
+   */
+  public record BeforeRevokeGrantFromCatalogRoleEvent(
+      String catalogName, String catalogRoleName, RevokeGrantRequest grantRequest, Boolean cascade)
+      implements PolarisEvent {}
+
+  /**
+   * Event fired after a grant is revoked from a catalog role in Polaris.
+   *
+   * @param catalogName the name of the catalog
+   * @param catalogRoleName the name of the catalog role
+   * @param privilege the privilege revoked
+   * @param grantResource the revoke grant resource
+   * @param cascade whether to cascade the revocation
+   */
+  public record AfterRevokeGrantFromCatalogRoleEvent(
+      String catalogName,
+      String catalogRoleName,
+      PolarisPrivilege privilege,
+      GrantResource grantResource,
+      Boolean cascade)
+      implements PolarisEvent {}
+
+  public record BeforeListAssigneePrincipalRolesForCatalogRoleEvent(
+      String catalogName, String catalogRoleName) implements PolarisEvent {}
+
+  public record AfterListAssigneePrincipalRolesForCatalogRoleEvent(
+      String catalogName, String catalogRoleName) implements PolarisEvent {}
+
+  public record BeforeListGrantsForCatalogRoleEvent(String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
+
+  public record AfterListGrantsForCatalogRoleEvent(String catalogName, String catalogRoleName)
+      implements PolarisEvent {}
 }

@@ -24,31 +24,47 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 
 public class PrincipalsServiceEvents {
-    public record AfterPrincipalCreateEvent(Principal principal) implements PolarisEvent {}
-    public record BeforePrincipalCreateEvent(String principalName) implements PolarisEvent {}
+  public record AfterPrincipalCreateEvent(Principal principal) implements PolarisEvent {}
 
-    public record AfterPrincipalDeleteEvent(String principalName) implements PolarisEvent {}
-    public record BeforePrincipalDeleteEvent(String principalName) implements PolarisEvent {}
+  public record BeforePrincipalCreateEvent(String principalName) implements PolarisEvent {}
 
+  public record AfterPrincipalDeleteEvent(String principalName) implements PolarisEvent {}
 
-    public record AfterPrincipalGetEvent(Principal principal) implements PolarisEvent {}
-    public record BeforePrincipalGetEvent(String principalName) implements PolarisEvent {}
+  public record BeforePrincipalDeleteEvent(String principalName) implements PolarisEvent {}
 
-    public record AfterPrincipalUpdateEvent(Principal principal) implements PolarisEvent {}
-    public record BeforePrincipalUpdateEvent(String principalName, UpdatePrincipalRequest updatePrincipalRequest) implements PolarisEvent {}
+  public record AfterPrincipalGetEvent(Principal principal) implements PolarisEvent {}
 
-    public record AfterCredentialsRotateEvent(Principal rotatedPrincipal) implements PolarisEvent {}
-    public record BeforeCredentialsRotateEvent(String principalName) implements PolarisEvent {}
+  public record BeforePrincipalGetEvent(String principalName) implements PolarisEvent {}
 
-    public record AfterPrincipalsListEvent() implements PolarisEvent {}
-    public record BeforePrincipalsListEvent() implements PolarisEvent {}
+  public record AfterPrincipalUpdateEvent(Principal principal) implements PolarisEvent {}
 
-    public record AfterAssignPrincipalRoleEvent(String principalName, PrincipalRole principalRole) implements PolarisEvent {}
-    public record BeforeAssignPrincipalRoleEvent(String principalName, PrincipalRole principalRole) implements PolarisEvent {}
+  public record BeforePrincipalUpdateEvent(
+      String principalName, UpdatePrincipalRequest updatePrincipalRequest)
+      implements PolarisEvent {}
 
-    public record AfterRevokePrincipalRoleEvent(String principalName, String principalRoleName) implements PolarisEvent {}
-    public record BeforeRevokePrincipalRoleEvent(String principalName, String principalRoleName) implements PolarisEvent {}
+  public record AfterCredentialsRotateEvent(Principal rotatedPrincipal) implements PolarisEvent {}
 
-    public record AfterPrincipalRolesAssignedListEvent(String principalName) implements PolarisEvent {}
-    public record BeforePrincipalRolesAssignedListEvent(String principalName) implements PolarisEvent {}
+  public record BeforeCredentialsRotateEvent(String principalName) implements PolarisEvent {}
+
+  public record AfterPrincipalsListEvent() implements PolarisEvent {}
+
+  public record BeforePrincipalsListEvent() implements PolarisEvent {}
+
+  public record AfterAssignPrincipalRoleEvent(String principalName, PrincipalRole principalRole)
+      implements PolarisEvent {}
+
+  public record BeforeAssignPrincipalRoleEvent(String principalName, PrincipalRole principalRole)
+      implements PolarisEvent {}
+
+  public record AfterRevokePrincipalRoleEvent(String principalName, String principalRoleName)
+      implements PolarisEvent {}
+
+  public record BeforeRevokePrincipalRoleEvent(String principalName, String principalRoleName)
+      implements PolarisEvent {}
+
+  public record AfterPrincipalRolesAssignedListEvent(String principalName)
+      implements PolarisEvent {}
+
+  public record BeforePrincipalRolesAssignedListEvent(String principalName)
+      implements PolarisEvent {}
 }
