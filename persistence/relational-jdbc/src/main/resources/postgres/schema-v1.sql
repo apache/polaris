@@ -21,7 +21,7 @@ SET search_path TO POLARIS_SCHEMA;
 
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,
-    version_value INTEGER NOT NULL
+    version_value INT4 NOT NULL
 );
 INSERT INTO version (version_key, version_value)
 VALUES ('version', 1)
@@ -35,9 +35,9 @@ CREATE TABLE IF NOT EXISTS entities (
     id BIGINT NOT NULL,
     parent_id BIGINT NOT NULL,
     name TEXT NOT NULL,
-    entity_version INT NOT NULL,
-    type_code INT NOT NULL,
-    sub_type_code INT NOT NULL,
+    entity_version INT4 NOT NULL,
+    type_code INT4 NOT NULL,
+    sub_type_code INT4 NOT NULL,
     create_timestamp BIGINT NOT NULL,
     drop_timestamp BIGINT NOT NULL,
     purge_timestamp BIGINT NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS entities (
     last_update_timestamp BIGINT NOT NULL,
     properties JSONB not null default '{}'::JSONB,
     internal_properties JSONB not null default '{}'::JSONB,
-    grant_records_version INT NOT NULL,
+    grant_records_version INT4 NOT NULL,
     PRIMARY KEY (realm_id, id),
     CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
 );
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS grant_records (
     securable_id BIGINT NOT NULL,
     grantee_catalog_id BIGINT NOT NULL,
     grantee_id BIGINT NOT NULL,
-    privilege_code INTEGER,
+    privilege_code INT4,
     PRIMARY KEY (realm_id, securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
 );
 
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
     realm_id TEXT NOT NULL,
     target_catalog_id BIGINT NOT NULL,
     target_id BIGINT NOT NULL,
-    policy_type_code INTEGER NOT NULL,
+    policy_type_code INT4 NOT NULL,
     policy_catalog_id BIGINT NOT NULL,
     policy_id BIGINT NOT NULL,
     parameters JSONB NOT NULL DEFAULT '{}'::JSONB,
