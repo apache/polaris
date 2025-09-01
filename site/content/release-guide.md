@@ -126,7 +126,6 @@ and update the version in the Helm Chart in:
 
 * `helm/polaris/Chart.yaml`
 * `helm/polaris/README.md`
-* `helm/polaris/values.yaml`
 
 and commit/push the version bump:
 
