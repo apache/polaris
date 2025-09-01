@@ -90,7 +90,6 @@ function update_helm_version {
   local old_version="$1"
   local new_version="$2"
   exec_process sed -i~ "s/${old_version}/${new_version}/g" "$HELM_CHART_YAML_FILE"
-  exec_process sed -i~ "s/${old_version}/${new_version}/g" "$HELM_VALUES_FILE"
   exec_process sed -i~ "s/${old_version}/${new_version}/g" "$HELM_README_FILE"
   # The readme file may contain version with double dash for shields.io badges
   # We need a second `sed` command to ensure that the version replacement preserves this double-dash syntax.
