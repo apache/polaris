@@ -32,27 +32,27 @@ import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
+import java.util.function.Supplier;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.service.events.jsonEventListener.JsonEventListener;
+import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
+import org.apache.polaris.service.events.jsonEventListener.PropertyMapEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsAsyncClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupRequest;
-import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogGroupResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamRequest;
-import software.amazon.awssdk.services.cloudwatchlogs.model.CreateLogStreamResponse;
+import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogGroupsRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.DescribeLogStreamsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
-import software.amazon.awssdk.services.cloudwatchlogs.model.ResourceAlreadyExistsException;
 
 @ApplicationScoped
 @Identifier("aws-cloudwatch")
-public class AwsCloudWatchEventListener extends JsonEventListener {
+public class AwsCloudWatchEventListener extends PropertyMapEventListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(AwsCloudWatchEventListener.class);
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  final ObjectMapper objectMapper = new ObjectMapper();
 
   private CloudWatchLogsAsyncClient client;
 
@@ -67,12 +67,16 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
   @Context SecurityContext securityContext;
 
   @Inject
-  public AwsCloudWatchEventListener(AwsCloudWatchConfiguration config, Clock clock) {
-    this.logStream = config.awsCloudwatchlogStream();
-    this.logGroup = config.awsCloudwatchlogGroup();
-    this.region = Region.of(config.awsCloudwatchRegion());
+  public AwsCloudWatchEventListener(
+      AwsCloudWatchConfiguration config,
+      Clock clock,
+      PolarisIcebergObjectMapperCustomizer customizer) {
+    this.logStream = config.awsCloudWatchLogStream();
+    this.logGroup = config.awsCloudWatchLogGroup();
+    this.region = Region.of(config.awsCloudWatchRegion());
     this.synchronousMode = config.synchronousMode();
     this.clock = clock;
+    customizer.customize(this.objectMapper);
   }
 
   @PostConstruct
@@ -86,32 +90,55 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
   }
 
   private void ensureLogGroupAndStream() {
-    try {
-      CompletableFuture<CreateLogGroupResponse> future =
-          client.createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroup).build());
-      future.join();
-    } catch (CompletionException e) {
-      if (e.getCause() instanceof ResourceAlreadyExistsException) {
-        LOGGER.debug("Log group {} already exists", logGroup);
-      } else {
-        throw e;
-      }
-    }
+    ensureResourceExists(
+        () ->
+            client
+                .describeLogGroups(
+                    DescribeLogGroupsRequest.builder().logGroupNamePrefix(logGroup).build())
+                .join()
+                .logGroups()
+                .stream()
+                .anyMatch(g -> g.logGroupName().equals(logGroup)),
+        () ->
+            client
+                .createLogGroup(CreateLogGroupRequest.builder().logGroupName(logGroup).build())
+                .join(),
+        "group",
+        logGroup);
+    ensureResourceExists(
+        () ->
+            client
+                .describeLogStreams(
+                    DescribeLogStreamsRequest.builder()
+                        .logGroupName(logGroup)
+                        .logStreamNamePrefix(logStream)
+                        .build())
+                .join()
+                .logStreams()
+                .stream()
+                .anyMatch(s -> s.logStreamName().equals(logStream)),
+        () ->
+            client
+                .createLogStream(
+                    CreateLogStreamRequest.builder()
+                        .logGroupName(logGroup)
+                        .logStreamName(logStream)
+                        .build())
+                .join(),
+        "stream",
+        logStream);
+  }
 
-    try {
-      CompletableFuture<CreateLogStreamResponse> future =
-          client.createLogStream(
-              CreateLogStreamRequest.builder()
-                  .logGroupName(logGroup)
-                  .logStreamName(logStream)
-                  .build());
-      future.join();
-    } catch (CompletionException e) {
-      if (e.getCause() instanceof ResourceAlreadyExistsException) {
-        LOGGER.debug("Log stream {} already exists", logStream);
-      } else {
-        throw e;
-      }
+  private static void ensureResourceExists(
+      Supplier<Boolean> existsCheck,
+      Runnable createAction,
+      String resourceType,
+      String resourceName) {
+    if (existsCheck.get()) {
+      LOGGER.debug("Log {} [{}] already exists", resourceType, resourceName);
+    } else {
+      LOGGER.debug("Attempting to create log {}: {}", resourceType, resourceName);
+      createAction.run();
     }
   }
 
@@ -124,7 +151,7 @@ public class AwsCloudWatchEventListener extends JsonEventListener {
 
   @Override
   protected void transformAndSendEvent(HashMap<String, Object> properties) {
-    properties.put("realm", callContext.getRealmContext().getRealmIdentifier());
+    properties.put("realm_id", callContext.getRealmContext().getRealmIdentifier());
     properties.put("principal", securityContext.getUserPrincipal().getName());
     // TODO: Add request ID when it is available
     String eventAsJson;

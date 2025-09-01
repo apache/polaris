@@ -23,7 +23,10 @@ import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpec
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import io.quarkus.runtime.configuration.MemorySize;
 import jakarta.ws.rs.core.SecurityContext;
+import java.math.BigInteger;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Duration;
@@ -34,6 +37,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
@@ -73,6 +77,9 @@ class AwsCloudWatchEventListenerTest {
   private static final String REALM = "test-realm";
   private static final String TEST_USER = "test-user";
   private static final Clock clock = Clock.systemUTC();
+  private static final BigInteger MAX_BODY_SIZE = BigInteger.valueOf(1024 * 1024);
+  private static final PolarisIcebergObjectMapperCustomizer customizer =
+      new PolarisIcebergObjectMapperCustomizer(new MemorySize(MAX_BODY_SIZE));
 
   @Mock private AwsCloudWatchConfiguration config;
 
@@ -85,9 +92,9 @@ class AwsCloudWatchEventListenerTest {
     executorService = Executors.newSingleThreadExecutor();
 
     // Configure the mocks
-    when(config.awsCloudwatchlogGroup()).thenReturn(LOG_GROUP);
-    when(config.awsCloudwatchlogStream()).thenReturn(LOG_STREAM);
-    when(config.awsCloudwatchRegion()).thenReturn("us-east-1");
+    when(config.awsCloudWatchLogGroup()).thenReturn(LOG_GROUP);
+    when(config.awsCloudWatchLogStream()).thenReturn(LOG_STREAM);
+    when(config.awsCloudWatchRegion()).thenReturn("us-east-1");
     when(config.synchronousMode()).thenReturn(false); // Default to async mode
   }
 
@@ -122,7 +129,7 @@ class AwsCloudWatchEventListenerTest {
 
   private AwsCloudWatchEventListener createListener(CloudWatchLogsAsyncClient client) {
     AwsCloudWatchEventListener listener =
-        new AwsCloudWatchEventListener(config, clock) {
+        new AwsCloudWatchEventListener(config, clock, customizer) {
           @Override
           protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
             return client;
@@ -294,6 +301,17 @@ class AwsCloudWatchEventListenerTest {
       syncListener.shutdown();
       client.close();
     }
+  }
+
+  @Test
+  void ensureObjectMapperCustomizerIsApplied() {
+    AwsCloudWatchEventListener listener = createListener(createCloudWatchAsyncClient());
+    listener.start();
+
+    assertThat(listener.objectMapper.getPropertyNamingStrategy())
+        .isInstanceOf(PropertyNamingStrategies.KebabCaseStrategy.class);
+    assertThat(listener.objectMapper.getFactory().streamReadConstraints().getMaxDocumentLength())
+        .isEqualTo(MAX_BODY_SIZE.longValue());
   }
 
   private void verifyLogGroupAndStreamExist(CloudWatchLogsAsyncClient client) {

@@ -21,11 +21,11 @@ package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
 /** Configuration interface for AWS CloudWatch event listener settings. */
 public interface AwsCloudWatchConfiguration {
-  String awsCloudwatchlogGroup();
+  String awsCloudWatchLogGroup();
 
-  String awsCloudwatchlogStream();
+  String awsCloudWatchLogStream();
 
-  String awsCloudwatchRegion();
+  String awsCloudWatchRegion();
 
   boolean synchronousMode();
 }
