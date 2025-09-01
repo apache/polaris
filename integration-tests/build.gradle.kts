@@ -48,10 +48,6 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
-  implementation(platform(libs.testcontainers.bom))
-  implementation("org.testcontainers:testcontainers")
-  implementation(libs.s3mock.testcontainers)
-
   implementation("org.apache.iceberg:iceberg-spark-3.5_2.12")
   implementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12")
   implementation("org.apache.spark:spark-sql_2.12:3.5.6") {
@@ -69,6 +65,8 @@ dependencies {
   implementation(libs.assertj.core)
   implementation(libs.mockito.core)
   implementation(libs.awaitility)
+  implementation(libs.s3mock.testcontainers)
+  implementation(project(":polaris-runtime-test-common"))
 }
 
 copiedCodeChecks {

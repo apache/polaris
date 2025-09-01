@@ -16,23 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.it.ext;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-import jakarta.annotation.Nullable;
-import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 
-@QuarkusTest
-@TestProfile(AbstractIcebergCatalogTest.Profile.class)
-public class IcebergCatalogRelationalWithEntityCacheTest extends AbstractIcebergCatalogTest {
+public interface PolarisAccessManager {
 
-  @Nullable
-  @Override
-  protected InMemoryEntityCache createEntityCache(
-      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager) {
-    return new InMemoryEntityCache(realmConfig, metaStoreManager);
-  }
+  String obtainAccessToken(PolarisApiEndpoints endpoints, ClientCredentials credentials);
 }

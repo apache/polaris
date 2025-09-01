@@ -23,9 +23,9 @@ fun isValidDep(dep: String): Boolean {
 }
 
 plugins {
-  id("polaris-server")
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
+  id("polaris-server")
+  id("org.kordamp.gradle.jandex")
 }
 
 dependencies {

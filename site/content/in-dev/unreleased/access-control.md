@@ -25,7 +25,7 @@ weight: 500
 This section provides information about how access control works for Apache Polaris (Incubating).
 
 Polaris uses a role-based access control (RBAC) model in which the Polaris administrator assigns access privileges to catalog roles
-and then grants access to resources to service principals by assigning catalog roles to principal roles.
+and then grants access to resources to principals by assigning catalog roles to principal roles.
 
 These are the key concepts to understanding access control in Polaris:
 
@@ -47,13 +47,12 @@ has the following securable objects:
 
 ## Principal role
 
-A principal role is a resource in Polaris that you can use to logically group Polaris service principals together and grant privileges on
+A principal role is a resource in Polaris that you can use to logically group Polaris principals together and grant privileges on
 securable objects.
 
-Polaris supports a many-to-one relationship between service principals and principal roles. For example, to grant the same privileges to
-multiple service principals, you can grant a single principal role to those service principals. A service principal can be granted one
-principal role. When registering a service connection, the Polaris administrator specifies the principal role that is granted to the
-service principal.
+Polaris supports a many-to-many relationship between principals and principal roles. For example, to grant the same privileges to
+multiple principals, you can assign a single principal role to those principals. Likewise, a principal can be granted 
+multiple principal roles.
 
 You don't grant privileges directly to a principal role. Instead, you configure object permissions at the catalog role level, and then grant
 catalog roles to a principal role.
@@ -62,16 +61,15 @@ The following table shows examples of principal roles that you might configure i
 
 | Principal role name | Description |
 | -----------------------| ----------- |
-| Data_engineer   | A role that is granted to multiple service principals for running data engineering jobs. |
-| Data_scientist | A role that is granted to multiple service principals for running data science or AI jobs. |
+| Data_engineer   | A role that is granted to multiple principals for running data engineering jobs. |
+| Data_scientist | A role that is granted to multiple principals for running data science or AI jobs. |
 
 ## Catalog role
 
 A catalog role belongs to a particular catalog resource in Polaris and specifies a set of permissions for actions on the catalog or objects
 in the catalog, such as catalog namespaces or tables. You can create one or more catalog roles for a catalog.
 
-You grant privileges to a catalog role and then grant the catalog role to a principal role to bestow the privileges to one or more service
-principals.
+You grant privileges to a catalog role and then grant the catalog role to a principal role to bestow the privileges to one or more principals.
 
 Polaris also supports a many-to-many relationship between catalog roles and principal roles. You can grant the same catalog role to one or more
 principal roles. Likewise, a principal role can be granted to one or more catalog roles.
@@ -88,15 +86,15 @@ configure in Polaris:
 ## RBAC model
 
 The following diagram illustrates the RBAC model used by Polaris. For each catalog, the Polaris administrator assigns access
-privileges to catalog roles and then grants service principals access to resources by assigning catalog roles to principal roles. Polaris
-supports a many-to-one relationship between service principals and principal roles.
+privileges to catalog roles and then grants principals access to resources by assigning catalog roles to principal roles. Polaris
+supports a many-to-many relationship between principals and principal roles.
 
 ![Diagram that shows the RBAC model for Apache Polaris.](/img/rbac-model.svg "Apache Polaris RBAC model")
 
 ## Access control privileges
 
 This section describes the privileges that are available in the Polaris access control model. Privileges are granted to catalog roles, catalog
-roles are granted to principal roles, and principal roles are granted to service principals to specify the operations that service principals can
+roles are granted to principal roles, and principal roles are granted to principals to specify the operations that principals can
 perform on objects in Polaris.
 
 To grant the full set of privileges (drop, list, read, write, etc.) on an object, you can use the *full privilege* option.
@@ -171,13 +169,13 @@ The following diagram illustrates how RBAC works in Polaris and
 includes the following users:
 
 - **Alice:** A service admin who signs up for Polaris. Alice can
-    create service principals. She can also create catalogs and
+    create principals. She can also create catalogs and
     namespaces and configure access control for Polaris resources.
 
 - **Bob:** A data engineer who uses Apache Spark&trade; to
     interact with Polaris.
 
-    - Alice has created a service principal for Bob. It has been
+    - Alice has created a principal for Bob. It has been
         granted the Data_engineer principal role, which in turn has been
         granted the following catalog roles: Catalog contributor and
         Data administrator (for both the Silver and Gold zone catalogs
@@ -192,7 +190,7 @@ includes the following users:
 - **Mark:** A data scientist who uses trains models with data managed
     by Polaris.
 
-    - Alice has created a service principal for Mark. It has been
+    - Alice has created a principal for Mark. It has been
         granted the Data_scientist principal role, which in turn has
         been granted the catalog role named Catalog reader.
 

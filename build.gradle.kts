@@ -20,12 +20,7 @@
 import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
-buildscript {
-  repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } }
-  dependencies {
-    classpath("org.kordamp.gradle:jandex-gradle-plugin:${libs.plugins.jandex.get().version}")
-  }
-}
+buildscript { repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } } }
 
 plugins {
   id("idea")
@@ -33,8 +28,6 @@ plugins {
   id("polaris-root")
   alias(libs.plugins.rat)
   alias(libs.plugins.jetbrains.changelog)
-  // workaround for https://github.com/kordamp/jandex-gradle-plugin/issues/25
-  alias(libs.plugins.jandex) apply false
 }
 
 val projectName = rootProject.file("ide-name.txt").readText().trim()
@@ -140,18 +133,6 @@ tasks.named<RatTask>("rat").configure {
 
   // Rat can't scan binary images
   excludes.add("**/*.png")
-}
-
-tasks.register<Exec>("regeneratePythonClient") {
-  description = "Regenerates the python client"
-
-  workingDir = project.projectDir
-  commandLine("bash", "client/templates/regenerate.sh")
-
-  dependsOn(":polaris-api-iceberg-service:processResources")
-  dependsOn(":polaris-api-management-service:processResources")
-  dependsOn(":polaris-api-catalog-service:processResources")
-  dependsOn(":polaris-api-management-model:processResources")
 }
 
 // Pass environment variables:

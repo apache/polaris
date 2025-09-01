@@ -21,6 +21,7 @@ package org.apache.polaris.service.admin;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
+import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
@@ -37,7 +38,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -106,7 +106,6 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
-import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -206,43 +205,6 @@ public class PolarisAdminService {
   private Optional<CatalogRoleEntity> findCatalogRoleByName(String catalogName, String name) {
     return Optional.ofNullable(resolutionManifest.getResolvedPath(name))
         .map(path -> CatalogRoleEntity.of(path.getRawLeafEntity()));
-  }
-
-  private <T> Stream<T> loadEntities(
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nullable PolarisEntity catalogEntity,
-      @Nonnull Function<PolarisBaseEntity, T> transformer) {
-    List<PolarisEntityCore> catalogPath;
-    long catalogId;
-    if (catalogEntity == null) {
-      catalogPath = null;
-      catalogId = 0;
-    } else {
-      catalogPath = PolarisEntity.toCoreList(List.of(catalogEntity));
-      catalogId = catalogEntity.getId();
-    }
-    // TODO: add loadEntities method to PolarisMetaStoreManager
-    // loadEntity may return null due to multiple non-atomic API calls to the persistence layer.
-    // Specifically, this can happen when a PolarisEntity is returned by listEntities, but cannot be
-    // loaded afterward because it was purged by another process before it could be loaded.
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            catalogPath,
-            entityType,
-            entitySubType,
-            PageToken.readEverything())
-        .getEntities()
-        .stream()
-        .map(
-            nameAndId ->
-                metaStoreManager.loadEntity(
-                    getCurrentPolarisContext(), catalogId, nameAndId.getId(), nameAndId.getType()))
-        .map(PolarisEntity::of)
-        .filter(Objects::nonNull)
-        .map(transformer)
-        .filter(Objects::nonNull);
   }
 
   private void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
@@ -819,6 +781,13 @@ public class PolarisAdminService {
       throw new AlreadyExistsException(
           "Cannot create Catalog %s. Catalog already exists or resolution failed",
           entity.getName());
+    } else if (!catalogResult.isSuccess()) {
+      throw new IllegalStateException(
+          String.format(
+              "Cannot create Catalog %s: %s with extraInfo %s",
+              entity.getName(),
+              catalogResult.getReturnStatus(),
+              catalogResult.getExtraInformation()));
     }
     return PolarisEntity.of(catalogResult.getCatalog());
   }
@@ -938,14 +907,14 @@ public class PolarisAdminService {
       // additionalProperties while neglecting to "echo" the default-base-location from the
       // fetched catalog, it's most user-friendly to treat a null or empty default-base-location
       // as meaning no intended change to the default-base-location.
-      if (StringUtils.isNotEmpty(newDefaultBaseLocation)) {
-        // New base location is already in the updated properties; we'll also potentially
-        // plumb it into the logic for setting an updated StorageConfigurationInfo.
-        defaultBaseLocation = newDefaultBaseLocation;
-      } else {
+      if (Strings.isNullOrEmpty(newDefaultBaseLocation)) {
         // No default-base-location present at all in the properties of the update request,
         // so we must restore it explicitly in the updateBuilder.
         updateBuilder.setDefaultBaseLocation(defaultBaseLocation);
+      } else {
+        // New base location is already in the updated properties; we'll also potentially
+        // plumb it into the logic for setting an updated StorageConfigurationInfo.
+        defaultBaseLocation = newDefaultBaseLocation;
       }
     }
     if (updateRequest.getStorageConfigInfo() != null) {
@@ -983,8 +952,14 @@ public class PolarisAdminService {
 
   /** List all catalogs without checking for permission. */
   private Stream<CatalogEntity> listCatalogsUnsafe() {
-    return loadEntities(
-        PolarisEntityType.CATALOG, PolarisEntitySubType.ANY_SUBTYPE, null, CatalogEntity::of);
+    return metaStoreManager
+        .loadEntitiesAll(
+            getCurrentPolarisContext(),
+            null,
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.ANY_SUBTYPE)
+        .stream()
+        .map(CatalogEntity::of);
   }
 
   public PrincipalWithCredentials createPrincipal(PolarisEntity entity) {
@@ -1152,11 +1127,14 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPALS;
     authorizeBasicRootOperationOrThrow(op);
 
-    return loadEntities(
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
+    return metaStoreManager
+        .loadEntitiesAll(
+            getCurrentPolarisContext(),
             null,
-            PrincipalEntity::of)
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE)
+        .stream()
+        .map(PrincipalEntity::of)
         .map(PrincipalEntity::asPrincipal)
         .toList();
   }
@@ -1257,11 +1235,14 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
     authorizeBasicRootOperationOrThrow(op);
 
-    return loadEntities(
-            PolarisEntityType.PRINCIPAL_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE,
+    return metaStoreManager
+        .loadEntitiesAll(
+            getCurrentPolarisContext(),
             null,
-            PrincipalRoleEntity::of)
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE)
+        .stream()
+        .map(PrincipalRoleEntity::of)
         .map(PrincipalRoleEntity::asPrincipalRole)
         .toList();
   }
@@ -1381,11 +1362,15 @@ public class PolarisAdminService {
     PolarisEntity catalogEntity =
         findCatalogByName(catalogName)
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
-    return loadEntities(
+    List<PolarisEntityCore> catalogPath = PolarisEntity.toCoreList(List.of(catalogEntity));
+    return metaStoreManager
+        .loadEntitiesAll(
+            getCurrentPolarisContext(),
+            catalogPath,
             PolarisEntityType.CATALOG_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            catalogEntity,
-            CatalogRoleEntity::of)
+            PolarisEntitySubType.NULL_SUBTYPE)
+        .stream()
+        .map(CatalogRoleEntity::of)
         .map(CatalogRoleEntity::asCatalogRole)
         .toList();
   }

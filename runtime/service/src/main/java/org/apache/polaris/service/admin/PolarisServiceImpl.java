@@ -31,6 +31,7 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogRole;
@@ -164,7 +165,7 @@ public class PolarisServiceImpl
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
     validateExternalCatalog(catalog);
-    Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
+    Catalog newCatalog = CatalogEntity.of(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -179,6 +180,16 @@ public class PolarisServiceImpl
           .log("Disallowed storage type in catalog");
       throw new IllegalArgumentException(
           "Unsupported storage type: " + storageConfigInfo.getStorageType());
+    }
+
+    if (!realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)) {
+      if (storageConfigInfo instanceof AwsStorageConfigInfo s3Config) {
+        if (s3Config.getEndpoint() != null
+            || s3Config.getStsEndpoint() != null
+            || s3Config.getEndpointInternal() != null) {
+          throw new IllegalArgumentException("Explicitly setting S3 endpoints is not allowed.");
+        }
+      }
     }
   }
 

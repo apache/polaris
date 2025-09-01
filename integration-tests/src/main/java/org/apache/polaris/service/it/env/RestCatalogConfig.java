@@ -16,11 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
+package org.apache.polaris.service.it.env;
 
-@QuarkusTest
-@TestProfile(Profiles.DefaultProfile.class)
-public class PolicyCatalogRelationalTest extends AbstractPolicyCatalogTest {}
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Annotation to configure the REST catalog for integration tests.
+ *
+ * <p>This is a client-side setting; it is used to configure the client-side REST catalog that is
+ * used in test code to connect to the Polaris REST API and to the storage layer.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Inherited
+public @interface RestCatalogConfig {
+  String[] value() default {};
+}

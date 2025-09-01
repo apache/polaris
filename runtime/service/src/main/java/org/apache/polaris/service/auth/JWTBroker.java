@@ -28,7 +28,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -108,7 +107,7 @@ public abstract class JWTBroker implements TokenBroker {
     if (!TokenType.ACCESS_TOKEN.equals(subjectTokenType)) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
     }
-    if (StringUtils.isBlank(subjectToken)) {
+    if (subjectToken == null || subjectToken.isBlank()) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
     }
     DecodedToken decodedToken;
@@ -188,6 +187,6 @@ public abstract class JWTBroker implements TokenBroker {
   }
 
   private String scopes(String scope) {
-    return StringUtils.isNotBlank(scope) ? scope : DefaultAuthenticator.PRINCIPAL_ROLE_ALL;
+    return scope == null || scope.isBlank() ? DefaultAuthenticator.PRINCIPAL_ROLE_ALL : scope;
   }
 }

@@ -19,7 +19,7 @@
 
 plugins {
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
 }
 
@@ -32,6 +32,7 @@ configurations.all {
 }
 
 dependencies {
+  implementation(libs.s3mock.testcontainers)
   implementation(project(":polaris-core"))
   implementation(libs.jakarta.ws.rs.api)
   implementation(enforcedPlatform(libs.quarkus.bom))

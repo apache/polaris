@@ -26,7 +26,7 @@ This page documents various entities that can be managed in Apache Polaris (Incu
 
 ## Catalog
 
-A catalog is a top-level entity in Polaris that may contain other entities like [namespaces](#namespace) and [tables](#table). These map directly to [Apache Iceberg catalogs](https://iceberg.apache.org/concepts/catalog/).
+A catalog is a top-level entity in Polaris that may contain other entities like [namespaces](#namespace) and [tables](#table). These map directly to [Apache Iceberg catalogs](https://iceberg.apache.org/terms/#catalog).
 
 For information on managing catalogs with the REST API or for more information on what data can be associated with a catalog, see [the CreateCatalogRequest OpenAPI](https://github.com/apache/polaris/blob/main/spec/polaris-management-service.yml).
 

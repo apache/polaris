@@ -31,9 +31,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.ManifestFile;
-import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
@@ -83,8 +81,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
             .withData(
-                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+                ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                    tableIdentifier, manifestFile))
             .setName(UUID.randomUUID().toString())
             .build();
     task = addTaskLocation(task);
@@ -107,8 +105,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
             .withData(
-                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+                ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                    tableIdentifier, manifestFile))
             .setName(UUID.randomUUID().toString())
             .build();
     task = addTaskLocation(task);
@@ -146,8 +144,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
             .withData(
-                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+                ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                    tableIdentifier, manifestFile))
             .setName(UUID.randomUUID().toString())
             .build();
     task = addTaskLocation(task);
@@ -201,8 +199,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
             .withData(
-                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+                ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                    tableIdentifier, manifestFile))
             .setName(UUID.randomUUID().toString())
             .build();
     task = addTaskLocation(task);
