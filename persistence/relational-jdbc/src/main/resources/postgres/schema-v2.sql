@@ -60,7 +60,7 @@ CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 CREATE INDEX IF NOT EXISTS idx_locations
     ON entities USING btree (realm_id, parent_id, location_without_scheme)
     WHERE location_without_scheme IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_entities_lookup ON entities (realm_id, catalog_id, parent_id, type_code, sub_type_code, id, name);
+CREATE INDEX IF NOT EXISTS idx_entities_lookup ON entities (realm_id, catalog_id, parent_id, type_code, sub_type_code);
 
 COMMENT ON TABLE entities IS 'all the entities';
 
