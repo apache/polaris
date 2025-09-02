@@ -65,7 +65,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
-import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookup;
+import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
@@ -486,7 +486,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       AtomicReference<Page<EntityNameLookupRecord>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
-          new EntityNameLookup(),
+          new EntityNameLookupRecordConverter(),
           stream -> {
             results.set(
                 Page.mapped(pageToken, stream, Function.identity(), EntityIdToken::fromEntity));

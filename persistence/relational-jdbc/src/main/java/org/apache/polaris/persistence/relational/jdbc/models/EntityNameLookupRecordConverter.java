@@ -25,7 +25,7 @@ import java.util.Map;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
-public class EntityNameLookup implements Converter<EntityNameLookupRecord> {
+public class EntityNameLookupRecordConverter implements Converter<EntityNameLookupRecord> {
 
   @Override
   public EntityNameLookupRecord fromResultSet(ResultSet rs) throws SQLException {
@@ -41,6 +41,6 @@ public class EntityNameLookup implements Converter<EntityNameLookupRecord> {
   @Override
   public Map<String, Object> toMap(DatabaseType databaseType) {
     throw new UnsupportedOperationException(
-        "EntityNameLookup is read-only and does not support toMap operation");
+        "EntityNameLookupRecordConverter is read-only and does not support toMap operation");
   }
 }
