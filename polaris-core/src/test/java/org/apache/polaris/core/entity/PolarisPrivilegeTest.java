@@ -122,5 +122,3 @@ public class PolarisPrivilegeTest {
     Assertions.assertThat(PolarisPrivilege.fromCode(code)).isEqualTo(expected);
   }
 }
-
-

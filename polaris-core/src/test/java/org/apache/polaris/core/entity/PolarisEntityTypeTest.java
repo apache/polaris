@@ -49,5 +49,3 @@ public class PolarisEntityTypeTest {
     Assertions.assertThat(PolarisEntityType.fromCode(code)).isEqualTo(expected);
   }
 }
-
-

@@ -55,5 +55,3 @@ public class ReturnStatusTest {
     Assertions.assertThat(actual).isEqualTo(expected);
   }
 }
-
-
