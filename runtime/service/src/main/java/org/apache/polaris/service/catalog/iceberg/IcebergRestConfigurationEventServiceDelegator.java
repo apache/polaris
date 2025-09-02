@@ -16,23 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-import jakarta.annotation.Nullable;
-import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+package org.apache.polaris.service.catalog.iceberg;
 
-@QuarkusTest
-@TestProfile(AbstractIcebergCatalogTest.Profile.class)
-public class IcebergCatalogRelationalNoEntityCacheTest extends AbstractIcebergCatalogTest {
+import jakarta.annotation.Priority;
+import jakarta.decorator.Decorator;
+import jakarta.decorator.Delegate;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 
-  @Nullable
+@Decorator
+@Priority(1000)
+public class IcebergRestConfigurationEventServiceDelegator
+    implements IcebergRestConfigurationApiService {
+
+  @Inject @Delegate IcebergCatalogAdapter delegate;
+
   @Override
-  protected InMemoryEntityCache createEntityCache(
-      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager) {
-    return null;
+  public Response getConfig(
+      String warehouse, RealmContext realmContext, SecurityContext securityContext) {
+    return delegate.getConfig(warehouse, realmContext, securityContext);
   }
 }

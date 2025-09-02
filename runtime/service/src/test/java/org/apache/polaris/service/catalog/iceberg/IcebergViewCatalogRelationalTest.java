@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.iceberg;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 
 @QuarkusTest
-@TestProfile(Profiles.DefaultProfile.class)
-public class PolicyCatalogRelationalTest extends AbstractPolicyCatalogTest {}
+@TestProfile(AbstractIcebergCatalogViewTest.Profile.class)
+public class IcebergViewCatalogRelationalTest extends AbstractIcebergCatalogViewTest {}

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.task;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -26,7 +25,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.StreamSupport;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
@@ -64,7 +62,7 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId, callContext)) {
-      ManifestFile manifestFile = decodeManifestData(cleanupTask.manifestFileData());
+      ManifestFile manifestFile = TaskUtils.decodeManifestFileData(cleanupTask.manifestFileData());
       return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
     }
   }
@@ -117,15 +115,12 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
     }
   }
 
-  private static ManifestFile decodeManifestData(String manifestFileData) {
-    try {
-      return ManifestFiles.decode(Base64.decodeBase64(manifestFileData));
-    } catch (IOException e) {
-      throw new RuntimeException("Unable to decode base64 encoded manifest", e);
+  /** Serialized Task data sent from the {@link TableCleanupTaskHandler} */
+  public record ManifestCleanupTask(TableIdentifier tableId, String manifestFileData) {
+
+    static ManifestCleanupTask buildFrom(TableIdentifier tableId, ManifestFile manifestFile) {
+      String encodedManifestFileData = TaskUtils.encodeManifestFile(manifestFile);
+      return new ManifestCleanupTask(tableId, encodedManifestFileData);
     }
   }
-
-  /** Serialized Task data sent from the {@link TableCleanupTaskHandler} */
-  public record ManifestCleanupTask(TableIdentifier tableId, String manifestFileData) {}
-  ;
 }
