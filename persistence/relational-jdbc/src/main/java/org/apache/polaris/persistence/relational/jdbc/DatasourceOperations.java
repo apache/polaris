@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
-import org.apache.polaris.persistence.relational.jdbc.models.ResultSetConverter;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,7 +128,7 @@ public class DatasourceOperations {
    * @throws SQLException : Exception during the query execution.
    */
   public <T> List<T> executeSelect(
-      @Nonnull QueryGenerator.PreparedQuery query, @Nonnull ResultSetConverter<T> converterInstance)
+      @Nonnull QueryGenerator.PreparedQuery query, @Nonnull Converter<T> converterInstance)
       throws SQLException {
     ArrayList<T> results = new ArrayList<>();
     executeSelectOverStream(query, converterInstance, stream -> stream.forEach(results::add));
@@ -147,7 +147,7 @@ public class DatasourceOperations {
    */
   public <T> void executeSelectOverStream(
       @Nonnull QueryGenerator.PreparedQuery query,
-      @Nonnull ResultSetConverter<T> converterInstance,
+      @Nonnull Converter<T> converterInstance,
       @Nonnull Consumer<Stream<T>> consumer)
       throws SQLException {
     withRetries(
