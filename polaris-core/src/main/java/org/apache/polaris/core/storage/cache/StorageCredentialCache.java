@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -46,10 +47,13 @@ public class StorageCredentialCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageCredentialCache.class);
 
+  private final PolarisDiagnostics diagnostics;
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache(StorageCredentialCacheConfig cacheConfig) {
+  public StorageCredentialCache(
+      PolarisDiagnostics diagnostics, StorageCredentialCacheConfig cacheConfig) {
+    this.diagnostics = diagnostics;
     cache =
         Caffeine.newBuilder()
             .maximumSize(cacheConfig.maxEntries())
@@ -108,9 +112,8 @@ public class StorageCredentialCache {
       @Nonnull Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint) {
     if (!isTypeSupported(polarisEntity.getType())) {
-      callCtx
-          .getDiagServices()
-          .fail("entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
+      diagnostics.fail(
+          "entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
     }
     StorageCredentialCacheKey key =
         StorageCredentialCacheKey.of(

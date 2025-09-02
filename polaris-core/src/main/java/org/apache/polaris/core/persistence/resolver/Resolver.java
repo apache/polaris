@@ -127,13 +127,14 @@ public class Resolver {
    *     service admin should use null for that parameter.
    */
   public Resolver(
+      @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull PolarisCallContext polarisCallContext,
       @Nonnull PolarisMetaStoreManager polarisMetaStoreManager,
       @Nonnull SecurityContext securityContext,
       @Nullable EntityCache cache,
       @Nullable String referenceCatalogName) {
     this.polarisCallContext = polarisCallContext;
-    this.diagnostics = polarisCallContext.getDiagServices();
+    this.diagnostics = diagnostics;
     this.polarisMetaStoreManager = polarisMetaStoreManager;
     this.cache = cache;
     this.securityContext = securityContext;
