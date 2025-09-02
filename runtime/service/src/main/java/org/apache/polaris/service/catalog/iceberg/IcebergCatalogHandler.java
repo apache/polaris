@@ -73,6 +73,7 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
@@ -137,6 +138,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   public static final String SNAPSHOTS_REFS = "refs";
 
   public IcebergCatalogHandler(
+      PolarisDiagnostics diagnostics,
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
@@ -149,6 +151,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(
+        diagnostics,
         callContext,
         resolutionManifestFactory,
         securityContext,
