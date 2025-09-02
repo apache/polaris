@@ -79,6 +79,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_SETTING_S3_ENDPOINTS")
+          .description(
+              "If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints.\n"
+                  + "If set to false, Polaris will not accept catalog create and update requests that contain \n"
+                  + "S3 endpoint properties.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
   @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
@@ -189,6 +199,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(false)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> PURGE_VIEW_METADATA_ON_DROP =
+      PolarisConfiguration.<Boolean>builder()
+          .key("PURGE_VIEW_METADATA_ON_DROP")
+          .catalogConfig("polaris.config.purge-view-metadata-on-drop")
+          .description(
+              "If set to true, Polaris will attempt to delete view metadata files when a view is dropped.")
+          .defaultValue(true)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =

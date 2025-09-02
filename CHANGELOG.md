@@ -29,6 +29,18 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
+- **HMS Federation Support**: Added support for Hive Metastore (HMS) federation, enabling integration with existing Hive metastores.
+
+- **Modularized Federation**: Introduced modularized federation architecture to support multiple catalog types and improve extensibility.
+
+- **External Authentication**: Added comprehensive support for external identity providers including Keycloak integration and Helm chart configuration options.
+
+- **Python Client Distribution**: The Python client is now packaged and distributed as a proper Python package for easier installation and usage.
+
+- **Catalog Federation CLI**: Extended the CLI with support for managing federated catalogs, making it easier to configure and operate catalog federation.
+
+- **MinIO**: Added MinIO integration support with comprehensive getting started documentation.
+
 ### Upgrade notes
 
 ### Breaking changes
@@ -39,13 +51,42 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Added Catalog configuration for S3 and STS endpoints. This also allows using non-AWS S3 implementations.
+  The realm-level feature flag `ALLOW_SETTING_S3_ENDPOINTS` (default: true) may be used to disable this
+  functionality.
 
 - The `IMPLICIT` authentication type enables users to create federated catalogs without explicitly
-providing authentication parameters to Polaris. When the authentication type is set to `IMPLICIT`, 
-the authentication parameters are picked from the environment or configuration files. 
+providing authentication parameters to Polaris. When the authentication type is set to `IMPLICIT`,
+the authentication parameters are picked from the environment or configuration files.
 
 - The `DEFAULT_LOCATION_OBJECT_STORAGE_PREFIX_ENABLED` feature was added to support placing tables
 at locations that better optimize for object storage.
+
+- The `LIST_PAGINATION_ENABLED` (default: false) feature flag can be used to enable pagination
+  in the Iceberg REST Catalog API.
+
+- The Helm chart now supports Pod Disruption Budgets (PDBs) for Polaris components. This allows users to define
+  the minimum number of pods that must be available during voluntary disruptions, such as node maintenance.
+
+- Feature configuration `PURGE_VIEW_METADATA_ON_DROP` was added to allow dropping views without purging their metadata files.
+
+- Introduced S3 path-style access support for improved compatibility with S3-compatible storage systems.
+
+- Enhanced Python client with integration tests and improved error handling.
+
+- Introduced extensible pagination token implementation for better API performance.
+
+- Added support for `s3a` scheme in addition to existing S3 schemes.
+
+- Enhanced Helm chart with support for external authentication configuration and relational JDBC backend options.
+
+- Added comprehensive diagnostics and monitoring capabilities throughout the system.
+
+- Introduced bootstrap command options to specify custom schema files for database initialization.
+
+- Added refresh credentials endpoint configuration to LoadTableResponse for AWS, Azure, and GCP. Enabling
+automatic storage credential refresh per table on the client side. Java client version >= 1.8.0 is required.
+The endpoint path is always returned when using vended credentials, but clients must enable the 
+refresh-credentials flag for the desired storage provider.
 
 ### Changes
 
@@ -55,9 +96,8 @@ at locations that better optimize for object storage.
 
 ### Deprecations
 
-* The property `polaris.active-roles-provider.type` is deprecated in favor of
-  `polaris.authentication.active-roles-provider.type`. The old property is still supported, but will be removed in a
-  future release.
+- The property `polaris.active-roles-provider.type` is deprecated for removal.
+- The `ActiveRolesProvider` interface is deprecated for removal.
 
 ### Fixes
 

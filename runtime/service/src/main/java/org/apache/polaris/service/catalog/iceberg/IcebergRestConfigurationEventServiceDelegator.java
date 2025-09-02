@@ -16,12 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
+package org.apache.polaris.service.catalog.iceberg;
 
-@QuarkusTest
-@TestProfile(Profiles.DefaultProfile.class)
-public class PolarisGenericTableCatalogRelationalTest
-    extends AbstractPolarisGenericTableCatalogTest {}
+import jakarta.annotation.Priority;
+import jakarta.decorator.Decorator;
+import jakarta.decorator.Delegate;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+
+@Decorator
+@Priority(1000)
+public class IcebergRestConfigurationEventServiceDelegator
+    implements IcebergRestConfigurationApiService {
+
+  @Inject @Delegate IcebergCatalogAdapter delegate;
+
+  @Override
+  public Response getConfig(
+      String warehouse, RealmContext realmContext, SecurityContext securityContext) {
+    return delegate.getConfig(warehouse, realmContext, securityContext);
+  }
+}

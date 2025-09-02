@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
@@ -58,6 +59,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   private final String gcsServiceKeyJsonFileLocation =
       System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+
+  private static final String REFRESH_ENDPOINT = "get/credentials";
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
@@ -170,7 +173,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         EMPTY_REALM_CONFIG,
         allowListAction,
         new HashSet<>(allowedReadLoc),
-        new HashSet<>(allowedWriteLoc));
+        new HashSet<>(allowedWriteLoc),
+        Optional.of(REFRESH_ENDPOINT));
   }
 
   @Test
@@ -293,6 +297,20 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       }
     }
     return true;
+  }
+
+  @Test
+  public void testRefreshCredentialsEndpointIsReturned() throws IOException {
+    Assumptions.assumeThat(gcsServiceKeyJsonFileLocation)
+        .describedAs("Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits")
+        .isNotNull()
+        .isNotEmpty();
+
+    AccessConfig accessConfig =
+        subscopedCredsForOperations(
+            List.of("gs://bucket1/path/to/data"), List.of("gs://bucket1/path/to/data"), true);
+    assertThat(accessConfig.get(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT))
+        .isEqualTo(REFRESH_ENDPOINT);
   }
 
   private boolean isNotNull(JsonNode node) {

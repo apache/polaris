@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.service.auth;
 
+import com.google.common.base.Throwables;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -81,7 +81,7 @@ public class DefaultAuthenticator implements Authenticator {
       LOGGER
           .atError()
           .addKeyValue("errMsg", e.getMessage())
-          .addKeyValue("stackTrace", ExceptionUtils.getStackTrace(e))
+          .addKeyValue("stackTrace", Throwables.getStackTraceAsString(e))
           .log("Unable to authenticate user with token");
       throw new ServiceFailureException("Unable to fetch principal entity");
     }

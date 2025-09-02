@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.iceberg;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -129,8 +130,8 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
-import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -1828,7 +1829,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 taskEntity.getType(),
                 true,
                 Set.of(tableMetadata.location()),
-                Set.of(tableMetadata.location()))
+                Set.of(tableMetadata.location()),
+                Optional.empty())
             .getAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)
@@ -1840,7 +1842,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     FileIO fileIO =
         new TaskFileIOSupplier(
                 new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory))
-            .apply(taskEntity, polarisContext);
+            .apply(taskEntity, TABLE, polarisContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
         .isInstanceOf(InMemoryFileIO.class);
@@ -2240,7 +2242,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   }
 
   private static PageToken nextRequest(Page<?> previousPage) {
-    return PageToken.build(previousPage.encodedResponseToken(), null);
+    return PageToken.build(previousPage.encodedResponseToken(), null, () -> true);
   }
 
   @Test

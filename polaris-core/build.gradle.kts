@@ -19,7 +19,7 @@
 
 plugins {
   id("polaris-client")
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
 }
 
 dependencies {
@@ -42,7 +42,6 @@ dependencies {
   runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
   implementation(libs.caffeine)
-  implementation(libs.commons.lang3)
   implementation(libs.commons.codec)
   implementation(libs.guava)
   implementation(libs.slf4j.api)

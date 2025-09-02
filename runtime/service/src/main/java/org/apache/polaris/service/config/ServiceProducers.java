@@ -384,6 +384,7 @@ public class ServiceProducers {
   }
 
   @Produces
+  @Deprecated
   public ActiveRolesProvider activeRolesProvider(
       AuthenticationRealmConfiguration config,
       @Any Instance<ActiveRolesProvider> activeRolesProviders) {

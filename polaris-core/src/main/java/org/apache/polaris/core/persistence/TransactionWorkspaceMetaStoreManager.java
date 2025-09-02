@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -119,13 +120,24 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public ListEntitiesResult listEntities(
+  public @Nonnull ListEntitiesResult listEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "listEntities");
+    return null;
+  }
+
+  @Override
+  public @Nonnull Page<PolarisBaseEntity> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
+    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "loadEntities");
     return null;
   }
 
@@ -315,7 +327,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
     return delegate.getSubscopedCredsForEntity(
         callCtx,
         catalogId,
@@ -323,7 +336,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
         entityType,
         allowListOperation,
         allowedReadLocations,
-        allowedWriteLocations);
+        allowedWriteLocations,
+        refreshCredentialsEndpoint);
   }
 
   @Override
