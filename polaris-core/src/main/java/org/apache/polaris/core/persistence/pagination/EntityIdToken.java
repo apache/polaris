@@ -42,7 +42,7 @@ public interface EntityIdToken extends Token {
     return ID;
   }
 
-  static @Nullable EntityIdToken fromEntity(HasEntityId entity) {
+  static @Nullable EntityIdToken fromEntity(@Nullable HasEntityId entity) {
     if (entity == null) {
       return null;
     }
