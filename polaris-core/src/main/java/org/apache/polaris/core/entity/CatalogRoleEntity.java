@@ -18,15 +18,19 @@
  */
 package org.apache.polaris.core.entity;
 
+import com.google.common.base.Preconditions;
+import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.CatalogRole;
 
 /** Wrapper for translating between the REST CatalogRole object and the base PolarisEntity type. */
 public class CatalogRoleEntity extends PolarisEntity {
   public CatalogRoleEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.CATALOG_ROLE, "Invalid entity type: %s", getType());
   }
 
-  public static CatalogRoleEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable CatalogRoleEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new CatalogRoleEntity(sourceEntity);
     }

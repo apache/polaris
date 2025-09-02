@@ -20,6 +20,7 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Collection;
@@ -70,9 +71,11 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.CATALOG, "Invalid entity type: %s", getType());
   }
 
-  public static CatalogEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable CatalogEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new CatalogEntity(sourceEntity);
     }
