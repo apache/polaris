@@ -905,6 +905,17 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         : new PrincipalSecretsResult(secrets);
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull void deletePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+    // get metastore we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // need to run inside a read/write transaction
+    ms.deletePrincipalSecrets(callCtx, clientId, principalId);
+  }
+
   /** See {@link #} */
   private @Nullable PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
@@ -974,6 +985,52 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             () ->
                 this.rotatePrincipalSecrets(
                     callCtx, ms, clientId, principalId, reset, oldSecretHash));
+
+    return (secrets == null)
+        ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
+        : new PrincipalSecretsResult(secrets);
+  }
+
+  private @Nullable PolarisPrincipalSecrets resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
+      @Nonnull String clientId,
+      long principalId,
+      String customClientId,
+      String customClientSecret) {
+    PolarisPrincipalSecrets secrets =
+        ms.storePrincipalSecrets(callCtx, principalId, customClientId, customClientSecret);
+    return secrets;
+  }
+
+  @Override
+  public @Nonnull PrincipalSecretsResult resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret) {
+    // get metastore we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    // if not found, the principal must have been dropped
+    EntityResult loadEntityResult =
+        loadEntity(
+            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
+    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    // need to run inside a read/write transaction
+    PolarisPrincipalSecrets secrets =
+        ms.runInTransaction(
+            callCtx,
+            () ->
+                this.resetPrincipalSecrets(
+                    callCtx,
+                    ms,
+                    resolvedClientId,
+                    principalId,
+                    resolvedClientId,
+                    customClientSecret));
 
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)

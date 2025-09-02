@@ -779,6 +779,42 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nullable
   @Override
+  public PolarisPrincipalSecrets storePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret) {
+    PolarisPrincipalSecrets principalSecrets =
+        new PolarisPrincipalSecrets(principalId, resolvedClientId, customClientSecret);
+    try {
+      ModelPrincipalAuthenticationData modelPrincipalAuthenticationData =
+          ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets);
+      datasourceOperations.executeUpdate(
+          QueryGenerator.generateInsertQuery(
+              ModelPrincipalAuthenticationData.ALL_COLUMNS,
+              ModelPrincipalAuthenticationData.TABLE_NAME,
+              modelPrincipalAuthenticationData
+                  .toMap(datasourceOperations.getDatabaseType())
+                  .values()
+                  .stream()
+                  .toList(),
+              realmId));
+    } catch (SQLException e) {
+      LOGGER.error(
+          "Failed to reset PrincipalSecrets  for clientId: {}, due to {}",
+          resolvedClientId,
+          e.getMessage(),
+          e);
+      throw new RuntimeException(
+          String.format("Failed to reset PrincipalSecrets for clientId: %s", resolvedClientId), e);
+    }
+
+    // return those
+    return principalSecrets;
+  }
+
+  @Nullable
+  @Override
   public PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
