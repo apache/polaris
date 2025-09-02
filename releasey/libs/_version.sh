@@ -101,7 +101,7 @@ function update_helm_version {
 function find_next_rc_number {
   # This function finds the next available RC number for a given version.
   # It returns 0 and sets the global variable rc_number to the next available RC number.
-  # It takes the version_without_rc as input (e.g., "1.0.0-incubating").
+  # RC numbers start from 0. It takes the version_without_rc as input (e.g., "1.0.0-incubating").
   local version_without_rc="$1"
 
   # Get all existing RC tags for this version
@@ -110,8 +110,8 @@ function find_next_rc_number {
   existing_tags=$(git tag -l "${tag_pattern}" | sort -V)
 
   if [[ -z "${existing_tags}" ]]; then
-    # No existing RC tags, start with RC1
-    rc_number=1
+    # No existing RC tags, start with RC0
+    rc_number=0
   else
     # Extract the highest RC number and increment
     local highest_rc

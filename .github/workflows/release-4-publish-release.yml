@@ -91,7 +91,7 @@ jobs:
           find_next_rc_number "${version_without_rc}"
           latest_rc=$((rc_number - 1))
 
-          if [[ ${latest_rc} -lt 1 ]]; then
+          if [[ ${latest_rc} -lt 0 ]]; then
             echo "❌ No RC tags found for version \`${version_without_rc}\`. Expected at least one RC to be created before publishing a release." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
