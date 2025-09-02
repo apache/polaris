@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.PartitionSpec;
@@ -66,7 +65,6 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandler;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
@@ -1786,7 +1784,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
 
-            FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), new Configuration());
+            FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), null);
             TableMetadata tableMetadata =
                 TableMetadata.buildFromEmpty()
                     .addSchema(SCHEMA)

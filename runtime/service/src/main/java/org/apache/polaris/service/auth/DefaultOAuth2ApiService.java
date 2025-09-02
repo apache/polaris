@@ -25,7 +25,7 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import org.apache.commons.codec.binary.Base64;
+import java.util.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -83,7 +83,8 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     // has previously attempted to refresh an access token, but refreshing was not supported by the
     // token broker. Accept the client id and secret and treat it as a new token request
     if (authHeader != null && clientSecret == null && authHeader.startsWith("Basic ")) {
-      String credentials = new String(Base64.decodeBase64(authHeader.substring(6)), UTF_8);
+      String credentials =
+          new String(Base64.getDecoder().decode(authHeader.substring(6).getBytes(UTF_8)), UTF_8);
       if (!credentials.contains(":")) {
         return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
       }

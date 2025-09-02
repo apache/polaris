@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.iceberg;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -130,8 +130,8 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
-import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
