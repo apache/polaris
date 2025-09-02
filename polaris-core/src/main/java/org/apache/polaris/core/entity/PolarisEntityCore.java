@@ -27,7 +27,7 @@ import java.util.Objects;
  * of the entity tree. For some operations like updating the entity, change will mean any change,
  * i.e. entity version mismatch.
  */
-public class PolarisEntityCore implements HasEntityId {
+public class PolarisEntityCore implements Identifiable {
 
   // the id of the catalog associated to that entity. NULL_ID if this entity is top-level like
   // a catalog

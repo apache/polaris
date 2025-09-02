@@ -23,7 +23,7 @@ package org.apache.polaris.core.entity;
  * An interface for entity types that have an id. These entities provide a * method `getId` and
  * `getCatalogId` to identify the entity.
  */
-public interface HasEntityId {
+public interface Identifiable {
   /**
    * @return the id of the catalog associated to that entity. NULL_ID if this entity is top-level
    *     like a catalog
