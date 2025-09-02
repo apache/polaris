@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.entity;
 
+import com.google.common.base.Preconditions;
+import jakarta.annotation.Nullable;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 
 /**
@@ -27,14 +29,15 @@ import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 public class TaskEntity extends PolarisEntity {
   public TaskEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.TASK, "Invalid entity type: %s", getType());
   }
 
-  public static TaskEntity of(PolarisBaseEntity polarisEntity) {
-    if (polarisEntity != null) {
-      return new TaskEntity(polarisEntity);
-    } else {
-      return null;
+  public static @Nullable TaskEntity of(@Nullable PolarisBaseEntity sourceEntity) {
+    if (sourceEntity != null) {
+      return new TaskEntity(sourceEntity);
     }
+    return null;
   }
 
   public <T> T readData(Class<T> klass) {
