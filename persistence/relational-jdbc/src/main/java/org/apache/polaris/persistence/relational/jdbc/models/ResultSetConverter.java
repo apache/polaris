@@ -21,18 +21,15 @@ package org.apache.polaris.persistence.relational.jdbc.models;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import org.apache.polaris.core.entity.EntityNameLookupRecord;
 
-public class EntityNameLookupRecordConverter implements ResultSetConverter<EntityNameLookupRecord> {
+public interface ResultSetConverter<T> {
 
-  @Override
-  public EntityNameLookupRecord fromResultSet(ResultSet rs) throws SQLException {
-    return new EntityNameLookupRecord(
-        rs.getLong("catalog_id"),
-        rs.getLong("id"),
-        rs.getLong("parent_id"),
-        rs.getString("name"),
-        rs.getInt("type_code"),
-        rs.getInt("sub_type_code"));
-  }
+  /**
+   * Converts a ResultSet to model.
+   *
+   * @param rs : ResultSet from JDBC.
+   * @return the corresponding business entity
+   * @throws SQLException : Exception while fetching from ResultSet.
+   */
+  T fromResultSet(ResultSet rs) throws SQLException;
 }

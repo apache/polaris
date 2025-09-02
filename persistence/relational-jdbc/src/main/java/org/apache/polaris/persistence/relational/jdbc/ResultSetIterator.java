@@ -26,7 +26,7 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.apache.polaris.persistence.relational.jdbc.models.Converter;
+import org.apache.polaris.persistence.relational.jdbc.models.ResultSetConverter;
 
 /**
  * Used to wrap a ResultSet and to build a stream from the data it contains. This data structure
@@ -35,10 +35,10 @@ import org.apache.polaris.persistence.relational.jdbc.models.Converter;
  */
 public class ResultSetIterator<T> implements Iterator<T> {
   private final ResultSet resultSet;
-  private final Converter<T> converterInstance;
+  private final ResultSetConverter<T> converterInstance;
   private boolean hasNext;
 
-  public ResultSetIterator(ResultSet resultSet, Converter<T> converterInstance)
+  public ResultSetIterator(ResultSet resultSet, ResultSetConverter<T> converterInstance)
       throws SQLException {
     this.resultSet = resultSet;
     this.converterInstance = converterInstance;
