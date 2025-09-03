@@ -209,7 +209,8 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
             () -> {
               clock.add(500, ChronoUnit.MILLIS);
               ArgumentCaptor<List<PolarisEvent>> eventsCaptor = ArgumentCaptor.captor();
-              verify(polarisMetaStoreManager, atLeastOnce()).writeEvents(any(), eventsCaptor.capture());
+              verify(polarisMetaStoreManager, atLeastOnce())
+                  .writeEvents(any(), eventsCaptor.capture());
               List<PolarisEvent> eventsProcessed =
                   eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
               if (eventsProcessed.size() > 100) {
