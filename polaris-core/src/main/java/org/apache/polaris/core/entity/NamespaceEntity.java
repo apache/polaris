@@ -37,6 +37,10 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
     super(sourceEntity);
     Preconditions.checkState(
         getType() == PolarisEntityType.NAMESPACE, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
   public static @Nullable NamespaceEntity of(@Nullable PolarisBaseEntity sourceEntity) {

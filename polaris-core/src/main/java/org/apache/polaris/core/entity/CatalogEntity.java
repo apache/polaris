@@ -73,6 +73,10 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     super(sourceEntity);
     Preconditions.checkState(
         getType() == PolarisEntityType.CATALOG, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
   public static @Nullable CatalogEntity of(@Nullable PolarisBaseEntity sourceEntity) {
