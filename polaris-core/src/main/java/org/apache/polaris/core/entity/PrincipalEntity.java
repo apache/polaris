@@ -28,6 +28,10 @@ public class PrincipalEntity extends PolarisEntity {
     super(sourceEntity);
     Preconditions.checkState(
         getType() == PolarisEntityType.PRINCIPAL, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
   public static @Nullable PrincipalEntity of(@Nullable PolarisBaseEntity sourceEntity) {
