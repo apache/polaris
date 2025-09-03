@@ -16,15 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.events.listeners;
+
+import org.apache.polaris.service.events.AfterAttemptTaskEvent;
+import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
+import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 
 /**
  * Represents an event listener that can respond to notable moments during Polaris's execution.
  * Event details are documented under the event objects themselves.
  */
 public abstract class PolarisEventListener {
-  /** {@link BeforeRequestRateLimitEvent} */
-  public void onBeforeRequestRateLimit(BeforeRequestRateLimitEvent event) {}
+  /** {@link BeforeLimitRequestRateEvent} */
+  public void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeCommitTableEvent} */
   public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {}
@@ -77,13 +82,13 @@ public abstract class PolarisEventListener {
   public void onAfterLoadNamespaceMetadata(
       IcebergRestCatalogEvents.AfterLoadNamespaceMetadataEvent event) {}
 
-  /** {@link IcebergRestCatalogEvents.BeforeCheckNamespaceExistsEvent} */
-  public void onBeforeCheckNamespaceExists(
-      IcebergRestCatalogEvents.BeforeCheckNamespaceExistsEvent event) {}
+  /** {@link IcebergRestCatalogEvents.BeforeCheckExistsNamespaceEvent} */
+  public void onBeforeCheckExistsNamespace(
+      IcebergRestCatalogEvents.BeforeCheckExistsNamespaceEvent event) {}
 
-  /** {@link IcebergRestCatalogEvents.AfterCheckNamespaceExistsEvent} */
-  public void onAfterCheckNamespaceExists(
-      IcebergRestCatalogEvents.AfterCheckNamespaceExistsEvent event) {}
+  /** {@link IcebergRestCatalogEvents.AfterCheckExistsNamespaceEvent} */
+  public void onAfterCheckExistsNamespace(
+      IcebergRestCatalogEvents.AfterCheckExistsNamespaceEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeDropNamespaceEvent} */
   public void onBeforeDropNamespace(IcebergRestCatalogEvents.BeforeDropNamespaceEvent event) {}
@@ -118,12 +123,12 @@ public abstract class PolarisEventListener {
   /** {@link IcebergRestCatalogEvents.AfterLoadTableEvent} */
   public void onAfterLoadTable(IcebergRestCatalogEvents.AfterLoadTableEvent event) {}
 
-  /** {@link IcebergRestCatalogEvents.BeforeCheckTableExistsEvent} */
-  public void onBeforeCheckTableExists(
-      IcebergRestCatalogEvents.BeforeCheckTableExistsEvent event) {}
+  /** {@link IcebergRestCatalogEvents.BeforeCheckExistsTableEvent} */
+  public void onBeforeCheckExistsTable(
+      IcebergRestCatalogEvents.BeforeCheckExistsTableEvent event) {}
 
-  /** {@link IcebergRestCatalogEvents.AfterCheckTableExistsEvent} */
-  public void onAfterCheckTableExists(IcebergRestCatalogEvents.AfterCheckTableExistsEvent event) {}
+  /** {@link IcebergRestCatalogEvents.AfterCheckExistsTableEvent} */
+  public void onAfterCheckExistsTable(IcebergRestCatalogEvents.AfterCheckExistsTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeDropTableEvent} */
   public void onBeforeDropTable(IcebergRestCatalogEvents.BeforeDropTableEvent event) {}
@@ -168,11 +173,11 @@ public abstract class PolarisEventListener {
   /** {@link IcebergRestCatalogEvents.AfterLoadViewEvent} */
   public void onAfterLoadView(IcebergRestCatalogEvents.AfterLoadViewEvent event) {}
 
-  /** {@link IcebergRestCatalogEvents.BeforeCheckViewExistsEvent} */
-  public void onBeforeCheckViewExists(IcebergRestCatalogEvents.BeforeCheckViewExistsEvent event) {}
+  /** {@link IcebergRestCatalogEvents.BeforeCheckExistsViewEvent} */
+  public void onBeforeCheckExistsView(IcebergRestCatalogEvents.BeforeCheckExistsViewEvent event) {}
 
-  /** {@link IcebergRestCatalogEvents.AfterCheckViewExistsEvent} */
-  public void onAfterCheckViewExists(IcebergRestCatalogEvents.AfterCheckViewExistsEvent event) {}
+  /** {@link IcebergRestCatalogEvents.AfterCheckExistsViewEvent} */
+  public void onAfterCheckExistsView(IcebergRestCatalogEvents.AfterCheckExistsViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeDropViewEvent} */
   public void onBeforeDropView(IcebergRestCatalogEvents.BeforeDropViewEvent event) {}

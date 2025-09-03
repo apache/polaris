@@ -60,9 +60,9 @@ public class IcebergRestCatalogEvents {
   public record AfterLoadNamespaceMetadataEvent(
       String catalogName, Namespace namespace, Map<String, String> namespaceProperties) {}
 
-  public record BeforeCheckNamespaceExistsEvent(String catalogName, String namespace) {}
+  public record BeforeCheckExistsNamespaceEvent(String catalogName, String namespace) {}
 
-  public record AfterCheckNamespaceExistsEvent(String catalogName, String namespace) {}
+  public record AfterCheckExistsNamespaceEvent(String catalogName, String namespace) {}
 
   public record BeforeDropNamespaceEvent(String catalogName, String namespace) {}
 
@@ -86,7 +86,10 @@ public class IcebergRestCatalogEvents {
       String accessDelegationMode) {}
 
   public record AfterCreateTableEvent(
-      String catalogName, String namespace, LoadTableResponse loadTableResponse) {}
+      String catalogName,
+      String namespace,
+      String tableName,
+      LoadTableResponse loadTableResponse) {}
 
   public record BeforeListTablesEvent(String catalogName, String namespace) {}
 
@@ -103,9 +106,9 @@ public class IcebergRestCatalogEvents {
   public record AfterLoadTableEvent(
       String catalogName, String namespace, LoadTableResponse loadTableResponse) {}
 
-  public record BeforeCheckTableExistsEvent(String catalogName, String namespace, String table) {}
+  public record BeforeCheckExistsTableEvent(String catalogName, String namespace, String table) {}
 
-  public record AfterCheckTableExistsEvent(String catalogName, String namespace, String table) {}
+  public record AfterCheckExistsTableEvent(String catalogName, String namespace, String table) {}
 
   public record BeforeDropTableEvent(
       String catalogName, String namespace, String table, Boolean purgeRequested) {}
@@ -151,9 +154,9 @@ public class IcebergRestCatalogEvents {
   public record AfterLoadViewEvent(
       String catalogName, String namespace, LoadViewResponse loadViewResponse) {}
 
-  public record BeforeCheckViewExistsEvent(String catalogName, String namespace, String view) {}
+  public record BeforeCheckExistsViewEvent(String catalogName, String namespace, String view) {}
 
-  public record AfterCheckViewExistsEvent(String catalogName, String namespace, String view) {}
+  public record AfterCheckExistsViewEvent(String catalogName, String namespace, String view) {}
 
   public record BeforeDropViewEvent(String catalogName, String namespace, String view) {}
 
@@ -184,8 +187,8 @@ public class IcebergRestCatalogEvents {
       String table,
       NotificationRequest notificationRequest) {}
 
-  public record AfterSendNotificationEvent(
-      String catalogName, String namespace, String table, boolean result) {}
+  // TODO: Add result once SendNotification API changes are confirmed to return the result.
+  public record AfterSendNotificationEvent(String catalogName, String namespace, String table) {}
 
   // Configuration Events
   public record BeforeGetConfigEvent(String warehouse) {}
@@ -196,29 +199,29 @@ public class IcebergRestCatalogEvents {
   public record BeforeCommitTableEvent(
       String catalogName,
       TableIdentifier identifier,
-      TableMetadata beforeMetadata,
-      TableMetadata afterMetadata)
+      TableMetadata metadataBefore,
+      TableMetadata metadataAfter)
       implements PolarisEvent {}
 
   public record AfterCommitTableEvent(
       String catalogName,
       TableIdentifier identifier,
-      TableMetadata beforeMetadata,
-      TableMetadata afterMetadata)
+      TableMetadata metadataBefore,
+      TableMetadata metadataAfter)
       implements PolarisEvent {}
 
   public record BeforeCommitViewEvent(
       String catalogName,
       TableIdentifier identifier,
-      ViewMetadata beforeMetadata,
-      ViewMetadata afterMetadata)
+      ViewMetadata metadataBefore,
+      ViewMetadata metadataAfter)
       implements PolarisEvent {}
 
   public record AfterCommitViewEvent(
       String catalogName,
       TableIdentifier identifier,
-      ViewMetadata beforeMetadata,
-      ViewMetadata afterMetadata)
+      ViewMetadata metadataBefore,
+      ViewMetadata metadataAfter)
       implements PolarisEvent {}
 
   public record BeforeRefreshTableEvent(String catalogName, TableIdentifier tableIdentifier)

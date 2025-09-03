@@ -36,6 +36,9 @@ dependencies {
   implementation(libs.smallrye.common.annotation) // @Identifier
   implementation(libs.postgresql)
 
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
   testImplementation(libs.mockito.junit.jupiter)
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))

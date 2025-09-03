@@ -16,13 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
 
-/**
- * Emitted before the RateLimiterFilter rejects a request due to exceeding the rate limit.
- *
- * @param method The request's HTTP method
- * @param absolutePath The request's absolute path
- */
-public record BeforeRequestRateLimitEvent(String method, String absolutePath)
-    implements PolarisEvent {}
+package org.apache.polaris.service.events.listeners;
+
+import io.quarkus.runtime.annotations.StaticInitSafe;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
+import java.time.Duration;
+
+@StaticInitSafe
+@ConfigMapping(prefix = "polaris.event-listener.persistence-in-memory-buffer")
+public interface InMemoryBufferEventListenerConfiguration {
+  /**
+   * @return the buffer time in milliseconds
+   */
+  @WithName("buffer-time")
+  @WithDefault("5000ms")
+  Duration bufferTime();
+
+  /**
+   * @return the maximum number of cached entries
+   */
+  @WithName("max-buffer-size")
+  @WithDefault("5")
+  int maxBufferSize();
+}

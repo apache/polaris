@@ -24,6 +24,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
@@ -73,6 +74,7 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
@@ -81,7 +83,9 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -98,6 +102,7 @@ import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -126,6 +131,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
+  private final PolarisEventListener polarisEventListener;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -137,6 +143,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   public static final String SNAPSHOTS_REFS = "refs";
 
   public IcebergCatalogHandler(
+      PolarisDiagnostics diagnostics,
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
@@ -147,8 +154,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
-      Instance<ExternalCatalogFactory> externalCatalogFactories) {
+      Instance<ExternalCatalogFactory> externalCatalogFactories,
+      PolarisEventListener polarisEventListener) {
     super(
+        diagnostics,
         callContext,
         resolutionManifestFactory,
         securityContext,
@@ -160,6 +169,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
+    this.polarisEventListener = polarisEventListener;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -579,12 +589,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * Fetch the metastore table entity for the given table identifier
    *
    * @param tableIdentifier The identifier of the table
-   * @return the Polaris table entity for the table
+   * @return the Polaris table entity for the table or null for external catalogs
    */
-  private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
+  private @Nullable IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(tableIdentifier);
-
-    return IcebergTableLikeEntity.of(target.getRawLeafEntity());
+    PolarisEntity rawLeafEntity = target.getRawLeafEntity();
+    if (rawLeafEntity.getType() == PolarisEntityType.TABLE_LIKE) {
+      return IcebergTableLikeEntity.of(rawLeafEntity);
+    }
+    return null; // could be an external catalog
   }
 
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {

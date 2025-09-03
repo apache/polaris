@@ -16,12 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
+package org.apache.polaris.ids.api;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
+/** The primary interface for generating a contention-free ID. */
+public interface IdGenerator {
+  /** Generate a new, unique ID. */
+  long generateId();
 
-/** Event listener that does nothing. */
-@ApplicationScoped
-@Identifier("no-op")
-public class NoOpPolarisEventListener extends PolarisEventListener {}
+  /** Generate the system ID for a node, solely used for node management. */
+  long systemIdForNode(int nodeId);
+
+  default String describeId(long id) {
+    return Long.toString(id);
+  }
+
+  IdGenerator NONE =
+      new IdGenerator() {
+        @Override
+        public long generateId() {
+          throw new UnsupportedOperationException("NONE IdGenerator cannot generate IDs.");
+        }
+
+        @Override
+        public long systemIdForNode(int nodeId) {
+          throw new UnsupportedOperationException("NONE IdGenerator cannot generate IDs.");
+        }
+      };
+}

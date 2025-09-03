@@ -75,22 +75,6 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
-  implementation(libs.hadoop.common) {
-    exclude("org.slf4j", "slf4j-reload4j")
-    exclude("org.slf4j", "slf4j-log4j12")
-    exclude("ch.qos.reload4j", "reload4j")
-    exclude("log4j", "log4j")
-    exclude("org.apache.zookeeper", "zookeeper")
-    exclude("org.apache.hadoop.thirdparty", "hadoop-shaded-protobuf_3_25")
-    exclude("com.github.pjfanning", "jersey-json")
-    exclude("com.sun.jersey", "jersey-core")
-    exclude("com.sun.jersey", "jersey-server")
-    exclude("com.sun.jersey", "jersey-servlet")
-    exclude("com.sun.jersey", "jersey-servlet")
-    exclude("io.dropwizard.metrics", "metrics-core")
-  }
-  implementation(libs.hadoop.hdfs.client)
-
   implementation(libs.smallrye.common.annotation)
   implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
@@ -103,6 +87,7 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation("software.amazon.awssdk:cloudwatchlogs")
   implementation("software.amazon.awssdk:apache-client") {
     exclude("commons-logging", "commons-logging")
   }
@@ -144,6 +129,9 @@ dependencies {
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.rest-assured:rest-assured")
+  testImplementation(libs.localstack)
+  testImplementation("org.testcontainers:testcontainers")
+  testImplementation(project(":polaris-container-spec-helper"))
 
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)

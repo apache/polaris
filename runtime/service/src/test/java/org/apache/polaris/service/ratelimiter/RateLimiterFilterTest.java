@@ -32,9 +32,9 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import org.apache.polaris.service.events.BeforeRequestRateLimitEvent;
-import org.apache.polaris.service.events.PolarisEventListener;
-import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterTest.Profile;
 import org.apache.polaris.service.test.PolarisIntegrationTestFixture;
 import org.apache.polaris.service.test.PolarisIntegrationTestHelper;
@@ -148,9 +148,9 @@ public class RateLimiterFilterTest {
     }
     requestAsserter.accept(Status.TOO_MANY_REQUESTS);
 
-    BeforeRequestRateLimitEvent event =
+    BeforeLimitRequestRateEvent event =
         ((TestPolarisEventListener) polarisEventListener)
-            .getLatest(BeforeRequestRateLimitEvent.class);
+            .getLatest(BeforeLimitRequestRateEvent.class);
     assertThat(event.method()).isEqualTo("GET");
 
     // Examples of expected metrics:
