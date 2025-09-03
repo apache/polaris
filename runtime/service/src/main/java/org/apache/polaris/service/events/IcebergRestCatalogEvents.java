@@ -20,7 +20,9 @@
 package org.apache.polaris.service.events;
 
 import java.util.Map;
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
@@ -31,6 +33,7 @@ import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -43,54 +46,54 @@ public class IcebergRestCatalogEvents {
 
   // Namespace Events
   public record BeforeCreateNamespaceEvent(
-      String prefix, CreateNamespaceRequest createNamespaceRequest) {}
+      String catalogName, CreateNamespaceRequest createNamespaceRequest) {}
 
   public record AfterCreateNamespaceEvent(
-      String prefix, Namespace namespace, Map<String, String> namespaceProperties) {}
+      String catalogName, Namespace namespace, Map<String, String> namespaceProperties) {}
 
-  public record BeforeListNamespacesEvent(String prefix, String parent) {}
+  public record BeforeListNamespacesEvent(String catalogName, String parent) {}
 
-  public record AfterListNamespacesEvent(String prefix, String parent) {}
+  public record AfterListNamespacesEvent(String catalogName, String parent) {}
 
-  public record BeforeLoadNamespaceMetadataEvent(String prefix, String namespace) {}
+  public record BeforeLoadNamespaceMetadataEvent(String catalogName, String namespace) {}
 
   public record AfterLoadNamespaceMetadataEvent(
-      String prefix, Namespace namespace, Map<String, String> namespaceProperties) {}
+      String catalogName, Namespace namespace, Map<String, String> namespaceProperties) {}
 
-  public record BeforeCheckNamespaceExistsEvent(String prefix, String namespace) {}
+  public record BeforeCheckNamespaceExistsEvent(String catalogName, String namespace) {}
 
-  public record AfterCheckNamespaceExistsEvent(String prefix, String namespace) {}
+  public record AfterCheckNamespaceExistsEvent(String catalogName, String namespace) {}
 
-  public record BeforeDropNamespaceEvent(String prefix, String namespace) {}
+  public record BeforeDropNamespaceEvent(String catalogName, String namespace) {}
 
-  public record AfterDropNamespaceEvent(String prefix, String namespace) {}
+  public record AfterDropNamespaceEvent(String catalogName, String namespace) {}
 
   public record BeforeUpdateNamespacePropertiesEvent(
-      String prefix,
+      String catalogName,
       String namespace,
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest) {}
 
   public record AfterUpdateNamespacePropertiesEvent(
-      String prefix,
+      String catalogName,
       String namespace,
       UpdateNamespacePropertiesResponse updateNamespacePropertiesResponse) {}
 
   // Table Events
   public record BeforeCreateTableEvent(
-      String prefix,
+      String catalogName,
       String namespace,
       CreateTableRequest createTableRequest,
       String accessDelegationMode) {}
 
   public record AfterCreateTableEvent(
-      String prefix, String namespace, LoadTableResponse loadTableResponse) {}
+      String catalogName, String namespace, LoadTableResponse loadTableResponse) {}
 
-  public record BeforeListTablesEvent(String prefix, String namespace) {}
+  public record BeforeListTablesEvent(String catalogName, String namespace) {}
 
-  public record AfterListTablesEvent(String prefix, String namespace) {}
+  public record AfterListTablesEvent(String catalogName, String namespace) {}
 
   public record BeforeLoadTableEvent(
-      String prefix,
+      String catalogName,
       String namespace,
       String table,
       String accessDelegationMode,
@@ -98,82 +101,135 @@ public class IcebergRestCatalogEvents {
       String snapshots) {}
 
   public record AfterLoadTableEvent(
-      String prefix, String namespace, LoadTableResponse loadTableResponse) {}
+      String catalogName, String namespace, LoadTableResponse loadTableResponse) {}
 
-  public record BeforeCheckTableExistsEvent(String prefix, String namespace, String table) {}
+  public record BeforeCheckTableExistsEvent(String catalogName, String namespace, String table) {}
 
-  public record AfterCheckTableExistsEvent(String prefix, String namespace, String table) {}
+  public record AfterCheckTableExistsEvent(String catalogName, String namespace, String table) {}
 
   public record BeforeDropTableEvent(
-      String prefix, String namespace, String table, Boolean purgeRequested) {}
+      String catalogName, String namespace, String table, Boolean purgeRequested) {}
 
   public record AfterDropTableEvent(
-      String prefix, String namespace, String table, Boolean purgeRequested) {}
+      String catalogName, String namespace, String table, Boolean purgeRequested) {}
 
   public record BeforeRegisterTableEvent(
-      String prefix, String namespace, RegisterTableRequest registerTableRequest) {}
+      String catalogName, String namespace, RegisterTableRequest registerTableRequest) {}
 
   public record AfterRegisterTableEvent(
-      String prefix, String namespace, LoadTableResponse loadTableResponse) {}
+      String catalogName, String namespace, LoadTableResponse loadTableResponse) {}
 
-  public record BeforeRenameTableEvent(String prefix, RenameTableRequest renameTableRequest) {}
+  public record BeforeRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest) {}
 
-  public record AfterRenameTableEvent(String prefix, RenameTableRequest renameTableRequest) {}
+  public record AfterRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest) {}
 
   public record BeforeUpdateTableEvent(
-      String prefix, String namespace, String sourceTable, CommitTableRequest commitTableRequest) {}
+      String catalogName,
+      String namespace,
+      String sourceTable,
+      CommitTableRequest commitTableRequest) {}
 
   public record AfterUpdateTableEvent(
-      String prefix, String namespace, String sourceTable, LoadTableResponse loadTableResponse) {}
+      String catalogName,
+      String namespace,
+      String sourceTable,
+      LoadTableResponse loadTableResponse) {}
 
   // View Events
   public record BeforeCreateViewEvent(
-      String prefix, String namespace, CreateViewRequest createViewRequest) {}
+      String catalogName, String namespace, CreateViewRequest createViewRequest) {}
 
   public record AfterCreateViewEvent(
-      String prefix, String namespace, LoadViewResponse loadViewResponse) {}
+      String catalogName, String namespace, LoadViewResponse loadViewResponse) {}
 
-  public record BeforeListViewsEvent(String prefix, String namespace) {}
+  public record BeforeListViewsEvent(String catalogName, String namespace) {}
 
-  public record AfterListViewsEvent(String prefix, String namespace) {}
+  public record AfterListViewsEvent(String catalogName, String namespace) {}
 
-  public record BeforeLoadViewEvent(String prefix, String namespace, String view) {}
+  public record BeforeLoadViewEvent(String catalogName, String namespace, String view) {}
 
   public record AfterLoadViewEvent(
-      String prefix, String namespace, LoadViewResponse loadViewResponse) {}
+      String catalogName, String namespace, LoadViewResponse loadViewResponse) {}
 
-  public record BeforeCheckViewExistsEvent(String prefix, String namespace, String view) {}
+  public record BeforeCheckViewExistsEvent(String catalogName, String namespace, String view) {}
 
-  public record AfterCheckViewExistsEvent(String prefix, String namespace, String view) {}
+  public record AfterCheckViewExistsEvent(String catalogName, String namespace, String view) {}
 
-  public record BeforeDropViewEvent(String prefix, String namespace, String view) {}
+  public record BeforeDropViewEvent(String catalogName, String namespace, String view) {}
 
-  public record AfterDropViewEvent(String prefix, String namespace, String view) {}
+  public record AfterDropViewEvent(String catalogName, String namespace, String view) {}
 
-  public record BeforeRenameViewEvent(String prefix, RenameTableRequest renameTableRequest) {}
+  public record BeforeRenameViewEvent(String catalogName, RenameTableRequest renameTableRequest) {}
 
-  public record AfterRenameViewEvent(String prefix, RenameTableRequest renameTableRequest) {}
+  public record AfterRenameViewEvent(String catalogName, RenameTableRequest renameTableRequest) {}
 
   public record BeforeReplaceViewEvent(
-      String prefix, String namespace, String sourceView, CommitViewRequest commitViewRequest) {}
+      String catalogName,
+      String namespace,
+      String sourceView,
+      CommitViewRequest commitViewRequest) {}
 
   public record AfterReplaceViewEvent(
-      String prefix, String namespace, String sourceView, LoadViewResponse loadViewResponse) {}
+      String catalogName, String namespace, String sourceView, LoadViewResponse loadViewResponse) {}
 
   // Credential Events
-  public record BeforeLoadCredentialsEvent(String prefix, String namespace, String table) {}
+  public record BeforeLoadCredentialsEvent(String catalogName, String namespace, String table) {}
 
-  public record AfterLoadCredentialsEvent(String prefix, String namespace, String table) {}
+  public record AfterLoadCredentialsEvent(String catalogName, String namespace, String table) {}
 
   // Notification Events
   public record BeforeSendNotificationEvent(
-      String prefix, String namespace, String table, NotificationRequest notificationRequest) {}
+      String catalogName,
+      String namespace,
+      String table,
+      NotificationRequest notificationRequest) {}
 
   public record AfterSendNotificationEvent(
-      String prefix, String namespace, String table, boolean result) {}
+      String catalogName, String namespace, String table, boolean result) {}
 
   // Configuration Events
   public record BeforeGetConfigEvent(String warehouse) {}
 
   public record AfterGetConfigEvent(ConfigResponse configResponse) {}
+
+  // Legacy events
+  public record BeforeCommitTableEvent(
+      String catalogName,
+      TableIdentifier identifier,
+      TableMetadata beforeMetadata,
+      TableMetadata afterMetadata)
+      implements PolarisEvent {}
+
+  public record AfterCommitTableEvent(
+      String catalogName,
+      TableIdentifier identifier,
+      TableMetadata beforeMetadata,
+      TableMetadata afterMetadata)
+      implements PolarisEvent {}
+
+  public record BeforeCommitViewEvent(
+      String catalogName,
+      TableIdentifier identifier,
+      ViewMetadata beforeMetadata,
+      ViewMetadata afterMetadata)
+      implements PolarisEvent {}
+
+  public record AfterCommitViewEvent(
+      String catalogName,
+      TableIdentifier identifier,
+      ViewMetadata beforeMetadata,
+      ViewMetadata afterMetadata)
+      implements PolarisEvent {}
+
+  public record BeforeRefreshTableEvent(String catalogName, TableIdentifier tableIdentifier)
+      implements PolarisEvent {}
+
+  public record AfterRefreshTableEvent(String catalogName, TableIdentifier tableIdentifier)
+      implements PolarisEvent {}
+
+  public record BeforeRefreshViewEvent(String catalogName, TableIdentifier viewIdentifier)
+      implements PolarisEvent {}
+
+  public record AfterRefreshViewEvent(String catalogName, TableIdentifier viewIdentifier)
+      implements PolarisEvent {}
 }

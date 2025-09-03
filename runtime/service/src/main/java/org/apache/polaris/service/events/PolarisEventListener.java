@@ -23,38 +23,38 @@ package org.apache.polaris.service.events;
  * Event details are documented under the event objects themselves.
  */
 public abstract class PolarisEventListener {
-  /** {@link BeforeRequestRateLimitedEvent} */
-  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {}
+  /** {@link BeforeRequestRateLimitEvent} */
+  public void onBeforeRequestRateLimit(BeforeRequestRateLimitEvent event) {}
 
-  /** {@link BeforeTableCommitedEvent} */
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {}
+  /** {@link IcebergRestCatalogEvents.BeforeCommitTableEvent} */
+  public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {}
 
-  /** {@link AfterTableCommitedEvent} */
-  public void onAfterTableCommited(AfterTableCommitedEvent event) {}
+  /** {@link IcebergRestCatalogEvents.AfterCommitTableEvent} */
+  public void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {}
 
-  /** {@link BeforeViewCommitedEvent} */
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {}
+  /** {@link IcebergRestCatalogEvents.BeforeCommitViewEvent} */
+  public void onBeforeCommitView(IcebergRestCatalogEvents.BeforeCommitViewEvent event) {}
 
-  /** {@link AfterViewCommitedEvent} */
-  public void onAfterViewCommited(AfterViewCommitedEvent event) {}
+  /** {@link IcebergRestCatalogEvents.AfterCommitViewEvent} */
+  public void onAfterCommitView(IcebergRestCatalogEvents.AfterCommitViewEvent event) {}
 
-  /** {@link BeforeTableRefreshedEvent} */
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {}
+  /** {@link IcebergRestCatalogEvents.BeforeRefreshTableEvent} */
+  public void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {}
 
-  /** {@link AfterTableRefreshedEvent} */
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {}
+  /** {@link IcebergRestCatalogEvents.AfterRefreshTableEvent} */
+  public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {}
 
-  /** {@link BeforeViewRefreshedEvent} */
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {}
+  /** {@link IcebergRestCatalogEvents.BeforeRefreshViewEvent} */
+  public void onBeforeRefreshView(IcebergRestCatalogEvents.BeforeRefreshViewEvent event) {}
 
-  /** {@link AfterViewRefreshedEvent} */
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {}
+  /** {@link IcebergRestCatalogEvents.AfterRefreshViewEvent} */
+  public void onAfterRefreshView(IcebergRestCatalogEvents.AfterRefreshViewEvent event) {}
 
-  /** {@link BeforeTaskAttemptedEvent} */
-  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {}
+  /** {@link BeforeAttemptTaskEvent} */
+  public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {}
 
-  /** {@link AfterTaskAttemptedEvent} */
-  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {}
+  /** {@link AfterAttemptTaskEvent} */
+  public void onAfterAttemptTask(AfterAttemptTaskEvent event) {}
 
   // Iceberg REST Catalog Namespace Events
   /** {@link IcebergRestCatalogEvents.BeforeCreateNamespaceEvent} */

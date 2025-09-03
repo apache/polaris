@@ -43,8 +43,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
-import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
+import org.apache.polaris.service.events.AfterAttemptTaskEvent;
+import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.slf4j.Logger;
@@ -143,8 +143,8 @@ public class TaskExecutorImpl implements TaskExecutor {
   }
 
   protected void handleTask(long taskEntityId, CallContext ctx, int attempt) {
-    polarisEventListener.onBeforeTaskAttempted(
-        new BeforeTaskAttemptedEvent(taskEntityId, ctx, attempt));
+    polarisEventListener.onBeforeAttemptTask(
+        new BeforeAttemptTaskEvent(taskEntityId, ctx, attempt));
 
     boolean success = false;
     try {
@@ -187,8 +187,8 @@ public class TaskExecutorImpl implements TaskExecutor {
             .log("Unable to execute async task");
       }
     } finally {
-      polarisEventListener.onAfterTaskAttempted(
-          new AfterTaskAttemptedEvent(taskEntityId, ctx, attempt, success));
+      polarisEventListener.onAfterAttemptTask(
+          new AfterAttemptTaskEvent(taskEntityId, ctx, attempt, success));
     }
   }
 

@@ -36,57 +36,57 @@ public class TestPolarisEventListener extends PolarisEventListener {
   }
 
   @Override
-  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {
+  public void onBeforeRequestRateLimit(BeforeRequestRateLimitEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {
+  public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableCommited(AfterTableCommitedEvent event) {
+  public void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {
+  public void onBeforeCommitView(IcebergRestCatalogEvents.BeforeCommitViewEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewCommited(AfterViewCommitedEvent event) {
+  public void onAfterCommitView(IcebergRestCatalogEvents.AfterCommitViewEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {
+  public void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
+  public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {
+  public void onBeforeRefreshView(IcebergRestCatalogEvents.BeforeRefreshViewEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {
+  public void onAfterRefreshView(IcebergRestCatalogEvents.AfterRefreshViewEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {
+  public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {
+  public void onAfterAttemptTask(AfterAttemptTaskEvent event) {
     history.add(event);
   }
 }

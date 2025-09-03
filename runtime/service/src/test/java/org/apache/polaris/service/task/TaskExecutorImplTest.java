@@ -25,8 +25,8 @@ import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
-import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
-import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
+import org.apache.polaris.service.events.AfterAttemptTaskEvent;
+import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -80,7 +80,7 @@ public class TaskExecutorImplTest {
           @Override
           public boolean handleTask(TaskEntity task, CallContext callContext) {
             var beforeTaskAttemptedEvent =
-                testPolarisEventListener.getLatest(BeforeTaskAttemptedEvent.class);
+                testPolarisEventListener.getLatest(BeforeAttemptTaskEvent.class);
             Assertions.assertEquals(taskEntity.getId(), beforeTaskAttemptedEvent.taskEntityId());
             Assertions.assertEquals(callContext, beforeTaskAttemptedEvent.callContext());
             Assertions.assertEquals(attempt, beforeTaskAttemptedEvent.attempt());
@@ -90,7 +90,7 @@ public class TaskExecutorImplTest {
 
     executor.handleTask(taskEntity.getId(), polarisCallCtx, attempt);
 
-    var afterAttemptTaskEvent = testPolarisEventListener.getLatest(AfterTaskAttemptedEvent.class);
+    var afterAttemptTaskEvent = testPolarisEventListener.getLatest(AfterAttemptTaskEvent.class);
     Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.taskEntityId());
     Assertions.assertEquals(polarisCallCtx, afterAttemptTaskEvent.callContext());
     Assertions.assertEquals(attempt, afterAttemptTaskEvent.attempt());

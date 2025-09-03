@@ -137,10 +137,7 @@ import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.AfterTableCommitedEvent;
-import org.apache.polaris.service.events.AfterTableRefreshedEvent;
-import org.apache.polaris.service.events.BeforeTableCommitedEvent;
-import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
@@ -2224,21 +2221,26 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     table.updateProperties().set(key, valOld).commit();
     table.updateProperties().set(key, valNew).commit();
 
-    var beforeRefreshEvent = testPolarisEventListener.getLatest(BeforeTableRefreshedEvent.class);
+    var beforeRefreshEvent =
+        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.BeforeRefreshTableEvent.class);
     Assertions.assertThat(beforeRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
 
-    var afterRefreshEvent = testPolarisEventListener.getLatest(AfterTableRefreshedEvent.class);
+    var afterRefreshEvent =
+        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.AfterRefreshTableEvent.class);
     Assertions.assertThat(afterRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
 
-    var beforeTableEvent = testPolarisEventListener.getLatest(BeforeTableCommitedEvent.class);
+    var beforeTableEvent =
+        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.BeforeCommitTableEvent.class);
     Assertions.assertThat(beforeTableEvent.identifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(beforeTableEvent.base().properties().get(key)).isEqualTo(valOld);
-    Assertions.assertThat(beforeTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
+    Assertions.assertThat(beforeTableEvent.beforeMetadata().properties().get(key))
+        .isEqualTo(valOld);
+    Assertions.assertThat(beforeTableEvent.afterMetadata().properties().get(key)).isEqualTo(valNew);
 
-    var afterTableEvent = testPolarisEventListener.getLatest(AfterTableCommitedEvent.class);
+    var afterTableEvent =
+        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.AfterCommitTableEvent.class);
     Assertions.assertThat(afterTableEvent.identifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(afterTableEvent.base().properties().get(key)).isEqualTo(valOld);
-    Assertions.assertThat(afterTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
+    Assertions.assertThat(afterTableEvent.beforeMetadata().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(afterTableEvent.afterMetadata().properties().get(key)).isEqualTo(valNew);
   }
 
   private static PageToken nextRequest(Page<?> previousPage) {
