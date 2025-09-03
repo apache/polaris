@@ -203,7 +203,7 @@ class AwsCloudWatchEventListenerTest {
     try {
       // Create and send a test event
       TableIdentifier testTable = TableIdentifier.of("test_namespace", "test_table");
-      AfterTableRefreshedEvent event = new AfterTableRefreshedEvent(testTable);
+      AfterTableRefreshedEvent event = new AfterTableRefreshedEvent("test_catalog", testTable);
       listener.onAfterTableRefreshed(event);
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
@@ -260,7 +260,7 @@ class AwsCloudWatchEventListenerTest {
     try {
       // Create and send a test event synchronously
       TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
-      AfterTableRefreshedEvent syncEvent = new AfterTableRefreshedEvent(syncTestTable);
+      AfterTableRefreshedEvent syncEvent = new AfterTableRefreshedEvent("test_catalog", syncTestTable);
       syncListener.onAfterTableRefreshed(syncEvent);
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
