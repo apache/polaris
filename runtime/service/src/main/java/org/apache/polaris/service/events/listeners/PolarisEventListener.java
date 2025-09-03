@@ -16,13 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.events.listeners;
+
+import org.apache.polaris.service.events.AfterCatalogCreatedEvent;
+import org.apache.polaris.service.events.AfterTableCommitedEvent;
+import org.apache.polaris.service.events.AfterTableCreatedEvent;
+import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
+import org.apache.polaris.service.events.AfterViewCommitedEvent;
+import org.apache.polaris.service.events.AfterViewRefreshedEvent;
+import org.apache.polaris.service.events.BeforeRequestRateLimitedEvent;
+import org.apache.polaris.service.events.BeforeTableCommitedEvent;
+import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
+import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
+import org.apache.polaris.service.events.BeforeViewCommitedEvent;
+import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
+import org.apache.polaris.service.events.CatalogGenericTableServiceEvents;
 
 /**
  * Represents an event listener that can respond to notable moments during Polaris's execution.
  * Event details are documented under the event objects themselves.
  */
 public abstract class PolarisEventListener {
+
   /** {@link BeforeRequestRateLimitedEvent} */
   public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {}
 
@@ -55,6 +71,12 @@ public abstract class PolarisEventListener {
 
   /** {@link AfterTaskAttemptedEvent} */
   public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {}
+
+  /** {@link AfterTableCreatedEvent} */
+  public void onAfterTableCreated(AfterTableCreatedEvent event) {}
+
+  /** {@link AfterCatalogCreatedEvent} */
+  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent} */
   public void onBeforeCreateGenericTable(

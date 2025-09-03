@@ -70,8 +70,8 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
-import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -103,13 +103,14 @@ public class ServiceProducers {
   @Produces
   @ApplicationScoped
   public StorageCredentialCache storageCredentialCache(
-      StorageCredentialCacheConfig storageCredentialCacheConfig) {
-    return new StorageCredentialCache(storageCredentialCacheConfig);
+      PolarisDiagnostics diagnostics, StorageCredentialCacheConfig storageCredentialCacheConfig) {
+    return new StorageCredentialCache(diagnostics, storageCredentialCacheConfig);
   }
 
   @Produces
   @ApplicationScoped
   public ResolverFactory resolverFactory(
+      PolarisDiagnostics diagnostics,
       MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisMetaStoreManager polarisMetaStoreManager) {
     return (callContext, securityContext, referenceCatalogName) -> {
@@ -117,6 +118,7 @@ public class ServiceProducers {
           metaStoreManagerFactory.getOrCreateEntityCache(
               callContext.getRealmContext(), callContext.getRealmConfig());
       return new Resolver(
+          diagnostics,
           callContext.getPolarisCallContext(),
           polarisMetaStoreManager,
           securityContext,
@@ -127,8 +129,9 @@ public class ServiceProducers {
 
   @Produces
   @ApplicationScoped
-  public ResolutionManifestFactory resolutionManifestFactory(ResolverFactory resolverFactory) {
-    return new ResolutionManifestFactoryImpl(resolverFactory);
+  public ResolutionManifestFactory resolutionManifestFactory(
+      PolarisDiagnostics diagnostics, ResolverFactory resolverFactory) {
+    return new ResolutionManifestFactoryImpl(diagnostics, resolverFactory);
   }
 
   @Produces
@@ -149,11 +152,10 @@ public class ServiceProducers {
   @RequestScoped
   public CallContext polarisCallContext(
       RealmContext realmContext,
-      PolarisDiagnostics diagServices,
       PolarisConfigurationStore configurationStore,
       MetaStoreManagerFactory metaStoreManagerFactory) {
     BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStoreSession, diagServices, configurationStore);
+    return new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
   }
 
   @Produces

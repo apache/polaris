@@ -24,6 +24,8 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -40,12 +42,15 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class PolarisServiceImplTest {
 
+  private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
   private ResolutionManifestFactory resolutionManifestFactory;
   private MetaStoreManagerFactory metaStoreManagerFactory;
   private UserSecretsManagerFactory userSecretsManagerFactory;
@@ -53,6 +58,7 @@ public class PolarisServiceImplTest {
   private CallContext callContext;
   private ReservedProperties reservedProperties;
   private RealmConfig realmConfig;
+  private PolarisEventListener polarisEventListener;
 
   private PolarisServiceImpl polarisService;
 
@@ -65,6 +71,7 @@ public class PolarisServiceImplTest {
     callContext = Mockito.mock(CallContext.class);
     reservedProperties = Mockito.mock(ReservedProperties.class);
     realmConfig = Mockito.mock(RealmConfig.class);
+    polarisEventListener = new NoOpPolarisEventListener();
 
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_CONNECTION_TYPES))
@@ -75,12 +82,14 @@ public class PolarisServiceImplTest {
 
     polarisService =
         new PolarisServiceImpl(
+            diagnostics,
             resolutionManifestFactory,
             metaStoreManagerFactory,
             userSecretsManagerFactory,
             polarisAuthorizer,
             callContext,
-            reservedProperties);
+            reservedProperties,
+            polarisEventListener);
   }
 
   @Test

@@ -28,6 +28,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.Date;
@@ -87,7 +88,7 @@ import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -225,15 +226,16 @@ public abstract class PolarisAuthzTestBase {
 
     RealmContext realmContext = testInfo::getDisplayName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    ContainerRequestContext containerRequestContext = Mockito.mock(ContainerRequestContext.class);
+    Mockito.when(containerRequestContext.getProperty(Mockito.anyString()))
+        .thenReturn("request-id-1");
+    QuarkusMock.installMockForType(containerRequestContext, ContainerRequestContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
     polarisContext =
         new PolarisCallContext(
-            realmContext,
-            managerFactory.getOrCreateSession(realmContext),
-            diagServices,
-            configurationStore);
+            realmContext, managerFactory.getOrCreateSession(realmContext), configurationStore);
 
     callContext = polarisContext;
     realmConfig = polarisContext.getRealmConfig();
@@ -246,6 +248,7 @@ public abstract class PolarisAuthzTestBase {
 
     this.adminService =
         new PolarisAdminService(
+            diagServices,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -453,6 +456,7 @@ public abstract class PolarisAuthzTestBase {
             callContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
+            diagServices,
             storageCredentialCache,
             resolverFactory,
             metaStoreManager,
@@ -479,11 +483,12 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisCallContextCatalogFactory() {
-      this(null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null);
     }
 
     @Inject
     public TestPolarisCallContextCatalogFactory(
+        PolarisDiagnostics diagnostics,
         StorageCredentialCache storageCredentialCache,
         ResolverFactory resolverFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
@@ -491,6 +496,7 @@ public abstract class PolarisAuthzTestBase {
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener) {
       super(
+          diagnostics,
           storageCredentialCache,
           resolverFactory,
           metaStoreManagerFactory,

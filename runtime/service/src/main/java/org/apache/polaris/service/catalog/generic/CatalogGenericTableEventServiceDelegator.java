@@ -30,7 +30,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.events.CatalogGenericTableServiceEvents;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
 
@@ -50,7 +50,7 @@ public class CatalogGenericTableEventServiceDelegator
       CreateGenericTableRequest createGenericTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = getCatalogFromPrefix(prefix, realmContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeCreateGenericTable(
         new CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent(
             catalogName, namespace, createGenericTableRequest));
@@ -70,7 +70,7 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = getCatalogFromPrefix(prefix, realmContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeDropGenericTable(
         new CatalogGenericTableServiceEvents.BeforeDropGenericTableEvent(
             catalogName, namespace, genericTable));
@@ -90,7 +90,7 @@ public class CatalogGenericTableEventServiceDelegator
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = getCatalogFromPrefix(prefix, realmContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeListGenericTables(
         new CatalogGenericTableServiceEvents.BeforeListGenericTablesEvent(catalogName, namespace));
     Response resp =
@@ -108,7 +108,7 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = getCatalogFromPrefix(prefix, realmContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeLoadGenericTable(
         new CatalogGenericTableServiceEvents.BeforeLoadGenericTableEvent(
             catalogName, namespace, genericTable));
@@ -118,9 +118,5 @@ public class CatalogGenericTableEventServiceDelegator
         new CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent(
             catalogName, namespace, ((LoadGenericTableResponse) resp.getEntity()).getTable()));
     return resp;
-  }
-
-  private String getCatalogFromPrefix(String prefix, RealmContext realmContext) {
-    return prefixParser.prefixToCatalogName(realmContext, prefix);
   }
 }
