@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
@@ -435,5 +436,12 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull PolicyType policyType) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadPoliciesOnEntityByType");
     return null;
+  }
+
+  @Nonnull
+  @Override
+  public void writeEvents(
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
+    diagnostics.fail("illegal_method_in_transaction_workspace", "writeEvents");
   }
 }
