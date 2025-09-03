@@ -56,7 +56,7 @@ public class CatalogGenericTableEventServiceDelegator
             prefix, namespace, createGenericTableRequest, realmContext, securityContext);
     polarisEventListener.onAfterCreateGenericTable(
         new CatalogGenericTableServiceEvents.AfterCreateGenericTableEvent(
-            resp.readEntity(LoadGenericTableResponse.class).getTable()));
+            ((LoadGenericTableResponse) resp.getEntity()).getTable()));
     return resp;
   }
 
@@ -110,7 +110,7 @@ public class CatalogGenericTableEventServiceDelegator
         delegate.loadGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
     polarisEventListener.onAfterLoadGenericTable(
         new CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent(
-            resp.readEntity(LoadGenericTableResponse.class).getTable()));
+            ((LoadGenericTableResponse) resp.getEntity()).getTable()));
     return resp;
   }
 }
