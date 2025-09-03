@@ -50,7 +50,8 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
         new PrincipalRolesServiceEvents.BeforePrincipalRoleCreateEvent(request));
     Response resp = delegate.createPrincipalRole(request, realmContext, securityContext);
     polarisEventListener.onAfterPrincipalRoleCreate(
-        new PrincipalRolesServiceEvents.AfterPrincipalRoleCreateEvent((PrincipalRole) resp.getEntity()));
+        new PrincipalRolesServiceEvents.AfterPrincipalRoleCreateEvent(
+            (PrincipalRole) resp.getEntity()));
     // If we are okay to start returning the PrincipalRole in the response, then we can simply
     // return `resp`.
     return Response.status(Response.Status.CREATED).build();

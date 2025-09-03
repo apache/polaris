@@ -61,10 +61,14 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
       ResetPrincipalRequest resetPrincipalRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeCredentialsReset(new PrincipalsServiceEvents.BeforeCredentialsResetEvent(principalName));
-    Response resp = delegate.resetCredentials(
-        principalName, resetPrincipalRequest, realmContext, securityContext);
-    polarisEventListener.onAfterCredentialsReset(new PrincipalsServiceEvents.AfterCredentialsResetEvent(((PrincipalWithCredentials) resp.getEntity()).getPrincipal()));
+    polarisEventListener.onBeforeCredentialsReset(
+        new PrincipalsServiceEvents.BeforeCredentialsResetEvent(principalName));
+    Response resp =
+        delegate.resetCredentials(
+            principalName, resetPrincipalRequest, realmContext, securityContext);
+    polarisEventListener.onAfterCredentialsReset(
+        new PrincipalsServiceEvents.AfterCredentialsResetEvent(
+            ((PrincipalWithCredentials) resp.getEntity()).getPrincipal()));
     return resp;
   }
 
