@@ -76,6 +76,7 @@ jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0
 jandex = { module = "io.smallrye.jandex:jandex", version ="3.4.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.13.4" }
+localstack = { module = "org.testcontainers:localstack", version = "1.19.7" }
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.6" }
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
