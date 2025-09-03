@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
+import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootPrincipalName;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_DETACH_POLICY;
@@ -581,6 +582,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     boolean enforceCredentialRotationRequiredState =
         realmConfig.getConfig(
             FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
+    boolean isRoot = getRootPrincipalName().equals(polarisPrincipal.getName());
     if (enforceCredentialRotationRequiredState
         && polarisPrincipal
             .getProperties()
@@ -589,6 +591,14 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       throw new ForbiddenException(
           "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE",
           polarisPrincipal.getName(), authzOp);
+    } else if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
+      if (!isRoot) {
+        throw new ForbiddenException("Only Root principal(service-admin) can perform %s", authzOp);
+      }
+      LOGGER
+          .atDebug()
+          .addKeyValue("principalName", polarisPrincipal.getName())
+          .log("Root principal allowed to reset credentials");
     } else if (!isAuthorized(polarisPrincipal, activatedEntities, authzOp, targets, secondaries)) {
       throw new ForbiddenException(
           "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",

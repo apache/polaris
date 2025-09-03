@@ -82,6 +82,25 @@ public interface IntegrationPersistence {
       @Nonnull String oldSecretHash);
 
   /**
+   * Store the secrets of a principal entity.
+   *
+   * <p>This method creates and persists new credentials for the given client ID. The credentials
+   * are expected not to already exist for the given client ID.
+   *
+   * @param callCtx call context
+   * @param principalId the principal id
+   * @param resolvedClientId
+   * @param customClientSecret the secret for the principal
+   * @return the stored principal secrets
+   */
+  @Nullable
+  PolarisPrincipalSecrets storePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret);
+
+  /**
    * When dropping a principal, we also need to drop the secrets of that principal
    *
    * @param callCtx the call context

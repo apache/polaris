@@ -50,7 +50,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class StorageCredentialCacheTest {
-
+  private final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
   private final PolarisCallContext callCtx;
   private final StorageCredentialCacheConfig storageCredentialCacheConfig;
   private final PolarisMetaStoreManager metaStoreManager;
@@ -58,22 +58,20 @@ public class StorageCredentialCacheTest {
   private StorageCredentialCache storageCredentialCache;
 
   public StorageCredentialCacheTest() {
-    // diag services
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     // the entity store, use treemap implementation
     TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
     // to interact with the metastore
     TransactionalPersistence metaStore =
         new TreeMapTransactionalPersistenceImpl(
             diagServices, store, Mockito.mock(), RANDOM_SECRETS);
-    callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+    callCtx = new PolarisCallContext(() -> "testRealm", metaStore);
     storageCredentialCacheConfig = () -> 10_000;
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     storageCredentialCache = newStorageCredentialCache();
   }
 
   private StorageCredentialCache newStorageCredentialCache() {
-    return new StorageCredentialCache(storageCredentialCacheConfig);
+    return new StorageCredentialCache(diagServices, storageCredentialCacheConfig);
   }
 
   @Test

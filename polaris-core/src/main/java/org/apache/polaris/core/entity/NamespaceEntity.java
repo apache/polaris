@@ -19,6 +19,8 @@
 package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Preconditions;
+import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
@@ -33,9 +35,11 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
 
   public NamespaceEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.NAMESPACE, "Invalid entity type: %s", getType());
   }
 
-  public static NamespaceEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable NamespaceEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new NamespaceEntity(sourceEntity);
     }

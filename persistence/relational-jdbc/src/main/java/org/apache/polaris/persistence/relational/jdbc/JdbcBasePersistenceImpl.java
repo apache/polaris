@@ -37,6 +37,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -78,6 +79,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
+  private final PolarisDiagnostics diagnostics;
   private final DatasourceOperations datasourceOperations;
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -88,11 +90,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   private static final int MAX_LOCATION_COMPONENTS = 40;
 
   public JdbcBasePersistenceImpl(
+      PolarisDiagnostics diagnostics,
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
       PolarisStorageIntegrationProvider storageIntegrationProvider,
       String realmId,
       int schemaVersion) {
+    this.diagnostics = diagnostics;
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
@@ -793,6 +797,42 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nullable
   @Override
+  public PolarisPrincipalSecrets storePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret) {
+    PolarisPrincipalSecrets principalSecrets =
+        new PolarisPrincipalSecrets(principalId, resolvedClientId, customClientSecret);
+    try {
+      ModelPrincipalAuthenticationData modelPrincipalAuthenticationData =
+          ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets);
+      datasourceOperations.executeUpdate(
+          QueryGenerator.generateInsertQuery(
+              ModelPrincipalAuthenticationData.ALL_COLUMNS,
+              ModelPrincipalAuthenticationData.TABLE_NAME,
+              modelPrincipalAuthenticationData
+                  .toMap(datasourceOperations.getDatabaseType())
+                  .values()
+                  .stream()
+                  .toList(),
+              realmId));
+    } catch (SQLException e) {
+      LOGGER.error(
+          "Failed to reset PrincipalSecrets  for clientId: {}, due to {}",
+          resolvedClientId,
+          e.getMessage(),
+          e);
+      throw new RuntimeException(
+          String.format("Failed to reset PrincipalSecrets for clientId: %s", resolvedClientId), e);
+    }
+
+    // return those
+    return principalSecrets;
+  }
+
+  @Nullable
+  @Override
   public PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
@@ -803,24 +843,20 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     PolarisPrincipalSecrets principalSecrets = loadPrincipalSecrets(callCtx, clientId);
 
     // should be found
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            principalSecrets,
-            "cannot_find_secrets",
-            "client_id={} principalId={}",
-            clientId,
-            principalId);
+    diagnostics.checkNotNull(
+        principalSecrets,
+        "cannot_find_secrets",
+        "client_id={} principalId={}",
+        clientId,
+        principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
-        .check(
-            principalId == principalSecrets.getPrincipalId(),
-            "principal_id_mismatch",
-            "expectedId={} id={}",
-            principalId,
-            principalSecrets.getPrincipalId());
+    diagnostics.check(
+        principalId == principalSecrets.getPrincipalId(),
+        "principal_id_mismatch",
+        "expectedId={} id={}",
+        principalId,
+        principalSecrets.getPrincipalId());
 
     // rotate the secrets
     principalSecrets.rotateSecrets(oldSecretHash);
@@ -1137,7 +1173,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callContext.getDiagServices(), entity);
+        BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

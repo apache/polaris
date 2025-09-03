@@ -88,6 +88,7 @@ import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewProperties;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
@@ -166,6 +167,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 || isStorageProviderRetryableException(Throwables.getRootCause(ex)));
       };
 
+  private final PolarisDiagnostics diagnostics;
   private final StorageCredentialCache storageCredentialCache;
   private final ResolverFactory resolverFactory;
   private final CallContext callContext;
@@ -196,6 +198,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * @param taskExecutor Executor we use to register cleanup task handlers
    */
   public IcebergCatalog(
+      PolarisDiagnostics diagnostics,
       StorageCredentialCache storageCredentialCache,
       ResolverFactory resolverFactory,
       PolarisMetaStoreManager metaStoreManager,
@@ -205,6 +208,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
+    this.diagnostics = diagnostics;
     this.storageCredentialCache = storageCredentialCache;
     this.resolverFactory = resolverFactory;
     this.callContext = callContext;
@@ -364,7 +368,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             "Namespace does not exist: %s", tableIdentifier.namespace());
       }
       List<PolarisEntity> namespacePath = resolvedNamespace.getRawFullPath();
-      String namespaceLocation = resolveLocationForPath(callContext, namespacePath);
+      String namespaceLocation = resolveLocationForPath(diagnostics, namespacePath);
       return SLASH.join(namespaceLocation, tableIdentifier.name());
     }
   }
@@ -528,14 +532,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               ? getResolvedParentNamespace(namespace).getRawFullPath()
               : List.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
 
-      String parentLocation = resolveLocationForPath(callContext, parentPath);
+      String parentLocation = resolveLocationForPath(diagnostics, parentPath);
 
       return parentLocation + "/" + namespace.level(namespace.length() - 1);
     }
   }
 
   private static @Nonnull String resolveLocationForPath(
-      @Nonnull CallContext callContext, List<PolarisEntity> parentPath) {
+      @Nonnull PolarisDiagnostics diagnostics, List<PolarisEntity> parentPath) {
     // always take the first object. If it has the base-location, stop there
     AtomicBoolean foundBaseLocation = new AtomicBoolean(false);
     return parentPath.reversed().stream()
@@ -548,24 +552,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         .toList()
         .reversed()
         .stream()
-        .map(entity -> baseLocation(callContext, entity))
+        .map(entity -> baseLocation(diagnostics, entity))
         .map(IcebergCatalog::stripLeadingTrailingSlash)
         .collect(Collectors.joining("/"));
   }
 
   private static @Nullable String baseLocation(
-      @Nonnull CallContext callContext, PolarisEntity entity) {
+      @Nonnull PolarisDiagnostics diagnostics, PolarisEntity entity) {
     if (entity.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity catEntity = CatalogEntity.of(entity);
       String catalogDefaultBaseLocation = catEntity.getBaseLocation();
-      callContext
-          .getPolarisCallContext()
-          .getDiagServices()
-          .checkNotNull(
-              catalogDefaultBaseLocation,
-              "Tried to resolve location with catalog with null default base location",
-              "catalog = {}",
-              catEntity);
+      diagnostics.checkNotNull(
+          catalogDefaultBaseLocation,
+          "Tried to resolve location with catalog with null default base location",
+          "catalog = {}",
+          catEntity);
       return catalogDefaultBaseLocation;
     } else {
       String baseLocation =
@@ -574,14 +575,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         return baseLocation;
       } else {
         String entityName = entity.getName();
-        callContext
-            .getPolarisCallContext()
-            .getDiagServices()
-            .checkNotNull(
-                entityName,
-                "Tried to resolve location with entity without base location or name",
-                "entity = {}",
-                entity);
+        diagnostics.checkNotNull(
+            entityName,
+            "Tried to resolve location with entity without base location or name",
+            "entity = {}",
+            entity);
         return entityName;
       }
     }
@@ -1051,6 +1049,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       IcebergTableLikeEntity virtualEntity =
           IcebergTableLikeEntity.of(
               new PolarisEntity.Builder()
+                  .setType(PolarisEntityType.TABLE_LIKE)
                   .setParentId(resolvedNamespace.getLast().getId())
                   .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
                   .build());
@@ -1150,7 +1149,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         siblingTables.size() + siblingNamespaces.size());
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
-            callContext, resolverFactory, securityContext, parentPath.getFirst().getName());
+            diagnostics,
+            callContext,
+            resolverFactory,
+            securityContext,
+            parentPath.getFirst().getName());
     siblingTables.forEach(
         tbl ->
             resolutionManifest.addPath(

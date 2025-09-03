@@ -25,6 +25,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -50,6 +51,7 @@ public class GenericTableCatalogAdapter
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GenericTableCatalogAdapter.class);
 
+  private final PolarisDiagnostics diagnostics;
   private final RealmContext realmContext;
   private final RealmConfig realmConfig;
   private final CallContext callContext;
@@ -63,6 +65,7 @@ public class GenericTableCatalogAdapter
 
   @Inject
   public GenericTableCatalogAdapter(
+      PolarisDiagnostics diagnostics,
       RealmContext realmContext,
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
@@ -72,6 +75,7 @@ public class GenericTableCatalogAdapter
       ReservedProperties reservedProperties,
       UserSecretsManager userSecretsManager,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
+    this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
@@ -91,6 +95,7 @@ public class GenericTableCatalogAdapter
     validatePrincipal(securityContext);
 
     return new GenericTableCatalogHandler(
+        diagnostics,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
