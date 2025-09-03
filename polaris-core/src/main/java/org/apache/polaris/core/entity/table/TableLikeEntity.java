@@ -19,6 +19,7 @@
 package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -37,6 +38,8 @@ public abstract class TableLikeEntity extends PolarisEntity implements LocationB
 
   public TableLikeEntity(@Nonnull PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.TABLE_LIKE, "Invalid entity type: %s", getType());
   }
 
   @JsonIgnore

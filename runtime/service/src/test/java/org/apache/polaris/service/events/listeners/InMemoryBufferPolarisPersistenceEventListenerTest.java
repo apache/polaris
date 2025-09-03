@@ -31,6 +31,7 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -169,6 +170,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     List<Thread> threads = new ArrayList<>();
     ConcurrentLinkedQueue<Exception> exceptions = new ConcurrentLinkedQueue<>();
     ConcurrentLinkedQueue<PolarisEvent> allEvents = new ConcurrentLinkedQueue<>();
+    eventListener.start();
 
     for (int i = 0; i < threadCount; i++) {
       Thread t =
@@ -199,18 +201,24 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
           "Exceptions occurred in concurrent processEvent: ", exceptions.peek());
     }
 
-    ArgumentCaptor<List<PolarisEvent>> eventsCaptor = ArgumentCaptor.captor();
-    verify(polarisMetaStoreManager, atLeastOnce()).writeEvents(any(), eventsCaptor.capture());
     Awaitility.await("expected amount of records should be processed")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofMillis(500))
         .untilAsserted(
             () -> {
+              clock.add(500, ChronoUnit.MILLIS);
+              ArgumentCaptor<List<PolarisEvent>> eventsCaptor = ArgumentCaptor.captor();
+              verify(polarisMetaStoreManager, atLeastOnce()).writeEvents(any(), eventsCaptor.capture());
               List<PolarisEvent> eventsProcessed =
                   eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
+              if (eventsProcessed.size() > 100) {
+                eventsProcessed = new ArrayList<>();
+              }
               assertThat(eventsProcessed.size()).isGreaterThanOrEqualTo(allEvents.size());
             });
+    ArgumentCaptor<List<PolarisEvent>> eventsCaptor = ArgumentCaptor.captor();
+    verify(polarisMetaStoreManager, atLeastOnce()).writeEvents(any(), eventsCaptor.capture());
     List<PolarisEvent> seenEvents =
         eventsCaptor.getAllValues().stream().flatMap(List::stream).toList();
     assertThat(seenEvents.size()).isEqualTo(allEvents.size());
@@ -251,18 +259,8 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     String requestId1 = eventListener.getRequestId();
     String requestId2 = eventListener.getRequestId();
 
-    // Both should be valid UUIDs
-    assertThat(isValidUUID(requestId1))
-        .as("Generated requestId should be a valid UUID: " + requestId1)
-        .isTrue();
-    assertThat(isValidUUID(requestId2))
-        .as("Generated requestId should be a valid UUID: " + requestId2)
-        .isTrue();
-
-    // Each call should generate a different UUID
-    assertThat(requestId1)
-        .as("Each call to getRequestId() should generate a different UUID")
-        .isNotEqualTo(requestId2);
+    assertThat(requestId1 == null).isTrue();
+    assertThat(requestId2 == null).isTrue();
   }
 
   @Test
@@ -275,10 +273,7 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
 
     String requestId = eventListener.getRequestId();
 
-    // Should generate a UUID since property is not available
-    assertThat(isValidUUID(requestId))
-        .as("Generated requestId should be a valid UUID: " + requestId)
-        .isTrue();
+    assertThat(requestId == null).isTrue();
 
     // Verify that getProperty was never called since hasProperty returned false
     verify(mockContainerRequestContext, times(0)).getProperty("requestId");
@@ -324,14 +319,5 @@ public class InMemoryBufferPolarisPersistenceEventListenerTest {
     event.setAdditionalProperties(additionalParams);
 
     return event;
-  }
-
-  private boolean isValidUUID(String uuid) {
-    try {
-      UUID.fromString(uuid);
-      return true;
-    } catch (IllegalArgumentException e) {
-      return false;
-    }
   }
 }

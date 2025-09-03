@@ -138,7 +138,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
-    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "loadEntities");
+    diagnostics.fail("illegal_method_in_transaction_workspace", "loadEntities");
     return null;
   }
 
@@ -163,6 +163,12 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
+  public void deletePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+    diagnostics.fail("illegal_method_in_transaction_workspace", "loadPrincipalSecrets");
+  }
+
+  @Override
   public PrincipalSecretsResult rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
@@ -170,6 +176,16 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       boolean reset,
       @Nonnull String oldSecretHash) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "rotatePrincipalSecrets");
+    return null;
+  }
+
+  @Override
+  public PrincipalSecretsResult resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret) {
+    diagnostics.fail("illegal_method_in_transaction_workspace", "resetPrincipalSecrets");
     return null;
   }
 
@@ -426,6 +442,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   @Override
   public void writeEvents(
       @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
-    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "writeEvents");
+    diagnostics.fail("illegal_method_in_transaction_workspace", "writeEvents");
   }
 }

@@ -29,15 +29,13 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -59,7 +57,8 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   private final ConcurrentHashMap<String, ConcurrentLinkedQueueWithApproximateSize<PolarisEvent>>
       buffer = new ConcurrentHashMap<>();
   private final ScheduledExecutorService executor;
-  private final Set<Future<?>> futures = ConcurrentHashMap.newKeySet();
+  private final ConcurrentHashMap<String, Future<?>> futures = new ConcurrentHashMap<>();
+  private ScheduledFuture<?> scheduledFuture;
   private final Duration timeToFlush;
   private final int maxBufferSize;
 
@@ -67,7 +66,6 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   @Inject Clock clock;
   @Context SecurityContext securityContext;
   @Context ContainerRequestContext containerRequestContext;
-  @Inject PolarisDiagnostics polarisDiagnostics;
 
   @Inject
   public InMemoryBufferPolarisPersistenceEventListener(
@@ -84,9 +82,9 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
 
   @PostConstruct
   void start() {
-    futures.add(
+    scheduledFuture =
         executor.scheduleAtFixedRate(
-            this::runCleanup, 0, timeToFlush.toMillis(), TimeUnit.MILLISECONDS));
+            this::runCleanup, 0, timeToFlush.toMillis(), TimeUnit.MILLISECONDS);
   }
 
   void runCleanup() {
@@ -97,17 +95,12 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
         LOGGER.debug("Buffer checking task failed for realm ({}): {}", realmId, e);
       }
     }
-    // Clean up futures
-    try {
-      futures.removeIf(Future::isDone);
-    } catch (Exception e) {
-      LOGGER.debug("Futures reaper task failed.");
-    }
   }
 
   @PreDestroy
   void shutdown() {
-    futures.forEach(future -> future.cancel(false));
+    scheduledFuture.cancel(false);
+    futures.forEach((key, future) -> future.cancel(false));
     executor.shutdown();
 
     try {
@@ -136,7 +129,7 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
     if (containerRequestContext != null && containerRequestContext.hasProperty(REQUEST_ID_KEY)) {
       return (String) containerRequestContext.getProperty(REQUEST_ID_KEY);
     }
-    return UUID.randomUUID().toString();
+    return null;
   }
 
   @Override
@@ -147,7 +140,14 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
         buffer.computeIfAbsent(realmId, k -> new ConcurrentLinkedQueueWithApproximateSize<>());
     realmQueue.add(polarisEvent);
     if (realmQueue.size() >= maxBufferSize) {
-      futures.add(executor.submit(() -> checkAndFlushBufferIfNecessary(realmId, true)));
+      futures.compute(
+          realmId,
+          (k, v) -> {
+            if (v == null || v.isDone()) {
+              return executor.submit(() -> checkAndFlushBufferIfNecessary(realmId, true));
+            }
+            return v;
+          });
     }
   }
 
@@ -179,8 +179,13 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
       BasePersistence basePersistence = metaStoreManagerFactory.getOrCreateSession(realmContext);
       metaStoreManager.writeEvents(
-          new PolarisCallContext(realmContext, basePersistence, polarisDiagnostics),
-          queue.stream().toList());
+          new PolarisCallContext(realmContext, basePersistence), queue.stream().toList());
+
+      if (buffer.get(realmId).size() >= maxBufferSize) {
+        // Ensure that all events will be flushed, even if the race condition is triggered where
+        // new events are added between replacing the buffer above and the finishing of this method.
+        futures.put(realmId, executor.submit(() -> checkAndFlushBufferIfNecessary(realmId, true)));
+      }
     }
   }
 

@@ -29,6 +29,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -54,6 +55,7 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalRoles;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
+import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.TableGrant;
@@ -97,6 +99,7 @@ public class PolarisServiceImpl
         PolarisPrincipalsApiService,
         PolarisPrincipalRolesApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
+  private final PolarisDiagnostics diagnostics;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisAuthorizer polarisAuthorizer;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
@@ -108,6 +111,7 @@ public class PolarisServiceImpl
 
   @Inject
   public PolarisServiceImpl(
+      PolarisDiagnostics diagnostics,
       ResolutionManifestFactory resolutionManifestFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       UserSecretsManagerFactory userSecretsManagerFactory,
@@ -115,6 +119,7 @@ public class PolarisServiceImpl
       CallContext callContext,
       ReservedProperties reservedProperties,
       PolarisEventListener polarisEventListener) {
+    this.diagnostics = diagnostics;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.userSecretsManagerFactory = userSecretsManagerFactory;
@@ -137,6 +142,7 @@ public class PolarisServiceImpl
     UserSecretsManager userSecretsManager =
         userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
     return new PolarisAdminService(
+        diagnostics,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
@@ -174,6 +180,18 @@ public class PolarisServiceImpl
     LOGGER.info("Created new catalog {}", newCatalog);
     polarisEventListener.onAfterCatalogCreated(new AfterCatalogCreatedEvent(newCatalog.getName()));
     return Response.status(Response.Status.CREATED).build();
+  }
+
+  private void validateClientId(String clientId) {
+    if (!clientId.matches("^[0-9a-f]{16}$")) {
+      throw new IllegalArgumentException("Invalid clientId format");
+    }
+  }
+
+  private void validateClientSecret(String clientSecret) {
+    if (!clientSecret.matches("^[0-9a-f]{32}$")) {
+      throw new IllegalArgumentException("Invalid clientSecret format");
+    }
   }
 
   private void validateStorageConfig(StorageConfigInfo storageConfigInfo) {
@@ -297,6 +315,28 @@ public class PolarisServiceImpl
     PrincipalWithCredentials createdPrincipal = adminService.createPrincipal(principal);
     LOGGER.info("Created new principal {}", createdPrincipal);
     return Response.status(Response.Status.CREATED).entity(createdPrincipal).build();
+  }
+
+  @Override
+  public Response resetCredentials(
+      String principalName,
+      ResetPrincipalRequest resetPrincipalRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    ResetPrincipalRequest safeResetPrincipalRequest =
+        (resetPrincipalRequest != null)
+            ? resetPrincipalRequest
+            : new ResetPrincipalRequest(null, null);
+
+    if (safeResetPrincipalRequest.getClientId() != null) {
+      validateClientId(safeResetPrincipalRequest.getClientId());
+    }
+    if (safeResetPrincipalRequest.getClientSecret() != null) {
+      validateClientSecret(safeResetPrincipalRequest.getClientSecret());
+    }
+    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+    return Response.ok(adminService.resetCredentials(principalName, safeResetPrincipalRequest))
+        .build();
   }
 
   /** From PolarisPrincipalsApiService */

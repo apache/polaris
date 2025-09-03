@@ -22,7 +22,6 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
@@ -31,7 +30,6 @@ import org.mockito.Mockito;
 public class ResolverTest extends BaseResolverTest {
 
   private final Clock clock = Clock.systemUTC();
-  private final PolarisDefaultDiagServiceImpl diagServices = new PolarisDefaultDiagServiceImpl();
   private PolarisCallContext callCtx;
   private PolarisTestMetaStoreManager tm;
   private TransactionalMetaStoreManagerImpl metaStoreManager;
@@ -43,7 +41,7 @@ public class ResolverTest extends BaseResolverTest {
       TreeMapTransactionalPersistenceImpl metaStore =
           new TreeMapTransactionalPersistenceImpl(
               diagServices, store, Mockito.mock(), RANDOM_SECRETS);
-      callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+      callCtx = new PolarisCallContext(() -> "testRealm", metaStore);
     }
     return callCtx;
   }
