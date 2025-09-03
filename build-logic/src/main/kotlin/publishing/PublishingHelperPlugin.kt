@@ -18,7 +18,8 @@ package publishing
 
 import com.github.jengelman.gradle.plugins.shadow.ShadowPlugin
 import javax.inject.Inject
-import org.gradle.api.*
+import org.gradle.api.Plugin
+import org.gradle.api.Project
 import org.gradle.api.component.SoftwareComponentFactory
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -27,7 +28,14 @@ import org.gradle.api.publish.tasks.GenerateModuleMetadata
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.jvm.tasks.Jar
-import org.gradle.kotlin.dsl.*
+import org.gradle.kotlin.dsl.apply
+import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.getValue
+import org.gradle.kotlin.dsl.named
+import org.gradle.kotlin.dsl.provideDelegate
+import org.gradle.kotlin.dsl.register
+import org.gradle.kotlin.dsl.registering
+import org.gradle.kotlin.dsl.withType
 import org.gradle.plugins.signing.SigningExtension
 import org.gradle.plugins.signing.SigningPlugin
 
@@ -35,8 +43,8 @@ import org.gradle.plugins.signing.SigningPlugin
  * Release-publishing helper plugin to generate publications that pass Sonatype validations,
  * generate Apache release source tarball.
  *
- * The `release` Gradle project property triggers: signed artifacts + jars with Git information. The
- * current Git HEAD must point to a Git tag.
+ * The `release` Gradle project property triggers: signed artifacts and jars with Git information.
+ * The current Git HEAD must point to a Git tag.
  *
  * The `jarWithGitInfo` Gradle project property triggers: jars with Git information (not necessary
  * with `release`).
