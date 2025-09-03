@@ -156,7 +156,9 @@ public class BaseResult {
     }
 
     static ReturnStatus getStatus(int code) {
-      return code >= REVERSE_MAPPING_ARRAY.length ? null : REVERSE_MAPPING_ARRAY[code];
+      return (code < 0 || code >= REVERSE_MAPPING_ARRAY.length)
+          ? null
+          : REVERSE_MAPPING_ARRAY[code];
     }
   }
 }
