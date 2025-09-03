@@ -61,7 +61,8 @@ public interface TokenBroker {
       PolarisCallContext polarisCallContext,
       TokenType requestedTokenType);
 
-  DecodedToken verify(String token);
+  /** Decodes and verifies the token, then returns the associated {@link PolarisCredential}. */
+  PolarisCredential verify(String token);
 
   static @Nonnull Optional<PrincipalEntity> findPrincipalEntity(
       PolarisMetaStoreManager metaStoreManager,
