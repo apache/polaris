@@ -141,8 +141,8 @@ import org.apache.polaris.service.events.AfterTableCommitedEvent;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeTableCommitedEvent;
 import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
-import org.apache.polaris.service.events.PolarisEventListener;
-import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -257,7 +257,9 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Nullable
   protected abstract EntityCache createEntityCache(
-      RealmConfig realmConfig, PolarisMetaStoreManager metaStoreManager);
+      PolarisDiagnostics diagnostics,
+      RealmConfig realmConfig,
+      PolarisMetaStoreManager metaStoreManager);
 
   protected void bootstrapRealm(String realmName) {}
 
@@ -280,14 +282,14 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
 
-    EntityCache entityCache = createEntityCache(realmConfig, metaStoreManager);
+    EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =
         (callContext, securityContext, referenceCatalogName) ->
             new Resolver(
+                diagServices,
                 callContext.getPolarisCallContext(),
                 metaStoreManager,
                 securityContext,
@@ -295,7 +297,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 referenceCatalogName);
     QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
 
-    resolutionManifestFactory = new ResolutionManifestFactoryImpl(resolverFactory);
+    resolutionManifestFactory = new ResolutionManifestFactoryImpl(diagServices, resolverFactory);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -310,6 +312,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     adminService =
         new PolarisAdminService(
+            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -439,6 +442,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             polarisContext, resolutionManifestFactory, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
     return new IcebergCatalog(
+        diagServices,
         storageCredentialCache,
         resolverFactory,
         metaStoreManager,
@@ -2231,9 +2235,10 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThat(afterRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
 
     var beforeTableEvent = testPolarisEventListener.getLatest(BeforeTableCommitedEvent.class);
-    Assertions.assertThat(beforeTableEvent.identifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(beforeTableEvent.base().properties().get(key)).isEqualTo(valOld);
-    Assertions.assertThat(beforeTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
+    Assertions.assertThat(beforeTableEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
+    Assertions.assertThat(beforeTableEvent.metadataBefore().properties().get(key))
+        .isEqualTo(valOld);
+    Assertions.assertThat(beforeTableEvent.metadataAfter().properties().get(key)).isEqualTo(valNew);
 
     var afterTableEvent = testPolarisEventListener.getLatest(AfterTableCommitedEvent.class);
     Assertions.assertThat(afterTableEvent.identifier()).isEqualTo(TestData.TABLE);

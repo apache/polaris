@@ -30,7 +30,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogPolicyApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.events.CatalogPolicyServiceEvents;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;

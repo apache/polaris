@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -151,14 +152,14 @@ public class PolarisEntity extends PolarisBaseEntity {
         entityVersion);
   }
 
-  public static PolarisEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable PolarisEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new PolarisEntity(sourceEntity);
     }
     return null;
   }
 
-  public static PolarisEntity of(EntityResult result) {
+  public static @Nullable PolarisEntity of(EntityResult result) {
     if (result.isSuccess()) {
       return new PolarisEntity(result.getEntity());
     }

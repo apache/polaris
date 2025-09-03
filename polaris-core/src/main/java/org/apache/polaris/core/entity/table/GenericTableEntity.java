@@ -19,6 +19,7 @@
 package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
@@ -42,7 +43,7 @@ public class GenericTableEntity extends TableLikeEntity {
     super(sourceEntity);
   }
 
-  public static GenericTableEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable GenericTableEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new GenericTableEntity(sourceEntity);
     }

@@ -29,6 +29,7 @@ import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -52,10 +53,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 public class PolarisAdminServiceTest {
-
+  private PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
   @Mock private CallContext callContext;
   @Mock private PolarisCallContext polarisCallContext;
-  @Mock private PolarisDiagnostics polarisDiagnostics;
   @Mock private ResolutionManifestFactory resolutionManifestFactory;
   @Mock private PolarisMetaStoreManager metaStoreManager;
   @Mock private UserSecretsManager userSecretsManager;
@@ -73,10 +73,10 @@ public class PolarisAdminServiceTest {
     MockitoAnnotations.openMocks(this);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedPrincipal);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.getDiagServices()).thenReturn(polarisDiagnostics);
 
     adminService =
         new PolarisAdminService(
+            diagnostics,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,

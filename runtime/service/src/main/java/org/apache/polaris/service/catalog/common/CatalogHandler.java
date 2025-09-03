@@ -72,6 +72,7 @@ public abstract class CatalogHandler {
   protected final SecurityContext securityContext;
 
   public CatalogHandler(
+      PolarisDiagnostics diagnostics,
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       SecurityContext securityContext,
@@ -79,8 +80,8 @@ public abstract class CatalogHandler {
       PolarisAuthorizer authorizer,
       UserSecretsManager userSecretsManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
+    this.diagnostics = diagnostics;
     this.callContext = callContext;
-    this.diagnostics = callContext.getPolarisCallContext().getDiagServices();
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.catalogName = catalogName;

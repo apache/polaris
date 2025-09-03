@@ -225,6 +225,7 @@ public class FileIOFactoryTest {
             CATALOG_NAME);
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
+            services.polarisDiagnostics(),
             services.storageCredentialCache(),
             services.resolverFactory(),
             services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),

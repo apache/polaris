@@ -69,7 +69,7 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.NoOpPolarisEventListener;
+import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
@@ -152,7 +152,6 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
 
@@ -169,6 +168,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     adminService =
         new PolarisAdminService(
+            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -235,6 +235,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new IcebergCatalog(
+            diagServices,
             storageCredentialCache,
             resolverFactory,
             metaStoreManager,
