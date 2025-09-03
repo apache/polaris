@@ -21,7 +21,7 @@ package org.apache.polaris.service.events.jsonEventListener;
 
 import java.util.HashMap;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 /**
  * This class provides a common framework for transforming Polaris events into a HashMap, which can
