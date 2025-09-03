@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.jsonEventListener.PropertyMapEventListener;
@@ -146,6 +147,7 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
   void shutdown() {
     if (client != null) {
       client.close();
+      client = null;
     }
   }
 
@@ -153,12 +155,15 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
   protected void transformAndSendEvent(HashMap<String, Object> properties) {
     properties.put("realm_id", callContext.getRealmContext().getRealmIdentifier());
     properties.put("principal", securityContext.getUserPrincipal().getName());
+    properties.put(
+        "activated_roles", ((PolarisPrincipal) securityContext.getUserPrincipal()).getRoles());
     // TODO: Add request ID when it is available
     String eventAsJson;
     try {
       eventAsJson = objectMapper.writeValueAsString(properties);
     } catch (JsonProcessingException e) {
       LOGGER.error("Error processing event into JSON string: ", e);
+      LOGGER.debug("Failed to convert the following object into JSON string: {}", properties);
       return;
     }
     InputLogEvent inputLogEvent =
