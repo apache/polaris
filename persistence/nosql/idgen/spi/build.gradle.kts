@@ -36,7 +36,6 @@ dependencies {
   compileOnly(platform(libs.quarkus.bom))
   compileOnly("io.quarkus:quarkus-core")
 
-  compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   implementation(platform(libs.jackson.bom))
