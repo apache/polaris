@@ -211,7 +211,8 @@ public class IcebergAllowedLocationTest {
     createCatalog(services, Map.of(), catalogBaseLocation, List.of(catalogBaseLocation));
     createNamespace(services, namespaceLocation);
 
-    var locationNotAllowed = Paths.get(tmpDir.toUri().toString()).toString();
+    var locationNotAllowed =
+        tmpDir.resolve("location-not-allowed").toAbsolutePath().toUri().toString();
     var locationAllowed = Paths.get(namespaceLocation, "custom-location").toString();
 
     // Test 1: Create a view with allowed location, and update it with a location not allowed
