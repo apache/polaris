@@ -67,4 +67,8 @@ public class PrincipalsServiceEvents {
 
   public record BeforePrincipalRolesAssignedListEvent(String principalName)
       implements PolarisEvent {}
+
+  public record BeforeCredentialsResetEvent(String principalName) implements PolarisEvent {}
+
+  public record AfterCredentialsResetEvent(Principal principal) implements PolarisEvent {}
 }

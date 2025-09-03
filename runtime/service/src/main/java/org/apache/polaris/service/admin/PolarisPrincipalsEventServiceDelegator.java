@@ -29,6 +29,7 @@ import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
+import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
@@ -50,7 +51,20 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
     Response resp = delegate.createPrincipal(request, realmContext, securityContext);
     polarisEventListener.onAfterPrincipalCreate(
         new PrincipalsServiceEvents.AfterPrincipalCreateEvent(
-            resp.readEntity(PrincipalWithCredentials.class).getPrincipal()));
+            ((PrincipalWithCredentials) resp.getEntity()).getPrincipal()));
+    return resp;
+  }
+
+  @Override
+  public Response resetCredentials(
+      String principalName,
+      ResetPrincipalRequest resetPrincipalRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    polarisEventListener.onBeforeCredentialsReset(new PrincipalsServiceEvents.BeforeCredentialsResetEvent(principalName));
+    Response resp = delegate.resetCredentials(
+        principalName, resetPrincipalRequest, realmContext, securityContext);
+    polarisEventListener.onAfterCredentialsReset(new PrincipalsServiceEvents.AfterCredentialsResetEvent(((PrincipalWithCredentials) resp.getEntity()).getPrincipal()));
     return resp;
   }
 
@@ -72,7 +86,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
         new PrincipalsServiceEvents.BeforePrincipalGetEvent(principalName));
     Response resp = delegate.getPrincipal(principalName, realmContext, securityContext);
     polarisEventListener.onAfterPrincipalGet(
-        new PrincipalsServiceEvents.AfterPrincipalGetEvent(resp.readEntity(Principal.class)));
+        new PrincipalsServiceEvents.AfterPrincipalGetEvent((Principal) resp.getEntity()));
     return resp;
   }
 
@@ -87,7 +101,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
     Response resp =
         delegate.updatePrincipal(principalName, updateRequest, realmContext, securityContext);
     polarisEventListener.onAfterPrincipalUpdate(
-        new PrincipalsServiceEvents.AfterPrincipalUpdateEvent(resp.readEntity(Principal.class)));
+        new PrincipalsServiceEvents.AfterPrincipalUpdateEvent((Principal) resp.getEntity()));
     return resp;
   }
 
@@ -97,8 +111,7 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
     polarisEventListener.onBeforeCredentialsRotate(
         new PrincipalsServiceEvents.BeforeCredentialsRotateEvent(principalName));
     Response resp = delegate.rotateCredentials(principalName, realmContext, securityContext);
-    PrincipalWithCredentials principalWithCredentials =
-        resp.readEntity(PrincipalWithCredentials.class);
+    PrincipalWithCredentials principalWithCredentials = (PrincipalWithCredentials) resp.getEntity();
     polarisEventListener.onAfterCredentialsRotate(
         new PrincipalsServiceEvents.AfterCredentialsRotateEvent(
             principalWithCredentials.getPrincipal()));

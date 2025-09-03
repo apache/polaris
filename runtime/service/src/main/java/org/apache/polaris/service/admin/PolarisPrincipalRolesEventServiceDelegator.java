@@ -49,9 +49,8 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
     polarisEventListener.onBeforePrincipalRoleCreate(
         new PrincipalRolesServiceEvents.BeforePrincipalRoleCreateEvent(request));
     Response resp = delegate.createPrincipalRole(request, realmContext, securityContext);
-    PrincipalRole principalRole = resp.readEntity(PrincipalRole.class);
     polarisEventListener.onAfterPrincipalRoleCreate(
-        new PrincipalRolesServiceEvents.AfterPrincipalRoleCreateEvent(principalRole));
+        new PrincipalRolesServiceEvents.AfterPrincipalRoleCreateEvent((PrincipalRole) resp.getEntity()));
     // If we are okay to start returning the PrincipalRole in the response, then we can simply
     // return `resp`.
     return Response.status(Response.Status.CREATED).build();
@@ -74,9 +73,9 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
     polarisEventListener.onBeforePrincipalRoleGet(
         new PrincipalRolesServiceEvents.BeforePrincipalRoleGetEvent(principalRoleName));
     Response resp = delegate.getPrincipalRole(principalRoleName, realmContext, securityContext);
-    PrincipalRole principalRole = resp.readEntity(PrincipalRole.class);
     polarisEventListener.onAfterPrincipalRoleGet(
-        new PrincipalRolesServiceEvents.AfterPrincipalRoleGetEvent(principalRole));
+        new PrincipalRolesServiceEvents.AfterPrincipalRoleGetEvent(
+            (PrincipalRole) resp.getEntity()));
     return resp;
   }
 
@@ -94,7 +93,7 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
             principalRoleName, updateRequest, realmContext, securityContext);
     polarisEventListener.onAfterPrincipalRoleUpdate(
         new PrincipalRolesServiceEvents.AfterPrincipalRoleUpdateEvent(
-            resp.readEntity(PrincipalRole.class)));
+            (PrincipalRole) resp.getEntity()));
     return resp;
   }
 

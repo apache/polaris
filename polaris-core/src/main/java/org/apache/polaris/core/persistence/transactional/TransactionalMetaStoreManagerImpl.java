@@ -632,7 +632,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull String name) {
     // first resolve again the catalogPath to that entity
-    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath);
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
@@ -689,7 +690,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
     // first resolve again the catalogPath to that entity
-    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath);
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
@@ -738,7 +740,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
     // first resolve again the catalogPath to that entity
-    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath);
 
     // throw if we failed to resolve
     if (resolver.isFailure()) {
@@ -902,6 +905,17 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         : new PrincipalSecretsResult(secrets);
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull void deletePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+    // get metastore we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // need to run inside a read/write transaction
+    ms.deletePrincipalSecrets(callCtx, clientId, principalId);
+  }
+
   /** See {@link #} */
   private @Nullable PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
@@ -977,6 +991,52 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         : new PrincipalSecretsResult(secrets);
   }
 
+  private @Nullable PolarisPrincipalSecrets resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
+      @Nonnull String clientId,
+      long principalId,
+      String customClientId,
+      String customClientSecret) {
+    PolarisPrincipalSecrets secrets =
+        ms.storePrincipalSecrets(callCtx, principalId, customClientId, customClientSecret);
+    return secrets;
+  }
+
+  @Override
+  public @Nonnull PrincipalSecretsResult resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret) {
+    // get metastore we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    // if not found, the principal must have been dropped
+    EntityResult loadEntityResult =
+        loadEntity(
+            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
+    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    // need to run inside a read/write transaction
+    PolarisPrincipalSecrets secrets =
+        ms.runInTransaction(
+            callCtx,
+            () ->
+                this.resetPrincipalSecrets(
+                    callCtx,
+                    ms,
+                    resolvedClientId,
+                    principalId,
+                    resolvedClientId,
+                    customClientSecret));
+
+    return (secrets == null)
+        ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
+        : new PrincipalSecretsResult(secrets);
+  }
+
   /** {@inheritDoc} */
   @Override
   public @Nonnull CreateCatalogResult createCatalog(
@@ -1034,7 +1094,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // first resolve again the catalogPath
-    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath);
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
@@ -1115,7 +1176,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     getDiagnostics().checkNotNull(entity, "unexpected_null_entity");
 
     // re-resolve everything including that entity
-    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath, entity);
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath, entity);
 
     // if resolution failed, return false
     if (resolver.isFailure()) {
@@ -1247,7 +1309,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // re-resolve everything including that entity
     PolarisEntityResolver resolver =
-        new PolarisEntityResolver(callCtx, ms, catalogPath, entityToRename);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath, entityToRename);
 
     // if resolution failed, return false
     if (resolver.isFailure()) {
@@ -1280,7 +1342,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // re-resolve the new catalog path if this entity is going to be moved
     if (newCatalogPath != null) {
-      resolver = new PolarisEntityResolver(callCtx, ms, newCatalogPath);
+      resolver = new PolarisEntityResolver(getDiagnostics(), callCtx, ms, newCatalogPath);
 
       // if resolution failed, return false
       if (resolver.isFailure()) {
@@ -1363,7 +1425,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // re-resolve everything including that entity
     PolarisEntityResolver resolver =
-        new PolarisEntityResolver(callCtx, ms, catalogPath, entityToDrop);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath, entityToDrop);
 
     // if resolution failed, return false
     if (resolver.isFailure()) {
@@ -1543,7 +1605,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // ensure these entities have not changed
     return new PolarisEntityResolver(
-        callCtx, ms, catalog != null ? List.of(catalog) : null, null, otherTopLevelEntities);
+        getDiagnostics(),
+        callCtx,
+        ms,
+        catalog != null ? List.of(catalog) : null,
+        null,
+        otherTopLevelEntities);
   }
 
   /**
@@ -1573,7 +1640,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // re-resolve now all these entities
-    return new PolarisEntityResolver(callCtx, ms, catalogPath, securable, List.of(grantee));
+    return new PolarisEntityResolver(
+        getDiagnostics(), callCtx, ms, catalogPath, securable, List.of(grantee));
   }
 
   /**
@@ -2367,9 +2435,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolicyEntity policy,
       Map<String, String> parameters) {
     PolarisEntityResolver targetResolver =
-        new PolarisEntityResolver(callCtx, ms, targetCatalogPath, target);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, targetCatalogPath, target);
     PolarisEntityResolver policyResolver =
-        new PolarisEntityResolver(callCtx, ms, policyCatalogPath, policy);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, policyCatalogPath, policy);
     if (targetResolver.isFailure() || policyResolver.isFailure()) {
       return new PolicyAttachmentResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
@@ -2405,9 +2473,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull List<PolarisEntityCore> policyCatalogPath,
       @Nonnull PolicyEntity policy) {
     PolarisEntityResolver targetResolver =
-        new PolarisEntityResolver(callCtx, ms, targetCatalogPath, target);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, targetCatalogPath, target);
     PolarisEntityResolver policyResolver =
-        new PolarisEntityResolver(callCtx, ms, policyCatalogPath, policy);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, policyCatalogPath, policy);
     if (targetResolver.isFailure() || policyResolver.isFailure()) {
       return new PolicyAttachmentResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }

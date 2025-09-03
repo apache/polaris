@@ -52,7 +52,7 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
         new CatalogsServiceEvents.BeforeCatalogCreatedEvent(request.getCatalog().getName()));
     Response resp = delegate.createCatalog(request, realmContext, securityContext);
     polarisEventListener.onAfterCatalogCreated(
-        new CatalogsServiceEvents.AfterCatalogCreatedEvent(resp.readEntity(Catalog.class)));
+        new CatalogsServiceEvents.AfterCatalogCreatedEvent((Catalog) resp.getEntity()));
     // If we are okay to start returning the catalog in the response, then we can simply return
     // `resp`.
     return Response.status(Response.Status.CREATED).build();
@@ -76,7 +76,7 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
         new CatalogsServiceEvents.BeforeCatalogGetEvent(catalogName));
     Response resp = delegate.getCatalog(catalogName, realmContext, securityContext);
     polarisEventListener.onAfterCatalogGet(
-        new CatalogsServiceEvents.AfterCatalogGetEvent(resp.readEntity(Catalog.class)));
+        new CatalogsServiceEvents.AfterCatalogGetEvent((Catalog) resp.getEntity()));
     return resp;
   }
 
@@ -91,7 +91,7 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
     Response resp =
         delegate.updateCatalog(catalogName, updateRequest, realmContext, securityContext);
     polarisEventListener.onAfterCatalogUpdated(
-        new CatalogsServiceEvents.AfterCatalogUpdatedEvent(resp.readEntity(Catalog.class)));
+        new CatalogsServiceEvents.AfterCatalogUpdatedEvent((Catalog) resp.getEntity()));
     return resp;
   }
 
@@ -115,7 +115,7 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
     Response resp = delegate.createCatalogRole(catalogName, request, realmContext, securityContext);
     polarisEventListener.onAfterCatalogRoleCreate(
         new CatalogsServiceEvents.AfterCatalogRoleCreateEvent(
-            catalogName, resp.readEntity(CatalogRole.class)));
+            catalogName, (CatalogRole) resp.getEntity()));
     return resp;
   }
 
@@ -146,7 +146,7 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
         delegate.getCatalogRole(catalogName, catalogRoleName, realmContext, securityContext);
     polarisEventListener.onAfterCatalogRoleGet(
         new CatalogsServiceEvents.AfterCatalogRoleGetEvent(
-            catalogName, resp.readEntity(CatalogRole.class)));
+            catalogName, (CatalogRole) resp.getEntity()));
     return resp;
   }
 
@@ -165,7 +165,7 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
             catalogName, catalogRoleName, updateRequest, realmContext, securityContext);
     polarisEventListener.onAfterCatalogRoleUpdate(
         new CatalogsServiceEvents.AfterCatalogRoleUpdateEvent(
-            catalogName, resp.readEntity(CatalogRole.class)));
+            catalogName, (CatalogRole) resp.getEntity()));
     return resp;
   }
 
@@ -192,7 +192,7 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
         delegate.addGrantToCatalogRole(
             catalogName, catalogRoleName, grantRequest, realmContext, securityContext);
     PolarisServiceImpl.AddGrantToCatalogRoleEntityWrapper entityWrapper =
-        resp.readEntity(PolarisServiceImpl.AddGrantToCatalogRoleEntityWrapper.class);
+        (PolarisServiceImpl.AddGrantToCatalogRoleEntityWrapper) resp.getEntity();
     if (resp.getStatus() != Response.Status.BAD_REQUEST.getStatusCode()) {
       polarisEventListener.onAfterAddGrantToCatalogRole(
           new CatalogsServiceEvents.AfterAddGrantToCatalogRoleEvent(
@@ -221,7 +221,7 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
         delegate.revokeGrantFromCatalogRole(
             catalogName, catalogRoleName, cascade, grantRequest, realmContext, securityContext);
     PolarisServiceImpl.RevokeGrantFromCatalogRoleEntityWrapper entityWrapper =
-        resp.readEntity(PolarisServiceImpl.RevokeGrantFromCatalogRoleEntityWrapper.class);
+        (PolarisServiceImpl.RevokeGrantFromCatalogRoleEntityWrapper) resp.getEntity();
     polarisEventListener.onAfterRevokeGrantFromCatalogRole(
         new CatalogsServiceEvents.AfterRevokeGrantFromCatalogRoleEvent(
             catalogName,

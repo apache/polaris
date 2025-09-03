@@ -70,6 +70,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private ResolverStatus primaryResolverStatus = null;
 
   public PolarisResolutionManifest(
+      PolarisDiagnostics diagnostics,
       CallContext callContext,
       ResolverFactory resolverFactory,
       SecurityContext securityContext,
@@ -79,7 +80,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     this.catalogName = catalogName;
     this.primaryResolver =
         resolverFactory.createResolver(callContext, securityContext, catalogName);
-    this.diagnostics = callContext.getPolarisCallContext().getDiagServices();
+    this.diagnostics = diagnostics;
     this.diagnostics.checkNotNull(securityContext, "null_security_context_for_resolution_manifest");
     this.securityContext = securityContext;
     diagnostics.check(

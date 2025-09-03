@@ -230,10 +230,7 @@ public abstract class PolarisAuthzTestBase {
 
     polarisContext =
         new PolarisCallContext(
-            realmContext,
-            managerFactory.getOrCreateSession(realmContext),
-            diagServices,
-            configurationStore);
+            realmContext, managerFactory.getOrCreateSession(realmContext), configurationStore);
 
     callContext = polarisContext;
     realmConfig = polarisContext.getRealmConfig();
@@ -246,6 +243,7 @@ public abstract class PolarisAuthzTestBase {
 
     this.adminService =
         new PolarisAdminService(
+            diagServices,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -453,6 +451,7 @@ public abstract class PolarisAuthzTestBase {
             callContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
+            diagServices,
             storageCredentialCache,
             resolverFactory,
             metaStoreManager,
@@ -479,11 +478,12 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisCallContextCatalogFactory() {
-      this(null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null);
     }
 
     @Inject
     public TestPolarisCallContextCatalogFactory(
+        PolarisDiagnostics diagnostics,
         StorageCredentialCache storageCredentialCache,
         ResolverFactory resolverFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
@@ -491,6 +491,7 @@ public abstract class PolarisAuthzTestBase {
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener) {
       super(
+          diagnostics,
           storageCredentialCache,
           resolverFactory,
           metaStoreManagerFactory,

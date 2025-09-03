@@ -20,6 +20,7 @@ package org.apache.polaris.core.policy;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
+import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -36,13 +37,14 @@ public class PolicyEntity extends PolarisEntity {
 
   PolicyEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.POLICY, "Invalid entity type: %s", getType());
   }
 
-  public static PolicyEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable PolicyEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new PolicyEntity(sourceEntity);
     }
-
     return null;
   }
 

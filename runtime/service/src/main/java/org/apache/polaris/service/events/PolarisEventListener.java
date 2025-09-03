@@ -123,6 +123,13 @@ public abstract class PolarisEventListener {
   /** {@link PrincipalsServiceEvents.AfterPrincipalsListEvent} */
   public void onAfterPrincipalsList(PrincipalsServiceEvents.AfterPrincipalsListEvent event) {}
 
+  /** {@link PrincipalsServiceEvents.BeforeCredentialsResetEvent} */
+  public void onBeforeCredentialsReset(PrincipalsServiceEvents.BeforeCredentialsResetEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterCredentialsResetEvent} */
+  public void onAfterCredentialsReset(PrincipalsServiceEvents.AfterCredentialsResetEvent event) {}
+
+
   /** {@link PrincipalRolesServiceEvents.BeforePrincipalRoleCreateEvent} */
   public void onBeforePrincipalRoleCreate(
       PrincipalRolesServiceEvents.BeforePrincipalRoleCreateEvent event) {}

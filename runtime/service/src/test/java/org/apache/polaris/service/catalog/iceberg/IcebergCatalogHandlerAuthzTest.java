@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.PartitionSpec;
@@ -102,6 +101,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     return new IcebergCatalogHandler(
+        diagServices,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
@@ -241,6 +241,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     IcebergCatalogHandler wrapper =
         new IcebergCatalogHandler(
+            diagServices,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -277,6 +278,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PrincipalEntity.of(refreshPrincipal), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     IcebergCatalogHandler refreshedWrapper =
         new IcebergCatalogHandler(
+            diagServices,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -1766,6 +1768,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
     PolarisCallContextCatalogFactory factory =
         new PolarisCallContextCatalogFactory(
+            diagServices,
             storageCredentialCache,
             resolverFactory,
             managerFactory,
@@ -1785,7 +1788,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
 
-            FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), new Configuration());
+            FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), null);
             TableMetadata tableMetadata =
                 TableMetadata.buildFromEmpty()
                     .addSchema(SCHEMA)
