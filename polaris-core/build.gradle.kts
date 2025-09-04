@@ -42,7 +42,6 @@ dependencies {
   runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
   implementation(libs.caffeine)
-  implementation(libs.commons.codec)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
