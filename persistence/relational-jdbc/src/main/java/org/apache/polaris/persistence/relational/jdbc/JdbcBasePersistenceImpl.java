@@ -18,24 +18,9 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
-import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
-
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -76,6 +61,23 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthe
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 
 public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
 
@@ -463,7 +465,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     PreparedQuery query =
         QueryGenerator.generateSelectQueryWithEntityIds(realmId, schemaVersion, entityIds);
     try {
-      return datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
+      Map<PolarisEntityId, PolarisBaseEntity> idMap =
+          datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion)).stream()
+              .collect(
+                  Collectors.toMap(
+                      e -> new PolarisEntityId(e.getCatalogId(), e.getId()), Function.identity()));
+      return entityIds.stream().map(idMap::get).collect(Collectors.toList());
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
@@ -476,6 +483,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     Map<PolarisEntityId, ModelEntity> idToEntityMap =
         lookupEntities(callCtx, entityIds).stream()
+            .filter(Objects::nonNull)
             .collect(
                 Collectors.toMap(
                     entry -> new PolarisEntityId(entry.getCatalogId(), entry.getId()),
@@ -570,7 +578,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nonnull
   @Override
-  public <T> Page<T> loadEntities(
+  public <T> Page<T> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,

@@ -378,9 +378,13 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   @Override
   public @Nonnull List<PolarisBaseEntity> lookupEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
-    return this.store.lookupEntities(localSession.get(), entityIds).stream()
-        .map(ModelEntity::toEntity)
-        .toList();
+    Map<PolarisEntityId, PolarisBaseEntity> idMap =
+        this.store.lookupEntities(localSession.get(), entityIds).stream()
+            .map(ModelEntity::toEntity)
+            .collect(
+                Collectors.toMap(
+                    e -> new PolarisEntityId(e.getCatalogId(), e.getId()), Function.identity()));
+    return entityIds.stream().map(idMap::get).collect(Collectors.toList());
   }
 
   /** {@inheritDoc} */

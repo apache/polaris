@@ -339,10 +339,7 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     PolarisBaseEntity that = (PolarisBaseEntity) o;
     return subTypeCode == that.subTypeCode
         && createTimestamp == that.createTimestamp
-        && dropTimestamp == that.dropTimestamp
-        && purgeTimestamp == that.purgeTimestamp
         && toPurgeTimestamp == that.toPurgeTimestamp
-        && lastUpdateTimestamp == that.lastUpdateTimestamp
         && grantRecordsVersion == that.grantRecordsVersion
         && Objects.equals(properties, that.properties)
         && Objects.equals(internalProperties, that.internalProperties);
@@ -359,10 +356,7 @@ public class PolarisBaseEntity extends PolarisEntityCore {
         entityVersion,
         subTypeCode,
         createTimestamp,
-        dropTimestamp,
-        purgeTimestamp,
         toPurgeTimestamp,
-        lastUpdateTimestamp,
         properties,
         internalProperties,
         grantRecordsVersion);
