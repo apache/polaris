@@ -23,6 +23,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -38,20 +41,29 @@ public class InMemoryAtomicOperationMetaStoreManagerFactory
 
   @SuppressWarnings("unused") // Required by CDI
   protected InMemoryAtomicOperationMetaStoreManagerFactory() {
-    this(null, null, null);
+    this(null, null, null, null);
   }
 
   @Inject
   public InMemoryAtomicOperationMetaStoreManagerFactory(
       Clock clock,
       PolarisDiagnostics diagnostics,
+      PolarisConfigurationStore configurationStore,
       PolarisStorageIntegrationProvider storageIntegration) {
-    super(clock, diagnostics, storageIntegration);
+    super(clock, diagnostics, configurationStore, storageIntegration);
   }
 
   @Override
   protected PolarisMetaStoreManager createNewMetaStoreManager(
-      Clock clock, PolarisDiagnostics diagnostics) {
-    return new AtomicOperationMetaStoreManager(clock, diagnostics);
+      Clock clock,
+      PolarisDiagnostics diagnostics,
+      RealmContext realmContext,
+      RealmConfig realmConfig) {
+    return new AtomicOperationMetaStoreManager(
+        clock,
+        diagnostics,
+        realmContext,
+        realmConfig,
+        () -> createPersistenceSession(realmContext));
   }
 }

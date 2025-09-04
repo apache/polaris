@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
@@ -72,10 +73,10 @@ public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
     Path file = symmetricKeyConfiguration.file().orElse(null);
     checkState(secret != null || file != null, "Either file or secret must be set");
     Supplier<String> secretSupplier = secret != null ? () -> secret : readSecretFromDisk(file);
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.createMetaStoreManager(realmContext, null);
     return new SymmetricKeyJWTBroker(
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
-        (int) maxTokenGeneration.toSeconds(),
-        secretSupplier);
+        metaStoreManager, (int) maxTokenGeneration.toSeconds(), secretSupplier);
   }
 
   private static Supplier<String> readSecretFromDisk(Path file) {

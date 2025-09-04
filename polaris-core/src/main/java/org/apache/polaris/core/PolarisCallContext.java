@@ -24,7 +24,6 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.BasePersistence;
 
 /**
  * The Call context is allocated each time a new REST request is processed. It contains instances of
@@ -32,29 +31,19 @@ import org.apache.polaris.core.persistence.BasePersistence;
  */
 public class PolarisCallContext implements CallContext {
 
-  // meta store which is used to persist Polaris entity metadata
-  private final BasePersistence metaStore;
   private final PolarisConfigurationStore configurationStore;
   private final RealmContext realmContext;
   private final RealmConfig realmConfig;
 
   public PolarisCallContext(
-      @Nonnull RealmContext realmContext,
-      @Nonnull BasePersistence metaStore,
-      @Nonnull PolarisConfigurationStore configurationStore) {
+      @Nonnull RealmContext realmContext, @Nonnull PolarisConfigurationStore configurationStore) {
     this.realmContext = realmContext;
-    this.metaStore = metaStore;
     this.configurationStore = configurationStore;
     this.realmConfig = new RealmConfigImpl(this.configurationStore, this.realmContext);
   }
 
-  public PolarisCallContext(
-      @Nonnull RealmContext realmContext, @Nonnull BasePersistence metaStore) {
-    this(realmContext, metaStore, new PolarisConfigurationStore() {});
-  }
-
-  public BasePersistence getMetaStore() {
-    return metaStore;
+  public PolarisCallContext(@Nonnull RealmContext realmContext) {
+    this(realmContext, new PolarisConfigurationStore() {});
   }
 
   @Override
@@ -81,6 +70,6 @@ public class PolarisCallContext implements CallContext {
     // copy of the RealmContext to ensure the access during the task executor.
     String realmId = this.realmContext.getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
-    return new PolarisCallContext(realmContext, this.metaStore, this.configurationStore);
+    return new PolarisCallContext(realmContext, this.configurationStore);
   }
 }

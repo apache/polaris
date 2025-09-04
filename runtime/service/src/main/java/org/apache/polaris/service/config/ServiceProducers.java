@@ -44,7 +44,6 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -126,11 +125,8 @@ public class ServiceProducers {
   @Produces
   @RequestScoped
   public CallContext polarisCallContext(
-      RealmContext realmContext,
-      PolarisConfigurationStore configurationStore,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
+      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+    return new PolarisCallContext(realmContext, configurationStore);
   }
 
   @Produces
@@ -150,16 +146,12 @@ public class ServiceProducers {
   public ResolverFactory resolverFactory(
       PolarisDiagnostics diagnostics,
       RealmContext realmContext,
-      RealmConfig realmConfig,
       MetaStoreManagerFactory metaStoreManagerFactory,
-      CallContext callContext,
       PolarisMetaStoreManager polarisMetaStoreManager) {
-    EntityCache entityCache =
-        metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
+    EntityCache entityCache = metaStoreManagerFactory.getOrCreateEntityCache(realmContext);
     return (securityContext, referenceCatalogName) ->
         new Resolver(
             diagnostics,
-            callContext.getPolarisCallContext(),
             polarisMetaStoreManager,
             securityContext,
             entityCache,
@@ -204,8 +196,8 @@ public class ServiceProducers {
   @Produces
   @RequestScoped
   public PolarisMetaStoreManager polarisMetaStoreManager(
-      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+      MetaStoreManagerFactory metaStoreManagerFactory, RealmContext realmContext) {
+    return metaStoreManagerFactory.createMetaStoreManager(realmContext);
   }
 
   @Produces

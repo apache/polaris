@@ -129,7 +129,6 @@ public class StorageCredentialCache {
           LOGGER.atDebug().log("StorageCredentialCache::load");
           ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
-                  callCtx,
                   k.catalogId(),
                   polarisEntity.getId(),
                   polarisEntity.getType(),
