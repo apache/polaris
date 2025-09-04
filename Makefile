@@ -140,7 +140,7 @@ client-regenerate: client-setup-env ## Regenerate the client code
 .PHONY: client-unit-test
 client-unit-test: client-setup-env ## Run client unit tests
 	@echo "--- Running client unit tests ---"
-	@$(ACTIVATE_AND_CD) && SCRIPT_DIR="non-existing-mock-directory" poetry run pytest test/
+	@$(ACTIVATE_AND_CD) && poetry run pytest test/
 	@echo "--- Client unit tests complete ---"
 
 .PHONY: client-integration-test

@@ -99,7 +99,7 @@ Alternatively, you can run the CLI by providing a path to it, such as with the f
 
 Each of the commands `catalogs`, `principals`, `principal-roles`, `catalog-roles`, and `privileges` is used to manage a different type of entity within Polaris.
 
-In addition to these, the `profiles` command is available for managing stored authentication profiles, allowing login credentials to be configured for reuse. This provides an alternative to passing authentication details with every command.
+In addition to these, the `profiles` command is available for managing stored authentication profiles, allowing login credentials to be configured for reuse. This provides an alternative to passing authentication details with every command. By default, profiles are stored in a `.polaris.json` file within the `~/.polaris` directory. The location of this directory can be overridden by setting the `POLARIS_HOME` environment variable.
 
 To find details on the options that can be provided to a particular command or subcommand ad-hoc, you may wish to use the `--help` flag. For example:
 
