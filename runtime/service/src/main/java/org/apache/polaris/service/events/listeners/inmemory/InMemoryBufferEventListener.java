@@ -39,7 +39,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -119,10 +118,8 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
   @Fallback(fallbackMethod = "onFlushError")
   protected void flush(String realmId, List<PolarisEvent> events) {
     RealmContext realmContext = () -> realmId;
-    var metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    var basePersistence = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    var callContext = new PolarisCallContext(realmContext, basePersistence);
-    metaStoreManager.writeEvents(callContext, events);
+    var metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext);
+    metaStoreManager.writeEvents(events);
   }
 
   @SuppressWarnings("unused")
