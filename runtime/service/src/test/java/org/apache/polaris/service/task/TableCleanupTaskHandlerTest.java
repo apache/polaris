@@ -78,12 +78,8 @@ class TableCleanupTaskHandlerTest {
   void setup() {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
-    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    callContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            configurationStore);
+    callContext = new PolarisCallContext(realmContext, configurationStore);
+    metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext);
   }
 
   @Test
@@ -123,10 +119,7 @@ class TableCleanupTaskHandlerTest {
 
     handler.handleTask(task, callContext);
 
-    assertThat(
-            metaStoreManager
-                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(2))
-                .getEntities())
+    assertThat(metaStoreManager.loadTasks("test", PageToken.fromLimit(2)).getEntities())
         .hasSize(2)
         .satisfiesExactlyInAnyOrder(
             taskEntity ->
@@ -197,11 +190,7 @@ class TableCleanupTaskHandlerTest {
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
-    assertThat(
-            metaStoreManager
-                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
-                .getEntities())
-        .hasSize(2);
+    assertThat(metaStoreManager.loadTasks("test", PageToken.fromLimit(5)).getEntities()).hasSize(2);
   }
 
   @Test
@@ -254,10 +243,7 @@ class TableCleanupTaskHandlerTest {
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
-    assertThat(
-            metaStoreManager
-                .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
-                .getEntities())
+    assertThat(metaStoreManager.loadTasks("test", PageToken.fromLimit(5)).getEntities())
         .hasSize(4)
         .satisfiesExactlyInAnyOrder(
             taskEntity ->
@@ -367,9 +353,7 @@ class TableCleanupTaskHandlerTest {
     handler.handleTask(task, callContext);
 
     List<PolarisBaseEntity> entities =
-        metaStoreManager
-            .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
-            .getEntities();
+        metaStoreManager.loadTasks("test", PageToken.fromLimit(5)).getEntities();
 
     List<PolarisBaseEntity> manifestCleanupTasks =
         entities.stream()
@@ -534,9 +518,7 @@ class TableCleanupTaskHandlerTest {
     handler.handleTask(task, callContext);
 
     List<PolarisBaseEntity> entities =
-        metaStoreManager
-            .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(6))
-            .getEntities();
+        metaStoreManager.loadTasks("test", PageToken.fromLimit(6)).getEntities();
 
     List<PolarisBaseEntity> manifestCleanupTasks =
         entities.stream()

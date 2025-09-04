@@ -30,6 +30,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
@@ -80,11 +81,13 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     String catalogKey = realm + "/" + catalogName;
     LOGGER.debug("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.createMetaStoreManager(context.getRealmContext());
     IcebergCatalog catalogInstance =
         new IcebergCatalog(
             diagnostics,
             resolverFactory,
-            metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
+            metaStoreManager,
             context,
             resolvedManifest,
             securityContext,
