@@ -26,6 +26,7 @@ import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -114,7 +115,7 @@ public interface PolarisMetaStoreManager
 
   /**
    * List lightweight information about entities matching the given criteria. If all properties of
-   * the entity are required,use {@link #loadEntities} instead.
+   * the entity are required,use {@link #listFullEntities} instead.
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
@@ -135,7 +136,7 @@ public interface PolarisMetaStoreManager
   /**
    * Load full entities matching the given criteria with pagination. If only the entity name/id/type
    * is required, use {@link #listEntities} instead. If no pagination is required, use {@link
-   * #loadEntitiesAll} instead.
+   * #loadFullEntitiesAll} instead.
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
@@ -145,7 +146,7 @@ public interface PolarisMetaStoreManager
    * @return paged list of matching entities
    */
   @Nonnull
-  Page<PolarisBaseEntity> loadEntities(
+  Page<PolarisBaseEntity> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
@@ -154,7 +155,7 @@ public interface PolarisMetaStoreManager
 
   /**
    * Load full entities matching the given criteria into an unpaged list. If pagination is required
-   * use {@link #loadEntities} instead. If only the entity name/id/type is required, use {@link
+   * use {@link #listFullEntities} instead. If only the entity name/id/type is required, use {@link
    * #listEntities} instead.
    *
    * @param callCtx call context
@@ -164,12 +165,13 @@ public interface PolarisMetaStoreManager
    * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
    * @return list of all matching entities
    */
-  default @Nonnull List<PolarisBaseEntity> loadEntitiesAll(
+  default @Nonnull List<PolarisBaseEntity> loadFullEntitiesAll(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType) {
-    return loadEntities(callCtx, catalogPath, entityType, entitySubType, PageToken.readEverything())
+    return listFullEntities(
+            callCtx, catalogPath, entityType, entitySubType, PageToken.readEverything())
         .items();
   }
 
@@ -345,6 +347,21 @@ public interface PolarisMetaStoreManager
       long entityCatalogId,
       long entityId,
       @Nonnull PolarisEntityType entityType);
+
+  /**
+   * Load a batch of entities given their {@link EntityNameLookupRecord}. Will return an empty list
+   * if the input list is empty. Order in that returned list is the same as the input list. Some
+   * elements might be NULL if the entity has been dropped.
+   *
+   * @param callCtx call context
+   * @param entityLookupRecords the list of entity lookup records to load
+   * @return a non-null list of entities corresponding to the lookup keys. Some elements might be
+   *     NULL if the entity has been dropped.
+   */
+  @Nonnull
+  EntitiesResult loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<EntityNameLookupRecord> entityLookupRecords);
 
   /**
    * Fetch a list of tasks to be completed. Tasks

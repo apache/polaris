@@ -44,6 +44,7 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
@@ -55,6 +56,7 @@ import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.InstanceOfAssertFactories;
 
 /** Test the Polaris persistence layer */
 public class PolarisTestMetaStoreManager {
@@ -650,6 +652,7 @@ public class PolarisTestMetaStoreManager {
             .parentId(parentId)
             .name(name)
             .propertiesAsMap(properties)
+            .internalPropertiesAsMap(Map.of())
             .build();
     PolarisBaseEntity entity =
         polarisMetaStoreManager
@@ -2683,6 +2686,143 @@ public class PolarisTestMetaStoreManager {
             "T1");
 
     this.ensureNotExistsById(catalog.getId(), T1.getId(), PolarisEntityType.NAMESPACE);
+  }
+
+  public void testBatchLoad() {
+    // load all principals
+    List<EntityNameLookupRecord> principals =
+        polarisMetaStoreManager
+            .listEntities(
+                this.polarisCallContext,
+                null,
+                PolarisEntityType.PRINCIPAL,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PageToken.readEverything())
+            .getEntities();
+
+    // create new catalog
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "test");
+    CreateCatalogResult catalogCreated =
+        polarisMetaStoreManager.createCatalog(this.polarisCallContext, catalog, List.of());
+    Assertions.assertThat(catalogCreated).isNotNull();
+
+    // load the catalog again, since the grant versions are different
+    catalog =
+        polarisMetaStoreManager
+            .loadEntity(
+                polarisCallContext,
+                0L,
+                catalogCreated.getCatalog().getId(),
+                PolarisEntityType.CATALOG)
+            .getEntity();
+
+    // now create all objects
+    PolarisBaseEntity N1 = this.createEntity(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
+    PolarisBaseEntity N1_N2 =
+        this.createEntity(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
+    PolarisBaseEntity T1 =
+        this.createEntity(
+            List.of(catalog, N1, N1_N2),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            "T1");
+
+    // batch load all entities. They should all be present and non-null
+    EntitiesResult entitiesResult =
+        polarisMetaStoreManager.loadEntities(
+            polarisCallContext,
+            List.of(
+                new EntityNameLookupRecord(catalog),
+                new EntityNameLookupRecord(N1),
+                new EntityNameLookupRecord(N1_N2),
+                new EntityNameLookupRecord(T1)));
+    Assertions.assertThat(entitiesResult)
+        .isNotNull()
+        .returns(BaseResult.ReturnStatus.SUCCESS, EntitiesResult::getReturnStatus)
+        .extracting(
+            EntitiesResult::getEntities, InstanceOfAssertFactories.list(PolarisBaseEntity.class))
+        .hasSize(4)
+        .allSatisfy(entity -> Assertions.assertThat(entity).isNotNull())
+        .containsExactly(catalog, N1, N1_N2, T1);
+
+    // try entities which do not exist
+    entitiesResult =
+        polarisMetaStoreManager.loadEntities(
+            polarisCallContext,
+            List.of(
+                new EntityNameLookupRecord(
+                    catalog.getId(),
+                    27,
+                    0L,
+                    "CATALOG_DOES_NOT_EXIST",
+                    PolarisEntityType.CATALOG.getCode(),
+                    PolarisEntitySubType.NULL_SUBTYPE.getCode()),
+                new EntityNameLookupRecord(
+                    catalog.getId(),
+                    35,
+                    0L,
+                    "PRINCIPAL_DOES_NOT_EXIST",
+                    PolarisEntityType.PRINCIPAL.getCode(),
+                    PolarisEntitySubType.NULL_SUBTYPE.getCode())));
+    Assertions.assertThat(entitiesResult)
+        .isNotNull()
+        .returns(BaseResult.ReturnStatus.SUCCESS, EntitiesResult::getReturnStatus)
+        .extracting(
+            EntitiesResult::getEntities, InstanceOfAssertFactories.list(PolarisBaseEntity.class))
+        .hasSize(2)
+        .allSatisfy(entity -> Assertions.assertThat(entity).isNull());
+
+    // mix of existing entities and entities with wrong type
+    entitiesResult =
+        polarisMetaStoreManager.loadEntities(
+            polarisCallContext,
+            List.of(
+                new EntityNameLookupRecord(
+                    catalog.getId(),
+                    27,
+                    0L,
+                    "CATALOG_DOES_NOT_EXIST",
+                    PolarisEntityType.CATALOG.getCode(),
+                    PolarisEntitySubType.NULL_SUBTYPE.getCode()),
+                new EntityNameLookupRecord(
+                    catalog.getId(),
+                    35,
+                    0L,
+                    "PRINCIPAL_DOES_NOT_EXIST",
+                    PolarisEntityType.PRINCIPAL.getCode(),
+                    PolarisEntitySubType.NULL_SUBTYPE.getCode()),
+                new EntityNameLookupRecord(catalog),
+                new EntityNameLookupRecord(
+                    N1.getCatalogId(),
+                    N1.getId(),
+                    N1.getParentId(),
+                    N1.getName(),
+                    PolarisEntityType.CATALOG_ROLE.getCode(),
+                    PolarisEntitySubType.NULL_SUBTYPE.getCode()),
+                new EntityNameLookupRecord(
+                    N1_N2.getCatalogId(),
+                    N1_N2.getId(),
+                    N1_N2.getParentId(),
+                    N1_N2.getName(),
+                    PolarisEntityType.TABLE_LIKE.getCode(),
+                    PolarisEntitySubType.ANY_SUBTYPE.getCode()),
+                new EntityNameLookupRecord(T1)));
+    Assertions.assertThat(entitiesResult)
+        .isNotNull()
+        .returns(BaseResult.ReturnStatus.SUCCESS, EntitiesResult::getReturnStatus)
+        .extracting(
+            EntitiesResult::getEntities, InstanceOfAssertFactories.list(PolarisBaseEntity.class))
+        .hasSize(6)
+        .filteredOn(e -> e != null)
+        .hasSize(2)
+        .containsExactly(catalog, T1);
   }
 
   /** Test the set of functions for the entity cache */

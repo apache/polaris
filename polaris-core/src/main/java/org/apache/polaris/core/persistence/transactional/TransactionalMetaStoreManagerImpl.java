@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -723,10 +724,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   /**
-   * See {@link PolarisMetaStoreManager#loadEntities(PolarisCallContext, List, PolarisEntityType,
-   * PolarisEntitySubType, PageToken)}
+   * See {@link PolarisMetaStoreManager#listFullEntities(PolarisCallContext, List,
+   * PolarisEntityType, PolarisEntitySubType, PageToken)}
    */
-  private @Nonnull Page<PolarisBaseEntity> loadEntities(
+  private @Nonnull Page<PolarisBaseEntity> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
@@ -756,7 +757,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull Page<PolarisBaseEntity> loadEntities(
+  public @Nonnull Page<PolarisBaseEntity> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
@@ -768,7 +769,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // run operation in a read transaction
     return ms.runInReadTransaction(
         callCtx,
-        () -> loadEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
+        () -> listFullEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
   }
 
   /** {@link #createPrincipal(PolarisCallContext, PrincipalEntity)} */
@@ -2009,6 +2010,46 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     return ms.runInReadTransaction(
         callCtx,
         () -> this.loadEntity(callCtx, ms, entityCatalogId, entityId, entityType.getCode()));
+  }
+
+  /** Refer to {@link #loadEntity(PolarisCallContext, long, long, PolarisEntityType)} */
+  private @Nonnull EntitiesResult loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
+      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
+    List<PolarisBaseEntity> entities =
+        ms.lookupEntitiesInCurrentTxn(
+            callCtx,
+            entityLookupRecords.stream()
+                .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
+                .collect(Collectors.toList()));
+    // mimic the behavior of loadEntity above, return null if not found or type mismatch
+    List<PolarisBaseEntity> ret =
+        IntStream.range(0, entityLookupRecords.size())
+            .mapToObj(
+                i -> {
+                  if (entities.get(i) != null
+                      && !entities.get(i).getType().equals(entityLookupRecords.get(i).getType())) {
+                    return null;
+                  } else {
+                    return entities.get(i);
+                  }
+                })
+            .collect(Collectors.toList());
+    return new EntitiesResult(Page.fromItems(ret));
+  }
+
+  @Nonnull
+  @Override
+  public EntitiesResult loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    return ms.runInReadTransaction(
+        callCtx,
+        () ->
+            this.loadEntities(
+                callCtx, (TransactionalPersistence) callCtx.getMetaStore(), entityLookupRecords));
   }
 
   /** Refer to {@link #loadTasks(PolarisCallContext, String, PageToken)} */

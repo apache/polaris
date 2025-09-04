@@ -967,7 +967,7 @@ public class PolarisAdminService {
   /** List all catalogs without checking for permission. */
   private Stream<CatalogEntity> listCatalogsUnsafe() {
     return metaStoreManager
-        .loadEntitiesAll(
+        .loadFullEntitiesAll(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.CATALOG,
@@ -1214,7 +1214,7 @@ public class PolarisAdminService {
     authorizeBasicRootOperationOrThrow(op);
 
     return metaStoreManager
-        .loadEntitiesAll(
+        .loadFullEntitiesAll(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL,
@@ -1321,7 +1321,7 @@ public class PolarisAdminService {
     authorizeBasicRootOperationOrThrow(op);
 
     return metaStoreManager
-        .loadEntitiesAll(
+        .loadFullEntitiesAll(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
@@ -1445,7 +1445,7 @@ public class PolarisAdminService {
     CatalogEntity catalogEntity = getCatalogByName(resolutionManifest, catalogName);
     List<PolarisEntityCore> catalogPath = PolarisEntity.toCoreList(List.of(catalogEntity));
     return metaStoreManager
-        .loadEntitiesAll(
+        .loadFullEntitiesAll(
             getCurrentPolarisContext(),
             catalogPath,
             PolarisEntityType.CATALOG_ROLE,
