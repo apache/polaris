@@ -82,7 +82,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -139,7 +139,7 @@ import org.slf4j.LoggerFactory;
 public class PolarisAdminService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAdminService.class);
 
-  private final CallContext callContext;
+  private final RealmContext realmContext;
   private final RealmConfig realmConfig;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final SecurityContext securityContext;
@@ -155,15 +155,16 @@ public class PolarisAdminService {
   @Inject
   public PolarisAdminService(
       @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull CallContext callContext,
+      @Nonnull RealmContext realmContext,
+      @Nonnull RealmConfig realmConfig,
       @Nonnull ResolutionManifestFactory resolutionManifestFactory,
       @Nonnull PolarisMetaStoreManager metaStoreManager,
       @Nonnull UserSecretsManager userSecretsManager,
       @Nonnull SecurityContext securityContext,
       @Nonnull PolarisAuthorizer authorizer,
       @Nonnull ReservedProperties reservedProperties) {
-    this.callContext = callContext;
-    this.realmConfig = callContext.getRealmConfig();
+    this.realmContext = realmContext;
+    this.realmConfig = realmConfig;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.securityContext = securityContext;
@@ -209,7 +210,11 @@ public class PolarisAdminService {
   private void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, null /* referenceCatalogName */);
+            realmContext,
+            realmConfig,
+            metaStoreManager,
+            securityContext,
+            null /* referenceCatalogName */);
     resolutionManifest.resolveAll();
     PolarisResolvedPathWrapper rootContainerWrapper =
         resolutionManifest.getResolvedRootContainerEntityAsPath();
@@ -236,7 +241,7 @@ public class PolarisAdminService {
       @Nullable String referenceCatalogName) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, referenceCatalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, referenceCatalogName);
     resolutionManifest.addTopLevelName(topLevelEntityName, entityType, false /* isOptional */);
     ResolverStatus status = resolutionManifest.resolveAll();
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
@@ -269,7 +274,7 @@ public class PolarisAdminService {
       PolarisAuthorizableOperation op, String catalogName, String catalogRoleName) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
         catalogRoleName);
@@ -289,7 +294,8 @@ public class PolarisAdminService {
   private void authorizeGrantOnRootContainerToPrincipalRoleOperationOrThrow(
       PolarisAuthorizableOperation op, String principalRoleName) {
     resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(callContext, securityContext, null);
+        resolutionManifestFactory.createResolutionManifest(
+            realmContext, realmConfig, metaStoreManager, securityContext, null);
     resolutionManifest.addTopLevelName(
         principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
     ResolverStatus status = resolutionManifest.resolveAll();
@@ -322,7 +328,8 @@ public class PolarisAdminService {
       PolarisEntityType topLevelEntityType,
       String principalRoleName) {
     resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(callContext, securityContext, null);
+        resolutionManifestFactory.createResolutionManifest(
+            realmContext, realmConfig, metaStoreManager, securityContext, null);
     resolutionManifest.addTopLevelName(
         topLevelEntityName, topLevelEntityType, false /* isOptional */);
     resolutionManifest.addTopLevelName(
@@ -355,7 +362,8 @@ public class PolarisAdminService {
   private void authorizeGrantOnPrincipalRoleToPrincipalOperationOrThrow(
       PolarisAuthorizableOperation op, String principalRoleName, String principalName) {
     resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(callContext, securityContext, null);
+        resolutionManifestFactory.createResolutionManifest(
+            realmContext, realmConfig, metaStoreManager, securityContext, null);
     resolutionManifest.addTopLevelName(
         principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
     resolutionManifest.addTopLevelName(
@@ -389,7 +397,7 @@ public class PolarisAdminService {
       String principalRoleName) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
         catalogRoleName);
@@ -425,7 +433,7 @@ public class PolarisAdminService {
       PolarisAuthorizableOperation op, String catalogName, String catalogRoleName) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     resolutionManifest.addTopLevelName(
         catalogName, PolarisEntityType.CATALOG, false /* isOptional */);
     resolutionManifest.addPath(
@@ -458,7 +466,7 @@ public class PolarisAdminService {
       String catalogRoleName) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -499,7 +507,7 @@ public class PolarisAdminService {
       String catalogRoleName) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier), PolarisEntityType.TABLE_LIKE),
@@ -544,7 +552,7 @@ public class PolarisAdminService {
       String catalogRoleName) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),

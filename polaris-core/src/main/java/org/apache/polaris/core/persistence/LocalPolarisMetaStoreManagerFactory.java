@@ -172,8 +172,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
    */
   private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
       RealmContext realmContext) {
-    // While bootstrapping we need to act as a fake privileged context since the real
-    // CallContext may not have been resolved yet.
+    // While bootstrapping we an empty RealmConfig
     PolarisMetaStoreManager metaStoreManager = createMetaStoreManager(realmContext, null);
 
     Optional<PrincipalEntity> preliminaryRootPrincipal = metaStoreManager.findRootPrincipal();

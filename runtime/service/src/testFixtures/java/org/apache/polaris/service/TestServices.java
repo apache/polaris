@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -40,7 +39,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -174,8 +173,7 @@ public record TestServices(
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
-      CallContext callContext = new PolarisCallContext(realmContext, configurationStore);
-      RealmConfig realmConfig = callContext.getRealmConfig();
+      RealmConfig realmConfig = new RealmConfigImpl(configurationStore, realmContext);
 
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
@@ -183,10 +181,10 @@ public record TestServices(
       EntityCache entityCache =
           metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
       ResolverFactory resolverFactory =
-          (_callContext, securityContext, referenceCatalogName) ->
+          (_realmContext, _realmConfig, _metaStoreManager, securityContext, referenceCatalogName) ->
               new Resolver(
                   diagnostics,
-                  metaStoreManager,
+                  _metaStoreManager,
                   securityContext,
                   entityCache,
                   referenceCatalogName);
@@ -225,7 +223,7 @@ public record TestServices(
           new IcebergCatalogAdapter(
               diagnostics,
               realmContext,
-              callContext,
+              realmConfig,
               callContextFactory,
               resolverFactory,
               resolutionManifestFactory,
@@ -278,7 +276,8 @@ public record TestServices(
       PolarisAdminService adminService =
           new PolarisAdminService(
               diagnostics,
-              callContext,
+              realmContext,
+              realmConfig,
               resolutionManifestFactory,
               metaStoreManager,
               userSecretsManager,
@@ -310,9 +309,5 @@ public record TestServices(
           taskExecutor,
           polarisEventListener);
     }
-  }
-
-  public PolarisCallContext newCallContext() {
-    return new PolarisCallContext(realmContext, configurationStore);
   }
 }

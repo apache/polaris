@@ -38,9 +38,10 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -66,14 +67,17 @@ public abstract class CatalogHandler {
   protected final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   protected final PolarisDiagnostics diagnostics;
-  protected final CallContext callContext;
+  protected final RealmContext realmContext;
   protected final RealmConfig realmConfig;
+  protected final PolarisMetaStoreManager metaStoreManager;
   protected final PolarisPrincipal polarisPrincipal;
   protected final SecurityContext securityContext;
 
   public CatalogHandler(
       PolarisDiagnostics diagnostics,
-      CallContext callContext,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
+      PolarisMetaStoreManager metaStoreManager,
       ResolutionManifestFactory resolutionManifestFactory,
       SecurityContext securityContext,
       String catalogName,
@@ -81,8 +85,9 @@ public abstract class CatalogHandler {
       UserSecretsManager userSecretsManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.diagnostics = diagnostics;
-    this.callContext = callContext;
-    this.realmConfig = callContext.getRealmConfig();
+    this.realmContext = realmContext;
+    this.realmConfig = realmConfig;
+    this.metaStoreManager = metaStoreManager;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.catalogName = catalogName;
     diagnostics.checkNotNull(securityContext, "null_security_context");
@@ -118,7 +123,7 @@ public abstract class CatalogHandler {
       List<PolicyIdentifier> extraPassThroughPolicies) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -172,7 +177,7 @@ public abstract class CatalogHandler {
       PolarisAuthorizableOperation op, Namespace namespace) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
 
     Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
     resolutionManifest.addPath(
@@ -208,7 +213,7 @@ public abstract class CatalogHandler {
 
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -244,7 +249,7 @@ public abstract class CatalogHandler {
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
 
     // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
     resolutionManifest.addPassthroughPath(
@@ -275,7 +280,7 @@ public abstract class CatalogHandler {
       List<TableIdentifier> ids) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     ids.forEach(
         identifier ->
             resolutionManifest.addPassthroughPath(
@@ -327,7 +332,7 @@ public abstract class CatalogHandler {
       TableIdentifier dst) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+            realmContext, realmConfig, metaStoreManager, securityContext, catalogName);
     // Add src, dstParent, and dst(optional)
     resolutionManifest.addPath(
         new ResolverPath(
