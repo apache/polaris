@@ -82,6 +82,7 @@ EXCLUDE_PATHS = [
     Path("README.md"),
     Path("generate_clients.py"),
     Path(".venv"),
+    Path("dist/"),
 ]
 EXCLUDE_EXTENSIONS = [
     "json",
