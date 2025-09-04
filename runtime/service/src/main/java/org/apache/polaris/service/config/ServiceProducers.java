@@ -43,7 +43,6 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
@@ -117,12 +116,7 @@ public class ServiceProducers {
           metaStoreManagerFactory.getOrCreateEntityCache(
               callContext.getRealmContext(), callContext.getRealmConfig());
       return new Resolver(
-          diagnostics,
-          callContext.getPolarisCallContext(),
-          polarisMetaStoreManager,
-          securityContext,
-          entityCache,
-          referenceCatalogName);
+          diagnostics, polarisMetaStoreManager, securityContext, entityCache, referenceCatalogName);
     };
   }
 
@@ -150,11 +144,8 @@ public class ServiceProducers {
   @Produces
   @RequestScoped
   public CallContext polarisCallContext(
-      RealmContext realmContext,
-      PolarisConfigurationStore configurationStore,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
+      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+    return new PolarisCallContext(realmContext, configurationStore);
   }
 
   @Produces
@@ -200,8 +191,10 @@ public class ServiceProducers {
   @Produces
   @RequestScoped
   public PolarisMetaStoreManager polarisMetaStoreManager(
-      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      RealmContext realmContext,
+      RealmConfig realmConfig) {
+    return metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
   }
 
   @Produces

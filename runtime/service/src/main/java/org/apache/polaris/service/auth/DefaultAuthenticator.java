@@ -27,10 +27,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
@@ -84,7 +82,6 @@ public class DefaultAuthenticator implements Authenticator {
   private static final Set<String> ALL_ROLES_REQUESTED = Set.of();
 
   @Inject PolarisMetaStoreManager metaStoreManager;
-  @Inject CallContext callContext;
   @Inject PolarisDiagnostics diagnostics;
 
   @Override
@@ -117,18 +114,11 @@ public class DefaultAuthenticator implements Authenticator {
         principal =
             PrincipalEntity.of(
                 metaStoreManager
-                    .loadEntity(
-                        callContext.getPolarisCallContext(),
-                        0L,
-                        credentials.getPrincipalId(),
-                        PolarisEntityType.PRINCIPAL)
+                    .loadEntity(0L, credentials.getPrincipalId(), PolarisEntityType.PRINCIPAL)
                     .getEntity());
       } else if (credentials.getPrincipalName() != null) {
         principal =
-            metaStoreManager
-                .findPrincipalByName(
-                    callContext.getPolarisCallContext(), credentials.getPrincipalName())
-                .orElse(null);
+            metaStoreManager.findPrincipalByName(credentials.getPrincipalName()).orElse(null);
       }
     } catch (Exception e) {
       LOGGER
@@ -173,7 +163,6 @@ public class DefaultAuthenticator implements Authenticator {
             .map(
                 gr ->
                     metaStoreManager.loadEntity(
-                        callContext.getPolarisCallContext(),
                         gr.getSecurableCatalogId(),
                         gr.getSecurableId(),
                         PolarisEntityType.PRINCIPAL_ROLE))
@@ -233,9 +222,7 @@ public class DefaultAuthenticator implements Authenticator {
    * will be used to determine the active roles for the principal.
    */
   protected LoadGrantsResult loadPrincipalGrants(PrincipalEntity principal) {
-    PolarisCallContext polarisContext = callContext.getPolarisCallContext();
-    LoadGrantsResult principalGrantResults =
-        metaStoreManager.loadGrantsToGrantee(polarisContext, principal);
+    LoadGrantsResult principalGrantResults = metaStoreManager.loadGrantsToGrantee(principal);
     diagnostics.check(
         principalGrantResults.isSuccess(),
         "Failed to resolve principal roles for principal name={} id={}",

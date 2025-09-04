@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
+import jakarta.annotation.Nullable;
 import java.util.Map;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
@@ -30,9 +31,8 @@ import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 /** Configuration interface for configuring the {@link PolarisMetaStoreManager}. */
 public interface MetaStoreManagerFactory {
 
-  PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
-
-  BasePersistence getOrCreateSession(RealmContext realmContext);
+  PolarisMetaStoreManager createMetaStoreManager(
+      RealmContext realmContext, @Nullable RealmConfig realmConfig);
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext, RealmConfig realmConfig);
 
