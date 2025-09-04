@@ -27,6 +27,8 @@ public class KeycloakProfile implements QuarkusTestProfile {
   @Override
   public Map<String, String> getConfigOverrides() {
     return Map.of(
+        "quarkus.http.test-port",
+        "0",
         "quarkus.oidc.tenant-enabled",
         "true",
         "quarkus.oidc.client-id",
