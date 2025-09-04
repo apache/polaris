@@ -22,6 +22,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.junit.jupiter.api.TestInfo;
@@ -33,6 +34,7 @@ public class PolarisIntegrationTestHelper {
   @Inject RealmContextResolver realmContextResolver;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject RealmConfig realmConfig;
 
   public PolarisIntegrationTestFixture createFixture(TestEnvironment testEnv, TestInfo testInfo) {
     return new PolarisIntegrationTestFixture(this, testEnv, testInfo);

@@ -227,7 +227,6 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     String principalName = "all_the_powers";
     CreatePrincipalResult newPrincipal =
         metaStoreManager.createPrincipal(
-            callContext.getPolarisCallContext(),
             new PrincipalEntity.Builder()
                 .setName(principalName)
                 .setCreateTimestamp(Instant.now().toEpochMilli())
@@ -271,8 +270,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             newPrincipal.getPrincipalSecrets().getPrincipalClientId(),
             newPrincipal.getPrincipalSecrets().getMainSecret());
     PrincipalEntity refreshPrincipal =
-        rotateAndRefreshPrincipal(
-            metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
+        rotateAndRefreshPrincipal(metaStoreManager, principalName, credentials);
     PolarisPrincipal authenticatedPrincipal1 =
         PolarisPrincipal.of(refreshPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     IcebergCatalogHandler refreshedWrapper =
