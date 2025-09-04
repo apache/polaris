@@ -63,7 +63,7 @@ public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
             .map(this::fileSystemKeyPair)
             .orElseGet(this::generateEphemeralKeyPair);
     PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+        metaStoreManagerFactory.createMetaStoreManager(realmContext, null);
     return new JWTRSAKeyPair(metaStoreManager, (int) maxTokenGeneration.toSeconds(), keyProvider);
   }
 

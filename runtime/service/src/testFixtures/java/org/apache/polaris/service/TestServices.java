@@ -43,7 +43,6 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
@@ -175,13 +174,11 @@ public record TestServices(
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
-      BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-      CallContext callContext =
-          new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
+      CallContext callContext = new PolarisCallContext(realmContext, configurationStore);
       RealmConfig realmConfig = callContext.getRealmConfig();
 
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+          metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
 
       EntityCache entityCache =
           metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
@@ -189,7 +186,6 @@ public record TestServices(
           (_callContext, securityContext, referenceCatalogName) ->
               new Resolver(
                   diagnostics,
-                  _callContext.getPolarisCallContext(),
                   metaStoreManager,
                   securityContext,
                   entityCache,
@@ -248,7 +244,6 @@ public record TestServices(
 
       CreatePrincipalResult createdPrincipal =
           metaStoreManager.createPrincipal(
-              callContext.getPolarisCallContext(),
               new PrincipalEntity.Builder()
                   .setName("test-principal")
                   .setCreateTimestamp(Instant.now().toEpochMilli())
@@ -318,7 +313,6 @@ public record TestServices(
   }
 
   public PolarisCallContext newCallContext() {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore, configurationStore);
+    return new PolarisCallContext(realmContext, configurationStore);
   }
 }

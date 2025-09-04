@@ -51,10 +51,10 @@ public class TaskExecutorImplTest {
     TaskEntity taskEntity =
         new TaskEntity.Builder()
             .setName("mytask")
-            .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
+            .setId(metaStoreManager.generateNewEntityId().getId())
             .setCreateTimestamp(testServices.clock().millis())
             .build();
-    metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
+    metaStoreManager.createEntityIfNotExists(null, taskEntity);
 
     int attempt = 1;
 

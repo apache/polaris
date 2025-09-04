@@ -69,8 +69,7 @@ public interface TokenBroker {
       String clientSecret,
       PolarisCallContext polarisCallContext) {
     // Validate the principal is present and secrets match
-    PrincipalSecretsResult principalSecrets =
-        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
+    PrincipalSecretsResult principalSecrets = metaStoreManager.loadPrincipalSecrets(clientId);
     if (!principalSecrets.isSuccess()) {
       return Optional.empty();
     }
@@ -79,7 +78,6 @@ public interface TokenBroker {
     }
     EntityResult result =
         metaStoreManager.loadEntity(
-            polarisCallContext,
             0L,
             principalSecrets.getPrincipalSecrets().getPrincipalId(),
             PolarisEntityType.PRINCIPAL);
