@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -98,20 +97,19 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx) {
+  public BaseResult bootstrapPolarisService() {
     diagnostics.fail("illegal_method_in_transaction_workspace", "bootstrapPolarisService");
     return null;
   }
 
   @Override
-  public BaseResult purge(@Nonnull PolarisCallContext callCtx) {
+  public BaseResult purge() {
     diagnostics.fail("illegal_method_in_transaction_workspace", "purge");
     return null;
   }
 
   @Override
   public EntityResult readEntityByName(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
@@ -122,7 +120,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public @Nonnull ListEntitiesResult listEntities(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
@@ -133,7 +130,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public @Nonnull Page<PolarisBaseEntity> loadEntities(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
@@ -143,73 +139,58 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
+  public GenerateEntityIdResult generateNewEntityId() {
     diagnostics.fail("illegal_method_in_transaction_workspace", "generateNewEntityId");
     return null;
   }
 
   @Override
-  public CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal) {
+  public CreatePrincipalResult createPrincipal(@Nonnull PolarisBaseEntity principal) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "createPrincipal");
     return null;
   }
 
   @Override
-  public PrincipalSecretsResult loadPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
+  public PrincipalSecretsResult loadPrincipalSecrets(@Nonnull String clientId) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadPrincipalSecrets");
     return null;
   }
 
   @Override
-  public void deletePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+  public void deletePrincipalSecrets(@Nonnull String clientId, long principalId) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadPrincipalSecrets");
   }
 
   @Override
   public PrincipalSecretsResult rotatePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull String clientId,
-      long principalId,
-      boolean reset,
-      @Nonnull String oldSecretHash) {
+      @Nonnull String clientId, long principalId, boolean reset, @Nonnull String oldSecretHash) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "rotatePrincipalSecrets");
     return null;
   }
 
   @Override
   public PrincipalSecretsResult resetPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
-      long principalId,
-      @Nonnull String resolvedClientId,
-      String customClientSecret) {
+      long principalId, @Nonnull String resolvedClientId, String customClientSecret) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "resetPrincipalSecrets");
     return null;
   }
 
   @Override
   public CreateCatalogResult createCatalog(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity catalog,
-      @Nonnull List<PolarisEntityCore> principalRoles) {
+      @Nonnull PolarisBaseEntity catalog, @Nonnull List<PolarisEntityCore> principalRoles) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "createCatalog");
     return null;
   }
 
   @Override
   public EntityResult createEntityIfNotExists(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity) {
+      @Nullable List<PolarisEntityCore> catalogPath, @Nonnull PolarisBaseEntity entity) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "createEntityIfNotExists");
     return null;
   }
 
   @Override
   public EntitiesResult createEntitiesIfNotExist(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull List<? extends PolarisBaseEntity> entities) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "createEntitiesIfNotExist");
@@ -218,16 +199,14 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity) {
+      @Nullable List<PolarisEntityCore> catalogPath, @Nonnull PolarisBaseEntity entity) {
     pendingUpdates.add(new EntityWithPath(catalogPath, entity));
     return new EntityResult(entity);
   }
 
   @Override
   public EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities) {
+      @Nonnull List<EntityWithPath> entities) {
     diagnostics.fail(
         "illegal_method_in_transaction_workspace", "updateEntitiesPropertiesIfNotChanged");
     return null;
@@ -235,7 +214,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public EntityResult renameEntity(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
@@ -246,7 +224,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public DropEntityResult dropEntityIfExists(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
@@ -257,7 +234,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public PrivilegeResult grantUsageOnRoleToGrantee(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee) {
@@ -267,7 +243,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public PrivilegeResult revokeUsageOnRoleFromGrantee(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee) {
@@ -277,7 +252,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public PrivilegeResult grantPrivilegeOnSecurableToRole(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -288,7 +262,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public PrivilegeResult revokePrivilegeOnSecurableFromRole(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -299,46 +272,38 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable) {
+  public @Nonnull LoadGrantsResult loadGrantsOnSecurable(PolarisEntityCore securable) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadGrantsOnSecurable");
     return null;
   }
 
   @Override
-  public @Nonnull LoadGrantsResult loadGrantsToGrantee(
-      @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee) {
+  public @Nonnull LoadGrantsResult loadGrantsToGrantee(PolarisEntityCore grantee) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadGrantsToGrantee");
     return null;
   }
 
   @Override
-  public ChangeTrackingResult loadEntitiesChangeTracking(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityId> entityIds) {
+  public ChangeTrackingResult loadEntitiesChangeTracking(@Nonnull List<PolarisEntityId> entityIds) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadEntitiesChangeTracking");
     return null;
   }
 
   @Override
   public EntityResult loadEntity(
-      @Nonnull PolarisCallContext callCtx,
-      long entityCatalogId,
-      long entityId,
-      PolarisEntityType entityType) {
+      long entityCatalogId, long entityId, PolarisEntityType entityType) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadEntity");
     return null;
   }
 
   @Override
-  public EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
+  public EntitiesResult loadTasks(String executorId, PageToken pageToken) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadTasks");
     return null;
   }
 
   @Override
   public ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
       PolarisEntityType entityType,
@@ -347,7 +312,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint) {
     return delegate.getSubscopedCredsForEntity(
-        callCtx,
         catalogId,
         entityId,
         entityType,
@@ -359,17 +323,13 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
-      @Nonnull PolarisCallContext callCtx,
-      long entityCatalogId,
-      long entityId,
-      PolarisEntityType entityType) {
+      long entityCatalogId, long entityId, PolarisEntityType entityType) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadResolvedEntityById");
     return null;
   }
 
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
-      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
@@ -380,7 +340,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public ResolvedEntityResult refreshResolvedEntity(
-      @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
       @Nonnull PolarisEntityType entityType,
@@ -393,15 +352,13 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
-          @Nonnull PolarisCallContext callContext, T entity) {
+      Optional<Optional<String>> hasOverlappingSiblings(T entity) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "hasOverlappingSiblings");
     return Optional.empty();
   }
 
   @Override
   public @Nonnull PolicyAttachmentResult attachPolicyToEntity(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
       @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> policyCatalogPath,
@@ -413,7 +370,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public @Nonnull PolicyAttachmentResult detachPolicyFromEntity(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> policyCatalogPath,
@@ -423,25 +379,20 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public @Nonnull LoadPolicyMappingsResult loadPoliciesOnEntity(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore target) {
+  public @Nonnull LoadPolicyMappingsResult loadPoliciesOnEntity(@Nonnull PolarisEntityCore target) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadPoliciesOnEntity");
     return null;
   }
 
   @Override
   public @Nonnull LoadPolicyMappingsResult loadPoliciesOnEntityByType(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore target,
-      @Nonnull PolicyType policyType) {
+      @Nonnull PolarisEntityCore target, @Nonnull PolicyType policyType) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadPoliciesOnEntityByType");
     return null;
   }
 
-  @Nonnull
   @Override
-  public void writeEvents(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
+  public void writeEvents(@Nonnull List<PolarisEvent> polarisEvents) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "writeEvents");
   }
 }
