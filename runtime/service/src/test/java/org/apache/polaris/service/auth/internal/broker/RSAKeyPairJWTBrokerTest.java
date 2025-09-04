@@ -52,16 +52,16 @@ public class RSAKeyPairJWTBrokerTest {
     final String clientId = "test-client-id";
     final String scope = "PRINCIPAL_ROLE:TEST";
 
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, configurationStore);
+    PolarisCallContext polarisCallContext = new PolarisCallContext(null, configurationStore);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(principalId, clientId, mainSecret, "otherSecret");
-    Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
+    Mockito.when(metastoreManager.loadPrincipalSecrets(clientId))
         .thenReturn(new PrincipalSecretsResult(principalSecrets));
     PrincipalEntity principal =
         new PrincipalEntity.Builder().setId(principalId).setName("principal").build();
-    Mockito.when(metastoreManager.findPrincipalById(polarisCallContext, principalId))
+    Mockito.when(metastoreManager.findPrincipalById(principalId))
         .thenReturn(Optional.of(principal));
     KeyProvider provider = new LocalRSAKeyProvider(keyPair);
     TokenBroker tokenBroker = new RSAKeyPairJWTBroker(metastoreManager, 420, provider);

@@ -21,7 +21,6 @@ package org.apache.polaris.core.auth;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
@@ -33,7 +32,6 @@ public interface PolarisGrantManager {
    * Grant usage on a role to a grantee, for example granting usage on a catalog role to a principal
    * role or granting a principal role to a principal.
    *
-   * @param callCtx call context
    * @param catalog if the role is a catalog role, the caller needs to pass-in the catalog entity
    *     which was used to resolve that granted. Else null.
    * @param role resolved catalog or principal role
@@ -43,7 +41,6 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult grantUsageOnRoleToGrantee(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee);
@@ -52,7 +49,6 @@ public interface PolarisGrantManager {
    * Revoke usage on a role (a catalog or a principal role) from a grantee (e.g. a principal role or
    * a principal).
    *
-   * @param callCtx call context
    * @param catalog if the granted is a catalog role, the caller needs to pass-in the catalog entity
    *     which was used to resolve that role. Else null should be passed-in.
    * @param role a catalog/principal role as resolved by the caller
@@ -63,7 +59,6 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult revokeUsageOnRoleFromGrantee(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee);
@@ -71,7 +66,6 @@ public interface PolarisGrantManager {
   /**
    * Grant a privilege on a catalog securable to a grantee.
    *
-   * @param callCtx call context
    * @param grantee resolved role, the grantee
    * @param catalogPath path to that entity, cannot be null or empty unless securable is top-level
    * @param securable securable entity, must have been resolved by the client. Can be the catalog
@@ -82,7 +76,6 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult grantPrivilegeOnSecurableToRole(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -91,7 +84,6 @@ public interface PolarisGrantManager {
   /**
    * Revoke a privilege on a catalog securable from a grantee.
    *
-   * @param callCtx call context
    * @param grantee resolved role, the grantee
    * @param catalogPath path to that entity, cannot be null or empty unless securable is top-level
    * @param securable securable entity, must have been resolved by the client. Can be the catalog
@@ -103,7 +95,6 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult revokePrivilegeOnSecurableFromRole(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -112,25 +103,21 @@ public interface PolarisGrantManager {
   /**
    * This method should be used by the Polaris app to cache all grant records on a securable.
    *
-   * @param callCtx call context
    * @param securable the securable entity
    * @return the list of grants and the version of the grant records. We will return
    *     ENTITY_NOT_FOUND if the securable cannot be found
    */
   @Nonnull
-  LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable);
+  LoadGrantsResult loadGrantsOnSecurable(PolarisEntityCore securable);
 
   /**
    * This method should be used by the Polaris app to load all grants made to a grantee, either a
    * role or a principal.
    *
-   * @param callCtx call context
    * @param grantee the grantee entity
    * @return the list of grants and the version of the grant records. We will return NULL if the
    *     grantee does not exist
    */
   @Nonnull
-  LoadGrantsResult loadGrantsToGrantee(
-      @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee);
+  LoadGrantsResult loadGrantsToGrantee(PolarisEntityCore grantee);
 }
