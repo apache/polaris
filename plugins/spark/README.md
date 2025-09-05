@@ -124,3 +124,9 @@ Following describes the current functionality limitations of the Polaris Spark c
 3) Rename a Delta table is not supported.
 4) ALTER TABLE ... SET LOCATION is not supported for DELTA table.
 5) For other non-Iceberg tables like csv, it is not supported today.
+
+### Hudi Support
+Currently support for Hudi tables within the Polaris catalog is still under development. 
+The Hudi community has made a change to integrate with Polaris, and is planning on doing a Hudi 1.0.3 minor release.
+hudi-spark3.5-bundle_2.12:1.0.3 is required for hudi table support to work end to end, which is still under releasing.
+Once the Hudi 1.0.3 release is out, we will update the documentation on how users can use the Polaris Spark client with Hudi tables
