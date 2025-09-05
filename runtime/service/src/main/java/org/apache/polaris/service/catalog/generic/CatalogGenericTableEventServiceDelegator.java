@@ -26,9 +26,13 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.events.CatalogGenericTableServiceEvents;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
+import org.apache.polaris.service.types.LoadGenericTableResponse;
 
 @Decorator
 @Priority(1000)
@@ -36,6 +40,8 @@ public class CatalogGenericTableEventServiceDelegator
     implements PolarisCatalogGenericTableApiService, CatalogAdapter {
 
   @Inject @Delegate GenericTableCatalogAdapter delegate;
+  @Inject PolarisEventListener polarisEventListener;
+  @Inject CatalogPrefixParser prefixParser;
 
   @Override
   public Response createGenericTable(
@@ -44,8 +50,17 @@ public class CatalogGenericTableEventServiceDelegator
       CreateGenericTableRequest createGenericTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.createGenericTable(
-        prefix, namespace, createGenericTableRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeCreateGenericTable(
+        new CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent(
+            catalogName, namespace, createGenericTableRequest));
+    Response resp =
+        delegate.createGenericTable(
+            prefix, namespace, createGenericTableRequest, realmContext, securityContext);
+    polarisEventListener.onAfterCreateGenericTable(
+        new CatalogGenericTableServiceEvents.AfterCreateGenericTableEvent(
+            catalogName, namespace, ((LoadGenericTableResponse) resp.getEntity()).getTable()));
+    return resp;
   }
 
   @Override
@@ -55,8 +70,16 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.dropGenericTable(
-        prefix, namespace, genericTable, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeDropGenericTable(
+        new CatalogGenericTableServiceEvents.BeforeDropGenericTableEvent(
+            catalogName, namespace, genericTable));
+    Response resp =
+        delegate.dropGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
+    polarisEventListener.onAfterDropGenericTable(
+        new CatalogGenericTableServiceEvents.AfterDropGenericTableEvent(
+            catalogName, namespace, genericTable));
+    return resp;
   }
 
   @Override
@@ -67,8 +90,15 @@ public class CatalogGenericTableEventServiceDelegator
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.listGenericTables(
-        prefix, namespace, pageToken, pageSize, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeListGenericTables(
+        new CatalogGenericTableServiceEvents.BeforeListGenericTablesEvent(catalogName, namespace));
+    Response resp =
+        delegate.listGenericTables(
+            prefix, namespace, pageToken, pageSize, realmContext, securityContext);
+    polarisEventListener.onAfterListGenericTables(
+        new CatalogGenericTableServiceEvents.AfterListGenericTablesEvent(catalogName, namespace));
+    return resp;
   }
 
   @Override
@@ -78,7 +108,15 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.loadGenericTable(
-        prefix, namespace, genericTable, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeLoadGenericTable(
+        new CatalogGenericTableServiceEvents.BeforeLoadGenericTableEvent(
+            catalogName, namespace, genericTable));
+    Response resp =
+        delegate.loadGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
+    polarisEventListener.onAfterLoadGenericTable(
+        new CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent(
+            catalogName, namespace, ((LoadGenericTableResponse) resp.getEntity()).getTable()));
+    return resp;
   }
 }

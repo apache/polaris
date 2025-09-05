@@ -42,7 +42,6 @@ dependencies {
   runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
   implementation(libs.caffeine)
-  implementation(libs.commons.codec)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
@@ -87,7 +86,7 @@ dependencies {
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
   constraints {
-    implementation("io.netty:netty-codec-http2:4.2.4.Final") {
+    implementation("io.netty:netty-codec-http2:4.2.5.Final") {
       because("Vulnerability detected in 4.1.72")
     }
     implementation("io.projectreactor.netty:reactor-netty-http:1.2.9") {

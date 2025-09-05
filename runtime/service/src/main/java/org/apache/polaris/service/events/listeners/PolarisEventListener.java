@@ -30,6 +30,7 @@ import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
+import org.apache.polaris.service.events.CatalogGenericTableServiceEvents;
 import org.apache.polaris.service.events.CatalogsServiceEvents;
 import org.apache.polaris.service.events.PrincipalRolesServiceEvents;
 import org.apache.polaris.service.events.PrincipalsServiceEvents;
@@ -306,4 +307,36 @@ public abstract class PolarisEventListener {
   /** {@link CatalogsServiceEvents.AfterListGrantsForCatalogRoleEvent} */
   public void onAfterListGrantsForCatalogRole(
       CatalogsServiceEvents.AfterListGrantsForCatalogRoleEvent event) {}
+
+  /** {@link CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent} */
+  public void onBeforeCreateGenericTable(
+      CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent event) {}
+
+  /** {@link CatalogGenericTableServiceEvents.AfterCreateGenericTableEvent} */
+  public void onAfterCreateGenericTable(
+      CatalogGenericTableServiceEvents.AfterCreateGenericTableEvent event) {}
+
+  /** {@link CatalogGenericTableServiceEvents.BeforeDropGenericTableEvent} */
+  public void onBeforeDropGenericTable(
+      CatalogGenericTableServiceEvents.BeforeDropGenericTableEvent event) {}
+
+  /** {@link CatalogGenericTableServiceEvents.AfterDropGenericTableEvent} */
+  public void onAfterDropGenericTable(
+      CatalogGenericTableServiceEvents.AfterDropGenericTableEvent event) {}
+
+  /** {@link CatalogGenericTableServiceEvents.BeforeListGenericTablesEvent} */
+  public void onBeforeListGenericTables(
+      CatalogGenericTableServiceEvents.BeforeListGenericTablesEvent event) {}
+
+  /** {@link CatalogGenericTableServiceEvents.AfterListGenericTablesEvent} */
+  public void onAfterListGenericTables(
+      CatalogGenericTableServiceEvents.AfterListGenericTablesEvent event) {}
+
+  /** {@link CatalogGenericTableServiceEvents.BeforeLoadGenericTableEvent} */
+  public void onBeforeLoadGenericTable(
+      CatalogGenericTableServiceEvents.BeforeLoadGenericTableEvent event) {}
+
+  /** {@link CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent} */
+  public void onAfterLoadGenericTable(
+      CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent event) {}
 }

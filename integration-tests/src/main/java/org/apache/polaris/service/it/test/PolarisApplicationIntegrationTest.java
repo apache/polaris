@@ -20,9 +20,11 @@ package org.apache.polaris.service.it.test;
 
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
+import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
@@ -67,6 +69,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientPrincipal;
@@ -76,6 +79,7 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.RestApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.api.ThrowableAssert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -84,6 +88,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * @implSpec This test expects the server to be configured with the following features configured:
@@ -186,11 +192,30 @@ public class PolarisApplicationIntegrationTest {
       String principalRoleName,
       StorageConfigInfo storageConfig,
       String defaultBaseLocation) {
-    CatalogProperties props =
+    createCatalog(
+        catalogName,
+        catalogType,
+        principalRoleName,
+        storageConfig,
+        defaultBaseLocation,
+        ImmutableMap.of());
+  }
+
+  private static void createCatalog(
+      String catalogName,
+      Catalog.TypeEnum catalogType,
+      String principalRoleName,
+      StorageConfigInfo storageConfig,
+      String defaultBaseLocation,
+      Map<String, String> additionalProperties) {
+    CatalogProperties.Builder propsBuilder =
         CatalogProperties.builder(defaultBaseLocation)
             .addProperty(
-                CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:/")
-            .build();
+                CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:/");
+    for (var entry : additionalProperties.entrySet()) {
+      propsBuilder.addProperty(entry.getKey(), entry.getValue());
+    }
+    CatalogProperties props = propsBuilder.build();
     Catalog catalog =
         catalogType.equals(Catalog.TypeEnum.INTERNAL)
             ? PolarisCatalog.builder()
@@ -639,6 +664,55 @@ public class PolarisApplicationIntegrationTest {
                   // asserts that one of those things happens.
                 }
               });
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testNamespaceOutsideCatalog(boolean allowNamespaceLocationEscape) throws IOException {
+    String catalogName = client.newEntityName("testNamespaceOutsideCatalog_specificLocation");
+    String catalogLocation = baseLocation.resolve(catalogName + "/catalog").toString();
+    String badLocation = baseLocation.resolve(catalogName + "/ns").toString();
+    createCatalog(
+        catalogName,
+        Catalog.TypeEnum.INTERNAL,
+        principalRoleName,
+        FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(List.of(catalogLocation))
+            .build(),
+        catalogLocation,
+        ImmutableMap.of(
+            BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION.catalogConfig(),
+            String.valueOf(allowNamespaceLocationEscape)));
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      sessionCatalog.createNamespace(sessionContext, Namespace.of("good_namespace"));
+      ThrowableAssert.ThrowingCallable createBadNamespace =
+          () ->
+              sessionCatalog.createNamespace(
+                  sessionContext,
+                  Namespace.of("bad_namespace"),
+                  ImmutableMap.of("location", badLocation));
+      if (!allowNamespaceLocationEscape) {
+        assertThatThrownBy(createBadNamespace)
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("custom location");
+      } else {
+        assertThatCode(createBadNamespace).doesNotThrowAnyException();
+      }
+      ThrowableAssert.ThrowingCallable createBadChildGoodParent =
+          () ->
+              sessionCatalog.createNamespace(
+                  sessionContext,
+                  Namespace.of("good_namespace", "bad_child"),
+                  ImmutableMap.of("location", badLocation));
+      if (!allowNamespaceLocationEscape) {
+        assertThatThrownBy(createBadChildGoodParent)
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("custom location");
+      } else {
+        assertThatCode(createBadChildGoodParent).doesNotThrowAnyException();
+      }
     }
   }
 }

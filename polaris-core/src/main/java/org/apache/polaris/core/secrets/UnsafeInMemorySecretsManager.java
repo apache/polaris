@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.polaris.core.DigestUtils;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 
 /**
