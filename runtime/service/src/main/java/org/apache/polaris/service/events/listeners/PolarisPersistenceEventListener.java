@@ -31,7 +31,7 @@ import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 
 public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
 
-  // TODO: Ensure all events (except RateLimiter ones) call `addToBuffer`
+  // TODO: Ensure all events (except RateLimiter ones) call `processEvent`
   @Override
   public final void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {}
 

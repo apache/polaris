@@ -21,8 +21,6 @@ package org.apache.polaris.service.test;
 import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
@@ -113,9 +111,8 @@ public class PolarisIntegrationTestFixture {
     PolarisMetaStoreManager metaStoreManager =
         helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     PrincipalEntity principal = metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    Map<String, String> propertiesMap = readInternalProperties(principal);
     return metaStoreManager
-        .loadPrincipalSecrets(polarisContext, propertiesMap.get("client_id"))
+        .loadPrincipalSecrets(polarisContext, principal.getClientId())
         .getPrincipalSecrets();
   }
 
@@ -210,15 +207,6 @@ public class PolarisIntegrationTestFixture {
           LOGGER.error("Failed to close client", e);
         }
       }
-    }
-  }
-
-  private Map<String, String> readInternalProperties(PrincipalEntity principal) {
-    try {
-      return helper.objectMapper.readValue(
-          principal.getInternalProperties(), new TypeReference<>() {});
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
     }
   }
 

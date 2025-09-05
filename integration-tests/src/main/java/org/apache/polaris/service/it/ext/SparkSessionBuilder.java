@@ -164,13 +164,9 @@ public class SparkSessionBuilder {
 
     // Add endpoint configuration
     Preconditions.checkNotNull(catalog.endpoints, "endpoints is required");
-    builder
-        .config(
-            String.format("spark.sql.catalog.%s.uri", catalog.catalogName),
-            catalog.endpoints.catalogApiEndpoint().toString())
-        .config(
-            String.format("spark.sql.catalog.%s.header.realm", catalog.catalogName),
-            catalog.endpoints.realmId());
+    builder.config(
+        String.format("spark.sql.catalog.%s.uri", catalog.catalogName),
+        catalog.endpoints.catalogApiEndpoint().toString());
 
     // Add token configuration
     if (catalog.token != null) {

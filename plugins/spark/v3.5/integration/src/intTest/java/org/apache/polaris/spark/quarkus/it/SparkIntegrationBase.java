@@ -100,6 +100,7 @@ public abstract class SparkIntegrationBase {
     CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
     props.putAll(s3Container.getS3ConfigProperties());
     props.put("polaris.config.drop-with-purge.enabled", "true");
+    props.put("polaris.config.namespace-custom-location.enabled", "true");
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
