@@ -287,8 +287,7 @@ public record TestServices(
                   userSecretsManagerFactory,
                   authorizer,
                   callContext,
-                  reservedProperties,
-                  polarisEventListener));
+                  reservedProperties));
 
       return new TestServices(
           clock,

@@ -22,7 +22,6 @@ package org.apache.polaris.service.events.listeners;
 import java.util.Map;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.polaris.core.entity.PolarisEvent;
-import org.apache.polaris.service.events.AfterCatalogCreatedEvent;
 import org.apache.polaris.service.events.AfterTableCommitedEvent;
 import org.apache.polaris.service.events.AfterTableCreatedEvent;
 import org.apache.polaris.service.events.AfterTableRefreshedEvent;
@@ -35,6 +34,7 @@ import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
+import org.apache.polaris.service.events.CatalogsServiceEvents;
 
 public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
 
@@ -96,18 +96,18 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
   }
 
   @Override
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event) {
+  public void onAfterCreateCatalog(CatalogsServiceEvents.AfterCreateCatalogEvent event) {
     ContextSpecificInformation contextSpecificInformation = getContextSpecificInformation();
     PolarisEvent polarisEvent =
         new PolarisEvent(
-            event.catalogName(),
+            event.catalog().getName(),
             org.apache.polaris.service.events.PolarisEvent.createEventId(),
             getRequestId(),
             event.getClass().getSimpleName(),
             contextSpecificInformation.timestamp(),
             contextSpecificInformation.principalName(),
             PolarisEvent.ResourceType.CATALOG,
-            event.catalogName());
+            event.catalog().getName());
     processEvent(polarisEvent);
   }
 

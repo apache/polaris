@@ -88,8 +88,7 @@ public class PolarisServiceImplTest {
             userSecretsManagerFactory,
             polarisAuthorizer,
             callContext,
-            reservedProperties,
-            polarisEventListener);
+            reservedProperties);
   }
 
   @Test
