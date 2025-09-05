@@ -33,8 +33,61 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
+import org.apache.iceberg.rest.responses.CreateNamespaceResponse;
+import org.apache.iceberg.rest.responses.GetNamespaceResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.iceberg.rest.responses.LoadViewResponse;
+import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterCheckExistsNamespaceEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterCheckExistsTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterCheckExistsViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterCreateNamespaceEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterCreateTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterCreateViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterDropNamespaceEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterDropTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterDropViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterListNamespacesEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterListTablesEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterListViewsEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterLoadCredentialsEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterLoadNamespaceMetadataEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterLoadTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterLoadViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterRegisterTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterRenameTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterRenameViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterReplaceViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterSendNotificationEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterUpdateNamespacePropertiesEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterUpdateTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeCheckExistsNamespaceEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeCheckExistsTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeCheckExistsViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeCreateNamespaceEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeCreateTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeCreateViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeDropNamespaceEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeDropTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeDropViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeListNamespacesEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeListTablesEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeListViewsEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeLoadCredentialsEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeLoadNamespaceMetadataEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeLoadTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeLoadViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeRegisterTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeRenameTableEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeRenameViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeReplaceViewEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeSendNotificationEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeUpdateNamespacePropertiesEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeUpdateTableEvent;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -44,6 +97,8 @@ import org.apache.polaris.service.types.NotificationRequest;
 public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatalogApiService {
 
   @Inject @Delegate IcebergCatalogAdapter delegate;
+  @Inject PolarisEventListener polarisEventListener;
+  @Inject CatalogPrefixParser prefixParser;
 
   @Override
   public Response createNamespace(
@@ -51,7 +106,18 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       CreateNamespaceRequest createNamespaceRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.createNamespace(prefix, createNamespaceRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeCreateNamespace(
+        new BeforeCreateNamespaceEvent(catalogName, createNamespaceRequest));
+    Response resp =
+        delegate.createNamespace(prefix, createNamespaceRequest, realmContext, securityContext);
+    CreateNamespaceResponse createNamespaceResponse = (CreateNamespaceResponse) resp.getEntity();
+    polarisEventListener.onAfterCreateNamespace(
+        new AfterCreateNamespaceEvent(
+            catalogName,
+            createNamespaceResponse.namespace(),
+            createNamespaceResponse.properties()));
+    return resp;
   }
 
   @Override
@@ -62,26 +128,50 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       String parent,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.listNamespaces(
-        prefix, pageToken, pageSize, parent, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeListNamespaces(new BeforeListNamespacesEvent(catalogName, parent));
+    Response resp =
+        delegate.listNamespaces(prefix, pageToken, pageSize, parent, realmContext, securityContext);
+    polarisEventListener.onAfterListNamespaces(new AfterListNamespacesEvent(catalogName, parent));
+    return resp;
   }
 
   @Override
   public Response loadNamespaceMetadata(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
-    return delegate.loadNamespaceMetadata(prefix, namespace, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeLoadNamespaceMetadata(
+        new BeforeLoadNamespaceMetadataEvent(catalogName, namespace));
+    Response resp =
+        delegate.loadNamespaceMetadata(prefix, namespace, realmContext, securityContext);
+    GetNamespaceResponse getNamespaceResponse = (GetNamespaceResponse) resp.getEntity();
+    polarisEventListener.onAfterLoadNamespaceMetadata(
+        new AfterLoadNamespaceMetadataEvent(
+            catalogName, getNamespaceResponse.namespace(), getNamespaceResponse.properties()));
+    return resp;
   }
 
   @Override
   public Response namespaceExists(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
-    return delegate.namespaceExists(prefix, namespace, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeCheckExistsNamespace(
+        new BeforeCheckExistsNamespaceEvent(catalogName, namespace));
+    Response resp = delegate.namespaceExists(prefix, namespace, realmContext, securityContext);
+    polarisEventListener.onAfterCheckExistsNamespace(
+        new AfterCheckExistsNamespaceEvent(catalogName, namespace));
+    return resp;
   }
 
   @Override
   public Response dropNamespace(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
-    return delegate.dropNamespace(prefix, namespace, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeDropNamespace(
+        new BeforeDropNamespaceEvent(catalogName, namespace));
+    Response resp = delegate.dropNamespace(prefix, namespace, realmContext, securityContext);
+    polarisEventListener.onAfterDropNamespace(new AfterDropNamespaceEvent(catalogName, namespace));
+    return resp;
   }
 
   @Override
@@ -91,8 +181,17 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.updateProperties(
-        prefix, namespace, updateNamespacePropertiesRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeUpdateNamespaceProperties(
+        new BeforeUpdateNamespacePropertiesEvent(
+            catalogName, namespace, updateNamespacePropertiesRequest));
+    Response resp =
+        delegate.updateProperties(
+            prefix, namespace, updateNamespacePropertiesRequest, realmContext, securityContext);
+    polarisEventListener.onAfterUpdateNamespaceProperties(
+        new AfterUpdateNamespacePropertiesEvent(
+            catalogName, namespace, (UpdateNamespacePropertiesResponse) resp.getEntity()));
+    return resp;
   }
 
   @Override
@@ -103,8 +202,29 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       String accessDelegationMode,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.createTable(
-        prefix, namespace, createTableRequest, accessDelegationMode, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    if (!createTableRequest.stageCreate()) {
+      polarisEventListener.onBeforeCreateTable(
+          new BeforeCreateTableEvent(
+              catalogName, namespace, createTableRequest, accessDelegationMode));
+    }
+    Response resp =
+        delegate.createTable(
+            prefix,
+            namespace,
+            createTableRequest,
+            accessDelegationMode,
+            realmContext,
+            securityContext);
+    if (!createTableRequest.stageCreate()) {
+      polarisEventListener.onAfterCreateTable(
+          new AfterCreateTableEvent(
+              catalogName,
+              namespace,
+              createTableRequest.name(),
+              (LoadTableResponse) resp.getEntity()));
+    }
+    return resp;
   }
 
   @Override
@@ -115,8 +235,12 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.listTables(
-        prefix, namespace, pageToken, pageSize, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeListTables(new BeforeListTablesEvent(catalogName, namespace));
+    Response resp =
+        delegate.listTables(prefix, namespace, pageToken, pageSize, realmContext, securityContext);
+    polarisEventListener.onAfterListTables(new AfterListTablesEvent(catalogName, namespace));
+    return resp;
   }
 
   @Override
@@ -129,15 +253,23 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.loadTable(
-        prefix,
-        namespace,
-        table,
-        accessDelegationMode,
-        ifNoneMatchString,
-        snapshots,
-        realmContext,
-        securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeLoadTable(
+        new BeforeLoadTableEvent(
+            catalogName, namespace, table, accessDelegationMode, ifNoneMatchString, snapshots));
+    Response resp =
+        delegate.loadTable(
+            prefix,
+            namespace,
+            table,
+            accessDelegationMode,
+            ifNoneMatchString,
+            snapshots,
+            realmContext,
+            securityContext);
+    polarisEventListener.onAfterLoadTable(
+        new AfterLoadTableEvent(catalogName, namespace, (LoadTableResponse) resp.getEntity()));
+    return resp;
   }
 
   @Override
@@ -147,7 +279,13 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       String table,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.tableExists(prefix, namespace, table, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeCheckExistsTable(
+        new BeforeCheckExistsTableEvent(catalogName, namespace, table));
+    Response resp = delegate.tableExists(prefix, namespace, table, realmContext, securityContext);
+    polarisEventListener.onAfterCheckExistsTable(
+        new AfterCheckExistsTableEvent(catalogName, namespace, table));
+    return resp;
   }
 
   @Override
@@ -158,8 +296,14 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       Boolean purgeRequested,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.dropTable(
-        prefix, namespace, table, purgeRequested, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeDropTable(
+        new BeforeDropTableEvent(catalogName, namespace, table, purgeRequested));
+    Response resp =
+        delegate.dropTable(prefix, namespace, table, purgeRequested, realmContext, securityContext);
+    polarisEventListener.onAfterDropTable(
+        new AfterDropTableEvent(catalogName, namespace, table, purgeRequested));
+    return resp;
   }
 
   @Override
@@ -169,8 +313,15 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       RegisterTableRequest registerTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.registerTable(
-        prefix, namespace, registerTableRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeRegisterTable(
+        new BeforeRegisterTableEvent(catalogName, namespace, registerTableRequest));
+    Response resp =
+        delegate.registerTable(
+            prefix, namespace, registerTableRequest, realmContext, securityContext);
+    polarisEventListener.onAfterRegisterTable(
+        new AfterRegisterTableEvent(catalogName, namespace, (LoadTableResponse) resp.getEntity()));
+    return resp;
   }
 
   @Override
@@ -179,7 +330,13 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.renameTable(prefix, renameTableRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeRenameTable(
+        new BeforeRenameTableEvent(catalogName, renameTableRequest));
+    Response resp = delegate.renameTable(prefix, renameTableRequest, realmContext, securityContext);
+    polarisEventListener.onAfterRenameTable(
+        new AfterRenameTableEvent(catalogName, renameTableRequest));
+    return resp;
   }
 
   @Override
@@ -190,8 +347,16 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       CommitTableRequest commitTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.updateTable(
-        prefix, namespace, table, commitTableRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeUpdateTable(
+        new BeforeUpdateTableEvent(catalogName, namespace, table, commitTableRequest));
+    Response resp =
+        delegate.updateTable(
+            prefix, namespace, table, commitTableRequest, realmContext, securityContext);
+    polarisEventListener.onAfterUpdateTable(
+        new AfterUpdateTableEvent(
+            catalogName, namespace, table, (LoadTableResponse) resp.getEntity()));
+    return resp;
   }
 
   @Override
@@ -201,7 +366,14 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       CreateViewRequest createViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.createView(prefix, namespace, createViewRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeCreateView(
+        new BeforeCreateViewEvent(catalogName, namespace, createViewRequest));
+    Response resp =
+        delegate.createView(prefix, namespace, createViewRequest, realmContext, securityContext);
+    polarisEventListener.onAfterCreateView(
+        new AfterCreateViewEvent(catalogName, namespace, (LoadViewResponse) resp.getEntity()));
+    return resp;
   }
 
   @Override
@@ -212,8 +384,12 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.listViews(
-        prefix, namespace, pageToken, pageSize, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeListViews(new BeforeListViewsEvent(catalogName, namespace));
+    Response resp =
+        delegate.listViews(prefix, namespace, pageToken, pageSize, realmContext, securityContext);
+    polarisEventListener.onAfterListViews(new AfterListViewsEvent(catalogName, namespace));
+    return resp;
   }
 
   @Override
@@ -223,7 +399,14 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       String table,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.loadCredentials(prefix, namespace, table, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeLoadCredentials(
+        new BeforeLoadCredentialsEvent(catalogName, namespace, table));
+    Response resp =
+        delegate.loadCredentials(prefix, namespace, table, realmContext, securityContext);
+    polarisEventListener.onAfterLoadCredentials(
+        new AfterLoadCredentialsEvent(catalogName, namespace, table));
+    return resp;
   }
 
   @Override
@@ -233,7 +416,12 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       String view,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.loadView(prefix, namespace, view, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeLoadView(new BeforeLoadViewEvent(catalogName, namespace, view));
+    Response resp = delegate.loadView(prefix, namespace, view, realmContext, securityContext);
+    polarisEventListener.onAfterLoadView(
+        new AfterLoadViewEvent(catalogName, namespace, (LoadViewResponse) resp.getEntity()));
+    return resp;
   }
 
   @Override
@@ -243,7 +431,13 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       String view,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.viewExists(prefix, namespace, view, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeCheckExistsView(
+        new BeforeCheckExistsViewEvent(catalogName, namespace, view));
+    Response resp = delegate.viewExists(prefix, namespace, view, realmContext, securityContext);
+    polarisEventListener.onAfterCheckExistsView(
+        new AfterCheckExistsViewEvent(catalogName, namespace, view));
+    return resp;
   }
 
   @Override
@@ -253,7 +447,11 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       String view,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.dropView(prefix, namespace, view, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeDropView(new BeforeDropViewEvent(catalogName, namespace, view));
+    Response resp = delegate.dropView(prefix, namespace, view, realmContext, securityContext);
+    polarisEventListener.onAfterDropView(new AfterDropViewEvent(catalogName, namespace, view));
+    return resp;
   }
 
   @Override
@@ -262,7 +460,13 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.renameView(prefix, renameTableRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeRenameView(
+        new BeforeRenameViewEvent(catalogName, renameTableRequest));
+    Response resp = delegate.renameView(prefix, renameTableRequest, realmContext, securityContext);
+    polarisEventListener.onAfterRenameView(
+        new AfterRenameViewEvent(catalogName, renameTableRequest));
+    return resp;
   }
 
   @Override
@@ -273,10 +477,21 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       CommitViewRequest commitViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.replaceView(
-        prefix, namespace, view, commitViewRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeReplaceView(
+        new BeforeReplaceViewEvent(catalogName, namespace, view, commitViewRequest));
+    Response resp =
+        delegate.replaceView(
+            prefix, namespace, view, commitViewRequest, realmContext, securityContext);
+    polarisEventListener.onAfterReplaceView(
+        new AfterReplaceViewEvent(
+            catalogName, namespace, view, (LoadViewResponse) resp.getEntity()));
+    return resp;
   }
 
+  /**
+   * Table Committed Events are already instrumented at a more granular level than the API itself.
+   */
   @Override
   public Response commitTransaction(
       String prefix,
@@ -287,6 +502,7 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
         prefix, commitTransactionRequest, realmContext, securityContext);
   }
 
+  /** This API is currently a no-op in Polaris. */
   @Override
   public Response reportMetrics(
       String prefix,
@@ -307,7 +523,14 @@ public class IcebergRestCatalogEventServiceDelegator implements IcebergRestCatal
       NotificationRequest notificationRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.sendNotification(
-        prefix, namespace, table, notificationRequest, realmContext, securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    polarisEventListener.onBeforeSendNotification(
+        new BeforeSendNotificationEvent(catalogName, namespace, table, notificationRequest));
+    Response resp =
+        delegate.sendNotification(
+            prefix, namespace, table, notificationRequest, realmContext, securityContext);
+    polarisEventListener.onAfterSendNotification(
+        new AfterSendNotificationEvent(catalogName, namespace, table));
+    return resp;
   }
 }

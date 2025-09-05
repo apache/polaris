@@ -19,10 +19,12 @@
 package org.apache.polaris.service.events;
 
 /**
- * Emitted before the RateLimiterFilter rejects a request due to exceeding the rate limit.
+ * Emitted after an attempt of an async task, such as manifest file cleanup, finishes.
  *
- * @param method The request's HTTP method
- * @param absolutePath The request's absolute path
+ * @param taskEntityId The ID of the TaskEntity.
+ * @param attempt The attempt number. Each retry of the task will have its own attempt number. The
+ *     initial (non-retried) attempt starts counting from 1.
+ * @param success Whether the attempt succeeded.
  */
-public record BeforeRequestRateLimitedEvent(String method, String absolutePath)
+public record AfterAttemptTaskEvent(long taskEntityId, int attempt, boolean success)
     implements PolarisEvent {}
