@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -330,15 +331,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
     return null;
   }
 
-  @Nonnull
-  @Override
-  public EntitiesResult loadEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
-    diagnostics.fail("illegal_method_in_transaction_workspace", "loadEntities");
-    return null;
-  }
-
   @Override
   public EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
@@ -385,6 +377,15 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull PolarisEntityType entityType,
       @Nonnull String entityName) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadResolvedEntityByName");
+    return null;
+  }
+
+  @Nonnull
+  @Override
+  public ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
+    diagnostics.fail("illegal_method_in_transaction_workspace", "loadEntities");
     return null;
   }
 
