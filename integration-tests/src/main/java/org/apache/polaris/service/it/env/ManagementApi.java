@@ -164,7 +164,10 @@ public class ManagementApi extends PolarisRestApi {
 
   public void createCatalog(String principalRoleName, Catalog catalog) {
     createCatalog(catalog);
+    makeAdmin(principalRoleName, catalog);
+  }
 
+  public void makeAdmin(String principalRoleName, Catalog catalog) {
     // Create a new CatalogRole that has CATALOG_MANAGE_CONTENT and CATALOG_MANAGE_ACCESS
     String catalogRoleName = "custom-admin";
     createCatalogRole(catalog.getName(), catalogRoleName);
