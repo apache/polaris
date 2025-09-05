@@ -33,8 +33,8 @@ import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.PrincipalsServiceEvents;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @Decorator
 @Priority(1000)

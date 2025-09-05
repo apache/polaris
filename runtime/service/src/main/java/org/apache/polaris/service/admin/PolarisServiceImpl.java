@@ -86,7 +86,6 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,8 +147,7 @@ public class PolarisServiceImpl
         reservedProperties);
   }
 
-  private static Response toResponse(
-      BaseResult result, Response.Status successStatus, Object entity) {
+  private static Response toResponse(BaseResult result, Response.Status successStatus) {
     if (!result.isSuccess()) {
       ErrorResponse icebergErrorResponse =
           ErrorResponse.builder()
@@ -163,9 +161,6 @@ public class PolarisServiceImpl
           .build();
     }
     Response.ResponseBuilder responseBuilder = Response.status(successStatus);
-    if (entity != null) {
-      responseBuilder.entity(entity);
-    }
     return responseBuilder.build();
   }
 
@@ -179,7 +174,7 @@ public class PolarisServiceImpl
     validateExternalCatalog(catalog);
     Catalog newCatalog = CatalogEntity.of(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
-    return Response.status(Response.Status.CREATED).entity(newCatalog).build();
+    return Response.status(Response.Status.CREATED).build();
   }
 
   private void validateClientId(String clientId) {
@@ -403,7 +398,7 @@ public class PolarisServiceImpl
     PrincipalRole newPrincipalRole =
         new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
     LOGGER.info("Created new principalRole {}", newPrincipalRole);
-    return Response.status(Response.Status.CREATED).entity(newPrincipalRole).build();
+    return Response.status(Response.Status.CREATED).build();
   }
 
   /** From PolarisPrincipalRolesApiService */
@@ -464,7 +459,7 @@ public class PolarisServiceImpl
     CatalogRole newCatalogRole =
         new CatalogRoleEntity(adminService.createCatalogRole(catalogName, entity)).asCatalogRole();
     LOGGER.info("Created new catalogRole {}", newCatalogRole);
-    return Response.status(Response.Status.CREATED).entity(newCatalogRole).build();
+    return Response.status(Response.Status.CREATED).build();
   }
 
   /** From PolarisCatalogsApiService */
@@ -532,7 +527,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result =
         adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
-    return toResponse(result, Response.Status.CREATED, null);
+    return toResponse(result, Response.Status.CREATED);
   }
 
   /** From PolarisPrincipalsApiService */
@@ -545,7 +540,7 @@ public class PolarisServiceImpl
     LOGGER.info("Revoking principalRole {} from principal {}", principalRoleName, principalName);
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result = adminService.revokePrincipalRole(principalName, principalRoleName);
-    return toResponse(result, Response.Status.NO_CONTENT, null);
+    return toResponse(result, Response.Status.NO_CONTENT);
   }
 
   /** From PolarisPrincipalsApiService */
@@ -580,7 +575,7 @@ public class PolarisServiceImpl
     PrivilegeResult result =
         adminService.assignCatalogRoleToPrincipalRole(
             principalRoleName, catalogName, request.getCatalogRole().getName());
-    return toResponse(result, Response.Status.CREATED, null);
+    return toResponse(result, Response.Status.CREATED);
   }
 
   /** From PolarisPrincipalRolesApiService */
@@ -600,7 +595,7 @@ public class PolarisServiceImpl
     PrivilegeResult result =
         adminService.revokeCatalogRoleFromPrincipalRole(
             principalRoleName, catalogName, catalogRoleName);
-    return toResponse(result, Response.Status.NO_CONTENT, null);
+    return toResponse(result, Response.Status.NO_CONTENT);
   }
 
   /** From PolarisPrincipalRolesApiService */
@@ -635,12 +630,6 @@ public class PolarisServiceImpl
     LOGGER.debug("listCatalogRolesForPrincipalRole returning: {}", catalogRoles);
     return Response.ok(catalogRoles).build();
   }
-
-  record AddGrantToCatalogRoleEntityWrapper(
-      PolarisPrivilege polarisPrivilege, GrantResource grantResource) {}
-
-  record RevokeGrantFromCatalogRoleEntityWrapper(
-      PolarisPrivilege polarisPrivilege, GrantResource grantResource, boolean cascade) {}
 
   /** From PolarisCatalogsApiService */
   @Override
@@ -724,10 +713,7 @@ public class PolarisServiceImpl
             .log("Don't know how to handle privilege grant: {}", grantRequest);
         return Response.status(Response.Status.BAD_REQUEST).build();
     }
-    return toResponse(
-        result,
-        Response.Status.CREATED,
-        new AddGrantToCatalogRoleEntityWrapper(privilege, grantRequest.getGrant()));
+    return toResponse(result, Response.Status.CREATED);
   }
 
   /** From PolarisCatalogsApiService */
@@ -819,10 +805,7 @@ public class PolarisServiceImpl
             .log("Don't know how to handle privilege revocation: {}", grantRequest);
         return Response.status(Response.Status.BAD_REQUEST).build();
     }
-    return toResponse(
-        result,
-        Response.Status.CREATED,
-        new RevokeGrantFromCatalogRoleEntityWrapper(privilege, grantRequest.getGrant(), cascade));
+    return toResponse(result, Response.Status.CREATED);
   }
 
   /** From PolarisCatalogsApiService */

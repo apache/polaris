@@ -31,8 +31,8 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.PrincipalRolesServiceEvents;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @Decorator
 @Priority(1000)
@@ -46,15 +46,8 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
       CreatePrincipalRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeCreatePrincipalRole(
-        new PrincipalRolesServiceEvents.BeforeCreatePrincipalRoleEvent(request));
-    Response resp = delegate.createPrincipalRole(request, realmContext, securityContext);
-    polarisEventListener.onAfterCreatePrincipalRole(
-        new PrincipalRolesServiceEvents.AfterCreatePrincipalRoleEvent(
-            (PrincipalRole) resp.getEntity()));
-    // If we are okay to start returning the PrincipalRole in the response, then we can simply
-    // return `resp`.
-    return Response.status(Response.Status.CREATED).build();
+    // TODO: After changing the API response, we should change this to emit the corresponding event.
+    return delegate.createPrincipalRole(request, realmContext, securityContext);
   }
 
   @Override

@@ -48,14 +48,8 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   @Override
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeCreateCatalog(
-        new CatalogsServiceEvents.BeforeCreateCatalogEvent(request.getCatalog().getName()));
-    Response resp = delegate.createCatalog(request, realmContext, securityContext);
-    polarisEventListener.onAfterCreateCatalog(
-        new CatalogsServiceEvents.AfterCreateCatalogEvent((Catalog) resp.getEntity()));
-    // If we are okay to start returning the catalog in the response, then we can simply return
-    // `resp`.
-    return Response.status(Response.Status.CREATED).build();
+    // TODO: After changing the API response, we should change this to emit the corresponding event.
+    return delegate.createCatalog(request, realmContext, securityContext);
   }
 
   @Override
@@ -109,14 +103,8 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       CreateCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeCreateCatalogRole(
-        new CatalogsServiceEvents.BeforeCreateCatalogRoleEvent(
-            catalogName, request.getCatalogRole().getName()));
-    Response resp = delegate.createCatalogRole(catalogName, request, realmContext, securityContext);
-    polarisEventListener.onAfterCreateCatalogRole(
-        new CatalogsServiceEvents.AfterCreateCatalogRoleEvent(
-            catalogName, (CatalogRole) resp.getEntity()));
-    return resp;
+    // TODO: After changing the API response, we should change this to emit the corresponding event.
+    return delegate.createCatalogRole(catalogName, request, realmContext, securityContext);
   }
 
   @Override
@@ -172,9 +160,11 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   @Override
   public Response listCatalogRoles(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onAfterListCatalogRoles(new CatalogsServiceEvents.AfterListCatalogRolesEvent(catalogName));
+    polarisEventListener.onAfterListCatalogRoles(
+        new CatalogsServiceEvents.AfterListCatalogRolesEvent(catalogName));
     Response resp = delegate.listCatalogRoles(catalogName, realmContext, securityContext);
-    polarisEventListener.onBeforeListCatalogRoles(new CatalogsServiceEvents.BeforeListCatalogRolesEvent(catalogName));
+    polarisEventListener.onBeforeListCatalogRoles(
+        new CatalogsServiceEvents.BeforeListCatalogRolesEvent(catalogName));
     return resp;
   }
 
@@ -185,25 +175,9 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       AddGrantRequest grantRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeAddGrantToCatalogRole(
-        new CatalogsServiceEvents.BeforeAddGrantToCatalogRoleEvent(
-            catalogName, catalogRoleName, grantRequest));
-    Response resp =
-        delegate.addGrantToCatalogRole(
-            catalogName, catalogRoleName, grantRequest, realmContext, securityContext);
-    PolarisServiceImpl.AddGrantToCatalogRoleEntityWrapper entityWrapper =
-        (PolarisServiceImpl.AddGrantToCatalogRoleEntityWrapper) resp.getEntity();
-    if (resp.getStatus() != Response.Status.BAD_REQUEST.getStatusCode()) {
-      polarisEventListener.onAfterAddGrantToCatalogRole(
-          new CatalogsServiceEvents.AfterAddGrantToCatalogRoleEvent(
-              catalogName,
-              catalogRoleName,
-              entityWrapper.polarisPrivilege(),
-              entityWrapper.grantResource()));
-      // Don't return back the custom entity
-      return Response.status(Response.Status.CREATED).build();
-    }
-    return resp;
+    // TODO: After changing the API response, we should change this to emit the corresponding event.
+    return delegate.addGrantToCatalogRole(
+        catalogName, catalogRoleName, grantRequest, realmContext, securityContext);
   }
 
   @Override
@@ -214,22 +188,9 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RevokeGrantRequest grantRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeRevokeGrantFromCatalogRole(
-        new CatalogsServiceEvents.BeforeRevokeGrantFromCatalogRoleEvent(
-            catalogName, catalogRoleName, grantRequest, cascade));
-    Response resp =
-        delegate.revokeGrantFromCatalogRole(
-            catalogName, catalogRoleName, cascade, grantRequest, realmContext, securityContext);
-    PolarisServiceImpl.RevokeGrantFromCatalogRoleEntityWrapper entityWrapper =
-        (PolarisServiceImpl.RevokeGrantFromCatalogRoleEntityWrapper) resp.getEntity();
-    polarisEventListener.onAfterRevokeGrantFromCatalogRole(
-        new CatalogsServiceEvents.AfterRevokeGrantFromCatalogRoleEvent(
-            catalogName,
-            catalogRoleName,
-            entityWrapper.polarisPrivilege(),
-            entityWrapper.grantResource(),
-            entityWrapper.cascade()));
-    return resp;
+    // TODO: After changing the API response, we should change this to emit the corresponding event.
+    return delegate.revokeGrantFromCatalogRole(
+        catalogName, catalogRoleName, cascade, grantRequest, realmContext, securityContext);
   }
 
   @Override
