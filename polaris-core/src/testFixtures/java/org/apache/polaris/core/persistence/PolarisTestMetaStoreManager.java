@@ -44,11 +44,11 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -2735,8 +2735,8 @@ public class PolarisTestMetaStoreManager {
             "T1");
 
     // batch load all entities. They should all be present and non-null
-    EntitiesResult entitiesResult =
-        polarisMetaStoreManager.loadEntities(
+    ResolvedEntitiesResult entitiesResult =
+        polarisMetaStoreManager.loadResolvedEntities(
             polarisCallContext,
             List.of(
                 new EntityNameLookupRecord(catalog),
@@ -2745,16 +2745,38 @@ public class PolarisTestMetaStoreManager {
                 new EntityNameLookupRecord(T1)));
     Assertions.assertThat(entitiesResult)
         .isNotNull()
-        .returns(BaseResult.ReturnStatus.SUCCESS, EntitiesResult::getReturnStatus)
+        .returns(BaseResult.ReturnStatus.SUCCESS, ResolvedEntitiesResult::getReturnStatus)
         .extracting(
-            EntitiesResult::getEntities, InstanceOfAssertFactories.list(PolarisBaseEntity.class))
+            ResolvedEntitiesResult::getResolvedEntities,
+            InstanceOfAssertFactories.list(ResolvedPolarisEntity.class))
         .hasSize(4)
         .allSatisfy(entity -> Assertions.assertThat(entity).isNotNull())
+        .extracting(r -> (PolarisBaseEntity) r.getEntity())
         .containsExactly(catalog, N1, N1_N2, T1);
+
+    ResolvedPolarisEntity catalogEntity = entitiesResult.getResolvedEntities().get(0);
+    Assertions.assertThat(catalogEntity)
+        .extracting(ResolvedPolarisEntity::getAllGrantRecords)
+        .isNotNull()
+        .asInstanceOf(InstanceOfAssertFactories.list(PolarisGrantRecord.class))
+        .hasSize(2)
+        .containsExactlyInAnyOrder(
+            new PolarisGrantRecord(
+                0L,
+                catalog.getId(),
+                catalogCreated.getCatalogAdminRole().getCatalogId(),
+                catalogCreated.getCatalogAdminRole().getId(),
+                PolarisPrivilege.CATALOG_MANAGE_ACCESS.getCode()),
+            new PolarisGrantRecord(
+                0L,
+                catalog.getId(),
+                catalogCreated.getCatalogAdminRole().getCatalogId(),
+                catalogCreated.getCatalogAdminRole().getId(),
+                PolarisPrivilege.CATALOG_MANAGE_METADATA.getCode()));
 
     // try entities which do not exist
     entitiesResult =
-        polarisMetaStoreManager.loadEntities(
+        polarisMetaStoreManager.loadResolvedEntities(
             polarisCallContext,
             List.of(
                 new EntityNameLookupRecord(
@@ -2773,15 +2795,16 @@ public class PolarisTestMetaStoreManager {
                     PolarisEntitySubType.NULL_SUBTYPE.getCode())));
     Assertions.assertThat(entitiesResult)
         .isNotNull()
-        .returns(BaseResult.ReturnStatus.SUCCESS, EntitiesResult::getReturnStatus)
+        .returns(BaseResult.ReturnStatus.SUCCESS, ResolvedEntitiesResult::getReturnStatus)
         .extracting(
-            EntitiesResult::getEntities, InstanceOfAssertFactories.list(PolarisBaseEntity.class))
+            ResolvedEntitiesResult::getResolvedEntities,
+            InstanceOfAssertFactories.list(ResolvedPolarisEntity.class))
         .hasSize(2)
         .allSatisfy(entity -> Assertions.assertThat(entity).isNull());
 
     // mix of existing entities and entities with wrong type
     entitiesResult =
-        polarisMetaStoreManager.loadEntities(
+        polarisMetaStoreManager.loadResolvedEntities(
             polarisCallContext,
             List.of(
                 new EntityNameLookupRecord(
@@ -2816,12 +2839,14 @@ public class PolarisTestMetaStoreManager {
                 new EntityNameLookupRecord(T1)));
     Assertions.assertThat(entitiesResult)
         .isNotNull()
-        .returns(BaseResult.ReturnStatus.SUCCESS, EntitiesResult::getReturnStatus)
+        .returns(BaseResult.ReturnStatus.SUCCESS, ResolvedEntitiesResult::getReturnStatus)
         .extracting(
-            EntitiesResult::getEntities, InstanceOfAssertFactories.list(PolarisBaseEntity.class))
+            ResolvedEntitiesResult::getResolvedEntities,
+            InstanceOfAssertFactories.list(ResolvedPolarisEntity.class))
         .hasSize(6)
         .filteredOn(e -> e != null)
         .hasSize(2)
+        .extracting(r -> (PolarisBaseEntity) r.getEntity())
         .containsExactly(catalog, T1);
   }
 

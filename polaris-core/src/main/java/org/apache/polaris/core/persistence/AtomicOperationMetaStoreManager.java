@@ -68,6 +68,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -1514,34 +1515,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         : new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
   }
 
-  @Nonnull
-  @Override
-  public EntitiesResult loadEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
-    BasePersistence ms = callCtx.getMetaStore();
-    List<PolarisBaseEntity> entities =
-        ms.lookupEntities(
-            callCtx,
-            entityLookupRecords.stream()
-                .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
-                .collect(Collectors.toList()));
-    // mimic the behavior of loadEntity above, return null if not found or type mismatch
-    List<PolarisBaseEntity> ret =
-        IntStream.range(0, entityLookupRecords.size())
-            .mapToObj(
-                i -> {
-                  if (entities.get(i) != null
-                      && !entities.get(i).getType().equals(entityLookupRecords.get(i).getType())) {
-                    return null;
-                  } else {
-                    return entities.get(i);
-                  }
-                })
-            .collect(Collectors.toList());
-    return new EntitiesResult(Page.fromItems(ret));
-  }
-
   @Override
   public @Nonnull EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
@@ -1787,6 +1760,50 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
           this.loadResolvedEntityByName(callCtx, entityCatalogId, parentId, entityType, entityName);
     }
     return result;
+  }
+
+  @Nonnull
+  @Override
+  public ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
+    BasePersistence ms = callCtx.getMetaStore();
+    List<PolarisBaseEntity> entities =
+        ms.lookupEntities(
+            callCtx,
+            entityLookupRecords.stream()
+                .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
+                .collect(Collectors.toList()));
+    // mimic the behavior of loadEntity above, return null if not found or type mismatch
+    List<ResolvedPolarisEntity> ret =
+        IntStream.range(0, entityLookupRecords.size())
+            .mapToObj(
+                i -> {
+                  if (entities.get(i) != null
+                      && !entities.get(i).getType().equals(entityLookupRecords.get(i).getType())) {
+                    return null;
+                  } else {
+                    return entities.get(i);
+                  }
+                })
+            .map(
+                e -> {
+                  if (e == null) {
+                    return null;
+                  } else {
+                    // load the grant records
+                    final List<PolarisGrantRecord> grantRecordsAsSecurable =
+                        ms.loadAllGrantRecordsOnSecurable(callCtx, e.getCatalogId(), e.getId());
+                    final List<PolarisGrantRecord> grantRecordsAsGrantee =
+                        e.getType().isGrantee()
+                            ? ms.loadAllGrantRecordsOnGrantee(callCtx, e.getCatalogId(), e.getId())
+                            : List.of();
+                    return new ResolvedPolarisEntity(
+                        PolarisEntity.of(e), grantRecordsAsGrantee, grantRecordsAsSecurable);
+                  }
+                })
+            .collect(Collectors.toList());
+    return new ResolvedEntitiesResult(ret);
   }
 
   /** {@inheritDoc} */
