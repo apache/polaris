@@ -48,6 +48,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -349,21 +350,6 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType);
 
   /**
-   * Load a batch of entities given their {@link EntityNameLookupRecord}. Will return an empty list
-   * if the input list is empty. Order in that returned list is the same as the input list. Some
-   * elements might be NULL if the entity has been dropped.
-   *
-   * @param callCtx call context
-   * @param entityLookupRecords the list of entity lookup records to load
-   * @return a non-null list of entities corresponding to the lookup keys. Some elements might be
-   *     NULL if the entity has been dropped.
-   */
-  @Nonnull
-  EntitiesResult loadEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords);
-
-  /**
    * Fetch a list of tasks to be completed. Tasks
    *
    * @param callCtx call context
@@ -432,6 +418,21 @@ public interface PolarisMetaStoreManager
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull String entityName);
+
+  /**
+   * Load a batch of resolved entities given their {@link EntityNameLookupRecord}. Will return an
+   * empty list if the input list is empty. Order in that returned list is the same as the input
+   * list. Some elements might be NULL if the entity has been dropped.
+   *
+   * @param callCtx call context
+   * @param entityLookupRecords the list of entity lookup records to load
+   * @return a non-null list of entities corresponding to the lookup keys. Some elements might be
+   *     NULL if the entity has been dropped.
+   */
+  @Nonnull
+  ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<EntityNameLookupRecord> entityLookupRecords);
 
   /**
    * Refresh a resolved entity from the backend store. Will return NULL if the entity does not

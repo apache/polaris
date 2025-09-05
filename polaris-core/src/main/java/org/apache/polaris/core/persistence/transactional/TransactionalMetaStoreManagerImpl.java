@@ -57,6 +57,7 @@ import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
@@ -72,6 +73,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -2012,46 +2014,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         () -> this.loadEntity(callCtx, ms, entityCatalogId, entityId, entityType.getCode()));
   }
 
-  /** Refer to {@link #loadEntity(PolarisCallContext, long, long, PolarisEntityType)} */
-  private @Nonnull EntitiesResult loadEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull TransactionalPersistence ms,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
-    List<PolarisBaseEntity> entities =
-        ms.lookupEntitiesInCurrentTxn(
-            callCtx,
-            entityLookupRecords.stream()
-                .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
-                .collect(Collectors.toList()));
-    // mimic the behavior of loadEntity above, return null if not found or type mismatch
-    List<PolarisBaseEntity> ret =
-        IntStream.range(0, entityLookupRecords.size())
-            .mapToObj(
-                i -> {
-                  if (entities.get(i) != null
-                      && !entities.get(i).getType().equals(entityLookupRecords.get(i).getType())) {
-                    return null;
-                  } else {
-                    return entities.get(i);
-                  }
-                })
-            .collect(Collectors.toList());
-    return new EntitiesResult(Page.fromItems(ret));
-  }
-
-  @Nonnull
-  @Override
-  public EntitiesResult loadEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
-    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
-    return ms.runInReadTransaction(
-        callCtx,
-        () ->
-            this.loadEntities(
-                callCtx, (TransactionalPersistence) callCtx.getMetaStore(), entityLookupRecords));
-  }
-
   /** Refer to {@link #loadTasks(PolarisCallContext, String, PageToken)} */
   private @Nonnull EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx,
@@ -2332,6 +2294,64 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                       callCtx, ms, entityCatalogId, parentId, entityType, entityName));
     }
     return result;
+  }
+
+  /** Refer to {@link #loadEntity(PolarisCallContext, long, long, PolarisEntityType)} */
+  private @Nonnull ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
+      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
+    List<PolarisBaseEntity> entities =
+        ms.lookupEntitiesInCurrentTxn(
+            callCtx,
+            entityLookupRecords.stream()
+                .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
+                .collect(Collectors.toList()));
+    // mimic the behavior of loadEntity above, return null if not found or type mismatch
+    List<ResolvedPolarisEntity> ret =
+        IntStream.range(0, entityLookupRecords.size())
+            .mapToObj(
+                i -> {
+                  if (entities.get(i) != null
+                      && !entities.get(i).getType().equals(entityLookupRecords.get(i).getType())) {
+                    return null;
+                  } else {
+                    return entities.get(i);
+                  }
+                })
+            .map(
+                e -> {
+                  if (e == null) {
+                    return null;
+                  } else {
+                    // load the grant records
+                    final List<PolarisGrantRecord> grantRecordsAsSecurable =
+                        ms.loadAllGrantRecordsOnSecurableInCurrentTxn(
+                            callCtx, e.getCatalogId(), e.getId());
+                    final List<PolarisGrantRecord> grantRecordsAsGrantee =
+                        e.getType().isGrantee()
+                            ? ms.loadAllGrantRecordsOnGranteeInCurrentTxn(
+                                callCtx, e.getCatalogId(), e.getId())
+                            : List.of();
+                    return new ResolvedPolarisEntity(
+                        PolarisEntity.of(e), grantRecordsAsGrantee, grantRecordsAsSecurable);
+                  }
+                })
+            .collect(Collectors.toList());
+    return new ResolvedEntitiesResult(ret);
+  }
+
+  @Nonnull
+  @Override
+  public ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    return ms.runInReadTransaction(
+        callCtx,
+        () ->
+            this.loadResolvedEntities(
+                callCtx, (TransactionalPersistence) callCtx.getMetaStore(), entityLookupRecords));
   }
 
   /** {@inheritDoc} */
