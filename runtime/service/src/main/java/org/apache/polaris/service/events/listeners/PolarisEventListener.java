@@ -32,6 +32,7 @@ import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 import org.apache.polaris.service.events.CatalogGenericTableServiceEvents;
+import org.apache.polaris.service.events.CatalogPolicyServiceEvents;
 
 /**
  * Represents an event listener that can respond to notable moments during Polaris's execution.
@@ -77,6 +78,57 @@ public abstract class PolarisEventListener {
 
   /** {@link AfterCatalogCreatedEvent} */
   public void onAfterCatalogCreated(AfterCatalogCreatedEvent event) {}
+
+  // Catalog Policy Service Events
+  /** {@link CatalogPolicyServiceEvents.BeforeCreatePolicyEvent} */
+  public void onBeforeCreatePolicy(CatalogPolicyServiceEvents.BeforeCreatePolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.AfterCreatePolicyEvent} */
+  public void onAfterCreatePolicy(CatalogPolicyServiceEvents.AfterCreatePolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.BeforeListPoliciesEvent} */
+  public void onBeforeListPolicies(CatalogPolicyServiceEvents.BeforeListPoliciesEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.AfterListPoliciesEvent} */
+  public void onAfterListPolicies(CatalogPolicyServiceEvents.AfterListPoliciesEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.BeforeLoadPolicyEvent} */
+  public void onBeforeLoadPolicy(CatalogPolicyServiceEvents.BeforeLoadPolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.AfterLoadPolicyEvent} */
+  public void onAfterLoadPolicy(CatalogPolicyServiceEvents.AfterLoadPolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.BeforeUpdatePolicyEvent} */
+  public void onBeforeUpdatePolicy(CatalogPolicyServiceEvents.BeforeUpdatePolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.AfterUpdatePolicyEvent} */
+  public void onAfterUpdatePolicy(CatalogPolicyServiceEvents.AfterUpdatePolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.BeforeDropPolicyEvent} */
+  public void onBeforeDropPolicy(CatalogPolicyServiceEvents.BeforeDropPolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.AfterDropPolicyEvent} */
+  public void onAfterDropPolicy(CatalogPolicyServiceEvents.AfterDropPolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.BeforeAttachPolicyEvent} */
+  public void onBeforeAttachPolicy(CatalogPolicyServiceEvents.BeforeAttachPolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.AfterAttachPolicyEvent} */
+  public void onAfterAttachPolicy(CatalogPolicyServiceEvents.AfterAttachPolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.BeforeDetachPolicyEvent} */
+  public void onBeforeDetachPolicy(CatalogPolicyServiceEvents.BeforeDetachPolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.AfterDetachPolicyEvent} */
+  public void onAfterDetachPolicy(CatalogPolicyServiceEvents.AfterDetachPolicyEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.BeforeGetApplicablePoliciesEvent} */
+  public void onBeforeGetApplicablePolicies(
+      CatalogPolicyServiceEvents.BeforeGetApplicablePoliciesEvent event) {}
+
+  /** {@link CatalogPolicyServiceEvents.AfterGetApplicablePoliciesEvent} */
+  public void onAfterGetApplicablePolicies(
+      CatalogPolicyServiceEvents.AfterGetApplicablePoliciesEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent} */
   public void onBeforeCreateGenericTable(
