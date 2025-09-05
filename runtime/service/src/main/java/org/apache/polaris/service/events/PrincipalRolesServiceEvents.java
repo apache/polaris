@@ -24,43 +24,43 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 
 public class PrincipalRolesServiceEvents {
-  public record AfterPrincipalRoleCreateEvent(PrincipalRole principalRole)
+  public record AfterCreatePrincipalRoleEvent(PrincipalRole principalRole)
       implements PolarisEvent {}
 
-  public record BeforePrincipalRoleCreateEvent(
+  public record BeforeCreatePrincipalRoleEvent(
       CreatePrincipalRoleRequest createPrincipalRoleRequest) implements PolarisEvent {}
 
-  public record AfterPrincipalRoleDeleteEvent(String principalRoleName) implements PolarisEvent {}
+  public record AfterDeletePrincipalRoleEvent(String principalRoleName) implements PolarisEvent {}
 
-  public record BeforePrincipalRoleDeleteEvent(String principalRoleName) implements PolarisEvent {}
+  public record BeforeDeletePrincipalRoleEvent(String principalRoleName) implements PolarisEvent {}
 
-  public record AfterPrincipalRoleGetEvent(PrincipalRole principalRole) implements PolarisEvent {}
+  public record AfterGetPrincipalRoleEvent(PrincipalRole principalRole) implements PolarisEvent {}
 
-  public record BeforePrincipalRoleGetEvent(String principalRoleName) implements PolarisEvent {}
+  public record BeforeGetPrincipalRoleEvent(String principalRoleName) implements PolarisEvent {}
 
-  public record AfterPrincipalRoleUpdateEvent(PrincipalRole updatedPrincipalRole)
+  public record AfterUpdatePrincipalRoleEvent(PrincipalRole updatedPrincipalRole)
       implements PolarisEvent {}
 
-  public record BeforePrincipalRoleUpdateEvent(
+  public record BeforeUpdatePrincipalRoleEvent(
       String principalRoleName, UpdatePrincipalRoleRequest updateRequest) implements PolarisEvent {}
 
-  public record AfterPrincipalRolesListEvent() implements PolarisEvent {}
+  public record AfterListPrincipalRolesEvent() implements PolarisEvent {}
 
-  public record BeforePrincipalRolesListEvent() implements PolarisEvent {}
+  public record BeforeListPrincipalRolesEvent() implements PolarisEvent {}
 
-  public record AfterCatalogRoleAssignToPrincipalRoleEvent(
+  public record AfterAssignCatalogRoleToPrincipalRoleEvent(
       String principalRoleName, String catalogName, String catalogRoleName)
       implements PolarisEvent {}
 
-  public record BeforeCatalogRoleAssignToPrincipalRoleEvent(
+  public record BeforeAssignCatalogRoleToPrincipalRoleEvent(
       String principalRoleName, String catalogName, String catalogRoleName)
       implements PolarisEvent {}
 
-  public record AfterCatalogRoleRevokeFromPrincipalRoleEvent(
+  public record AfterRevokeCatalogRoleFromPrincipalRoleEvent(
       String principalRoleName, String catalogName, String catalogRoleName)
       implements PolarisEvent {}
 
-  public record BeforeCatalogRoleRevokeFromPrincipalRoleEvent(
+  public record BeforeRevokeCatalogRoleFromPrincipalRoleEvent(
       String principalRoleName, String catalogName, String catalogRoleName)
       implements PolarisEvent {}
 

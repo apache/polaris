@@ -36,7 +36,7 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.events.CatalogsServiceEvents;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @Decorator
 @Priority(1000)
@@ -48,11 +48,11 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   @Override
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogCreated(
-        new CatalogsServiceEvents.BeforeCatalogCreatedEvent(request.getCatalog().getName()));
+    polarisEventListener.onBeforeCreateCatalog(
+        new CatalogsServiceEvents.BeforeCreateCatalogEvent(request.getCatalog().getName()));
     Response resp = delegate.createCatalog(request, realmContext, securityContext);
-    polarisEventListener.onAfterCatalogCreated(
-        new CatalogsServiceEvents.AfterCatalogCreatedEvent((Catalog) resp.getEntity()));
+    polarisEventListener.onAfterCreateCatalog(
+        new CatalogsServiceEvents.AfterCreateCatalogEvent((Catalog) resp.getEntity()));
     // If we are okay to start returning the catalog in the response, then we can simply return
     // `resp`.
     return Response.status(Response.Status.CREATED).build();
@@ -61,22 +61,22 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   @Override
   public Response deleteCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogDeleted(
-        new CatalogsServiceEvents.BeforeCatalogDeletedEvent(catalogName));
+    polarisEventListener.onBeforeDeleteCatalog(
+        new CatalogsServiceEvents.BeforeDeleteCatalogEvent(catalogName));
     Response resp = delegate.deleteCatalog(catalogName, realmContext, securityContext);
-    polarisEventListener.onAfterCatalogDeleted(
-        new CatalogsServiceEvents.AfterCatalogDeletedEvent(catalogName));
+    polarisEventListener.onAfterDeleteCatalog(
+        new CatalogsServiceEvents.AfterDeleteCatalogEvent(catalogName));
     return resp;
   }
 
   @Override
   public Response getCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogGet(
-        new CatalogsServiceEvents.BeforeCatalogGetEvent(catalogName));
+    polarisEventListener.onBeforeGetCatalog(
+        new CatalogsServiceEvents.BeforeGetCatalogEvent(catalogName));
     Response resp = delegate.getCatalog(catalogName, realmContext, securityContext);
-    polarisEventListener.onAfterCatalogGet(
-        new CatalogsServiceEvents.AfterCatalogGetEvent((Catalog) resp.getEntity()));
+    polarisEventListener.onAfterGetCatalog(
+        new CatalogsServiceEvents.AfterGetCatalogEvent((Catalog) resp.getEntity()));
     return resp;
   }
 
@@ -86,20 +86,20 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       UpdateCatalogRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogUpdated(
-        new CatalogsServiceEvents.BeforeCatalogUpdatedEvent(catalogName, updateRequest));
+    polarisEventListener.onBeforeUpdateCatalog(
+        new CatalogsServiceEvents.BeforeUpdateCatalogEvent(catalogName, updateRequest));
     Response resp =
         delegate.updateCatalog(catalogName, updateRequest, realmContext, securityContext);
-    polarisEventListener.onAfterCatalogUpdated(
-        new CatalogsServiceEvents.AfterCatalogUpdatedEvent((Catalog) resp.getEntity()));
+    polarisEventListener.onAfterUpdateCatalog(
+        new CatalogsServiceEvents.AfterUpdateCatalogEvent((Catalog) resp.getEntity()));
     return resp;
   }
 
   @Override
   public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogList(new CatalogsServiceEvents.BeforeCatalogListEvent());
+    polarisEventListener.onBeforeListCatalog(new CatalogsServiceEvents.BeforeListCatalogEvent());
     Response resp = delegate.listCatalogs(realmContext, securityContext);
-    polarisEventListener.onAfterCatalogList(new CatalogsServiceEvents.AfterCatalogListEvent());
+    polarisEventListener.onAfterListCatalog(new CatalogsServiceEvents.AfterListCatalogEvent());
     return resp;
   }
 
@@ -109,12 +109,12 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       CreateCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogRoleCreate(
-        new CatalogsServiceEvents.BeforeCatalogRoleCreateEvent(
+    polarisEventListener.onBeforeCreateCatalogRole(
+        new CatalogsServiceEvents.BeforeCreateCatalogRoleEvent(
             catalogName, request.getCatalogRole().getName()));
     Response resp = delegate.createCatalogRole(catalogName, request, realmContext, securityContext);
-    polarisEventListener.onAfterCatalogRoleCreate(
-        new CatalogsServiceEvents.AfterCatalogRoleCreateEvent(
+    polarisEventListener.onAfterCreateCatalogRole(
+        new CatalogsServiceEvents.AfterCreateCatalogRoleEvent(
             catalogName, (CatalogRole) resp.getEntity()));
     return resp;
   }
@@ -125,12 +125,12 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogRoleDelete(
-        new CatalogsServiceEvents.BeforeCatalogRoleDeleteEvent(catalogName, catalogRoleName));
+    polarisEventListener.onBeforeDeleteCatalogRole(
+        new CatalogsServiceEvents.BeforeDeleteCatalogRoleEvent(catalogName, catalogRoleName));
     Response resp =
         delegate.deleteCatalogRole(catalogName, catalogRoleName, realmContext, securityContext);
-    polarisEventListener.onAfterCatalogRoleDelete(
-        new CatalogsServiceEvents.AfterCatalogRoleDeleteEvent(catalogName, catalogRoleName));
+    polarisEventListener.onAfterDeleteCatalogRole(
+        new CatalogsServiceEvents.AfterDeleteCatalogRoleEvent(catalogName, catalogRoleName));
     return resp;
   }
 
@@ -140,12 +140,12 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogRoleGet(
-        new CatalogsServiceEvents.BeforeCatalogRoleGetEvent(catalogName, catalogRoleName));
+    polarisEventListener.onBeforeGetCatalogRole(
+        new CatalogsServiceEvents.BeforeGetCatalogRoleEvent(catalogName, catalogRoleName));
     Response resp =
         delegate.getCatalogRole(catalogName, catalogRoleName, realmContext, securityContext);
-    polarisEventListener.onAfterCatalogRoleGet(
-        new CatalogsServiceEvents.AfterCatalogRoleGetEvent(
+    polarisEventListener.onAfterGetCatalogRole(
+        new CatalogsServiceEvents.AfterGetCatalogRoleEvent(
             catalogName, (CatalogRole) resp.getEntity()));
     return resp;
   }
@@ -157,14 +157,14 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       UpdateCatalogRoleRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogRoleUpdate(
-        new CatalogsServiceEvents.BeforeCatalogRoleUpdateEvent(
+    polarisEventListener.onBeforeUpdateCatalogRole(
+        new CatalogsServiceEvents.BeforeUpdateCatalogRoleEvent(
             catalogName, catalogRoleName, updateRequest));
     Response resp =
         delegate.updateCatalogRole(
             catalogName, catalogRoleName, updateRequest, realmContext, securityContext);
-    polarisEventListener.onAfterCatalogRoleUpdate(
-        new CatalogsServiceEvents.AfterCatalogRoleUpdateEvent(
+    polarisEventListener.onAfterUpdateCatalogRole(
+        new CatalogsServiceEvents.AfterUpdateCatalogRoleEvent(
             catalogName, (CatalogRole) resp.getEntity()));
     return resp;
   }
@@ -172,9 +172,9 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   @Override
   public Response listCatalogRoles(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeCatalogList(new CatalogsServiceEvents.BeforeCatalogListEvent());
+    polarisEventListener.onAfterListCatalogRoles(new CatalogsServiceEvents.AfterListCatalogRolesEvent(catalogName));
     Response resp = delegate.listCatalogRoles(catalogName, realmContext, securityContext);
-    polarisEventListener.onAfterCatalogList(new CatalogsServiceEvents.AfterCatalogListEvent());
+    polarisEventListener.onBeforeListCatalogRoles(new CatalogsServiceEvents.BeforeListCatalogRolesEvent(catalogName));
     return resp;
   }
 

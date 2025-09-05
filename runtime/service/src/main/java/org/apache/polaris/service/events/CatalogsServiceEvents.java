@@ -29,55 +29,55 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 
 public class CatalogsServiceEvents {
-  public record BeforeCatalogCreatedEvent(String catalogName) implements PolarisEvent {}
+  public record BeforeCreateCatalogEvent(String catalogName) implements PolarisEvent {}
 
-  public record AfterCatalogCreatedEvent(Catalog catalog) implements PolarisEvent {}
+  public record AfterCreateCatalogEvent(Catalog catalog) implements PolarisEvent {}
 
-  public record BeforeCatalogDeletedEvent(String catalogName) implements PolarisEvent {}
+  public record BeforeDeleteCatalogEvent(String catalogName) implements PolarisEvent {}
 
-  public record AfterCatalogDeletedEvent(String catalogName) implements PolarisEvent {}
+  public record AfterDeleteCatalogEvent(String catalogName) implements PolarisEvent {}
 
-  public record BeforeCatalogGetEvent(String catalogName) implements PolarisEvent {}
+  public record BeforeGetCatalogEvent(String catalogName) implements PolarisEvent {}
 
-  public record AfterCatalogGetEvent(Catalog catalog) implements PolarisEvent {}
+  public record AfterGetCatalogEvent(Catalog catalog) implements PolarisEvent {}
 
-  public record BeforeCatalogUpdatedEvent(String catalogName, UpdateCatalogRequest updateRequest)
+  public record BeforeUpdateCatalogEvent(String catalogName, UpdateCatalogRequest updateRequest)
       implements PolarisEvent {}
 
-  public record AfterCatalogUpdatedEvent(Catalog catalog) implements PolarisEvent {}
+  public record AfterUpdateCatalogEvent(Catalog catalog) implements PolarisEvent {}
 
-  public record BeforeCatalogListEvent() implements PolarisEvent {}
+  public record BeforeListCatalogEvent() implements PolarisEvent {}
 
-  public record AfterCatalogListEvent() implements PolarisEvent {}
+  public record AfterListCatalogEvent() implements PolarisEvent {}
 
-  public record BeforeCatalogRoleCreateEvent(String catalogName, String catalogRoleName)
+  public record BeforeCreateCatalogRoleEvent(String catalogName, String catalogRoleName)
       implements PolarisEvent {}
 
-  public record AfterCatalogRoleCreateEvent(String catalogName, CatalogRole catalogRole)
+  public record AfterCreateCatalogRoleEvent(String catalogName, CatalogRole catalogRole)
       implements PolarisEvent {}
 
-  public record BeforeCatalogRoleDeleteEvent(String catalogName, String catalogRoleName)
+  public record BeforeDeleteCatalogRoleEvent(String catalogName, String catalogRoleName)
       implements PolarisEvent {}
 
-  public record AfterCatalogRoleDeleteEvent(String catalogName, String catalogRoleName)
+  public record AfterDeleteCatalogRoleEvent(String catalogName, String catalogRoleName)
       implements PolarisEvent {}
 
-  public record BeforeCatalogRoleGetEvent(String catalogName, String catalogRoleName)
+  public record BeforeGetCatalogRoleEvent(String catalogName, String catalogRoleName)
       implements PolarisEvent {}
 
-  public record AfterCatalogRoleGetEvent(String catalogName, CatalogRole catalogRole)
+  public record AfterGetCatalogRoleEvent(String catalogName, CatalogRole catalogRole)
       implements PolarisEvent {}
 
-  public record BeforeCatalogRoleUpdateEvent(
+  public record BeforeUpdateCatalogRoleEvent(
       String catalogName, String catalogRoleName, UpdateCatalogRoleRequest updateRequest)
       implements PolarisEvent {}
 
-  public record AfterCatalogRoleUpdateEvent(String catalogName, CatalogRole updatedCatalogRole)
+  public record AfterUpdateCatalogRoleEvent(String catalogName, CatalogRole updatedCatalogRole)
       implements PolarisEvent {}
 
-  public record BeforeCatalogRolesListEvent(String catalogName) implements PolarisEvent {}
+  public record BeforeListCatalogRolesEvent(String catalogName) implements PolarisEvent {}
 
-  public record AfterCatalogRolesListEvent(String catalogName) implements PolarisEvent {}
+  public record AfterListCatalogRolesEvent(String catalogName) implements PolarisEvent {}
 
   /**
    * Event fired before a grant is added to a catalog role in Polaris.

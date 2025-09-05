@@ -33,7 +33,7 @@ import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.PrincipalsServiceEvents;
 
 @Decorator
@@ -46,11 +46,11 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
   @Override
   public Response createPrincipal(
       CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforePrincipalCreate(
-        new PrincipalsServiceEvents.BeforePrincipalCreateEvent(request.getPrincipal().getName()));
+    polarisEventListener.onBeforeCreatePrincipal(
+        new PrincipalsServiceEvents.BeforeCreatePrincipalEvent(request.getPrincipal().getName()));
     Response resp = delegate.createPrincipal(request, realmContext, securityContext);
-    polarisEventListener.onAfterPrincipalCreate(
-        new PrincipalsServiceEvents.AfterPrincipalCreateEvent(
+    polarisEventListener.onAfterCreatePrincipal(
+        new PrincipalsServiceEvents.AfterCreatePrincipalEvent(
             ((PrincipalWithCredentials) resp.getEntity()).getPrincipal()));
     return resp;
   }
@@ -61,13 +61,13 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
       ResetPrincipalRequest resetPrincipalRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforeCredentialsReset(
-        new PrincipalsServiceEvents.BeforeCredentialsResetEvent(principalName));
+    polarisEventListener.onBeforeResetCredentials(
+        new PrincipalsServiceEvents.BeforeResetCredentialsEvent(principalName));
     Response resp =
         delegate.resetCredentials(
             principalName, resetPrincipalRequest, realmContext, securityContext);
-    polarisEventListener.onAfterCredentialsReset(
-        new PrincipalsServiceEvents.AfterCredentialsResetEvent(
+    polarisEventListener.onAfterResetCredentials(
+        new PrincipalsServiceEvents.AfterResetCredentialsEvent(
             ((PrincipalWithCredentials) resp.getEntity()).getPrincipal()));
     return resp;
   }
@@ -75,22 +75,22 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
   @Override
   public Response deletePrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforePrincipalDelete(
-        new PrincipalsServiceEvents.BeforePrincipalDeleteEvent(principalName));
+    polarisEventListener.onBeforeDeletePrincipal(
+        new PrincipalsServiceEvents.BeforeDeletePrincipalEvent(principalName));
     Response resp = delegate.deletePrincipal(principalName, realmContext, securityContext);
-    polarisEventListener.onAfterPrincipalDelete(
-        new PrincipalsServiceEvents.AfterPrincipalDeleteEvent(principalName));
+    polarisEventListener.onAfterDeletePrincipal(
+        new PrincipalsServiceEvents.AfterDeletePrincipalEvent(principalName));
     return resp;
   }
 
   @Override
   public Response getPrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforePrincipalGet(
-        new PrincipalsServiceEvents.BeforePrincipalGetEvent(principalName));
+    polarisEventListener.onBeforeGetPrincipal(
+        new PrincipalsServiceEvents.BeforeGetPrincipalEvent(principalName));
     Response resp = delegate.getPrincipal(principalName, realmContext, securityContext);
-    polarisEventListener.onAfterPrincipalGet(
-        new PrincipalsServiceEvents.AfterPrincipalGetEvent((Principal) resp.getEntity()));
+    polarisEventListener.onAfterGetPrincipal(
+        new PrincipalsServiceEvents.AfterGetPrincipalEvent((Principal) resp.getEntity()));
     return resp;
   }
 
@@ -100,35 +100,35 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
       UpdatePrincipalRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    polarisEventListener.onBeforePrincipalUpdate(
-        new PrincipalsServiceEvents.BeforePrincipalUpdateEvent(principalName, updateRequest));
+    polarisEventListener.onBeforeUpdatePrincipal(
+        new PrincipalsServiceEvents.BeforeUpdatePrincipalEvent(principalName, updateRequest));
     Response resp =
         delegate.updatePrincipal(principalName, updateRequest, realmContext, securityContext);
-    polarisEventListener.onAfterPrincipalUpdate(
-        new PrincipalsServiceEvents.AfterPrincipalUpdateEvent((Principal) resp.getEntity()));
+    polarisEventListener.onAfterUpdatePrincipal(
+        new PrincipalsServiceEvents.AfterUpdatePrincipalEvent((Principal) resp.getEntity()));
     return resp;
   }
 
   @Override
   public Response rotateCredentials(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeCredentialsRotate(
-        new PrincipalsServiceEvents.BeforeCredentialsRotateEvent(principalName));
+    polarisEventListener.onBeforeRotateCredentials(
+        new PrincipalsServiceEvents.BeforeRotateCredentialsEvent(principalName));
     Response resp = delegate.rotateCredentials(principalName, realmContext, securityContext);
     PrincipalWithCredentials principalWithCredentials = (PrincipalWithCredentials) resp.getEntity();
-    polarisEventListener.onAfterCredentialsRotate(
-        new PrincipalsServiceEvents.AfterCredentialsRotateEvent(
+    polarisEventListener.onAfterRotateCredentials(
+        new PrincipalsServiceEvents.AfterRotateCredentialsEvent(
             principalWithCredentials.getPrincipal()));
     return resp;
   }
 
   @Override
   public Response listPrincipals(RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforePrincipalsList(
-        new PrincipalsServiceEvents.BeforePrincipalsListEvent());
+    polarisEventListener.onBeforeListPrincipals(
+        new PrincipalsServiceEvents.BeforeListPrincipalsEvent());
     Response resp = delegate.listPrincipals(realmContext, securityContext);
-    polarisEventListener.onAfterPrincipalsList(
-        new PrincipalsServiceEvents.AfterPrincipalsListEvent());
+    polarisEventListener.onAfterListPrincipals(
+        new PrincipalsServiceEvents.AfterListPrincipalsEvent());
     return resp;
   }
 
@@ -170,12 +170,12 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
   @Override
   public Response listPrincipalRolesAssigned(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforePrincipalRolesAssignedList(
-        new PrincipalsServiceEvents.BeforePrincipalRolesAssignedListEvent(principalName));
+    polarisEventListener.onBeforeListAssignedPrincipalRoles(
+        new PrincipalsServiceEvents.BeforeListAssignedPrincipalRolesEvent(principalName));
     Response resp =
         delegate.listPrincipalRolesAssigned(principalName, realmContext, securityContext);
-    polarisEventListener.onAfterPrincipalRolesAssignedList(
-        new PrincipalsServiceEvents.AfterPrincipalRolesAssignedListEvent(principalName));
+    polarisEventListener.onAfterListAssignedPrincipalRoles(
+        new PrincipalsServiceEvents.AfterListAssignedPrincipalRolesEvent(principalName));
     return resp;
   }
 }

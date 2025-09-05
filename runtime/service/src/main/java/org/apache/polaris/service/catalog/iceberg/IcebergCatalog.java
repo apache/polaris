@@ -139,7 +139,7 @@ import org.apache.polaris.service.events.BeforeTableCommitedEvent;
 import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -1361,7 +1361,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onBeforeTableRefreshed(new BeforeTableRefreshedEvent(tableIdentifier));
+        polarisEventListener.onBeforeTableRefreshed(
+            new BeforeTableRefreshedEvent(catalogName, tableIdentifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1381,7 +1382,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
-        polarisEventListener.onAfterTableRefreshed(new AfterTableRefreshedEvent(tableIdentifier));
+        polarisEventListener.onAfterTableRefreshed(
+            new AfterTableRefreshedEvent(catalogName, tableIdentifier));
       }
     }
 
@@ -1390,7 +1392,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           new BeforeTableCommitedEvent(tableIdentifier, base, metadata));
 
       LOGGER.debug(
-          "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
+          "doCommit for table {} with metadataBefore {}, metadataAfter {}",
+          tableIdentifier,
+          base,
+          metadata);
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       if (null == base && !namespaceExists(tableIdentifier.namespace())) {
         throw new NoSuchNamespaceException(
@@ -1529,7 +1534,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
 
       polarisEventListener.onAfterTableCommited(
-          new AfterTableCommitedEvent(tableIdentifier, base, metadata));
+          new AfterTableCommitedEvent(catalogName, tableIdentifier, base, metadata));
     }
 
     @Override
@@ -1720,7 +1725,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onBeforeViewRefreshed(new BeforeViewRefreshedEvent(identifier));
+        polarisEventListener.onBeforeViewRefreshed(
+            new BeforeViewRefreshedEvent(catalogName, identifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1742,16 +1748,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
-        polarisEventListener.onAfterViewRefreshed(new AfterViewRefreshedEvent(identifier));
+        polarisEventListener.onAfterViewRefreshed(
+            new AfterViewRefreshedEvent(catalogName, identifier));
       }
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
       polarisEventListener.onBeforeViewCommited(
-          new BeforeViewCommitedEvent(identifier, base, metadata));
+          new BeforeViewCommitedEvent(catalogName, identifier, base, metadata));
 
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
-      LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
+      LOGGER.debug(
+          "doCommit for view {} with metadataBefore {}, metadataAfter {}",
+          identifier,
+          base,
+          metadata);
       if (null == base && !namespaceExists(identifier.namespace())) {
         throw new NoSuchNamespaceException(
             "Cannot create view '%s'. Namespace does not exist: '%s'",
@@ -1845,7 +1856,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
 
       polarisEventListener.onAfterViewCommited(
-          new AfterViewCommitedEvent(identifier, base, metadata));
+          new AfterViewCommitedEvent(catalogName, identifier, base, metadata));
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {

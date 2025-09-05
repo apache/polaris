@@ -111,7 +111,7 @@ public enum PolarisEntityType {
   @JsonCreator
   public static @Nullable PolarisEntityType fromCode(int entityTypeCode) {
     // ensure it is within bounds
-    if (entityTypeCode >= REVERSE_MAPPING_ARRAY.length) {
+    if (entityTypeCode < 0 || entityTypeCode >= REVERSE_MAPPING_ARRAY.length) {
       return null;
     }
 

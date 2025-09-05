@@ -102,6 +102,8 @@ import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
+import org.apache.polaris.service.events.AfterTableCreatedEvent;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -130,6 +132,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
+  private final PolarisEventListener polarisEventListener;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -152,7 +155,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
-      Instance<ExternalCatalogFactory> externalCatalogFactories) {
+      Instance<ExternalCatalogFactory> externalCatalogFactories,
+      PolarisEventListener polarisEventListener) {
     super(
         diagnostics,
         callContext,
@@ -166,6 +170,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
+    this.polarisEventListener = polarisEventListener;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -387,8 +392,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .withWriteOrder(request.writeOrder())
             .setProperties(reservedProperties.removeReservedProperties(request.properties()))
             .build();
-    return catalogHandlerUtils.createTable(
-        baseCatalog, namespace, requestWithoutReservedProperties);
+    LoadTableResponse resp =
+        catalogHandlerUtils.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
+    polarisEventListener.onAfterTableCreated(
+        new AfterTableCreatedEvent(catalogName, identifier, resp.tableMetadata()));
+    return resp;
   }
 
   /**
