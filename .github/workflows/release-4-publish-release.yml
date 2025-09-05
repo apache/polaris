@@ -74,18 +74,31 @@ jobs:
 
           # Validate that we're on a release branch
           if [[ ! "${current_branch}" =~ ^release/(.+)$ ]]; then
-            echo "❌ This workflow must be run from a release branch (release/x.y.z-incubating). Current branch: \`${current_branch}\`." >> $GITHUB_STEP_SUMMARY
+            echo "❌ This workflow must be run from a release branch (release/major.minor.x). Current branch: \`${current_branch}\`." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
           # Extract version from release branch name
           branch_version="${BASH_REMATCH[1]}"
 
-          # Validate version format and extract components
+          # Validate branch version format and extract components
           if ! validate_and_extract_branch_version "${branch_version}"; then
-            echo "❌ Invalid release branch version format: \`${branch_version}\`. Expected format: x.y.z-incubating." >> $GITHUB_STEP_SUMMARY
+            echo "❌ Invalid release branch version format: \`${branch_version}\`. Expected format: major.minor.x." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
+
+          # Find the next patch number for this major.minor version by looking at existing tags
+          find_next_patch_number "${major}" "${minor}"
+          next_patch=$((patch))
+          latest_patch=$((next_patch - 1))
+
+          if [[ ${next_patch} -eq 0 ]]; then
+            echo "❌ No existing tags found for version \`${major}.${minor}.0\`. Expected at least one RC to be created before publishing a release." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Build the version string for the latest existing patch
+          version_without_rc="${major}.${minor}.${latest_patch}-incubating"
 
           # Find the latest RC tag for this version
           find_next_rc_number "${version_without_rc}"

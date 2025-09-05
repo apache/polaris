@@ -76,21 +76,26 @@ jobs:
 
           echo "## Parameters" >> $GITHUB_STEP_SUMMARY
 
-          # Validate version format: x.y.z-incubating
-          if ! validate_and_extract_branch_version "${version}"; then
-            echo "❌ Invalid version format. Expected: x.y.z-incubating where N>0, got: ${version}" >> $GITHUB_STEP_SUMMARY
+          # Validate version format and extract components
+          if ! validate_and_extract_polaris_version "${version}"; then
+            echo "❌ Invalid version format. Expected: major.minor.patch-incubating, got: ${version}" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
+
           echo "Version: \`${version}\`" >> $GITHUB_STEP_SUMMARY
+
+          # Create branch name in major.minor.x format
+          branch_name="${major}.${minor}.x"
 
           # Export parameters for next step
           echo "version=${version}" >> $GITHUB_ENV
+          echo "branch_name=${branch_name}" >> $GITHUB_ENV
 
       - name: Create release branch
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          release_branch="release/${version}"
+          release_branch="release/${branch_name}"
 
           echo "## Summary" >> $GITHUB_STEP_SUMMARY
 

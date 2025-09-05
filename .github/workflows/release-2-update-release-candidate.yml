@@ -74,7 +74,7 @@ jobs:
 
           # Validate that we're on a release branch
           if [[ ! "${current_branch}" =~ ^release/(.+)$ ]]; then
-            echo "❌ Invalid branch: \`${current_branch}\`. This workflow must be run from a release branch (release/x.y.z-incubating)" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Invalid branch: \`${current_branch}\`. This workflow must be run from a release branch (release/major.minor.x)" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -83,9 +83,15 @@ jobs:
 
           # Validate branch version format and extract components
           if ! validate_and_extract_branch_version "${branch_version}"; then
-            echo "❌ Invalid release branch version format: \`${branch_version}\`, expected: x.y.z-incubating" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Invalid release branch version format: \`${branch_version}\`, expected: major.minor.x" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
+
+          # Find the next available patch number for this major.minor version
+          find_next_patch_number "${major}" "${minor}"
+
+          # Build the target version using branch major.minor and determined patch
+          version_without_rc="${major}.${minor}.${patch}-incubating"
 
           # Find the next available RC number by checking existing tags
           find_next_rc_number "${version_without_rc}"
