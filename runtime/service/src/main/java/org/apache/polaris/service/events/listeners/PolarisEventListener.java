@@ -31,8 +31,8 @@ import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
 import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
-import org.apache.polaris.service.events.CatalogPolicyServiceEvents;
 import org.apache.polaris.service.events.CatalogGenericTableServiceEvents;
+import org.apache.polaris.service.events.CatalogPolicyServiceEvents;
 
 /**
  * Represents an event listener that can respond to notable moments during Polaris's execution.
