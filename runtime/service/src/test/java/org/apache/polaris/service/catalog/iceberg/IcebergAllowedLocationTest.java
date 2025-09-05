@@ -147,6 +147,8 @@ public class IcebergAllowedLocationTest {
             "SUPPORTED_CATALOG_STORAGE_TYPES",
             List.of("FILE"),
             OPTIMIZED_SIBLING_CHECK.key(),
+            "true",
+            "ALLOW_NAMESPACE_CUSTOM_LOCATION",
             "true");
     TestServices services =
         TestServices.builder().config(strictServicesWithOptimizedOverlapCheck).build();
