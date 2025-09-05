@@ -337,8 +337,7 @@ jobs:
           exec_process helm repo index .
 
           exec_process cd "${dist_dev_dir}"
-          exec_process svn add index.yaml
-          exec_process svn add "helm-chart/${version_without_rc}"
+          exec_process svn add "helm-chart/index.yaml" "helm-chart/${version_without_rc}"
 
           exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Helm chart ${version_without_rc} RC${rc_number}"
 
