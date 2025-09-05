@@ -21,8 +21,8 @@ package org.apache.polaris.service.events.listeners;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
-import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.CatalogGenericTableServiceEvents;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 
 /**
  * Represents an event listener that can respond to notable moments during Polaris's execution.
