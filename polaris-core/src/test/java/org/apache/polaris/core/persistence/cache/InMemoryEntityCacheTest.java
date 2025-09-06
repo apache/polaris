@@ -480,13 +480,18 @@ public class InMemoryEntityCacheTest {
 
   @Test
   void testEntityWeigher() {
-    var smallEntity = new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "").build();
+    var smallEntity =
+        new IcebergTableLikeEntity.Builder(
+                PolarisEntitySubType.ICEBERG_TABLE, TableIdentifier.of("ns.t1"), "")
+            .build();
     var mediumEntity =
-        new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
+        new IcebergTableLikeEntity.Builder(
+                PolarisEntitySubType.ICEBERG_TABLE, TableIdentifier.of("ns.t1"), "")
             .setMetadataLocation("a".repeat(10000))
             .build();
     var largeEntity =
-        new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
+        new IcebergTableLikeEntity.Builder(
+                PolarisEntitySubType.ICEBERG_TABLE, TableIdentifier.of("ns.t1"), "")
             .setMetadataLocation("a".repeat(1000 * 1000))
             .build();
 

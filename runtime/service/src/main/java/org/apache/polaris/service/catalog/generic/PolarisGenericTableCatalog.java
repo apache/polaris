@@ -95,9 +95,7 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
             tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
-    GenericTableEntity entity =
-        GenericTableEntity.of(
-            resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
+    PolarisEntity entity = resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity();
     if (null == entity) {
       entity =
           new GenericTableEntity.Builder(tableIdentifier, format)
