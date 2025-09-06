@@ -39,7 +39,7 @@ public final class IcebergHelper {
             .put(CatalogProperties.URI, endpoints.catalogApiEndpoint().toString())
             .put(OAuth2Properties.TOKEN, authToken)
             .put("warehouse", catalog)
-            .put("header." + endpoints.realmHeaderName(), endpoints.realmId())
+            .putAll(endpoints.extraHeaders("header."))
             .putAll(extraProperties);
 
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());

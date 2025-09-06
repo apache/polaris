@@ -19,6 +19,7 @@
 package org.apache.polaris.service.it.env;
 
 import java.net.URI;
+import java.util.Map;
 
 /**
  * This is a holder for access information to a particular Polaris Server. Test cases may use only
@@ -35,6 +36,10 @@ public interface Server extends AutoCloseable {
 
   default String realmHeaderName() {
     return DEFAULT_REALM_HEADER;
+  }
+
+  default Map<String, String> headers() {
+    return Map.of(realmHeaderName(), realmId());
   }
 
   /**

@@ -39,8 +39,7 @@ public class PolarisRestApi extends RestApi {
   }
 
   protected Map<String, String> defaultHeaders() {
-    Map<String, String> headers = new HashMap<>();
-    headers.put(endpoints.realmHeaderName(), endpoints.realmId());
+    Map<String, String> headers = new HashMap<>(endpoints.extraHeaders());
     if (authToken != null) {
       headers.put("Authorization", "Bearer " + authToken);
     }

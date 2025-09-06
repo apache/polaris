@@ -75,7 +75,7 @@ public class ApplicationIntegrationTest extends PolarisApplicationIntegrationTes
     String path = endpoints.catalogApiEndpoint() + "/v1/oauth/tokens";
     try (RESTClient client =
         HTTPClient.builder(Map.of())
-            .withHeader(endpoints.realmHeaderName(), endpoints.realmId())
+            .withHeaders(endpoints.extraHeaders())
             .uri(path)
             .withAuthSession(AuthSession.EMPTY)
             .build()) {
@@ -106,7 +106,7 @@ public class ApplicationIntegrationTest extends PolarisApplicationIntegrationTes
     String path = endpoints.catalogApiEndpoint() + "/v1/oauth/tokens";
     try (RESTClient client =
         HTTPClient.builder(Map.of())
-            .withHeader(endpoints.realmHeaderName(), endpoints.realmId())
+            .withHeaders(endpoints.extraHeaders())
             .uri(path)
             .withAuthSession(AuthSession.EMPTY)
             .build()) {
@@ -147,7 +147,7 @@ public class ApplicationIntegrationTest extends PolarisApplicationIntegrationTes
     String path = endpoints.catalogApiEndpoint() + "/v1/oauth/tokens";
     try (RESTClient client =
         HTTPClient.builder(Map.of())
-            .withHeader(endpoints.realmHeaderName(), endpoints.realmId())
+            .withHeaders(endpoints.extraHeaders())
             .uri(path)
             .withAuthSession(AuthSession.EMPTY)
             .build()) {
