@@ -206,6 +206,15 @@ public abstract class PolarisEventListener {
   /** {@link IcebergRestCatalogEvents.AfterLoadCredentialsEvent} */
   public void onAfterLoadCredentials(IcebergRestCatalogEvents.AfterLoadCredentialsEvent event) {}
 
+  // Iceberg REST Catalog Transactions Events
+  /** {@link IcebergRestCatalogEvents.BeforeCommitTransactionEvent} */
+  public void onBeforeCommitTransaction(
+      IcebergRestCatalogEvents.BeforeCommitTransactionEvent event) {}
+
+  /** {@link IcebergRestCatalogEvents.AfterCommitTransactionEvent} */
+  public void onAfterCommitTransaction(
+      IcebergRestCatalogEvents.AfterCommitTransactionEvent event) {}
+
   // Iceberg REST Catalog Notification Events
   /** {@link IcebergRestCatalogEvents.BeforeSendNotificationEvent} */
   public void onBeforeSendNotification(

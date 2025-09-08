@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
@@ -183,6 +184,14 @@ public class IcebergRestCatalogEvents {
   public record BeforeLoadCredentialsEvent(String catalogName, Namespace namespace, String table) {}
 
   public record AfterLoadCredentialsEvent(String catalogName, Namespace namespace, String table) {}
+
+  // Transaction Events
+  public record BeforeCommitTransactionEvent(
+      String catalogName, CommitTransactionRequest commitTransactionRequest) {}
+
+  // TODO: Add all PolarisEntities that were modified with this transaction.
+  public record AfterCommitTransactionEvent(
+      String catalogName, CommitTransactionRequest commitTransactionRequest) {}
 
   // Notification Events
   public record BeforeSendNotificationEvent(
