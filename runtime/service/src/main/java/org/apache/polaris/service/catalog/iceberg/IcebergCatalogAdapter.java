@@ -67,6 +67,7 @@ import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -148,6 +149,7 @@ public class IcebergCatalogAdapter
   private final ResolverFactory resolverFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
+  private final PolarisCredentialManager credentialManager;
   private final PolarisAuthorizer polarisAuthorizer;
   private final CatalogPrefixParser prefixParser;
   private final ReservedProperties reservedProperties;
@@ -165,6 +167,7 @@ public class IcebergCatalogAdapter
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       UserSecretsManager userSecretsManager,
+      PolarisCredentialManager credentialManager,
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
@@ -180,6 +183,7 @@ public class IcebergCatalogAdapter
     this.resolverFactory = resolverFactory;
     this.metaStoreManager = metaStoreManager;
     this.userSecretsManager = userSecretsManager;
+    this.credentialManager = credentialManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
@@ -218,6 +222,7 @@ public class IcebergCatalogAdapter
         resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
+        credentialManager,
         securityContext,
         catalogFactory,
         catalogName,

@@ -16,21 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.connection.iceberg;
 
-import jakarta.annotation.Nonnull;
-import java.util.Map;
-import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.secrets.UserSecretsManager;
+package org.apache.polaris.service.credentials;
+
+import io.quarkus.runtime.annotations.StaticInitSafe;
+import io.smallrye.config.ConfigMapping;
 
 /**
- * Configuration wrappers which ultimately translate their contents into Iceberg properties and
- * which may hold other nested configuration wrapper objects implement this interface to allow
- * delegating type-specific configuration translation logic to subclasses instead of needing to
- * expose the internals of deeply nested configuration objects to a visitor class.
+ * Quarkus configuration mapping for Polaris Credential Manager.
+ *
+ * <p>Defines which {@link org.apache.polaris.core.credentials.PolarisCredentialManagerFactory}
+ * implementation should be used at runtime. This allows switching between different credential
+ * management strategies via configuration.
  */
-public interface IcebergCatalogPropertiesProvider {
-  @Nonnull
-  Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager);
+@StaticInitSafe
+@ConfigMapping(prefix = "polaris.credential-manager")
+public interface PolarisCredentialManagerConfiguration {
+
+  /**
+   * The type of the PolarisCredentialManagerFactory to use. This is the {@link
+   * org.apache.polaris.core.credentials.PolarisCredentialManagerFactory} identifier.
+   */
+  String type();
 }

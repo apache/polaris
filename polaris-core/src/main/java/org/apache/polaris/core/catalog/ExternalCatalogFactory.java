@@ -20,6 +20,7 @@ package org.apache.polaris.core.catalog;
 
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -35,11 +36,14 @@ public interface ExternalCatalogFactory {
    *
    * @param connectionConfig the connection configuration
    * @param userSecretsManager the user secrets manager for handling credentials
+   * @param polarisCredentialManager the Polaris credential manager for handling credentials
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
    */
   Catalog createCatalog(
-      ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager);
+      ConnectionConfigInfoDpo connectionConfig,
+      UserSecretsManager userSecretsManager,
+      PolarisCredentialManager polarisCredentialManager);
 
   /**
    * Creates a generic table catalog for the given connection configuration.
