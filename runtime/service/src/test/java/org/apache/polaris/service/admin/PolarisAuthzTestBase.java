@@ -66,6 +66,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -187,6 +189,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected ResolutionManifestFactory resolutionManifestFactory;
   @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected UserSecretsManagerFactory userSecretsManagerFactory;
+  @Inject protected ServiceIdentityRegistryFactory serviceIdentityRegistryFactory;
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected FileIOFactory fileIOFactory;
   @Inject protected PolarisEventListener polarisEventListener;
@@ -201,6 +204,7 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisAdminService adminService;
   protected PolarisMetaStoreManager metaStoreManager;
   protected UserSecretsManager userSecretsManager;
+  protected ServiceIdentityRegistry serviceIdentityRegistry;
   protected PolarisBaseEntity catalogEntity;
   protected PrincipalEntity principalEntity;
   protected CallContext callContext;
@@ -233,6 +237,8 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(containerRequestContext, ContainerRequestContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
+    serviceIdentityRegistry =
+        serviceIdentityRegistryFactory.getOrCreateServiceIdentityRegistry(realmContext);
 
     polarisContext =
         new PolarisCallContext(
@@ -254,6 +260,7 @@ public abstract class PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            serviceIdentityRegistry,
             securityContext(authenticatedRoot),
             polarisAuthorizer,
             reservedProperties);

@@ -52,6 +52,8 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -98,6 +100,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
+  @Inject ServiceIdentityRegistryFactory identityRegistryFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -111,6 +114,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
+  private ServiceIdentityRegistry serviceIdentityRegistry;
   private PolarisCallContext polarisContext;
   private RealmConfig realmConfig;
   private PolarisAdminService adminService;
@@ -148,6 +152,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
+    serviceIdentityRegistry =
+        identityRegistryFactory.getOrCreateServiceIdentityRegistry(realmContext);
     polarisContext =
         new PolarisCallContext(
             realmContext,
@@ -173,6 +179,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            serviceIdentityRegistry,
             securityContext,
             authorizer,
             reservedProperties);

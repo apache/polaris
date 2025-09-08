@@ -43,6 +43,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -339,11 +340,13 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     public Builder setConnectionConfigInfoDpoWithSecrets(
         ConnectionConfigInfo connectionConfigurationModel,
-        Map<String, SecretReference> secretReferences) {
+        Map<String, SecretReference> secretReferences,
+        ServiceIdentityInfoDpo serviceIdentityInfoDpo) {
       if (connectionConfigurationModel != null) {
         ConnectionConfigInfoDpo config =
             ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
-                connectionConfigurationModel, secretReferences);
+                    connectionConfigurationModel, secretReferences)
+                .withServiceIdentity(serviceIdentityInfoDpo);
         internalProperties.put(
             PolarisEntityConstants.getConnectionConfigInfoPropertyName(), config.serialize());
       }

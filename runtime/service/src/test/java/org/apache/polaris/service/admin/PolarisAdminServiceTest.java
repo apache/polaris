@@ -37,6 +37,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -59,6 +60,7 @@ public class PolarisAdminServiceTest {
   @Mock private ResolutionManifestFactory resolutionManifestFactory;
   @Mock private PolarisMetaStoreManager metaStoreManager;
   @Mock private UserSecretsManager userSecretsManager;
+  @Mock private ServiceIdentityRegistry identityRegistry;
   @Mock private SecurityContext securityContext;
   @Mock private PolarisAuthorizer authorizer;
   @Mock private ReservedProperties reservedProperties;
@@ -81,6 +83,7 @@ public class PolarisAdminServiceTest {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            identityRegistry,
             securityContext,
             authorizer,
             reservedProperties);
