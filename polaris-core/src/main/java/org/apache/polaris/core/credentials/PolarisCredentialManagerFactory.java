@@ -16,21 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.connection.iceberg;
 
-import jakarta.annotation.Nonnull;
-import java.util.Map;
-import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.secrets.UserSecretsManager;
+package org.apache.polaris.core.credentials;
+
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 
 /**
- * Configuration wrappers which ultimately translate their contents into Iceberg properties and
- * which may hold other nested configuration wrapper objects implement this interface to allow
- * delegating type-specific configuration translation logic to subclasses instead of needing to
- * expose the internals of deeply nested configuration objects to a visitor class.
+ * Factory for creating {@link PolarisCredentialManager} instances.
+ *
+ * <p>Each {@link PolarisCredentialManager} instance is associated with a {@link RealmContext} and
+ * a {@link ServiceIdentityProvider}, and is responsible for generating temporary credentials that
+ * Polaris uses to access external systems (e.g., remote catalogs) in that realm.
  */
-public interface IcebergCatalogPropertiesProvider {
-  @Nonnull
-  Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager);
+public interface PolarisCredentialManagerFactory {
+  PolarisCredentialManager getOrCreatePolarisCredentialManager(
+      RealmContext realmContext, ServiceIdentityProvider serviceIdentityProvider);
 }
