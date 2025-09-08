@@ -259,15 +259,12 @@ public class PolarisApplicationIntegrationTest {
     RESTSessionCatalog sessionCatalog = new RESTSessionCatalog();
     sessionCatalog.initialize(
         "polaris_catalog_test",
-        Map.of(
-            "uri",
-            endpoints.catalogApiEndpoint().toString(),
-            OAuth2Properties.TOKEN,
-            authToken,
-            "warehouse",
-            catalog,
-            "header." + endpoints.realmHeaderName(),
-            realm));
+        ImmutableMap.<String, String>builder()
+            .put("uri", endpoints.catalogApiEndpoint().toString())
+            .put(OAuth2Properties.TOKEN, authToken)
+            .put("warehouse", catalog)
+            .putAll(endpoints.extraHeaders("header."))
+            .build());
     return sessionCatalog;
   }
 
@@ -590,15 +587,12 @@ public class PolarisApplicationIntegrationTest {
               () ->
                   sessionCatalog.initialize(
                       "polaris_catalog_test",
-                      Map.of(
-                          "uri",
-                          endpoints.catalogApiEndpoint().toString(),
-                          OAuth2Properties.TOKEN,
-                          authToken,
-                          "warehouse",
-                          emptyEnvironmentVariable,
-                          "header." + endpoints.realmHeaderName(),
-                          realm)))
+                      ImmutableMap.<String, String>builder()
+                          .put("uri", endpoints.catalogApiEndpoint().toString())
+                          .put(OAuth2Properties.TOKEN, authToken)
+                          .put("warehouse", emptyEnvironmentVariable)
+                          .putAll(endpoints.extraHeaders("header."))
+                          .build()))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
     }
