@@ -55,72 +55,73 @@ public class IcebergRestCatalogEvents {
 
   public record AfterListNamespacesEvent(String catalogName, String parent) {}
 
-  public record BeforeLoadNamespaceMetadataEvent(String catalogName, String namespace) {}
+  public record BeforeLoadNamespaceMetadataEvent(String catalogName, Namespace namespace) {}
 
   public record AfterLoadNamespaceMetadataEvent(
       String catalogName, Namespace namespace, Map<String, String> namespaceProperties) {}
 
-  public record BeforeCheckExistsNamespaceEvent(String catalogName, String namespace) {}
+  public record BeforeCheckExistsNamespaceEvent(String catalogName, Namespace namespace) {}
 
-  public record AfterCheckExistsNamespaceEvent(String catalogName, String namespace) {}
+  public record AfterCheckExistsNamespaceEvent(String catalogName, Namespace namespace) {}
 
-  public record BeforeDropNamespaceEvent(String catalogName, String namespace) {}
+  public record BeforeDropNamespaceEvent(String catalogName, Namespace namespace) {}
 
   public record AfterDropNamespaceEvent(String catalogName, String namespace) {}
 
   public record BeforeUpdateNamespacePropertiesEvent(
       String catalogName,
-      String namespace,
+      Namespace namespace,
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest) {}
 
   public record AfterUpdateNamespacePropertiesEvent(
       String catalogName,
-      String namespace,
+      Namespace namespace,
       UpdateNamespacePropertiesResponse updateNamespacePropertiesResponse) {}
 
   // Table Events
   public record BeforeCreateTableEvent(
       String catalogName,
-      String namespace,
+      Namespace namespace,
       CreateTableRequest createTableRequest,
       String accessDelegationMode) {}
 
   public record AfterCreateTableEvent(
       String catalogName,
-      String namespace,
+      Namespace namespace,
       String tableName,
       LoadTableResponse loadTableResponse) {}
 
-  public record BeforeListTablesEvent(String catalogName, String namespace) {}
+  public record BeforeListTablesEvent(String catalogName, Namespace namespace) {}
 
-  public record AfterListTablesEvent(String catalogName, String namespace) {}
+  public record AfterListTablesEvent(String catalogName, Namespace namespace) {}
 
   public record BeforeLoadTableEvent(
       String catalogName,
-      String namespace,
+      Namespace namespace,
       String table,
       String accessDelegationMode,
       String ifNoneMatchString,
       String snapshots) {}
 
   public record AfterLoadTableEvent(
-      String catalogName, String namespace, LoadTableResponse loadTableResponse) {}
+      String catalogName, Namespace namespace, LoadTableResponse loadTableResponse) {}
 
-  public record BeforeCheckExistsTableEvent(String catalogName, String namespace, String table) {}
+  public record BeforeCheckExistsTableEvent(
+      String catalogName, Namespace namespace, String table) {}
 
-  public record AfterCheckExistsTableEvent(String catalogName, String namespace, String table) {}
+  public record AfterCheckExistsTableEvent(String catalogName, Namespace namespace, String table) {}
 
   public record BeforeDropTableEvent(
-      String catalogName, String namespace, String table, Boolean purgeRequested) {}
+      String catalogName, Namespace namespace, String table, Boolean purgeRequested) {}
 
   public record AfterDropTableEvent(
-      String catalogName, String namespace, String table, Boolean purgeRequested) {}
+      String catalogName, Namespace namespace, String table, Boolean purgeRequested) {}
 
   public record BeforeRegisterTableEvent(
-      String catalogName, String namespace, RegisterTableRequest registerTableRequest) {}
+      String catalogName, Namespace namespace, RegisterTableRequest registerTableRequest) {}
 
   public record AfterRegisterTableEvent(
-      String catalogName, String namespace, LoadTableResponse loadTableResponse) {}
+      String catalogName, Namespace namespace, LoadTableResponse loadTableResponse) {}
 
   public record BeforeRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest) {}
 
@@ -128,39 +129,39 @@ public class IcebergRestCatalogEvents {
 
   public record BeforeUpdateTableEvent(
       String catalogName,
-      String namespace,
+      Namespace namespace,
       String sourceTable,
       CommitTableRequest commitTableRequest) {}
 
   public record AfterUpdateTableEvent(
       String catalogName,
-      String namespace,
+      Namespace namespace,
       String sourceTable,
       LoadTableResponse loadTableResponse) {}
 
   // View Events
   public record BeforeCreateViewEvent(
-      String catalogName, String namespace, CreateViewRequest createViewRequest) {}
+      String catalogName, Namespace namespace, CreateViewRequest createViewRequest) {}
 
   public record AfterCreateViewEvent(
-      String catalogName, String namespace, LoadViewResponse loadViewResponse) {}
+      String catalogName, Namespace namespace, LoadViewResponse loadViewResponse) {}
 
-  public record BeforeListViewsEvent(String catalogName, String namespace) {}
+  public record BeforeListViewsEvent(String catalogName, Namespace namespace) {}
 
-  public record AfterListViewsEvent(String catalogName, String namespace) {}
+  public record AfterListViewsEvent(String catalogName, Namespace namespace) {}
 
-  public record BeforeLoadViewEvent(String catalogName, String namespace, String view) {}
+  public record BeforeLoadViewEvent(String catalogName, Namespace namespace, String view) {}
 
   public record AfterLoadViewEvent(
-      String catalogName, String namespace, LoadViewResponse loadViewResponse) {}
+      String catalogName, Namespace namespace, LoadViewResponse loadViewResponse) {}
 
-  public record BeforeCheckExistsViewEvent(String catalogName, String namespace, String view) {}
+  public record BeforeCheckExistsViewEvent(String catalogName, Namespace namespace, String view) {}
 
-  public record AfterCheckExistsViewEvent(String catalogName, String namespace, String view) {}
+  public record AfterCheckExistsViewEvent(String catalogName, Namespace namespace, String view) {}
 
-  public record BeforeDropViewEvent(String catalogName, String namespace, String view) {}
+  public record BeforeDropViewEvent(String catalogName, Namespace namespace, String view) {}
 
-  public record AfterDropViewEvent(String catalogName, String namespace, String view) {}
+  public record AfterDropViewEvent(String catalogName, Namespace namespace, String view) {}
 
   public record BeforeRenameViewEvent(String catalogName, RenameTableRequest renameTableRequest) {}
 
@@ -168,27 +169,30 @@ public class IcebergRestCatalogEvents {
 
   public record BeforeReplaceViewEvent(
       String catalogName,
-      String namespace,
+      Namespace namespace,
       String sourceView,
       CommitViewRequest commitViewRequest) {}
 
   public record AfterReplaceViewEvent(
-      String catalogName, String namespace, String sourceView, LoadViewResponse loadViewResponse) {}
+      String catalogName,
+      Namespace namespace,
+      String sourceView,
+      LoadViewResponse loadViewResponse) {}
 
   // Credential Events
-  public record BeforeLoadCredentialsEvent(String catalogName, String namespace, String table) {}
+  public record BeforeLoadCredentialsEvent(String catalogName, Namespace namespace, String table) {}
 
-  public record AfterLoadCredentialsEvent(String catalogName, String namespace, String table) {}
+  public record AfterLoadCredentialsEvent(String catalogName, Namespace namespace, String table) {}
 
   // Notification Events
   public record BeforeSendNotificationEvent(
       String catalogName,
-      String namespace,
+      Namespace namespace,
       String table,
       NotificationRequest notificationRequest) {}
 
   // TODO: Add result once SendNotification API changes are confirmed to return the result.
-  public record AfterSendNotificationEvent(String catalogName, String namespace, String table) {}
+  public record AfterSendNotificationEvent(String catalogName, Namespace namespace, String table) {}
 
   // Configuration Events
   public record BeforeGetConfigEvent(String warehouse) {}

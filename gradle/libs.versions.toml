@@ -42,7 +42,7 @@ swagger = "1.6.16"
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.4" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.33.0" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.33.4" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.38" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
@@ -75,17 +75,17 @@ jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0
 jandex = { module = "io.smallrye.jandex:jandex", version ="3.4.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.13.4" }
-localstack = { module = "org.testcontainers:localstack", version = "1.19.7" }
+localstack = { module = "org.testcontainers:localstack", version = "1.21.3" }
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.6" }
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
-micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.3" }
+micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.4" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.19.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.19.0" }
-opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.53.0" }
+opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.54.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.37.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
