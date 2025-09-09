@@ -19,7 +19,6 @@
 package org.apache.polaris.async.vertx;
 
 import org.apache.polaris.async.AsyncExecTestBase;
-import org.junit.jupiter.api.Disabled;
 
 public class TestVertxAsyncExec extends AsyncExecTestBase {
   @Override
