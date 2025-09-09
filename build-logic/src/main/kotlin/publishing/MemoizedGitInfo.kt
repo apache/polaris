@@ -19,7 +19,6 @@
 
 package publishing
 
-import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.java.archives.Attributes
 import org.gradle.kotlin.dsl.extra
@@ -54,21 +53,18 @@ internal class MemoizedGitInfo {
         @Suppress("UNCHECKED_CAST")
         rootProject.extra["gitReleaseInfo"] as Map<String, String>
       } else {
-        val isRelease = rootProject.hasProperty("release")
+        val isRelease =
+          rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")
         val gitHead = execProc(rootProject, "git", "rev-parse", "HEAD")
         val gitDescribe =
-          if (isRelease) {
+          if (isRelease)
             try {
               execProc(rootProject, "git", "describe", "--tags")
-            } catch (e: Exception) {
-              throw GradleException("'git describe --tags' failed - no Git tag?", e)
+            } catch (_: Exception) {
+              execProc(rootProject, "git", "describe", "--always", "--dirty")
             }
-          } else {
-            execProc(rootProject, "git", "describe", "--always", "--dirty")
-          }
-        val timestamp = execProc(rootProject, "date", "+%Y-%m-%d-%H:%M:%S%:z")
-        val system = execProc(rootProject, "uname", "-a")
-        val javaVersion = System.getProperty("java.version")
+          else ""
+        val javaSpecificationVersion = System.getProperty("java.specification.version")
 
         val version = rootProject.version.toString()
         val info =
@@ -78,9 +74,7 @@ internal class MemoizedGitInfo {
             "Apache-Polaris-Is-Release" to isRelease.toString(),
             "Apache-Polaris-Build-Git-Head" to gitHead,
             "Apache-Polaris-Build-Git-Describe" to gitDescribe,
-            "Apache-Polaris-Build-Timestamp" to timestamp,
-            "Apache-Polaris-Build-System" to system,
-            "Apache-Polaris-Build-Java-Version" to javaVersion,
+            "Apache-Polaris-Build-Java-Specification-Version" to javaSpecificationVersion,
           )
         rootProject.extra["gitReleaseInfo"] = info
         return info
