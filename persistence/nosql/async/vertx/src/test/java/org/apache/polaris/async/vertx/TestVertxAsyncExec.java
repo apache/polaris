@@ -27,11 +27,4 @@ public class TestVertxAsyncExec extends AsyncExecTestBase {
     var t = Thread.currentThread();
     soft.assertThat(t.getName()).startsWith(VertxAsyncExec.EXECUTOR_THREAD_NAME_PREFIX);
   }
-
-  @Override
-  @Disabled(
-      "Flaky because of https://github.com/netty/netty/issues/15492 - eventually remove this @Disabled")
-  public void simpleTests() throws Exception {
-    super.simpleTests();
-  }
 }
