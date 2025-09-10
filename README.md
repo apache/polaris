@@ -22,7 +22,7 @@
 Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's 
 [REST API](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml),
 enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®,
-Apache Spark™, StarRocks, and Trino. 
+Apache Spark™, Dremio® OSS, StarRocks, and Trino. 
 
 Documentation is available at https://polaris.apache.org. The REST OpenAPI specifications are available here:
 [Polaris management API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/polaris-management-service.yml)
