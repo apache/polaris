@@ -213,6 +213,11 @@ menu:
       params:
         rel: "external"
         external: true
+    - name: "Code of Conduct"
+      parent: "asf"
+      url: "/community/code-of-conduct"
+      weigth: 48
+      
 
 module:
   hugoVersion:
