@@ -177,6 +177,12 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         Optional.of(REFRESH_ENDPOINT));
   }
 
+  private JsonNode readResource(ObjectMapper mapper, String name) throws IOException {
+    // readTree from a test resource is not affected by the issues that prompted its deprecation
+    //noinspection deprecation
+    return mapper.readTree(GcpCredentialsStorageIntegrationTest.class.getResource(name));
+  }
+
   @Test
   public void testGenerateAccessBoundary() throws IOException {
     CredentialAccessBoundary credentialAccessBoundary =
@@ -185,10 +191,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     assertThat(credentialAccessBoundary).isNotNull();
     ObjectMapper mapper = new ObjectMapper();
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
-    JsonNode refRules =
-        mapper.readTree(
-            GcpCredentialsStorageIntegrationTest.class.getResource(
-                "gcp-testGenerateAccessBoundary.json"));
+    JsonNode refRules = readResource(mapper, "gcp-testGenerateAccessBoundary.json");
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
@@ -211,9 +214,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules =
-        mapper.readTree(
-            GcpCredentialsStorageIntegrationTest.class.getResource(
-                "gcp-testGenerateAccessBoundaryWithMultipleBuckets.json"));
+        readResource(mapper, "gcp-testGenerateAccessBoundaryWithMultipleBuckets.json");
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
@@ -232,10 +233,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     assertThat(credentialAccessBoundary).isNotNull();
     ObjectMapper mapper = new ObjectMapper();
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
-    JsonNode refRules =
-        mapper.readTree(
-            GcpCredentialsStorageIntegrationTest.class.getResource(
-                "gcp-testGenerateAccessBoundaryWithoutList.json"));
+    JsonNode refRules = readResource(mapper, "gcp-testGenerateAccessBoundaryWithoutList.json");
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
@@ -254,10 +252,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     assertThat(credentialAccessBoundary).isNotNull();
     ObjectMapper mapper = new ObjectMapper();
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
-    JsonNode refRules =
-        mapper.readTree(
-            GcpCredentialsStorageIntegrationTest.class.getResource(
-                "gcp-testGenerateAccessBoundaryWithoutWrites.json"));
+    JsonNode refRules = readResource(mapper, "gcp-testGenerateAccessBoundaryWithoutWrites.json");
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
