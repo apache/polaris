@@ -26,8 +26,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
@@ -98,7 +102,10 @@ public interface RootCredentialsSet {
   }
 
   /**
-   * Parse credentials set from any URL containing a valid YAML or JSON credentials file.
+   * Parse credentials set from any file or JRE resource containing a valid YAML or JSON credentials
+   * file.
+   *
+   * <p>Note: HTTP and other remote URLs are not allowed.
    *
    * <p>The expected YAML format is:
    *
@@ -131,17 +138,28 @@ public interface RootCredentialsSet {
    * </pre>
    */
   static RootCredentialsSet fromUrl(URL url) {
+    Preconditions.checkNotNull(url);
+    Preconditions.checkArgument(
+        Strings.isNullOrEmpty(url.getHost()),
+        "Remote URLs are not allowed for RootCredentialsSet: %s",
+        url);
+    try (InputStream is = url.openStream()) {
+      return fromInputStream(is);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to read credentials file: " + url, e);
+    }
+  }
+
+  private static RootCredentialsSet fromInputStream(InputStream in) throws IOException {
     YAMLFactory factory = new YAMLFactory();
     ObjectMapper mapper = new ObjectMapper(factory).configure(FAIL_ON_UNKNOWN_PROPERTIES, false);
-    try (var parser = factory.createParser(url)) {
+    try (var parser = factory.createParser(in)) {
       var values = mapper.readValues(parser, RootCredentialsSet.class);
       var builder = ImmutableRootCredentialsSet.builder();
       while (values.hasNext()) {
         builder.putAllCredentials(values.next().credentials());
       }
       return builder.build();
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to read credentials file: " + url, e);
     }
   }
 
