@@ -1231,7 +1231,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
             diagnostics,
-            callContext,
+            callContext.getRealmContext(),
             resolverFactory,
             securityContext,
             parentPath.getFirst().getName());

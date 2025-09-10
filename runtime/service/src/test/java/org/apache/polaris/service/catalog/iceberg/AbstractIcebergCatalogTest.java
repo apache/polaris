@@ -287,17 +287,18 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =
-        (callContext, securityContext, referenceCatalogName) ->
+        (securityContext, referenceCatalogName) ->
             new Resolver(
                 diagServices,
-                callContext.getPolarisCallContext(),
+                polarisContext,
                 metaStoreManager,
                 securityContext,
                 entityCache,
                 referenceCatalogName);
     QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
 
-    resolutionManifestFactory = new ResolutionManifestFactoryImpl(diagServices, resolverFactory);
+    resolutionManifestFactory =
+        new ResolutionManifestFactoryImpl(diagServices, realmContext, resolverFactory);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -440,7 +441,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
       String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, resolutionManifestFactory, securityContext, catalogName);
+            resolutionManifestFactory, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
     return new IcebergCatalog(
         diagServices,
