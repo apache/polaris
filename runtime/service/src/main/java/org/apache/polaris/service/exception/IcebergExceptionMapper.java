@@ -263,8 +263,8 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   /**
-   * This function is only present for the {@code ExceptionMapperTest} and must only be used during
-   * once any execution of {@link #toResponse(RuntimeException)}.
+   * This function is only present for the {@code ExceptionMapperTest} and must only be used once
+   * during any execution of {@link #toResponse(RuntimeException)}.
    */
   @VisibleForTesting
   Logger getLoggerForExceptionLogging() {
