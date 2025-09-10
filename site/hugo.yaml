@@ -148,6 +148,10 @@ menu:
       parent: "community"
       url: "/community/contributing-guidelines"
       weight: 60
+    - name: "Security Report"
+      parent: "community"
+      url: "/community/security-report"
+      weight: 70
     - name: "Release Guide"
       parent: "community"
       url: "/community/release-guide"
