@@ -92,6 +92,7 @@ public record TestServices(
     RealmContext realmContext,
     RealmConfig realmConfig,
     SecurityContext securityContext,
+    PolarisMetaStoreManager metaStoreManager,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
     PolarisEventListener polarisEventListener) {
@@ -305,6 +306,7 @@ public record TestServices(
           realmContext,
           realmConfig,
           securityContext,
+          metaStoreManager,
           fileIOFactory,
           taskExecutor,
           polarisEventListener);
