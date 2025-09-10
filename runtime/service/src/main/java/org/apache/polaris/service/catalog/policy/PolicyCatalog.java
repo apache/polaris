@@ -394,6 +394,8 @@ public class PolicyCatalog {
       return List.of();
     }
 
+    PolarisEntity targetEntity = path.getLast();
+
     Map<String, PolicyEntity> inheritablePolicies = new LinkedHashMap<>();
     Set<Long> directAttachedInheritablePolicies = new HashSet<>();
     List<PolicyEntity> nonInheritablePolicies = new ArrayList<>();
@@ -405,7 +407,8 @@ public class PolicyCatalog {
 
       for (var policy : currentPolicies) {
         // For non-last entities, we only carry forward inheritable policies
-        if (policy.getPolicyType().isInheritable()) {
+        if (policy.getPolicyType().isInheritable()
+            && PolicyValidators.canAttach(policy, targetEntity)) {
           // Put in map; overwrites by policyType if encountered again
           inheritablePolicies.put(policy.getPolicyType().getName(), policy);
         }
@@ -413,10 +416,11 @@ public class PolicyCatalog {
     }
 
     // Now handle the last entity's policies
-    List<PolicyEntity> lastPolicies = getPolicies(path.getLast(), policyType);
+    List<PolicyEntity> lastPolicies = getPolicies(targetEntity, policyType);
 
     for (var policy : lastPolicies) {
-      if (policy.getPolicyType().isInheritable()) {
+      if (policy.getPolicyType().isInheritable()
+          && PolicyValidators.canAttach(policy, targetEntity)) {
         // Overwrite anything by the same policyType in the inherited map
         inheritablePolicies.put(policy.getPolicyType().getName(), policy);
         directAttachedInheritablePolicies.add(policy.getId());
@@ -468,7 +472,13 @@ public class PolicyCatalog {
           resolvedEntityView.getResolvedPath(
               tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
       if (resolvedTableEntity == null) {
-        throw new NoSuchTableException("Iceberg Table does not exist: %s", tableIdentifier);
+        // TODO: need refactor to allow multiple subType values
+        resolvedTableEntity =
+            resolvedEntityView.getResolvedPath(
+                tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE);
+        if (resolvedTableEntity == null) {
+          throw new NoSuchTableException("Table does not exist: %s", tableIdentifier);
+        }
       }
       return resolvedTableEntity.getRawFullPath();
     }
@@ -508,12 +518,19 @@ public class PolicyCatalog {
       }
       case TABLE_LIKE -> {
         var tableIdentifier = TableIdentifier.of(target.getPath().toArray(new String[0]));
-        // only Iceberg tables are supported
+        // TODO: need refactor to allow multiple subTyps
         var resolvedTableEntity =
             resolvedEntityView.getResolvedPath(
                 tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
         if (resolvedTableEntity == null) {
-          throw new NoSuchTableException("Iceberg Table does not exist: %s", tableIdentifier);
+          resolvedTableEntity =
+              resolvedEntityView.getResolvedPath(
+                  tableIdentifier,
+                  PolarisEntityType.TABLE_LIKE,
+                  PolarisEntitySubType.GENERIC_TABLE);
+          if (resolvedTableEntity == null) {
+            throw new NoSuchTableException("Iceberg Table does not exist: %s", tableIdentifier);
+          }
         }
         yield resolvedTableEntity;
       }

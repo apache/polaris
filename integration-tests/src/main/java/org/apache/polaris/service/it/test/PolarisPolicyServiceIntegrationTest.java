@@ -64,6 +64,7 @@ import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
 import org.apache.polaris.service.it.env.CatalogConfig;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.GenericTableApi;
 import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
@@ -108,7 +109,9 @@ public class PolarisPolicyServiceIntegrationTest {
   private static final PolicyIdentifier NS1_P1 = new PolicyIdentifier(NS1, "P1");
   private static final PolicyIdentifier NS1_P2 = new PolicyIdentifier(NS1, "P2");
   private static final PolicyIdentifier NS1_P3 = new PolicyIdentifier(NS1, "P3");
+  private static final PolicyIdentifier NS1_P4 = new PolicyIdentifier(NS1, "P4");
   private static final TableIdentifier NS2_T1 = TableIdentifier.of(NS2, "T1");
+  private static final TableIdentifier NS2_T2 = TableIdentifier.of(NS2, "T2");
 
   private static final String NS1_NAME = RESTUtil.encodeNamespace(NS1);
   private static final String INVALID_NAMESPACE = "INVALID_NAMESPACE";
@@ -124,6 +127,7 @@ public class PolarisPolicyServiceIntegrationTest {
   private static PolarisClient client;
   private static ManagementApi managementApi;
   private static PolicyApi policyApi;
+  private GenericTableApi genericTableApi;
 
   private RESTCatalog restCatalog;
   private String currentCatalogName;
@@ -221,6 +225,7 @@ public class PolarisPolicyServiceIntegrationTest {
         principalRoleName, currentCatalogName, catalogRole);
 
     policyApi = client.policyApi(principalToken);
+    genericTableApi = client.genericTableApi(principalToken);
   }
 
   @AfterEach
@@ -668,11 +673,19 @@ public class PolarisPolicyServiceIntegrationTest {
             PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL,
             EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
             "test policy");
+    Policy p4 =
+        policyApi.createPolicy(
+            currentCatalogName,
+            NS1_P4,
+            PredefinedPolicyTypes.TABLE_CONVERSION,
+            "{\"enable\": false}",
+            "test policy");
 
     restCatalog
         .buildTable(
             NS2_T1, new Schema(Types.NestedField.optional(1, "string", Types.StringType.get())))
         .create();
+    genericTableApi.createGenericTable(currentCatalogName, NS2_T2, "delta", Map.of());
 
     PolicyAttachmentTarget catalogTarget =
         PolicyAttachmentTarget.builder().setType(PolicyAttachmentTarget.TypeEnum.CATALOG).build();
@@ -686,10 +699,16 @@ public class PolarisPolicyServiceIntegrationTest {
             .setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE)
             .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS2_T1))
             .build();
+    PolicyAttachmentTarget genericTableTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(NS2_T2))
+            .build();
 
     policyApi.attachPolicy(currentCatalogName, NS1_P1, catalogTarget, Map.of());
     policyApi.attachPolicy(currentCatalogName, NS1_P2, namespaceTarget, Map.of());
     policyApi.attachPolicy(currentCatalogName, NS1_P3, tableTarget, Map.of());
+    policyApi.attachPolicy(currentCatalogName, NS1_P4, genericTableTarget, Map.of());
 
     List<ApplicablePolicy> applicablePoliciesOnCatalog =
         policyApi.getApplicablePolicies(currentCatalogName, null, null, null);
@@ -715,15 +734,22 @@ public class PolarisPolicyServiceIntegrationTest {
                 currentCatalogName, NS2, NS2_T1.name(), PredefinedPolicyTypes.METADATA_COMPACTION))
         .containsExactlyInAnyOrder(policyToApplicablePolicy(p2, true, NS1));
 
+    Assertions.assertThat(
+            policyApi.getApplicablePolicies(currentCatalogName, NS2, NS2_T2.name(), null))
+        .containsExactlyInAnyOrder(policyToApplicablePolicy(p4, false, NS1));
+
     policyApi.detachPolicy(currentCatalogName, NS1_P1, catalogTarget);
     policyApi.detachPolicy(currentCatalogName, NS1_P2, namespaceTarget);
     policyApi.detachPolicy(currentCatalogName, NS1_P3, tableTarget);
+    policyApi.detachPolicy(currentCatalogName, NS1_P4, genericTableTarget);
 
     policyApi.dropPolicy(currentCatalogName, NS1_P1);
     policyApi.dropPolicy(currentCatalogName, NS1_P2);
     policyApi.dropPolicy(currentCatalogName, NS1_P3);
+    policyApi.dropPolicy(currentCatalogName, NS1_P4);
 
     restCatalog.dropTable(NS2_T1);
+    genericTableApi.dropGenericTable(currentCatalogName, NS2_T2);
   }
 
   @Test
