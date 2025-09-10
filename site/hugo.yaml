@@ -148,14 +148,18 @@ menu:
       parent: "community"
       url: "/community/contributing-guidelines"
       weight: 60
+    - name: "Community Guidelines"
+      parent: "community"
+      url: "/community/community-guidelines"
+      weight : 70
     - name: "Release Guide"
       parent: "community"
       url: "/community/release-guide"
-      weight: 70
+      weight: 80
     - name: "Blogs"
       parent: "community"
       url: "/blog"
-      weight: 80
+      weight: 90
 
     - name: "GitHub"
       url: "https://github.com/apache/polaris"
