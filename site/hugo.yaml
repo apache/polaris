@@ -136,18 +136,14 @@ menu:
       parent: "community"
       url: "/community/proposals"
       weight: 30
-    - name: "Code Of Conduct"
-      parent: "community"
-      url: "/community/code-of-conduct"
-      weight: 40
     - name: "Chat Bylaws"
       parent: "community"
       url: "/community/chat-bylaws"
-      weight: 50
+      weight: 40
     - name: "Contributing Guidelines"
       parent: "community"
       url: "/community/contributing-guidelines"
-      weight: 60
+      weight: 50
     - name: "Release Guide"
       parent: "community"
       url: "/community/release-guide"
@@ -182,38 +178,45 @@ menu:
       params:
         rel: "external"
         external: true
+    - name: "Code of Conduct"
+      parent: "asf"
+      url: "https://www.apache.org/foundation/policies/conduct"
+      weigth: 43
+      params:
+        rel: "external"
+        external: true
     - name: "Events"
       parent: "asf"
       url: "https://www.apache.org/events/current-event.html"
-      weight: 43
+      weight: 44
       params:
         rel: "external"
         external: true
     - name: "Privacy"
       parent: "asf"
       url: "https://privacy.apache.org/policies/privacy-policy-public.html"
-      weight: 44
+      weight: 45
       params:
         rel: "external"
         external: true
     - name: "Security"
       parent: "asf"
       url: "https://github.com/apache/polaris/blob/main/SECURITY.md"
-      weight: 45
+      weight: 46
       params:
         rel: "external"
         external: true
     - name: "Sponsorship"
       parent: "asf"
       url: "https://www.apache.org/foundation/sponsorship.html"
-      weight: 46
+      weight: 47
       params:
         rel: "external"
         external: true
     - name: "Thanks"
       parent: "asf"
       url: "https://www.apache.org/foundation/thanks.html"
-      weight: 47
+      weight: 48
       params:
         rel: "external"
         external: true

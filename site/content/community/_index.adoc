@@ -42,9 +42,6 @@ cascade:
 | link:https://github.com/apache/polaris[GitHub]
 | Development takes place here!
 
-| link:{{% ref "code-of-conduct" %}}[Code of Conduct]
-| Code of Conduct
-
 | link:{{% ref "chat-bylaws" %}}[Chat Bylaws]
 | A few rules around our public chat as a collaboration tool for the project.
 
