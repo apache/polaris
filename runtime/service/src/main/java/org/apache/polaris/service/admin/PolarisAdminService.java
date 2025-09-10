@@ -24,7 +24,8 @@ import static com.google.common.base.Preconditions.checkState;
 import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.validation.constraints.NotNull;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -135,6 +136,7 @@ import org.slf4j.LoggerFactory;
  * provide different implementations of PolarisEntityManager to abstract away the implementation of
  * the persistence layer.
  */
+@RequestScoped
 public class PolarisAdminService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAdminService.class);
 
@@ -151,15 +153,16 @@ public class PolarisAdminService {
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
 
+  @Inject
   public PolarisAdminService(
-      @NotNull PolarisDiagnostics diagnostics,
-      @NotNull CallContext callContext,
-      @NotNull ResolutionManifestFactory resolutionManifestFactory,
-      @NotNull PolarisMetaStoreManager metaStoreManager,
-      @NotNull UserSecretsManager userSecretsManager,
-      @NotNull SecurityContext securityContext,
-      @NotNull PolarisAuthorizer authorizer,
-      @NotNull ReservedProperties reservedProperties) {
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull CallContext callContext,
+      @Nonnull ResolutionManifestFactory resolutionManifestFactory,
+      @Nonnull PolarisMetaStoreManager metaStoreManager,
+      @Nonnull UserSecretsManager userSecretsManager,
+      @Nonnull SecurityContext securityContext,
+      @Nonnull PolarisAuthorizer authorizer,
+      @Nonnull ReservedProperties reservedProperties) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
@@ -700,7 +703,7 @@ public class PolarisAdminService {
    * @see #extractSecretReferences
    */
   private boolean requiresSecretReferenceExtraction(
-      @NotNull ConnectionConfigInfo connectionConfigInfo) {
+      @Nonnull ConnectionConfigInfo connectionConfigInfo) {
     return connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
         != AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT;
   }
