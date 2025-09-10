@@ -71,6 +71,17 @@ distributions {
             into("bin") {
                 from("bin/server")
                 from("bin/admin")
+                from("${rootDir}/polaris")
+            }
+
+            into("bin/client") {
+                from("${rootDir}/client/python") {
+                    include("**/*")
+                }
+            }
+
+            into("regtests") {
+                from("${rootDir}/regtests/requirements.txt")
             }
 
             from("README.md")
