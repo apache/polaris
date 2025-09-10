@@ -37,6 +37,7 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -178,9 +179,9 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   private JsonNode readResource(ObjectMapper mapper, String name) throws IOException {
-    // readTree from a test resource is not affected by the issues that prompted its deprecation
-    //noinspection deprecation
-    return mapper.readTree(GcpCredentialsStorageIntegrationTest.class.getResource(name));
+    try (InputStream in = GcpCredentialsStorageIntegrationTest.class.getResourceAsStream(name)) {
+      return mapper.readTree(in);
+    }
   }
 
   @Test
