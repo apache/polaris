@@ -123,7 +123,7 @@ dependencies {
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
 
-  testImplementation(platform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation("io.quarkus:quarkus-junit5-mockito")
   testImplementation("io.quarkus:quarkus-rest-client")
