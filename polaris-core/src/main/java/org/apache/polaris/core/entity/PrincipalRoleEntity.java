@@ -31,6 +31,10 @@ public class PrincipalRoleEntity extends PolarisEntity {
     super(sourceEntity);
     Preconditions.checkState(
         getType() == PolarisEntityType.PRINCIPAL_ROLE, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
   public static @Nullable PrincipalRoleEntity of(@Nullable PolarisBaseEntity sourceEntity) {

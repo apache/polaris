@@ -29,6 +29,7 @@ import java.util.Optional;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.assertj.core.api.Assertions;
@@ -48,7 +49,9 @@ public class EntityWeigherTest {
       String properties,
       Optional<String> internalProperties) {
     Map<String, String> propertiesMap = getPropertiesMap(properties);
-    var entity = new IcebergTableLikeEntity.Builder(TableIdentifier.of(name), metadataLocation);
+    var entity =
+        new IcebergTableLikeEntity.Builder(
+            PolarisEntitySubType.ICEBERG_TABLE, TableIdentifier.of(name), metadataLocation);
     entity.setProperties(propertiesMap);
     internalProperties.ifPresent(
         p -> {
