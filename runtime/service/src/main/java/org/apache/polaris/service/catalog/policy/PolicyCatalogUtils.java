@@ -52,7 +52,15 @@ public class PolicyCatalogUtils {
             resolutionManifest.getResolvedPath(
                 tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
         if (resolvedTableEntity == null) {
-          throw new NoSuchTableException("Iceberg Table does not exist: %s", tableIdentifier);
+          // TODO: refactor the API to avoid this second lookup
+          resolvedTableEntity =
+              resolutionManifest.getResolvedPath(
+                  tableIdentifier,
+                  PolarisEntityType.TABLE_LIKE,
+                  PolarisEntitySubType.GENERIC_TABLE);
+          if (resolvedTableEntity == null) {
+            throw new NoSuchTableException("Table does not exist: %s", tableIdentifier);
+          }
         }
         yield resolvedTableEntity;
       }

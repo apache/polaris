@@ -151,6 +151,8 @@ public abstract class PolarisAuthzTestBase {
 
   // A policy directly under ns1
   protected static final PolicyIdentifier POLICY_NS1_1 = new PolicyIdentifier(NS1, "layer1_policy");
+  protected static final PolicyIdentifier POLICY_NS1_2 =
+      new PolicyIdentifier(NS1, "layer1_policy2");
 
   // Two tables under ns1a
   protected static final TableIdentifier TABLE_NS1A_1 = TableIdentifier.of(NS1A, "table1");
@@ -332,6 +334,11 @@ public abstract class PolarisAuthzTestBase {
     policyCatalog.createPolicy(
         POLICY_NS1_1,
         PredefinedPolicyTypes.DATA_COMPACTION.getName(),
+        "test_policy",
+        "{\"enable\": false}");
+    policyCatalog.createPolicy(
+        POLICY_NS1_2,
+        PredefinedPolicyTypes.TABLE_CONVERSION.getName(),
         "test_policy",
         "{\"enable\": false}");
 

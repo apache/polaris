@@ -242,6 +242,13 @@ public abstract class CatalogHandler {
 
   protected void authorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
+    authorizeBasicTableLikeOperationOrThrow(op, List.of(subType), identifier);
+  }
+
+  protected void authorizeBasicTableLikeOperationOrThrow(
+      PolarisAuthorizableOperation op,
+      List<PolarisEntitySubType> subTypes,
+      TableIdentifier identifier) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
             callContext, securityContext, catalogName);
@@ -254,10 +261,17 @@ public abstract class CatalogHandler {
             true /* optional */),
         identifier);
     resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
+    PolarisResolvedPathWrapper target = null;
+    for (PolarisEntitySubType subType : subTypes) {
+      target =
+          resolutionManifest.getResolvedPath(
+              identifier, PolarisEntityType.TABLE_LIKE, subType, true);
+      if (target != null) {
+        break;
+      }
+    }
     if (target == null) {
-      throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
+      throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
     authorizer.authorizeOrThrow(
         polarisPrincipal,
