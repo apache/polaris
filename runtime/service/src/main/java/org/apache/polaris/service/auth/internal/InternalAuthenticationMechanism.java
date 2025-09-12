@@ -38,7 +38,7 @@ import java.util.Collections;
 import java.util.Set;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
-import org.apache.polaris.service.auth.DecodedToken;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.TokenBroker;
 
 /**
@@ -90,7 +90,7 @@ class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
 
     String credential = authHeader.substring(spaceIdx + 1);
 
-    DecodedToken token;
+    PolarisCredential token;
     try {
       token = tokenBroker.verify(credential);
     } catch (Exception e) {
