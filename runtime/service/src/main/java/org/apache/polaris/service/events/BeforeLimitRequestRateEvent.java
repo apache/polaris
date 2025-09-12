@@ -18,14 +18,11 @@
  */
 package org.apache.polaris.service.events;
 
-import org.apache.iceberg.catalog.TableIdentifier;
-
 /**
- * Emitted when Polaris intends to refresh its known version of a view's metadata by fetching the
- * latest.
+ * Emitted before the RateLimiterFilter rejects a request due to exceeding the rate limit.
  *
- * @param catalogName The name of the catalog where the view is located.
- * @param viewIdentifier The identifier of the view being refreshed.
+ * @param method The request's HTTP method
+ * @param absolutePath The request's absolute path
  */
-public record BeforeViewRefreshedEvent(String catalogName, TableIdentifier viewIdentifier)
+public record BeforeLimitRequestRateEvent(String method, String absolutePath)
     implements PolarisEvent {}
