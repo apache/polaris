@@ -39,6 +39,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
@@ -405,16 +406,13 @@ public class PolarisTestMetaStoreManager {
   /** Create a principal */
   PolarisBaseEntity createPrincipal(String name) {
     // create new principal identity
-    PolarisBaseEntity principalEntity =
-        new PolarisBaseEntity.Builder()
-            .catalogId(PolarisEntityConstants.getNullId())
-            .id(polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId())
-            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
-            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
-            .parentId(PolarisEntityConstants.getRootEntityId())
-            .name(name)
-            .internalPropertiesAsMap(
+    PrincipalEntity principalEntity =
+        new PrincipalEntity.Builder()
+            .setId(polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId())
+            .setName(name)
+            .setInternalProperties(
                 Map.of(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true"))
+            .setCreateTimestamp(System.currentTimeMillis())
             .build();
 
     CreatePrincipalResult createPrincipalResult =
