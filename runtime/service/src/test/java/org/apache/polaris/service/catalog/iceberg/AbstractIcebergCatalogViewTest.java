@@ -49,6 +49,8 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -110,6 +112,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
+  @Inject ServiceIdentityRegistryFactory serviceIdentityRegistryFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
@@ -122,6 +125,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
+  private ServiceIdentityRegistry serviceIdentityRegistry;
   private PolarisCallContext polarisContext;
   private RealmConfig realmConfig;
 
@@ -158,6 +162,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
+    serviceIdentityRegistry =
+        serviceIdentityRegistryFactory.getOrCreateServiceIdentityRegistry(realmContext);
     polarisContext =
         new PolarisCallContext(
             realmContext,
@@ -183,6 +189,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            serviceIdentityRegistry,
             securityContext,
             authorizer,
             reservedProperties);

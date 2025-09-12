@@ -54,6 +54,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
+        serviceIdentityRegistry,
         securityContext(authenticatedPrincipal),
         polarisAuthorizer,
         reservedProperties);
