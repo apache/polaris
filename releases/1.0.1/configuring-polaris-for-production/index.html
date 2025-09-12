@@ -122,8 +122,8 @@ in clear text in the database.</p><p>In order to provide your own credentials fo
 </span></span></code></pre></div><p>Which should return an access token:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json><span style=display:flex><span>{
 </span></span><span style=display:flex><span>  <span style=color:#f92672>&#34;access_token&#34;</span>: <span style=color:#e6db74>&#34;...&#34;</span>,
 </span></span><span style=display:flex><span>  <span style=color:#f92672>&#34;token_type&#34;</span>: <span style=color:#e6db74>&#34;bearer&#34;</span>,
-</span></span><span style=display:flex><span>  <span style=color:#f92672>&#34;issued_token_type&#34;</span>: <span style=color:#e6db74>&#34;urn:ietf:params:oauth:token-type:access_token&#34;</span>,
-</span></span><span style=display:flex><span>  <span style=color:#f92672>&#34;expires_in&#34;</span>: <span style=color:#ae81ff>3600</span>
+</span></span><span style=display:flex><span>  <span style=color:#960050;background-color:#1e0010>&#34;issued_token_type</span><span style=color:#f92672>&#34;: &#34;</span><span style=color:#960050;background-color:#1e0010>urn</span>:<span style=color:#960050;background-color:#1e0010>ietf</span>:<span style=color:#960050;background-color:#1e0010>params</span>:<span style=color:#960050;background-color:#1e0010>oauth</span>:<span style=color:#960050;background-color:#1e0010>token-type</span>:<span style=color:#960050;background-color:#1e0010>access_token</span><span style=color:#e6db74>&#34;,
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>  &#34;</span><span style=color:#960050;background-color:#1e0010>expires_in&#34;</span>: <span style=color:#ae81ff>3600</span>
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><p>If you used a non-default realm name, add the appropriate request header to the <code>curl</code> command,
 otherwise Polaris will resolve the realm to the first one in the configuration
