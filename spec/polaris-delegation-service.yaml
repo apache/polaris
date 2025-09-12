@@ -1,0 +1,279 @@
+openapi: 3.0.3
+info:
+  title: Polaris Delegation Service API
+  description: |
+    API for delegating long-running tasks from Apache Polaris catalog service to external delegation services.
+    
+    This API allows Polaris to offload resource-intensive operations like table data purging to maintain 
+    low-latency performance in catalog operations. External implementations can provide custom delegation 
+    services that conform to this API contract.
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    name: Apache Polaris
+    url: https://github.com/apache/polaris
+
+servers:
+  - url: http://localhost:8282
+    description: Local development server
+  - url: https://delegation-service.example.com
+    description: Production delegation service
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      description: Check the health and availability of the delegation service
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy and available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                service: "polaris-delegation-service"
+        '503':
+          description: Service is unhealthy or unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "unhealthy"
+                service: "polaris-delegation-service"
+
+  /api/v1/tasks/execute/synchronous:
+    post:
+      summary: Execute Delegated Task
+      description: |
+        Submit a task for synchronous execution by the delegation service.
+        
+        This is a blocking operation that waits for the task to complete before returning.
+        The delegation service must complete the requested operation and return the result.
+        
+        Currently supported task types:
+        - `TABLE_PURGE`: Delete data files for dropped tables
+      operationId: executeTask
+      tags:
+        - Task Execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskExecutionRequest'
+            example:
+              common_payload:
+                operation_type: "TABLE_PURGE"
+                request_timestamp_utc: "2024-01-15T10:00:00Z"
+                realm_identifier: "POLARIS"
+              operation_parameters:
+                table_identity:
+                  catalog_name: "my_catalog"
+                  namespace_levels: ["my_database"]
+                  table_name: "my_table"
+      responses:
+        '200':
+          description: Task executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskExecutionResponse'
+              examples:
+                success:
+                  summary: Successful table purge
+                  value:
+                    status: "success"
+                    result_summary: "Successfully cleaned up 1250 data files in 45000 ms"
+                failure:
+                  summary: Failed table purge
+                  value:
+                    status: "failed"
+                    result_summary: "Failed to delete 15 files due to permission errors"
+        '400':
+          description: Invalid request format or unsupported task type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Unknown task type: INVALID_TASK"
+        '422':
+          description: Valid request but task cannot be processed (e.g., table doesn't exist)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskExecutionResponse'
+              example:
+                status: "failed"
+                result_summary: "Table does not exist: catalog.database.table"
+        '500':
+          description: Internal server error during task execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Task processing failed: Storage connection timeout"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          description: Health status of the service
+          example: "healthy"
+        service:
+          type: string
+          description: Name of the service
+          example: "polaris-delegation-service"
+
+    TaskExecutionRequest:
+      type: object
+      required:
+        - common_payload
+        - operation_parameters
+      properties:
+        common_payload:
+          $ref: '#/components/schemas/CommonPayload'
+        operation_parameters:
+          $ref: '#/components/schemas/OperationParameters'
+
+    CommonPayload:
+      type: object
+      required:
+        - operation_type
+        - request_timestamp_utc
+        - realm_identifier
+      properties:
+        operation_type:
+          $ref: '#/components/schemas/TaskType'
+        request_timestamp_utc:
+          type: string
+          format: date-time
+          description: UTC timestamp when the request was created
+          example: "2024-01-15T10:00:00Z"
+        realm_identifier:
+          type: string
+          description: Polaris realm identifier for multi-tenant context
+          example: "POLARIS"
+
+    TaskType:
+      type: string
+      enum:
+        - TABLE_PURGE
+      description: |
+        Type of task to execute:
+        - `TABLE_PURGE`: Delete data files for a dropped table
+      example: "TABLE_PURGE"
+
+    OperationParameters:
+      oneOf:
+        - $ref: '#/components/schemas/TablePurgeParameters'
+      discriminator:
+        propertyName: operation_type
+        mapping:
+          TABLE_PURGE: '#/components/schemas/TablePurgeParameters'
+
+    TablePurgeParameters:
+      type: object
+      required:
+        - table_identity
+      properties:
+        table_identity:
+          $ref: '#/components/schemas/TableIdentity'
+
+    TableIdentity:
+      type: object
+      required:
+        - catalog_name
+        - namespace_levels
+        - table_name
+      properties:
+        catalog_name:
+          type: string
+          description: Name of the catalog containing the table
+          example: "my_catalog"
+        namespace_levels:
+          type: array
+          items:
+            type: string
+          description: Hierarchical namespace levels (e.g., database, schema)
+          example: ["my_database"]
+        table_name:
+          type: string
+          description: Name of the table
+          example: "my_table"
+
+    TaskExecutionResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [success, failed]
+          description: Execution status of the task
+          example: "success"
+        result_summary:
+          type: string
+          description: Human-readable summary of the execution result
+          example: "Successfully cleaned up 1250 data files in 45000 ms"
+
+    ErrorResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Error message describing what went wrong
+          example: "Task processing failed: Storage connection timeout"
+
+  examples:
+    TablePurgeRequest:
+      summary: Table purge request
+      description: Example request to purge data files for a dropped table
+      value:
+        common_payload:
+          operation_type: "TABLE_PURGE"
+          request_timestamp_utc: "2024-01-15T10:00:00Z"
+          realm_identifier: "POLARIS"
+        operation_parameters:
+          table_identity:
+            catalog_name: "analytics"
+            namespace_levels: ["sales", "quarterly"]
+            table_name: "revenue_2023"
+
+    SuccessfulPurgeResponse:
+      summary: Successful purge response
+      description: Example response when table purge completes successfully
+      value:
+        status: "success"
+        result_summary: "Successfully cleaned up 2,847 data files and 23 manifest files in 127,432 ms"
+
+    FailedPurgeResponse:
+      summary: Failed purge response  
+      description: Example response when table purge fails
+      value:
+        status: "failed"
+        result_summary: "Failed to delete 5 files due to insufficient permissions on s3://bucket/path/"
+
+tags:
+  - name: Health
+    description: Service health monitoring endpoints
+  - name: Task Execution
+    description: Task delegation and execution endpoints 
