@@ -32,7 +32,7 @@ import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -137,16 +137,16 @@ public interface RootCredentialsSet {
    * }
    * </pre>
    */
-  static RootCredentialsSet fromUrl(URL url) {
-    Preconditions.checkNotNull(url);
+  static RootCredentialsSet fromUri(URI uri) {
+    Preconditions.checkNotNull(uri);
     Preconditions.checkArgument(
-        Strings.isNullOrEmpty(url.getHost()),
-        "Remote URLs are not allowed for RootCredentialsSet: %s",
-        url);
-    try (InputStream is = url.openStream()) {
+        Strings.isNullOrEmpty(uri.getHost()),
+        "Remote URIs are not allowed for RootCredentialsSet: %s",
+        uri);
+    try (InputStream is = uri.toURL().openStream()) {
       return fromInputStream(is);
     } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to read credentials file: " + url, e);
+      throw new IllegalArgumentException("Failed to read credentials from " + uri, e);
     }
   }
 
