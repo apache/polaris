@@ -103,8 +103,7 @@ public class BootstrapCommand extends BaseCommand {
       List<String> realms; // TODO Iterable
 
       if (inputOptions.fileOptions != null) {
-        rootCredentialsSet =
-            RootCredentialsSet.fromUrl(inputOptions.fileOptions.file.toUri().toURL());
+        rootCredentialsSet = RootCredentialsSet.fromUri(inputOptions.fileOptions.file.toUri());
         realms = rootCredentialsSet.credentials().keySet().stream().toList();
       } else {
         realms = inputOptions.stdinOptions.realms;

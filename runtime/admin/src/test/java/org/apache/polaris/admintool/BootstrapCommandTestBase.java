@@ -121,7 +121,7 @@ public abstract class BootstrapCommandTestBase {
     LaunchResult result = launcher.launch("bootstrap", "-f", "/non/existing/file");
     assertThat(result.exitCode()).isEqualTo(EXIT_CODE_BOOTSTRAP_ERROR);
     assertThat(result.getErrorOutput())
-        .contains("Failed to read credentials file: file:/non/existing/file")
+        .contains("Failed to read credentials from file:///non/existing/file")
         .contains("Bootstrap encountered errors during operation.");
   }
 
