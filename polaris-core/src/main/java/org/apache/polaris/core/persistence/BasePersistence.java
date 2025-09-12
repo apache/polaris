@@ -279,7 +279,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
 
   /**
    * List lightweight information of entities matching the given criteria with pagination. If all
-   * properties of the entity are required,use {@link #loadEntities} instead.
+   * properties of the entity are required,use {@link #listFullEntities} instead.
    *
    * @param callCtx call context
    * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
@@ -314,7 +314,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * @return the paged list of matching entities after transformation
    */
   @Nonnull
-  <T> Page<T> loadEntities(
+  <T> Page<T> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
