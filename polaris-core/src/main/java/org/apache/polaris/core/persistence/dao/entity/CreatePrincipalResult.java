@@ -20,10 +20,12 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.entity.PrincipalEntity;
 
 /** the return the result of a create-principal method */
 public class CreatePrincipalResult extends BaseResult {
@@ -43,6 +45,7 @@ public class CreatePrincipalResult extends BaseResult {
     super(errorCode, extraInformation);
     this.principal = null;
     this.principalSecrets = null;
+    validate();
   }
 
   /**
@@ -56,6 +59,7 @@ public class CreatePrincipalResult extends BaseResult {
     super(ReturnStatus.SUCCESS);
     this.principal = principal;
     this.principalSecrets = principalSecrets;
+    validate();
   }
 
   @JsonCreator
@@ -67,10 +71,22 @@ public class CreatePrincipalResult extends BaseResult {
     super(returnStatus, extraInformation);
     this.principal = principal;
     this.principalSecrets = principalSecrets;
+    validate();
   }
 
-  public PolarisBaseEntity getPrincipal() {
-    return principal;
+  private void validate() {
+    if (getReturnStatus() == ReturnStatus.SUCCESS) {
+      Preconditions.checkNotNull(principal);
+      Preconditions.checkNotNull(principalSecrets);
+      Preconditions.checkState(getPrincipal() != null, "Entity is not a Principal");
+    } else {
+      Preconditions.checkState(principal == null);
+      Preconditions.checkState(principalSecrets == null);
+    }
+  }
+
+  public PrincipalEntity getPrincipal() {
+    return PrincipalEntity.of(principal);
   }
 
   public PolarisPrincipalSecrets getPrincipalSecrets() {
