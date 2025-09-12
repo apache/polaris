@@ -118,7 +118,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("non-existent-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -145,7 +145,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("complete-ns", "incomplete-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -199,7 +199,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("non-existent-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -226,7 +226,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("incomplete-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -267,7 +267,7 @@ public class PolarisAdminServiceTest {
   private void setupSuccessfulNamespaceResolution(
       String catalogName, String catalogRoleName, Namespace namespace) throws Exception {
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
     when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(resolvedPathWrapper);
