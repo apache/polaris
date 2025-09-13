@@ -50,7 +50,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     return new PolarisAdminService(
         diagServices,
-        callContext,
+        realmContext,
+        realmConfig,
         resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
