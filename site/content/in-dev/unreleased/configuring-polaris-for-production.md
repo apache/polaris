@@ -58,10 +58,10 @@ polaris.authentication.token-broker.rsa-key-pair.public-key-file=/tmp/public.key
 polaris.authentication.token-broker.rsa-key-pair.private-key-file=/tmp/private.key
 ```
 
-To generate an RSA key pair, you can use the following commands:
+To generate an RSA key pair in PKCS#8 format, you can use the following commands:
 
 ```shell
-openssl genrsa -out private.key 2048
+openssl genpkey -algorithm RSA -out private.key -pkeyopt rsa_keygen_bits:2048
 openssl rsa -in private.key -pubout -out public.key
 ```
 
@@ -142,7 +142,6 @@ Configure the metastore by setting the following ENV variables:
 ```
 POLARIS_PERSISTENCE_TYPE=relational-jdbc
 
-QUARKUS_DATASOURCE_DB_KIND=postgresql
 QUARKUS_DATASOURCE_USERNAME=<your-username>
 QUARKUS_DATASOURCE_PASSWORD=<your-password>
 QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
@@ -219,4 +218,3 @@ Leave out `FILE` to prevent its use. Only include the storage types your setup n
 
 The [Polaris Evolution](../evolution) page discusses backward compatibility and
 upgrade concerns.
-

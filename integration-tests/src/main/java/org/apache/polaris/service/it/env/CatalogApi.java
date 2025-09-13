@@ -25,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.google.common.base.Joiner;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.ArrayList;
@@ -42,36 +41,15 @@ import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
-import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 
 /**
  * A simple, non-exhaustive set of helper methods for accessing the Iceberg REST API.
  *
- * @see PolarisClient#catalogApi(ClientCredentials)
+ * @see PolarisClient#catalogApi(String)
  */
-public class CatalogApi extends RestApi {
+public class CatalogApi extends PolarisRestApi {
   public CatalogApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);
-  }
-
-  public String obtainToken(ClientCredentials credentials) {
-    try (Response response =
-        request("v1/oauth/tokens")
-            .post(
-                Entity.form(
-                    new MultivaluedHashMap<>(
-                        Map.of(
-                            "grant_type",
-                            "client_credentials",
-                            "scope",
-                            "PRINCIPAL_ROLE:ALL",
-                            "client_id",
-                            credentials.clientId(),
-                            "client_secret",
-                            credentials.clientSecret()))))) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      return response.readEntity(OAuthTokenResponse.class).token();
-    }
   }
 
   public void createNamespace(String catalogName, String namespaceName) {
@@ -98,6 +76,24 @@ public class CatalogApi extends RestApi {
       assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
       ListNamespacesResponse res = response.readEntity(ListNamespacesResponse.class);
       return res.namespaces();
+    }
+  }
+
+  public ListNamespacesResponse listNamespaces(
+      String catalog, Namespace parent, String pageToken, String pageSize) {
+    Map<String, String> queryParams = new HashMap<>();
+    if (!parent.isEmpty()) {
+      // TODO change this for Iceberg 1.7.2:
+      //   queryParams.put("parent", RESTUtil.encodeNamespace(parent));
+      queryParams.put("parent", Joiner.on('\u001f').join(parent.levels()));
+    }
+    queryParams.put("pageToken", pageToken);
+    queryParams.put("pageSize", pageSize);
+    try (Response response =
+        request("v1/{cat}/namespaces", Map.of("cat", catalog), queryParams).get()) {
+      assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
+      ListNamespacesResponse res = response.readEntity(ListNamespacesResponse.class);
+      return res;
     }
   }
 
@@ -142,6 +138,20 @@ public class CatalogApi extends RestApi {
     }
   }
 
+  public ListTablesResponse listTables(
+      String catalog, Namespace namespace, String pageToken, String pageSize) {
+    String ns = RESTUtil.encodeNamespace(namespace);
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("pageToken", pageToken);
+    queryParams.put("pageSize", pageSize);
+    try (Response res =
+        request("v1/{cat}/namespaces/" + ns + "/tables", Map.of("cat", catalog), queryParams)
+            .get()) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(ListTablesResponse.class);
+    }
+  }
+
   public void dropTable(String catalog, TableIdentifier id) {
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
@@ -154,12 +164,27 @@ public class CatalogApi extends RestApi {
   }
 
   public LoadTableResponse loadTable(String catalog, TableIdentifier id, String snapshots) {
+    return loadTable(catalog, id, snapshots, Map.of());
+  }
+
+  public LoadTableResponse loadTableWithAccessDelegation(
+      String catalog, TableIdentifier id, String snapshots) {
+    return loadTable(
+        catalog, id, snapshots, Map.of("X-Iceberg-Access-Delegation", "vended-credentials"));
+  }
+
+  public LoadTableResponse loadTable(
+      String catalog, TableIdentifier id, String snapshots, Map<String, String> headers) {
+    HashMap<String, String> allHeaders = new HashMap<>(defaultHeaders());
+    allHeaders.putAll(headers);
+
     String ns = RESTUtil.encodeNamespace(id.namespace());
     try (Response res =
         request(
                 "v1/{cat}/namespaces/" + ns + "/tables/{table}",
                 Map.of("cat", catalog, "table", id.name()),
-                snapshots == null ? Map.of() : Map.of("snapshots", snapshots))
+                snapshots == null ? Map.of() : Map.of("snapshots", snapshots),
+                allHeaders)
             .get()) {
       if (res.getStatus() == Response.Status.OK.getStatusCode()) {
         return res.readEntity(LoadTableResponse.class);
@@ -177,6 +202,20 @@ public class CatalogApi extends RestApi {
         request("v1/{cat}/namespaces/" + ns + "/views", Map.of("cat", catalog)).get()) {
       assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
       return res.readEntity(ListTablesResponse.class).identifiers();
+    }
+  }
+
+  public ListTablesResponse listViews(
+      String catalog, Namespace namespace, String pageToken, String pageSize) {
+    String ns = RESTUtil.encodeNamespace(namespace);
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("pageToken", pageToken);
+    queryParams.put("pageSize", pageSize);
+    try (Response res =
+        request("v1/{cat}/namespaces/" + ns + "/views", Map.of("cat", catalog), queryParams)
+            .get()) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(ListTablesResponse.class);
     }
   }
 

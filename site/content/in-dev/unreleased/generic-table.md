@@ -24,7 +24,7 @@ weight: 435
 
 The Generic Table in Apache Polaris is designed to provide support for non-Iceberg tables across different table formats includes delta, csv etc. It currently provides the following capabilities:
 - Create a generic table under a namespace
-- Load a generic table 
+- Load a generic table
 - Drop a generic table
 - List all generic tables under a namespace
 
@@ -85,7 +85,7 @@ request body looks like the following:
 }
 ```
 
-Here is an example to create a generic table with name `delta_table` and format as `delta` under a namespace `delta_ns` 
+Here is an example to create a generic table with name `delta_table` and format as `delta` under a namespace `delta_ns`
 for catalog `delta_catalog` using curl:
 
 ```shell
@@ -125,7 +125,7 @@ And the response looks like the following:
 ```
 
 ### List Generic Tables
-The REST endpoint for listing the generic tables under a given 
+The REST endpoint for listing the generic tables under a given
 namespace is `GET /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/`.
 
 Following curl command lists all tables under namespace delta_namespace:
@@ -160,10 +160,10 @@ For the complete and up-to-date API specification, see the [Catalog API Spec](ht
 ## Limitations
 
 Current limitations of Generic Table support:
-1) Limited spec information. Currently, there is no spec for information like Schema, Partition etc. 
+1) Limited spec information. Currently, there is no spec for information like Schema, Partition etc.
 2) No commit coordination or update capability provided at the catalog service level.
 
-Therefore, the catalog itself is unaware of anything about the underlying table except some of the loosely defined metadata. 
+Therefore, the catalog itself is unaware of anything about the underlying table except some of the loosely defined metadata.
 It is the responsibility of the engine (and plugins used by the engine) to determine exactly how loading or commiting data
-should look like based on the metadata. For example, with the delta support, th delta log serialization, deserialization 
+should look like based on the metadata. For example, with the delta support, th delta log serialization, deserialization
 and update all happens at client side.

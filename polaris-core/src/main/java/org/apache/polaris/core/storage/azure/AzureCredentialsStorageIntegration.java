@@ -37,17 +37,19 @@ import com.azure.storage.file.datalake.DataLakeServiceClientBuilder;
 import com.azure.storage.file.datalake.models.DataLakeStorageException;
 import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
@@ -63,22 +65,20 @@ public class AzureCredentialsStorageIntegration
 
   final DefaultAzureCredential defaultAzureCredential;
 
-  public AzureCredentialsStorageIntegration() {
-    super(AzureCredentialsStorageIntegration.class.getName());
+  public AzureCredentialsStorageIntegration(AzureStorageConfigurationInfo config) {
+    super(config, AzureCredentialsStorageIntegration.class.getName());
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
   }
 
   @Override
-  public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
-      @Nonnull CallContext callContext,
-      @Nonnull AzureStorageConfigurationInfo storageConfig,
+  public AccessConfig getSubscopedCreds(
+      @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
-    EnumMap<StorageAccessProperty, String> credentialMap =
-        new EnumMap<>(StorageAccessProperty.class);
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)
@@ -120,17 +120,13 @@ public class AzureCredentialsStorageIntegration
         OffsetDateTime.ofInstant(
             start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
-    AccessToken accessToken = getAccessToken(storageConfig.getTenantId());
+    AccessToken accessToken = getAccessToken(config().getTenantId());
     // Get user delegation key.
     // Set the new generated user delegation key expiry to 7 days and minute 1 min
     // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
     // clock skew between the client and server,
     OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
-    int intendedDurationSeconds =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(callContext.getRealmContext(), STORAGE_CREDENTIAL_DURATION_SECONDS);
+    int intendedDurationSeconds = realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     OffsetDateTime intendedEndTime =
         start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
     OffsetDateTime maxAllowedEndTime =
@@ -149,7 +145,7 @@ public class AzureCredentialsStorageIntegration
         .addKeyValue("container", location.getContainer())
         .addKeyValue("filePath", filePath)
         .log("Subscope Azure SAS");
-    String sasToken = "";
+    String sasToken;
     if (location.getEndpoint().equalsIgnoreCase(AzureLocation.BLOB_ENDPOINT)) {
       sasToken =
           getBlobUserDelegationSas(
@@ -174,12 +170,50 @@ public class AzureCredentialsStorageIntegration
       throw new RuntimeException(
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
-    credentialMap.put(StorageAccessProperty.AZURE_SAS_TOKEN, sasToken);
-    credentialMap.put(StorageAccessProperty.AZURE_ACCOUNT_HOST, storageDnsName);
-    credentialMap.put(
-        StorageAccessProperty.EXPIRATION_TIME,
-        String.valueOf(sanitizedEndTime.toInstant().toEpochMilli()));
-    return credentialMap;
+
+    return toAccessConfig(
+        sasToken, storageDnsName, sanitizedEndTime.toInstant(), refreshCredentialsEndpoint);
+  }
+
+  @VisibleForTesting
+  static AccessConfig toAccessConfig(
+      String sasToken,
+      String storageDnsName,
+      Instant expiresAt,
+      Optional<String> refreshCredentialsEndpoint) {
+    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    handleAzureCredential(accessConfig, sasToken, storageDnsName);
+    accessConfig.put(
+        StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
+    refreshCredentialsEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+        });
+    return accessConfig.build();
+  }
+
+  private static void handleAzureCredential(
+      AccessConfig.Builder config, String sasToken, String host) {
+    config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + host, sasToken);
+
+    // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint
+    if (host.endsWith(AzureLocation.ADLS_ENDPOINT)) {
+      int suffixIndex = host.lastIndexOf(AzureLocation.ADLS_ENDPOINT) - 1;
+      if (suffixIndex > 0) {
+        String withSuffixStripped = host.substring(0, suffixIndex);
+        config.putCredential(
+            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
+      }
+    }
+
+    if (host.endsWith(AzureLocation.BLOB_ENDPOINT)) {
+      int suffixIndex = host.lastIndexOf(AzureLocation.BLOB_ENDPOINT) - 1;
+      if (suffixIndex > 0) {
+        String withSuffixStripped = host.substring(0, suffixIndex);
+        config.putCredential(
+            StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + withSuffixStripped, sasToken);
+      }
+    }
   }
 
   private String getBlobUserDelegationSas(

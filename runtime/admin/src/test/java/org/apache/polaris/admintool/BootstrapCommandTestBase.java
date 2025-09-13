@@ -91,8 +91,9 @@ public abstract class BootstrapCommandTestBase {
   public void testBootstrapInvalidArguments(LaunchResult result) {
     assertThat(result.getErrorOutput())
         .contains(
-            "Error: (-r=<realm> [-r=<realm>]... [-c=<realm,clientId,clientSecret>]... [-p]) "
-                + "and -f=<file> are mutually exclusive (specify only one)");
+            "(-r=<realm> [-r=<realm>]... [-c=<realm,clientId,clientSecret>]... [-p]) and -f=<file> "
+                + "and (-v=<schema version> | [--schema-file=<schema file>]) are mutually exclusive "
+                + "(specify only one)");
   }
 
   @Test

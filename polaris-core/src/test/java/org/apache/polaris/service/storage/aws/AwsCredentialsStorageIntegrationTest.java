@@ -22,11 +22,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
-import java.util.EnumMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -64,8 +64,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
           .build();
   public static final String AWS_PARTITION = "aws";
 
-  @Test
-  public void testGetSubscopedCreds() {
+  @ParameterizedTest
+  @ValueSource(strings = {"s3a", "s3"})
+  public void testGetSubscopedCreds(String scheme) {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String externalId = "externalId";
@@ -76,38 +77,44 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .isInstanceOf(AssumeRoleRequest.class)
                   .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
                   .returns(externalId, AssumeRoleRequest::externalId)
-                  .returns(roleARN, AssumeRoleRequest::roleArn);
+                  .returns(roleARN, AssumeRoleRequest::roleArn)
+                  // ensure that the policy content does not refer to S3A
+                  .extracting(AssumeRoleRequest::policy)
+                  .doesNotMatch(s -> s.contains("s3a"));
               return ASSUME_ROLE_RESPONSE;
             });
-    String warehouseDir = "s3://bucket/path/to/warehouse";
-    EnumMap<StorageAccessProperty, String> credentials =
-        new AwsCredentialsStorageIntegration(stsClient)
+    String warehouseDir = scheme + "://bucket/path/to/warehouse";
+    AccessConfig accessConfig =
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(warehouseDir)
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .build(),
+                stsClient)
             .getSubscopedCreds(
-                newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    List.of(warehouseDir),
-                    roleARN,
-                    externalId,
-                    null),
+                EMPTY_REALM_CONFIG,
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
-                Set.of(warehouseDir + "/namespace/table"));
-    assertThat(credentials)
+                Set.of(warehouseDir + "/namespace/table"),
+                Optional.of("/namespace/table/credentials"));
+    assertThat(accessConfig.credentials())
         .isNotEmpty()
-        .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
-        .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
         .containsEntry(
-            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    assertThat(accessConfig.extraProperties())
+        .containsEntry(
+            StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
+            "/namespace/table/credentials");
   }
 
   @ParameterizedTest
   @ValueSource(strings = {AWS_PARTITION, "aws-cn", "aws-us-gov"})
   public void testGetSubscopedCredsInlinePolicy(String awsPartition) {
-    PolarisStorageConfigurationInfo.StorageType storageType =
-        PolarisStorageConfigurationInfo.StorageType.S3;
     String roleARN;
     String region;
     switch (awsPartition) {
@@ -229,42 +236,46 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       case "aws-cn":
         Assertions.assertThatThrownBy(
                 () ->
-                    new AwsCredentialsStorageIntegration(stsClient)
+                    new AwsCredentialsStorageIntegration(
+                            AwsStorageConfigurationInfo.builder()
+                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                                .roleARN(roleARN)
+                                .externalId(externalId)
+                                .region(region)
+                                .build(),
+                            stsClient)
                         .getSubscopedCreds(
-                            newCallContext(),
-                            new AwsStorageConfigurationInfo(
-                                storageType,
-                                List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                roleARN,
-                                externalId,
-                                region),
+                            EMPTY_REALM_CONFIG,
                             true,
                             Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                            Set.of(s3Path(bucket, firstPath))))
+                            Set.of(s3Path(bucket, firstPath)),
+                            null))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
-        EnumMap<StorageAccessProperty, String> credentials =
-            new AwsCredentialsStorageIntegration(stsClient)
+        AccessConfig accessConfig =
+            new AwsCredentialsStorageIntegration(
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                        .roleARN(roleARN)
+                        .externalId(externalId)
+                        .region(region)
+                        .build(),
+                    stsClient)
                 .getSubscopedCreds(
-                    newCallContext(),
-                    new AwsStorageConfigurationInfo(
-                        storageType,
-                        List.of(s3Path(bucket, warehouseKeyPrefix)),
-                        roleARN,
-                        externalId,
-                        region),
+                    EMPTY_REALM_CONFIG,
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                    Set.of(s3Path(bucket, firstPath)));
-        assertThat(credentials)
+                    Set.of(s3Path(bucket, firstPath)),
+                    Optional.empty());
+        assertThat(accessConfig.credentials())
             .isNotEmpty()
-            .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
-            .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
-            .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
+            .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
+            .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+            .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
             .containsEntry(
-                StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
                 String.valueOf(EXPIRE_TIME.toEpochMilli()));
         break;
       default:
@@ -344,28 +355,28 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    PolarisStorageConfigurationInfo.StorageType storageType =
-        PolarisStorageConfigurationInfo.StorageType.S3;
-    EnumMap<StorageAccessProperty, String> credentials =
-        new AwsCredentialsStorageIntegration(stsClient)
+    AccessConfig accessConfig =
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-2")
+                    .build(),
+                stsClient)
             .getSubscopedCreds(
-                newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId,
-                    "us-east-2"),
+                EMPTY_REALM_CONFIG,
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                Set.of(s3Path(bucket, firstPath)));
-    assertThat(credentials)
+                Set.of(s3Path(bucket, firstPath)),
+                Optional.empty());
+    assertThat(accessConfig.credentials())
         .isNotEmpty()
-        .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
-        .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
         .containsEntry(
-            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
@@ -439,28 +450,28 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    PolarisStorageConfigurationInfo.StorageType storageType =
-        PolarisStorageConfigurationInfo.StorageType.S3;
-    EnumMap<StorageAccessProperty, String> credentials =
-        new AwsCredentialsStorageIntegration(stsClient)
+    AccessConfig accessConfig =
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-2")
+                    .build(),
+                stsClient)
             .getSubscopedCreds(
-                newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    storageType,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId,
-                    "us-east-2"),
+                EMPTY_REALM_CONFIG,
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                Set.of());
-    assertThat(credentials)
+                Set.of(),
+                Optional.empty());
+    assertThat(accessConfig.credentials())
         .isNotEmpty()
-        .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
-        .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
         .containsEntry(
-            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
@@ -506,26 +517,28 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    EnumMap<StorageAccessProperty, String> credentials =
-        new AwsCredentialsStorageIntegration(stsClient)
+    AccessConfig accessConfig =
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-2")
+                    .build(),
+                stsClient)
             .getSubscopedCreds(
-                newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId,
-                    "us-east-2"),
+                EMPTY_REALM_CONFIG,
                 true, /* allowList = true */
                 Set.of(),
-                Set.of());
-    assertThat(credentials)
+                Set.of(),
+                Optional.empty());
+    assertThat(accessConfig.credentials())
         .isNotEmpty()
-        .containsEntry(StorageAccessProperty.AWS_TOKEN, "sess")
-        .containsEntry(StorageAccessProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
         .containsEntry(
-            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
@@ -547,38 +560,42 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       case "aws-cn":
         Assertions.assertThatThrownBy(
                 () ->
-                    new AwsCredentialsStorageIntegration(stsClient)
+                    new AwsCredentialsStorageIntegration(
+                            AwsStorageConfigurationInfo.builder()
+                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                                .roleARN(roleARN)
+                                .externalId(externalId)
+                                .region(clientRegion)
+                                .build(),
+                            stsClient)
                         .getSubscopedCreds(
-                            newCallContext(),
-                            new AwsStorageConfigurationInfo(
-                                PolarisStorageConfigurationInfo.StorageType.S3,
-                                List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                roleARN,
-                                externalId,
-                                clientRegion),
+                            EMPTY_REALM_CONFIG,
                             true, /* allowList = true */
                             Set.of(),
-                            Set.of()))
+                            Set.of(),
+                            Optional.empty()))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
-        EnumMap<StorageAccessProperty, String> credentials =
-            new AwsCredentialsStorageIntegration(stsClient)
+        AccessConfig accessConfig =
+            new AwsCredentialsStorageIntegration(
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                        .roleARN(roleARN)
+                        .externalId(externalId)
+                        .region(clientRegion)
+                        .build(),
+                    stsClient)
                 .getSubscopedCreds(
-                    newCallContext(),
-                    new AwsStorageConfigurationInfo(
-                        PolarisStorageConfigurationInfo.StorageType.S3,
-                        List.of(s3Path(bucket, warehouseKeyPrefix)),
-                        roleARN,
-                        externalId,
-                        clientRegion),
+                    EMPTY_REALM_CONFIG,
                     true, /* allowList = true */
                     Set.of(),
-                    Set.of());
-        assertThat(credentials)
+                    Set.of(),
+                    Optional.empty());
+        assertThat(accessConfig.credentials())
             .isNotEmpty()
-            .containsEntry(StorageAccessProperty.CLIENT_REGION, clientRegion);
+            .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), clientRegion);
         break;
       default:
         throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
@@ -601,37 +618,41 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
     switch (awsPartition) {
       case AWS_PARTITION:
-        EnumMap<StorageAccessProperty, String> credentials =
-            new AwsCredentialsStorageIntegration(stsClient)
+        AccessConfig accessConfig =
+            new AwsCredentialsStorageIntegration(
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                        .roleARN(roleARN)
+                        .externalId(externalId)
+                        .build(),
+                    stsClient)
                 .getSubscopedCreds(
-                    newCallContext(),
-                    new AwsStorageConfigurationInfo(
-                        PolarisStorageConfigurationInfo.StorageType.S3,
-                        List.of(s3Path(bucket, warehouseKeyPrefix)),
-                        roleARN,
-                        externalId,
-                        null),
+                    EMPTY_REALM_CONFIG,
                     true, /* allowList = true */
                     Set.of(),
-                    Set.of());
-        assertThat(credentials).isNotEmpty().doesNotContainKey(StorageAccessProperty.CLIENT_REGION);
+                    Set.of(),
+                    Optional.empty());
+        assertThat(accessConfig.credentials())
+            .isNotEmpty()
+            .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
         break;
       case "aws-cn":
       case "aws-us-gov":
         Assertions.assertThatThrownBy(
                 () ->
-                    new AwsCredentialsStorageIntegration(stsClient)
+                    new AwsCredentialsStorageIntegration(
+                            AwsStorageConfigurationInfo.builder()
+                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                                .roleARN(roleARN)
+                                .externalId(externalId)
+                                .build(),
+                            stsClient)
                         .getSubscopedCreds(
-                            newCallContext(),
-                            new AwsStorageConfigurationInfo(
-                                PolarisStorageConfigurationInfo.StorageType.S3,
-                                List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                roleARN,
-                                externalId,
-                                null),
+                            EMPTY_REALM_CONFIG,
                             true, /* allowList = true */
                             Set.of(),
-                            Set.of()))
+                            Set.of(),
+                            Optional.empty()))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       default:

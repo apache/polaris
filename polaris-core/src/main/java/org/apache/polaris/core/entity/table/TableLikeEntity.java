@@ -19,10 +19,12 @@
 package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -32,10 +34,12 @@ import org.apache.polaris.core.entity.PolarisEntityType;
  * An entity type for all table-like entities including Iceberg tables, Iceberg views, and generic
  * tables. This entity maps to {@link PolarisEntityType#TABLE_LIKE}
  */
-public abstract class TableLikeEntity extends PolarisEntity {
+public abstract class TableLikeEntity extends PolarisEntity implements LocationBasedEntity {
 
   public TableLikeEntity(@Nonnull PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.TABLE_LIKE, "Invalid entity type: %s", getType());
   }
 
   @JsonIgnore

@@ -22,15 +22,21 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEventManager;
+import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -42,6 +48,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
@@ -54,7 +61,8 @@ public interface PolarisMetaStoreManager
     extends PolarisSecretsManager,
         PolarisGrantManager,
         PolarisCredentialVendor,
-        PolarisPolicyMappingManager {
+        PolarisPolicyMappingManager,
+        PolarisEventManager {
 
   /**
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
@@ -105,8 +113,8 @@ public interface PolarisMetaStoreManager
       @Nonnull String name);
 
   /**
-   * List all entities of the specified type under the specified catalogPath. If the catalogPath is
-   * null, listed entities will be top-level entities like catalogs.
+   * List lightweight information about entities matching the given criteria. If all properties of
+   * the entity are required,use {@link #loadEntities} instead.
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
@@ -123,6 +131,47 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken);
+
+  /**
+   * Load full entities matching the given criteria with pagination. If only the entity name/id/type
+   * is required, use {@link #listEntities} instead. If no pagination is required, use {@link
+   * #loadEntitiesAll} instead.
+   *
+   * @param callCtx call context
+   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
+   *     like catalogs
+   * @param entityType type of entities to list
+   * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
+   * @return paged list of matching entities
+   */
+  @Nonnull
+  Page<PolarisBaseEntity> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken);
+
+  /**
+   * Load full entities matching the given criteria into an unpaged list. If pagination is required
+   * use {@link #loadEntities} instead. If only the entity name/id/type is required, use {@link
+   * #listEntities} instead.
+   *
+   * @param callCtx call context
+   * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
+   *     like catalogs
+   * @param entityType type of entities to list
+   * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
+   * @return list of all matching entities
+   */
+  default @Nonnull List<PolarisBaseEntity> loadEntitiesAll(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType) {
+    return loadEntities(callCtx, catalogPath, entityType, entitySubType, PageToken.readEverything())
+        .items();
+  }
 
   /**
    * Generate a new unique id that can be used by the Polaris client when it needs to create a new
@@ -392,6 +441,22 @@ public interface PolarisMetaStoreManager
       long entityId);
 
   /**
+   * Check if the specified IcebergTableLikeEntity has any same-namespace siblings which share a
+   * location
+   *
+   * @param callContext the polaris call context
+   * @param entity the entity to check for overlapping siblings for
+   * @return Optional.of(Optional.of ( location)) if the parent entity has children,
+   *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
+   *     this operation
+   */
+  default <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
+    return Optional.empty();
+  }
+
+  /**
    * Indicates whether this metastore manager implementation requires entities to be reloaded via
    * {@link #loadEntitiesChangeTracking} in order to ensure the most recent versions are obtained.
    *
@@ -399,5 +464,39 @@ public interface PolarisMetaStoreManager
    */
   default boolean requiresEntityReload() {
     return true;
+  }
+
+  default Optional<PrincipalEntity> findRootPrincipal(PolarisCallContext polarisCallContext) {
+    return findPrincipalByName(polarisCallContext, PolarisEntityConstants.getRootPrincipalName());
+  }
+
+  default Optional<PrincipalEntity> findPrincipalByName(
+      PolarisCallContext polarisCallContext, String principalName) {
+    EntityResult entityResult =
+        readEntityByName(
+            polarisCallContext,
+            null,
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            principalName);
+    if (!entityResult.isSuccess()) {
+      return Optional.empty();
+    }
+    return Optional.of(entityResult.getEntity()).map(PrincipalEntity::of);
+  }
+
+  default Optional<PrincipalRoleEntity> findPrincipalRoleByName(
+      PolarisCallContext polarisCallContext, String principalRoleName) {
+    EntityResult entityResult =
+        readEntityByName(
+            polarisCallContext,
+            null,
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            principalRoleName);
+    if (!entityResult.isSuccess()) {
+      return Optional.empty();
+    }
+    return Optional.of(entityResult.getEntity()).map(PrincipalRoleEntity::of);
   }
 }

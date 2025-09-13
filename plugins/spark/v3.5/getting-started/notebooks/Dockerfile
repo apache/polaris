@@ -24,11 +24,11 @@ ENV LANGUAGE='en_US:en'
 USER root
 
 # Generic table support requires delta 3.2.1
-# Install Spark 3.5.5
-RUN wget -q https://archive.apache.org/dist/spark/spark-3.5.5/spark-3.5.5-bin-hadoop3.tgz \
-    && tar -xzf spark-3.5.5-bin-hadoop3.tgz \
-    && mv spark-3.5.5-bin-hadoop3 /opt/spark \
-    && rm spark-3.5.5-bin-hadoop3.tgz
+# Install Spark 3.5.6
+RUN wget -q https://www.apache.org/dyn/closer.lua/spark/spark-3.5.6/spark-3.5.6-bin-hadoop3.tgz?action=download \
+    && tar -xzf spark-3.5.6-bin-hadoop3.tgz \
+    && mv spark-3.5.6-bin-hadoop3 /opt/spark \
+    && rm spark-3.5.6-bin-hadoop3.tgz
 
 # Set environment variables
 ENV SPARK_HOME=/opt/spark

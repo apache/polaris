@@ -16,8 +16,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import contextlib
-import io
 import json
 import os
 import random
@@ -112,6 +110,8 @@ def test_quickstart_flow():
             ROLE_ARN,
             '--default-base-location',
             f's3://fake-location-{SALT}',
+            '--property',
+            'polaris.config.namespace-custom-location.enabled=true',
             f'test_cli_catalog_{SALT}'), checker=lambda s: s == '')
         check_output(root_cli('catalogs', 'list'),
                      checker=lambda s: f'test_cli_catalog_{SALT}' in s)
@@ -157,7 +157,7 @@ def test_quickstart_flow():
             f'test_cli_catalog_{SALT}',
             '--catalog-role',
             f'test_cli_c_role_{SALT}',
-            f'CATALOG_MANAGE_CONTENT'
+            'CATALOG_MANAGE_CONTENT'
         ), checker=lambda s: s == '')
 
         # User now has catalog access:
@@ -172,7 +172,7 @@ def test_quickstart_flow():
             '--property',
             'foo=bar',
             '--location',
-            's3://custom-namespace-location'
+            f's3://fake-location-{SALT}/custom-namespace-location/'
         ), checker=lambda s: s == '')
         check_output(cli(user_token)('namespaces', 'list', '--catalog', f'test_cli_catalog_{SALT}'),
                      checker=lambda s: f'test_cli_namespace_{SALT}' in s)
@@ -182,7 +182,7 @@ def test_quickstart_flow():
             '--catalog',
             f'test_cli_catalog_{SALT}',
             f'test_cli_namespace_{SALT}'
-        ), checker=lambda s: 's3://custom-namespace-location' in s and '"foo": "bar"' in s)
+        ), checker=lambda s: f's3://fake-location-{SALT}/custom-namespace-location/' in s and '"foo": "bar"' in s)
         check_output(cli(user_token)(
             'namespaces',
             'delete',
@@ -835,7 +835,7 @@ def test_list_privileges():
             f'test_cli_catalog_{SALT}',
             '--catalog-role',
             f'test_cli_c_role_{SALT}',
-            f'TABLE_READ_DATA'
+            'TABLE_READ_DATA'
         ), checker=lambda s: s == '')
         check_output(root_cli(
             'privileges',
@@ -847,7 +847,7 @@ def test_list_privileges():
             f'test_cli_c_role_{SALT}',
             '--namespace',
             f'a_{SALT}',
-            f'TABLE_WRITE_DATA'
+            'TABLE_WRITE_DATA'
         ), checker=lambda s: s == '')
         check_output(root_cli(
             'privileges',
@@ -859,7 +859,7 @@ def test_list_privileges():
             f'test_cli_c_role_{SALT}',
             '--namespace',
             f'a_{SALT}',
-            f'TABLE_LIST'
+            'TABLE_LIST'
         ), checker=lambda s: s == '')
 
         # List privileges:

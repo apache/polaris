@@ -25,7 +25,6 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -69,7 +68,7 @@ public class TreeMapMetaStore {
      * @param key key for that value
      */
     public T read(String key) {
-      TreeMapMetaStore.this.ensureReadTr();
+      ensureReadTr();
       T value = this.slice.getOrDefault(key, null);
       return (value != null) ? this.copyRecord.apply(value) : null;
     }
@@ -80,7 +79,11 @@ public class TreeMapMetaStore {
      * @param prefix key prefix
      */
     public List<T> readRange(String prefix) {
-      TreeMapMetaStore.this.ensureReadTr();
+      ensureReadTr();
+      if (prefix.isEmpty()) {
+        return new ArrayList<>(this.slice.values());
+      }
+
       // end of the key
       String endKey =
           prefix.substring(0, prefix.length() - 1)
@@ -96,7 +99,7 @@ public class TreeMapMetaStore {
      * @param value value to write
      */
     public void write(T value) {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       T valueToWrite = (value != null) ? this.copyRecord.apply(value) : null;
       String key = this.buildKey(valueToWrite);
       // write undo if needs be
@@ -112,7 +115,7 @@ public class TreeMapMetaStore {
      * @param key key for the record to remove
      */
     public void delete(String key) {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       if (slice.containsKey(key)) {
         // write undo if needs be
         if (!this.undoSlice.containsKey(key)) {
@@ -128,7 +131,7 @@ public class TreeMapMetaStore {
      * @param prefix key prefix for the record to remove
      */
     public void deleteRange(String prefix) {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       List<T> elements = this.readRange(prefix);
       for (T element : elements) {
         this.delete(element);
@@ -136,7 +139,7 @@ public class TreeMapMetaStore {
     }
 
     void deleteAll() {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       slice.clear();
       undoSlice.clear();
     }
@@ -152,7 +155,7 @@ public class TreeMapMetaStore {
 
     /** Rollback all changes made to this slice since transaction started */
     private void rollback() {
-      TreeMapMetaStore.this.ensureReadWriteTr();
+      ensureReadWriteTr();
       undoSlice.forEach(
           (key, value) -> {
             if (value == null) {
@@ -190,6 +193,7 @@ public class TreeMapMetaStore {
   private Transaction tr;
 
   // diagnostic services
+  private final PolarisDiagnostics initialDiagnosticServices;
   private PolarisDiagnostics diagnosticServices;
 
   // all entities
@@ -228,16 +232,18 @@ public class TreeMapMetaStore {
     this.sliceEntities =
         new Slice<>(
             entity -> String.format("%d::%d", entity.getCatalogId(), entity.getId()),
-            PolarisBaseEntity::new);
+            entity -> new PolarisBaseEntity.Builder(entity).build());
 
     // the entities active slice; simply acts as a name-based index into the entities slice
-    this.sliceEntitiesActive = new Slice<>(this::buildEntitiesActiveKey, PolarisBaseEntity::new);
+    this.sliceEntitiesActive =
+        new Slice<>(
+            this::buildEntitiesActiveKey, entity -> new PolarisBaseEntity.Builder(entity).build());
 
     // change tracking
     this.sliceEntitiesChangeTracking =
         new Slice<>(
             entity -> String.format("%d::%d", entity.getCatalogId(), entity.getId()),
-            PolarisBaseEntity::new);
+            entity -> new PolarisBaseEntity.Builder(entity).build());
 
     // grant records by securable
     this.sliceGrantRecords =
@@ -295,6 +301,7 @@ public class TreeMapMetaStore {
                     policyMappingRecord.getTargetId()),
             PolarisPolicyMappingRecord::new);
 
+    this.initialDiagnosticServices = diagnostics;
     // no transaction open yet
     this.diagnosticServices = diagnostics;
     this.tr = null;
@@ -391,7 +398,7 @@ public class TreeMapMetaStore {
   }
 
   /** Ensure that a read/write FDB transaction has been started */
-  public void ensureReadWriteTr() {
+  private void ensureReadWriteTr() {
     this.diagnosticServices.check(
         this.tr != null && this.tr.isWrite(), "no_write_transaction_started");
   }
@@ -404,18 +411,16 @@ public class TreeMapMetaStore {
   /**
    * Run inside a read/write transaction
    *
-   * @param callCtx call context to use
-   * @param transactionCode transaction code
    * @return the result of the execution
    */
   public <T> T runInTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
+      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Supplier<T> transactionCode) {
 
     synchronized (lock) {
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
+        this.diagnosticServices = diagnostics;
         this.startWriteTransaction();
         return transactionCode.get();
       } catch (Throwable e) {
@@ -425,26 +430,21 @@ public class TreeMapMetaStore {
         throw e;
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
+        this.diagnosticServices = this.initialDiagnosticServices;
       }
     }
   }
 
-  /**
-   * Run inside a read/write transaction
-   *
-   * @param callCtx call context to use
-   * @param transactionCode transaction code
-   */
+  /** Run inside a read/write transaction */
   public void runActionInTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
+      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Runnable transactionCode) {
 
     synchronized (lock) {
 
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
+        this.diagnosticServices = diagnostics;
         this.startWriteTransaction();
         transactionCode.run();
       } catch (Throwable e) {
@@ -454,7 +454,7 @@ public class TreeMapMetaStore {
         throw e;
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
+        this.diagnosticServices = this.initialDiagnosticServices;
       }
     }
   }
@@ -462,46 +462,39 @@ public class TreeMapMetaStore {
   /**
    * Run inside a read only transaction
    *
-   * @param callCtx call context to use
-   * @param transactionCode transaction code
    * @return the result of the execution
    */
   public <T> T runInReadTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
+      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Supplier<T> transactionCode) {
     synchronized (lock) {
 
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
+        this.diagnosticServices = diagnostics;
         this.startReadTransaction();
         return transactionCode.get();
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
+        this.diagnosticServices = this.initialDiagnosticServices;
       }
     }
   }
 
-  /**
-   * Run inside a read only transaction
-   *
-   * @param callCtx call context to use
-   * @param transactionCode transaction code
-   */
+  /** Run inside a read only transaction */
   public void runActionInReadTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
+      @Nonnull PolarisDiagnostics diagnostics, @Nonnull Runnable transactionCode) {
     synchronized (lock) {
 
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
+        this.diagnosticServices = diagnostics;
         this.startReadTransaction();
         transactionCode.run();
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
+        this.diagnosticServices = this.initialDiagnosticServices;
       }
     }
   }

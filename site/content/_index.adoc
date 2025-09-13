@@ -23,7 +23,7 @@ cascade:
   no_list: true
 ---
 {{< blocks/cover title="Welcome to the Apache Polaris™ (incubating) web site!" image_anchor="center" color="primary" >}}
-Apache Polaris is an open-source, fully-featured catalog for Apache Iceberg™. It implements Iceberg's REST API, enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®, Apache Spark™, Dremio®, StarRocks, and Trino.
+Apache Polaris is an open-source, fully-featured catalog for Apache Iceberg™. It implements Iceberg's REST API, enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRocks, and Trino.
 
 <a href="/in-dev/unreleased/getting-started/install-dependencies/" class="btn btn-lg btn-dark mt-5">Get Started <i class="fas fa-arrow-alt-circle-right ms-2"></i></a>
 

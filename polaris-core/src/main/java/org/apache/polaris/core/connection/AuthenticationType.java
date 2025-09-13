@@ -33,6 +33,8 @@ public enum AuthenticationType {
   NULL_TYPE(0),
   OAUTH(1),
   BEARER(2),
+  IMPLICIT(3),
+  SIGV4(4),
   ;
 
   private static final AuthenticationType[] REVERSE_MAPPING_ARRAY;
@@ -65,7 +67,7 @@ public enum AuthenticationType {
    * NULL_TYPE if not found
    *
    * @param authTypeCode code associated to the authentication type
-   * @return ConnectionType corresponding to that code or null if mapping not found
+   * @return AuthenticationType corresponding to that code or null if mapping not found
    */
   public static @Nonnull AuthenticationType fromCode(int authTypeCode) {
     // ensure it is within bounds

@@ -28,7 +28,7 @@ Additionally, Polaris will be bootstrapped to use this database and Docker conta
 The requirements to run the script below are:
 * Install the AZ CLI, if it is not already installed on the Azure VM. Instructions to download the AZ CLI can be found [here](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
 * You must be logged into the AZ CLI. Please run `az account show` to ensure that you are logged in prior to running this script.
-* Assign a System-Assigned Managed Identity to the Azure VM. 
+* Assign a System-Assigned Managed Identity to the Azure VM.
 
 ```shell
 chmod +x getting-started/assets/cloud_providers/deploy-azure.sh
@@ -39,7 +39,7 @@ export CLIENT_SECRET=s3cr3t
 ```
 
 ## Next Steps
-Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% ref "using-polaris" %}}) page.
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% relref "../using-polaris" %}}) page.
 
 ## Cleanup Instructions
 To shut down the Polaris server, run the following commands:

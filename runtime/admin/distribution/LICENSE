@@ -235,26 +235,26 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-bootstrap-runner Version: 3.21.4
-Group: io.quarkus Name: quarkus-classloader-commons Version: 3.21.4
-Group: io.quarkus Name: quarkus-development-mode-spi Version: 3.21.4
-Group: io.quarkus.arc Name: arc Version: 3.21.4
-Group: io.quarkus Name: quarkus-agroal Version: 3.21.4
-Group: io.quarkus Name: quarkus-arc Version: 3.21.4
-Group: io.quarkus Name: quarkus-container-image Version: 3.21.4
-Group: io.quarkus Name: quarkus-container-image-docker Version: 3.21.4
-Group: io.quarkus Name: quarkus-container-image-docker-common Version: 3.21.4
-Group: io.quarkus Name: quarkus-core Version: 3.21.4
-Group: io.quarkus Name: quarkus-credentials Version: 3.21.4
-Group: io.quarkus Name: quarkus-datasource Version: 3.21.4
-Group: io.quarkus Name: quarkus-datasource-common Version: 3.21.4
-Group: io.quarkus Name: quarkus-fs-util Version: 0.0.10
-Group: io.quarkus Name: quarkus-jdbc-postgresql Version: 3.21.4
-Group: io.quarkus Name: quarkus-mutiny Version: 3.21.4
-Group: io.quarkus Name: quarkus-narayana-jta Version: 3.21.4
-Group: io.quarkus Name: quarkus-picocli Version: 3.21.4
-Group: io.quarkus Name: quarkus-smallrye-context-propagation Version: 3.21.4
-Group: io.quarkus Name: quarkus-transaction-annotations Version: 3.21.4
+Group: io.quarkus Name: quarkus-bootstrap-runner Version: 3.23.3
+Group: io.quarkus Name: quarkus-classloader-commons Version: 3.23.3
+Group: io.quarkus Name: quarkus-development-mode-spi Version: 3.23.3
+Group: io.quarkus.arc Name: arc Version: 3.23.3
+Group: io.quarkus Name: quarkus-agroal Version: 3.23.3
+Group: io.quarkus Name: quarkus-arc Version: 3.23.3
+Group: io.quarkus Name: quarkus-container-image Version: 3.23.3
+Group: io.quarkus Name: quarkus-container-image-docker Version: 3.23.3
+Group: io.quarkus Name: quarkus-container-image-docker-common Version: 3.23.3
+Group: io.quarkus Name: quarkus-core Version: 3.23.3
+Group: io.quarkus Name: quarkus-credentials Version: 3.23.3
+Group: io.quarkus Name: quarkus-datasource Version: 3.23.3
+Group: io.quarkus Name: quarkus-datasource-common Version: 3.23.3
+Group: io.quarkus Name: quarkus-fs-util Version: 1.0.0
+Group: io.quarkus Name: quarkus-jdbc-postgresql Version: 3.23.3
+Group: io.quarkus Name: quarkus-mutiny Version: 3.23.3
+Group: io.quarkus Name: quarkus-narayana-jta Version: 3.23.3
+Group: io.quarkus Name: quarkus-picocli Version: 3.23.3
+Group: io.quarkus Name: quarkus-smallrye-context-propagation Version: 3.23.3
+Group: io.quarkus Name: quarkus-transaction-annotations Version: 3.23.3
 Project URL: https://quarkus.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -270,11 +270,11 @@ Group: io.smallrye.common Name: smallrye-common-os Version: 2.12.0
 Group: io.smallrye.common Name: smallrye-common-ref Version: 2.12.0
 Group: io.smallrye.common Name: smallrye-common-annotation Version: 2.12.0
 Group: io.smallrye.common Name: smallrye-common-classloader Version: 2.12.0
-Group: io.smallrye.config Name: smallrye-config Version: 3.12.4
-Group: io.smallrye.config Name: smallrye-config-common Version: 3.12.4
-Group: io.smallrye.config Name: smallrye-config-core Version: 3.12.4
-Group: io.smallrye.reactive Name: mutiny Version: 2.8.0
-Group: io.smallrye.reactive Name: mutiny-smallrye-context-propagation Version: 2.8.0
+Group: io.smallrye.config Name: smallrye-config Version: 3.13.1
+Group: io.smallrye.config Name: smallrye-config-common Version: 3.13.1
+Group: io.smallrye.config Name: smallrye-config-core Version: 3.13.1
+Group: io.smallrye.reactive Name: mutiny Version: 2.9.0
+Group: io.smallrye.reactive Name: mutiny-smallrye-context-propagation Version: 2.9.0
 Group: io.smallrye.reactive Name: mutiny-zero-flow-adapters Version: 1.1.1
 Group: io.smallrye.reactive Name: smallrye-reactive-converter-api Version: 3.0.3
 Group: io.smallrye.reactive Name: smallrye-reactive-converter-mutiny Version: 3.0.3
@@ -329,17 +329,17 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.18.2
-Group: com.fasterxml.jackson.core Name: jackson-core Version: 2.18.2
-Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.18.2
-Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-yaml Version: 2.18.2
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jsr310 Version: 2.18.2
+Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.18.3
+Group: com.fasterxml.jackson.core Name: jackson-core Version: 2.18.3
+Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.18.3
+Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-yaml Version: 2.18.3
+Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jsr310 Version: 2.18.3
 Project URL: https://github.com/FasterXML/jackson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.github.ben-manes.caffeine Name: caffeine Version: 3.2.1
+Group: com.github.ben-manes.caffeine Name: caffeine Version: 3.2.0
 Project URL: https://github.com/ben-manes/caffeine
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -511,13 +511,13 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.code.gson Name: gson Version: 2.12.1
+Group: com.google.code.gson Name: gson Version: 2.13.1
 Project URL: https://github.com/google/gson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.errorprone Name: error_prone_annotations Version: 2.36.0
+Group: com.google.errorprone Name: error_prone_annotations Version: 2.37.0
 Project URL: https://errorprone.info
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -670,7 +670,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.nimbusds Name: nimbus-jose-jwt Version: 10.0.2
+Group: com.nimbusds Name: nimbus-jose-jwt Version: 10.3
 Project URL: https://bitbucket.org/connect2id/nimbus-jose-jwt
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -695,7 +695,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: commons-io Name: commons-io Version: 2.18.0
+Group: commons-io Name: commons-io Version: 2.19.0
 Project URL: https://commons.apache.org/proper/commons-io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -713,9 +713,9 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------`
 
-Group: io.agroal Name: agroal-api Version: 2.6
-Group: io.agroal Name: agroal-narayana Version: 2.6
-Group: io.agroal Name: agroal-pool Version: 2.6
+Group: io.agroal Name: agroal-api Version: 2.7.1
+Group: io.agroal Name: agroal-narayana Version: 2.7.1
+Group: io.agroal Name: agroal-pool Version: 2.7.1
 Project URL: https://agroal.github.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -749,35 +749,35 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.micrometer Name: micrometer-commons Version: 1.15.1
-Group: io.micrometer Name: micrometer-core Version: 1.15.1
-Group: io.micrometer Name: micrometer-observation Version: 1.15.1
+Group: io.micrometer Name: micrometer-commons Version: 1.14.7
+Group: io.micrometer Name: micrometer-core Version: 1.14.7
+Group: io.micrometer Name: micrometer-observation Version: 1.14.7
 Project URL: https://github.com/micrometer-metrics/micrometer
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-buffer Version: 4.1.119.Final
-Group: io.netty Name: netty-codec Version: 4.1.119.Final
-Group: io.netty Name: netty-codec-dns Version: 4.1.119.Final
-Group: io.netty Name: netty-codec-http Version: 4.1.119.Final
-Group: io.netty Name: netty-codec-http2 Version: 4.1.119.Final
-Group: io.netty Name: netty-codec-socks Version: 4.1.119.Final
-Group: io.netty Name: netty-common Version: 4.1.119.Final
-Group: io.netty Name: netty-handler Version: 4.1.119.Final
-Group: io.netty Name: netty-handler-proxy Version: 4.1.119.Final
-Group: io.netty Name: netty-resolver Version: 4.1.119.Final
-Group: io.netty Name: netty-resolver-dns Version: 4.1.119.Final
-Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.119.Final
-Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.119.Final
+Group: io.netty Name: netty-buffer Version: 4.1.121.Final
+Group: io.netty Name: netty-codec Version: 4.1.121.Final
+Group: io.netty Name: netty-codec-dns Version: 4.1.121.Final
+Group: io.netty Name: netty-codec-http Version: 4.1.121.Final
+Group: io.netty Name: netty-codec-http2 Version: 4.1.121.Final
+Group: io.netty Name: netty-codec-socks Version: 4.1.121.Final
+Group: io.netty Name: netty-common Version: 4.1.121.Final
+Group: io.netty Name: netty-handler Version: 4.1.121.Final
+Group: io.netty Name: netty-handler-proxy Version: 4.1.121.Final
+Group: io.netty Name: netty-resolver Version: 4.1.121.Final
+Group: io.netty Name: netty-resolver-dns Version: 4.1.121.Final
+Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.121.Final
+Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.121.Final
 Group: io.netty Name: netty-tcnative-boringssl-static Version: 2.0.70.Final
 Group: io.netty Name: netty-tcnative-classes Version: 2.0.70.Final
-Group: io.netty Name: netty-transport Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-native-epoll Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.119.Final
-Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.119.Final
+Group: io.netty Name: netty-transport Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-native-epoll Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.121.Final
+Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.121.Final
 Project URL: https://netty.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -829,7 +829,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor Name: reactor-core Version: 3.7.6
+Group: io.projectreactor Name: reactor-core Version: 3.7.7
 Project URL: https://github.com/reactor/reactor-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1003,19 +1003,19 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-api Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-aws Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-azure Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-bundled-guava Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-common Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-core Version: 1.9.0
-Group: org.apache.iceberg Name: iceberg-gcp Version: 1.9.0
+Group: org.apache.iceberg Name: iceberg-api Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-aws Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-azure Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-bundled-guava Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-common Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-core Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-gcp Version: 1.9.1
 Project URL: https://iceberg.apache.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.checkerframework Name: checker-qual Version: 3.49.1
+Group: org.checkerframework Name: checker-qual Version: 3.49.3
 Project URL: https://checkerframework.org/
 License: MIT License
 | The annotations are licensed under the MIT License.  (The text of this
@@ -1162,10 +1162,10 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 Group: org.jboss.invocation Name: jboss-invocation Version: 2.0.0.Final
 Group: org.jboss Name: jboss-transaction-spi Version: 8.0.0.Final
 Group: org.jboss.logging Name: jboss-logging-annotations Version: 3.0.4.Final
-Group: org.jboss.narayana.jta Name: narayana-jta Version: 7.2.1.Final
-Group: org.jboss.narayana.jts Name: narayana-jts-integration Version: 7.2.1.Final
+Group: org.jboss.narayana.jta Name: narayana-jta Version: 7.2.2.Final
+Group: org.jboss.narayana.jts Name: narayana-jts-integration Version: 7.2.2.Final
 Group: org.jboss.slf4j Name: slf4j-jboss-logmanager Version: 2.0.0.Final
-Group: org.jboss.threads Name: jboss-threads Version: 3.8.0.Final
+Group: org.jboss.threads Name: jboss-threads Version: 3.9.1
 Group: org.wildfly.common Name: wildfly-common Version: 2.0.1
 Project URL: http://www.jboss.org
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
@@ -1228,7 +1228,7 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-Group: org.ow2.asm Name: asm Version: 9.7.1
+Group: org.ow2.asm Name: asm Version: 9.8
 Project URL: http://asm.ow2.io/
 License: BSD 3-Clause
 | ASM: a very small and fast Java bytecode manipulation framework
@@ -1261,7 +1261,7 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: org.postgresql Name: postgresql Version: 42.7.5
+Group: org.postgresql Name: postgresql Version: 42.7.6
 Project URL: https://jdbc.postgresql.org/
 License: BSD 2-Clause
 | Copyright (c) 1997, PostgreSQL Global Development Group All rights reserved.

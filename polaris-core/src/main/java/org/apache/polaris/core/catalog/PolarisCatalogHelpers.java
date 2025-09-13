@@ -19,7 +19,6 @@
 package org.apache.polaris.core.catalog;
 
 import com.google.common.collect.ImmutableList;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -62,20 +61,28 @@ public class PolarisCatalogHelpers {
     return Namespace.of(parentLevels);
   }
 
-  public static List<Namespace> nameAndIdToNamespaces(
-      List<PolarisEntity> catalogPath, List<PolarisEntity.NameAndId> entities) {
+  public static Namespace nameAndIdToNamespace(
+      List<PolarisEntity> catalogPath, PolarisEntity.NameAndId entity) {
+    // Skip element 0 which is the catalog entity
+    String[] fullName = new String[catalogPath.size()];
+    for (int i = 0; i < fullName.length - 1; ++i) {
+      fullName[i] = catalogPath.get(i + 1).getName();
+    }
+    fullName[fullName.length - 1] = entity.getName();
+    return Namespace.of(fullName);
+  }
+
+  /**
+   * Given the shortnames/ids of entities that all live under the given catalogPath, reconstructs
+   * TableIdentifier objects for each that all hold the catalogPath excluding the catalog entity.
+   */
+  public static Namespace parentNamespace(List<PolarisEntity> catalogPath) {
     // Skip element 0 which is the catalog entity
     String[] parentNamespaces = new String[catalogPath.size() - 1];
     for (int i = 0; i < parentNamespaces.length; ++i) {
       parentNamespaces[i] = catalogPath.get(i + 1).getName();
     }
-    List<Namespace> namespaces = new ArrayList<>();
-    for (PolarisEntity.NameAndId entity : entities) {
-      String[] fullName = Arrays.copyOf(parentNamespaces, parentNamespaces.length + 1);
-      fullName[fullName.length - 1] = entity.getName();
-      namespaces.add(Namespace.of(fullName));
-    }
-    return namespaces;
+    return Namespace.of(parentNamespaces);
   }
 
   /**

@@ -17,8 +17,10 @@
 # under the License.
 #
 
-DOCKER="$(which podman > /dev/null && echo podman || echo docker)"
-COMPOSE="$(which podman-compose > /dev/null && echo podman-compose || echo docker-compose)"
+[[ -f site/.user-settings ]] && . site/.user-settings
+
+[[ -z ${DOCKER} ]] && DOCKER="$(which podman > /dev/null && echo podman || echo docker)"
+[[ -z ${COMPOSE} ]] && COMPOSE="$(which podman-compose > /dev/null && echo podman-compose || echo docker-compose)"
 
 # absolute path to the Polaris workspace, for the volume mount
 WORKSPACE="$(pwd)"

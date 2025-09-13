@@ -85,23 +85,28 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = "bundle"
   isZip64 = true
 
-  // include the LICENSE and NOTICE files for the shadow Jar
-  from(projectDir) {
-    include("LICENSE")
-    include("NOTICE")
-  }
-
   // pack both the source code and dependencies
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 
-  // Optimization: Minimize the JAR (remove unused classes from dependencies)
-  // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,
-  // therefore excluded from the optimization.
-  minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*")) }
+  // recursively remove all LICENSE and NOTICE file under META-INF, includes
+  // directories contains 'license' in the name
+  exclude("META-INF/**/*LICENSE*")
+  exclude("META-INF/**/*NOTICE*")
+  // exclude the top level LICENSE, LICENSE-*.txt and NOTICE
+  exclude("LICENSE*")
+  exclude("NOTICE*")
+
+  // add polaris customized LICENSE and NOTICE for the bundle jar at top level. Note that the
+  // customized LICENSE and NOTICE file are called BUNDLE-LICENSE and BUNDLE-NOTICE,
+  // and renamed to LICENSE and NOTICE after include, this is to avoid the file
+  // being excluded due to the exclude pattern matching used above.
+  from("${projectDir}/BUNDLE-LICENSE") { rename { "LICENSE" } }
+  from("${projectDir}/BUNDLE-NOTICE") { rename { "NOTICE" } }
 }
 
-// ensure the ShadowJar job is run for both `assemble` and `build` task
+// ensure the shadow jar job (which will automatically run license addition) is run for both
+// `assemble` and `build` task
 tasks.named("assemble") { dependsOn("createPolarisSparkJar") }
 
 tasks.named("build") { dependsOn("createPolarisSparkJar") }

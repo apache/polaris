@@ -22,10 +22,10 @@ type: docs
 weight: 650
 ---
 
-Apache Polaris now provides Catalog support for Generic Tables (non-Iceberg tables), please check out 
+Apache Polaris now provides Catalog support for Generic Tables (non-Iceberg tables), please check out
 the [Catalog API Spec]({{% ref "polaris-catalog-service" %}}) for Generic Table API specs.
 
-Along with the Generic Table Catalog support, Polaris is also releasing a Spark client, which helps to 
+Along with the Generic Table Catalog support, Polaris is also releasing a Spark client, which helps to
 provide an end-to-end solution for Apache Spark to manage Delta tables using Polaris.
 
 Note the Polaris Spark client is able to handle both Iceberg and Delta tables, not just Delta.
@@ -33,24 +33,23 @@ Note the Polaris Spark client is able to handle both Iceberg and Delta tables, n
 This page documents how to connect Spark with Polaris Service using the Polaris Spark client.
 
 ## Quick Start with Local Polaris service
-If you want to quickly try out the functionality with a local Polaris service, simply check out the Polaris repo 
-and follow the instructions in the Spark plugin getting-started 
+If you want to quickly try out the functionality with a local Polaris service, simply check out the Polaris repo
+and follow the instructions in the Spark plugin getting-started
 [README](https://github.com/apache/polaris/blob/main/plugins/spark/v3.5/getting-started/README.md).
 
 Check out the Polaris repo:
 ```shell
-cd ~
-git clone https://github.com/apache/polaris.git
+git clone https://github.com/apache/polaris.git ~/polaris
 ```
 
 ## Start Spark against a deployed Polaris service
 Before starting, ensure that the deployed Polaris service supports Generic Tables, and that Spark 3.5(version 3.5.3 or later is installed).
-Spark 3.5.5 is recommended, and you can follow the instructions below to get a Spark 3.5.5 distribution.
+Spark 3.5.6 is recommended, and you can follow the instructions below to get a Spark 3.5.6 distribution.
 ```shell
 cd ~
-wget https://archive.apache.org/dist/spark/spark-3.5.5/spark-3.5.5-bin-hadoop3.tgz 
+wget https://www.apache.org/dyn/closer.lua/spark/spark-3.5.6/spark-3.5.6-bin-hadoop3.tgz?action=download
 mkdir spark-3.5
-tar xzvf spark-3.5.5-bin-hadoop3.tgz  -C spark-3.5 --strip-components=1
+tar xzvf spark-3.5.6-bin-hadoop3.tgz -C spark-3.5 --strip-components=1
 cd spark-3.5
 ```
 
@@ -60,7 +59,7 @@ a released Polaris Spark client.
 
 ```shell
 bin/spark-shell \
---packages <polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages <polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<spark-catalog-name>.warehouse=<polaris-catalog-name> \
@@ -74,13 +73,13 @@ bin/spark-shell \
 Assume the released Polaris Spark client you want to use is `org.apache.polaris:polaris-spark-3.5_2.12:1.0.0`,
 replace the `polaris-spark-client-package` field with the release.
 
-The `spark-catalog-name` is the catalog name you will use with Spark, and `polaris-catalog-name` is the catalog name used 
-by Polaris service, for simplicity, you can use the same name. 
+The `spark-catalog-name` is the catalog name you will use with Spark, and `polaris-catalog-name` is the catalog name used
+by Polaris service, for simplicity, you can use the same name.
 
 Replace the `polaris-service-uri` with the uri of the deployed Polaris service. For example, with a locally deployed
 Polaris service, the uri would be `http://localhost:8181/api/catalog`.
 
-For `client-id` and `client-secret` values, you can refer to [Using Polaris]({{% ref "getting-started/using-polaris" %}}) 
+For `client-id` and `client-secret` values, you can refer to [Using Polaris]({{% ref "getting-started/using-polaris" %}})
 for more details.
 
 You can also start the connection by programmatically initialize a SparkSession, following is an example with PySpark:
@@ -88,10 +87,10 @@ You can also start the connection by programmatically initialize a SparkSession,
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder
-  .config("spark.jars.packages", "<polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.0,io.delta:delta-spark_2.12:3.3.1")
+  .config("spark.jars.packages", "<polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1")
   .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
   .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
-  .config("spark.sql.catalog.<spark-catalog-name>", "org.apache.polaris.spark.SparkCatalog")  
+  .config("spark.sql.catalog.<spark-catalog-name>", "org.apache.polaris.spark.SparkCatalog")
   .config("spark.sql.catalog.<spark-catalog-name>.uri", <polaris-service-uri>)
   .config("spark.sql.catalog.<spark-catalog-name>.token-refresh-enabled", "true")
   .config("spark.sql.catalog.<spark-catalog-name>.credential", "<client-id>:<client_secret>")

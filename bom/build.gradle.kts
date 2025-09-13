@@ -30,16 +30,16 @@ dependencies {
     api(project(":polaris-api-management-service"))
 
     api(project(":polaris-container-spec-helper"))
+    api(project(":polaris-minio-testcontainer"))
     api(project(":polaris-immutables"))
     api(project(":polaris-misc-types"))
     api(project(":polaris-version"))
-    api(project(":polaris-persistence-varint"))
+    api(project(":polaris-persistence-nosql-varint"))
 
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
     api(project(":polaris-core"))
-    api(project(":polaris-service-common"))
 
     api(project(":polaris-eclipselink"))
     api(project(":polaris-relational-jdbc"))

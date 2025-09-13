@@ -19,6 +19,8 @@
 package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Preconditions;
+import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
@@ -27,15 +29,21 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
  * Namespace-specific subclass of the {@link PolarisEntity} that provides accessors interacting with
  * internalProperties specific to the NAMESPACE type.
  */
-public class NamespaceEntity extends PolarisEntity {
+public class NamespaceEntity extends PolarisEntity implements LocationBasedEntity {
   // RESTUtil-encoded parent namespace.
   public static final String PARENT_NAMESPACE_KEY = "parent-namespace";
 
   public NamespaceEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.NAMESPACE, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
-  public static NamespaceEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable NamespaceEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new NamespaceEntity(sourceEntity);
     }
@@ -60,6 +68,7 @@ public class NamespaceEntity extends PolarisEntity {
     return Namespace.of(levels);
   }
 
+  @Override
   @JsonIgnore
   public String getBaseLocation() {
     return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);

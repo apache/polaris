@@ -24,6 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -31,12 +32,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
@@ -75,46 +79,44 @@ public class DatasourceOperations {
   }
 
   /**
-   * Execute SQL script.
+   * Execute SQL script and close the associated input stream
    *
-   * @param scriptFilePath : Path of SQL script.
+   * @param scriptInputStream : Input stream containing the SQL script.
    * @throws SQLException : Exception while executing the script.
    */
-  public void executeScript(String scriptFilePath) throws SQLException {
-    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-    runWithinTransaction(
-        connection -> {
-          try (Statement statement = connection.createStatement()) {
-            BufferedReader reader =
-                new BufferedReader(
-                    new InputStreamReader(
-                        Objects.requireNonNull(classLoader.getResourceAsStream(scriptFilePath)),
-                        UTF_8));
-            StringBuilder sqlBuffer = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-              line = line.trim();
-              if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
-                sqlBuffer.append(line).append("\n");
-                if (line.endsWith(";")) { // Execute statement when semicolon is found
-                  String sql = sqlBuffer.toString().trim();
-                  try {
-                    // since SQL is directly read from the file, there is close to 0 possibility
-                    // of this being injected plus this run via an Admin tool, if attacker can
-                    // fiddle with this that means lot of other things are already compromised.
-                    statement.execute(sql);
-                  } catch (SQLException e) {
-                    throw new RuntimeException(e);
+  public void executeScript(InputStream scriptInputStream) throws SQLException {
+    try (BufferedReader scriptReader =
+        new BufferedReader(
+            new InputStreamReader(Objects.requireNonNull(scriptInputStream), UTF_8))) {
+      List<String> scriptLines = scriptReader.lines().toList();
+      runWithinTransaction(
+          connection -> {
+            try (Statement statement = connection.createStatement()) {
+              StringBuilder sqlBuffer = new StringBuilder();
+              for (String line : scriptLines) {
+                line = line.trim();
+                if (!line.isEmpty() && !line.startsWith("--")) { // Ignore empty lines and comments
+                  sqlBuffer.append(line).append("\n");
+                  if (line.endsWith(";")) { // Execute statement when semicolon is found
+                    String sql = sqlBuffer.toString().trim();
+                    try {
+                      // since SQL is directly read from the file, there is close to 0 possibility
+                      // of this being injected plus this run via an Admin tool, if attacker can
+                      // fiddle with this that means lot of other things are already compromised.
+                      statement.execute(sql);
+                    } catch (SQLException e) {
+                      throw new RuntimeException(e);
+                    }
+                    sqlBuffer.setLength(0); // Clear the buffer for the next statement
                   }
-                  sqlBuffer.setLength(0); // Clear the buffer for the next statement
                 }
               }
+              return true;
             }
-            return true;
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        });
+          });
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
@@ -152,6 +154,7 @@ public class DatasourceOperations {
       throws SQLException {
     withRetries(
         () -> {
+          logQuery(query);
           try (Connection connection = borrowConnection();
               PreparedStatement statement = connection.prepareStatement(query.sql())) {
             List<Object> params = query.parameters();
@@ -177,6 +180,7 @@ public class DatasourceOperations {
   public int executeUpdate(QueryGenerator.PreparedQuery preparedQuery) throws SQLException {
     return withRetries(
         () -> {
+          logQuery(preparedQuery);
           try (Connection connection = borrowConnection();
               PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
             List<Object> params = preparedQuery.parameters();
@@ -191,6 +195,63 @@ public class DatasourceOperations {
               connection.setAutoCommit(autoCommit);
             }
           }
+        });
+  }
+
+  /**
+   * Executes the INSERT/UPDATE Queries in batches. Requires that all SQL queries have the same
+   * parameterized form.
+   *
+   * @param preparedQueries : queries to be executed
+   * @return : Number of rows modified / inserted.
+   * @throws SQLException : Exception during Query Execution.
+   */
+  public int executeBatchUpdate(QueryGenerator.PreparedBatchQuery preparedQueries)
+      throws SQLException {
+    if (preparedQueries.parametersList().isEmpty() || preparedQueries.sql().isEmpty()) {
+      return 0;
+    }
+    int batchSize = 100;
+    AtomicInteger successCount = new AtomicInteger();
+    return withRetries(
+        () -> {
+          try (Connection connection = borrowConnection();
+              PreparedStatement statement = connection.prepareStatement(preparedQueries.sql())) {
+            boolean autoCommit = connection.getAutoCommit();
+            boolean success = false;
+            connection.setAutoCommit(false);
+
+            try {
+              for (int i = 1; i <= preparedQueries.parametersList().size(); i++) {
+                List<Object> params = preparedQueries.parametersList().get(i - 1);
+                for (int j = 0; j < params.size(); j++) {
+                  statement.setObject(j + 1, params.get(j));
+                }
+
+                statement.addBatch(); // Add to batch
+
+                if (i % batchSize == 0) {
+                  successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
+                }
+              }
+
+              // Execute remaining queries in the batch
+              successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
+              success = true;
+            } finally {
+              try {
+                if (success) {
+                  connection.commit();
+                } else {
+                  connection.rollback();
+                  successCount.set(0);
+                }
+              } finally {
+                connection.setAutoCommit(autoCommit);
+              }
+            }
+          }
+          return successCount.get();
         });
   }
 
@@ -227,6 +288,7 @@ public class DatasourceOperations {
 
   public Integer execute(Connection connection, QueryGenerator.PreparedQuery preparedQuery)
       throws SQLException {
+    logQuery(preparedQuery);
     try (PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
       List<Object> params = preparedQuery.parameters();
       for (int i = 0; i < params.size(); i++) {
@@ -287,8 +349,12 @@ public class DatasourceOperations {
         if (timeLeft == 0 || attempts >= maxAttempts || !isRetryable(sqlException)) {
           String exceptionMessage =
               String.format(
-                  "Failed due to %s, after , %s attempts and %s milliseconds",
-                  sqlException.getMessage(), attempts, maxDuration);
+                  "Failed due to '%s' (error code %d, sql-state '%s'), after %s attempts and %s milliseconds",
+                  sqlException.getMessage(),
+                  sqlException.getErrorCode(),
+                  sqlException.getSQLState(),
+                  attempts,
+                  maxDuration);
           throw new SQLException(
               exceptionMessage, sqlException.getSQLState(), sqlException.getErrorCode(), e);
         }
@@ -330,5 +396,18 @@ public class DatasourceOperations {
 
   private Connection borrowConnection() throws SQLException {
     return datasource.getConnection();
+  }
+
+  private static void logQuery(QueryGenerator.PreparedQuery query) {
+    LOGGER
+        .atDebug()
+        .addArgument(query.sql())
+        .addArgument(
+            () ->
+                query.parameters().stream()
+                    .map(o -> o != null ? o.toString() : "NULL")
+                    .collect(Collectors.joining("\n    ", "\n    ", "")))
+        .setMessage("query: {}{}")
+        .log();
   }
 }

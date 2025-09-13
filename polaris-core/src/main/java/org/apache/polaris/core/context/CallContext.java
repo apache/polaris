@@ -19,6 +19,7 @@
 package org.apache.polaris.core.context;
 
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.RealmConfig;
 
 /**
  * Stores elements associated with an individual REST request such as RealmContext, caller
@@ -29,21 +30,6 @@ import org.apache.polaris.core.PolarisCallContext;
  * underlying nature of the persistence layer may differ between different realms.
  */
 public interface CallContext {
-  InheritableThreadLocal<CallContext> CURRENT_CONTEXT = new InheritableThreadLocal<>();
-
-  static CallContext setCurrentContext(CallContext context) {
-    CURRENT_CONTEXT.set(context);
-    return context;
-  }
-
-  static CallContext getCurrentContext() {
-    return CURRENT_CONTEXT.get();
-  }
-
-  static void unsetCurrentContext() {
-    CURRENT_CONTEXT.remove();
-  }
-
   /** Copy the {@link CallContext}. */
   CallContext copy();
 
@@ -53,4 +39,6 @@ public interface CallContext {
    * @return the inner context used for delegating services
    */
   PolarisCallContext getPolarisCallContext();
+
+  RealmConfig getRealmConfig();
 }

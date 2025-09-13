@@ -18,13 +18,17 @@
  */
 
 import publishing.GenerateDigest
+import publishing.PublishingHelperPlugin
 
 plugins {
     id("distribution")
     id("signing")
+    id("polaris-reproducible")
 }
 
 description = "Apache Polaris Binary Distribution"
+
+apply<PublishingHelperPlugin>()
 
 val adminProject = project(":polaris-admin")
 val serverProject = project(":polaris-server")

@@ -30,6 +30,7 @@ metadata:
 data:
   application.properties: |-
     {{- $map := dict -}}
+    {{- $global := . -}}
 
     {{- /* Realm Context */ -}}
     {{- $_ := set $map "polaris.realm-context.type" .Values.realmContext.type -}}
@@ -49,10 +50,6 @@ data:
 
     {{- /* Persistence */ -}}
     {{- $_ = set $map "polaris.persistence.type" .Values.persistence.type -}}
-    {{- if and ( eq .Values.persistence.type "eclipse-link" ) .Values.persistence.eclipseLink.secret.name -}}
-    {{- $_ = set $map "polaris.persistence.eclipselink.persistence-unit" .Values.persistence.eclipseLink.persistenceUnit -}}
-    {{- $_ = set $map "polaris.persistence.eclipselink.configuration-file" (printf "%s/persistence.xml" .Values.image.configDir ) -}}
-    {{- end -}}
 
     {{- /* File IO */ -}}
     {{- $_ = set $map "polaris.file-io.type" .Values.fileIo.type -}}
@@ -79,17 +76,33 @@ data:
     {{- end -}}
 
     {{- /* Authentication */ -}}
-    {{- $_ = set $map "polaris.authentication.authenticator.type" .Values.authentication.authenticator.type -}}
-    {{- $_ = set $map "polaris.authentication.token-service.type" .Values.authentication.tokenService.type -}}
-    {{- $_ = set $map "polaris.authentication.token-broker.type" .Values.authentication.tokenBroker.type -}}
-    {{- $_ = set $map "polaris.authentication.token-broker.max-token-generation" .Values.authentication.tokenBroker.maxTokenGeneration -}}
-    {{- if .Values.authentication.tokenBroker.secret.name -}}
-    {{- if eq .Values.authentication.tokenBroker.type "rsa-key-pair" -}}
-    {{- $_ = set $map "polaris.authentication.token-broker.rsa-key-pair.public-key-file" (printf "%s/public.pem" .Values.image.configDir ) -}}
-    {{- $_ = set $map "polaris.authentication.token-broker.rsa-key-pair.private-key-file" (printf "%s/private.pem" .Values.image.configDir ) -}}
+    {{- include "polaris.authenticationOptions" (list "" $map .Values.authentication $global) -}}
+    {{- range $realm, $overrides := .Values.authentication.realmOverrides -}}
+    {{- include "polaris.authenticationOptions" (list $realm $map $overrides $global) -}}
     {{- end -}}
-    {{- if eq .Values.authentication.tokenBroker.type "symmetric-key" -}}
-    {{- $_ = set $map "polaris.authentication.token-broker.symmetric-key.file" (printf "%s/symmetric.key" .Values.image.configDir ) -}}
+
+    {{- /* OIDC */ -}}
+    {{- if .Values.oidc.authServeUrl -}}
+    {{- $_ = set $map "quarkus.oidc.tenant-enabled" "true" -}}
+    {{- $_ = set $map "quarkus.oidc.auth-server-url" .Values.oidc.authServeUrl -}}
+    {{- $_ = set $map "quarkus.oidc.client-id" .Values.oidc.client.id -}}
+    {{- $_ = set $map "polaris.oidc.principal-mapper.type" .Values.oidc.principalMapper.type -}}
+    {{- if .Values.oidc.principalMapper.idClaimPath -}}
+    {{- $_ = set $map "polaris.oidc.principal-mapper.id-claim-path" .Values.oidc.principalMapper.idClaimPath -}}
+    {{- end -}}
+    {{- if .Values.oidc.principalMapper.nameClaimPath -}}
+    {{- $_ = set $map "polaris.oidc.principal-mapper.name-claim-path" .Values.oidc.principalMapper.nameClaimPath -}}
+    {{- end -}}
+    {{- $_ = set $map "polaris.oidc.principal-roles-mapper.type" .Values.oidc.principalRolesMapper.type -}}
+    {{- if .Values.oidc.principalRolesMapper.rolesClaimPath -}}
+    {{- $_ = set $map "quarkus.oidc.roles.role-claim-path" .Values.oidc.principalRolesMapper.rolesClaimPath -}}
+    {{- end -}}
+    {{- if .Values.oidc.principalRolesMapper.filter -}}
+    {{- $_ = set $map "polaris.oidc.principal-roles-mapper.filter" .Values.oidc.principalRolesMapper.filter -}}
+    {{- end -}}
+    {{- range $i, $mapping := .Values.oidc.principalRolesMapper.mappings -}}
+    {{- $_ = set $map (printf "polaris.oidc.principal-roles-mapper.mappings[%d].regex" $i) $mapping.regex -}}
+    {{- $_ = set $map (printf "polaris.oidc.principal-roles-mapper.mappings[%d].replacement" $i) $mapping.replacement -}}
     {{- end -}}
     {{- end -}}
 
@@ -123,7 +136,7 @@ data:
     {{- $_ = set $map "quarkus.log.console.enable" "true" -}}
     {{- $_ = set $map "quarkus.log.console.level" .Values.logging.console.threshold -}}
     {{- if .Values.logging.console.json -}}
-    {{- $_ = set $map "quarkus.log.console.json" "true" -}}
+    {{- $_ = set $map "quarkus.log.console.json.enabled" "true" -}}
     {{- else -}}
     {{- $_ = set $map "quarkus.log.console.format" .Values.logging.console.format -}}
     {{- end -}}
@@ -140,7 +153,7 @@ data:
     {{- $_ = set $map "quarkus.log.file.rotation.file-suffix" .Values.logging.file.rotation.fileSuffix -}}
     {{- end -}}
     {{- if .Values.logging.file.json -}}
-    {{- $_ = set $map "quarkus.log.file.json" "true" -}}
+    {{- $_ = set $map "quarkus.log.file.json.enabled" "true" -}}
     {{- else -}}
     {{- $_ = set $map "quarkus.log.file.format" .Values.logging.file.format -}}
     {{- end -}}
@@ -199,7 +212,6 @@ data:
     {{- list .Values.advancedConfig "" $map | include "polaris.mergeConfigTree" -}}
 
     {{- /* Print the resulting configmap; each configuration option is templatized */ -}}
-    {{- $global := . -}}
     {{- range $k, $v := $map }}
     {{ include "polaris.appendConfigOption" (list $k $v $global) }}
     {{- end }}

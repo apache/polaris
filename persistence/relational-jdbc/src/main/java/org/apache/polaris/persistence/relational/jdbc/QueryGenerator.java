@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.relational.jdbc;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,6 +31,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 
@@ -41,6 +43,9 @@ public class QueryGenerator {
 
   /** A container for the SQL string and the ordered parameter values. */
   public record PreparedQuery(String sql, List<Object> parameters) {}
+
+  /** A container for the SQL string and a list of the ordered parameter values. */
+  public record PreparedBatchQuery(String sql, List<List<Object>> parametersList) {}
 
   /** A container for the query fragment SQL string and the ordered parameter values. */
   record QueryFragment(String sql, List<Object> parameters) {}
@@ -58,8 +63,27 @@ public class QueryGenerator {
       @Nonnull List<String> projections,
       @Nonnull String tableName,
       @Nonnull Map<String, Object> whereClause) {
-    QueryFragment where = generateWhereClause(new HashSet<>(projections), whereClause);
-    PreparedQuery query = generateSelectQuery(projections, tableName, where.sql());
+    return generateSelectQuery(projections, tableName, whereClause, Map.of(), null);
+  }
+
+  /**
+   * Generates a SELECT query with projection and filtering.
+   *
+   * @param projections List of columns to retrieve.
+   * @param tableName Target table name.
+   * @param whereEquals Column-value pairs used in WHERE filtering.
+   * @return A parameterized SELECT query.
+   * @throws IllegalArgumentException if any whereClause column isn't in projections.
+   */
+  public static PreparedQuery generateSelectQuery(
+      @Nonnull List<String> projections,
+      @Nonnull String tableName,
+      @Nonnull Map<String, Object> whereEquals,
+      @Nonnull Map<String, Object> whereGreater,
+      @Nullable String orderByColumn) {
+    QueryFragment where =
+        generateWhereClause(new HashSet<>(projections), whereEquals, whereGreater);
+    PreparedQuery query = generateSelectQuery(projections, tableName, where.sql(), orderByColumn);
     return new PreparedQuery(query.sql(), where.parameters());
   }
 
@@ -107,7 +131,8 @@ public class QueryGenerator {
     params.add(realmId);
     String where = " WHERE (catalog_id, id) IN (" + placeholders + ") AND realm_id = ?";
     return new PreparedQuery(
-        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where).sql(), params);
+        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where, null).sql(),
+        params);
   }
 
   /**
@@ -156,7 +181,7 @@ public class QueryGenerator {
       @Nonnull List<Object> values,
       @Nonnull Map<String, Object> whereClause) {
     List<Object> bindingParams = new ArrayList<>(values);
-    QueryFragment where = generateWhereClause(new HashSet<>(allColumns), whereClause);
+    QueryFragment where = generateWhereClause(new HashSet<>(allColumns), whereClause, Map.of());
     String setClause = allColumns.stream().map(c -> c + " = ?").collect(Collectors.joining(", "));
     String sql =
         "UPDATE " + getFullyQualifiedTableName(tableName) + " SET " + setClause + where.sql();
@@ -176,36 +201,104 @@ public class QueryGenerator {
       @Nonnull List<String> tableColumns,
       @Nonnull String tableName,
       @Nonnull Map<String, Object> whereClause) {
-    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause);
+    QueryFragment where = generateWhereClause(new HashSet<>(tableColumns), whereClause, Map.of());
     return new PreparedQuery(
         "DELETE FROM " + getFullyQualifiedTableName(tableName) + where.sql(), where.parameters());
   }
 
   private static PreparedQuery generateSelectQuery(
-      @Nonnull List<String> columnNames, @Nonnull String tableName, @Nonnull String filter) {
+      @Nonnull List<String> columnNames,
+      @Nonnull String tableName,
+      @Nonnull String filter,
+      @Nullable String orderByColumn) {
     String sql =
         "SELECT "
             + String.join(", ", columnNames)
             + " FROM "
             + getFullyQualifiedTableName(tableName)
             + filter;
+    if (orderByColumn != null) {
+      sql += " ORDER BY " + orderByColumn + " ASC";
+    }
     return new PreparedQuery(sql, Collections.emptyList());
   }
 
   @VisibleForTesting
   static QueryFragment generateWhereClause(
-      @Nonnull Set<String> tableColumns, @Nonnull Map<String, Object> whereClause) {
+      @Nonnull Set<String> tableColumns,
+      @Nonnull Map<String, Object> whereEquals,
+      @Nonnull Map<String, Object> whereGreater) {
     List<String> conditions = new ArrayList<>();
     List<Object> parameters = new ArrayList<>();
-    for (Map.Entry<String, Object> entry : whereClause.entrySet()) {
+    for (Map.Entry<String, Object> entry : whereEquals.entrySet()) {
       if (!tableColumns.contains(entry.getKey()) && !entry.getKey().equals("realm_id")) {
         throw new IllegalArgumentException("Invalid query column: " + entry.getKey());
       }
       conditions.add(entry.getKey() + " = ?");
       parameters.add(entry.getValue());
     }
+    for (Map.Entry<String, Object> entry : whereGreater.entrySet()) {
+      if (!tableColumns.contains(entry.getKey()) && !entry.getKey().equals("realm_id")) {
+        throw new IllegalArgumentException("Invalid query column: " + entry.getKey());
+      }
+      conditions.add(entry.getKey() + " > ?");
+      parameters.add(entry.getValue());
+    }
     String clause = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
     return new QueryFragment(clause, parameters);
+  }
+
+  @VisibleForTesting
+  static PreparedQuery generateVersionQuery() {
+    return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
+  }
+
+  /**
+   * Generate a SELECT query to find any entities that have a given realm &amp; parent and that may
+   * overlap with a given location. The check is performed without consideration for the scheme, so
+   * a path on one storage type may give a false positive for overlapping with another storage type.
+   * This should be combined with a check using `StorageLocation`.
+   *
+   * @param realmId A realm to search within
+   * @param catalogId A catalog entity to search within
+   * @param baseLocation The base location to look for overlap with, with or without a scheme
+   * @return The list of possibly overlapping entities that meet the criteria
+   */
+  @VisibleForTesting
+  public static PreparedQuery generateOverlapQuery(
+      String realmId, long catalogId, String baseLocation) {
+    StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
+    String locationWithoutScheme = baseStorageLocation.withoutScheme();
+
+    List<String> conditions = new ArrayList<>();
+    List<Object> parameters = new ArrayList<>();
+
+    String[] components = locationWithoutScheme.split("/");
+    StringBuilder pathBuilder = new StringBuilder();
+
+    for (String component : components) {
+      pathBuilder.append(component).append("/");
+      conditions.add("location_without_scheme = ?");
+      parameters.add(pathBuilder.toString());
+    }
+
+    // Add LIKE condition to match children
+    conditions.add("location_without_scheme LIKE ?");
+    parameters.add(locationWithoutScheme + "%");
+
+    String locationClause = String.join(" OR ", conditions);
+    String clause = " WHERE realm_id = ? AND catalog_id = ? AND (" + locationClause + ")";
+
+    // realmId and parentId go first
+    List<Object> finalParams = new ArrayList<>();
+    finalParams.add(realmId);
+    finalParams.add(catalogId);
+    finalParams.addAll(parameters);
+
+    QueryFragment where = new QueryFragment(clause, finalParams);
+    PreparedQuery query =
+        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where.sql(), null);
+    return new PreparedQuery(query.sql(), where.parameters());
   }
 
   private static String getFullyQualifiedTableName(String tableName) {

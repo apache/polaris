@@ -22,20 +22,15 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.Map;
 
 /** Base class for API helper classes. */
 public class RestApi {
   private final Client client;
-  private final PolarisApiEndpoints endpoints;
-  private final String authToken;
   private final URI uri;
 
-  RestApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
+  RestApi(Client client, URI uri) {
     this.client = client;
-    this.endpoints = endpoints;
-    this.authToken = authToken;
     this.uri = uri;
   }
 
@@ -49,12 +44,7 @@ public class RestApi {
 
   public Invocation.Builder request(
       String path, Map<String, String> templateValues, Map<String, String> queryParams) {
-    Map<String, String> headers = new HashMap<>();
-    headers.put(endpoints.realmHeaderName(), endpoints.realmId());
-    if (authToken != null) {
-      headers.put("Authorization", "Bearer " + authToken);
-    }
-    return request(path, templateValues, queryParams, headers);
+    return request(path, templateValues, queryParams, Map.of());
   }
 
   public Invocation.Builder request(

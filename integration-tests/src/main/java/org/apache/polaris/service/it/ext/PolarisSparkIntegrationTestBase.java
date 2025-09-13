@@ -20,12 +20,10 @@ package org.apache.polaris.service.it.ext;
 
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 
-import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -38,6 +36,7 @@ import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
+import org.apache.polaris.test.commons.s3mock.S3Mock;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -52,8 +51,7 @@ import org.slf4j.LoggerFactory;
 
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisSparkIntegrationTestBase {
-  protected static final S3MockContainer s3Container =
-      new S3MockContainer("3.11.0").withInitialBuckets("my-bucket,my-old-bucket");
+  protected static final S3Mock s3Container = new S3Mock();
   protected static SparkSession spark;
   protected PolarisApiEndpoints endpoints;
   protected PolarisClient client;
@@ -81,8 +79,8 @@ public abstract class PolarisSparkIntegrationTestBase {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     sparkToken = client.obtainToken(credentials);
-    managementApi = client.managementApi(credentials);
-    catalogApi = client.catalogApi(credentials);
+    managementApi = client.managementApi(sparkToken);
+    catalogApi = client.catalogApi(sparkToken);
 
     warehouseDir = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve("spark-warehouse");
 
@@ -98,26 +96,8 @@ public abstract class PolarisSparkIntegrationTestBase {
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
     CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
-    props.putAll(
-        Map.of(
-            "table-default.s3.endpoint",
-            s3Container.getHttpEndpoint(),
-            "table-default.s3.path-style-access",
-            "true",
-            "table-default.s3.access-key-id",
-            "foo",
-            "table-default.s3.secret-access-key",
-            "bar",
-            "s3.endpoint",
-            s3Container.getHttpEndpoint(),
-            "s3.path-style-access",
-            "true",
-            "s3.access-key-id",
-            "foo",
-            "s3.secret-access-key",
-            "bar",
-            "polaris.config.drop-with-purge.enabled",
-            "true"));
+    props.putAll(s3Container.getS3ConfigProperties());
+    props.put("polaris.config.drop-with-purge.enabled", "true");
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -129,26 +109,8 @@ public abstract class PolarisSparkIntegrationTestBase {
     managementApi.createCatalog(catalog);
 
     CatalogProperties externalProps = new CatalogProperties("s3://my-bucket/path/to/data");
-    externalProps.putAll(
-        Map.of(
-            "table-default.s3.endpoint",
-            s3Container.getHttpEndpoint(),
-            "table-default.s3.path-style-access",
-            "true",
-            "table-default.s3.access-key-id",
-            "foo",
-            "table-default.s3.secret-access-key",
-            "bar",
-            "s3.endpoint",
-            s3Container.getHttpEndpoint(),
-            "s3.path-style-access",
-            "true",
-            "s3.access-key-id",
-            "foo",
-            "s3.secret-access-key",
-            "bar",
-            "polaris.config.drop-with-purge.enabled",
-            "true"));
+    externalProps.putAll(s3Container.getS3ConfigProperties());
+    externalProps.put("polaris.config.drop-with-purge.enabled", "true");
     Catalog externalCatalog =
         ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
@@ -159,45 +121,18 @@ public abstract class PolarisSparkIntegrationTestBase {
 
     managementApi.createCatalog(externalCatalog);
 
-    SparkSession.Builder sessionBuilder =
-        SparkSession.builder()
-            .master("local[1]")
-            .config("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-            .config(
-                "spark.hadoop.fs.s3.aws.credentials.provider",
-                "org.apache.hadoop.fs.s3.TemporaryAWSCredentialsProvider")
-            .config("spark.hadoop.fs.s3.access.key", "foo")
-            .config("spark.hadoop.fs.s3.secret.key", "bar")
-            .config(
-                "spark.sql.extensions",
-                "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
-            .config("spark.ui.showConsoleProgress", false)
-            .config("spark.ui.enabled", "false");
-    spark =
-        withCatalog(withCatalog(sessionBuilder, catalogName), externalCatalogName).getOrCreate();
+    spark = buildSparkSession();
 
     onSpark("USE " + catalogName);
   }
 
-  protected SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
-    return builder
-        .config(
-            String.format("spark.sql.catalog.%s", catalogName),
-            "org.apache.iceberg.spark.SparkCatalog")
-        .config("spark.sql.warehouse.dir", warehouseDir.toString())
-        .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
-        .config(
-            String.format("spark.sql.catalog.%s.uri", catalogName),
-            endpoints.catalogApiEndpoint().toString())
-        .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
-        .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
-        .config(
-            String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
-        .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
-        .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
-        .config(
-            String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
-        .config(String.format("spark.sql.catalog.%s.s3.region", catalogName), "us-west-2");
+  protected SparkSession buildSparkSession() {
+    return SparkSessionBuilder.buildWithTestDefaults()
+        .withWarehouse(warehouseDir)
+        .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
+        .addCatalog(
+            externalCatalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
+        .getOrCreate();
   }
 
   @AfterEach

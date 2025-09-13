@@ -18,11 +18,10 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.time.Clock;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,8 +32,10 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -74,9 +75,9 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,10 +85,16 @@ import org.slf4j.LoggerFactory;
  * Default implementation of the Polaris Meta Store Manager. Uses the underlying meta store to store
  * and retrieve all Polaris metadata
  */
-@SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
 public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TransactionalMetaStoreManagerImpl.class);
+
+  private final Clock clock;
+
+  public TransactionalMetaStoreManagerImpl(Clock clock, PolarisDiagnostics diagnostics) {
+    super(diagnostics);
+    this.clock = clock;
+  }
 
   /**
    * A version of BaseMetaStoreManager::persistNewEntity but instead of calling the one-shot
@@ -161,11 +168,11 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisBaseEntity entity) {
 
     // validate the entity type and subtype
-    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_dpo");
-    callCtx.getDiagServices().checkNotNull(entity.getName(), "unexpected_null_name");
+    getDiagnostics().checkNotNull(entity, "unexpected_null_dpo");
+    getDiagnostics().checkNotNull(entity.getName(), "unexpected_null_name");
 
     // creation timestamp must be filled
-    callCtx.getDiagServices().check(entity.getDropTimestamp() == 0, "already_dropped");
+    getDiagnostics().check(entity.getDropTimestamp() == 0, "already_dropped");
 
     // for now drop all associated grants, etc. synchronously
     // delete ALL grant records to (if the entity is a grantee) and from that entity
@@ -195,9 +202,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // Bump up the grant version of these entities
     List<PolarisBaseEntity> entities =
         ms.lookupEntitiesInCurrentTxn(callCtx, new ArrayList<>(entityIdsGrantChanged));
-    for (PolarisBaseEntity entityGrantChanged : entities) {
-      PolarisBaseEntity originalEntity = new PolarisBaseEntity(entityGrantChanged);
-      entityGrantChanged.setGrantRecordsVersion(entityGrantChanged.getGrantRecordsVersion() + 1);
+    for (PolarisBaseEntity originalEntity : entities) {
+      PolarisBaseEntity entityGrantChanged =
+          originalEntity.withGrantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1);
       ms.writeEntityInCurrentTxn(callCtx, entityGrantChanged, false, originalEntity);
     }
 
@@ -232,8 +239,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // if it is a principal, we also need to drop the secrets
     if (entity.getType() == PolarisEntityType.PRINCIPAL) {
       // get internal properties
-      Map<String, String> properties =
-          this.deserializeProperties(callCtx, entity.getInternalProperties());
+      Map<String, String> properties = entity.getInternalPropertiesAsMap();
 
       // get client_id
       String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
@@ -264,13 +270,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisPrivilege priv) {
 
     // validate non null arguments
-    callCtx.getDiagServices().checkNotNull(securable, "unexpected_null_securable");
-    callCtx.getDiagServices().checkNotNull(grantee, "unexpected_null_grantee");
-    callCtx.getDiagServices().checkNotNull(priv, "unexpected_null_priv");
+    getDiagnostics().checkNotNull(securable, "unexpected_null_securable");
+    getDiagnostics().checkNotNull(grantee, "unexpected_null_grantee");
+    getDiagnostics().checkNotNull(priv, "unexpected_null_priv");
 
     // ensure that this entity is indeed a grantee like entity
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(grantee.getType().isGrantee(), "entity_must_be_grantee", "entity={}", grantee);
 
     // create new grant record
@@ -290,28 +295,25 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     PolarisBaseEntity granteeEntity =
         ms.lookupEntityInCurrentTxn(
             callCtx, grantee.getCatalogId(), grantee.getId(), grantee.getTypeCode());
-    callCtx
-        .getDiagServices()
-        .checkNotNull(granteeEntity, "grantee_not_found", "grantee={}", grantee);
-    PolarisBaseEntity originalGranteeEntity = new PolarisBaseEntity(granteeEntity);
-
+    getDiagnostics().checkNotNull(granteeEntity, "grantee_not_found", "grantee={}", grantee);
     // grants have changed, we need to bump-up the grants version
-    granteeEntity.setGrantRecordsVersion(granteeEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntityInCurrentTxn(callCtx, granteeEntity, false, originalGranteeEntity);
+    PolarisBaseEntity updatedGranteeEntity =
+        granteeEntity.withGrantRecordsVersion(granteeEntity.getGrantRecordsVersion() + 1);
+    ms.writeEntityInCurrentTxn(callCtx, updatedGranteeEntity, false, granteeEntity);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
     // load the securable and increment its grants version
     PolarisBaseEntity securableEntity =
         ms.lookupEntityInCurrentTxn(
             callCtx, securable.getCatalogId(), securable.getId(), securable.getTypeCode());
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .checkNotNull(securableEntity, "securable_not_found", "securable={}", securable);
-    PolarisBaseEntity originalSecurableEntity = new PolarisBaseEntity(securableEntity);
-
     // grants have changed, we need to bump-up the grants version
-    securableEntity.setGrantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntityInCurrentTxn(callCtx, securableEntity, false, originalSecurableEntity);
+    PolarisBaseEntity updatedSecurableEntity =
+        new PolarisBaseEntity.Builder(securableEntity)
+            .grantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1)
+            .build();
+    ms.writeEntityInCurrentTxn(callCtx, updatedSecurableEntity, false, securableEntity);
 
     // TODO: Update this to be an atomic bulk-update of the grantee/securable, ideally along
     // with adding the grant record in the same bulk-update.
@@ -338,8 +340,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisGrantRecord grantRecord) {
 
     // validate securable
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             securable.getCatalogId() == grantRecord.getSecurableCatalogId()
                 && securable.getId() == grantRecord.getSecurableId(),
@@ -349,8 +350,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             grantRecord);
 
     // validate grantee
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             grantee.getCatalogId() == grantRecord.getGranteeCatalogId()
                 && grantee.getId() == grantRecord.getGranteeId(),
@@ -360,9 +360,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             grantRecord);
 
     // ensure the grantee is really a grantee
-    callCtx
-        .getDiagServices()
-        .check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
+    getDiagnostics().check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
 
     // remove that grant
     ms.deleteFromGrantRecordsInCurrentTxn(callCtx, grantRecord);
@@ -371,34 +369,30 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     PolarisBaseEntity refreshGrantee =
         ms.lookupEntityInCurrentTxn(
             callCtx, grantee.getCatalogId(), grantee.getId(), grantee.getTypeCode());
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .checkNotNull(
             refreshGrantee, "missing_grantee", "grantRecord={} grantee={}", grantRecord, grantee);
-    PolarisBaseEntity originalRefreshGrantee = new PolarisBaseEntity(refreshGrantee);
-
     // grants have changed, we need to bump-up the grants version
-    refreshGrantee.setGrantRecordsVersion(refreshGrantee.getGrantRecordsVersion() + 1);
-    ms.writeEntityInCurrentTxn(callCtx, refreshGrantee, false, originalRefreshGrantee);
+    PolarisBaseEntity updatedRefreshGrantee =
+        refreshGrantee.withGrantRecordsVersion(refreshGrantee.getGrantRecordsVersion() + 1);
+    ms.writeEntityInCurrentTxn(callCtx, updatedRefreshGrantee, false, refreshGrantee);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
     // load the securable and increment its grants version
     PolarisBaseEntity refreshSecurable =
         ms.lookupEntityInCurrentTxn(
             callCtx, securable.getCatalogId(), securable.getId(), securable.getTypeCode());
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .checkNotNull(
             refreshSecurable,
             "missing_securable",
             "grantRecord={} securable={}",
             grantRecord,
             securable);
-    PolarisBaseEntity originalRefreshSecurable = new PolarisBaseEntity(refreshSecurable);
-
     // grants have changed, we need to bump-up the grants version
-    refreshSecurable.setGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1);
-    ms.writeEntityInCurrentTxn(callCtx, refreshSecurable, false, originalRefreshSecurable);
+    PolarisBaseEntity updatedRefreshSecurable =
+        refreshSecurable.withGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1);
+    ms.writeEntityInCurrentTxn(callCtx, updatedRefreshSecurable, false, refreshSecurable);
 
     // TODO: Update this to be an atomic bulk-update of the grantee/securable, ideally along
     // with removing the grant record in the same bulk-update.
@@ -426,7 +420,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable PolarisStorageIntegration<?> integration,
       @Nonnull List<PolarisEntityCore> principalRoles) {
     // validate input
-    callCtx.getDiagServices().checkNotNull(catalog, "unexpected_null_catalog");
+    getDiagnostics().checkNotNull(catalog, "unexpected_null_catalog");
 
     // check if that catalog has already been created
     PolarisBaseEntity refreshCatalog =
@@ -436,8 +430,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // if found, probably a retry, simply return the previously created catalog
     if (refreshCatalog != null) {
       // if found, ensure it is indeed a catalog
-      callCtx
-          .getDiagServices()
+      getDiagnostics()
           .check(
               refreshCatalog.getTypeCode() == PolarisEntityType.CATALOG.getCode(),
               "not_a_catalog",
@@ -454,8 +447,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               PolarisEntityConstants.getNameOfCatalogAdminRole());
 
       // if found, ensure not null
-      callCtx
-          .getDiagServices()
+      getDiagnostics()
           .checkNotNull(
               catalogAdminRole, "catalog_admin_role_not_found", "catalog={}", refreshCatalog);
 
@@ -511,16 +503,15 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               PolarisEntityConstants.getRootEntityId(),
               PolarisEntityType.PRINCIPAL_ROLE.getCode(),
               PolarisEntityConstants.getNameOfPrincipalServiceAdminRole());
-      callCtx.getDiagServices().checkNotNull(serviceAdminRole, "missing_service_admin_role");
+      getDiagnostics().checkNotNull(serviceAdminRole, "missing_service_admin_role");
       this.persistNewGrantRecord(
           callCtx, ms, adminRole, serviceAdminRole, PolarisPrivilege.CATALOG_ROLE_USAGE);
     } else {
       // grant to each principal role usage on its catalog_admin role
       for (PolarisEntityCore principalRole : principalRoles) {
         // validate not null and really a principal role
-        callCtx.getDiagServices().checkNotNull(principalRole, "null principal role");
-        callCtx
-            .getDiagServices()
+        getDiagnostics().checkNotNull(principalRole, "null principal role");
+        getDiagnostics()
             .check(
                 principalRole.getTypeCode() == PolarisEntityType.PRINCIPAL_ROLE.getCode(),
                 "not_principal_role",
@@ -641,7 +632,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull String name) {
     // first resolve again the catalogPath to that entity
-    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath);
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
@@ -687,8 +679,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   /**
-   * See {@link #listEntities(PolarisCallContext, List, PolarisEntityType, PolarisEntitySubType,
-   * PageToken)}
+   * See {@link PolarisMetaStoreManager#listEntities(PolarisCallContext, List, PolarisEntityType,
+   * PolarisEntitySubType, PageToken)}
    */
   private @Nonnull ListEntitiesResult listEntities(
       @Nonnull PolarisCallContext callCtx,
@@ -698,29 +690,24 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
     // first resolve again the catalogPath to that entity
-    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath);
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
-      return new ListEntitiesResult(
-          BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null, Optional.empty());
+      return new ListEntitiesResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
     }
 
     // return list of active entities
     Page<EntityNameLookupRecord> resultPage =
         ms.listEntitiesInCurrentTxn(
-            callCtx, resolver.getCatalogIdOrNull(), resolver.getParentId(), entityType, pageToken);
+            callCtx,
+            resolver.getCatalogIdOrNull(),
+            resolver.getParentId(),
+            entityType,
+            entitySubType,
+            pageToken);
 
-    // prune the returned list with only entities matching the entity subtype
-    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
-      resultPage =
-          pageToken.buildNextPage(
-              resultPage.items.stream()
-                  .filter(rec -> rec.getSubTypeCode() == entitySubType.getCode())
-                  .collect(Collectors.toList()));
-    }
-
-    // done
     return ListEntitiesResult.fromPage(resultPage);
   }
 
@@ -741,13 +728,62 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         () -> listEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
   }
 
+  /**
+   * See {@link PolarisMetaStoreManager#loadEntities(PolarisCallContext, List, PolarisEntityType,
+   * PolarisEntitySubType, PageToken)}
+   */
+  private @Nonnull Page<PolarisBaseEntity> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
+    // first resolve again the catalogPath to that entity
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath);
+
+    // throw if we failed to resolve
+    if (resolver.isFailure()) {
+      throw new IllegalArgumentException("Failed to resolve catalogPath: " + catalogPath);
+    }
+
+    // return list of active entities
+    return ms.loadEntitiesInCurrentTxn(
+        callCtx,
+        resolver.getCatalogIdOrNull(),
+        resolver.getParentId(),
+        entityType,
+        entitySubType,
+        entity -> true,
+        Function.identity(),
+        pageToken);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull Page<PolarisBaseEntity> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
+    // get meta store we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // run operation in a read transaction
+    return ms.runInReadTransaction(
+        callCtx,
+        () -> loadEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
+  }
+
   /** {@link #createPrincipal(PolarisCallContext, PolarisBaseEntity)} */
   private @Nonnull CreatePrincipalResult createPrincipal(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity principal) {
     // validate input
-    callCtx.getDiagServices().checkNotNull(principal, "unexpected_null_principal");
+    getDiagnostics().checkNotNull(principal, "unexpected_null_principal");
 
     // check if that catalog has already been created
     PolarisBaseEntity refreshPrincipal =
@@ -757,8 +793,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // if found, probably a retry, simply return the previously created principal
     if (refreshPrincipal != null) {
       // if found, ensure it is indeed a principal
-      callCtx
-          .getDiagServices()
+      getDiagnostics()
           .check(
               principal.getTypeCode() == PolarisEntityType.PRINCIPAL.getCode(),
               "not_a_principal",
@@ -766,23 +801,20 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               principal);
 
       // get internal properties
-      Map<String, String> properties =
-          this.deserializeProperties(callCtx, refreshPrincipal.getInternalProperties());
+      Map<String, String> properties = refreshPrincipal.getInternalPropertiesAsMap();
 
       // get client_id
       String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
 
       // should not be null
-      callCtx
-          .getDiagServices()
+      getDiagnostics()
           .checkNotNull(
               clientId,
               "null_client_id",
               "properties={}",
               refreshPrincipal.getInternalProperties());
       // ensure non null and non empty
-      callCtx
-          .getDiagServices()
+      getDiagnostics()
           .check(
               !clientId.isEmpty(),
               "empty_client_id",
@@ -794,8 +826,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
           ms.loadPrincipalSecretsInCurrentTxn(callCtx, clientId);
 
       // should not be null
-      callCtx
-          .getDiagServices()
+      getDiagnostics()
           .checkNotNull(
               principalSecrets,
               "missing_principal_secrets",
@@ -824,18 +855,21 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         ms.generateNewPrincipalSecretsInCurrentTxn(callCtx, principal.getName(), principal.getId());
 
     // generate properties
-    Map<String, String> internalProperties = getInternalPropertyMap(callCtx, principal);
+    Map<String, String> internalProperties = principal.getInternalPropertiesAsMap();
     internalProperties.put(
         PolarisEntityConstants.getClientIdPropertyName(), principalSecrets.getPrincipalClientId());
 
     // remember client id
-    principal.setInternalProperties(this.serializeProperties(callCtx, internalProperties));
+    PolarisBaseEntity updatedPrincipal =
+        new PolarisBaseEntity.Builder(principal)
+            .internalPropertiesAsMap(internalProperties)
+            .build();
 
     // now create and persist new catalog entity
-    this.persistNewEntity(callCtx, ms, principal);
+    this.persistNewEntity(callCtx, ms, updatedPrincipal);
 
     // success, return the two entities
-    return new CreatePrincipalResult(principal, principalSecrets);
+    return new CreatePrincipalResult(updatedPrincipal, principalSecrets);
   }
 
   /** {@inheritDoc} */
@@ -871,6 +905,17 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         : new PrincipalSecretsResult(secrets);
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public @Nonnull void deletePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
+    // get metastore we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+
+    // need to run inside a read/write transaction
+    ms.deletePrincipalSecrets(callCtx, clientId, principalId);
+  }
+
   /** See {@link #} */
   private @Nullable PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
@@ -892,11 +937,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     PolarisBaseEntity principal = loadEntityResult.getEntity();
-    PolarisBaseEntity originalPrincipal = new PolarisBaseEntity(principal);
-    Map<String, String> internalProps =
-        PolarisObjectMapperUtil.deserializeProperties(
-            callCtx,
-            principal.getInternalProperties() == null ? "{}" : principal.getInternalProperties());
+    PolarisBaseEntity.Builder principalBuilder = new PolarisBaseEntity.Builder(principal);
+    Map<String, String> internalProps = principal.getInternalPropertiesAsMap();
 
     boolean doReset =
         reset
@@ -912,17 +954,15 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
       internalProps.put(
           PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
-      principal.setInternalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
-      principal.setEntityVersion(principal.getEntityVersion() + 1);
-      ms.writeEntityInCurrentTxn(callCtx, principal, true, originalPrincipal);
+      principalBuilder.internalPropertiesAsMap(internalProps);
+      principalBuilder.entityVersion(principal.getEntityVersion() + 1);
+      ms.writeEntityInCurrentTxn(callCtx, principalBuilder.build(), true, principal);
     } else if (internalProps.containsKey(
         PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
       internalProps.remove(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE);
-      principal.setInternalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
-      principal.setEntityVersion(principal.getEntityVersion() + 1);
-      ms.writeEntityInCurrentTxn(callCtx, principal, true, originalPrincipal);
+      principalBuilder.internalPropertiesAsMap(internalProps);
+      principalBuilder.entityVersion(principal.getEntityVersion() + 1);
+      ms.writeEntityInCurrentTxn(callCtx, principalBuilder.build(), true, principal);
     }
     return secrets;
   }
@@ -951,6 +991,52 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         : new PrincipalSecretsResult(secrets);
   }
 
+  private @Nullable PolarisPrincipalSecrets resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
+      @Nonnull String clientId,
+      long principalId,
+      String customClientId,
+      String customClientSecret) {
+    PolarisPrincipalSecrets secrets =
+        ms.storePrincipalSecrets(callCtx, principalId, customClientId, customClientSecret);
+    return secrets;
+  }
+
+  @Override
+  public @Nonnull PrincipalSecretsResult resetPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret) {
+    // get metastore we should be using
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    // if not found, the principal must have been dropped
+    EntityResult loadEntityResult =
+        loadEntity(
+            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
+    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    // need to run inside a read/write transaction
+    PolarisPrincipalSecrets secrets =
+        ms.runInTransaction(
+            callCtx,
+            () ->
+                this.resetPrincipalSecrets(
+                    callCtx,
+                    ms,
+                    resolvedClientId,
+                    principalId,
+                    resolvedClientId,
+                    customClientSecret));
+
+    return (secrets == null)
+        ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
+        : new PrincipalSecretsResult(secrets);
+  }
+
   /** {@inheritDoc} */
   @Override
   public @Nonnull CreateCatalogResult createCatalog(
@@ -960,7 +1046,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
 
-    Map<String, String> internalProp = getInternalPropertyMap(callCtx, catalog);
+    Map<String, String> internalProp = catalog.getInternalPropertiesAsMap();
     String integrationIdentifierOrId =
         internalProp.get(PolarisEntityConstants.getStorageIntegrationIdentifierPropertyName());
     String storageConfigInfoStr =
@@ -974,8 +1060,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               callCtx,
               catalog.getCatalogId(),
               catalog.getId(),
-              PolarisStorageConfigurationInfo.deserialize(
-                  callCtx.getDiagServices(), storageConfigInfoStr));
+              PolarisStorageConfigurationInfo.deserialize(storageConfigInfoStr));
     } else {
       integration = null;
     }
@@ -992,10 +1077,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisBaseEntity entity) {
 
     // entity cannot be null
-    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
+    getDiagnostics().checkNotNull(entity, "unexpected_null_entity");
 
     // entity name must be specified
-    callCtx.getDiagServices().checkNotNull(entity.getName(), "unexpected_null_entity_name");
+    getDiagnostics().checkNotNull(entity.getName(), "unexpected_null_entity_name");
 
     // first, check if the entity has already been created, in which case we will simply return it
     PolarisBaseEntity entityFound =
@@ -1009,7 +1094,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // first resolve again the catalogPath
-    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath);
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath);
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
@@ -1074,7 +1160,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             }
             createdEntities.add(entityCreateResult.getEntity());
           }
-          return new EntitiesResult(createdEntities);
+          return new EntitiesResult(Page.fromItems(createdEntities));
         });
   }
 
@@ -1087,10 +1173,11 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
     // entity cannot be null
-    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
+    getDiagnostics().checkNotNull(entity, "unexpected_null_entity");
 
     // re-resolve everything including that entity
-    PolarisEntityResolver resolver = new PolarisEntityResolver(callCtx, ms, catalogPath, entity);
+    PolarisEntityResolver resolver =
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath, entity);
 
     // if resolution failed, return false
     if (resolver.isFailure()) {
@@ -1101,8 +1188,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     PolarisBaseEntity entityRefreshed =
         ms.lookupEntityInCurrentTxn(
             callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .checkNotNull(entityRefreshed, "unexpected_entity_not_found", "entity={}", entity);
 
     // check that the version of the entity has not changed at all to avoid concurrent updates
@@ -1121,17 +1207,16 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       // TODO: Give useful extraInformation
       return new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
     }
-
-    PolarisBaseEntity originalEntity = new PolarisBaseEntity(entityRefreshed);
-
     // update the two properties
-    entityRefreshed.setInternalProperties(entity.getInternalProperties());
-    entityRefreshed.setProperties(entity.getProperties());
-
+    PolarisBaseEntity updatedEntity =
+        new PolarisBaseEntity.Builder(entityRefreshed)
+            .internalProperties(entity.getInternalProperties())
+            .properties(entity.getProperties())
+            .build();
     // persist this entity after changing it. This will update the version and update the last
     // updated time. Because the entity version is changed, we will update the change tracking table
     PolarisBaseEntity persistedEntity =
-        this.persistEntityAfterChange(callCtx, ms, entityRefreshed, false, originalEntity);
+        this.persistEntityAfterChange(callCtx, ms, updatedEntity, false, entityRefreshed);
     return new EntityResult(persistedEntity);
   }
 
@@ -1155,7 +1240,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull TransactionalPersistence ms,
       @Nonnull List<EntityWithPath> entities) {
     // ensure that the entities list is not null
-    callCtx.getDiagServices().checkNotNull(entities, "unexpected_null_entities");
+    getDiagnostics().checkNotNull(entities, "unexpected_null_entities");
 
     // list of all updated entities
     List<PolarisBaseEntity> updatedEntities = new ArrayList<>(entities.size());
@@ -1179,7 +1264,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // good, all success
-    return new EntitiesResult(updatedEntities);
+    return new EntitiesResult(Page.fromItems(updatedEntities));
   }
 
   /** {@inheritDoc} */
@@ -1207,13 +1292,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisBaseEntity renamedEntity) {
 
     // entity and new name cannot be null
-    callCtx.getDiagServices().checkNotNull(entityToRename, "unexpected_null_entityToRename");
-    callCtx.getDiagServices().checkNotNull(renamedEntity, "unexpected_null_renamedEntity");
+    getDiagnostics().checkNotNull(entityToRename, "unexpected_null_entityToRename");
+    getDiagnostics().checkNotNull(renamedEntity, "unexpected_null_renamedEntity");
 
     // if a new catalog path is specified (i.e. re-parent operation), a catalog path should be
     // specified too
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             (newCatalogPath == null) || (catalogPath != null),
             "newCatalogPath_specified_without_catalogPath");
@@ -1225,7 +1309,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // re-resolve everything including that entity
     PolarisEntityResolver resolver =
-        new PolarisEntityResolver(callCtx, ms, catalogPath, entityToRename);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath, entityToRename);
 
     // if resolution failed, return false
     if (resolver.isFailure()) {
@@ -1258,7 +1342,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // re-resolve the new catalog path if this entity is going to be moved
     if (newCatalogPath != null) {
-      resolver = new PolarisEntityResolver(callCtx, ms, newCatalogPath);
+      resolver = new PolarisEntityResolver(getDiagnostics(), callCtx, ms, newCatalogPath);
 
       // if resolution failed, return false
       if (resolver.isFailure()) {
@@ -1282,23 +1366,25 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // Create a copy of the original before we change its fields so that we can pass in the
     // old version for the persistence layer to work out whether to unlink previous name-lookups
-    PolarisBaseEntity originalEntity = new PolarisBaseEntity(refreshEntityToRename);
+    PolarisBaseEntity.Builder updatedEntityBuilder =
+        new PolarisBaseEntity.Builder(refreshEntityToRename);
 
     // change its name now
-    refreshEntityToRename.setName(renamedEntity.getName());
-    refreshEntityToRename.setProperties(renamedEntity.getProperties());
-    refreshEntityToRename.setInternalProperties(renamedEntity.getInternalProperties());
+    updatedEntityBuilder.name(renamedEntity.getName());
+    updatedEntityBuilder.properties(renamedEntity.getProperties());
+    updatedEntityBuilder.internalProperties(renamedEntity.getInternalProperties());
 
     // re-parent if a new catalog path was specified
     if (newCatalogPath != null) {
-      refreshEntityToRename.setParentId(resolver.getParentId());
+      updatedEntityBuilder.parentId(resolver.getParentId());
     }
 
     // persist the entity after change. This will update the lastUpdateTimestamp and bump up the
-    // version. Indicate that the nameOrParent changed, so so that we also update any by-name
+    // version. Indicate that the nameOrParent changed, so that we also update any by-name
     // lookups if applicable
     PolarisBaseEntity renamedEntityToReturn =
-        this.persistEntityAfterChange(callCtx, ms, refreshEntityToRename, true, originalEntity);
+        this.persistEntityAfterChange(
+            callCtx, ms, updatedEntityBuilder.build(), true, refreshEntityToRename);
     return new EntityResult(renamedEntityToReturn);
   }
 
@@ -1335,11 +1421,11 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     // entity cannot be null
-    callCtx.getDiagServices().checkNotNull(entityToDrop, "unexpected_null_entity");
+    getDiagnostics().checkNotNull(entityToDrop, "unexpected_null_entity");
 
     // re-resolve everything including that entity
     PolarisEntityResolver resolver =
-        new PolarisEntityResolver(callCtx, ms, catalogPath, entityToDrop);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, catalogPath, entityToDrop);
 
     // if resolution failed, return false
     if (resolver.isFailure()) {
@@ -1374,15 +1460,16 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
-          ms.listEntitiesInCurrentTxn(
+          ms.loadEntitiesInCurrentTxn(
                   callCtx,
                   catalogId,
                   catalogId,
                   PolarisEntityType.CATALOG_ROLE,
+                  PolarisEntitySubType.ANY_SUBTYPE,
                   entity -> true,
                   Function.identity(),
                   PageToken.fromLimit(2))
-              .items;
+              .items();
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
       if (catalogRoles.size() > 1) {
@@ -1424,26 +1511,25 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task
     // later
     if (cleanup && refreshEntityToDrop.getType() != PolarisEntityType.POLICY) {
-      PolarisBaseEntity taskEntity =
-          new PolarisEntity.Builder()
-              .setId(ms.generateNewIdInCurrentTxn(callCtx))
-              .setCatalogId(0L)
-              .setName("entityCleanup_" + entityToDrop.getId())
-              .setType(PolarisEntityType.TASK)
-              .setSubType(PolarisEntitySubType.NULL_SUBTYPE)
-              .setCreateTimestamp(callCtx.getClock().millis())
-              .build();
-
       Map<String, String> properties = new HashMap<>();
       properties.put(
           PolarisTaskConstants.TASK_TYPE,
           String.valueOf(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER.typeCode()));
-      properties.put("data", PolarisObjectMapperUtil.serialize(callCtx, refreshEntityToDrop));
-      taskEntity.setProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+      properties.put(
+          PolarisTaskConstants.TASK_DATA, PolarisObjectMapperUtil.serialize(refreshEntityToDrop));
+      PolarisBaseEntity.Builder taskEntityBuilder =
+          new PolarisBaseEntity.Builder()
+              .id(ms.generateNewIdInCurrentTxn(callCtx))
+              .catalogId(0L)
+              .name("entityCleanup_" + entityToDrop.getId())
+              .typeCode(PolarisEntityType.TASK.getCode())
+              .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+              .createTimestamp(clock.millis())
+              .propertiesAsMap(properties);
       if (cleanupProperties != null) {
-        taskEntity.setInternalProperties(
-            PolarisObjectMapperUtil.serializeProperties(callCtx, cleanupProperties));
+        taskEntityBuilder.internalPropertiesAsMap(cleanupProperties);
       }
+      PolarisBaseEntity taskEntity = taskEntityBuilder.build();
       createEntityIfNotExists(callCtx, ms, null, taskEntity);
       return new DropEntityResult(taskEntity.getId());
     }
@@ -1491,23 +1577,20 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntityCore grantee) {
 
     // validate the grantee input
-    callCtx.getDiagServices().checkNotNull(grantee, "unexpected_null_grantee");
-    callCtx
-        .getDiagServices()
-        .check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
+    getDiagnostics().checkNotNull(grantee, "unexpected_null_grantee");
+    getDiagnostics().check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
 
     // validate role
-    callCtx.getDiagServices().checkNotNull(role, "unexpected_null_role");
+    getDiagnostics().checkNotNull(role, "unexpected_null_role");
 
     // role should be a catalog or a principal role
     boolean isCatalogRole = role.getTypeCode() == PolarisEntityType.CATALOG_ROLE.getCode();
     boolean isPrincipalRole = role.getTypeCode() == PolarisEntityType.PRINCIPAL_ROLE.getCode();
-    callCtx.getDiagServices().check(isCatalogRole || isPrincipalRole, "not_a_role");
+    getDiagnostics().check(isCatalogRole || isPrincipalRole, "not_a_role");
 
     // if the role is a catalog role, ensure a catalog is specified and
     // vice-versa, catalog should be null if the role is a principal role
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             (catalog == null && isPrincipalRole) || (catalog != null && isCatalogRole),
             "catalog_mismatch",
@@ -1522,7 +1605,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // ensure these entities have not changed
     return new PolarisEntityResolver(
-        callCtx, ms, catalog != null ? List.of(catalog) : null, null, otherTopLevelEntities);
+        getDiagnostics(),
+        callCtx,
+        ms,
+        catalog != null ? List.of(catalog) : null,
+        null,
+        otherTopLevelEntities);
   }
 
   /**
@@ -1540,20 +1628,20 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable) {
     // validate role input
-    callCtx.getDiagServices().checkNotNull(grantee, "unexpected_null_grantee");
-    callCtx
-        .getDiagServices()
+    getDiagnostics().checkNotNull(grantee, "unexpected_null_grantee");
+    getDiagnostics()
         .check(grantee.getType().isGrantee(), "not_grantee_type", "grantee={}", grantee);
 
     // securable must be supplied
-    callCtx.getDiagServices().checkNotNull(securable, "unexpected_null_securable");
+    getDiagnostics().checkNotNull(securable, "unexpected_null_securable");
     if (securable.getCatalogId() > 0) {
       // catalogPath must be supplied if the securable has a catalogId
-      callCtx.getDiagServices().checkNotNull(catalogPath, "unexpected_null_catalogPath");
+      getDiagnostics().checkNotNull(catalogPath, "unexpected_null_catalogPath");
     }
 
     // re-resolve now all these entities
-    return new PolarisEntityResolver(callCtx, ms, catalogPath, securable, List.of(grantee));
+    return new PolarisEntityResolver(
+        getDiagnostics(), callCtx, ms, catalogPath, securable, List.of(grantee));
   }
 
   /**
@@ -1583,9 +1671,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             : PolarisPrivilege.PRINCIPAL_ROLE_USAGE;
 
     // grant usage on this role to this principal
-    callCtx
-        .getDiagServices()
-        .check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
+    getDiagnostics().check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
     PolarisGrantRecord grantRecord =
         this.persistNewGrantRecord(callCtx, ms, role, grantee, usagePriv);
     return new PrivilegeResult(grantRecord);
@@ -1948,60 +2034,61 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // find all available tasks
     Page<PolarisBaseEntity> availableTasks =
-        ms.listEntitiesInCurrentTxn(
+        ms.loadEntitiesInCurrentTxn(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityType.TASK,
+            PolarisEntitySubType.ANY_SUBTYPE,
             entity -> {
               PolarisObjectMapperUtil.TaskExecutionState taskState =
                   PolarisObjectMapperUtil.parseTaskState(entity);
               long taskAgeTimeout =
                   callCtx
-                      .getConfigurationStore()
-                      .getConfiguration(
-                          callCtx.getRealmContext(),
+                      .getRealmConfig()
+                      .getConfig(
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
                           PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null
                   || taskState.executor == null
-                  || callCtx.getClock().millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
+                  || clock.millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
             },
             Function.identity(),
             pageToken);
 
-    List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
-    availableTasks.items.forEach(
-        task -> {
-          // Make a copy to avoid mutating someone else's reference.
-          // TODO: Refactor into immutable/Builder pattern.
-          PolarisBaseEntity updatedTask = new PolarisBaseEntity(task);
-          Map<String, String> properties =
-              PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
-          properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
-          properties.put(
-              PolarisTaskConstants.LAST_ATTEMPT_START_TIME,
-              String.valueOf(callCtx.getClock().millis()));
-          properties.put(
-              PolarisTaskConstants.ATTEMPT_COUNT,
-              String.valueOf(
-                  Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
-                      + 1));
-          updatedTask.setProperties(
-              PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
-          EntityResult result = updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask);
-          if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
-            loadedTasks.add(result.getEntity());
-          } else {
-            // TODO: Consider performing incremental leasing of individual tasks one at a time
-            // instead of requiring all-or-none semantics for all the tasks we think we listed,
-            // or else contention could be very bad.
-            ms.rollback();
-            throw new RetryOnConcurrencyException(
-                "Failed to lease available task with status %s, info: %s",
-                result.getReturnStatus(), result.getExtraInformation());
-          }
-        });
+    List<PolarisBaseEntity> loadedTasks =
+        availableTasks.items().stream()
+            .map(
+                task -> {
+                  PolarisBaseEntity.Builder updatedTask = new PolarisBaseEntity.Builder(task);
+                  Map<String, String> properties = task.getPropertiesAsMap();
+                  properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
+                  properties.put(
+                      PolarisTaskConstants.LAST_ATTEMPT_START_TIME, String.valueOf(clock.millis()));
+                  properties.put(
+                      PolarisTaskConstants.ATTEMPT_COUNT,
+                      String.valueOf(
+                          Integer.parseInt(
+                                  properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
+                              + 1));
+                  updatedTask.propertiesAsMap(properties);
+                  EntityResult result =
+                      updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask.build());
+                  if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
+                    return result.getEntity();
+                  } else {
+                    // TODO: Consider performing incremental leasing of individual tasks one at a
+                    // time
+                    // instead of requiring all-or-none semantics for all the tasks we think we
+                    // listed,
+                    // or else contention could be very bad.
+                    ms.rollback();
+                    throw new RetryOnConcurrencyException(
+                        "Failed to lease available task with status %s, info: %s",
+                        result.getReturnStatus(), result.getExtraInformation());
+                  }
+                })
+            .collect(Collectors.toList());
     return EntitiesResult.fromPage(Page.fromItems(loadedTasks));
   }
 
@@ -2021,12 +2108,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
 
     // get meta store session we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
             "allowed_locations_to_subscope_is_required");
@@ -2043,8 +2130,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         ms.loadPolarisStorageIntegrationInCurrentTxn(callCtx, reloadedEntity.getEntity());
 
     // cannot be null
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .checkNotNull(
             storageIntegration,
             "storage_integration_not_exists",
@@ -2052,38 +2138,19 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             catalogId,
             entityId);
 
-    PolarisStorageConfigurationInfo storageConfigurationInfo =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
     try {
-      EnumMap<StorageAccessProperty, String> creds =
+      AccessConfig accessConfig =
           storageIntegration.getSubscopedCreds(
-              callCtx,
-              storageConfigurationInfo,
+              callCtx.getRealmConfig(),
               allowListOperation,
               allowedReadLocations,
-              allowedWriteLocations);
-      return new ScopedCredentialsResult(creds);
+              allowedWriteLocations,
+              refreshCredentialsEndpoint);
+      return new ScopedCredentialsResult(accessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(
           BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
     }
-  }
-
-  /**
-   * Get the internal property map for an entity
-   *
-   * @param callCtx the polaris call context
-   * @param entity the target entity
-   * @return a map of string representing the internal properties
-   */
-  public Map<String, String> getInternalPropertyMap(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    String internalPropStr = entity.getInternalProperties();
-    Map<String, String> res = new HashMap<>();
-    if (internalPropStr == null) {
-      return res;
-    }
-    return deserializeProperties(callCtx, internalPropStr);
   }
 
   /** {@link #loadResolvedEntityById(PolarisCallContext, long, long, PolarisEntityType)} */
@@ -2325,6 +2392,19 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
+  public <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callContext.getMetaStore());
+    return ms.runInTransaction(
+        callContext,
+        () -> {
+          return callContext.getMetaStore().hasOverlappingSiblings(callContext, entity);
+        });
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public @Nonnull PolicyAttachmentResult attachPolicyToEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
@@ -2355,9 +2435,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolicyEntity policy,
       Map<String, String> parameters) {
     PolarisEntityResolver targetResolver =
-        new PolarisEntityResolver(callCtx, ms, targetCatalogPath, target);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, targetCatalogPath, target);
     PolarisEntityResolver policyResolver =
-        new PolarisEntityResolver(callCtx, ms, policyCatalogPath, policy);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, policyCatalogPath, policy);
     if (targetResolver.isFailure() || policyResolver.isFailure()) {
       return new PolicyAttachmentResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
@@ -2393,9 +2473,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull List<PolarisEntityCore> policyCatalogPath,
       @Nonnull PolicyEntity policy) {
     PolarisEntityResolver targetResolver =
-        new PolarisEntityResolver(callCtx, ms, targetCatalogPath, target);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, targetCatalogPath, target);
     PolarisEntityResolver policyResolver =
-        new PolarisEntityResolver(callCtx, ms, policyCatalogPath, policy);
+        new PolarisEntityResolver(getDiagnostics(), callCtx, ms, policyCatalogPath, policy);
     if (targetResolver.isFailure() || policyResolver.isFailure()) {
       return new PolicyAttachmentResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
@@ -2495,8 +2575,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntityCore target,
       @Nonnull PolicyEntity policy,
       Map<String, String> parameters) {
-    callCtx.getDiagServices().checkNotNull(target, "unexpected_null_target");
-    callCtx.getDiagServices().checkNotNull(policy, "unexpected_null_policy");
+    getDiagnostics().checkNotNull(target, "unexpected_null_target");
+    getDiagnostics().checkNotNull(policy, "unexpected_null_policy");
 
     PolarisPolicyMappingRecord mappingRecord =
         new PolarisPolicyMappingRecord(

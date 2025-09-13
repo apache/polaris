@@ -31,8 +31,8 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 public interface UserSecretsManager {
   /**
    * Persist the {@code secret} under a new URN {@code secretUrn} and return a {@code
-   * UserSecretReference} that can subsequently be used by this same UserSecretsManager to retrieve
-   * the original secret. The {@code forEntity} is provided for an implementation to extract other
+   * SecretReference} that can subsequently be used by this same UserSecretsManager to retrieve the
+   * original secret. The {@code forEntity} is provided for an implementation to extract other
    * identifying metadata such as entity type, id, name, etc., to store alongside the remotely
    * stored secret to facilitate operational management of the secrets outside of the core Polaris
    * service (for example, to perform garbage-collection if the Polaris service fails to delete
@@ -44,25 +44,24 @@ public interface UserSecretsManager {
    *     its entirety within a persisted PolarisEntity
    */
   @Nonnull
-  UserSecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntityCore forEntity);
+  SecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntityCore forEntity);
 
   /**
-   * Retrieve a secret using the {@code secretReference}. See {@link UserSecretReference} for
-   * details about identifiers and payloads.
+   * Retrieve a secret using the {@code secretReference}. See {@link SecretReference} for details
+   * about identifiers and payloads.
    *
    * @param secretReference Reference object for retrieving the original secret
    * @return The stored secret, or null if it no longer exists
    */
   @Nonnull
-  String readSecret(@Nonnull UserSecretReference secretReference);
+  String readSecret(@Nonnull SecretReference secretReference);
 
   /**
-   * Delete a stored secret. See {@link UserSecretReference} for details about identifiers and
-   * payloads.
+   * Delete a stored secret. See {@link SecretReference} for details about identifiers and payloads.
    *
    * @param secretReference Reference object for retrieving the original secret
    */
-  void deleteSecret(@Nonnull UserSecretReference secretReference);
+  void deleteSecret(@Nonnull SecretReference secretReference);
 
   /**
    * Builds a URN string from the given secret manager type and type-specific identifier.
@@ -74,6 +73,6 @@ public interface UserSecretsManager {
   @Nonnull
   default String buildUrn(
       @Nonnull String secretManagerType, @Nonnull String typeSpecificIdentifier) {
-    return UserSecretReference.buildUrnString(secretManagerType, typeSpecificIdentifier);
+    return SecretReference.buildUrnString(secretManagerType, typeSpecificIdentifier);
   }
 }

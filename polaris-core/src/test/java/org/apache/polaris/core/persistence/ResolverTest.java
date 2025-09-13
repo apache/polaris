@@ -20,8 +20,8 @@ package org.apache.polaris.core.persistence;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
+import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
@@ -29,6 +29,7 @@ import org.mockito.Mockito;
 
 public class ResolverTest extends BaseResolverTest {
 
+  private final Clock clock = Clock.systemUTC();
   private PolarisCallContext callCtx;
   private PolarisTestMetaStoreManager tm;
   private TransactionalMetaStoreManagerImpl metaStoreManager;
@@ -36,11 +37,11 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisCallContext callCtx() {
     if (callCtx == null) {
-      PolarisDefaultDiagServiceImpl diagServices = new PolarisDefaultDiagServiceImpl();
       TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
       TreeMapTransactionalPersistenceImpl metaStore =
-          new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
-      callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+          new TreeMapTransactionalPersistenceImpl(
+              diagServices, store, Mockito.mock(), RANDOM_SECRETS);
+      callCtx = new PolarisCallContext(() -> "testRealm", metaStore);
     }
     return callCtx;
   }
@@ -48,7 +49,7 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisMetaStoreManager metaStoreManager() {
     if (metaStoreManager == null) {
-      metaStoreManager = new TransactionalMetaStoreManagerImpl();
+      metaStoreManager = new TransactionalMetaStoreManagerImpl(clock, diagServices);
     }
     return metaStoreManager;
   }
@@ -56,7 +57,7 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisTestMetaStoreManager tm() {
     if (tm == null) {
-      // bootstrap the mata store with our test schema
+      // bootstrap the meta store with our test schema
       tm = new PolarisTestMetaStoreManager(metaStoreManager(), callCtx());
     }
     return tm;

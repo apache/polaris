@@ -24,8 +24,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 
 /**
  * Entity model representing all attributes of a Polaris Entity. This is used to exchange full
@@ -262,24 +260,23 @@ public class ModelEntity {
       return null;
     }
 
-    var entity =
-        new PolarisBaseEntity(
-            model.getCatalogId(),
-            model.getId(),
-            PolarisEntityType.fromCode(model.getTypeCode()),
-            PolarisEntitySubType.fromCode(model.getSubTypeCode()),
-            model.getParentId(),
-            model.getName());
-    entity.setEntityVersion(model.getEntityVersion());
-    entity.setCreateTimestamp(model.getCreateTimestamp());
-    entity.setDropTimestamp(model.getDropTimestamp());
-    entity.setPurgeTimestamp(model.getPurgeTimestamp());
-    entity.setToPurgeTimestamp(model.getToPurgeTimestamp());
-    entity.setLastUpdateTimestamp(model.getLastUpdateTimestamp());
-    entity.setProperties(model.getProperties());
-    entity.setInternalProperties(model.getInternalProperties());
-    entity.setGrantRecordsVersion(model.getGrantRecordsVersion());
-    return entity;
+    return new PolarisBaseEntity.Builder()
+        .catalogId(model.getCatalogId())
+        .id(model.getId())
+        .typeCode(model.getTypeCode())
+        .subTypeCode(model.getSubTypeCode())
+        .parentId(model.getParentId())
+        .name(model.getName())
+        .entityVersion(model.getEntityVersion())
+        .createTimestamp(model.getCreateTimestamp())
+        .dropTimestamp(model.getDropTimestamp())
+        .purgeTimestamp(model.getPurgeTimestamp())
+        .toPurgeTimestamp(model.getToPurgeTimestamp())
+        .lastUpdateTimestamp(model.getLastUpdateTimestamp())
+        .properties(model.getProperties())
+        .internalProperties(model.getInternalProperties())
+        .grantRecordsVersion(model.getGrantRecordsVersion())
+        .build();
   }
 
   public void update(PolarisBaseEntity entity) {

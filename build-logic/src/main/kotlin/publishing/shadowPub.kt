@@ -113,10 +113,7 @@ internal fun configureShadowPublishing(
           if ((depNode as NodeList).isNotEmpty()) depNode[0] as Node
           else node.appendNode("dependencies")
         project.configurations.getByName("shadow").allDependencies.forEach {
-          @Suppress("DEPRECATION")
-          if (
-            (it is ProjectDependency) || it !is org.gradle.api.artifacts.SelfResolvingDependency
-          ) {
+          if (it is ProjectDependency) {
             val dependencyNode = dependenciesNode.appendNode("dependency")
             dependencyNode.appendNode("groupId", it.group)
             dependencyNode.appendNode("artifactId", it.name)

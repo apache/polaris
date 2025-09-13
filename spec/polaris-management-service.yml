@@ -157,6 +157,12 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePrincipalRequest"
+              example:
+                principal:
+                  name: "alice"
+                  properties:
+                    department: "engineering"
+                credentialRotationRequired: false
       responses:
         201:
           description: "Successful response"
@@ -254,6 +260,41 @@ paths:
           description: "The caller does not have permission to rotate credentials"
         404:
           description: "The principal does not exist"
+
+  /principals/{principalName}/reset:
+    parameters:
+      - name: principalName
+        in: path
+        description: The principal's name
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+    post:
+      operationId: resetCredentials
+      description: >-
+        Reset a principal's credentials to a new set. By default, the system generates random credentials unless
+        explicitly allowed to accept user-provided credentials via configuration.  
+        This API is *not* idempotent and will return the newly created credentials.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPrincipalRequest'
+      responses:
+        200:
+          description: The principal details along with the newly reset credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrincipalWithCredentials"
+        403:
+          description: The caller does not have permission to reset credentials
+        404:
+          description: The principal does not exist
 
   /principals/{principalName}/principal-roles:
     parameters:
@@ -863,6 +904,7 @@ components:
           enum:
             - ICEBERG_REST
             - HADOOP
+            - HIVE
           description: The type of remote catalog service represented by this connection
         uri:
           type: string
@@ -878,6 +920,7 @@ components:
         mapping:
           ICEBERG_REST: "#/components/schemas/IcebergRestConnectionConfigInfo"
           HADOOP: "#/components/schemas/HadoopConnectionConfigInfo"
+          HIVE: "#/components/schemas/HiveConnectionConfigInfo"
 
     IcebergRestConnectionConfigInfo:
       type: object
@@ -900,6 +943,16 @@ components:
         warehouse:
           type: string
           description: The file path to where this catalog should store tables
+    
+    HiveConnectionConfigInfo:
+      type: object
+      description: Configuration necessary for connecting to a Hive Catalog
+      allOf:
+        - $ref: '#/components/schemas/ConnectionConfigInfo'
+      properties:
+        warehouse:
+          type: string
+          description: The warehouse location for the hive catalog.
 
     AuthenticationParameters:
       type: object
@@ -911,6 +964,7 @@ components:
             - OAUTH
             - BEARER
             - SIGV4
+            - IMPLICIT
           description: The type of authentication to use when connecting to the remote rest service
       required:
         - authenticationType
@@ -920,6 +974,7 @@ components:
           OAUTH: "#/components/schemas/OAuthClientCredentialsParameters"
           BEARER: "#/components/schemas/BearerAuthenticationParameters"
           SIGV4: "#/components/schemas/SigV4AuthenticationParameters"
+          IMPLICIT: "#/components/schemas/ImplicitAuthenticationParameters"
 
     OAuthClientCredentialsParameters:
       type: object
@@ -984,6 +1039,13 @@ components:
         - roleArn
         - signingRegion
 
+    ImplicitAuthenticationParameters:
+      type: object
+      description: Polaris does not explicity accept any authentication parameters for the connection. Authentication 
+        parameters found in the environment and/or configuration files will be used for this connection.
+      allOf:
+        - $ref: '#/components/schemas/AuthenticationParameters'
+
     StorageConfigInfo:
       type: object
       description: A storage configuration used by catalogs
@@ -1033,8 +1095,31 @@ components:
               type: string
               description: the aws region where data is stored
               example: "us-east-2"
-          required:
-            - roleArn
+            endpoint:
+              type: string
+              description: >-
+                endpoint for S3 requests (optional). Clients always see this value (if it is set). Polaris Servers
+                may be configured to use a different endpoint URI via the `endpointInternal` property.
+              example: "https://s3.example.com:1234"
+            stsEndpoint:
+              type: string
+              description: >-
+                endpoint for STS requests made by the Polaris Server (optional). If not set, defaults to
+                'endpointInternal' (which in turn defaults to `endpoint`).
+              example: "https://sts.example.com:1234"
+            endpointInternal:
+              type: string
+              description: >-
+                endpoint for S3 requests made by the Polaris Server (optional). If set, Polaris Service will use
+                this value instead of `endpoint`. If not set, defaults to `endpoint`. Iceberg REST API clients never
+                see this value.
+              example: "https://s3.internal.example.com:1234"
+            pathStyleAccess:
+              type: boolean
+              description: >- 
+                Whether S3 requests to files in this catalog should use 'path-style addressing for buckets'.
+              example: true
+              default: false
 
     AzureStorageConfigInfo:
       type: object
@@ -1197,6 +1282,20 @@ components:
       required:
         - currentEntityVersion
         - properties
+
+    ResetPrincipalRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+          description: >
+            Optional client ID to set for the principal.
+            Must be a valid client ID previously generated by this service.
+        clientSecret:
+          type: string
+          description: >
+            Optional client secret to set for the principal.
+            Polaris service implementations may impose extra requirements on what is accepted as a secret (special chars, length, etc.)
 
     PrincipalRoles:
       type: object

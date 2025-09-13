@@ -88,7 +88,7 @@ public enum PredefinedPolicyTypes implements PolicyType {
    */
   @JsonCreator
   public static @Nullable PredefinedPolicyTypes fromCode(int code) {
-    if (code >= REVERSE_CODE_MAPPING_ARRAY.length) {
+    if (code < 0 || code >= REVERSE_CODE_MAPPING_ARRAY.length) {
       return null;
     }
 

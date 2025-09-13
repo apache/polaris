@@ -62,6 +62,21 @@ podLabels: {}
 # -- Additional Labels to apply to polaris configmap.
 configMapLabels: {}
 
+# -- Pod disruption budget settings.
+podDisruptionBudget:
+  # -- Specifies whether a pod disruption budget should be created.
+  enabled: false
+  # -- The minimum number of pods that should remain available during disruptions.
+  # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
+  # IMPORTANT: Cannot be used simultaneously with maxUnavailable.
+  minAvailable: ~
+  # -- The maximum number of pods that can be unavailable during disruptions.
+  # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
+  # IMPORTANT: Cannot be used simultaneously with minAvailable.
+  maxUnavailable: ~
+  # -- Annotations to add to the pod disruption budget.
+  annotations: {}
+
 # -- The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10).
 revisionHistoryLimit: ~
 
@@ -521,19 +536,21 @@ features:
 
 # -- Polaris persistence configuration.
 persistence:
-  # -- The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link.
-  type: eclipse-link  # in-memory
-  # -- The configuration for the eclipse-link persistence manager.
-  eclipseLink:
-    # -- The secret name to pull persistence.xml from.
+  # -- The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc.
+  # The eclipse-link type is also supported but is deprecated.
+  type: in-memory  # relational-jdbc
+  # -- The configuration for the relational-jdbc persistence manager.
+  relationalJdbc:
+    # -- The secret name to pull the database connection properties from.
     secret:
-      # -- The name of the secret to pull persistence.xml from.
-      # If not provided, the default built-in persistence.xml will be used. This is probably not what you want.
+      # -- The secret name to pull database connection properties from
       name: ~
-      # -- The key in the secret to pull persistence.xml from.
-      key: persistence.xml
-    # -- The persistence unit name to use.
-    persistenceUnit: polaris
+      # -- The secret key holding the database username for authentication
+      username: username
+      # -- The secret key holding the database password for authentication
+      password: password
+      # -- The secret key holding the database JDBC connection URL
+      jdbcUrl: jdbcUrl
 
 # -- Polaris FileIO configuration.
 fileIo:
@@ -558,29 +575,107 @@ storage:
 
 # -- Polaris authentication configuration.
 authentication:
-  # -- The type of authentication to use. Two built-in types are supported: default and test;
-  # test is not recommended for production.
+  # -- The type of authentication to use. Three built-in types are supported: internal, external, and mixed.
+  type: internal
+  # -- The `Authenticator` implementation to use. Only one built-in type is supported: default.
   authenticator:
     type: default
-  # -- The type of token service to use. Two built-in types are supported: default and test;
-  # test is not recommended for production.
+  # -- The `ActiveRolesProvider` implementation to use. Only one built-in type is supported: default.
+  activeRolesProvider:
+    type: default
+  # -- The token service (`IcebergRestOAuth2ApiService`) implementation to use. Two built-in types are supported: default and disabled.
+  # Only relevant when using internal (or mixed) authentication. When using external authentication, the token service is always disabled.
   tokenService:
     type: default
-  # -- The type of token broker to use. Two built-in types are supported: rsa-key-pair and symmetric-key.
+  # -- The `TokenBroker` implementation to use. Two built-in types are supported: rsa-key-pair and symmetric-key.
+  # Only relevant when using internal (or mixed) authentication. When using external authentication, the token broker is not used.
   tokenBroker:
     type: rsa-key-pair  # symmetric-key
+    # -- Maximum token generation duration (e.g., PT1H for 1 hour).
     maxTokenGeneration: PT1H
     # -- The secret name to pull the public and private keys, or the symmetric key secret from.
     secret:
       # -- The name of the secret to pull the keys from. If not provided, a key pair will be generated.
       # This is not recommended for production.
       name: ~
-      # -- The public key file to use for RSA key pair token broker. Only required when using rsa-key-pair.
+      # -- DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.publicKey` instead.
+      # Key name inside the secret for the public key
       publicKey: public.pem
-      # -- The private key file to use for RSA key pair token broker. Only required when using rsa-key-pair.
+      # -- DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.privateKey` instead.
+      # Key name inside the secret for the private key
       privateKey: private.pem
-      # -- The symmetric key file to use for symmetric key token broker. Only required when using symmetric-key.
-      secretKey: secret
+      # -- DEPRECATED: Use `authentication.tokenBroker.secret.symmetricKey.secretKey` instead.
+      # Key name inside the secret for the symmetric key
+      secretKey: symmetric.pem
+      # -- Optional: configuration specific to RSA key pair secret.
+      rsaKeyPair:
+        # -- Key name inside the secret for the public key
+        publicKey: public.pem
+        # -- Key name inside the secret for the private key
+        privateKey: private.pem
+      # -- Optional: configuration specific to symmetric key secret.
+      symmetricKey:
+        # -- Key name inside the secret for the symmetric key
+        secretKey: symmetric.key
+  # -- Authentication configuration overrides per realm.
+  realmOverrides: {}
+    # my-realm:
+    #   type: external
+    #   authenticator:
+    #     type: custom
+
+# -- Polaris OIDC configuration. Only relevant when at least one realm is configured for external
+# (or mixed) authentication. The currently supported configuration is for a single, default OIDC tenant.
+# For more complex scenarios, including OIDC multi-tenancy, you will need to provide the relevant
+# configuration using the `advancedConfig` section.
+oidc:
+  # -- The authentication server URL. Must be provided if at least one realm is configured for external
+  # authentication.
+  authServeUrl: ~  # https://auth.example.com/realms/polaris
+  # -- The client to use when authenticating with the authentication server.
+  client:
+    # -- The client ID to use when contacting the authentication server's introspection endpoint in
+    # order to validate tokens.
+    id: polaris
+    # -- The secret to pull the client secret from. If no client secret is required, leave the secret
+    # name unset.
+    secret:
+      # -- The name of the secret to pull the client secret from. If not provided, the client is assumed
+      # to not require a client secret when contacting the introspection endpoint.
+      name: ~
+      # -- The key name inside the secret to pull the client secret from.
+      key: clientSecret
+  # -- Principal mapping configuration.
+  principalMapper:
+    # -- The `PrincipalMapper` implementation to use. Only one built-in type is supported: default.
+    type: default
+    # -- The path to the claim that contains the principal ID. Nested paths can be expressed using
+    # "/" as a separator, e.g. "polaris/principal_id" would look for the "principal_id" field inside
+    # the "polaris" object in the token claims. Optional. Either this option or `nameClaimPath` (or both) must be provided.
+    idClaimPath: ~
+    # -- The claim that contains the principal name. Nested paths can be expressed using "/" as a
+    # separator, e.g. "polaris/principal_name" would look for the "principal_name" field inside
+    # the "polaris" object in the token claims. Optional. Either this option or `idClaimPath` (or both) must be provided.
+    nameClaimPath: ~
+  # -- Principal roles mapping configuration.
+  principalRolesMapper:
+    # -- The `PrincipalRolesMapper` implementation to use. Only one built-in type is supported: default.
+    type: default
+    # -- The path to the claim that contains the principal roles. Nested paths can be expressed using
+    # "/" as a separator, e.g. "polaris/principal_roles" would look for the "principal_roles" field inside
+    # the "polaris" object in the token claims. If not set, Quarkus looks for roles in standard locations.
+    # See https://quarkus.io/guides/security-oidc-bearer-token-authentication#token-claims-and-security-identity-roles.
+    rolesClaimPath: ~
+    # -- A regular expression that matches the role names in the identity. Only roles that match this
+    # regex will be included in the Polaris-specific roles.
+    filter: ~  # ^(?!profile$|email$).*
+    # -- A list of regex mappings that will be applied to each role name in the identity. This can
+    # be used to transform the role names in the identity into role names as expected by Polaris.
+    # The default ActiveRolesProvider expects the security identity to expose role names in the
+    # format `POLARIS_ROLE:<role name>`.
+    mappings: []
+      # - regex: role_(.*)
+      #   replacement: PRINCIPAL_ROLE:$1
 
 # -- Polaris CORS configuration.
 cors:

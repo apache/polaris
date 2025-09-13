@@ -28,10 +28,10 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -42,16 +42,10 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 /** An in-memory entity cache with a limit of 100k entities and a 1h TTL. */
 public class InMemoryEntityCache implements EntityCache {
 
-  // cache mode
   private EntityCacheMode cacheMode;
-
-  // the meta store manager
+  private final PolarisDiagnostics diagnostics;
   private final PolarisMetaStoreManager polarisMetaStoreManager;
-
-  // Caffeine cache to keep entries by id
   private final Cache<Long, ResolvedPolarisEntity> byId;
-
-  // index by name
   private final AbstractMap<EntityCacheByNameKey, ResolvedPolarisEntity> byName;
 
   /**
@@ -60,9 +54,10 @@ public class InMemoryEntityCache implements EntityCache {
    * @param polarisMetaStoreManager the meta store manager implementation
    */
   public InMemoryEntityCache(
-      @Nonnull RealmContext realmContext,
-      @Nonnull PolarisConfigurationStore configurationStore,
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull RealmConfig realmConfig,
       @Nonnull PolarisMetaStoreManager polarisMetaStoreManager) {
+    this.diagnostics = diagnostics;
 
     // by name cache
     this.byName = new ConcurrentHashMap<>();
@@ -79,9 +74,7 @@ public class InMemoryEntityCache implements EntityCache {
           }
         };
 
-    long weigherTarget =
-        configurationStore.getConfiguration(
-            realmContext, FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
+    long weigherTarget = realmConfig.getConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
     Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
             .maximumWeight(weigherTarget)
@@ -90,8 +83,7 @@ public class InMemoryEntityCache implements EntityCache {
             .removalListener(removalListener); // Set the removal listener
 
     boolean useSoftValues =
-        configurationStore.getConfiguration(
-            realmContext, BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES);
+        realmConfig.getConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES);
     if (useSoftValues) {
       byIdBuilder.softValues();
     }
@@ -350,16 +342,13 @@ public class InMemoryEntityCache implements EntityCache {
       }
 
       // assert that entity, grant records and version are all set
-      callContext.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
-      callContext.getDiagServices().checkNotNull(grantRecords, "unexpected_null_grant_records");
-      callContext
-          .getDiagServices()
-          .check(grantRecordsVersion > 0, "unexpected_null_grant_records_version");
+      diagnostics.checkNotNull(entity, "unexpected_null_entity");
+      diagnostics.checkNotNull(grantRecords, "unexpected_null_grant_records");
+      diagnostics.check(grantRecordsVersion > 0, "unexpected_null_grant_records_version");
 
       // create new cache entry
       newCacheEntry =
-          new ResolvedPolarisEntity(
-              callContext.getDiagServices(), entity, grantRecords, grantRecordsVersion);
+          new ResolvedPolarisEntity(diagnostics, entity, grantRecords, grantRecordsVersion);
 
       // insert cache entry
       this.replaceCacheEntry(existingCacheEntry, newCacheEntry);
@@ -407,13 +396,12 @@ public class InMemoryEntityCache implements EntityCache {
       }
 
       // if found, setup entry
-      callContext.getDiagServices().checkNotNull(result.getEntity(), "entity_should_loaded");
-      callContext
-          .getDiagServices()
-          .checkNotNull(result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
+      diagnostics.checkNotNull(result.getEntity(), "entity_should_loaded");
+      diagnostics.checkNotNull(
+          result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
       entry =
           new ResolvedPolarisEntity(
-              callContext.getDiagServices(),
+              diagnostics,
               result.getEntity(),
               result.getEntityGrantRecords(),
               result.getGrantRecordsVersion());
@@ -464,15 +452,14 @@ public class InMemoryEntityCache implements EntityCache {
       }
 
       // validate return
-      callContext.getDiagServices().checkNotNull(result.getEntity(), "entity_should_loaded");
-      callContext
-          .getDiagServices()
-          .checkNotNull(result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
+      diagnostics.checkNotNull(result.getEntity(), "entity_should_loaded");
+      diagnostics.checkNotNull(
+          result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
 
       // if found, setup entry
       entry =
           new ResolvedPolarisEntity(
-              callContext.getDiagServices(),
+              diagnostics,
               result.getEntity(),
               result.getEntityGrantRecords(),
               result.getGrantRecordsVersion());

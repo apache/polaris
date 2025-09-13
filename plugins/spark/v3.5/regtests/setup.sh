@@ -36,9 +36,10 @@ set -x
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-SPARK_VERSION=3.5.5
+SPARK_VERSION=3.5.6
 SCALA_VERSION=2.12
 POLARIS_CLIENT_JAR=""
+POLARIS_VERSION=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --sparkVersion)
@@ -48,6 +49,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     --scalaVersion)
       SCALA_VERSION="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    --polarisVersion)
+      POLARIS_VERSION="$2"
       shift # past argument
       shift # past value
       ;;
@@ -62,7 +68,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "SET UP FOR SPARK_VERSION=${SPARK_VERSION} SCALA_VERSION=${SCALA_VERSION} POLARIS_CLIENT_JAR=${POLARIS_CLIENT_JAR}"
+echo "SET UP FOR SPARK_VERSION=${SPARK_VERSION} SCALA_VERSION=${SCALA_VERSION} POLARIS_VERSION=${POLARIS_VERSION} POLARIS_CLIENT_JAR=${POLARIS_CLIENT_JAR}"
 
 if [ "$SCALA_VERSION" == "2.12" ]; then
   SPARK_DISTRIBUTION=spark-${SPARK_VERSION}-bin-hadoop3
@@ -88,12 +94,12 @@ if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
   fi
   if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
     echo 'Downloading spark distro...'
-    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://www.apache.org/dyn/closer.lua/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz?action=download
     if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then
         echo "Detected OS: mac. Running 'brew install wget' to try again."
         brew install wget
-        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://www.apache.org/dyn/closer.lua/spark/spark-${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz?action=download
       fi
     fi
   else
@@ -129,11 +135,24 @@ else
   echo 'Setting spark conf...'
   # Instead of clobbering existing spark conf, just comment it all out in case it was customized carefully.
   sed -i 's/^/# /' ${SPARK_CONF}
-cat << EOF >> ${SPARK_CONF}
 
+# If POLARIS_CLIENT_JAR is provided, set the spark conf to use the jars configuration.
+# Otherwise use the packages setting
+if [[ -z "$POLARIS_CLIENT_JAR" ]]; then
+  cat << EOF >> ${SPARK_CONF}
+# POLARIS Spark client test conf
+spark.jars.packages org.apache.polaris:polaris-spark-3.5_$SCALA_VERSION:$POLARIS_VERSION,io.delta:delta-spark_${SCALA_VERSION}:3.2.1
+EOF
+else
+  cat << EOF >> ${SPARK_CONF}
 # POLARIS Spark client test conf
 spark.jars $POLARIS_CLIENT_JAR
 spark.jars.packages io.delta:delta-spark_${SCALA_VERSION}:3.2.1
+EOF
+fi
+
+cat << EOF >> ${SPARK_CONF}
+
 spark.sql.variable.substitute true
 
 spark.driver.extraJavaOptions -Dderby.system.home=${DERBY_HOME}

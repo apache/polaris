@@ -1,0 +1,210 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+chart:
+  version: 1.2.3
+  appVersion: 4.5.6
+
+release:
+  name: polaris-release
+  namespace: polaris-ns
+
+templates:
+  - poddisruptionbudget.yaml
+
+tests:
+
+  # kind
+  - it: should not create PDB by default
+    asserts:
+      - containsDocument:
+          kind: PodDisruptionBudget
+          apiVersion: policy/v1
+        not: true
+  - it: should create PDB when enabled
+    set:
+      podDisruptionBudget.enabled: true
+    asserts:
+      - containsDocument:
+          kind: PodDisruptionBudget
+          apiVersion: policy/v1
+
+  # metadata.name (with PDB enabled)
+  - it: should set PDB name
+    set:
+      podDisruptionBudget.enabled: true
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release
+  - it: should set PDB name with override
+    set:
+      podDisruptionBudget.enabled: true
+      nameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release-polaris-override
+  - it: should set PDB name with full override
+    set:
+      podDisruptionBudget.enabled: true
+      fullnameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-override
+
+  # metadata.namespace (with PDB enabled)
+  - it: should set PDB namespace
+    set:
+      podDisruptionBudget.enabled: true
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: polaris-ns
+
+  # metadata.labels (with PDB enabled)
+  - it: should set PDB default labels
+    set:
+      podDisruptionBudget.enabled: true
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+            app.kubernetes.io/version: 4.5.6
+            app.kubernetes.io/managed-by: Helm
+            helm.sh/chart: polaris-1.2.3
+
+  # metadata.annotations (with PDB enabled)
+  - it: should not set annotations by default
+    set:
+      podDisruptionBudget.enabled: true
+    asserts:
+      - isNull:
+          path: metadata.annotations
+  - it: should set custom annotations
+    set:
+      podDisruptionBudget.enabled: true
+      podDisruptionBudget.annotations:
+        example.com/policy: "critical"
+        kubernetes.io/description: "PDB for Polaris"
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            example.com/policy: "critical"
+            kubernetes.io/description: "PDB for Polaris"
+  - it: should template annotations
+    set:
+      podDisruptionBudget.enabled: true
+      podDisruptionBudget.annotations:
+        app.example.com/release: "{{ .Release.Name }}"
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            app.example.com/release: "polaris-release"
+
+  - it: should set custom maxUnavailable
+    set:
+      podDisruptionBudget.enabled: true
+      podDisruptionBudget.maxUnavailable: 2
+    asserts:
+      - equal:
+          path: spec.maxUnavailable
+          value: 2
+      - isNull:
+          path: spec.minAvailable
+  - it: should set maxUnavailable percentage
+    set:
+      podDisruptionBudget.enabled: true
+      podDisruptionBudget.maxUnavailable: "50%"
+    asserts:
+      - equal:
+          path: spec.maxUnavailable
+          value: "50%"
+      - isNull:
+          path: spec.minAvailable
+
+  # spec.minAvailable
+  - it: should set minAvailable and unset maxUnavailable
+    set:
+      podDisruptionBudget.enabled: true
+      podDisruptionBudget.minAvailable: 2
+      podDisruptionBudget.maxUnavailable: null
+    asserts:
+      - equal:
+          path: spec.minAvailable
+          value: 2
+      - isNull:
+          path: spec.maxUnavailable
+  - it: should set minAvailable percentage
+    set:
+      podDisruptionBudget.enabled: true
+      podDisruptionBudget.minAvailable: "75%"
+      podDisruptionBudget.maxUnavailable: null
+    asserts:
+      - equal:
+          path: spec.minAvailable
+          value: "75%"
+      - isNull:
+          path: spec.maxUnavailable
+
+  # spec.selector.matchLabels
+  - it: should set selector labels to match deployment
+    set:
+      podDisruptionBudget.enabled: true
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+  - it: should set selector labels with name override
+    set:
+      podDisruptionBudget.enabled: true
+      nameOverride: polaris-override
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: polaris-override
+            app.kubernetes.io/instance: polaris-release
+  - it: should set selector labels with full name override
+    set:
+      podDisruptionBudget.enabled: true
+      fullnameOverride: polaris-override
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+
+  # validation tests
+  - it: should fail when both minAvailable and maxUnavailable are set
+    set:
+      podDisruptionBudget.enabled: true
+      podDisruptionBudget.minAvailable: 1
+      podDisruptionBudget.maxUnavailable: 1
+    asserts:
+      - failedTemplate:
+          errorMessage: "podDisruptionBudget.minAvailable and podDisruptionBudget.maxUnavailable cannot be both set."

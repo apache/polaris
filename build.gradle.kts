@@ -20,20 +20,14 @@
 import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
-buildscript {
-  repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } }
-  dependencies {
-    classpath("org.kordamp.gradle:jandex-gradle-plugin:${libs.plugins.jandex.get().version}")
-  }
-}
+buildscript { repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } } }
 
 plugins {
   id("idea")
   id("eclipse")
   id("polaris-root")
   alias(libs.plugins.rat)
-  // workaround for https://github.com/kordamp/jandex-gradle-plugin/issues/25
-  alias(libs.plugins.jandex) apply false
+  alias(libs.plugins.jetbrains.changelog)
 }
 
 val projectName = rootProject.file("ide-name.txt").readText().trim()
@@ -49,7 +43,7 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
   val icon = ideaDir.file("icon.png").asFile
   if (!icon.exists()) {
     copy {
-      from("docs/img/logos/polaris-brandmark.png")
+      from("site/static/img/logos/polaris-brandmark.png")
       into(ideaDir)
       rename { _ -> "icon.png" }
     }
@@ -59,11 +53,15 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 eclipse { project { name = ideName } }
 
 tasks.named<RatTask>("rat").configure {
-  // These are Gradle file pattern syntax
+  // Gradle
   excludes.add("**/build/**")
+  excludes.add("gradle/wrapper/gradle-wrapper*")
+  excludes.add(".gradle")
+  excludes.add("**/kotlin-compiler*")
+  excludes.add("**/build-logic/.kotlin/**")
 
-  excludes.add("docs/CNAME")
-  excludes.add("docs/index.html")
+  excludes.add("ide-name.txt")
+  excludes.add("version.txt")
 
   excludes.add("DISCLAIMER_WIP")
   excludes.add("LICENSE")
@@ -84,26 +82,22 @@ tasks.named<RatTask>("rat").configure {
   // Manifest files do not allow comments
   excludes.add("tools/version/src/jarTest/resources/META-INF/FAKE_MANIFEST.MF")
 
-  excludes.add("ide-name.txt")
-  excludes.add("version.txt")
+  // Git & GitHub
   excludes.add(".git")
-  excludes.add(".gradle")
-  excludes.add(".idea")
-  excludes.add(".java-version")
-  excludes.add("**/.keep")
-  excludes.add("**/poetry.lock")
-
   excludes.add(".github/pull_request_template.md")
 
-  excludes.add("spec/docs.yaml")
-  excludes.add("spec/index.yml")
-
-  excludes.add("gradle/wrapper/gradle-wrapper*")
-
+  // Misc build artifacts
+  excludes.add(".java-version")
+  excludes.add("**/.keep")
   excludes.add("logs/**")
-  excludes.add("service/common/src/**/banner.txt")
-  excludes.add("quarkus/admin/src/**/banner.txt")
+  excludes.add("**/*.lock")
 
+  // Polaris service startup banner
+  excludes.add("runtime/service/src/**/banner.txt")
+
+  // Web site
+  excludes.add("**/go.sum")
+  excludes.add("site/.user-settings")
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")
   // Ignore generated stuff, when the Hugo is run w/o Docker
@@ -111,46 +105,34 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("site/resources/_gen/**")
   excludes.add("node_modules/**")
 
+  // Python
+  excludes.add("**/.venv/**")
   excludes.add("**/polaris-venv/**")
-
+  excludes.add("**/poetry.lock")
+  excludes.add("**/.ruff_cache/**")
+  excludes.add("**/.mypy_cache/**")
   excludes.add("**/.pytest_cache/**")
+  excludes.add("client/python/.openapi-generator/**")
+
+  // Jupyter
+  excludes.add("**/*.ipynb")
+
+  // regtests
   excludes.add("regtests/**/py.typed")
   excludes.add("regtests/**/*.ref")
   excludes.add("regtests/.env")
   excludes.add("regtests/derby.log")
   excludes.add("regtests/metastore_db/**")
-  excludes.add("client/python/.openapi-generator/**")
   excludes.add("regtests/output/**")
+  excludes.add("plugins/**/*.ref")
 
-  excludes.add("**/*.ipynb")
+  // IntelliJ
+  excludes.add(".idea")
   excludes.add("**/*.iml")
   excludes.add("**/*.iws")
 
+  // Rat can't scan binary images
   excludes.add("**/*.png")
-  excludes.add("**/*.svg")
-
-  excludes.add("**/*.lock")
-
-  excludes.add("**/*.env*")
-
-  excludes.add("**/go.sum")
-
-  excludes.add("**/kotlin-compiler*")
-  excludes.add("**/build-logic/.kotlin/**")
-
-  excludes.add("plugins/**/*.ref")
-}
-
-tasks.register<Exec>("regeneratePythonClient") {
-  description = "Regenerates the python client"
-
-  workingDir = project.projectDir
-  commandLine("bash", "client/templates/regenerate.sh")
-
-  dependsOn(":polaris-api-iceberg-service:processResources")
-  dependsOn(":polaris-api-management-service:processResources")
-  dependsOn(":polaris-api-catalog-service:processResources")
-  dependsOn(":polaris-api-management-model:processResources")
 }
 
 // Pass environment variables:
@@ -215,5 +197,33 @@ copiedCodeChecks {
       srcDir(".")
       include("*")
     }
+  }
+}
+
+changelog {
+  repositoryUrl.set("https://github.com/apache/polaris")
+  title.set("Apache Polaris Changelog")
+  versionPrefix.set("apache-polaris-")
+  header.set(provider { "${version.get()}" })
+  groups.set(
+    listOf(
+      "Highlights",
+      "Upgrade notes",
+      "Breaking changes",
+      "New Features",
+      "Changes",
+      "Deprecations",
+      "Fixes",
+      "Commits",
+    )
+  )
+  version.set(provider { project.version.toString() })
+}
+
+tasks.register("showVersion") {
+  actions.add {
+    logger.lifecycle(
+      "Polaris version is ${project.file("version.txt").readText(Charsets.UTF_8).trim()}"
+    )
   }
 }

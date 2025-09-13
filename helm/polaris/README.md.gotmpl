@@ -1,21 +1,26 @@
-<!---
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
--->
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+Title: Polaris Helm Chart
+type: docs
+weight: 675
+---
 
 <!---
   This README.md file was generated with:
@@ -25,8 +30,6 @@
   helm-docs --chart-search-root=helm
 -->
 
-# Polaris Helm chart
-
 {{ template "chart.deprecationWarning" . }}
 
 {{ template "chart.badgesSection" . }}
@@ -35,58 +38,28 @@
 
 {{ template "chart.homepageLine" . }}
 
-{{ template "chart.maintainersHeader" . }}
-
-{{- range .Maintainers }}
-* [{{ .Name }}]({{ if .Url }}{{ .Url }}{{ else }}https://github.com/{{ .Name }}{{ end }})
-{{- end }}
-
 {{ template "chart.sourcesSection" . }}
 
 {{ template "chart.requirementsSection" . }}
 
 ## Installation
 
-### Prerequisites
-
-When using the (deprecated) EclipseLink-backed metastore, a custom `persistence.xml` is required,
-and a Kubernetes Secret must be created for it. Below is a sample command:
-
-```bash
-kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
-```
-
-### Running locally with a Kind cluster
-
-The below instructions assume Kind and Helm are installed.
-
-Simply run the `run.sh` script from the Polaris repo root:
-
-```bash
-./run.sh
-```
-
-If using the EclipseLink-backed metastore, make sure to specify the `--eclipse-link-deps` option.
-
-This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker
-images with support for Postgres and load them into the Kind cluster. (It will also create an
-example Deployment and Service with in-memory storage.)
-
 ### Running locally with a Minikube cluster
 
-The below instructions assume a Minikube cluster is already running and Helm is installed.
+The below instructions assume Minikube and Helm are installed.
 
-If necessary, build and load the Docker images with support for Postgres into Minikube:
+Start the Minikube cluster, build and load image into the Minikube cluster:
 
 ```bash
-eval $(minikube -p minikube docker-env)
+minikube start
+eval $(minikube docker-env)
 
 ./gradlew \
-    :polaris-server:assemble \
-    :polaris-server:quarkusAppPartsBuild --rerun \
-    :polaris-admin:assemble \
-    :polaris-admin:quarkusAppPartsBuild --rerun \
-    -Dquarkus.container-image.build=true
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild --rerun \
+  :polaris-admin:assemble \
+  :polaris-admin:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.build=true
 ```
 
 ### Installing the chart locally
@@ -96,15 +69,15 @@ The below instructions assume a local Kubernetes cluster is running and Helm is 
 #### Common setup
 
 Create the target namespace:
-
 ```bash
 kubectl create namespace polaris
 ```
 
 Create all the required resources in the `polaris` namespace. This usually includes a Postgres
-database and a Kubernetes Secret for the `persistence.xml` file. The Polaris chart does not create
+database, Kubernetes secrets, and service accounts. The Polaris chart does not create
 these resources automatically, as they are not required for all Polaris deployments. The chart will
-fail if these resources are not created beforehand.
+fail if these resources are not created beforehand. You can find some examples in the 
+`helm/polaris/ci/fixtures` directory, but beware that these are primarily intended for tests.
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
 
@@ -116,20 +89,8 @@ Below are two sample deployment models for installing the chart: one with a non-
 #### Non-persistent backend
 
 Install the chart with a non-persistent backend. From Polaris repo root:
-
 ```bash
 helm upgrade --install --namespace polaris \
-  --debug --values helm/polaris/ci/simple-values.yaml \
-   polaris helm/polaris
-```
-
-Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
-above, then you need to run `helm upgrade` as follows:
-
-```bash
-helm upgrade --install --namespace polaris \
-  --debug --values helm/polaris/ci/simple-values.yaml \
-  --set=image.repository=localhost:5001/apache/polaris \
   polaris helm/polaris
 ```
 
@@ -139,28 +100,14 @@ helm upgrade --install --namespace polaris \
 > The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
 
 Install the chart with a persistent backend. From Polaris repo root:
-
 ```bash
 helm upgrade --install --namespace polaris \
-  --debug --values helm/polaris/ci/persistence-values.yaml \
+  --values helm/polaris/ci/persistence-values.yaml \
   polaris helm/polaris
-
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=polaris --timeout=120s
 ```
 
-After deploying the chart with a persistent backend, the `persistence.xml` file, originally loaded into the Kubernetes pod via a secret, can be accessed locally if needed. This file contains the persistence configuration required for the next steps. Use the following command to retrieve it:
-
-```bash
-kubectl exec -it -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') -- cat /deployments/config/persistence.xml > persistence.xml
-```
-
-The `persistence.xml` file references the Postgres hostname as postgres. Update it to localhost to enable local connections:
-
-```bash
-sed -i .bak 's/postgres:/localhost:/g' persistence.xml
-```
-
-To access Polaris and Postgres locally, set up port forwarding for both services:
+To access Polaris and Postgres locally, set up port forwarding for both services (This is needed for bootstrap processes):
 ```bash
 kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') 8181:8181
 
@@ -168,12 +115,13 @@ kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.i
 ```
 
 Run the catalog bootstrap using the Polaris admin tool. This step initializes the catalog with the required configuration:
-
 ```bash
-java -Dpolaris.persistence.eclipselink.configuration-file=./persistence.xml \
-  -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
-  -jar runtime/admin/build/polaris-admin-*-runner.jar \
-  bootstrap -c POLARIS,root,pass -r POLARIS
+container_envs=$(kubectl exec -it -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') -- env)
+export QUARKUS_DATASOURCE_USERNAME=$(echo "$container_envs" | grep quarkus.datasource.username | awk -F '=' '{print $2}' | tr -d '\n\r')
+export QUARKUS_DATASOURCE_PASSWORD=$(echo "$container_envs" | grep quarkus.datasource.password | awk -F '=' '{print $2}' | tr -d '\n\r')
+export QUARKUS_DATASOURCE_JDBC_URL=$(echo "$container_envs" | grep quarkus.datasource.jdbc.url | sed 's/postgres/localhost/2' | awk -F '=' '{print $2}' | tr -d '\n\r')
+
+java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap -c POLARIS,root,pass -r POLARIS
 ```
 
 ### Uninstalling
@@ -198,7 +146,6 @@ The following tools are required to run the tests:
 * [Chart Testing](https://github.com/helm/chart-testing)
 
 Quick installation instructions for these tools:
-
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest.git
 brew install chart-testing
@@ -206,7 +153,6 @@ brew install chart-testing
 
 The integration tests also require some fixtures to be deployed. The `ci/fixtures` directory
 contains the required resources. To deploy them, run the following command:
-
 ```bash
 kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
@@ -219,7 +165,6 @@ different configurations.
 
 Helm unit tests do not require a Kubernetes cluster. To run the unit tests, execute Helm Unit from
 the Polaris repo root:
-
 ```bash
 helm unittest helm/polaris
 ```
@@ -236,17 +181,8 @@ Integration tests require a Kubernetes cluster. See installation instructions ab
 a local cluster.
 
 Integration tests are run with the Chart Testing tool:
-
 ```bash
-ct install --namespace polaris --debug --charts ./helm/polaris
-```
-
-Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
-above, then you need to run `ct install` as follows:
-
-```bash
-ct install --namespace polaris --debug --charts ./helm/polaris \
-  --helm-extra-set-args "--set=image.repository=localhost:5001/apache/polaris"
+ct install --namespace polaris --charts ./helm/polaris
 ```
 
 {{ template "chart.valuesSection" . }}

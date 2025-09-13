@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence.cache;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -47,22 +48,9 @@ import org.mockito.Mockito;
 /** Unit testing of the entity cache */
 public class InMemoryEntityCacheTest {
 
-  // diag services
   private final PolarisDiagnostics diagServices;
-
-  // the entity store, use treemap implementation
-  private final TreeMapMetaStore store;
-
-  // to interact with the metastore
-  private final TransactionalPersistence metaStore;
-
-  // polaris call context
   private final PolarisCallContext callCtx;
-
-  // utility to bootstrap the mata store
   private final PolarisTestMetaStoreManager tm;
-
-  // the meta store manager
   private final PolarisMetaStoreManager metaStoreManager;
 
   /**
@@ -89,12 +77,14 @@ public class InMemoryEntityCacheTest {
    */
   public InMemoryEntityCacheTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
-    store = new TreeMapMetaStore(diagServices);
-    metaStore = new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
-    callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
-    metaStoreManager = new TransactionalMetaStoreManagerImpl();
+    TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
+    TransactionalPersistence metaStore =
+        new TreeMapTransactionalPersistenceImpl(
+            diagServices, store, Mockito.mock(), RANDOM_SECRETS);
+    metaStoreManager = new TransactionalMetaStoreManagerImpl(Clock.systemUTC(), diagServices);
+    callCtx = new PolarisCallContext(() -> "testRealm", metaStore);
 
-    // bootstrap the mata store with our test schema
+    // bootstrap the meta store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
     tm.testCreateTestCatalog();
   }
@@ -103,8 +93,7 @@ public class InMemoryEntityCacheTest {
    * @return new cache for the entity store
    */
   InMemoryEntityCache allocateNewCache() {
-    return new InMemoryEntityCache(
-        callCtx.getRealmContext(), callCtx.getConfigurationStore(), this.metaStoreManager);
+    return new InMemoryEntityCache(diagServices, callCtx.getRealmConfig(), this.metaStoreManager);
   }
 
   @Test
@@ -491,13 +480,18 @@ public class InMemoryEntityCacheTest {
 
   @Test
   void testEntityWeigher() {
-    var smallEntity = new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "").build();
+    var smallEntity =
+        new IcebergTableLikeEntity.Builder(
+                PolarisEntitySubType.ICEBERG_TABLE, TableIdentifier.of("ns.t1"), "")
+            .build();
     var mediumEntity =
-        new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
+        new IcebergTableLikeEntity.Builder(
+                PolarisEntitySubType.ICEBERG_TABLE, TableIdentifier.of("ns.t1"), "")
             .setMetadataLocation("a".repeat(10000))
             .build();
     var largeEntity =
-        new IcebergTableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
+        new IcebergTableLikeEntity.Builder(
+                PolarisEntitySubType.ICEBERG_TABLE, TableIdentifier.of("ns.t1"), "")
             .setMetadataLocation("a".repeat(1000 * 1000))
             .build();
 

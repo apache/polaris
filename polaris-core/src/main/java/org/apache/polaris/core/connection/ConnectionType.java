@@ -26,14 +26,19 @@ import java.util.Arrays;
  * the API model. We define integer type codes in this enum for better compatibility within
  * persisted data in case the names of enum types are ever changed in place.
  *
- * <p>Important: Codes must be kept in-sync with JsonSubTypes annotated within {@link
+ * <p>Important: Codes must be kept in-sync wi th JsonSubTypes annotated within {@link
  * ConnectionConfigInfoDpo}.
  */
 public enum ConnectionType {
   NULL_TYPE(0),
   ICEBERG_REST(1),
   HADOOP(2),
+  HIVE(3),
   ;
+
+  public static final String ICEBERG_REST_FACTORY_IDENTIFIER = "iceberg_rest";
+  public static final String HADOOP_FACTORY_IDENTIFIER = "hadoop";
+  public static final String HIVE_FACTORY_IDENTIFIER = "hive";
 
   private static final ConnectionType[] REVERSE_MAPPING_ARRAY;
 
@@ -76,5 +81,25 @@ public enum ConnectionType {
 
   public int getCode() {
     return this.code;
+  }
+
+  /**
+   * Get the factory identifier string used for CDI injection of the appropriate
+   * ExternalCatalogFactory.
+   *
+   * @return the factory identifier string
+   */
+  public String getFactoryIdentifier() {
+    switch (this) {
+      case ICEBERG_REST:
+        return ICEBERG_REST_FACTORY_IDENTIFIER;
+      case HADOOP:
+        return HADOOP_FACTORY_IDENTIFIER;
+      case HIVE:
+        return HIVE_FACTORY_IDENTIFIER;
+      default:
+        throw new UnsupportedOperationException(
+            "No factory identifier for connection type: " + this);
+    }
   }
 }

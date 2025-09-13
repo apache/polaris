@@ -20,7 +20,7 @@
 services:
 
   polaris:
-    image: apache/polaris:postgres-latest
+    image: apache/polaris:latest
     ports:
       # API port
       - "8181:8181"
@@ -35,7 +35,6 @@ services:
       POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_RETRIES: 5
       POLARIS_PERSISTENCE_RELATIONAL_JDBC_INITIAL_DELAY_IN_MS: 100
       POLARIS_PERSISTENCE_RELATIONAL_JDBC_MAX_DURATION_IN_MS: 5000
-      QUARKUS_DATASOURCE_DB_KIND: pgsql
       QUARKUS_DATASOURCE_JDBC_URL: $QUARKUS_DATASOURCE_JDBC_URL
       QUARKUS_DATASOURCE_USERNAME: $QUARKUS_DATASOURCE_USERNAME
       QUARKUS_DATASOURCE_PASSWORD: $QUARKUS_DATASOURCE_PASSWORD
@@ -82,7 +81,7 @@ services:
       retries: 15
     command: [
       /opt/spark/bin/spark-sql,
-      --packages, "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.0,org.apache.iceberg:iceberg-aws-bundle:1.9.0,org.apache.iceberg:iceberg-gcp-bundle:1.9.0,org.apache.iceberg:iceberg-azure-bundle:1.9.0",
+      --packages, "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.1,org.apache.iceberg:iceberg-aws-bundle:1.9.1,org.apache.iceberg:iceberg-gcp-bundle:1.9.1,org.apache.iceberg:iceberg-azure-bundle:1.9.1",
       --conf, "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
       --conf, "spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog",
       --conf, "spark.sql.catalog.polaris.type=rest",

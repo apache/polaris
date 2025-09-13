@@ -31,16 +31,23 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
@@ -50,7 +57,7 @@ import org.apache.polaris.core.persistence.IntegrationPersistence;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
-import org.apache.polaris.core.persistence.pagination.HasPageSize;
+import org.apache.polaris.core.persistence.pagination.EntityIdToken;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -59,10 +66,14 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelGrantRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPolicyMappingRecord;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthenticationData;
+import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,20 +81,29 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcBasePersistenceImpl.class);
 
+  private final PolarisDiagnostics diagnostics;
   private final DatasourceOperations datasourceOperations;
   private final PrincipalSecretsGenerator secretsGenerator;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final String realmId;
+  private final int schemaVersion;
+
+  // The max number of components a location can have before the optimized sibling check is not used
+  private static final int MAX_LOCATION_COMPONENTS = 40;
 
   public JdbcBasePersistenceImpl(
+      PolarisDiagnostics diagnostics,
       DatasourceOperations databaseOperations,
       PrincipalSecretsGenerator secretsGenerator,
       PolarisStorageIntegrationProvider storageIntegrationProvider,
-      String realmId) {
+      String realmId,
+      int schemaVersion) {
+    this.diagnostics = diagnostics;
     this.datasourceOperations = databaseOperations;
     this.secretsGenerator = secretsGenerator;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
+    this.schemaVersion = schemaVersion;
   }
 
   @Override
@@ -172,11 +192,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   entity.getParentId(),
                   entity.getTypeCode(),
                   entity.getName());
-          throw new EntityAlreadyExistsException(existingEntity, e);
-        } else {
-          throw new RuntimeException(
-              String.format("Failed to write entity due to %s", e.getMessage()), e);
+          // This happens in two scenarios:
+          // 1. PRIMARY KEY violated
+          // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
+          // With SERIALIZABLE isolation, the conflicting entity may _not_ be visible and
+          // existingEntity can be null, which would cause an NPE in
+          // EntityAlreadyExistsException.message().
+          throw new EntityAlreadyExistsException(
+              existingEntity != null ? existingEntity : entity, e);
         }
+        throw new RuntimeException(
+            String.format("Failed to write entity due to %s", e.getMessage()), e);
       }
     } else {
       Map<String, Object> params =
@@ -222,6 +248,63 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write to grant records due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Override
+  public void writeEvents(@Nonnull List<PolarisEvent> events) {
+    if (events.isEmpty()) {
+      return; // or throw if empty list is invalid
+    }
+
+    try {
+      // Generate the SQL using the first event as the reference
+      PreparedQuery firstPreparedQuery =
+          QueryGenerator.generateInsertQuery(
+              ModelEvent.ALL_COLUMNS,
+              ModelEvent.TABLE_NAME,
+              ModelEvent.fromEvent(events.getFirst())
+                  .toMap(datasourceOperations.getDatabaseType())
+                  .values()
+                  .stream()
+                  .toList(),
+              realmId);
+      String expectedSql = firstPreparedQuery.sql();
+
+      List<List<Object>> parametersList = new ArrayList<>();
+      parametersList.add(firstPreparedQuery.parameters());
+
+      // Process remaining events and verify SQL consistency
+      for (int i = 1; i < events.size(); i++) {
+        PolarisEvent event = events.get(i);
+        PreparedQuery pq =
+            QueryGenerator.generateInsertQuery(
+                ModelEvent.ALL_COLUMNS,
+                ModelEvent.TABLE_NAME,
+                ModelEvent.fromEvent(event)
+                    .toMap(datasourceOperations.getDatabaseType())
+                    .values()
+                    .stream()
+                    .toList(),
+                realmId);
+
+        if (!expectedSql.equals(pq.sql())) {
+          throw new RuntimeException("All events did not generate the same SQL");
+        }
+
+        parametersList.add(pq.parameters());
+      }
+
+      int totalUpdated =
+          datasourceOperations.executeBatchUpdate(
+              new QueryGenerator.PreparedBatchQuery(expectedSql, parametersList));
+
+      if (totalUpdated == 0) {
+        throw new SQLException("No events were inserted.");
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to write events due to %s", e.getMessage()), e);
     }
   }
 
@@ -402,54 +485,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         .collect(Collectors.toList());
   }
 
-  @Nonnull
-  @Override
-  public Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
-    return listEntities(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        entity -> true,
-        EntityNameLookupRecord::new,
-        pageToken);
-  }
-
-  @Nonnull
-  @Override
-  public Page<EntityNameLookupRecord> listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
-    return listEntities(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        entityFilter,
-        EntityNameLookupRecord::new,
-        pageToken);
-  }
-
-  @Nonnull
-  @Override
-  public <T> Page<T> listEntities(
-      @Nonnull PolarisCallContext callCtx,
+  private PreparedQuery buildEntityQuery(
       long catalogId,
       long parentId,
       PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer,
-      @Nonnull PageToken pageToken) {
-    Map<String, Object> params =
+      PolarisEntitySubType entitySubType,
+      PageToken pageToken,
+      List<String> queryProjections) {
+    Map<String, Object> whereEquals =
         Map.of(
             "catalog_id",
             catalogId,
@@ -460,28 +503,88 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             "realm_id",
             realmId);
 
-    // Limit can't be pushed down, due to client side filtering
-    // absence of transaction.
+    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
+      Map<String, Object> updatedWhereEquals = new HashMap<>(whereEquals);
+      updatedWhereEquals.put("sub_type_code", entitySubType.getCode());
+      whereEquals = updatedWhereEquals;
+    }
+
+    String orderByColumnName = null;
+    Map<String, Object> whereGreater;
+    if (pageToken.paginationRequested()) {
+      orderByColumnName = ModelEntity.ID_COLUMN;
+      whereGreater =
+          pageToken
+              .valueAs(EntityIdToken.class)
+              .map(
+                  entityIdToken ->
+                      Map.<String, Object>of(ModelEntity.ID_COLUMN, entityIdToken.entityId()))
+              .orElse(Map.of());
+    } else {
+      whereGreater = Map.of();
+    }
+
+    return QueryGenerator.generateSelectQuery(
+        queryProjections, ModelEntity.TABLE_NAME, whereEquals, whereGreater, orderByColumnName);
+  }
+
+  @Nonnull
+  @Override
+  public Page<EntityNameLookupRecord> listEntities(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull PageToken pageToken) {
     try {
       PreparedQuery query =
-          QueryGenerator.generateSelectQuery(
-              ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, params);
-      List<PolarisBaseEntity> results = new ArrayList<>();
+          buildEntityQuery(
+              catalogId,
+              parentId,
+              entityType,
+              entitySubType,
+              pageToken,
+              ModelEntity.ENTITY_LOOKUP_COLUMNS);
+      AtomicReference<Page<EntityNameLookupRecord>> results = new AtomicReference<>();
+      datasourceOperations.executeSelectOverStream(
+          query,
+          new EntityNameLookupRecordConverter(),
+          stream -> {
+            results.set(
+                Page.mapped(pageToken, stream, Function.identity(), EntityIdToken::fromEntity));
+          });
+      return results.get();
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
+    }
+  }
+
+  @Nonnull
+  @Override
+  public <T> Page<T> loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
+    try {
+      PreparedQuery query =
+          buildEntityQuery(
+              catalogId, parentId, entityType, entitySubType, pageToken, ModelEntity.ALL_COLUMNS);
+      AtomicReference<Page<T>> results = new AtomicReference<>();
       datasourceOperations.executeSelectOverStream(
           query,
           new ModelEntity(),
           stream -> {
             var data = stream.filter(entityFilter);
-            if (pageToken instanceof HasPageSize hasPageSize) {
-              data = data.limit(hasPageSize.getPageSize());
-            }
-            data.forEach(results::add);
+            results.set(Page.mapped(pageToken, data, transformer, EntityIdToken::fromEntity));
           });
-      List<T> resultsOrEmpty =
-          results == null
-              ? Collections.emptyList()
-              : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
-      return Page.fromItems(resultsOrEmpty);
+      return results.get();
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
@@ -622,6 +725,64 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
+  static int loadSchemaVersion(DatasourceOperations datasourceOperations) {
+    PreparedQuery query = QueryGenerator.generateVersionQuery();
+    try {
+      List<SchemaVersion> schemaVersion =
+          datasourceOperations.executeSelect(query, new SchemaVersion());
+      if (schemaVersion == null || schemaVersion.size() != 1) {
+        throw new RuntimeException("Failed to retrieve schema version");
+      }
+      return schemaVersion.getFirst().getValue();
+    } catch (SQLException e) {
+      LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
+      throw new IllegalStateException("Failed to retrieve schema version", e);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T extends PolarisEntity & LocationBasedEntity>
+      Optional<Optional<String>> hasOverlappingSiblings(
+          @Nonnull PolarisCallContext callContext, T entity) {
+    if (this.schemaVersion < 2) {
+      return Optional.empty();
+    }
+    if (entity.getBaseLocation().chars().filter(ch -> ch == '/').count()
+        > MAX_LOCATION_COMPONENTS) {
+      return Optional.empty();
+    }
+
+    PreparedQuery query =
+        QueryGenerator.generateOverlapQuery(
+            realmId, entity.getCatalogId(), entity.getBaseLocation());
+    try {
+      var results = datasourceOperations.executeSelect(query, new ModelEntity());
+      if (!results.isEmpty()) {
+        StorageLocation entityLocation = StorageLocation.of(entity.getBaseLocation());
+        for (PolarisBaseEntity result : results) {
+          StorageLocation potentialSiblingLocation =
+              StorageLocation.of(((LocationBasedEntity) result).getBaseLocation());
+          if (entityLocation.isChildOf(potentialSiblingLocation)
+              || potentialSiblingLocation.isChildOf(entityLocation)) {
+            return Optional.of(Optional.of(potentialSiblingLocation.toString()));
+          }
+        }
+      }
+      return Optional.of(Optional.empty());
+    } catch (SQLException e) {
+      LOGGER.error(
+          "Failed to retrieve location overlap for location {} due to {}",
+          entity.getBaseLocation(),
+          e.getMessage(),
+          e);
+      throw new RuntimeException(
+          String.format(
+              "Failed to retrieve location overlap for location: %s", entity.getBaseLocation()),
+          e);
+    }
+  }
+
   @Nullable
   @Override
   public PolarisPrincipalSecrets loadPrincipalSecrets(
@@ -695,6 +856,42 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nullable
   @Override
+  public PolarisPrincipalSecrets storePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret) {
+    PolarisPrincipalSecrets principalSecrets =
+        new PolarisPrincipalSecrets(principalId, resolvedClientId, customClientSecret);
+    try {
+      ModelPrincipalAuthenticationData modelPrincipalAuthenticationData =
+          ModelPrincipalAuthenticationData.fromPrincipalAuthenticationData(principalSecrets);
+      datasourceOperations.executeUpdate(
+          QueryGenerator.generateInsertQuery(
+              ModelPrincipalAuthenticationData.ALL_COLUMNS,
+              ModelPrincipalAuthenticationData.TABLE_NAME,
+              modelPrincipalAuthenticationData
+                  .toMap(datasourceOperations.getDatabaseType())
+                  .values()
+                  .stream()
+                  .toList(),
+              realmId));
+    } catch (SQLException e) {
+      LOGGER.error(
+          "Failed to reset PrincipalSecrets  for clientId: {}, due to {}",
+          resolvedClientId,
+          e.getMessage(),
+          e);
+      throw new RuntimeException(
+          String.format("Failed to reset PrincipalSecrets for clientId: %s", resolvedClientId), e);
+    }
+
+    // return those
+    return principalSecrets;
+  }
+
+  @Nullable
+  @Override
   public PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
@@ -705,24 +902,20 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     PolarisPrincipalSecrets principalSecrets = loadPrincipalSecrets(callCtx, clientId);
 
     // should be found
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            principalSecrets,
-            "cannot_find_secrets",
-            "client_id={} principalId={}",
-            clientId,
-            principalId);
+    diagnostics.checkNotNull(
+        principalSecrets,
+        "cannot_find_secrets",
+        "client_id={} principalId={}",
+        clientId,
+        principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
-        .check(
-            principalId == principalSecrets.getPrincipalId(),
-            "principal_id_mismatch",
-            "expectedId={} id={}",
-            principalId,
-            principalSecrets.getPrincipalId());
+    diagnostics.check(
+        principalId == principalSecrets.getPrincipalId(),
+        "principal_id_mismatch",
+        "expectedId={} id={}",
+        principalId,
+        principalSecrets.getPrincipalId());
 
     // rotate the secrets
     principalSecrets.rotateSecrets(oldSecretHash);
@@ -1039,7 +1232,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callContext, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

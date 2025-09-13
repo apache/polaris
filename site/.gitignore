@@ -17,6 +17,8 @@
 # under the License.
 #
 
+.user-settings
+
 content/releases/
 
 # Created/generated when running Hugo on the local host

@@ -40,3 +40,6 @@ this directory. Each example has detailed instructions.
   database. The realm is bootstrapped with the Polaris Admin tool. This example also creates a
   `polaris_quickstart` catalog, and offers the ability to run Spark SQL and Trino queries. Finally, it shows how to
   attach a debugger to the Polaris server.
+
+- [Keycloak](keycloak): An example that uses Keycloak as an external identity provider (IDP) for
+  authentication.

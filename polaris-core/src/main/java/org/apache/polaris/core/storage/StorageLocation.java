@@ -20,18 +20,33 @@ package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.polaris.core.storage.aws.S3Location;
 import org.apache.polaris.core.storage.azure.AzureLocation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/** An abstraction over a storage location */
+/**
+ * An abstraction over a storage location. This type may be used for a generic string-based
+ * location, but child classes might be used where behavior specific to a storage provider is
+ * needed.
+ */
 public class StorageLocation {
-  private final String location;
+  private static final Logger LOGGER = LoggerFactory.getLogger(StorageLocation.class);
+  private static final Pattern SCHEME_PATTERN = Pattern.compile("^(.+?):(.+)");
+
   public static final String LOCAL_PATH_PREFIX = "file:///";
 
-  /** Create a StorageLocation from a String path */
+  private final String location;
+
+  /** Create a StorageLocation of the appropriate type from a String path */
   public static StorageLocation of(String location) {
     // TODO implement StorageLocation for all supported file systems and add isValidLocation
     if (AzureLocation.isAzureLocation(location)) {
       return new AzureLocation(location);
+    } else if (S3Location.isS3Location(location)) {
+      return new S3Location(location);
     } else {
       return new StorageLocation(location);
     }
@@ -50,7 +65,7 @@ public class StorageLocation {
   }
 
   /** If a path doesn't end in `/`, this will add one */
-  protected final String ensureTrailingSlash(String location) {
+  public static String ensureTrailingSlash(String location) {
     if (location == null || location.endsWith("/")) {
       return location;
     } else {
@@ -59,7 +74,7 @@ public class StorageLocation {
   }
 
   /** If a path doesn't start with `/`, this will add one */
-  protected final @Nonnull String ensureLeadingSlash(@Nonnull String location) {
+  protected static @Nonnull String ensureLeadingSlash(@Nonnull String location) {
     if (location.startsWith("/")) {
       return location;
     } else {
@@ -72,6 +87,12 @@ public class StorageLocation {
     return location.hashCode();
   }
 
+  /**
+   * Checks if two StorageLocations represent the same physical location.
+   *
+   * <p>Child classes should override this behavior if a check other than basic string-matching
+   * should be done.
+   */
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof StorageLocation) {
@@ -88,7 +109,10 @@ public class StorageLocation {
 
   /**
    * Returns true if this StorageLocation's location string starts with the other StorageLocation's
-   * location string
+   * location string.
+   *
+   * <p>Child classes should override this behavior if a check other than basic string-matching
+   * should be done.
    */
   public boolean isChildOf(StorageLocation potentialParent) {
     if (this.location == null || potentialParent.location == null) {
@@ -97,6 +121,22 @@ public class StorageLocation {
       String slashTerminatedLocation = ensureTrailingSlash(this.location);
       String slashTerminatedParentLocation = ensureTrailingSlash(potentialParent.location);
       return slashTerminatedLocation.startsWith(slashTerminatedParentLocation);
+    }
+  }
+
+  /** Returns a string representation of the location but without a scheme */
+  public String withoutScheme() {
+    if (location == null) {
+      return null;
+    }
+    Matcher matcher = SCHEME_PATTERN.matcher(location);
+    if (matcher.matches()) {
+      String locationWithoutScheme = matcher.group(2);
+      LOGGER.debug("Extracted {} from location {}", locationWithoutScheme, location);
+      return locationWithoutScheme;
+    } else {
+      LOGGER.debug("Found no scheme in location {}", location);
+      return location;
     }
   }
 }

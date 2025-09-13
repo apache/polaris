@@ -22,7 +22,7 @@ import io.quarkus.gradle.tasks.QuarkusRun
 
 plugins {
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   alias(libs.plugins.openapi.generator)
   id("polaris-runtime")
   // id("polaris-license-report")
@@ -39,16 +39,17 @@ val distributionElements by
   }
 
 dependencies {
-  implementation(project(":polaris-core"))
-  implementation(project(":polaris-api-management-service"))
-  implementation(project(":polaris-api-iceberg-service"))
-  implementation(project(":polaris-service-common"))
   implementation(project(":polaris-runtime-service"))
 
   runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
+  runtimeOnly(project(":polaris-extensions-federation-hadoop"))
+
+  if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {
+    runtimeOnly(project(":polaris-extensions-federation-hive"))
+  }
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))

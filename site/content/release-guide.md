@@ -28,15 +28,22 @@ To create a release candidate, you will need:
 * your Apache credentials (for repository.apache.org and dist.apache.org repositories)
 * a [GPG key](https://www.apache.org/dev/release-signing#generate) for signing artifacts, published in [KEYS](https://downloads.apache.org/incubator/polaris/KEYS) file
 
+### Publish your GPG key
+
 If you haven't published your GPG key yet, you must publish it before starting the release process:
 
 ```
-svn co https://dist.apache.org/repos/dist/release/incubator/polaris polaris-dist-release
+svn checkout https://dist.apache.org/repos/dist/release/incubator/polaris polaris-dist-release
 cd polaris-dist-release
 echo "" >> KEYS # append a new line
 gpg --list-sigs <YOUR KEY ID HERE> >> KEYS # append signatures
 gpg --armor --export <YOUR KEY ID HERE> >> KEYS # append public key block
 svn commit -m "add key for <YOUR NAME HERE>"
+```
+
+To send the key to the Ubuntu key-server, Apache Nexus needs it to validate published artifacts:
+```
+gpg --keyserver hkps://keyserver.ubuntu.com --send-keys <YOUR KEY ID HERE>
 ```
 
 ### Dist repository
@@ -55,8 +62,8 @@ Apache uses Nexus as Maven repository (repository.apache.org) where releases are
 You have to use Apache credentials on Nexus, configured in `~/.gradle/gradle.properties` file using `mavenUser` and `mavenPassword`:
 
 ```
-mavenUser=yourApacheId
-mavenPassword=yourPassword
+apacheUsername=yourApacheId
+apachePassword=yourPassword
 ```
 
 Note: an alternative is to use `ORG_GRADLE_PROJECT_apacheUsername` and `ORG_GRADLE_PROJECT_apachePassword` environment variables:
@@ -68,7 +75,7 @@ export ORG_GRADLE_PROJECT_apachePassword=bar
 
 ### PGP signing
 
-During release process, the artifacts will be signed with your key, eventually using `gpg-agent`.
+During release process, the artifacts will be signed with your key, using `gpg-agent`.
 
 To configure gradle to sign the artifacts, you can add the following settings in your `~/.gradle/gradle.properties` file:
 
@@ -79,6 +86,10 @@ signing.gnupg.keyName=Your Key Name
 To use `gpg` instead of `gpg2`, also set `signing.gnupg.executable=gpg`.
 
 For more information, see the Gradle [signing documentation](https://docs.gradle.org/current/userguide/signing_plugin.html#sec:signatory_credentials).
+
+### Helm chart signing
+
+Helm chart artifacts are signed with your key, using the [helm gpg plugin](https://github.com/technosophos/helm-gpg).  Ensure the plugin is installed locally.
 
 ### GitHub Repository
 
@@ -101,17 +112,47 @@ If it's the first RC for the release, you have to create a release branch:
 
 ```
 git branch release/x.y.z
-git push apache/release/x.y.z
+git push apache release/x.y.z
 ```
 
 Go in the branch, and set the target release version:
 
 ```
-git checkoout release/x.y.z
+git checkout release/x.y.z
 echo "x.y.z" > version.txt
-git commit -a
+```
+
+and update the version in the Helm Chart in:
+
+* `helm/polaris/Chart.yaml`
+* `helm/polaris/README.md`
+
+and commit/push the version bump:
+
+```
+git commit -m "Bump version to x.y.z" version.txt helm/polaris/Chart.yaml helm/polaris/README.md helm/polaris/values.yaml
+```
+
+Update `CHANGELOG.md`:
+```
+./gradlew patchChangelog
+git commit CHANGELOG.md -m "Update CHANGELOG for x.y.z release"
 git push
 ```
+
+Note: You should submit a PR to propagate (automated) CHANGELOG updates from the release
+branch to `main`.
+
+If more changes are cherry-picked for the next RC, and those change introduce CHANGELOG entries,
+follow this update process:
+* Manually add an `-rcN` suffix to the previously generated versioned CHANGELOG section.
+* Rerun the `patchChangelog` command
+* Manually remove RC sections from the CHANGELOG
+* Submit a PR to propagate CHANGELOG updates from the release branch to `main`.
+
+Note: the CHANGELOG patch commit should probably be the last commit on the release branch when
+an RC is cut. If more changes are cherry-picked for the next RC, it is best to drop the
+CHANGELOG patch commit, apply cherry-picks, and re-run `patchChangelog`.
 
 Note: You should also submit a PR on `main` branch to bump the version in the `version.txt` file.
 
@@ -121,7 +162,7 @@ On the release branch, you create a tag for the RC:
 
 ```
 git tag apache-polaris-x.y.z-rci
-git push apache/apache-polaris-x.y.z-rci
+git push apache apache-polaris-x.y.z-rci
 ```
 
 Switch to the tag:
@@ -151,20 +192,59 @@ You can now build the source distribution:
 The source distribution archives are available in `build/distribution` folder.
 
 The binary distributions (for convenience) are available in:
-* `quarkus/admin/build/distribution`
-* `quarkus/server/build/distribution`
+* `runtime/distribution/build/distributions`
 
 Now, we can stage the artifacts to dist dev repository:
 
 ```
-svn co https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
+svn checkout https://dist.apache.org/repos/dist/dev/incubator/polaris polaris-dist-dev
 cd polaris-dist-dev
-mkdir apache-polaris-x.y.z
-cp /path/to/polaris/github/clone/repo/build/distribution/* apache-polaris-x.y.z
-cp /path/to/polaris/github/clone/repo/quarkus/server/build/distribution/* apache-polaris-x.y.z
-cp /path/to/polaris/github/clone/repo/quarkus/admin/build/distribution/* apache-polaris-x.y.z
-cp -r /path/to/polaris/gitbub/clone/repo/helm/polaris helm-chart/x.y.z 
-svn commit
+mkdir x.y.z
+cp /path/to/polaris/github/clone/repo/build/distribution/* x.y.z
+cp /path/to/polaris/github/clone/repo/runtime/distribution/build/distributions/* x.y.z
+svn add x.y.z
+```
+
+### Stage Helm Chart package
+
+You can now create a Helm package with the following command in the Polaris source folder:
+
+```
+cd helm
+helm package polaris
+helm gpg sign polaris-x.y.z.tgz
+```
+
+Create the signature and checksum for the Helm package tgz and prov files:
+
+```
+shasum -a 512 polaris-x.y.z.tgz > polaris-x.y.z.tgz.sha512
+gpg --armor --output polaris-x.y.z.tgz.asc --detach-sig polaris-x.y.z.tgz
+shasum -a 512 polaris-x.y.z.tgz.prov > polaris-x.y.z.tgz.prov.sha512
+gpg --armor --output polaris-x.y.z.tgz.prov.asc --detach-sig polaris-x.y.z.tgz.prov
+```
+
+Copy and Add the Helm package files to dist folder:
+
+```
+cd ../polaris-dist-dev
+mkdir helm-chart/x.y.z
+cp ../helm/*.tgz*  helm-chart/x.y.z
+svn add helm-chart/x.y.z
+```
+
+You can now update the Helm index:
+
+```
+cd helm-chart
+helm repo index .
+svn add index.yaml
+```
+
+Dist repository is now "complete" and we can push/commit:
+
+```
+svn commit -m "Stage Apache Polaris x.y.z RCx"
 ```
 
 ### Build and stage Maven artifacts
@@ -172,7 +252,7 @@ svn commit
 You can now build and publish the Maven artifacts on a Nexus staging repository:
 
 ```
-./gradlew publishToApache -Prelease -PuseGpgAgent
+./gradlew publishToApache -Prelease -PuseGpgAgent -Dorg.gradle.parallel=false
 ```
 
 Next, you have to close the staging repository:
@@ -208,12 +288,11 @@ Apache Polaris x.y.z release.
 * https://github.com/apache/polaris/tree/<SHA1>
 
 The release tarball, signature, and checksums are here:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/apache-polaris-x.y.z
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
 
 Helm charts are available on:
 * https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart
-NB: the docker images (polaris-server and polaris-admin) will be
-published on DockerHub once release vote passes.
+NB: you have to build the Docker images locally in order to test Helm charts.
 
 You can find the KEYS file here:
 * https://downloads.apache.org/incubator/polaris/KEYS
@@ -281,7 +360,7 @@ Vote result thread:
 * https://lists.apache.org/thread/<VOTE RESULT>
 
 The release candidate:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/apache-polaris-x.y.z
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
 
 Git tag for the release:
 * https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z-rci
@@ -335,8 +414,18 @@ After the release votes passed, you need to release the last candidate's artifac
 First, copy the distribution from the dist dev space to the dist release space:
 
 ```
-svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/apache-polaris-x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris
+svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris
 svn mv https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/x.y.z https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart
+```
+
+Then, update the Helm Chart repository index on https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart/index.yaml:
+
+```
+svn checkout https://dist.apache.org/repos/dist/release/incubator/polaris/helm-chart polaris-dist-release-helm-chart
+cd polaris-dist-release-helm-chart
+helm repo index .
+svn add index.yaml
+svn commit -m "Update Helm index for x.y.z release"
 ```
 
 Next, add a release tag to the git repository based on the candidate tag:
@@ -345,20 +434,30 @@ Next, add a release tag to the git repository based on the candidate tag:
 git tag -a apache-polaris-x.y.z apache-polaris-x.y.z-rci
 ```
 
-Then release the candidate repository on [Nexus](https://repository.apache.org/#stagingRepositories).
-
-### Announcing the release
-
-To announce the release, wait until Maven Central has mirrored the artifacts.
-
-Create a PR to update website:
-* [Download page](https://github.com/apache/polaris/blob/main/site/content/downloads.md)
-* Copy release documentation from the release source distribution (`cp -r site/content/in-dev/unreleased site/content/in-dev/x.y.z`)
-* Add the release in the [website menu](https://github.com/apache/polaris/blob/main/site/hugo.yaml)
-
 Update GitHub with the release: https://github.com/apache/polaris/releases/tag/apache-polaris-x.y.z
 
-Send a mail to dev@iceberg.apache.org and announce@apache.org:
+Then release the candidate repository on [Nexus](https://repository.apache.org/#stagingRepositories).
+
+### Publishing the Docker images
+
+You can now publish Docker images on DockerHub:
+
+```
+./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z
+./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun -Dquarkus.container-image.build=true -Dquarkus.container-image.push=true -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" -Dquarkus.container-image.tag=x.y.z
+```
+
+### Publishing docs 
+1. Open a PR against branch [`versioned-docs`](https://github.com/apache/polaris/tree/versioned-docs) to publish the documentation
+2. Open a PR against the `main` branch to update website
+    - Add download links and release notes in [Download page](https://github.com/apache/polaris/blob/main/site/content/downloads/_index.md)
+    - Add the release in the [website menu](https://github.com/apache/polaris/blob/main/site/hugo.yaml)
+
+### Announcing the release
+To announce the release, wait until Maven Central has mirrored the artifacts.
+
+
+Send a mail to dev@polaris.apache.org and announce@apache.org:
 
 ```
 [ANNOUNCE] Apache Polaris x.y.z 
@@ -370,8 +469,6 @@ The Apache Polaris team is pleased to announce Apache Polaris x.y.z.
 <Add Quick Description of the Release>
 
 This release can be downloaded https://www.apache.org/dyn/closer.cgi/incubator/polaris/apache-polaris-x.y.z.
-
-Release notes: https://polaris.apache.org/blog/apache-polaris-x.y.z
 
 Artifacts are available on Maven Central.
 

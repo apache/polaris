@@ -66,7 +66,9 @@ if [[ -n "$CURRENT_SCALA_VERSION" ]]; then
   SCALA_VERSIONS=("${CURRENT_SCALA_VERSION}")
 fi
 SPARK_MAJOR_VERSION="3.5"
-SPARK_VERSION="3.5.5"
+SPARK_VERSION="3.5.6"
+
+SPARK_SHELL_OPTIONS=("PACKAGE" "JAR")
 
 for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
   echo "RUN REGRESSION TEST FOR SPARK_MAJOR_VERSION=${SPARK_MAJOR_VERSION}, SPARK_VERSION=${SPARK_VERSION}, SCALA_VERSION=${SCALA_VERSION}"
@@ -75,44 +77,65 @@ for SCALA_VERSION in "${SCALA_VERSIONS[@]}"; do
   JAR_PATH=$(find ${SPARK_DIR} -name "polaris-spark-${SPARK_MAJOR_VERSION}_${SCALA_VERSION}-*.*-bundle.jar" -print -quit)
   echo "find jar ${JAR_PATH}"
 
+  # extract the polaris
+  JAR_NAME=$(basename "$JAR_PATH")
+  echo "JAR_NAME=${JAR_NAME}"
+  POLARIS_VERSION=$(echo "$JAR_NAME" | sed -n 's/.*-\([0-9][^-]*.*\)-bundle\.jar/\1/p')
+  echo "$POLARIS_VERSION"
+
   SPARK_EXISTS="TRUE"
   if [ -z "${SPARK_HOME}" ]; then
     SPARK_EXISTS="FALSE"
   fi
 
-  source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --jar ${JAR_PATH}
+  for SPARK_SHELL_OPTION in "${SPARK_SHELL_OPTIONS[@]}"; do
+    # clean up the default configuration if exists
+    if [ -f "${SPARK_HOME}" ]; then
+      SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
+          if [ -f ${SPARK_CONF} ]; then
+            rm ${SPARK_CONF}
+          fi
+    fi
 
-  # run the spark_sql test
-  loginfo "Starting test spark_sql.sh"
+    if [ "${SPARK_SHELL_OPTION}" == "PACKAGE" ]; then
+      # run the setup without jar configuration
+      source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --polarisVersion ${POLARIS_VERSION}
+    else
+      source ${SCRIPT_DIR}/setup.sh --sparkVersion ${SPARK_VERSION} --scalaVersion ${SCALA_VERSION} --polarisVersion ${POLARIS_VERSION} --jar ${JAR_PATH}
+    fi
 
-  TEST_FILE="spark_sql.sh"
-  TEST_SHORTNAME="spark_sql"
-  TEST_TMPDIR="/tmp/polaris-spark-regtests/${TEST_SHORTNAME}_${SPARK_MAJOR_VERSION}_${SCALA_VERSION}"
-  TEST_STDERR="${TEST_TMPDIR}/${TEST_SHORTNAME}.stderr"
-  TEST_STDOUT="${TEST_TMPDIR}/${TEST_SHORTNAME}.stdout"
+    # run the spark_sql test
+    loginfo "Starting test spark_sql.sh"
 
-  mkdir -p ${TEST_TMPDIR}
-  if (( ${VERBOSE} )); then
-    ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' | tee ${TEST_STDOUT}
-  else
-    ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' > ${TEST_STDOUT}
-  fi
-  loginfo "Test run concluded for ${TEST_SUITE}:${TEST_SHORTNAME}"
+    TEST_FILE="spark_sql.sh"
+    TEST_SHORTNAME="spark_sql"
+    TEST_TMPDIR="/tmp/polaris-spark-regtests/${TEST_SHORTNAME}_${SPARK_MAJOR_VERSION}_${SCALA_VERSION}"
+    TEST_STDERR="${TEST_TMPDIR}/${TEST_SHORTNAME}.stderr"
+    TEST_STDOUT="${TEST_TMPDIR}/${TEST_SHORTNAME}.stdout"
 
-  TEST_REF="$(realpath ${SCRIPT_DIR})/${TEST_SHORTNAME}.ref"
-  if cmp --silent ${TEST_STDOUT} ${TEST_REF}; then
-    loggreen "Test SUCCEEDED: ${TEST_SUITE}:${TEST_SHORTNAME}"
-  else
-    logred "Test FAILED: ${TEST_SUITE}:${TEST_SHORTNAME}"
-    echo '#!/bin/bash' > ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
-    echo "meld ${TEST_STDOUT} ${TEST_REF}" >> ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
-    chmod 750 ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
-    logred "To compare and fix diffs (if 'meld' installed): ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh"
-    logred "Or manually diff: diff ${TEST_STDOUT} ${TEST_REF}"
-    logred "See stderr from test run for additional diagnostics: ${TEST_STDERR}"
-    diff ${TEST_STDOUT} ${TEST_REF}
-    NUM_FAILURES=$(( NUM_FAILURES + 1 ))
-  fi
+    mkdir -p ${TEST_TMPDIR}
+    if (( ${VERBOSE} )); then
+      ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' | tee ${TEST_STDOUT}
+    else
+      ${SCRIPT_DIR}/${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' > ${TEST_STDOUT}
+    fi
+    loginfo "Test run concluded for ${TEST_SUITE}:${TEST_SHORTNAME}"
+
+    TEST_REF="$(realpath ${SCRIPT_DIR})/${TEST_SHORTNAME}.ref"
+    if cmp --silent ${TEST_STDOUT} ${TEST_REF}; then
+      loggreen "Test SUCCEEDED: ${TEST_SUITE}:${TEST_SHORTNAME}"
+    else
+      logred "Test FAILED: ${TEST_SUITE}:${TEST_SHORTNAME}"
+      echo '#!/bin/bash' > ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
+      echo "meld ${TEST_STDOUT} ${TEST_REF}" >> ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
+      chmod 750 ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
+      logred "To compare and fix diffs (if 'meld' installed): ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh"
+      logred "Or manually diff: diff ${TEST_STDOUT} ${TEST_REF}"
+      logred "See stderr from test run for additional diagnostics: ${TEST_STDERR}"
+      diff ${TEST_STDOUT} ${TEST_REF}
+      NUM_FAILURES=$(( NUM_FAILURES + 1 ))
+    fi
+  done
 
   # clean up
   if [ "${SPARK_EXISTS}" = "FALSE" ]; then

@@ -1,21 +1,26 @@
-<!---
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
--->
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+Title: Polaris Helm Chart
+type: docs
+weight: 675
+---
 
 <!---
   This README.md file was generated with:
@@ -25,20 +30,11 @@
   helm-docs --chart-search-root=helm
 -->
 
-# Polaris Helm chart
-
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.0.0--incubating--SNAPSHOT-informational?style=flat-square)
+![Version: 1.1.0-incubating-SNAPSHOT](https://img.shields.io/badge/Version-1.1.0--incubating--SNAPSHOT-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.1.0--incubating--SNAPSHOT-informational?style=flat-square)
 
 A Helm chart for Apache Polaris (incubating).
 
 **Homepage:** <https://polaris.apache.org/>
-
-## Maintainers
-* [MonkeyCanCode](https://github.com/MonkeyCanCode)
-* [adutra](https://github.com/adutra)
-* [collado-mike](https://github.com/collado-mike)
-* [gerrit-k](https://github.com/gerrit-k)
-* [snazy](https://github.com/snazy)
 
 ## Source Code
 
@@ -46,46 +42,22 @@ A Helm chart for Apache Polaris (incubating).
 
 ## Installation
 
-### Prerequisites
-
-When using the (deprecated) EclipseLink-backed metastore, a custom `persistence.xml` is required,
-and a Kubernetes Secret must be created for it. Below is a sample command:
-
-```bash
-kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
-```
-
-### Running locally with a Kind cluster
-
-The below instructions assume Kind and Helm are installed.
-
-Simply run the `run.sh` script from the Polaris repo root:
-
-```bash
-./run.sh
-```
-
-If using the EclipseLink-backed metastore, make sure to specify the `--eclipse-link-deps` option.
-
-This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker
-images with support for Postgres and load them into the Kind cluster. (It will also create an
-example Deployment and Service with in-memory storage.)
-
 ### Running locally with a Minikube cluster
 
-The below instructions assume a Minikube cluster is already running and Helm is installed.
+The below instructions assume Minikube and Helm are installed.
 
-If necessary, build and load the Docker images with support for Postgres into Minikube:
+Start the Minikube cluster, build and load image into the Minikube cluster:
 
 ```bash
-eval $(minikube -p minikube docker-env)
+minikube start
+eval $(minikube docker-env)
 
 ./gradlew \
-    :polaris-server:assemble \
-    :polaris-server:quarkusAppPartsBuild --rerun \
-    :polaris-admin:assemble \
-    :polaris-admin:quarkusAppPartsBuild --rerun \
-    -Dquarkus.container-image.build=true
+  :polaris-server:assemble \
+  :polaris-server:quarkusAppPartsBuild --rerun \
+  :polaris-admin:assemble \
+  :polaris-admin:quarkusAppPartsBuild --rerun \
+  -Dquarkus.container-image.build=true
 ```
 
 ### Installing the chart locally
@@ -95,15 +67,15 @@ The below instructions assume a local Kubernetes cluster is running and Helm is 
 #### Common setup
 
 Create the target namespace:
-
 ```bash
 kubectl create namespace polaris
 ```
 
 Create all the required resources in the `polaris` namespace. This usually includes a Postgres
-database and a Kubernetes Secret for the `persistence.xml` file. The Polaris chart does not create
+database, Kubernetes secrets, and service accounts. The Polaris chart does not create
 these resources automatically, as they are not required for all Polaris deployments. The chart will
-fail if these resources are not created beforehand.
+fail if these resources are not created beforehand. You can find some examples in the
+`helm/polaris/ci/fixtures` directory, but beware that these are primarily intended for tests.
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
 
@@ -115,20 +87,8 @@ Below are two sample deployment models for installing the chart: one with a non-
 #### Non-persistent backend
 
 Install the chart with a non-persistent backend. From Polaris repo root:
-
 ```bash
 helm upgrade --install --namespace polaris \
-  --debug --values helm/polaris/ci/simple-values.yaml \
-   polaris helm/polaris
-```
-
-Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
-above, then you need to run `helm upgrade` as follows:
-
-```bash
-helm upgrade --install --namespace polaris \
-  --debug --values helm/polaris/ci/simple-values.yaml \
-  --set=image.repository=localhost:5001/apache/polaris \
   polaris helm/polaris
 ```
 
@@ -138,28 +98,14 @@ helm upgrade --install --namespace polaris \
 > The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
 
 Install the chart with a persistent backend. From Polaris repo root:
-
 ```bash
 helm upgrade --install --namespace polaris \
-  --debug --values helm/polaris/ci/persistence-values.yaml \
+  --values helm/polaris/ci/persistence-values.yaml \
   polaris helm/polaris
-
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=polaris --timeout=120s
 ```
 
-After deploying the chart with a persistent backend, the `persistence.xml` file, originally loaded into the Kubernetes pod via a secret, can be accessed locally if needed. This file contains the persistence configuration required for the next steps. Use the following command to retrieve it:
-
-```bash
-kubectl exec -it -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') -- cat /deployments/config/persistence.xml > persistence.xml
-```
-
-The `persistence.xml` file references the Postgres hostname as postgres. Update it to localhost to enable local connections:
-
-```bash
-sed -i .bak 's/postgres:/localhost:/g' persistence.xml
-```
-
-To access Polaris and Postgres locally, set up port forwarding for both services:
+To access Polaris and Postgres locally, set up port forwarding for both services (This is needed for bootstrap processes):
 ```bash
 kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') 8181:8181
 
@@ -167,12 +113,13 @@ kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.i
 ```
 
 Run the catalog bootstrap using the Polaris admin tool. This step initializes the catalog with the required configuration:
-
 ```bash
-java -Dpolaris.persistence.eclipselink.configuration-file=./persistence.xml \
-  -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
-  -jar runtime/admin/build/polaris-admin-*-runner.jar \
-  bootstrap -c POLARIS,root,pass -r POLARIS
+container_envs=$(kubectl exec -it -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') -- env)
+export QUARKUS_DATASOURCE_USERNAME=$(echo "$container_envs" | grep quarkus.datasource.username | awk -F '=' '{print $2}' | tr -d '\n\r')
+export QUARKUS_DATASOURCE_PASSWORD=$(echo "$container_envs" | grep quarkus.datasource.password | awk -F '=' '{print $2}' | tr -d '\n\r')
+export QUARKUS_DATASOURCE_JDBC_URL=$(echo "$container_envs" | grep quarkus.datasource.jdbc.url | sed 's/postgres/localhost/2' | awk -F '=' '{print $2}' | tr -d '\n\r')
+
+java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap -c POLARIS,root,pass -r POLARIS
 ```
 
 ### Uninstalling
@@ -197,7 +144,6 @@ The following tools are required to run the tests:
 * [Chart Testing](https://github.com/helm/chart-testing)
 
 Quick installation instructions for these tools:
-
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest.git
 brew install chart-testing
@@ -205,7 +151,6 @@ brew install chart-testing
 
 The integration tests also require some fixtures to be deployed. The `ci/fixtures` directory
 contains the required resources. To deploy them, run the following command:
-
 ```bash
 kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
@@ -218,7 +163,6 @@ different configurations.
 
 Helm unit tests do not require a Kubernetes cluster. To run the unit tests, execute Helm Unit from
 the Polaris repo root:
-
 ```bash
 helm unittest helm/polaris
 ```
@@ -235,17 +179,8 @@ Integration tests require a Kubernetes cluster. See installation instructions ab
 a local cluster.
 
 Integration tests are run with the Chart Testing tool:
-
 ```bash
-ct install --namespace polaris --debug --charts ./helm/polaris
-```
-
-Note: if you are running the tests on a Kind cluster started with the `run.sh` command explained
-above, then you need to run `ct install` as follows:
-
-```bash
-ct install --namespace polaris --debug --charts ./helm/polaris \
-  --helm-extra-set-args "--set=image.repository=localhost:5001/apache/polaris"
+ct install --namespace polaris --charts ./helm/polaris
 ```
 
 ## Values
@@ -254,15 +189,24 @@ ct install --namespace polaris --debug --charts ./helm/polaris \
 |-----|------|---------|-------------|
 | advancedConfig | object | `{}` | Advanced configuration. You can pass here any valid Polaris or Quarkus configuration property. Any property that is defined here takes precedence over all the other configuration values generated by this chart. Properties can be passed "flattened" or as nested YAML objects (see examples below). Note: values should be strings; avoid using numbers, booleans, or other types. |
 | affinity | object | `{}` | Affinity and anti-affinity for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity. |
-| authentication | object | `{"authenticator":{"type":"default"},"tokenBroker":{"maxTokenGeneration":"PT1H","secret":{"name":null,"privateKey":"private.pem","publicKey":"public.pem","secretKey":"secret"},"type":"rsa-key-pair"},"tokenService":{"type":"default"}}` | Polaris authentication configuration. |
-| authentication.authenticator | object | `{"type":"default"}` | The type of authentication to use. Two built-in types are supported: default and test; test is not recommended for production. |
-| authentication.tokenBroker | object | `{"maxTokenGeneration":"PT1H","secret":{"name":null,"privateKey":"private.pem","publicKey":"public.pem","secretKey":"secret"},"type":"rsa-key-pair"}` | The type of token broker to use. Two built-in types are supported: rsa-key-pair and symmetric-key. |
-| authentication.tokenBroker.secret | object | `{"name":null,"privateKey":"private.pem","publicKey":"public.pem","secretKey":"secret"}` | The secret name to pull the public and private keys, or the symmetric key secret from. |
+| authentication | object | `{"activeRolesProvider":{"type":"default"},"authenticator":{"type":"default"},"realmOverrides":{},"tokenBroker":{"maxTokenGeneration":"PT1H","secret":{"name":null,"privateKey":"private.pem","publicKey":"public.pem","rsaKeyPair":{"privateKey":"private.pem","publicKey":"public.pem"},"secretKey":"symmetric.pem","symmetricKey":{"secretKey":"symmetric.key"}},"type":"rsa-key-pair"},"tokenService":{"type":"default"},"type":"internal"}` | Polaris authentication configuration. |
+| authentication.activeRolesProvider | object | `{"type":"default"}` | The `ActiveRolesProvider` implementation to use. Only one built-in type is supported: default. |
+| authentication.authenticator | object | `{"type":"default"}` | The `Authenticator` implementation to use. Only one built-in type is supported: default. |
+| authentication.realmOverrides | object | `{}` | Authentication configuration overrides per realm. |
+| authentication.tokenBroker | object | `{"maxTokenGeneration":"PT1H","secret":{"name":null,"privateKey":"private.pem","publicKey":"public.pem","rsaKeyPair":{"privateKey":"private.pem","publicKey":"public.pem"},"secretKey":"symmetric.pem","symmetricKey":{"secretKey":"symmetric.key"}},"type":"rsa-key-pair"}` | The `TokenBroker` implementation to use. Two built-in types are supported: rsa-key-pair and symmetric-key. Only relevant when using internal (or mixed) authentication. When using external authentication, the token broker is not used. |
+| authentication.tokenBroker.maxTokenGeneration | string | `"PT1H"` | Maximum token generation duration (e.g., PT1H for 1 hour). |
+| authentication.tokenBroker.secret | object | `{"name":null,"privateKey":"private.pem","publicKey":"public.pem","rsaKeyPair":{"privateKey":"private.pem","publicKey":"public.pem"},"secretKey":"symmetric.pem","symmetricKey":{"secretKey":"symmetric.key"}}` | The secret name to pull the public and private keys, or the symmetric key secret from. |
 | authentication.tokenBroker.secret.name | string | `nil` | The name of the secret to pull the keys from. If not provided, a key pair will be generated. This is not recommended for production. |
-| authentication.tokenBroker.secret.privateKey | string | `"private.pem"` | The private key file to use for RSA key pair token broker. Only required when using rsa-key-pair. |
-| authentication.tokenBroker.secret.publicKey | string | `"public.pem"` | The public key file to use for RSA key pair token broker. Only required when using rsa-key-pair. |
-| authentication.tokenBroker.secret.secretKey | string | `"secret"` | The symmetric key file to use for symmetric key token broker. Only required when using symmetric-key. |
-| authentication.tokenService | object | `{"type":"default"}` | The type of token service to use. Two built-in types are supported: default and test; test is not recommended for production. |
+| authentication.tokenBroker.secret.privateKey | string | `"private.pem"` | DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.privateKey` instead. Key name inside the secret for the private key |
+| authentication.tokenBroker.secret.publicKey | string | `"public.pem"` | DEPRECATED: Use `authentication.tokenBroker.secret.rsaKeyPair.publicKey` instead. Key name inside the secret for the public key |
+| authentication.tokenBroker.secret.rsaKeyPair | object | `{"privateKey":"private.pem","publicKey":"public.pem"}` | Optional: configuration specific to RSA key pair secret. |
+| authentication.tokenBroker.secret.rsaKeyPair.privateKey | string | `"private.pem"` | Key name inside the secret for the private key |
+| authentication.tokenBroker.secret.rsaKeyPair.publicKey | string | `"public.pem"` | Key name inside the secret for the public key |
+| authentication.tokenBroker.secret.secretKey | string | `"symmetric.pem"` | DEPRECATED: Use `authentication.tokenBroker.secret.symmetricKey.secretKey` instead. Key name inside the secret for the symmetric key |
+| authentication.tokenBroker.secret.symmetricKey | object | `{"secretKey":"symmetric.key"}` | Optional: configuration specific to symmetric key secret. |
+| authentication.tokenBroker.secret.symmetricKey.secretKey | string | `"symmetric.key"` | Key name inside the secret for the symmetric key |
+| authentication.tokenService | object | `{"type":"default"}` | The token service (`IcebergRestOAuth2ApiService`) implementation to use. Two built-in types are supported: default and disabled. Only relevant when using internal (or mixed) authentication. When using external authentication, the token service is always disabled. |
+| authentication.type | string | `"internal"` | The type of authentication to use. Three built-in types are supported: internal, external, and mixed. |
 | autoscaling.enabled | bool | `false` | Specifies whether automatic horizontal scaling should be enabled. Do not enable this when using in-memory version store type. |
 | autoscaling.maxReplicas | int | `3` | The maximum number of replicas to maintain. |
 | autoscaling.minReplicas | int | `1` | The minimum number of replicas to maintain. |
@@ -342,14 +286,36 @@ ct install --namespace polaris --debug --charts ./helm/polaris \
 | metrics.enabled | bool | `true` | Specifies whether metrics for the polaris server should be enabled. |
 | metrics.tags | object | `{}` | Additional tags (dimensional labels) to add to the metrics. |
 | nodeSelector | object | `{}` | Node labels which must match for the polaris pod to be scheduled on that node. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector. |
-| persistence | object | `{"eclipseLink":{"persistenceUnit":"polaris","secret":{"key":"persistence.xml","name":null}},"type":"eclipse-link"}` | Polaris persistence configuration. |
-| persistence.eclipseLink | object | `{"persistenceUnit":"polaris","secret":{"key":"persistence.xml","name":null}}` | The configuration for the eclipse-link persistence manager. |
-| persistence.eclipseLink.persistenceUnit | string | `"polaris"` | The persistence unit name to use. |
-| persistence.eclipseLink.secret | object | `{"key":"persistence.xml","name":null}` | The secret name to pull persistence.xml from. |
-| persistence.eclipseLink.secret.key | string | `"persistence.xml"` | The key in the secret to pull persistence.xml from. |
-| persistence.eclipseLink.secret.name | string | `nil` | The name of the secret to pull persistence.xml from. If not provided, the default built-in persistence.xml will be used. This is probably not what you want. |
-| persistence.type | string | `"eclipse-link"` | The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link. |
+| oidc | object | `{"authServeUrl":null,"client":{"id":"polaris","secret":{"key":"clientSecret","name":null}},"principalMapper":{"idClaimPath":null,"nameClaimPath":null,"type":"default"},"principalRolesMapper":{"filter":null,"mappings":[],"rolesClaimPath":null,"type":"default"}}` | Polaris OIDC configuration. Only relevant when at least one realm is configured for external (or mixed) authentication. The currently supported configuration is for a single, default OIDC tenant. For more complex scenarios, including OIDC multi-tenancy, you will need to provide the relevant configuration using the `advancedConfig` section. |
+| oidc.authServeUrl | string | `nil` | The authentication server URL. Must be provided if at least one realm is configured for external authentication. |
+| oidc.client | object | `{"id":"polaris","secret":{"key":"clientSecret","name":null}}` | The client to use when authenticating with the authentication server. |
+| oidc.client.id | string | `"polaris"` | The client ID to use when contacting the authentication server's introspection endpoint in order to validate tokens. |
+| oidc.client.secret | object | `{"key":"clientSecret","name":null}` | The secret to pull the client secret from. If no client secret is required, leave the secret name unset. |
+| oidc.client.secret.key | string | `"clientSecret"` | The key name inside the secret to pull the client secret from. |
+| oidc.client.secret.name | string | `nil` | The name of the secret to pull the client secret from. If not provided, the client is assumed to not require a client secret when contacting the introspection endpoint. |
+| oidc.principalMapper | object | `{"idClaimPath":null,"nameClaimPath":null,"type":"default"}` | Principal mapping configuration. |
+| oidc.principalMapper.idClaimPath | string | `nil` | The path to the claim that contains the principal ID. Nested paths can be expressed using "/" as a separator, e.g. "polaris/principal_id" would look for the "principal_id" field inside the "polaris" object in the token claims. Optional. Either this option or `nameClaimPath` (or both) must be provided. |
+| oidc.principalMapper.nameClaimPath | string | `nil` | The claim that contains the principal name. Nested paths can be expressed using "/" as a separator, e.g. "polaris/principal_name" would look for the "principal_name" field inside the "polaris" object in the token claims. Optional. Either this option or `idClaimPath` (or both) must be provided. |
+| oidc.principalMapper.type | string | `"default"` | The `PrincipalMapper` implementation to use. Only one built-in type is supported: default. |
+| oidc.principalRolesMapper | object | `{"filter":null,"mappings":[],"rolesClaimPath":null,"type":"default"}` | Principal roles mapping configuration. |
+| oidc.principalRolesMapper.filter | string | `nil` | A regular expression that matches the role names in the identity. Only roles that match this regex will be included in the Polaris-specific roles. |
+| oidc.principalRolesMapper.mappings | list | `[]` | A list of regex mappings that will be applied to each role name in the identity. This can be used to transform the role names in the identity into role names as expected by Polaris. The default ActiveRolesProvider expects the security identity to expose role names in the format `POLARIS_ROLE:<role name>`. |
+| oidc.principalRolesMapper.rolesClaimPath | string | `nil` | The path to the claim that contains the principal roles. Nested paths can be expressed using "/" as a separator, e.g. "polaris/principal_roles" would look for the "principal_roles" field inside the "polaris" object in the token claims. If not set, Quarkus looks for roles in standard locations. See https://quarkus.io/guides/security-oidc-bearer-token-authentication#token-claims-and-security-identity-roles. |
+| oidc.principalRolesMapper.type | string | `"default"` | The `PrincipalRolesMapper` implementation to use. Only one built-in type is supported: default. |
+| persistence | object | `{"relationalJdbc":{"secret":{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}},"type":"in-memory"}` | Polaris persistence configuration. |
+| persistence.relationalJdbc | object | `{"secret":{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}}` | The configuration for the relational-jdbc persistence manager. |
+| persistence.relationalJdbc.secret | object | `{"jdbcUrl":"jdbcUrl","name":null,"password":"password","username":"username"}` | The secret name to pull the database connection properties from. |
+| persistence.relationalJdbc.secret.jdbcUrl | string | `"jdbcUrl"` | The secret key holding the database JDBC connection URL |
+| persistence.relationalJdbc.secret.name | string | `nil` | The secret name to pull database connection properties from |
+| persistence.relationalJdbc.secret.password | string | `"password"` | The secret key holding the database password for authentication |
+| persistence.relationalJdbc.secret.username | string | `"username"` | The secret key holding the database username for authentication |
+| persistence.type | string | `"in-memory"` | The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc. The eclipse-link type is also supported but is deprecated. |
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
+| podDisruptionBudget | object | `{"annotations":{},"enabled":false,"maxUnavailable":null,"minAvailable":null}` | Pod disruption budget settings. |
+| podDisruptionBudget.annotations | object | `{}` | Annotations to add to the pod disruption budget. |
+| podDisruptionBudget.enabled | bool | `false` | Specifies whether a pod disruption budget should be created. |
+| podDisruptionBudget.maxUnavailable | string | `nil` | The maximum number of pods that can be unavailable during disruptions. Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%). IMPORTANT: Cannot be used simultaneously with minAvailable. |
+| podDisruptionBudget.minAvailable | string | `nil` | The minimum number of pods that should remain available during disruptions. Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%). IMPORTANT: Cannot be used simultaneously with maxUnavailable. |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
 | podSecurityContext.fsGroup | int | `10001` | GID 10001 is compatible with Polaris OSS default images; change this if you are using a different image. |

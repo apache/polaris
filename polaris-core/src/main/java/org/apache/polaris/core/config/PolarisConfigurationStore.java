@@ -71,18 +71,18 @@ public interface PolarisConfigurationStore {
    */
   private <T> @Nonnull T tryCast(PolarisConfiguration<T> config, Object value) {
     if (value == null) {
-      return config.defaultValue;
+      return config.defaultValue();
     }
 
-    if (config.defaultValue instanceof Boolean) {
+    if (config.defaultValue() instanceof Boolean) {
       return config.cast(Boolean.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue instanceof Integer) {
+    } else if (config.defaultValue() instanceof Integer) {
       return config.cast(Integer.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue instanceof Long) {
+    } else if (config.defaultValue() instanceof Long) {
       return config.cast(Long.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue instanceof Double) {
+    } else if (config.defaultValue() instanceof Double) {
       return config.cast(Double.valueOf(String.valueOf(value)));
-    } else if (config.defaultValue instanceof List<?>) {
+    } else if (config.defaultValue() instanceof List<?>) {
       return config.cast(new ArrayList<>((List<?>) value));
     } else {
       return config.cast(value);
@@ -99,7 +99,7 @@ public interface PolarisConfigurationStore {
    */
   default <T> @Nonnull T getConfiguration(
       @Nonnull RealmContext realmContext, PolarisConfiguration<T> config) {
-    T result = getConfiguration(realmContext, config.key, config.defaultValue);
+    T result = getConfiguration(realmContext, config.key(), config.defaultValue());
     return tryCast(config, result);
   }
 

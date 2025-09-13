@@ -20,106 +20,86 @@ package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.time.Clock;
-import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 class InMemoryStorageIntegrationTest {
 
-  @Test
-  public void testValidateAccessToLocations() {
+  private static final RealmContext REALM_CONTEXT = () -> "realm";
+
+  @ParameterizedTest
+  @CsvSource({"s3,s3", "s3,s3a", "s3a,s3", "s3a,s3a"})
+  public void testValidateAccessToLocations(String allowedScheme, String locationScheme) {
+    RealmConfig realmConfig =
+        new RealmConfigImpl(new MockedConfigurationStore(Map.of()), REALM_CONTEXT);
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
-            new AwsStorageConfigurationInfo(
-                PolarisStorageConfigurationInfo.StorageType.S3,
-                List.of(
-                    "s3://bucket/path/to/warehouse",
-                    "s3://bucket/anotherpath/to/warehouse",
-                    "s3://bucket2/warehouse/"),
-                "arn:aws:iam::012345678901:role/jdoe",
-                "us-east-2"),
+            realmConfig,
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocations(
+                    allowedScheme + "://bucket/path/to/warehouse",
+                    allowedScheme + "://bucket/anotherpath/to/warehouse",
+                    allowedScheme + "://bucket2/warehouse/")
+                .roleARN("arn:aws:iam::012345678901:role/jdoe")
+                .region("us-east-2")
+                .build(),
             Set.of(PolarisStorageActions.READ),
             Set.of(
-                "s3://bucket/path/to/warehouse/namespace/table",
-                "s3://bucket2/warehouse",
-                "s3://arandombucket/path/to/warehouse/namespace/table"));
+                locationScheme + "://bucket/path/to/warehouse/namespace/table",
+                locationScheme + "://bucket2/warehouse",
+                locationScheme + "://arandombucket/path/to/warehouse/namespace/table"));
     Assertions.assertThat(result)
         .hasSize(3)
         .containsEntry(
-            "s3://bucket/path/to/warehouse/namespace/table",
+            locationScheme + "://bucket/path/to/warehouse/namespace/table",
             Map.of(
                 PolarisStorageActions.READ,
                 new PolarisStorageIntegration.ValidationResult(true, "")))
         .containsEntry(
-            "s3://bucket2/warehouse",
+            locationScheme + "://bucket2/warehouse",
             Map.of(
                 PolarisStorageActions.READ,
                 new PolarisStorageIntegration.ValidationResult(true, "")))
         .containsEntry(
-            "s3://arandombucket/path/to/warehouse/namespace/table",
+            locationScheme + "://arandombucket/path/to/warehouse/namespace/table",
             Map.of(
                 PolarisStorageActions.READ,
                 new PolarisStorageIntegration.ValidationResult(false, "")));
   }
 
-  @Test
-  public void testAwsAccountIdParsing() {
-    AwsStorageConfigurationInfo awsConfig =
-        new AwsStorageConfigurationInfo(
-            PolarisStorageConfigurationInfo.StorageType.S3,
-            List.of("s3://bucket/path/to/warehouse"),
-            "arn:aws:iam::012345678901:role/jdoe",
-            "us-east-2");
-
-    String expectedAccountId = "012345678901";
-    String actualAccountId = awsConfig.getAwsAccountId();
-
-    Assertions.assertThat(actualAccountId).isEqualTo(expectedAccountId);
-  }
-
-  @Test
-  public void testValidateAccessToLocationsWithWildcard() {
+  @ParameterizedTest
+  @ValueSource(strings = {"s3", "s3a"})
+  public void testValidateAccessToLocationsWithWildcard(String s3Scheme) {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
-    Map<String, Boolean> config = Map.of("ALLOW_WILDCARD_LOCATION", true);
-    PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
-            () -> "testRealm",
-            Mockito.mock(),
-            new PolarisDefaultDiagServiceImpl(),
-            new PolarisConfigurationStore() {
-              @SuppressWarnings("unchecked")
-              @Override
-              public <T> @Nullable T getConfiguration(
-                  @Nonnull RealmContext ctx, String configName) {
-                return (T) config.get(configName);
-              }
-            },
-            Clock.systemUTC());
-    CallContext.setCurrentContext(polarisCallContext);
+    Map<String, Object> config = Map.of("ALLOW_WILDCARD_LOCATION", true);
+    RealmConfig realmConfig =
+        new RealmConfigImpl(new MockedConfigurationStore(config), REALM_CONTEXT);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
-            new FileStorageConfigurationInfo(List.of("file://", "*")),
+            realmConfig,
+            FileStorageConfigurationInfo.builder().addAllowedLocations("file://", "*").build(),
             Set.of(PolarisStorageActions.READ),
             Set.of(
-                "s3://bucket/path/to/warehouse/namespace/table",
+                s3Scheme + "://bucket/path/to/warehouse/namespace/table",
                 "file:///etc/passwd",
                 "a/relative/subdirectory"));
     Assertions.assertThat(result)
         .hasSize(3)
         .hasEntrySatisfying(
-            "s3://bucket/path/to/warehouse/namespace/table",
+            s3Scheme + "://bucket/path/to/warehouse/namespace/table",
             val ->
                 Assertions.assertThat(val)
                     .hasSize(1)
@@ -147,13 +127,15 @@ class InMemoryStorageIntegrationTest {
   @Test
   public void testValidateAccessToLocationsNoAllowedLocations() {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
+    RealmConfig realmConfig =
+        new RealmConfigImpl(new MockedConfigurationStore(Map.of()), REALM_CONTEXT);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
-            new AwsStorageConfigurationInfo(
-                PolarisStorageConfigurationInfo.StorageType.S3,
-                List.of(),
-                "arn:aws:iam::012345678901:role/jdoe",
-                "us-east-2"),
+            realmConfig,
+            AwsStorageConfigurationInfo.builder()
+                .roleARN("arn:aws:iam::012345678901:role/jdoe")
+                .region("us-east-2")
+                .build(),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -181,13 +163,16 @@ class InMemoryStorageIntegrationTest {
   @Test
   public void testValidateAccessToLocationsWithPrefixOfAllowedLocation() {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
+    RealmConfig realmConfig =
+        new RealmConfigImpl(new MockedConfigurationStore(Map.of()), REALM_CONTEXT);
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
-            new AwsStorageConfigurationInfo(
-                PolarisStorageConfigurationInfo.StorageType.S3,
-                List.of("s3://bucket/path/to/warehouse"),
-                "arn:aws:iam::012345678901:role/jdoe",
-                "us-east-2"),
+            realmConfig,
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation("s3://bucket/path/to/warehouse")
+                .roleARN("arn:aws:iam::012345678901:role/jdoe")
+                .region("us-east-2")
+                .build(),
             Set.of(PolarisStorageActions.READ),
             // trying to read a prefix under the allowed location
             Set.of("s3://bucket/path/to"));
@@ -203,17 +188,34 @@ class InMemoryStorageIntegrationTest {
   private static final class MockInMemoryStorageIntegration
       extends InMemoryStorageIntegration<PolarisStorageConfigurationInfo> {
     public MockInMemoryStorageIntegration() {
-      super(MockInMemoryStorageIntegration.class.getName());
+      super(
+          Mockito.mock(PolarisStorageConfigurationInfo.class),
+          MockInMemoryStorageIntegration.class.getName());
     }
 
     @Override
-    public EnumMap<StorageAccessProperty, String> getSubscopedCreds(
-        @Nonnull CallContext callContext,
-        @Nonnull PolarisStorageConfigurationInfo storageConfig,
+    public AccessConfig getSubscopedCreds(
+        @Nonnull RealmConfig realmConfig,
         boolean allowListOperation,
         @Nonnull Set<String> allowedReadLocations,
-        @Nonnull Set<String> allowedWriteLocations) {
+        @Nonnull Set<String> allowedWriteLocations,
+        Optional<String> refreshCredentialsEndpoint) {
       return null;
+    }
+  }
+
+  private static class MockedConfigurationStore implements PolarisConfigurationStore {
+    private final Map<String, Object> defaults;
+
+    public MockedConfigurationStore(Map<String, Object> defaults) {
+      this.defaults = Map.copyOf(defaults);
+    }
+
+    @Override
+    public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
+      @SuppressWarnings("unchecked")
+      T confgValue = (T) defaults.get(configName);
+      return confgValue;
     }
   }
 }

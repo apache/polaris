@@ -31,7 +31,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -41,7 +42,6 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -52,6 +52,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public abstract class BaseResolverTest {
+  protected final PolarisDefaultDiagServiceImpl diagServices = new PolarisDefaultDiagServiceImpl();
 
   // Principal P1
   protected PolarisBaseEntity P1;
@@ -469,8 +470,7 @@ public abstract class BaseResolverTest {
     // create a new cache if needs be
     if (cache == null) {
       this.cache =
-          new InMemoryEntityCache(
-              callCtx().getRealmContext(), callCtx().getConfigurationStore(), metaStoreManager());
+          new InMemoryEntityCache(diagServices, callCtx().getRealmConfig(), metaStoreManager());
     }
     boolean allRoles = principalRolesScope == null;
     Optional<List<PrincipalRoleEntity>> roleEntities =
@@ -479,22 +479,16 @@ public abstract class BaseResolverTest {
                 scopes ->
                     scopes.stream()
                         .map(
-                            role ->
-                                metaStoreManager()
-                                    .readEntityByName(
-                                        callCtx(),
-                                        null,
-                                        PolarisEntityType.PRINCIPAL_ROLE,
-                                        PolarisEntitySubType.NULL_SUBTYPE,
-                                        role))
-                        .filter(EntityResult::isSuccess)
-                        .map(EntityResult::getEntity)
-                        .map(PrincipalRoleEntity::of)
+                            roleName ->
+                                metaStoreManager().findPrincipalRoleByName(callCtx(), roleName))
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
                         .collect(Collectors.toList()));
-    AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(
             PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()));
     return new Resolver(
+        diagServices,
         callCtx(),
         metaStoreManager(),
         new SecurityContext() {
@@ -776,16 +770,10 @@ public abstract class BaseResolverTest {
       // the principal does not exist, check that this is the case
       if (principalName != null) {
         // see if the principal exists
-        EntityResult result =
-            metaStoreManager()
-                .readEntityByName(
-                    callCtx(),
-                    null,
-                    PolarisEntityType.PRINCIPAL,
-                    PolarisEntitySubType.NULL_SUBTYPE,
-                    principalName);
+        Optional<PrincipalEntity> principal =
+            metaStoreManager().findPrincipalByName(callCtx(), principalName);
         // if found, ensure properly resolved
-        if (result.getEntity() != null) {
+        if (principal.isPresent()) {
           // the principal exist, check that this is the case
           this.ensureResolved(
               resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName),
