@@ -165,7 +165,7 @@ client-integration-test: client-setup-env ## Run client integration tests
 .PHONY: client-build
 client-build: client-setup-env ## Build client distribution
 	@echo "--- Building client distribution ---"
-	@$(ACTIVATE_AND_CD) && poetry build -f wheel
+	@$(ACTIVATE_AND_CD) && poetry build
 	@echo "--- Client distribution build complete ---"
 
 .PHONY: client-cleanup
