@@ -101,7 +101,7 @@ public class PolarisAdminServiceTest {
 
     PrivilegeResult successResult = mock(PrivilegeResult.class);
     when(successResult.isSuccess()).thenReturn(true);
-    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any(), any()))
+    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any()))
         .thenReturn(successResult);
 
     PrivilegeResult result =
@@ -182,7 +182,7 @@ public class PolarisAdminServiceTest {
 
     PrivilegeResult successResult = mock(PrivilegeResult.class);
     when(successResult.isSuccess()).thenReturn(true);
-    when(metaStoreManager.revokePrivilegeOnSecurableFromRole(any(), any(), any(), any(), any()))
+    when(metaStoreManager.revokePrivilegeOnSecurableFromRole(any(), any(), any(), any()))
         .thenReturn(successResult);
 
     PrivilegeResult result =

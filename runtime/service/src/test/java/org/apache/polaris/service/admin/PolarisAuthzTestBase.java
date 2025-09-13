@@ -231,20 +231,17 @@ public abstract class PolarisAuthzTestBase {
     Mockito.when(containerRequestContext.getProperty(Mockito.anyString()))
         .thenReturn("request-id-1");
     QuarkusMock.installMockForType(containerRequestContext, ContainerRequestContext.class);
-    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
-    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
-    polarisContext =
-        new PolarisCallContext(
-            realmContext, managerFactory.getOrCreateSession(realmContext), configurationStore);
+    polarisContext = new PolarisCallContext(realmContext, configurationStore);
 
     callContext = polarisContext;
     realmConfig = polarisContext.getRealmConfig();
+    metaStoreManager = managerFactory.createMetaStoreManager(realmContext, realmConfig);
+    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
     polarisAuthorizer = new PolarisAuthorizerImpl(realmConfig);
 
-    PrincipalEntity rootPrincipal =
-        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
+    PrincipalEntity rootPrincipal = metaStoreManager.findRootPrincipal().orElseThrow();
     this.authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     this.adminService =
@@ -280,8 +277,7 @@ public abstract class PolarisAuthzTestBase {
     PrincipalWithCredentials principal =
         adminService.createPrincipal(new PrincipalEntity.Builder().setName(PRINCIPAL_NAME).build());
     principalEntity =
-        rotateAndRefreshPrincipal(
-            metaStoreManager, PRINCIPAL_NAME, principal.getCredentials(), polarisContext);
+        rotateAndRefreshPrincipal(metaStoreManager, PRINCIPAL_NAME, principal.getCredentials());
 
     // Pre-create the principal roles and catalog roles without any grants on securables, but
     // assign both principal roles to the principal, then CATALOG_ROLE1 to PRINCIPAL_ROLE1,
@@ -379,7 +375,7 @@ public abstract class PolarisAuthzTestBase {
         }
       }
     } finally {
-      metaStoreManager.purge(polarisContext);
+      metaStoreManager.purge();
     }
   }
 
@@ -398,22 +394,13 @@ public abstract class PolarisAuthzTestBase {
 
   protected @Nonnull Set<String> loadPrincipalRolesNames(PolarisPrincipal p) {
     PolarisBaseEntity principal =
-        metaStoreManager
-            .loadEntity(
-                callContext.getPolarisCallContext(), 0L, p.getId(), PolarisEntityType.PRINCIPAL)
-            .getEntity();
-    return metaStoreManager
-        .loadGrantsToGrantee(callContext.getPolarisCallContext(), principal)
-        .getGrantRecords()
-        .stream()
+        metaStoreManager.loadEntity(0L, p.getId(), PolarisEntityType.PRINCIPAL).getEntity();
+    return metaStoreManager.loadGrantsToGrantee(principal).getGrantRecords().stream()
         .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
         .map(
             gr ->
                 metaStoreManager.loadEntity(
-                    callContext.getPolarisCallContext(),
-                    0L,
-                    gr.getSecurableId(),
-                    PolarisEntityType.PRINCIPAL_ROLE))
+                    0L, gr.getSecurableId(), PolarisEntityType.PRINCIPAL_ROLE))
         .map(EntityResult::getEntity)
         .map(PolarisBaseEntity::getName)
         .collect(Collectors.toSet());
@@ -422,17 +409,14 @@ public abstract class PolarisAuthzTestBase {
   protected @Nonnull PrincipalEntity rotateAndRefreshPrincipal(
       PolarisMetaStoreManager metaStoreManager,
       String principalName,
-      PrincipalWithCredentialsCredentials credentials,
-      PolarisCallContext polarisContext) {
-    PrincipalEntity principal =
-        metaStoreManager.findPrincipalByName(polarisContext, principalName).orElseThrow();
+      PrincipalWithCredentialsCredentials credentials) {
+    PrincipalEntity principal = metaStoreManager.findPrincipalByName(principalName).orElseThrow();
     metaStoreManager.rotatePrincipalSecrets(
-        callContext.getPolarisCallContext(),
         credentials.getClientId(),
         principal.getId(),
         false,
         credentials.getClientSecret()); // This should actually be the secret's hash
-    return metaStoreManager.findPrincipalByName(polarisContext, principalName).orElseThrow();
+    return metaStoreManager.findPrincipalByName(principalName).orElseThrow();
   }
 
   /**
@@ -471,8 +455,7 @@ public abstract class PolarisAuthzTestBase {
         CATALOG_NAME,
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
-    this.genericTableCatalog =
-        new PolarisGenericTableCatalog(metaStoreManager, callContext, passthroughView);
+    this.genericTableCatalog = new PolarisGenericTableCatalog(metaStoreManager, passthroughView);
     this.genericTableCatalog.initialize(CATALOG_NAME, ImmutableMap.of());
     this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, passthroughView);
   }

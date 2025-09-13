@@ -119,10 +119,7 @@ public abstract class JWTBroker implements TokenBroker {
     }
     EntityResult principalLookup =
         metaStoreManager.loadEntity(
-            polarisCallContext,
-            0L,
-            Objects.requireNonNull(decodedToken.getPrincipalId()),
-            PolarisEntityType.PRINCIPAL);
+            0L, Objects.requireNonNull(decodedToken.getPrincipalId()), PolarisEntityType.PRINCIPAL);
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
