@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -35,12 +36,13 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -52,25 +54,29 @@ public class PolarisServiceImplTest {
 
   private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
   private ResolutionManifestFactory resolutionManifestFactory;
-  private MetaStoreManagerFactory metaStoreManagerFactory;
-  private UserSecretsManagerFactory userSecretsManagerFactory;
+  private PolarisMetaStoreManager metaStoreManager;
+  private UserSecretsManager userSecretsManager;
   private PolarisAuthorizer polarisAuthorizer;
   private CallContext callContext;
   private ReservedProperties reservedProperties;
   private RealmConfig realmConfig;
   private PolarisEventListener polarisEventListener;
 
+  private PolarisAdminService adminService;
   private PolarisServiceImpl polarisService;
 
   @BeforeEach
   void setUp() {
     resolutionManifestFactory = Mockito.mock(ResolutionManifestFactory.class);
-    metaStoreManagerFactory = Mockito.mock(MetaStoreManagerFactory.class);
-    userSecretsManagerFactory = Mockito.mock(UserSecretsManagerFactory.class);
+    metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
+    userSecretsManager = Mockito.mock(UserSecretsManager.class);
     polarisAuthorizer = Mockito.mock(PolarisAuthorizer.class);
     callContext = Mockito.mock(CallContext.class);
     reservedProperties = Mockito.mock(ReservedProperties.class);
     realmConfig = Mockito.mock(RealmConfig.class);
+    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
+    Mockito.when(securityContext.getUserPrincipal())
+        .thenReturn(Mockito.mock(PolarisPrincipal.class));
     polarisEventListener = new NoOpPolarisEventListener();
 
     when(callContext.getRealmConfig()).thenReturn(realmConfig);
@@ -80,16 +86,18 @@ public class PolarisServiceImplTest {
             FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
         .thenReturn(List.of("OAUTH"));
 
-    polarisService =
-        new PolarisServiceImpl(
+    adminService =
+        new PolarisAdminService(
             diagnostics,
-            resolutionManifestFactory,
-            metaStoreManagerFactory,
-            userSecretsManagerFactory,
-            polarisAuthorizer,
             callContext,
-            reservedProperties,
-            polarisEventListener);
+            resolutionManifestFactory,
+            metaStoreManager,
+            userSecretsManager,
+            securityContext,
+            polarisAuthorizer,
+            reservedProperties);
+    polarisService =
+        new PolarisServiceImpl(realmConfig, reservedProperties, polarisEventListener, adminService);
   }
 
   @Test

@@ -22,7 +22,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.TaskEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
@@ -43,9 +42,7 @@ public class TaskExecutorImplTest {
     TestPolarisEventListener testPolarisEventListener =
         (TestPolarisEventListener) testServices.polarisEventListener();
 
-    MetaStoreManagerFactory metaStoreManagerFactory = testServices.metaStoreManagerFactory();
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+    PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
 
     PolarisCallContext polarisCallCtx = testServices.newCallContext();
 

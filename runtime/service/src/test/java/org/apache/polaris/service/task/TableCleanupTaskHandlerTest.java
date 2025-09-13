@@ -48,6 +48,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestFileIOFactory;
 import org.assertj.core.api.Assertions;
@@ -62,6 +63,7 @@ class TableCleanupTaskHandlerTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
 
+  private PolarisMetaStoreManager metaStoreManager;
   private CallContext callContext;
 
   private final RealmContext realmContext = () -> "realmName";
@@ -76,6 +78,7 @@ class TableCleanupTaskHandlerTest {
   void setup() {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
+    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     callContext =
         new PolarisCallContext(
             realmContext,
@@ -121,8 +124,7 @@ class TableCleanupTaskHandlerTest {
     handler.handleTask(task, callContext);
 
     assertThat(
-            metaStoreManagerFactory
-                .getOrCreateMetaStoreManager(realmContext)
+            metaStoreManager
                 .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(2))
                 .getEntities())
         .hasSize(2)
@@ -196,8 +198,7 @@ class TableCleanupTaskHandlerTest {
 
     // both tasks successfully executed, but only one should queue subtasks
     assertThat(
-            metaStoreManagerFactory
-                .getOrCreateMetaStoreManager(realmContext)
+            metaStoreManager
                 .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
                 .getEntities())
         .hasSize(2);
@@ -254,8 +255,7 @@ class TableCleanupTaskHandlerTest {
 
     // both tasks successfully executed, but only one should queue subtasks
     assertThat(
-            metaStoreManagerFactory
-                .getOrCreateMetaStoreManager(realmContext)
+            metaStoreManager
                 .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
                 .getEntities())
         .hasSize(4)
@@ -367,8 +367,7 @@ class TableCleanupTaskHandlerTest {
     handler.handleTask(task, callContext);
 
     List<PolarisBaseEntity> entities =
-        metaStoreManagerFactory
-            .getOrCreateMetaStoreManager(realmContext)
+        metaStoreManager
             .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
             .getEntities();
 
@@ -535,8 +534,7 @@ class TableCleanupTaskHandlerTest {
     handler.handleTask(task, callContext);
 
     List<PolarisBaseEntity> entities =
-        metaStoreManagerFactory
-            .getOrCreateMetaStoreManager(callContext.getRealmContext())
+        metaStoreManager
             .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(6))
             .getEntities();
 

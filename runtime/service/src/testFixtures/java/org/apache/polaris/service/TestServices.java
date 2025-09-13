@@ -56,6 +56,7 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
+import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
@@ -92,6 +93,7 @@ public record TestServices(
     RealmContext realmContext,
     RealmConfig realmConfig,
     SecurityContext securityContext,
+    PolarisMetaStoreManager metaStoreManager,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
     PolarisEventListener polarisEventListener) {
@@ -278,17 +280,20 @@ public record TestServices(
             }
           };
 
+      PolarisAdminService adminService =
+          new PolarisAdminService(
+              diagnostics,
+              callContext,
+              resolutionManifestFactory,
+              metaStoreManager,
+              userSecretsManager,
+              securityContext,
+              authorizer,
+              reservedProperties);
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(
               new PolarisServiceImpl(
-                  diagnostics,
-                  resolutionManifestFactory,
-                  metaStoreManagerFactory,
-                  userSecretsManagerFactory,
-                  authorizer,
-                  callContext,
-                  reservedProperties,
-                  polarisEventListener));
+                  realmConfig, reservedProperties, polarisEventListener, adminService));
 
       return new TestServices(
           clock,
@@ -305,6 +310,7 @@ public record TestServices(
           realmContext,
           realmConfig,
           securityContext,
+          metaStoreManager,
           fileIOFactory,
           taskExecutor,
           polarisEventListener);
