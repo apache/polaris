@@ -84,6 +84,7 @@ EXCLUDE_PATHS = [
     Path(".venv"),
     Path("dist/"),
     Path("templates/"),
+    Path("spec/"),
     Path("PKG-INFO"),
 ]
 EXCLUDE_EXTENSIONS = [
@@ -275,23 +276,25 @@ def prepend_licenses() -> None:
 def prepare_spec_dir():
     logger.info("Preparing spec directory...")
     spec_dir = Path(SPEC_DIR)
+    spec_source_dir = Path(os.path.join(CLIENT_DIR.parent.parent, "spec"))
 
-    if spec_dir.exists():
-        logger.info("Spec directory already exists.")
-        return
-
-    # Create the spec directory if it doesn't exist
-    spec_source_dir = CLIENT_DIR.parent.parent / "spec"
-    if spec_source_dir.exists():
+    if spec_source_dir.is_dir():
         logger.info(f"Copying spec directory from {spec_source_dir} to {spec_dir}")
+        if spec_dir.exists():
+            shutil.rmtree(spec_dir)
         shutil.copytree(spec_source_dir, spec_dir)
-        logger.info("Spec directory copied.")
-    else:
-        # This will be hit during an sdist build if spec directory wasn't in the package.
+        logger.info("Spec directory copied to ensure it is up-to-date.")
+    elif not spec_dir.is_dir():
+        # This will be hit during an sdist build if spec directory wasn't in the package,
+        # and we can't find the source to copy from.
         logger.error(
             "Fatal: spec directory is missing and the source to copy it from was not found."
         )
         sys.exit(1)
+    else:
+        # This is the case for sdist where the spec dir is already there and we don't have
+        # the source to copy from.
+        logger.info("Source spec directory not found, using existing spec directory.")
 
 
 def build() -> None:
