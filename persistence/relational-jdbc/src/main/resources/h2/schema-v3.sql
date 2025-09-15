@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
     catalog_id TEXT NOT NULL,
     event_id TEXT NOT NULL,
-    request_id TEXT NOT NULL,
+    request_id TEXT,
     event_type TEXT NOT NULL,
     timestamp_ms BIGINT NOT NULL,
     principal_name TEXT,
