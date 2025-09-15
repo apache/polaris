@@ -151,11 +151,11 @@ menu:
     - name: "Release Guide"
       parent: "community"
       url: "/community/release-guide"
-      wieght: 70
+      weight: 70
     - name: "Blogs"
       parent: "community"
       url: "/blog"
-      wieght: 70
+      weight: 80
 
     - name: "GitHub"
       url: "https://github.com/apache/polaris"
