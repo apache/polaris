@@ -24,7 +24,6 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -41,7 +40,6 @@ public class JWTSymmetricKeyGeneratorTest {
   /** Sanity test to verify that we can generate a token */
   @Test
   public void testJWTSymmetricKeyGenerator() {
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "test_secret";
     String clientId = "test_client_id";
@@ -66,7 +64,6 @@ public class JWTSymmetricKeyGeneratorTest {
             mainSecret,
             TokenRequestValidator.CLIENT_CREDENTIALS,
             "PRINCIPAL_ROLE:TEST",
-            polarisCallContext,
             TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
 

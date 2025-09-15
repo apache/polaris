@@ -81,9 +81,10 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -130,7 +131,6 @@ import org.slf4j.LoggerFactory;
 public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
-  private final PolarisMetaStoreManager metaStoreManager;
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
@@ -147,7 +147,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public IcebergCatalogHandler(
       PolarisDiagnostics diagnostics,
-      CallContext callContext,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       UserSecretsManager userSecretsManager,
@@ -161,14 +162,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       PolarisEventListener polarisEventListener) {
     super(
         diagnostics,
-        callContext,
+        realmContext,
+        realmConfig,
+        metaStoreManager,
         resolutionManifestFactory,
         securityContext,
         catalogName,
         authorizer,
         userSecretsManager,
         externalCatalogFactories);
-    this.metaStoreManager = metaStoreManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
@@ -258,7 +260,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.baseCatalog =
           catalogFactory.createCallContextCatalog(
-              callContext, polarisPrincipal, securityContext, resolutionManifest);
+              realmContext, realmConfig, polarisPrincipal, securityContext, resolutionManifest);
     }
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;

@@ -26,7 +26,8 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -49,7 +50,8 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull CallContext callContext,
+      @Nonnull RealmContext realmContext,
+      @Nonnull RealmConfig realmConfig,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
@@ -58,7 +60,8 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
     return new WasbTranslatingFileIO(
         defaultFileIOFactory.loadFileIO(
-            callContext,
+            realmContext,
+            realmConfig,
             ioImplClassName,
             properties,
             identifier,

@@ -39,7 +39,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -55,11 +54,11 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
 
   private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryBufferEventListener.class);
 
-  @Inject CallContext callContext;
   @Inject Clock clock;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject InMemoryBufferEventListenerConfiguration configuration;
 
+  @Inject RealmContext realmContext;
   @Context SecurityContext securityContext;
   @Context ContainerRequestContext requestContext;
 
@@ -74,7 +73,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
 
   @Override
   protected void processEvent(PolarisEvent event) {
-    var realmId = callContext.getRealmContext().getRealmIdentifier();
+    var realmId = realmContext.getRealmIdentifier();
     processEvent(realmId, event);
   }
 

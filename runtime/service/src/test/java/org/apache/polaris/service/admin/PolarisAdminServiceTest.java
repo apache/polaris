@@ -32,14 +32,13 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -65,9 +64,8 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 public class PolarisAdminServiceTest {
-  private PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
-  @Mock private CallContext callContext;
-  @Mock private PolarisCallContext polarisCallContext;
+  private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
+  private final RealmContext realmContext = () -> "testRealm";
   @Mock private ResolutionManifestFactory resolutionManifestFactory;
   @Mock private PolarisMetaStoreManager metaStoreManager;
   @Mock private UserSecretsManager userSecretsManager;
@@ -85,9 +83,6 @@ public class PolarisAdminServiceTest {
   void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedPrincipal);
-    when(callContext.getRealmConfig()).thenReturn(realmConfig);
-    when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.getRealmConfig()).thenReturn(realmConfig);
 
     // Default feature configuration - enabled by default
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
@@ -96,7 +91,7 @@ public class PolarisAdminServiceTest {
             eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS), Mockito.any()))
         .thenReturn(true);
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), any()))
+    when(resolutionManifestFactory.createResolutionManifest(any(), any(), any(), any(), any()))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
     when(resolutionManifest.getIsPassthroughFacade()).thenReturn(false);
@@ -104,7 +99,8 @@ public class PolarisAdminServiceTest {
     adminService =
         new PolarisAdminService(
             diagnostics,
-            callContext,
+            realmContext,
+            realmConfig,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
@@ -145,7 +141,8 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("non-existent-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(
+            any(), any(), any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -178,7 +175,8 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("complete-ns", "incomplete-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(
+            any(), any(), any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -238,7 +236,8 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("non-existent-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(
+            any(), any(), any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -266,7 +265,8 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("incomplete-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(
+            any(), any(), any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -687,7 +687,8 @@ public class PolarisAdminServiceTest {
   private void setupSuccessfulNamespaceResolution(
       String catalogName, String catalogRoleName, Namespace namespace) throws Exception {
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(
+            any(), any(), any(), any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
     when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(resolvedPathWrapper);
