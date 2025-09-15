@@ -19,7 +19,7 @@
 
 [project]
 name = "polaris"
-version = "1.0.0"
+version = "1.1.0"
 description = "Apache Polaris"
 authors = [
     {name = "Apache Software Foundation", email = "dev@polaris.apache.org"}
@@ -47,8 +47,10 @@ polaris = "cli.polaris_cli:main"
 [tool.poetry]
 requires-poetry = "==2.1.4"
 include = [
-    { path = "polaris/**", format = "wheel" },
-    { path = "cli/**", format = "wheel" },
+    { path = "polaris/**", format = ["sdist", "wheel"] },
+    { path = "cli/**", format = ["sdist", "wheel"] },
+    { path = "templates/**", format = "sdist" },
+    { path = "spec/**", format = "sdist" },
 ]
 
 [tool.poetry.group.dev.dependencies]
@@ -63,7 +65,7 @@ pre-commit = "==4.3.0"
 openapi-generator-cli = "==7.11.0.post0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0", "openapi-generator-cli==7.11.0.post0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]
