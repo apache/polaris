@@ -64,7 +64,7 @@ pre-commit = "==4.3.0"
 openapi-generator-cli = "==7.11.0.post0"
 # pin virtualenv version to prevent poetry from upgrading to an incompatible version
 # see https://github.com/python-poetry/poetry/issues/10504#issuecomment-3176923981
-virtualenv = ">=20.26.6,<20.33.0"
+virtualenv = ">=20.34.0,<20.35.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0", "openapi-generator-cli==7.11.0.post0"]
