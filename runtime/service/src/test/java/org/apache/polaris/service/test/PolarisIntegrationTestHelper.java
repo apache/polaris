@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -32,7 +31,6 @@ public class PolarisIntegrationTestHelper {
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject RealmContextResolver realmContextResolver;
-  @Inject ObjectMapper objectMapper;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisConfigurationStore configurationStore;
 

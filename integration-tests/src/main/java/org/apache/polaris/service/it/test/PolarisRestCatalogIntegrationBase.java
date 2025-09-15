@@ -173,7 +173,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       Map.of(
           "polaris.config.allow.unstructured.table.location", "true",
           "polaris.config.allow.external.table.location", "true",
-          "polaris.config.list-pagination-enabled", "true");
+          "polaris.config.list-pagination-enabled", "true",
+          "polaris.config.namespace-custom-location.enabled", "true");
 
   /**
    * Get the storage configuration information for the catalog.
@@ -274,7 +275,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
             .setStorageConfigInfo(storageConfig)
             .build();
 
-    managementApi.createCatalog(principalRoleName, catalog);
+    createPolarisCatalog(catalog);
+    managementApi.makeAdmin(principalRoleName, catalog);
 
     restCatalogConfig =
         IntegrationTestsHelper.mergeFromAnnotatedElements(
@@ -337,6 +339,11 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   @Override
   protected RESTCatalog catalog() {
     return restCatalog;
+  }
+
+  /** Overridable methods to allow subclasses to execute additional logic on catalog creation. */
+  protected void createPolarisCatalog(Catalog catalog) {
+    managementApi.createCatalog(catalog);
   }
 
   /**

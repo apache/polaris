@@ -18,9 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -69,7 +66,6 @@ public class PolarisTestMetaStoreManager {
 
   // the start time
   private final long testStartTime;
-  private final ObjectMapper objectMapper = new ObjectMapper();
 
   private final boolean supportsChangeTracking;
 
@@ -1515,14 +1511,14 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(afterUpdateEntity.getGrantRecordsVersion()).isEqualTo(grantRecsVersion);
 
     // update should have been performed
-    Assertions.assertThat(jsonNode(updatedEntity.getProperties()))
-        .isEqualTo(jsonNode(updatedPropEntity.getProperties()));
-    Assertions.assertThat(jsonNode(afterUpdateEntity.getProperties()))
-        .isEqualTo(jsonNode(updatedPropEntity.getProperties()));
-    Assertions.assertThat(jsonNode(updatedEntity.getInternalProperties()))
-        .isEqualTo(jsonNode(updatedPropEntity.getInternalProperties()));
-    Assertions.assertThat(jsonNode(afterUpdateEntity.getInternalProperties()))
-        .isEqualTo(jsonNode(updatedPropEntity.getInternalProperties()));
+    Assertions.assertThat(updatedEntity.getPropertiesAsMap())
+        .isEqualTo(updatedPropEntity.getPropertiesAsMap());
+    Assertions.assertThat(afterUpdateEntity.getPropertiesAsMap())
+        .isEqualTo(updatedPropEntity.getPropertiesAsMap());
+    Assertions.assertThat(updatedEntity.getInternalPropertiesAsMap())
+        .isEqualTo(updatedPropEntity.getInternalPropertiesAsMap());
+    Assertions.assertThat(afterUpdateEntity.getInternalPropertiesAsMap())
+        .isEqualTo(updatedPropEntity.getInternalPropertiesAsMap());
 
     // lookup the tracking slice to verify this has been updated too
     if (supportsChangeTracking) {
@@ -1540,17 +1536,6 @@ public class PolarisTestMetaStoreManager {
     }
 
     return updatedEntity;
-  }
-
-  private JsonNode jsonNode(String json) {
-    if (json == null) {
-      return null;
-    }
-    try {
-      return objectMapper.readTree(json);
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   /** Execute a list operation and validate the result */

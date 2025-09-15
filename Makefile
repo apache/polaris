@@ -140,7 +140,7 @@ client-regenerate: client-setup-env ## Regenerate the client code
 .PHONY: client-unit-test
 client-unit-test: client-setup-env ## Run client unit tests
 	@echo "--- Running client unit tests ---"
-	@$(ACTIVATE_AND_CD) && SCRIPT_DIR="non-existing-mock-directory" poetry run pytest test/
+	@$(ACTIVATE_AND_CD) && poetry run pytest test/
 	@echo "--- Client unit tests complete ---"
 
 .PHONY: client-integration-test
@@ -161,6 +161,12 @@ client-integration-test: client-setup-env ## Run client integration tests
 	@echo "--- Client integration tests complete ---"
 	@echo "Tearing down Docker Compose services..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
+
+.PHONY: client-build
+client-build: client-setup-env ## Build client distribution
+	@echo "--- Building client distribution ---"
+	@$(ACTIVATE_AND_CD) && poetry build -f wheel
+	@echo "--- Client distribution build complete ---"
 
 .PHONY: client-cleanup
 client-cleanup: ## Cleanup virtual environment and Python cache files

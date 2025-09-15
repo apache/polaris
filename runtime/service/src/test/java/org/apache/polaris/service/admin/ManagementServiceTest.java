@@ -41,14 +41,12 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -228,15 +226,10 @@ public class ManagementServiceTest {
         .hasMessage("Explicitly setting S3 endpoints is not allowed.");
   }
 
-  private PolarisMetaStoreManager setupMetaStoreManager() {
-    MetaStoreManagerFactory metaStoreManagerFactory = services.metaStoreManagerFactory();
-    RealmContext realmContext = services.realmContext();
-    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-  }
-
   private PolarisAdminService setupPolarisAdminService(
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
     return new PolarisAdminService(
+        services.polarisDiagnostics(),
         callContext,
         services.resolutionManifestFactory(),
         metaStoreManager,
@@ -296,7 +289,7 @@ public class ManagementServiceTest {
 
   @Test
   public void testCannotAssignFederatedEntities() {
-    PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
+    PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
     PolarisCallContext callContext = services.newCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
@@ -315,7 +308,7 @@ public class ManagementServiceTest {
 
   @Test
   public void testCanListCatalogs() {
-    PolarisMetaStoreManager metaStoreManager = setupMetaStoreManager();
+    PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
     PolarisCallContext callContext = services.newCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);
@@ -355,7 +348,7 @@ public class ManagementServiceTest {
 
   @Test
   public void testCreateCatalogReturnErrorOnFailure() {
-    PolarisMetaStoreManager metaStoreManager = Mockito.spy(setupMetaStoreManager());
+    PolarisMetaStoreManager metaStoreManager = Mockito.spy(services.metaStoreManager());
     PolarisCallContext callContext = services.newCallContext();
     PolarisAdminService polarisAdminService =
         setupPolarisAdminService(metaStoreManager, callContext);

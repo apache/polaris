@@ -66,8 +66,8 @@ import org.apache.polaris.service.events.AfterViewCommitedEvent;
 import org.apache.polaris.service.events.AfterViewRefreshedEvent;
 import org.apache.polaris.service.events.BeforeViewCommitedEvent;
 import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
-import org.apache.polaris.service.events.PolarisEventListener;
-import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.test.TestData;
 import org.assertj.core.api.Assertions;
@@ -162,7 +162,6 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
 
@@ -179,6 +178,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     PolarisAdminService adminService =
         new PolarisAdminService(
+            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
@@ -213,6 +213,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     this.catalog =
         new IcebergCatalog(
+            diagServices,
             storageCredentialCache,
             resolverFactory,
             metaStoreManager,

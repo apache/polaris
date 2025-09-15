@@ -34,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEventManager;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -60,7 +61,8 @@ public interface PolarisMetaStoreManager
     extends PolarisSecretsManager,
         PolarisGrantManager,
         PolarisCredentialVendor,
-        PolarisPolicyMappingManager {
+        PolarisPolicyMappingManager,
+        PolarisEventManager {
 
   /**
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated

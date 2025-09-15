@@ -30,6 +30,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
@@ -63,6 +64,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
   private PolicyCatalog policyCatalog;
 
   public PolicyCatalogHandler(
+      PolarisDiagnostics diagnostics,
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
@@ -72,6 +74,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
       UserSecretsManager userSecretsManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(
+        diagnostics,
         callContext,
         resolutionManifestFactory,
         securityContext,

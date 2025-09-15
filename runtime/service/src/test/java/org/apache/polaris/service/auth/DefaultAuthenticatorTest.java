@@ -25,7 +25,6 @@ import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -46,11 +45,8 @@ public class DefaultAuthenticatorTest {
     polarisCallContext = Mockito.mock(PolarisCallContext.class);
     when(polarisCallContext.getRealmContext()).thenReturn(realmContext);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
-    MetaStoreManagerFactory metaStoreManagerFactory = Mockito.mock(MetaStoreManagerFactory.class);
-    when(metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext))
-        .thenReturn(metaStoreManager);
     authenticator = new DefaultAuthenticator();
-    authenticator.metaStoreManagerFactory = metaStoreManagerFactory;
+    authenticator.metaStoreManager = metaStoreManager;
     authenticator.callContext = polarisCallContext;
   }
 

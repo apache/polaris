@@ -20,8 +20,9 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nullable;
 import java.security.SecureRandom;
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.polaris.core.DigestUtils;
 
 /**
  * Simple class to represent the secrets used to authenticate a catalog principal, These secrets are
@@ -131,6 +132,17 @@ public class PolarisPrincipalSecrets {
     this.principalId = principalId;
     this.principalClientId = this.generateRandomHexString(16);
     this.mainSecret = this.generateRandomHexString(32);
+    this.secondarySecret = this.generateRandomHexString(32);
+
+    this.secretSalt = this.generateRandomHexString(16);
+    this.mainSecretHash = hashSecret(mainSecret);
+    this.secondarySecretHash = hashSecret(secondarySecret);
+  }
+
+  public PolarisPrincipalSecrets(long principalId, String newClientId, @Nullable String newSecret) {
+    this.principalId = principalId;
+    this.principalClientId = newClientId;
+    this.mainSecret = (newSecret != null) ? newSecret : this.generateRandomHexString(32);
     this.secondarySecret = this.generateRandomHexString(32);
 
     this.secretSalt = this.generateRandomHexString(16);

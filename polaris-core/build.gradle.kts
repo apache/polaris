@@ -42,7 +42,6 @@ dependencies {
   runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
   implementation(libs.caffeine)
-  implementation(libs.commons.codec)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
 
@@ -62,7 +61,7 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.28.0") {
       because("Vulnerability detected in 1.21")
     }
-    implementation("com.nimbusds:nimbus-jose-jwt:10.4.2") {
+    implementation("com.nimbusds:nimbus-jose-jwt:10.5") {
       because("Vulnerability detected in 9.8.1")
     }
   }
@@ -87,10 +86,10 @@ dependencies {
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
   constraints {
-    implementation("io.netty:netty-codec-http2:4.2.4.Final") {
+    implementation("io.netty:netty-codec-http2:4.2.6.Final") {
       because("Vulnerability detected in 4.1.72")
     }
-    implementation("io.projectreactor.netty:reactor-netty-http:1.2.9") {
+    implementation("io.projectreactor.netty:reactor-netty-http:1.2.10") {
       because("Vulnerability detected in 1.0.45")
     }
   }

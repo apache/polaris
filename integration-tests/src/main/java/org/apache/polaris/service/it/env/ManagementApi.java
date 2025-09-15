@@ -80,6 +80,20 @@ public class ManagementApi extends PolarisRestApi {
     }
   }
 
+  /**
+   * Retrieves a Principal by name via the management API.
+   *
+   * @param principalName the name of the principal to fetch
+   * @return the Principal object
+   */
+  public Principal getPrincipal(String principalName) {
+    try (Response response =
+        request("v1/principals/{principalName}", Map.of("principalName", principalName)).get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      return response.readEntity(Principal.class);
+    }
+  }
+
   public void createPrincipalRole(String name) {
     createPrincipalRole(new PrincipalRole(name));
   }
@@ -150,7 +164,10 @@ public class ManagementApi extends PolarisRestApi {
 
   public void createCatalog(String principalRoleName, Catalog catalog) {
     createCatalog(catalog);
+    makeAdmin(principalRoleName, catalog);
+  }
 
+  public void makeAdmin(String principalRoleName, Catalog catalog) {
     // Create a new CatalogRole that has CATALOG_MANAGE_CONTENT and CATALOG_MANAGE_ACCESS
     String catalogRoleName = "custom-admin";
     createCatalogRole(catalog.getName(), catalogRoleName);

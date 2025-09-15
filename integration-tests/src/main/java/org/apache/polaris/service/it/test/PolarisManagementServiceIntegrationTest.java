@@ -136,6 +136,10 @@ public class PolarisManagementServiceIntegrationTest {
     client.cleanUp(authToken);
   }
 
+  private static String newRandomString(int length) {
+    return RandomStringUtils.insecure().next(length, true, true);
+  }
+
   @Test
   public void testCatalogSerializing() throws IOException {
     CatalogProperties props = new CatalogProperties("s3://my-old-bucket/path/to/data");
@@ -215,7 +219,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
 
-    String goodName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH, true, true);
+    String goodName = newRandomString(MAX_IDENTIFIER_LENGTH);
 
     Catalog catalog =
         PolarisCatalog.builder()
@@ -228,7 +232,7 @@ public class PolarisManagementServiceIntegrationTest {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
 
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidCatalogNames =
         Arrays.asList(
             longInvalidName,
@@ -751,7 +755,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testGetCatalogInvalidName() {
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidCatalogNames =
         Arrays.asList(
             longInvalidName,
@@ -784,7 +788,7 @@ public class PolarisManagementServiceIntegrationTest {
             .build();
     managementApi.createCatalog(catalog);
 
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidCatalogRoleNames =
         Arrays.asList(
             longInvalidName,
@@ -878,6 +882,57 @@ public class PolarisManagementServiceIntegrationTest {
 
     // TODO: Test the validity of the old secret for getting tokens, here and then after a second
     // rotation that makes the old secret fall off retention.
+  }
+
+  @Test
+  public void testCreatePrincipalAndResetCredentialsWithCustomValues() {
+    //  Create a new principal using root user
+    Principal principal =
+        Principal.builder()
+            .setName(client.newEntityName("myprincipal-reset"))
+            .setProperties(Map.of("custom-tag", "bar"))
+            .build();
+
+    PrincipalWithCredentials creds =
+        managementApi.createPrincipal(new CreatePrincipalRequest(principal, true));
+
+    Map<String, String> customBody =
+        Map.of(
+            "clientId", "f174b76a7e1a99e2",
+            "clientSecret", "27029d236abc08e204922b0a07031bc2");
+
+    PrincipalWithCredentials resetCreds;
+    try (Response response =
+        managementApi
+            .request("v1/principals/{p}/reset", Map.of("p", principal.getName()))
+            .post(Entity.json(customBody))) {
+
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      resetCreds = response.readEntity(PrincipalWithCredentials.class);
+    }
+
+    assertThat(resetCreds.getCredentials().getClientId()).isEqualTo("f174b76a7e1a99e2");
+    assertThat(resetCreds.getCredentials().getClientSecret())
+        .isEqualTo("27029d236abc08e204922b0a07031bc2");
+
+    // Validate that the principal entity itself is updated in sync with credentials
+    Principal updatedPrincipal = managementApi.getPrincipal(principal.getName());
+    assertThat(updatedPrincipal.getClientId()).isEqualTo("f174b76a7e1a99e2");
+
+    // Principal itself tries to reset with custom creds → should fail (403 Forbidden)
+    String principalToken = client.obtainToken(resetCreds);
+    customBody =
+        Map.of(
+            "clientId", "a174b76a7e1a99e3",
+            "clientSecret", "37029d236abc08e204922b0a07031bc3");
+    try (Response response =
+        client
+            .managementApi(principalToken)
+            .request("v1/principals/{p}/reset", Map.of("p", principal.getName()))
+            .post(Entity.json(customBody))) {
+
+      assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
+    }
   }
 
   @Test
@@ -987,7 +1042,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testCreatePrincipalWithInvalidName() {
-    String goodName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH, true, true);
+    String goodName = newRandomString(MAX_IDENTIFIER_LENGTH);
     Principal principal =
         Principal.builder()
             .setName(goodName)
@@ -995,7 +1050,7 @@ public class PolarisManagementServiceIntegrationTest {
             .build();
     managementApi.createPrincipal(new CreatePrincipalRequest(principal, null));
 
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidPrincipalNames =
         Arrays.asList(
             longInvalidName,
@@ -1027,7 +1082,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testGetPrincipalWithInvalidName() {
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidPrincipalNames =
         Arrays.asList(
             longInvalidName,
@@ -1142,12 +1197,12 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testCreatePrincipalRoleInvalidName() {
-    String goodName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH, true, true);
+    String goodName = newRandomString(MAX_IDENTIFIER_LENGTH);
     PrincipalRole principalRole =
         new PrincipalRole(goodName, false, Map.of("custom-tag", "good_principal_role"), 0L, 0L, 1);
     managementApi.createPrincipalRole(principalRole);
 
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidPrincipalRoleNames =
         Arrays.asList(
             longInvalidName,
@@ -1182,7 +1237,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testGetPrincipalRoleInvalidName() {
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidPrincipalRoleNames =
         Arrays.asList(
             longInvalidName,

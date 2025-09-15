@@ -18,8 +18,11 @@
  */
 package org.apache.polaris.core.policy;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -52,5 +55,15 @@ public class PolicyTypeTest {
     Assertions.assertThat(policyType.getCode()).isEqualTo(code);
     Assertions.assertThat(policyType.getName()).isEqualTo(name);
     Assertions.assertThat(policyType.isInheritable()).isEqualTo(isInheritable);
+  }
+
+  @Test
+  void fromCodeReturnsNullForNegative() {
+    assertThat(PolicyType.fromCode(-1)).isNull();
+  }
+
+  @Test
+  void fromNameReturnsNullForUnknown() {
+    assertThat(PolicyType.fromName("__unknown__")).isNull();
   }
 }

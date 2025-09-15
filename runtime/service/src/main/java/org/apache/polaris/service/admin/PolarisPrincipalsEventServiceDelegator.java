@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
+import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
@@ -41,6 +42,16 @@ public class PolarisPrincipalsEventServiceDelegator implements PolarisPrincipals
   public Response createPrincipal(
       CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
     return delegate.createPrincipal(request, realmContext, securityContext);
+  }
+
+  @Override
+  public Response resetCredentials(
+      String principalName,
+      ResetPrincipalRequest resetPrincipalRequest,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    return delegate.resetCredentials(
+        principalName, resetPrincipalRequest, realmContext, securityContext);
   }
 
   @Override

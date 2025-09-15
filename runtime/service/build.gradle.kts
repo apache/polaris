@@ -87,6 +87,7 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation("software.amazon.awssdk:cloudwatchlogs")
   implementation("software.amazon.awssdk:apache-client") {
     exclude("commons-logging", "commons-logging")
   }
@@ -122,12 +123,15 @@ dependencies {
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
 
-  testImplementation(platform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation("io.quarkus:quarkus-junit5-mockito")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.rest-assured:rest-assured")
+  testImplementation(libs.localstack)
+  testImplementation("org.testcontainers:testcontainers")
+  testImplementation(project(":polaris-container-spec-helper"))
 
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
