@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.ValidationException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -226,11 +225,11 @@ public class ManagementServiceTest {
         .hasMessage("Explicitly setting S3 endpoints is not allowed.");
   }
 
-  private PolarisAdminService setupPolarisAdminService(
-      PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
+  private PolarisAdminService setupPolarisAdminService(PolarisMetaStoreManager metaStoreManager) {
     return new PolarisAdminService(
         services.polarisDiagnostics(),
-        callContext,
+        services.realmContext(),
+        services.realmConfig(),
         services.resolutionManifestFactory(),
         metaStoreManager,
         new UnsafeInMemorySecretsManager(),
@@ -263,8 +262,7 @@ public class ManagementServiceTest {
         ReservedProperties.NONE);
   }
 
-  private PrincipalEntity createPrincipal(
-      PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext, String name) {
+  private PrincipalEntity createPrincipal(PolarisMetaStoreManager metaStoreManager, String name) {
     return new PrincipalEntity.Builder()
         .setName(name)
         .setCreateTimestamp(Instant.now().toEpochMilli())
@@ -273,10 +271,7 @@ public class ManagementServiceTest {
   }
 
   private PrincipalRoleEntity createRole(
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext callContext,
-      String name,
-      boolean isFederated) {
+      PolarisMetaStoreManager metaStoreManager, String name, boolean isFederated) {
     return new PrincipalRoleEntity.Builder()
         .setId(metaStoreManager.generateNewEntityId().getId())
         .setName(name)
@@ -290,14 +285,12 @@ public class ManagementServiceTest {
   @Test
   public void testCannotAssignFederatedEntities() {
     PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
-    PolarisCallContext callContext = services.newCallContext();
-    PolarisAdminService polarisAdminService =
-        setupPolarisAdminService(metaStoreManager, callContext);
+    PolarisAdminService polarisAdminService = setupPolarisAdminService(metaStoreManager);
 
-    PrincipalEntity principal = createPrincipal(metaStoreManager, callContext, "principal_id");
+    PrincipalEntity principal = createPrincipal(metaStoreManager, "principal_id");
     metaStoreManager.createPrincipal(principal);
 
-    PrincipalRoleEntity role = createRole(metaStoreManager, callContext, "federated_role_id", true);
+    PrincipalRoleEntity role = createRole(metaStoreManager, "federated_role_id", true);
     EntityResult result = metaStoreManager.createEntityIfNotExists(null, role);
     assertThat(result.isSuccess()).isTrue();
 
@@ -309,9 +302,7 @@ public class ManagementServiceTest {
   @Test
   public void testCanListCatalogs() {
     PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
-    PolarisCallContext callContext = services.newCallContext();
-    PolarisAdminService polarisAdminService =
-        setupPolarisAdminService(metaStoreManager, callContext);
+    PolarisAdminService polarisAdminService = setupPolarisAdminService(metaStoreManager);
 
     CreateCatalogResult catalog1 =
         metaStoreManager.createCatalog(
@@ -347,9 +338,7 @@ public class ManagementServiceTest {
   @Test
   public void testCreateCatalogReturnErrorOnFailure() {
     PolarisMetaStoreManager metaStoreManager = Mockito.spy(services.metaStoreManager());
-    PolarisCallContext callContext = services.newCallContext();
-    PolarisAdminService polarisAdminService =
-        setupPolarisAdminService(metaStoreManager, callContext);
+    PolarisAdminService polarisAdminService = setupPolarisAdminService(metaStoreManager);
 
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()

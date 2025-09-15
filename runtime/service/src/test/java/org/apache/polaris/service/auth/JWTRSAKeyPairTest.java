@@ -25,11 +25,8 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -44,8 +41,6 @@ import org.mockito.Mockito;
 @QuarkusTest
 public class JWTRSAKeyPairTest {
 
-  @Inject protected PolarisConfigurationStore configurationStore;
-
   @Test
   public void testSuccessfulTokenGeneration() throws Exception {
     var keyPair = PemUtils.generateKeyPair();
@@ -53,7 +48,6 @@ public class JWTRSAKeyPairTest {
     final String clientId = "test-client-id";
     final String scope = "PRINCIPAL_ROLE:TEST";
 
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, configurationStore);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =
@@ -78,7 +72,6 @@ public class JWTRSAKeyPairTest {
             mainSecret,
             TokenRequestValidator.CLIENT_CREDENTIALS,
             scope,
-            polarisCallContext,
             TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);
