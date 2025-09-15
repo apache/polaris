@@ -30,7 +30,6 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -440,24 +439,24 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse response;
+          Optional<LoadTableResponse> response;
 
           if (delegationModes.isEmpty()) {
-            response =
-                catalog
-                    .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
-                    .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+            response = catalog.loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots);
           } else {
             Optional<String> refreshCredentialsEndpoint =
                 getRefreshCredentialsEndpoint(delegationModes, prefix, tableIdentifier);
             response =
-                catalog
-                    .loadTableWithAccessDelegationIfStale(
-                        tableIdentifier, ifNoneMatch, snapshots, refreshCredentialsEndpoint)
-                    .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+                catalog.loadTableWithAccessDelegationIfStale(
+                    tableIdentifier, ifNoneMatch, snapshots, refreshCredentialsEndpoint);
           }
 
-          return tryInsertETagHeader(Response.ok(response), response, namespace, table).build();
+          if (response.isEmpty()) {
+            return Response.notModified().build();
+          }
+
+          return tryInsertETagHeader(Response.ok(response.get()), response.get(), namespace, table)
+              .build();
         });
   }
 
