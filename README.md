@@ -65,7 +65,7 @@ Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew check` - To run all checks, including unit tests and integration tests.
-- `./gradlew run` - To run the Polaris server locally; the server is reachable at localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. Set your own credentials by specifying system property `./gradlew run -Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t` where:
+- `./gradlew run` - To run the Polaris server locally; the server is reachable at localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. Set your own credentials by specifying system property `./gradlew run -Dpolaris.bootstrap.credentials=POLARIS,root,secret` where:
   - `POLARIS` is the realm
   - `root` is the CLIENT_ID
   - `secret` is the CLIENT_SECRET
