@@ -22,6 +22,7 @@ package org.apache.polaris.core.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Nullable;
 import java.util.Map;
 
 public class PolarisEvent {
@@ -32,28 +33,28 @@ public class PolarisEvent {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   // catalog id
-  private String catalogId;
+  private final String catalogId;
 
   // event id
-  private String id;
+  private final String id;
 
-  // id of the request that generated this event
-  private String requestId;
+  // id of the request that generated this event, if any
+  @Nullable private final String requestId;
 
   // event type that was fired
-  private String eventType;
+  private final String eventType;
 
   // timestamp in epoch milliseconds of when this event was emitted
-  private long timestampMs;
+  private final long timestampMs;
 
-  // polaris principal who took this action
-  private String principalName;
+  // polaris principal who took this action, or null if unknown
+  @Nullable private final String principalName;
 
   // Enum that states the type of resource was being operated on
-  private ResourceType resourceType;
+  private final ResourceType resourceType;
 
   // Which resource was operated on
-  private String resourceIdentifier;
+  private final String resourceIdentifier;
 
   // Additional parameters that were not earlier recorded
   private String additionalProperties;
@@ -66,6 +67,7 @@ public class PolarisEvent {
     return id;
   }
 
+  @Nullable
   public String getRequestId() {
     return requestId;
   }
@@ -78,6 +80,7 @@ public class PolarisEvent {
     return timestampMs;
   }
 
+  @Nullable
   public String getPrincipalName() {
     return principalName;
   }
@@ -97,10 +100,10 @@ public class PolarisEvent {
   public PolarisEvent(
       String catalogId,
       String id,
-      String requestId,
+      @Nullable String requestId,
       String eventType,
       long timestampMs,
-      String actor,
+      @Nullable String principalName,
       ResourceType resourceType,
       String resourceIdentifier) {
     this.catalogId = catalogId;
@@ -108,7 +111,7 @@ public class PolarisEvent {
     this.requestId = requestId;
     this.eventType = eventType;
     this.timestampMs = timestampMs;
-    this.principalName = actor;
+    this.principalName = principalName;
     this.resourceType = resourceType;
     this.resourceIdentifier = resourceIdentifier;
   }
