@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Doris X Polaris: Building Unified Data Lakehouse with Iceberg REST Catalog - A Practical Guide
+title: "Doris X Polaris: Building Unified Data Lakehouse with Iceberg REST Catalog - A Practical Guide"
 date: 2025-09-15
 author: zy-kkk
 ---
