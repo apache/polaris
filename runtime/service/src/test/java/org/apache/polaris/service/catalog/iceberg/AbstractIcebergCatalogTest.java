@@ -88,7 +88,6 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -100,7 +99,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -238,7 +237,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
-  private PolarisCallContext polarisContext;
+  private RealmContext realmContext;
   private RealmConfig realmConfig;
   private PolarisAdminService adminService;
   private ResolverFactory resolverFactory;
@@ -274,11 +273,10 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     bootstrapRealm(realmName);
 
-    RealmContext realmContext = () -> realmName;
+    realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
-    polarisContext = new PolarisCallContext(realmContext, configurationStore);
-    realmConfig = polarisContext.getRealmConfig();
+    realmConfig = new RealmConfigImpl(configurationStore, realmContext);
     metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
@@ -305,7 +303,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     adminService =
         new PolarisAdminService(
             diagServices,
-            polarisContext,
+            realmContext,
+            realmConfig,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
@@ -439,7 +438,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         diagServices,
         resolverFactory,
         metaStoreManager,
-        polarisContext,
+        realmContext,
+        realmConfig,
         passthroughView,
         securityContext,
         taskExecutor,
@@ -1007,7 +1007,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     doThrow(new ForbiddenException("Fake failure applying downscoped credentials"))
         .when(fileIOFactory)
-        .loadFileIO(any(), any(), any(), any(), any(), any(), any());
+        .loadFileIO(any(), any(), any(), any(), any(), any(), any(), any());
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Fake failure applying downscoped credentials");
@@ -1899,7 +1899,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     FileIO fileIO =
         new TaskFileIOSupplier(
                 new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory))
-            .apply(taskEntity, TABLE, polarisContext);
+            .apply(realmContext, realmConfig, taskEntity, TABLE);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
         .isInstanceOf(InMemoryFileIO.class);
@@ -2068,7 +2068,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             new FileIOFactory() {
               @Override
               public FileIO loadFileIO(
-                  @Nonnull CallContext callContext,
+                  @Nonnull RealmContext realmContext,
+                  @Nonnull RealmConfig realmConfig,
                   @Nonnull String ioImplClassName,
                   @Nonnull Map<String, String> properties,
                   @Nonnull TableIdentifier identifier,
@@ -2076,7 +2077,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                   @Nonnull Set<PolarisStorageActions> storageActions,
                   @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
                 return measured.loadFileIO(
-                    callContext,
+                    realmContext,
+                    realmConfig,
                     "org.apache.iceberg.inmemory.InMemoryFileIO",
                     Map.of(),
                     TABLE,
@@ -2089,7 +2091,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
             Mockito.mock(), clock, metaStoreManagerFactory, taskFileIOSupplier);
-    handler.handleTask(taskEntity, polarisContext);
+    handler.handleTask(realmContext, realmConfig, taskEntity);
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
   }
 

@@ -94,7 +94,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -161,7 +161,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private final PolarisDiagnostics diagnostics;
   private final ResolverFactory resolverFactory;
-  private final CallContext callContext;
+  private final RealmContext realmContext;
   private final RealmConfig realmConfig;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
@@ -183,7 +183,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private PolarisMetaStoreManager metaStoreManager;
 
   /**
-   * @param callContext the current CallContext
    * @param resolvedEntityView accessor to resolved entity paths that have been pre-vetted to ensure
    *     this catalog instance only interacts with authorized resolved paths.
    * @param taskExecutor Executor we use to register cleanup task handlers
@@ -192,7 +191,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisDiagnostics diagnostics,
       ResolverFactory resolverFactory,
       PolarisMetaStoreManager metaStoreManager,
-      CallContext callContext,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
       PolarisResolutionManifestCatalogView resolvedEntityView,
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
@@ -200,8 +200,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisEventListener polarisEventListener) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
-    this.callContext = callContext;
-    this.realmConfig = callContext.getRealmConfig();
+    this.realmContext = realmContext;
+    this.realmConfig = realmConfig;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.securityContext = securityContext;
@@ -419,7 +419,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           "Scheduled cleanup task {} for table {}",
           dropEntityResult.getCleanupTaskId(),
           tableIdentifier);
-      taskExecutor.addTaskHandlerContext(dropEntityResult.getCleanupTaskId(), callContext);
+      taskExecutor.addTaskHandlerContext(
+          realmContext, realmConfig, dropEntityResult.getCleanupTaskId());
     }
 
     return true;
@@ -1176,7 +1177,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
             diagnostics,
-            callContext.getRealmContext(),
+            realmContext,
             resolverFactory,
             securityContext,
             parentPath.getFirst().getName());
@@ -2054,7 +2055,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     // Reload fileIO based on table specific context
     FileIO fileIO =
         fileIOFactory.loadFileIO(
-            callContext,
+            realmContext,
+            realmConfig,
             ioImplClassName,
             tableProperties,
             identifier,
@@ -2570,7 +2572,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         new PolarisResolvedPathWrapper(List.of(resolvedCatalogEntity));
     Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
     return fileIOFactory.loadFileIO(
-        callContext, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
+        realmContext,
+        realmConfig,
+        ioImpl,
+        properties,
+        identifier,
+        locations,
+        storageActions,
+        resolvedPath);
   }
 
   private int getMaxMetadataRefreshRetries() {

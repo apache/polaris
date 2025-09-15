@@ -52,7 +52,8 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     return new PolicyCatalogHandler(
         diagServices,
-        callContext,
+        realmContext,
+        realmConfig,
         resolutionManifestFactory,
         metaStoreManager,
         securityContext(authenticatedPrincipal),
