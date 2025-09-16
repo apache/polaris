@@ -79,6 +79,7 @@ ignore-packages = [
     "click",                 # BSD-3-Clause
     "fsspec",                # BSD-3-Clause
     "jaraco.functools",      # MIT License (MIT)
+    "jeepney",               # MIT License (MIT)
     "more-itertools",        # MIT License (MIT)
     "mypy_extensions",       # MIT License (MIT)
     "pyparsing",             # MIT License (MIT)
