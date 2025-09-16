@@ -59,6 +59,10 @@ jobs:
         run: |
           make client-lint
 
+      - name: License Compliance Check
+        run: |
+          make client-license-check
+
       - name: Generated Client Tests
         run: |
           make client-unit-test
