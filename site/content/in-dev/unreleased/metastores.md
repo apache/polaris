@@ -42,7 +42,7 @@ The Relational JDBC metastore currently relies on a Quarkus-managed datasource a
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
 
-Additionally the retries can be configured via `polaris.persistence.relational.jdbc.*` properties please ref [configuration]({{% ref "configuration" %}})
+Additionally, the retries can be configured via `polaris.persistence.relational.jdbc.*` properties please ref [configuration]({{% ref "configuration" %}})
 
 ## EclipseLink (Deprecated)
 > [!IMPORTANT]
