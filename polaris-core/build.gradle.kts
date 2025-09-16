@@ -78,6 +78,7 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation("software.amazon.awssdk:kms")
 
   implementation("org.apache.iceberg:iceberg-azure")
   implementation(platform(libs.azuresdk.bom))
