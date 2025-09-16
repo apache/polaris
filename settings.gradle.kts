@@ -109,6 +109,11 @@ pluginManagement {
   }
 }
 
+plugins {
+  id("com.gradle.develocity") version "4.1.1"
+  id("com.gradle.common-custom-user-data-gradle-plugin") version "2.3"
+}
+
 dependencyResolutionManagement {
   repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
   repositories {
@@ -125,4 +130,16 @@ dependencyResolutionManagement {
 gradle.beforeProject {
   version = baseVersion
   group = "org.apache.polaris"
+}
+
+val isCI = System.getenv("CI") != null
+
+develocity {
+  server = "https://develocity.apache.org"
+  projectId = "polaris"
+  buildScan {
+    uploadInBackground = !isCI
+    publishing.onlyIf { it.isAuthenticated }
+    obfuscation { ipAddresses { addresses -> addresses.map { _ -> "0.0.0.0" } } }
+  }
 }

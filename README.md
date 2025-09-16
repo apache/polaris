@@ -137,6 +137,19 @@ Default configuration values can be found in `runtime/defaults/src/main/resource
   ```
 - See [README in `site/`](site/README.md) for more information.
 
+#### Publishing Build Scans to develocity.apache.org
+
+All authenticated builds of Apache Polaris will automatically publish build scans to the ASF Develocity instance at 
+[develocity.apache.org](https://develocity.apache.org/scans?search.rootProjectNames=polaris). 
+
+CI builds originating from the `apache/polaris` repository will have access to the Apache organization-level secret 
+`DEVELOCITY_ACCESS_KEY` and publish build scans using the secret. CI builds originating from pull requests from forks 
+will not have access to the secret and will silently skip build scan publication.
+
+Apache committers can publish build scans from their local machine by 
+[provisioning an access key](https://docs.gradle.com/develocity/gradle-plugin/current/#automated_access_key_provisioning) 
+using ASF LDAP credentials. Builds by anonymous, unauthenticated contributors will silently skip build scan publication.
+
 ## License
 
 Apache Polaris is under the Apache License Version 2.0. See the [LICENSE](LICENSE).
