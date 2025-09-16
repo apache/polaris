@@ -72,10 +72,9 @@ from-classifier = true
 # Packages with "UNKNOWN" licenses in pip-licenses metadata.
 # These have been manually verified and are known to be compatible with ASF.
 ignore-packages = [
-    "CacheControl",          # Apache-2.0
-    "RapidFuzz",             # MIT License (MIT)
     "anyio",                 # MIT License (MIT)
     "build",                 # MIT License (MIT)
+    "CacheControl",          # Apache-2.0
     "cffi",                  # MIT License (MIT)
     "click",                 # BSD-3-Clause
     "fsspec",                # BSD-3-Clause
@@ -83,10 +82,12 @@ ignore-packages = [
     "more-itertools",        # MIT License (MIT)
     "mypy_extensions",       # MIT License (MIT)
     "pyparsing",             # MIT License (MIT)
+    "RapidFuzz",             # MIT License (MIT)
     "types-python-dateutil", # Apache-2.0
     "typing-inspection",     # MIT License (MIT)
     "typing_extensions",     # PSF-2.0
     "urllib3",               # MIT License (MIT)
+    "zipp",                  # MIT License (MIT)
     "zstandard",             # BSD-3-Clause
 ]
 partial-match = true
