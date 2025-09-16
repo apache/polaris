@@ -83,6 +83,8 @@ jobs:
           minikube docker-env
 
       - name: Image build
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
           eval $(minikube -p minikube docker-env)
           ./gradlew \

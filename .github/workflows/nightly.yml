@@ -62,4 +62,5 @@ jobs:
           # publishToApache causes a GH API requests, use the token for those requests
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_USER }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_PW }} 
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_PW }}
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
