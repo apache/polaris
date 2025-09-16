@@ -93,7 +93,7 @@ ignore-packages = [
     "zstandard",             # BSD-3-Clause
 ]
 partial-match = true
-# allow-only = "MIT;Apache;BSD License;PSF-2.0;ISC;The Unlicense;Python Software Foundation License;Mozilla Public License"
+allow-only = "MIT;Apache;BSD License;PSF-2.0;ISC;The Unlicense;Python Software Foundation License;Mozilla Public License"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0", "openapi-generator-cli==7.11.0.post0"]
