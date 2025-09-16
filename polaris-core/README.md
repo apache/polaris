@@ -31,26 +31,6 @@ The `polaris-core` module is primarily consumed by:
 - **Runtime Components** - Server and admin tools
 - **Persistence Implementations** - Eclipselink, JDBC, etc.
 
-## Architecture
-
-```
-┌─────────────────────────────────────────┐
-│              API Layer                  │
-├─────────────────────────────────────────┤
-│           polaris-core                  │
-│  ┌─────────────┐  ┌─────────────────┐   │
-│  │   Entity    │  │    Security     │   │
-│  │ Management  │  │   & Privileges  │   │
-│  └─────────────┘  └─────────────────┘   │
-│  ┌─────────────┐  ┌─────────────────┐   │
-│  │ Persistence │  │    Storage      │   │
-│  │ Interfaces  │  │  Integration    │   │
-│  └─────────────┘  └─────────────────┘   │
-├─────────────────────────────────────────┤
-│         Persistence Layer               │
-└─────────────────────────────────────────┘
-```
-
 ## Building
 
 This module is built as part of the main Polaris build:
