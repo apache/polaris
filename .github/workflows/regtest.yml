@@ -52,6 +52,8 @@ jobs:
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
 
       - name: Image build
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
           ./gradlew \
               :polaris-server:assemble \
