@@ -4,4 +4,4 @@ remove db-kind in Helm Chart add relational-jdbc to Helm Chart This release can 
 https://polaris.apache.org/downloads/ The artifacts are available on Maven Central.
 The Docker images are available on Docker Hub:
 https://hub.docker.com/r/apache/polaris/tags https://hub.docker.com/r/apache/polaris-admin-tool/tags Enjoy !
-The Apache Polaris team.</description></item><item><title>Dummy Post</title><link>https://polaris.apache.org/blog/2024/10/01/dummy-post/</link><pubDate>Tue, 01 Oct 2024 00:00:00 +0000</pubDate><guid>https://polaris.apache.org/blog/2024/10/01/dummy-post/</guid><description>Just a dummy</description></item></channel></rss>
+The Apache Polaris team.</description></item></channel></rss>
