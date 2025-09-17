@@ -796,8 +796,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .map(
                 update -> {
                   if (baseCatalog instanceof IcebergCatalog
-                      && update instanceof MetadataUpdate.SetLocation) {
-                    String requestedLocation = ((MetadataUpdate.SetLocation) update).location();
+                      && update instanceof MetadataUpdate.SetLocation setLocation) {
+                    String requestedLocation = setLocation.location();
                     String filteredLocation =
                         ((IcebergCatalog) baseCatalog)
                             .transformTableLikeLocation(identifier, requestedLocation);
@@ -912,7 +912,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         .forEach(
             change -> {
               Table table = baseCatalog.loadTable(change.identifier());
-              if (!(table instanceof BaseTable)) {
+              if (!(table instanceof BaseTable baseTable)) {
                 throw new IllegalStateException(
                     "Cannot wrap catalog that does not produce BaseTable");
               }
@@ -922,7 +922,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                     change);
               }
 
-              TableOperations tableOps = ((BaseTable) table).operations();
+              TableOperations tableOps = baseTable.operations();
               TableMetadata currentMetadata = tableOps.current();
 
               // Validate requirements; any CommitFailedExceptions will fail the overall request
@@ -937,10 +937,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                         // support validation within a single multi-table transaction as well, but
                         // will need to update the TransactionWorkspaceMetaStoreManager to better
                         // expose the concept of being able to read uncommitted updates.
-                        if (singleUpdate instanceof MetadataUpdate.SetLocation) {
-                          if (!currentMetadata
-                                  .location()
-                                  .equals(((MetadataUpdate.SetLocation) singleUpdate).location())
+                        if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
+                          if (!currentMetadata.location().equals(setLocation.location())
                               && !realmConfig.getConfig(
                                   FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
                             throw new BadRequestException(

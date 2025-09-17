@@ -404,55 +404,6 @@ public abstract class BaseResolverTest {
   }
 
   /**
-   * Create a simple resolver without a reference catalog, any principal roles sub-scope and using
-   * P1 as the caller principal
-   *
-   * @return new resolver to test with
-   */
-  @Nonnull
-  private Resolver allocateResolver() {
-    return this.allocateResolver(null, null);
-  }
-
-  /**
-   * Create a simple resolver without any principal roles sub-scope and using P1 as the caller
-   * principal
-   *
-   * @param referenceCatalogName the reference e catalog name, can be null
-   * @return new resolver to test with
-   */
-  @Nonnull
-  private Resolver allocateResolver(@Nullable String referenceCatalogName) {
-    return this.allocateResolver(null, referenceCatalogName);
-  }
-
-  /**
-   * Create a simple resolver without any principal roles sub-scope and using P1 as the caller
-   * principal
-   *
-   * @param cache if not null, cache to use, else one will be created
-   * @return new resolver to test with
-   */
-  @Nonnull
-  private Resolver allocateResolver(@Nullable InMemoryEntityCache cache) {
-    return this.allocateResolver(cache, null);
-  }
-
-  /**
-   * Create a simple resolver without any principal roles sub-scope and using P1 as the caller
-   * principal
-   *
-   * @param cache if not null, cache to use, else one will be created
-   * @param referenceCatalogName the reference e catalog name, can be null
-   * @return new resolver to test with
-   */
-  @Nonnull
-  private Resolver allocateResolver(
-      @Nullable InMemoryEntityCache cache, @Nullable String referenceCatalogName) {
-    return this.allocateResolver(cache, null, referenceCatalogName);
-  }
-
-  /**
    * Create a simple resolver without any principal roles sub-scope and using P1 as the caller
    * principal
    *
@@ -516,72 +467,6 @@ public abstract class BaseResolverTest {
         },
         this.shouldUseCache ? this.cache : null,
         referenceCatalogName);
-  }
-
-  /**
-   * Resolve a principal and optionally a principal role
-   *
-   * @param cache if not null, cache to use
-   * @param principalName name of the principal name being created
-   * @param exists true if this principal already exists
-   * @param principalRoleName name of the principal role, should exist
-   */
-  private void resolvePrincipalAndPrincipalRole(
-      InMemoryEntityCache cache, String principalName, boolean exists, String principalRoleName) {
-    Resolver resolver = allocateResolver(cache);
-
-    // for a principal creation, we simply want to test if the principal we are creating exists
-    // or not
-    resolver.addOptionalEntityByName(PolarisEntityType.PRINCIPAL, principalName);
-
-    // add principal role if one passed-in
-    if (principalRoleName != null) {
-      resolver.addOptionalEntityByName(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
-    }
-
-    // done, run resolve
-    ResolverStatus status = resolver.resolveAll();
-
-    // we expect success
-    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
-
-    // the principal does not exist, check that this is the case
-    if (exists) {
-      // the principal exist, check that this is the case
-      this.ensureResolved(
-          resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName),
-          PolarisEntityType.PRINCIPAL,
-          principalName);
-    } else {
-      // not found
-      Assertions.assertThat(resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName))
-          .isNull();
-    }
-
-    // validate that we were able to resolve the principal and the two principal roles
-    this.ensureResolved(resolver.getResolvedCallerPrincipal(), PolarisEntityType.PRINCIPAL, "P1");
-
-    // validate that the two principal roles have been activated
-    List<ResolvedPolarisEntity> principalRolesResolved = resolver.getResolvedCallerPrincipalRoles();
-
-    // expect two principal roles
-    Assertions.assertThat(principalRolesResolved).hasSize(2);
-    principalRolesResolved.sort(Comparator.comparing(p -> p.getEntity().getName()));
-
-    // ensure they are PR1 and PR2
-    this.ensureResolved(principalRolesResolved.get(0), PolarisEntityType.PRINCIPAL_ROLE, "PR1");
-    this.ensureResolved(
-        principalRolesResolved.get(principalRolesResolved.size() - 1),
-        PolarisEntityType.PRINCIPAL_ROLE,
-        "PR2");
-
-    // if a principal role was passed-in, ensure it exists
-    if (principalRoleName != null) {
-      this.ensureResolved(
-          resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName),
-          PolarisEntityType.PRINCIPAL_ROLE,
-          principalRoleName);
-    }
   }
 
   /**

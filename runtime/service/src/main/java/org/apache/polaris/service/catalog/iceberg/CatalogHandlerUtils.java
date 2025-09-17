@@ -334,9 +334,9 @@ public class CatalogHandlerUtils {
             .withProperties(request.properties())
             .create();
 
-    if (table instanceof BaseTable) {
+    if (table instanceof BaseTable baseTable) {
       return LoadTableResponse.builder()
-          .withTableMetadata(((BaseTable) table).operations().current())
+          .withTableMetadata(baseTable.operations().current())
           .build();
     }
 
@@ -349,9 +349,9 @@ public class CatalogHandlerUtils {
 
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
     Table table = catalog.registerTable(identifier, request.metadataLocation());
-    if (table instanceof BaseTable) {
+    if (table instanceof BaseTable baseTable) {
       return LoadTableResponse.builder()
-          .withTableMetadata(((BaseTable) table).operations().current())
+          .withTableMetadata(baseTable.operations().current())
           .build();
     }
 
@@ -382,9 +382,9 @@ public class CatalogHandlerUtils {
   public LoadTableResponse loadTable(Catalog catalog, TableIdentifier ident) {
     Table table = catalog.loadTable(ident);
 
-    if (table instanceof BaseTable) {
+    if (table instanceof BaseTable baseTable) {
       return LoadTableResponse.builder()
-          .withTableMetadata(((BaseTable) table).operations().current())
+          .withTableMetadata(baseTable.operations().current())
           .build();
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
@@ -401,8 +401,7 @@ public class CatalogHandlerUtils {
       // this is a hacky way to get TableOperations for an uncommitted table
       Transaction transaction =
           catalog.buildTable(ident, EMPTY_SCHEMA).createOrReplaceTransaction();
-      if (transaction instanceof BaseTransaction) {
-        BaseTransaction baseTransaction = (BaseTransaction) transaction;
+      if (transaction instanceof BaseTransaction baseTransaction) {
         finalMetadata = create(baseTransaction.underlyingOps(), request);
       } else {
         throw new IllegalStateException(
@@ -411,8 +410,8 @@ public class CatalogHandlerUtils {
 
     } else {
       Table table = catalog.loadTable(ident);
-      if (table instanceof BaseTable) {
-        TableOperations ops = ((BaseTable) table).operations();
+      if (table instanceof BaseTable baseTable) {
+        TableOperations ops = baseTable.operations();
         finalMetadata = commit(ops, request);
       } else {
         throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
@@ -588,9 +587,9 @@ public class CatalogHandlerUtils {
     UpdateRequirement.AssertRefSnapshotID assertRefSnapshotID = null;
     int total = 0;
     for (UpdateRequirement requirement : request.requirements()) {
-      if (requirement instanceof UpdateRequirement.AssertRefSnapshotID) {
+      if (requirement instanceof UpdateRequirement.AssertRefSnapshotID assertRefSnapshotIDReq) {
         ++total;
-        assertRefSnapshotID = (UpdateRequirement.AssertRefSnapshotID) requirement;
+        assertRefSnapshotID = assertRefSnapshotIDReq;
       }
     }
 
@@ -666,9 +665,9 @@ public class CatalogHandlerUtils {
     MetadataUpdate.SetSnapshotRef setSnapshotRefUpdate = null;
     // find the SetRefName snapshot update
     for (MetadataUpdate update : request.updates()) {
-      if (update instanceof MetadataUpdate.SetSnapshotRef) {
+      if (update instanceof MetadataUpdate.SetSnapshotRef setSnapshotRefUpd) {
         total++;
-        setSnapshotRefUpdate = (MetadataUpdate.SetSnapshotRef) update;
+        setSnapshotRefUpdate = setSnapshotRefUpd;
       }
     }
 
@@ -681,9 +680,9 @@ public class CatalogHandlerUtils {
     MetadataUpdate.AddSnapshot addSnapshot = null;
     // find the SetRefName snapshot update
     for (MetadataUpdate update : request.updates()) {
-      if (update instanceof MetadataUpdate.AddSnapshot) {
+      if (update instanceof MetadataUpdate.AddSnapshot addSnapshotUpd) {
         total++;
-        addSnapshot = (MetadataUpdate.AddSnapshot) update;
+        addSnapshot = addSnapshotUpd;
       }
     }
 

@@ -51,7 +51,7 @@ class DefaultPrincipalMapper implements PrincipalMapper {
     return principalMapper
         .idClaimPath()
         .map(claimPath -> claimsLocator.locateClaim(claimPath, jwt))
-        .map(id -> id instanceof Number ? ((Number) id).longValue() : Long.parseLong(id.toString()))
+        .map(id -> id instanceof Number number ? number.longValue() : Long.parseLong(id.toString()))
         .map(OptionalLong::of)
         .orElse(OptionalLong.empty());
   }
