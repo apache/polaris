@@ -162,6 +162,12 @@ client-integration-test: client-setup-env ## Run client integration tests
 	@echo "Tearing down Docker Compose services..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
 
+.PHONY: client-license-check
+client-license-check: client-setup-env ## Run license compliance check
+	@echo "--- Starting license compliance check ---"
+	@$(ACTIVATE_AND_CD) && pip-licenses
+	@echo "--- License compliance check complete ---"
+
 .PHONY: client-build
 client-build: client-setup-env ## Build client distribution
 	@echo "--- Building client distribution ---"
