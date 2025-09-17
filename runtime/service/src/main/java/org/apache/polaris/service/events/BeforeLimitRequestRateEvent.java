@@ -18,18 +18,11 @@
  */
 package org.apache.polaris.service.events;
 
-import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.catalog.TableIdentifier;
-
 /**
- * Emitted when Polaris intends to perform a commit to a table. There is no guarantee on the order
- * of this event relative to the validation checks we've performed, which means the commit may still
- * fail Polaris-side validation checks.
+ * Emitted before the RateLimiterFilter rejects a request due to exceeding the rate limit.
  *
- * @param tableIdentifier The identifier.
- * @param metadataBefore The old metadata.
- * @param metadataAfter The new metadata.
+ * @param method The request's HTTP method
+ * @param absolutePath The request's absolute path
  */
-public record BeforeTableCommitedEvent(
-    TableIdentifier tableIdentifier, TableMetadata metadataBefore, TableMetadata metadataAfter)
+public record BeforeLimitRequestRateEvent(String method, String absolutePath)
     implements PolarisEvent {}
