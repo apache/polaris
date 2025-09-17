@@ -25,10 +25,10 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.PolarisEvent;
-import org.apache.polaris.service.events.CatalogsServiceEvents;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
+import org.apache.polaris.service.events.CatalogsServiceEvents;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 
 public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
