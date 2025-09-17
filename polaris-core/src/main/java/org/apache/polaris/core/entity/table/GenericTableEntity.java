@@ -19,6 +19,7 @@
 package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -41,6 +42,10 @@ public class GenericTableEntity extends TableLikeEntity {
 
   public GenericTableEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.GENERIC_TABLE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
   public static @Nullable GenericTableEntity of(@Nullable PolarisBaseEntity sourceEntity) {

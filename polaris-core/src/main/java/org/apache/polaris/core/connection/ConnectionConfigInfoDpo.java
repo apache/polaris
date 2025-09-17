@@ -123,7 +123,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   static {
     DEFAULT_MAPPER = new ObjectMapper();
-    DEFAULT_MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    DEFAULT_MAPPER.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
     DEFAULT_MAPPER.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
   }
 

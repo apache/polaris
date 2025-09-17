@@ -35,7 +35,6 @@ MERGE INTO version (version_key, version_value)
 -- H2 supports COMMENT, but some modes may ignore it
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
 
-DROP TABLE IF EXISTS entities;
 CREATE TABLE IF NOT EXISTS entities (
     realm_id TEXT NOT NULL,
     catalog_id BIGINT NOT NULL,
@@ -80,7 +79,6 @@ COMMENT ON COLUMN entities.properties IS 'entities properties json';
 COMMENT ON COLUMN entities.internal_properties IS 'entities internal properties json';
 COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant records change on the entity';
 
-DROP TABLE IF EXISTS grant_records;
 CREATE TABLE IF NOT EXISTS grant_records (
     realm_id TEXT NOT NULL,
     securable_catalog_id BIGINT NOT NULL,
@@ -98,7 +96,6 @@ COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
-DROP TABLE IF EXISTS principal_authentication_data;
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
     realm_id TEXT NOT NULL,
     principal_id BIGINT NOT NULL,
@@ -111,7 +108,6 @@ CREATE TABLE IF NOT EXISTS principal_authentication_data (
 
 COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';
 
-DROP TABLE IF EXISTS policy_mapping_record;
 CREATE TABLE IF NOT EXISTS policy_mapping_record (
     realm_id TEXT NOT NULL,
     target_catalog_id BIGINT NOT NULL,
@@ -129,12 +125,12 @@ CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
     catalog_id TEXT NOT NULL,
     event_id TEXT NOT NULL,
-    request_id TEXT NOT NULL,
+    request_id TEXT,
     event_type TEXT NOT NULL,
     timestamp_ms BIGINT NOT NULL,
     principal_name TEXT,
     resource_type TEXT NOT NULL,
     resource_identifier TEXT NOT NULL,
-    additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
+    additional_properties TEXT NOT NULL,
     PRIMARY KEY (event_id)
 );

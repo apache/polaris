@@ -87,6 +87,7 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation("software.amazon.awssdk:kms")
   implementation("software.amazon.awssdk:cloudwatchlogs")
   implementation("software.amazon.awssdk:apache-client") {
     exclude("commons-logging", "commons-logging")
@@ -123,7 +124,7 @@ dependencies {
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
 
-  testImplementation(platform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation("io.quarkus:quarkus-junit5-mockito")
   testImplementation("io.quarkus:quarkus-rest-client")
@@ -170,6 +171,7 @@ dependencies {
   testFixturesImplementation("software.amazon.awssdk:sts")
   testFixturesImplementation("software.amazon.awssdk:iam-policy-builder")
   testFixturesImplementation("software.amazon.awssdk:s3")
+  testFixturesImplementation("software.amazon.awssdk:kms")
 
   testFixturesImplementation(platform(libs.azuresdk.bom))
   testFixturesImplementation("com.azure:azure-core")

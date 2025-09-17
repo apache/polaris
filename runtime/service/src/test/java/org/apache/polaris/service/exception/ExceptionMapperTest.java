@@ -18,21 +18,25 @@
  */
 package org.apache.polaris.service.exception;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.assertArg;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
+import java.io.IOException;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.CommitConflictException;
-import org.assertj.core.api.Assertions;
 import org.jboss.logmanager.Level;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,27 +71,25 @@ public class ExceptionMapperTest {
 
     verify(JBOSS_LOGGER)
         .logRaw(
-            argThat(
+            assertArg(
                 record -> {
-                  if (record.getLevel() != level) {
-                    return false;
-                  }
+                  assertThat(record.getLevel()).isEqualTo(level);
 
                   String message = record.getMessage();
                   if (message == null) {
-                    return false;
+                    return;
                   }
 
                   Throwable error = record.getThrown();
                   if (error == null) {
-                    return false;
+                    return;
                   }
 
-                  return message.contains(CAUSE)
-                      || Optional.ofNullable(error.getCause())
-                          .map(Throwable::getMessage)
-                          .orElse("")
-                          .contains(CAUSE);
+                  assertThat(
+                          Optional.ofNullable(error.getCause())
+                              .map(Throwable::getMessage)
+                              .orElse(message))
+                      .contains(CAUSE);
                 }));
   }
 
@@ -95,7 +97,7 @@ public class ExceptionMapperTest {
   public void testNamespaceException() {
     PolarisExceptionMapper mapper = new PolarisExceptionMapper();
     Response response = mapper.toResponse(new CommitConflictException("test"));
-    Assertions.assertThat(response.getStatus()).isEqualTo(409);
+    assertThat(response.getStatus()).isEqualTo(409);
   }
 
   static Stream<Arguments> testFullExceptionIsLogged() {
@@ -105,21 +107,57 @@ public class ExceptionMapperTest {
         Arguments.of(
             new IcebergExceptionMapper() {
               @Override
-              Logger getLogger() {
+              Logger getLoggerForExceptionLogging() {
                 return new Slf4jLogger(JBOSS_LOGGER);
               }
             },
             new RuntimeException(MESSAGE, new RuntimeException(CAUSE)),
             Level.ERROR),
         Arguments.of(
+            new IcebergExceptionMapper() {
+              @Override
+              Logger getLoggerForExceptionLogging() {
+                return new Slf4jLogger(JBOSS_LOGGER);
+              }
+            },
+            new RuntimeIOException(new IOException(new RuntimeException(CAUSE)), "%s", MESSAGE),
+            Level.INFO),
+        Arguments.of(
+            new IcebergExceptionMapper() {
+              @Override
+              Logger getLoggerForExceptionLogging() {
+                return new Slf4jLogger(JBOSS_LOGGER);
+              }
+            },
+            new ForbiddenException(MESSAGE, new RuntimeException(CAUSE)),
+            Level.DEBUG),
+        Arguments.of(
             new IcebergJsonProcessingExceptionMapper() {
               @Override
-              Logger getLogger() {
+              Logger getLoggerForExceptionLogging() {
                 return new Slf4jLogger(JBOSS_LOGGER);
               }
             },
             new TestJsonProcessingException(MESSAGE, null, new RuntimeException(CAUSE)),
             Level.DEBUG),
+        Arguments.of(
+            new IcebergJsonProcessingExceptionMapper() {
+              @Override
+              Logger getLoggerForExceptionLogging() {
+                return new Slf4jLogger(JBOSS_LOGGER);
+              }
+            },
+            new TestJsonProcessingException(MESSAGE, null, new RuntimeException(CAUSE)),
+            Level.DEBUG),
+        Arguments.of(
+            new IcebergJsonProcessingExceptionMapper() {
+              @Override
+              Logger getLoggerForExceptionLogging() {
+                return new Slf4jLogger(JBOSS_LOGGER);
+              }
+            },
+            new JsonGenerationException(MESSAGE, new RuntimeException(CAUSE), null),
+            Level.ERROR),
         Arguments.of(
             new PolarisExceptionMapper() {
               @Override

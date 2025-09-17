@@ -31,12 +31,12 @@ from pathlib import Path
 import fnmatch
 import logging
 import argparse
+import shutil
 
 # Paths
 CLIENT_DIR = Path(__file__).parent
-PROJECT_ROOT = CLIENT_DIR.parent.parent
-HEADER_DIR = CLIENT_DIR.parent / "templates"
-SPEC_DIR = os.path.join(PROJECT_ROOT, "spec")
+HEADER_DIR = os.path.join(CLIENT_DIR, "templates")
+SPEC_DIR = os.path.join(CLIENT_DIR, "spec")
 POLARIS_MANAGEMENT_SPEC = os.path.join(SPEC_DIR, "polaris-management-service.yml")
 ICEBERG_CATALOG_SPEC = os.path.join(SPEC_DIR, "iceberg-rest-catalog-open-api.yaml")
 POLARIS_CATALOG_SPEC = os.path.join(SPEC_DIR, "polaris-catalog-service.yaml")
@@ -83,6 +83,9 @@ EXCLUDE_PATHS = [
     Path("generate_clients.py"),
     Path(".venv"),
     Path("dist/"),
+    Path("templates/"),
+    Path("spec/"),
+    Path("PKG-INFO"),
 ]
 EXCLUDE_EXTENSIONS = [
     "json",
@@ -120,7 +123,9 @@ def clean_old_tests() -> None:
             os.remove(init_py_to_delete)
             logger.debug(f"{init_py_to_delete.relative_to(CLIENT_DIR)}: removed")
         except OSError as e:
-            logger.error(f"Error removing {init_py_to_delete.relative_to(CLIENT_DIR)}: {e}")
+            logger.error(
+                f"Error removing {init_py_to_delete.relative_to(CLIENT_DIR)}: {e}"
+            )
     logger.info("Old test deletion complete.")
 
 
@@ -255,7 +260,9 @@ def prepend_licenses() -> None:
                 logger.debug(f"{relative_file_path}: skipped (path excluded)")
                 continue
 
-            header_file_path = HEADER_DIR / f"header-{file_extension}.txt"
+            header_file_path = Path(
+                os.path.join(HEADER_DIR, f"header-{file_extension}.txt")
+            )
 
             if header_file_path.is_file():
                 _prepend_header_to_file(file_path, header_file_path)
@@ -266,7 +273,32 @@ def prepend_licenses() -> None:
     logger.info("License fix complete.")
 
 
+def prepare_spec_dir():
+    logger.info("Preparing spec directory...")
+    spec_dir = Path(SPEC_DIR)
+    spec_source_dir = Path(os.path.join(CLIENT_DIR.parent.parent, "spec"))
+
+    if spec_source_dir.is_dir():
+        logger.info(f"Copying spec directory from {spec_source_dir} to {spec_dir}")
+        if spec_dir.exists():
+            shutil.rmtree(spec_dir)
+        shutil.copytree(spec_source_dir, spec_dir)
+        logger.info("Spec directory copied to ensure it is up-to-date.")
+    elif not spec_dir.is_dir():
+        # This will be hit during an sdist build if spec directory wasn't in the package,
+        # and we can't find the source to copy from.
+        logger.error(
+            "Fatal: spec directory is missing and the source to copy it from was not found."
+        )
+        sys.exit(1)
+    else:
+        # This is the case for sdist where the spec dir is already there and we don't have
+        # the source to copy from.
+        logger.info("Source spec directory not found, using existing spec directory.")
+
+
 def build() -> None:
+    prepare_spec_dir()
     clean_old_tests()
     generate_polaris_management_client()
     generate_polaris_catalog_client()

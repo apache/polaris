@@ -21,10 +21,8 @@ package org.apache.polaris.version;
 import static java.lang.String.format;
 import static org.apache.polaris.version.PolarisVersion.getBuildGitHead;
 import static org.apache.polaris.version.PolarisVersion.getBuildGitTag;
-import static org.apache.polaris.version.PolarisVersion.getBuildJavaVersion;
+import static org.apache.polaris.version.PolarisVersion.getBuildJavaSpecificationVersion;
 import static org.apache.polaris.version.PolarisVersion.getBuildReleasedVersion;
-import static org.apache.polaris.version.PolarisVersion.getBuildSystem;
-import static org.apache.polaris.version.PolarisVersion.getBuildTimestamp;
 import static org.apache.polaris.version.PolarisVersion.isReleaseBuild;
 import static org.apache.polaris.version.PolarisVersion.polarisVersionString;
 
@@ -50,7 +48,7 @@ public class TestPolarisVersion {
   @InjectSoftAssertions private SoftAssertions soft;
 
   /**
-   * Test runs using a "non release" build, so the MANIFEST.MF file has no release version
+   * Test runs using a "non-release" build, so the MANIFEST.MF file has no release version
    * information.
    */
   @Test
@@ -59,18 +57,14 @@ public class TestPolarisVersion {
     soft.assertThat(polarisVersionString()).isEqualTo(System.getProperty("polarisVersion"));
     if (isReleaseBuild()) {
       soft.assertThat(getBuildReleasedVersion()).isNotEmpty();
-      soft.assertThat(getBuildTimestamp()).isNotEmpty();
       soft.assertThat(getBuildGitHead()).isNotEmpty();
       soft.assertThat(getBuildGitTag()).isNotEmpty();
-      soft.assertThat(getBuildSystem()).isNotEmpty();
-      soft.assertThat(getBuildJavaVersion()).isNotEmpty();
+      soft.assertThat(getBuildJavaSpecificationVersion()).isNotEmpty();
     } else {
       soft.assertThat(getBuildReleasedVersion()).isEmpty();
-      soft.assertThat(getBuildTimestamp()).isEmpty();
       soft.assertThat(getBuildGitHead()).isEmpty();
       soft.assertThat(getBuildGitTag()).isEmpty();
-      soft.assertThat(getBuildSystem()).isEmpty();
-      soft.assertThat(getBuildJavaVersion()).isEmpty();
+      soft.assertThat(getBuildJavaSpecificationVersion()).isEmpty();
     }
   }
 
@@ -88,13 +82,9 @@ public class TestPolarisVersion {
     soft.assertThat(polarisVersionString()).isEqualTo(System.getProperty("polarisVersion"));
     soft.assertThat(isReleaseBuild()).isTrue();
     soft.assertThat(getBuildReleasedVersion()).contains("0.1.2-incubating-SNAPSHOT");
-    soft.assertThat(getBuildTimestamp()).contains("2024-12-26-10:31:19+01:00");
     soft.assertThat(getBuildGitHead()).contains("27cf81929cbb08e545c8fcb1ed27a53d7ef1af79");
     soft.assertThat(getBuildGitTag()).contains("foo-tag-bar");
-    soft.assertThat(getBuildSystem())
-        .contains(
-            "Linux myawesomehost 6.12.6 #81 SMP PREEMPT_DYNAMIC Fri Dec 20 09:22:38 CET 2024 x86_64 x86_64 x86_64 GNU/Linux");
-    soft.assertThat(getBuildJavaVersion()).contains("21.0.5");
+    soft.assertThat(getBuildJavaSpecificationVersion()).contains("21");
   }
 
   @Test

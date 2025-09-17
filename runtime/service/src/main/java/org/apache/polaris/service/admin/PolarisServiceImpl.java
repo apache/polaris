@@ -27,9 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -64,24 +62,16 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ViewGrant;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
-import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
@@ -98,57 +88,21 @@ public class PolarisServiceImpl
         PolarisPrincipalsApiService,
         PolarisPrincipalRolesApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
-  private final PolarisDiagnostics diagnostics;
-  private final ResolutionManifestFactory resolutionManifestFactory;
-  private final PolarisAuthorizer polarisAuthorizer;
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
-  private final UserSecretsManagerFactory userSecretsManagerFactory;
-  private final CallContext callContext;
   private final RealmConfig realmConfig;
   private final ReservedProperties reservedProperties;
   private final PolarisEventListener polarisEventListener;
+  private final PolarisAdminService adminService;
 
   @Inject
   public PolarisServiceImpl(
-      PolarisDiagnostics diagnostics,
-      ResolutionManifestFactory resolutionManifestFactory,
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      UserSecretsManagerFactory userSecretsManagerFactory,
-      PolarisAuthorizer polarisAuthorizer,
-      CallContext callContext,
+      RealmConfig realmConfig,
       ReservedProperties reservedProperties,
-      PolarisEventListener polarisEventListener) {
-    this.diagnostics = diagnostics;
-    this.resolutionManifestFactory = resolutionManifestFactory;
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
-    this.userSecretsManagerFactory = userSecretsManagerFactory;
-    this.polarisAuthorizer = polarisAuthorizer;
-    this.callContext = callContext;
-    this.realmConfig = callContext.getRealmConfig();
+      PolarisEventListener polarisEventListener,
+      PolarisAdminService adminService) {
+    this.realmConfig = realmConfig;
     this.reservedProperties = reservedProperties;
     this.polarisEventListener = polarisEventListener;
-  }
-
-  private PolarisAdminService newAdminService(
-      RealmContext realmContext, SecurityContext securityContext) {
-    PolarisPrincipal authenticatedPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
-    if (authenticatedPrincipal == null) {
-      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
-    }
-
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    UserSecretsManager userSecretsManager =
-        userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    return new PolarisAdminService(
-        diagnostics,
-        callContext,
-        resolutionManifestFactory,
-        metaStoreManager,
-        userSecretsManager,
-        securityContext,
-        polarisAuthorizer,
-        reservedProperties);
+    this.adminService = adminService;
   }
 
   private static Response toResponse(BaseResult result, Response.Status successStatus) {
@@ -171,7 +125,6 @@ public class PolarisServiceImpl
   @Override
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
     validateExternalCatalog(catalog);
@@ -257,7 +210,6 @@ public class PolarisServiceImpl
   @Override
   public Response deleteCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deleteCatalog(catalogName);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -266,7 +218,6 @@ public class PolarisServiceImpl
   @Override
   public Response getCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(adminService.getCatalog(catalogName).asCatalog()).build();
   }
 
@@ -277,7 +228,6 @@ public class PolarisServiceImpl
       UpdateCatalogRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     if (updateRequest.getStorageConfigInfo() != null) {
       validateStorageConfig(updateRequest.getStorageConfigInfo());
     }
@@ -287,7 +237,6 @@ public class PolarisServiceImpl
   /** From PolarisCatalogsApiService */
   @Override
   public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Catalog> catalogList = adminService.listCatalogs();
     Catalogs catalogs = new Catalogs(catalogList);
     LOGGER.debug("listCatalogs returning: {}", catalogs);
@@ -298,7 +247,6 @@ public class PolarisServiceImpl
   @Override
   public Response createPrincipal(
       CreatePrincipalRequest request, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalEntity principal =
         new PrincipalEntity.Builder()
             .setName(request.getPrincipal().getName())
@@ -332,7 +280,6 @@ public class PolarisServiceImpl
     if (safeResetPrincipalRequest.getClientSecret() != null) {
       validateClientSecret(safeResetPrincipalRequest.getClientSecret());
     }
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(adminService.resetCredentials(principalName, safeResetPrincipalRequest))
         .build();
   }
@@ -341,7 +288,6 @@ public class PolarisServiceImpl
   @Override
   public Response deletePrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deletePrincipal(principalName);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -350,7 +296,6 @@ public class PolarisServiceImpl
   @Override
   public Response getPrincipal(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(adminService.getPrincipal(principalName).asPrincipal()).build();
   }
 
@@ -361,7 +306,6 @@ public class PolarisServiceImpl
       UpdatePrincipalRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(adminService.updatePrincipal(principalName, updateRequest).asPrincipal())
         .build();
   }
@@ -370,14 +314,12 @@ public class PolarisServiceImpl
   @Override
   public Response rotateCredentials(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(adminService.rotateCredentials(principalName)).build();
   }
 
   /** From PolarisPrincipalsApiService */
   @Override
   public Response listPrincipals(RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Principal> principalList = adminService.listPrincipals();
     Principals principals = new Principals(principalList);
     LOGGER.debug("listPrincipals returning: {}", principals);
@@ -390,7 +332,6 @@ public class PolarisServiceImpl
       CreatePrincipalRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrincipalRoleEntity entity =
         new PrincipalRoleEntity.Builder()
             .setName(request.getPrincipalRole().getName())
@@ -408,7 +349,6 @@ public class PolarisServiceImpl
   @Override
   public Response deletePrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deletePrincipalRole(principalRoleName);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -417,7 +357,6 @@ public class PolarisServiceImpl
   @Override
   public Response getPrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(adminService.getPrincipalRole(principalRoleName).asPrincipalRole()).build();
   }
 
@@ -428,7 +367,6 @@ public class PolarisServiceImpl
       UpdatePrincipalRoleRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(
             adminService.updatePrincipalRole(principalRoleName, updateRequest).asPrincipalRole())
         .build();
@@ -437,7 +375,6 @@ public class PolarisServiceImpl
   /** From PolarisPrincipalRolesApiService */
   @Override
   public Response listPrincipalRoles(RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<PrincipalRole> principalRoleList = adminService.listPrincipalRoles();
     PrincipalRoles principalRoles = new PrincipalRoles(principalRoleList);
     LOGGER.debug("listPrincipalRoles returning: {}", principalRoles);
@@ -451,7 +388,6 @@ public class PolarisServiceImpl
       CreateCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     CatalogRoleEntity entity =
         new CatalogRoleEntity.Builder()
             .setName(request.getCatalogRole().getName())
@@ -472,7 +408,6 @@ public class PolarisServiceImpl
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     adminService.deleteCatalogRole(catalogName, catalogRoleName);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
@@ -484,7 +419,6 @@ public class PolarisServiceImpl
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(adminService.getCatalogRole(catalogName, catalogRoleName).asCatalogRole())
         .build();
   }
@@ -497,7 +431,6 @@ public class PolarisServiceImpl
       UpdateCatalogRoleRequest updateRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     return Response.ok(
             adminService
                 .updateCatalogRole(catalogName, catalogRoleName, updateRequest)
@@ -509,7 +442,6 @@ public class PolarisServiceImpl
   @Override
   public Response listCatalogRoles(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<CatalogRole> catalogRoleList = adminService.listCatalogRoles(catalogName);
     CatalogRoles catalogRoles = new CatalogRoles(catalogRoleList);
     LOGGER.debug("listCatalogRoles returning: {}", catalogRoles);
@@ -527,7 +459,6 @@ public class PolarisServiceImpl
         "Assigning principalRole {} to principal {}",
         request.getPrincipalRole().getName(),
         principalName);
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result =
         adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
     return toResponse(result, Response.Status.CREATED);
@@ -541,7 +472,6 @@ public class PolarisServiceImpl
       RealmContext realmContext,
       SecurityContext securityContext) {
     LOGGER.info("Revoking principalRole {} from principal {}", principalRoleName, principalName);
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result = adminService.revokePrincipalRole(principalName, principalRoleName);
     return toResponse(result, Response.Status.NO_CONTENT);
   }
@@ -550,7 +480,6 @@ public class PolarisServiceImpl
   @Override
   public Response listPrincipalRolesAssigned(
       String principalName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<PrincipalRole> principalRoleList =
         adminService.listPrincipalRolesAssigned(principalName).stream()
             .map(PrincipalRoleEntity::new)
@@ -574,7 +503,6 @@ public class PolarisServiceImpl
         request.getCatalogRole().getName(),
         catalogName,
         principalRoleName);
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result =
         adminService.assignCatalogRoleToPrincipalRole(
             principalRoleName, catalogName, request.getCatalogRole().getName());
@@ -594,7 +522,6 @@ public class PolarisServiceImpl
         catalogRoleName,
         catalogName,
         principalRoleName);
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result =
         adminService.revokeCatalogRoleFromPrincipalRole(
             principalRoleName, catalogName, catalogRoleName);
@@ -605,7 +532,6 @@ public class PolarisServiceImpl
   @Override
   public Response listAssigneePrincipalsForPrincipalRole(
       String principalRoleName, RealmContext realmContext, SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<Principal> principalList =
         adminService.listAssigneePrincipalsForPrincipalRole(principalRoleName).stream()
             .map(PrincipalEntity::new)
@@ -623,7 +549,6 @@ public class PolarisServiceImpl
       String catalogName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<CatalogRole> catalogRoleList =
         adminService.listCatalogRolesForPrincipalRole(principalRoleName, catalogName).stream()
             .map(CatalogRoleEntity::new)
@@ -647,7 +572,6 @@ public class PolarisServiceImpl
         grantRequest,
         catalogRoleName,
         catalogName);
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result;
     switch (grantRequest.getGrant()) {
       // The per-securable-type Privilege enums must be exact String match for a subset of all
@@ -742,7 +666,6 @@ public class PolarisServiceImpl
       return Response.status(501).build(); // not implemented
     }
 
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     PrivilegeResult result;
     switch (grantRequest.getGrant()) {
       // The per-securable-type Privilege enums must be exact String match for a subset of all
@@ -826,7 +749,6 @@ public class PolarisServiceImpl
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<PrincipalRole> principalRoleList =
         adminService.listAssigneePrincipalRolesForCatalogRole(catalogName, catalogRoleName).stream()
             .map(PrincipalRoleEntity::new)
@@ -844,7 +766,6 @@ public class PolarisServiceImpl
       String catalogRoleName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     List<GrantResource> grantList =
         adminService.listGrantsForCatalogRole(catalogName, catalogRoleName);
     GrantResources grantResources = new GrantResources(grantList);

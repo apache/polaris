@@ -103,6 +103,7 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -1053,6 +1054,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           IcebergTableLikeEntity.of(
               new PolarisEntity.Builder()
                   .setType(PolarisEntityType.TABLE_LIKE)
+                  .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
                   .setParentId(resolvedNamespace.getLast().getId())
                   .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
                   .build());
@@ -1255,8 +1257,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                     tbl -> {
                       PolarisResolvedPathWrapper resolveTablePath =
                           resolutionManifest.getResolvedPath(tbl);
-                      return IcebergTableLikeEntity.of(resolveTablePath.getRawLeafEntity())
-                          .getBaseLocation();
+                      PolarisEntity tableEntity = resolveTablePath.getRawLeafEntity();
+                      if (tableEntity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
+                        return GenericTableEntity.of(tableEntity).getBaseLocation();
+                      }
+                      return IcebergTableLikeEntity.of(tableEntity).getBaseLocation();
                     }),
             siblingNamespaces.stream()
                 .filter(ns -> !ns.level(ns.length() - 1).equals(name))
@@ -1561,9 +1566,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (null == entity) {
         existingLocation = null;
         entity =
-            new IcebergTableLikeEntity.Builder(tableIdentifier, newLocation)
+            new IcebergTableLikeEntity.Builder(
+                    PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, newLocation)
                 .setCatalogId(getCatalogId())
-                .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
                 .setBaseLocation(metadata.location())
                 .setId(
                     getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
@@ -1900,9 +1905,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (null == entity) {
         existingLocation = null;
         entity =
-            new IcebergTableLikeEntity.Builder(identifier, newLocation)
+            new IcebergTableLikeEntity.Builder(
+                    PolarisEntitySubType.ICEBERG_VIEW, identifier, newLocation)
                 .setCatalogId(getCatalogId())
-                .setSubType(PolarisEntitySubType.ICEBERG_VIEW)
                 .setId(
                     getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
                 .build();
@@ -2500,9 +2505,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (null == entity) {
         existingLocation = null;
         entity =
-            new IcebergTableLikeEntity.Builder(tableIdentifier, newLocation)
+            new IcebergTableLikeEntity.Builder(
+                    PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, newLocation)
                 .setCatalogId(getCatalogId())
-                .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
                 .setId(
                     getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
                 .setLastNotificationTimestamp(request.getPayload().getTimestamp())
