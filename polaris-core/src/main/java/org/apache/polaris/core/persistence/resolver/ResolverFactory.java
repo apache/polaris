@@ -22,11 +22,15 @@ package org.apache.polaris.core.persistence.resolver;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 
 public interface ResolverFactory {
   Resolver createResolver(
-      @Nonnull CallContext callContext,
+      @Nonnull RealmContext realmContext,
+      @Nonnull RealmConfig realmConfig,
+      @Nonnull PolarisMetaStoreManager metaStoreManager,
       @Nonnull SecurityContext securityContext,
       @Nullable String referenceCatalogName);
 }

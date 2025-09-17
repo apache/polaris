@@ -27,7 +27,6 @@ import java.util.Set;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -49,7 +48,6 @@ public class DefaultAuthenticator implements Authenticator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAuthenticator.class);
 
-  @Inject CallContext callContext;
   @Inject PolarisMetaStoreManager metaStoreManager;
 
   @Override
@@ -63,16 +61,10 @@ public class DefaultAuthenticator implements Authenticator {
         principal =
             PolarisEntity.of(
                 metaStoreManager.loadEntity(
-                    callContext.getPolarisCallContext(),
-                    0L,
-                    credentials.getPrincipalId(),
-                    PolarisEntityType.PRINCIPAL));
+                    0L, credentials.getPrincipalId(), PolarisEntityType.PRINCIPAL));
       } else if (credentials.getPrincipalName() != null) {
         principal =
-            metaStoreManager
-                .findPrincipalByName(
-                    callContext.getPolarisCallContext(), credentials.getPrincipalName())
-                .orElse(null);
+            metaStoreManager.findPrincipalByName(credentials.getPrincipalName()).orElse(null);
       }
     } catch (Exception e) {
       LOGGER

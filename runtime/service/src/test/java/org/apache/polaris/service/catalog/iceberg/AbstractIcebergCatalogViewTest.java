@@ -35,7 +35,6 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
@@ -46,6 +45,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -122,7 +122,6 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
-  private PolarisCallContext polarisContext;
   private RealmConfig realmConfig;
 
   private TestPolarisEventListener testPolarisEventListener;
@@ -156,17 +155,11 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
-    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+    realmConfig = new RealmConfigImpl(configurationStore, realmContext);
+    metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            configurationStore);
-    realmConfig = polarisContext.getRealmConfig();
 
-    PrincipalEntity rootPrincipal =
-        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
+    PrincipalEntity rootPrincipal = metaStoreManager.findRootPrincipal().orElseThrow();
     PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
@@ -179,7 +172,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     PolarisAdminService adminService =
         new PolarisAdminService(
             diagServices,
-            polarisContext,
+            realmContext,
+            realmConfig,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
@@ -206,7 +200,12 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
+            realmContext,
+            realmConfig,
+            resolutionManifestFactory,
+            metaStoreManager,
+            securityContext,
+            CATALOG_NAME);
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
@@ -217,7 +216,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             storageCredentialCache,
             resolverFactory,
             metaStoreManager,
-            polarisContext,
+            realmContext,
+            realmConfig,
             passthroughView,
             securityContext,
             Mockito.mock(),
@@ -234,7 +234,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @AfterEach
   public void after() throws IOException {
     catalog().close();
-    metaStoreManager.purge(polarisContext);
+    metaStoreManager.purge();
   }
 
   @Override
