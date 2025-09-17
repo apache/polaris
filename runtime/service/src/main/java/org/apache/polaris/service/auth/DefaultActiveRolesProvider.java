@@ -35,7 +35,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
@@ -55,7 +54,7 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
 
   @Inject PolarisDiagnostics diagnostics;
   @Inject CallContext callContext;
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject PolarisMetaStoreManager metaStoreManager;
 
   @Override
   public Set<String> getActiveRoles(PolarisPrincipal principal) {
@@ -68,9 +67,7 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
     }
     List<PrincipalRoleEntity> activeRoles =
         loadActivePrincipalRoles(
-            principal.getRoles(),
-            persistedPolarisPrincipal.getEntity(),
-            metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext()));
+            principal.getRoles(), persistedPolarisPrincipal.getEntity(), metaStoreManager);
     return activeRoles.stream().map(PrincipalRoleEntity::getName).collect(Collectors.toSet());
   }
 

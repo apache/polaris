@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout Polaris project
@@ -59,11 +59,17 @@ jobs:
         run: |
           make client-lint
 
+      - name: License Compliance Check
+        run: |
+          make client-license-check
+
       - name: Generated Client Tests
         run: |
           make client-unit-test
 
       - name: Image build
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
           ./gradlew \
             :polaris-server:assemble \
@@ -74,6 +80,6 @@ jobs:
         run: |
           make client-integration-test
 
-      - name: Run Polaris Client help maual
+      - name: Run Polaris Client help manual
         run: |
           ./polaris --help

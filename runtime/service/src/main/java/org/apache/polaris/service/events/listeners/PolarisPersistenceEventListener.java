@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.events.listeners;
 
+import jakarta.annotation.Nullable;
 import java.util.Map;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.polaris.core.entity.PolarisEvent;
@@ -111,10 +112,11 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
     processEvent(polarisEvent);
   }
 
-  protected record ContextSpecificInformation(long timestamp, String principalName) {}
+  protected record ContextSpecificInformation(long timestamp, @Nullable String principalName) {}
 
   abstract ContextSpecificInformation getContextSpecificInformation();
 
+  @Nullable
   abstract String getRequestId();
 
   abstract void processEvent(PolarisEvent event);

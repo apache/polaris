@@ -136,6 +136,10 @@ public class PolarisManagementServiceIntegrationTest {
     client.cleanUp(authToken);
   }
 
+  private static String newRandomString(int length) {
+    return RandomStringUtils.insecure().next(length, true, true);
+  }
+
   @Test
   public void testCatalogSerializing() throws IOException {
     CatalogProperties props = new CatalogProperties("s3://my-old-bucket/path/to/data");
@@ -215,7 +219,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
 
-    String goodName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH, true, true);
+    String goodName = newRandomString(MAX_IDENTIFIER_LENGTH);
 
     Catalog catalog =
         PolarisCatalog.builder()
@@ -228,7 +232,7 @@ public class PolarisManagementServiceIntegrationTest {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
 
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidCatalogNames =
         Arrays.asList(
             longInvalidName,
@@ -751,7 +755,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testGetCatalogInvalidName() {
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidCatalogNames =
         Arrays.asList(
             longInvalidName,
@@ -784,7 +788,7 @@ public class PolarisManagementServiceIntegrationTest {
             .build();
     managementApi.createCatalog(catalog);
 
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidCatalogRoleNames =
         Arrays.asList(
             longInvalidName,
@@ -1038,7 +1042,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testCreatePrincipalWithInvalidName() {
-    String goodName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH, true, true);
+    String goodName = newRandomString(MAX_IDENTIFIER_LENGTH);
     Principal principal =
         Principal.builder()
             .setName(goodName)
@@ -1046,7 +1050,7 @@ public class PolarisManagementServiceIntegrationTest {
             .build();
     managementApi.createPrincipal(new CreatePrincipalRequest(principal, null));
 
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidPrincipalNames =
         Arrays.asList(
             longInvalidName,
@@ -1078,7 +1082,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testGetPrincipalWithInvalidName() {
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidPrincipalNames =
         Arrays.asList(
             longInvalidName,
@@ -1193,12 +1197,12 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testCreatePrincipalRoleInvalidName() {
-    String goodName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH, true, true);
+    String goodName = newRandomString(MAX_IDENTIFIER_LENGTH);
     PrincipalRole principalRole =
         new PrincipalRole(goodName, false, Map.of("custom-tag", "good_principal_role"), 0L, 0L, 1);
     managementApi.createPrincipalRole(principalRole);
 
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidPrincipalRoleNames =
         Arrays.asList(
             longInvalidName,
@@ -1233,7 +1237,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @Test
   public void testGetPrincipalRoleInvalidName() {
-    String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
+    String longInvalidName = newRandomString(MAX_IDENTIFIER_LENGTH + 1);
     List<String> invalidPrincipalRoleNames =
         Arrays.asList(
             longInvalidName,

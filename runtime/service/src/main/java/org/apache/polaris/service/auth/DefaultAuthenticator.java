@@ -31,7 +31,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,14 +49,12 @@ public class DefaultAuthenticator implements Authenticator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAuthenticator.class);
 
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject CallContext callContext;
+  @Inject PolarisMetaStoreManager metaStoreManager;
 
   @Override
   public PolarisPrincipal authenticate(PolarisCredential credentials) {
     LOGGER.debug("Resolving principal for credentials={}", credentials);
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
     PolarisEntity principal = null;
     try {
       // If the principal id is present, prefer to use it to load the principal entity,

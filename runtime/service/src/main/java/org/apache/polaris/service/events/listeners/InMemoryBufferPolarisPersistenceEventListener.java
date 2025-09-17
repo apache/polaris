@@ -20,6 +20,7 @@ package org.apache.polaris.service.events.listeners;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -124,6 +125,7 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
     }
   }
 
+  @Nullable
   @Override
   String getRequestId() {
     if (containerRequestContext != null && containerRequestContext.hasProperty(REQUEST_ID_KEY)) {

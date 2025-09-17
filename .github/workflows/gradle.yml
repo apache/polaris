@@ -46,16 +46,13 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4
-        with:
-          validate-wrappers: false
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run unit tests
         env:
           # publishToMavenLocal causes a GH API requests, use the token for those requests
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-runtime-service:test \
@@ -87,13 +84,11 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4
-        with:
-          validate-wrappers: false
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run Quarkus tests
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
           ./gradlew \
             :polaris-runtime-service:test \
@@ -125,14 +120,12 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4
-        with:
-          validate-wrappers: false
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run integration tests
         run: ./gradlew intTest --continue
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -163,14 +156,13 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4
-        with:
-          validate-wrappers: false
       - name: Collect partial Gradle build caches
         uses: ./.github/actions/ci-incr-build-cache-prepare
         with:
           cache-read-only: false
       - name: Trigger Gradle home cleanup
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: ./gradlew --no-daemon :showVersion
+
       # Note: the "Post Gradle invocation" archives the updated build cache.
