@@ -113,7 +113,8 @@ public class PolarisPrivilegeTest {
         Arguments.of(82, PolarisPrivilege.NAMESPACE_DETACH_POLICY),
         Arguments.of(83, PolarisPrivilege.TABLE_DETACH_POLICY),
         Arguments.of(84, PolarisPrivilege.POLICY_MANAGE_GRANTS_ON_SECURABLE),
-        Arguments.of(85, null));
+        Arguments.of(85, PolarisPrivilege.TABLE_REMOTE_SIGN),
+        Arguments.of(86, null));
   }
 
   @ParameterizedTest

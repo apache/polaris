@@ -17,14 +17,40 @@
   under the License.
 -->
 
-# Polaris API Specifications
+# Apache Polaris API Specifications
 
-Polaris provides two sets of OpenAPI specifications:
-- `polaris-management-service.yml` - Defines the management APIs for using Polaris to create and manage Iceberg catalogs and their principals
-- `polaris-catalog-service.yaml` - Defines the specification for the Polaris Catalog API, which encompasses both the Iceberg REST Catalog API
-   and Polaris-native API.
-  - `polaris-catalog-apis` - Contains the specification for Polaris-specific Catalog APIs
-  - `iceberg-rest-catalog-open-api.yaml` - Contains the specification for Iceberg Rest Catalog API
+Apache Polaris provides the following OpenAPI specifications:
+
+- [polaris-management-service.yml](polaris-management-service.yml) - Defines the management APIs for using Apache
+  Polaris to create and manage Apache Iceberg catalogs and their principals
+
+- [polaris-catalog-service.yaml](polaris-catalog-service.yaml) - Defines the specification for the Apache Polaris 
+  Catalog API, which encompasses both the Apache Iceberg REST Catalog API and Apache Polaris-native APIs:
+
+  - [iceberg-rest-catalog-open-api.yaml](iceberg-rest-catalog-open-api.yaml) - Contains the specification for 
+    Apache Iceberg Rest Catalog API.
+
+  - [polaris-catalog-apis](polaris-catalog-apis) - This folder contains the specifications for Apache 
+    Polaris-specific Catalog APIs:
+
+    - [generic-tables-api.yaml](polaris-catalog-apis/generic-tables-api.yaml) - Contains the specification for 
+      the Generic Tables API
+
+    - [notifications-api.yaml](polaris-catalog-apis/notifications-api.yaml) - Contains the specification for 
+      the Notifications API
+
+    - [oauth-tokens-api.yaml](polaris-catalog-apis/oauth-tokens-api.yaml) - Contains the specification for the 
+      internal OAuth Token endpoint, extracted from the Apache Iceberg REST Catalog API.
+
+    - [policy-apis.yaml](polaris-catalog-apis/policy-apis.yaml) - Contains the specification for the Policy APIs.
+
+- [s3-sign](s3-sign) - This folder contains the specifications for S3 remote signing:
+
+  - [iceberg-s3-signer-open-api.yaml](s3-sign/iceberg-s3-signer-open-api.yaml) - Contains the specification of the 
+    original Apache Iceberg S3 Signer API.
+
+  - [polaris-s3-sign-service.yaml](s3-sign/polaris-s3-sign-service.yaml) - Contains the Apache Polaris-specific 
+    S3 Signer API.
 
 ## Generated Specification Files
 The specification files in the generated folder are automatically created using OpenAPI bundling tools such as 

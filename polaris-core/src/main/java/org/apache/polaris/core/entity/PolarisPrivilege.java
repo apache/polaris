@@ -155,6 +155,7 @@ public enum PolarisPrivilege {
       PolarisEntityType.POLICY,
       PolarisEntitySubType.NULL_SUBTYPE,
       PolarisEntityType.CATALOG_ROLE),
+  TABLE_REMOTE_SIGN(85, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
   ;
 
   /**

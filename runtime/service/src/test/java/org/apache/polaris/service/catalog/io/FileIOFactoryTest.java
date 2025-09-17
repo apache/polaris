@@ -20,10 +20,12 @@ package org.apache.polaris.service.catalog.io;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +47,10 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
@@ -102,9 +107,10 @@ public class FileIOFactoryTest {
 
     // Spy FileIOFactory and check if the credentials are passed to the FileIO
     TestServices.FileIOFactorySupplier fileIOFactorySupplier =
-        (storageCredentialCache, metaStoreManagerFactory) ->
+        (storageConfiguration, storageCredentialCache, metaStoreManagerFactory, clock) ->
             Mockito.spy(
-                new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory) {
+                new DefaultFileIOFactory(
+                    storageConfiguration, storageCredentialCache, metaStoreManagerFactory, clock) {
                   @Override
                   FileIO loadFileIOInternal(
                       @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
@@ -222,6 +228,12 @@ public class FileIOFactoryTest {
             services.resolutionManifestFactory(),
             services.securityContext(),
             CATALOG_NAME);
+
+    PolarisStorageIntegrationProvider storageIntegrationProvider =
+        mock(PolarisStorageIntegrationProvider.class);
+    CatalogPrefixParser prefixParser = new DefaultCatalogPrefixParser();
+    UriInfo uriInfo = mock(UriInfo.class);
+
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
             services.polarisDiagnostics(),
@@ -233,7 +245,10 @@ public class FileIOFactoryTest {
             services.securityContext(),
             services.taskExecutor(),
             services.fileIOFactory(),
-            services.polarisEventListener());
+            services.polarisEventListener(),
+            storageIntegrationProvider,
+            prefixParser,
+            uriInfo);
     polarisCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

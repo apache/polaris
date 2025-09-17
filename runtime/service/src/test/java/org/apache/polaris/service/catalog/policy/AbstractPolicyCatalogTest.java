@@ -34,6 +34,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -76,6 +77,7 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
@@ -83,6 +85,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.Policy;
@@ -125,11 +128,14 @@ public abstract class AbstractPolicyCatalogTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
+  @Inject StorageConfiguration storageConfiguration;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject CatalogPrefixParser prefixParser;
+  @Inject Clock clock;
 
   private PolicyCatalog policyCatalog;
   private IcebergCatalog icebergCatalog;
@@ -227,7 +233,9 @@ public abstract class AbstractPolicyCatalogTest {
         new PolarisPassthroughResolutionView(
             polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+    this.fileIOFactory =
+        new DefaultFileIOFactory(
+            storageConfiguration, storageCredentialCache, metaStoreManagerFactory, clock);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -261,7 +269,10 @@ public abstract class AbstractPolicyCatalogTest {
             securityContext,
             taskExecutor,
             fileIOFactory,
-            new NoOpPolarisEventListener());
+            new NoOpPolarisEventListener(),
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock());
     this.icebergCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

@@ -26,6 +26,9 @@ import org.apache.polaris.immutables.PolarisImmutable;
 
 @PolarisImmutable
 public interface AccessConfig {
+
+  AccessConfig EMPTY = AccessConfig.builder().build();
+
   Map<String, String> credentials();
 
   Map<String, String> extraProperties();
