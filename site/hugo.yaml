@@ -181,7 +181,7 @@ menu:
     - name: "Code of Conduct"
       parent: "asf"
       url: "https://www.apache.org/foundation/policies/conduct"
-      weigth: 43
+      weight: 43
       params:
         rel: "external"
         external: true
