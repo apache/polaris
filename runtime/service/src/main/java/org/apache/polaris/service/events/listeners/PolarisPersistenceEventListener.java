@@ -90,22 +90,6 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
     processEvent(polarisEvent);
   }
 
-  @Override
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event) {
-    ContextSpecificInformation contextSpecificInformation = getContextSpecificInformation();
-    PolarisEvent polarisEvent =
-        new PolarisEvent(
-            event.catalogName(),
-            org.apache.polaris.service.events.PolarisEvent.createEventId(),
-            getRequestId(),
-            event.getClass().getSimpleName(),
-            contextSpecificInformation.timestamp(),
-            contextSpecificInformation.principalName(),
-            PolarisEvent.ResourceType.CATALOG,
-            event.catalogName());
-    processEvent(polarisEvent);
-  }
-
   protected record ContextSpecificInformation(long timestamp, @Nullable String principalName) {}
 
   abstract ContextSpecificInformation getContextSpecificInformation();
