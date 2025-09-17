@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.events.listeners.inmemory;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -27,7 +28,10 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
+import io.smallrye.mutiny.subscription.BackPressureFailure;
 import java.util.Map;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -68,7 +72,7 @@ class InMemoryEventListenerBufferSizeTest extends InMemoryEventListenerTestBase 
   }
 
   @Test
-  void testFailureRecovery() {
+  void testFlushFailureRecovery() {
     var manager = Mockito.mock(PolarisMetaStoreManager.class);
     doReturn(manager).when(metaStoreManagerFactory).getOrCreateMetaStoreManager(any());
     RuntimeException error = new RuntimeException("error");
@@ -79,6 +83,18 @@ class InMemoryEventListenerBufferSizeTest extends InMemoryEventListenerTestBase 
         .when(manager)
         .writeEvents(any(), any());
     sendAsync("test1", 20);
+    assertRows("test1", 10);
+  }
+
+  @Test
+  void testProcessorFailureRecovery() {
+    producer.processEvent("test1", event());
+    UnicastProcessor<PolarisEvent> test1 = producer.processors.get("test1");
+    assertThat(test1).isNotNull();
+    // emulate backpressure error; will drop the event and invalidate the processor
+    test1.onError(new BackPressureFailure("error"));
+    // will create a new processor and recover
+    sendAsync("test1", 10);
     assertRows("test1", 10);
   }
 }

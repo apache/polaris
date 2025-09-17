@@ -24,6 +24,7 @@ import static org.apache.polaris.service.logging.LoggingMDCFilter.REQUEST_ID_KEY
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
@@ -64,7 +65,8 @@ public class InMemoryEventListener extends PolarisPersistenceEventListener {
   @Context SecurityContext securityContext;
   @Context ContainerRequestContext requestContext;
 
-  private final LoadingCache<String, UnicastProcessor<PolarisEvent>> processors =
+  @VisibleForTesting
+  final LoadingCache<String, UnicastProcessor<PolarisEvent>> processors =
       Caffeine.newBuilder()
           .expireAfterAccess(Duration.ofHours(1))
           .evictionListener(
@@ -110,12 +112,12 @@ public class InMemoryEventListener extends PolarisPersistenceEventListener {
         .intoLists()
         .of(configuration.maxBufferSize(), configuration.bufferTime())
         .subscribe()
-        .with(events -> flush(realmId, events));
+        .with(events -> flush(realmId, events), error -> onProcessorError(realmId, error));
     return processor;
   }
 
   @Retry(maxRetries = 5, delay = 1000, jitter = 100)
-  @Fallback(fallbackMethod = "flushFailed")
+  @Fallback(fallbackMethod = "onFlushError")
   protected void flush(String realmId, List<PolarisEvent> events) {
     RealmContext realmContext = () -> realmId;
     var metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -125,7 +127,15 @@ public class InMemoryEventListener extends PolarisPersistenceEventListener {
   }
 
   @SuppressWarnings("unused")
-  protected void flushFailed(String realmId, List<PolarisEvent> events, Throwable error) {
+  protected void onFlushError(String realmId, List<PolarisEvent> events, Throwable error) {
     LOGGER.error("Failed to persist {} events for realm '{}'", events.size(), realmId, error);
+  }
+
+  protected void onProcessorError(String realmId, Throwable error) {
+    LOGGER.error(
+        "Unexpected error while processing events for realm '{}'; some events may have been dropped",
+        realmId,
+        error);
+    processors.invalidate(realmId);
   }
 }
