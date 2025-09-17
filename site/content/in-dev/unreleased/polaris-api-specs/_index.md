@@ -17,10 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: 'Catalog API Spec'
-weight: 900
-params:
-  show_page_toc: false
+title: 'Polaris API Reference'
+type: docs
+weight: 1100
 ---
 
-{{< redoc-polaris "generated/bundled-polaris-catalog-service.yaml" >}}
+The Apache Polaris API offers a comprehensive set of endpoints that enable you to manage principals, principal-roles, catalogs, and catalog-roles programmatically.
+
+It follows REST standards, using clear, resource-based URLs, standard HTTP methods, response codes, and secure authentication. With the Polaris API, you can create, manage, and query Iceberg catalogs efficiently.
