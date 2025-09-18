@@ -23,17 +23,10 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.polaris.service.events.AfterTableCommitedEvent;
-import org.apache.polaris.service.events.AfterTableRefreshedEvent;
-import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
-import org.apache.polaris.service.events.AfterViewCommitedEvent;
-import org.apache.polaris.service.events.AfterViewRefreshedEvent;
-import org.apache.polaris.service.events.BeforeRequestRateLimitedEvent;
-import org.apache.polaris.service.events.BeforeTableCommitedEvent;
-import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
-import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
-import org.apache.polaris.service.events.BeforeViewCommitedEvent;
-import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
+import org.apache.polaris.service.events.AfterAttemptTaskEvent;
+import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
+import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.PolarisEvent;
 
 /** Event listener that stores all emitted events forever. Not recommended for use in production. */
@@ -48,57 +41,57 @@ public class TestPolarisEventListener extends PolarisEventListener {
   }
 
   @Override
-  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {
+  public void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {
+  public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableCommited(AfterTableCommitedEvent event) {
+  public void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {
+  public void onBeforeCommitView(IcebergRestCatalogEvents.BeforeCommitViewEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewCommited(AfterViewCommitedEvent event) {
+  public void onAfterCommitView(IcebergRestCatalogEvents.AfterCommitViewEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {
+  public void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
+  public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {
+  public void onBeforeRefreshView(IcebergRestCatalogEvents.BeforeRefreshViewEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {
+  public void onAfterRefreshView(IcebergRestCatalogEvents.AfterRefreshViewEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {
+  public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {
+  public void onAfterAttemptTask(AfterAttemptTaskEvent event) {
     history.add(event);
   }
 }

@@ -77,6 +77,7 @@ ignore-packages = [
     "CacheControl",          # Apache-2.0
     "cffi",                  # MIT License (MIT)
     "click",                 # BSD-3-Clause
+    "cryptography",          # Apache-2.0 or BSD-3-Clause
     "fsspec",                # BSD-3-Clause
     "jaraco.functools",      # MIT License (MIT)
     "jeepney",               # MIT License (MIT)
