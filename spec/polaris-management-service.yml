@@ -63,6 +63,10 @@ paths:
       responses:
         201:
           description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Catalog"
         403:
           description: "The caller does not have permission to create a catalog"
         404:
@@ -400,6 +404,10 @@ paths:
       responses:
         201:
           description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrincipalRole"
         403:
           description: "The caller does not have permission to add a principal role"
 
@@ -613,6 +621,10 @@ paths:
       responses:
         201:
           description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogRole"
         403:
           description: "The principal is not authorized to create roles"
         404:
@@ -787,7 +799,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RevokeGrantRequest"
       responses:
-        201:
+        204:
           description: "Successful response"
         403:
           description: "The principal is not authorized to create grants"

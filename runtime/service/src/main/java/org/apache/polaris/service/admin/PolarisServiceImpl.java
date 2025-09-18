@@ -130,7 +130,7 @@ public class PolarisServiceImpl
     validateExternalCatalog(catalog);
     Catalog newCatalog = CatalogEntity.of(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
-    return Response.status(Response.Status.CREATED).build();
+    return Response.status(Response.Status.CREATED).entity(newCatalog).build();
   }
 
   private void validateClientId(String clientId) {
@@ -342,7 +342,7 @@ public class PolarisServiceImpl
     PrincipalRole newPrincipalRole =
         new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
     LOGGER.info("Created new principalRole {}", newPrincipalRole);
-    return Response.status(Response.Status.CREATED).build();
+    return Response.status(Response.Status.CREATED).entity(newPrincipalRole).build();
   }
 
   /** From PolarisPrincipalRolesApiService */
@@ -398,7 +398,7 @@ public class PolarisServiceImpl
     CatalogRole newCatalogRole =
         new CatalogRoleEntity(adminService.createCatalogRole(catalogName, entity)).asCatalogRole();
     LOGGER.info("Created new catalogRole {}", newCatalogRole);
-    return Response.status(Response.Status.CREATED).build();
+    return Response.status(Response.Status.CREATED).entity(newCatalogRole).build();
   }
 
   /** From PolarisCatalogsApiService */
