@@ -17,15 +17,23 @@
  * under the License.
  */
 
-package org.apache.polaris.core.identity.registry;
+package org.apache.polaris.service.identity.registry;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.inject.Inject;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
+import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
+import org.apache.polaris.service.identity.ResolvableServiceIdentityConfiguration;
+import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
 
 /**
  * Default implementation of {@link ServiceIdentityRegistry} that resolves service identities from
@@ -43,12 +51,20 @@ import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
  * </ul>
  */
 public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
+  public static final String DEFAULT_REALM_KEY = ServiceIdentityConfiguration.DEFAULT_REALM_KEY;
+  public static final String DEFAULT_REALM_NSS = "system:default";
+  private static final String IDENTITY_INFO_REFERENCE_URN_FORMAT =
+      "urn:polaris-secret:default-identity-registry:%s:%s";
 
   /** Map of service identity types to their resolved identities. */
   private final EnumMap<ServiceIdentityType, ResolvedServiceIdentity> resolvedServiceIdentities;
 
   /** Map of identity info references (URNs) to their resolved service identities. */
   private final Map<String, ResolvedServiceIdentity> referenceToResolvedServiceIdentity;
+
+  public DefaultServiceIdentityRegistry() {
+    this(new EnumMap<>(ServiceIdentityType.class));
+  }
 
   public DefaultServiceIdentityRegistry(
       EnumMap<ServiceIdentityType, ResolvedServiceIdentity> serviceIdentities) {
@@ -61,8 +77,41 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
                     identity -> identity));
   }
 
+  @Inject
+  public DefaultServiceIdentityRegistry(
+      RealmContext realmContext, ServiceIdentityConfiguration serviceIdentityConfiguration) {
+    String serviceIdentityConfigKey = serviceIdentityConfiguration.resolveRealm(realmContext);
+    RealmServiceIdentityConfiguration realmServiceIdentityConfiguration =
+        serviceIdentityConfiguration.forRealm(realmContext);
+
+    this.resolvedServiceIdentities =
+        realmServiceIdentityConfiguration.serviceIdentityConfigurations().stream()
+            .map(ResolvableServiceIdentityConfiguration::resolve)
+            .flatMap(Optional::stream)
+            .peek(
+                // Set the identity info reference for each resolved identity
+                identity ->
+                    identity.setIdentityInfoReference(
+                        buildIdentityInfoReference(
+                            serviceIdentityConfigKey, identity.getIdentityType())))
+            .collect(
+                // Collect to an EnumMap, grouping by ServiceIdentityType
+                Collectors.toMap(
+                    ResolvedServiceIdentity::getIdentityType,
+                    identity -> identity,
+                    (a, b) -> b,
+                    () -> new EnumMap<>(ServiceIdentityType.class)));
+
+    this.referenceToResolvedServiceIdentity =
+        resolvedServiceIdentities.values().stream()
+            .collect(
+                Collectors.toMap(
+                    identity -> identity.getIdentityInfoReference().getUrn(),
+                    identity -> identity));
+  }
+
   @Override
-  public ServiceIdentityInfoDpo assignServiceIdentity(ServiceIdentityType serviceIdentityType) {
+  public ServiceIdentityInfoDpo discoverServiceIdentity(ServiceIdentityType serviceIdentityType) {
     ResolvedServiceIdentity resolvedServiceIdentity =
         resolvedServiceIdentities.get(serviceIdentityType);
     if (resolvedServiceIdentity == null) {
@@ -84,5 +133,26 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
   @VisibleForTesting
   public EnumMap<ServiceIdentityType, ResolvedServiceIdentity> getResolvedServiceIdentities() {
     return resolvedServiceIdentities;
+  }
+
+  /**
+   * Builds a {@link ServiceSecretReference} for the given realm and service identity type.
+   *
+   * <p>The URN format is:
+   * urn:polaris-service-secret:default-identity-registry:&lt;realm&gt;:&lt;type&gt;
+   *
+   * <p>If the realm is the default realm key, it is replaced with "system:default" in the URN.
+   *
+   * @param realm the realm identifier
+   * @param type the service identity type
+   * @return the constructed service secret reference
+   */
+  private ServiceSecretReference buildIdentityInfoReference(
+      String realm, ServiceIdentityType type) {
+    // urn:polaris-service-secret:default-identity-registry:<realm>:<type>
+    return new ServiceSecretReference(
+        IDENTITY_INFO_REFERENCE_URN_FORMAT.formatted(
+            realm.equals(DEFAULT_REALM_KEY) ? DEFAULT_REALM_NSS : realm, type.name()),
+        Map.of());
   }
 }

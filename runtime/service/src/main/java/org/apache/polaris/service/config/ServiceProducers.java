@@ -44,7 +44,6 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -65,6 +64,7 @@ import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
+import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOConfiguration;
@@ -74,9 +74,8 @@ import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
-import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
-import org.apache.polaris.service.identity.ServiceIdentityRegistryConfiguration;
+import org.apache.polaris.service.identity.registry.DefaultServiceIdentityRegistry;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -246,13 +245,6 @@ public class ServiceProducers {
     return new StsClientsPool(config.effectiveClientsCacheMaxSize(), httpClient, meterRegistry);
   }
 
-  @Produces
-  public ServiceIdentityRegistryFactory serviceIdentityRegistryFactory(
-      ServiceIdentityRegistryConfiguration config,
-      @Any Instance<ServiceIdentityRegistryFactory> serviceIdentityRegistryFactories) {
-    return serviceIdentityRegistryFactories.select(Identifier.Literal.of(config.type())).get();
-  }
-
   /**
    * Eagerly initialize the in-memory default realm on startup, so that users can check the
    * credentials printed to stdout immediately.
@@ -409,23 +401,15 @@ public class ServiceProducers {
 
   @Produces
   public OidcTenantResolver oidcTenantResolver(
-      org.apache.polaris.service.auth.external.OidcConfiguration config,
-      @Any Instance<OidcTenantResolver> resolvers) {
+      OidcConfiguration config, @Any Instance<OidcTenantResolver> resolvers) {
     return resolvers.select(Identifier.Literal.of(config.tenantResolver())).get();
   }
 
   @Produces
   @RequestScoped
-  public RealmServiceIdentityConfiguration realmServiceIdentityConfig(
-      ServiceIdentityConfiguration config, RealmContext realmContext) {
-    return config.forRealm(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
   public ServiceIdentityRegistry serviceIdentityRegistry(
-      ServiceIdentityRegistryFactory serviceIdentityRegistryFactory, RealmContext realmContext) {
-    return serviceIdentityRegistryFactory.getOrCreateServiceIdentityRegistry(realmContext);
+      RealmContext realmContext, ServiceIdentityConfiguration serviceIdentityConfiguration) {
+    return new DefaultServiceIdentityRegistry(realmContext, serviceIdentityConfiguration);
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

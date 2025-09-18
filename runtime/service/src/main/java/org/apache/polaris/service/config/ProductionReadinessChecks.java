@@ -44,7 +44,6 @@ import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
-import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
 import org.apache.polaris.service.metrics.MetricsConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.eclipse.microprofile.config.Config;
@@ -231,24 +230,6 @@ public class ProductionReadinessChecks {
               "polaris.event-listener.type"));
     }
     return ProductionReadinessCheck.OK;
-  }
-
-  @Produces
-  public ProductionReadinessCheck checkServiceIdentities(
-      ServiceIdentityConfiguration configuration) {
-    List<ProductionReadinessCheck.Error> errors = new ArrayList<>();
-    configuration
-        .realms()
-        .forEach(
-            (realm, config) -> {
-              if (config.awsIamServiceIdentity().isEmpty()) {
-                errors.add(
-                    Error.of(
-                        "AWS IAM Service identity is not configured.",
-                        "polaris.service-identity.%saws-iam".formatted(authRealmSegment(realm))));
-              }
-            });
-    return ProductionReadinessCheck.of(errors);
   }
 
   private static String authRealmSegment(String realm) {

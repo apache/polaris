@@ -76,4 +76,26 @@ public interface ServiceIdentityConfiguration {
         ? realms().get(realmIdentifier)
         : realms().get(DEFAULT_REALM_KEY);
   }
+
+  /**
+   * Returns the actual key of the service identity configuration to use for the given {@link
+   * RealmContext}, falling back to the default if the specified realm is not configured.
+   *
+   * @param realmContext the realm context
+   * @return the actual realm identifier to use
+   */
+  default String resolveRealm(RealmContext realmContext) {
+    return resolveRealm(realmContext.getRealmIdentifier());
+  }
+
+  /**
+   * Returns the actual key of the service identity configuration to use for the given realm
+   * identifier, falling back to the default if the specified realm is not configured.
+   *
+   * @param realmIdentifier the identifier of the realm
+   * @return the actual realm identifier to use
+   */
+  default String resolveRealm(String realmIdentifier) {
+    return realms().containsKey(realmIdentifier) ? realmIdentifier : DEFAULT_REALM_KEY;
+  }
 }

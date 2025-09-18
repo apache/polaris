@@ -21,15 +21,15 @@ package org.apache.polaris.service.identity;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.service-identity.registry")
 public interface ServiceIdentityRegistryConfiguration {
 
   /**
-   * The type of the ServiceIdentityRegistryFactory to use. This is the {@link
-   * ServiceIdentityRegistryFactory} identifier.
+   * The type of the ServiceIdentityRegistry to use. This is the {@link ServiceIdentityRegistry}
+   * identifier.
    */
   String type();
 }

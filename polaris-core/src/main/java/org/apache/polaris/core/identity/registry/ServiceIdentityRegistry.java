@@ -37,13 +37,13 @@ import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
  */
 public interface ServiceIdentityRegistry {
   /**
-   * Assigns a new {@link ServiceIdentityInfoDpo} for the given service identity type. Typically
+   * Discover a new {@link ServiceIdentityInfoDpo} for the given service identity type. Typically
    * used during entity creation to associate a default or generated identity.
    *
    * @param serviceIdentityType The type of service identity (e.g., AWS_IAM).
-   * @return A new {@link ServiceIdentityInfoDpo} representing the assigned service identity.
+   * @return A new {@link ServiceIdentityInfoDpo} representing the discovered service identity.
    */
-  ServiceIdentityInfoDpo assignServiceIdentity(ServiceIdentityType serviceIdentityType);
+  ServiceIdentityInfoDpo discoverServiceIdentity(ServiceIdentityType serviceIdentityType);
 
   /**
    * Resolves the given service identity by retrieving the actual credential or secret referenced by

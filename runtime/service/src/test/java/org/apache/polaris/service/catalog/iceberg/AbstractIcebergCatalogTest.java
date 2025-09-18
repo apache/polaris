@@ -109,7 +109,6 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistryFactory;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -232,7 +231,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
-  @Inject ServiceIdentityRegistryFactory serviceIdentityRegistryFactory;
+  @Inject ServiceIdentityRegistry serviceIdentityRegistry;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
 
@@ -240,7 +239,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
-  private ServiceIdentityRegistry serviceIdentityRegistry;
   private PolarisCallContext polarisContext;
   private RealmConfig realmConfig;
   private PolarisAdminService adminService;
@@ -283,8 +281,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    serviceIdentityRegistry =
-        serviceIdentityRegistryFactory.getOrCreateServiceIdentityRegistry(realmContext);
     polarisContext =
         new PolarisCallContext(
             realmContext,

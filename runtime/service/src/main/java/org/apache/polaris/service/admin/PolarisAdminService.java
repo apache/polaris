@@ -785,7 +785,7 @@ public class PolarisAdminService {
         if (connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
             == AuthenticationParameters.AuthenticationTypeEnum.SIGV4) {
           serviceIdentityInfo =
-              serviceIdentityRegistry.assignServiceIdentity(ServiceIdentityType.AWS_IAM);
+              serviceIdentityRegistry.discoverServiceIdentity(ServiceIdentityType.AWS_IAM);
         }
 
         entity =
