@@ -17,7 +17,12 @@
   under the License.
 -->
 
-# Integration tests
+# Polaris Runtime Service
+
+## Overview
+The `polaris-runtime-service` module is the core runtime service implementation of Apache Polaris. It serves as the main service layer that provides the REST API endpoints and business logic.
+
+## Integration tests
 
 Integration tests from the :polaris-tests module can be run against a local Polaris Quarkus instance
 for each supported cloud storage. Set the appropriate environment variables for your target cloud,

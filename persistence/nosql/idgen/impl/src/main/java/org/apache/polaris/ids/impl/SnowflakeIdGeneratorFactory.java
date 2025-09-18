@@ -78,7 +78,6 @@ public class SnowflakeIdGeneratorFactory implements IdGeneratorFactory<Snowflake
     int sequenceBits =
         Integer.parseInt(
             params.getOrDefault("sequence-bits", "" + SnowflakeIdGenerator.DEFAULT_SEQUENCE_BITS));
-    // ATCFIX - This name is incorrect.
     var idEpochMillis = SnowflakeIdGenerator.ID_EPOCH_MILLIS;
     var offset = params.get("offset");
     if (offset != null) {
