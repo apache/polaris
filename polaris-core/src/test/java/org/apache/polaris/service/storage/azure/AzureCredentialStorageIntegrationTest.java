@@ -32,6 +32,7 @@ import com.azure.storage.file.datalake.DataLakeFileSystemClient;
 import com.azure.storage.file.datalake.DataLakeFileSystemClientBuilder;
 import com.azure.storage.file.datalake.models.DataLakeStorageException;
 import com.azure.storage.file.datalake.models.PathItem;
+import com.google.common.base.Strings;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.annotation.ElementType;
@@ -44,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
@@ -52,13 +54,13 @@ import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
-import org.assertj.core.util.Strings;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.support.ParameterDeclarations;
 
 public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegrationTest {
 
@@ -115,7 +117,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
 
     boolean isBlobService = service.equals("blob");
     List<String> allowedLoc =
-        Arrays.asList(
+        List.of(
             String.format(
                 "abfss://container@icebergdfsstorageacct.%s.core.windows.net/polaris-test/",
                 service));
@@ -186,7 +188,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
     String allowedPrefix = "polaris-test";
     String blockedPrefix = "blocked-prefix";
     List<String> allowedLoc =
-        Arrays.asList(
+        List.of(
             String.format(
                 "abfss://container@icebergdfsstorageacct.%s.core.windows.net/%s",
                 service, allowedPrefix));
@@ -256,7 +258,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
     String allowedPrefix = "polaris-test/scopedcreds/";
     String blockedPrefix = "blocked-prefix";
     List<String> allowedLoc =
-        Arrays.asList(
+        List.of(
             String.format(
                 "abfss://container@icebergdfsstorageacct.%s.core.windows.net/%s",
                 service, allowedPrefix));
@@ -339,19 +341,20 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
 
   private AccessConfig subscopedCredsForOperations(
       List<String> allowedReadLoc, List<String> allowedWriteLoc, boolean allowListAction) {
-    List<String> allowedLoc = new ArrayList<>();
-    allowedLoc.addAll(allowedReadLoc);
-    allowedLoc.addAll(allowedWriteLoc);
     AzureStorageConfigurationInfo azureConfig =
-        new AzureStorageConfigurationInfo(allowedLoc, tenantId);
+        AzureStorageConfigurationInfo.builder()
+            .addAllAllowedLocations(allowedReadLoc)
+            .addAllAllowedLocations(allowedWriteLoc)
+            .tenantId(tenantId)
+            .build();
     AzureCredentialsStorageIntegration azureCredsIntegration =
-        new AzureCredentialsStorageIntegration();
+        new AzureCredentialsStorageIntegration(azureConfig);
     return azureCredsIntegration.getSubscopedCreds(
-        newCallContext(),
-        azureConfig,
+        EMPTY_REALM_CONFIG,
         allowListAction,
         new HashSet<>(allowedReadLoc),
-        new HashSet<>(allowedWriteLoc));
+        new HashSet<>(allowedWriteLoc),
+        Optional.empty());
   }
 
   private BlobContainerClient createContainerClient(
@@ -401,7 +404,8 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
 
   protected static class AzureTestArgs implements ArgumentsProvider {
     @Override
-    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+    public Stream<? extends Arguments> provideArguments(
+        ParameterDeclarations parameterDeclarations, ExtensionContext extensionContext) {
       return Stream.of(
           Arguments.of(/* allowedList= */ true, "blob"),
           Arguments.of(/* allowedList= */ false, "blob"),

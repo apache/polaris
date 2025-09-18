@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.it.env;
 
+import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 
 /**
@@ -27,4 +28,13 @@ import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
  *
  * @see Server#adminCredentials()
  */
-public record ClientPrincipal(String principalName, ClientCredentials credentials) {}
+public record ClientPrincipal(String principalName, ClientCredentials credentials) {
+
+  /**
+   * Creates a {@link ClientPrincipal} from an instance of the Admin API model {@link
+   * PrincipalWithCredentials}.
+   */
+  public ClientPrincipal(PrincipalWithCredentials principal) {
+    this(principal.getPrincipal().getName(), new ClientCredentials(principal.getCredentials()));
+  }
+}

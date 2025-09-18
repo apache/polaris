@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.relational.jdbc;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.reset;
@@ -33,11 +34,15 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import javax.sql.DataSource;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations.Operation;
+import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelEvent;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
+import org.apache.polaris.persistence.relational.jdbc.models.ModelEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -90,6 +95,41 @@ public class DatasourceOperationsTest {
     when(mockPreparedStatement.executeUpdate()).thenThrow(new SQLException("demo", "42P07"));
 
     assertThrows(SQLException.class, () -> datasourceOperations.executeUpdate(query));
+  }
+
+  @Test
+  void executeBatchUpdate_success() throws Exception {
+    // There is no way to track how many statements are in a batch, so we are testing how many times
+    // `executeBatch` is being called
+    when(mockDataSource.getConnection()).thenReturn(mockConnection);
+    String sql =
+        "INSERT INTO POLARIS_SCHEMA.EVENTS (catalog_id, event_id, request_id, event_type, timestamp_ms, principal_name, resource_type, resource_identifier, additional_properties, realm_id) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )";
+    List<List<Object>> queryParams = new ArrayList<>();
+    for (int i = 0; i < 1000; i++) {
+      ModelEvent modelEvent =
+          ImmutableModelEvent.builder()
+              .resourceType(PolarisEvent.ResourceType.CATALOG)
+              .resourceIdentifier("catalog_" + i)
+              .catalogId("catalog_" + i)
+              .eventId("event_" + i)
+              .requestId("request_" + i)
+              .eventType("event_type1")
+              .timestampMs(1234)
+              .principalName("principal_" + i)
+              .additionalProperties("")
+              .build();
+      queryParams.add(
+          modelEvent.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
+    }
+    when(mockConnection.prepareStatement(any())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeBatch()).thenReturn(new int[] {100});
+
+    int result =
+        datasourceOperations.executeBatchUpdate(
+            new QueryGenerator.PreparedBatchQuery(sql, queryParams));
+    assertEquals(
+        queryParams.size() + 100,
+        result); // ExecuteBatch will be called once more than actual batches
   }
 
   @Test
@@ -182,7 +222,7 @@ public class DatasourceOperationsTest {
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
     assertEquals(
-        "Failed due to Retryable error, after , 2 attempts and 1000 milliseconds",
+        "Failed due to 'Retryable error' (error code 0, sql-state '40001'), after 2 attempts and 1000 milliseconds",
         thrown.getMessage());
     verify(mockOperation, times(2)).execute(); // Tried twice, then threw
   }
@@ -213,7 +253,7 @@ public class DatasourceOperationsTest {
     SQLException thrown =
         assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
     assertEquals(
-        "Failed due to NonRetryable error, after , 1 attempts and 1000 milliseconds",
+        "Failed due to 'NonRetryable error' (error code 0, sql-state 'null'), after 1 attempts and 1000 milliseconds",
         thrown.getMessage());
     verify(mockOperation, times(1)).execute(); // Should not retry
   }

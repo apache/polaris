@@ -32,18 +32,13 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Set up JDK 21
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
         with:
           java-version: '21'
           distribution: 'temurin'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4
-        with:
-          validate-wrappers: false
 
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
@@ -51,10 +46,9 @@ jobs:
       - name: Fix permissions
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
 
-      - name: Run regeneratePythonClient
-        run: ./gradlew regeneratePythonClient
-
       - name: Image build
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
           ./gradlew \
               :polaris-server:assemble \

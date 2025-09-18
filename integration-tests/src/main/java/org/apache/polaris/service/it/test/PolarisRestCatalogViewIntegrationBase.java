@@ -20,7 +20,6 @@ package org.apache.polaris.service.it.test;
 
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 
-import com.google.common.collect.ImmutableMap;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -67,6 +66,7 @@ import org.junit.jupiter.api.io.TempDir;
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogTests<RESTCatalog> {
+
   static {
     Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
   }
@@ -81,19 +81,20 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
           org.apache.iceberg.CatalogProperties.VIEW_OVERRIDE_PREFIX + "key4",
               "catalog-override-key4");
 
-  private static ClientCredentials adminCredentials;
+  private static String adminToken;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
 
   private RESTCatalog restCatalog;
+  private StorageConfigInfo storageConfig;
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
-    adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    managementApi = client.managementApi(credentials);
+    adminToken = client.obtainToken(credentials);
+    managementApi = client.managementApi(adminToken);
   }
 
   @AfterAll
@@ -113,7 +114,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     Method method = testInfo.getTestMethod().orElseThrow();
     String catalogName = client.newEntityName(method.getName());
 
-    StorageConfigInfo storageConfig = getStorageConfigInfo();
+    storageConfig = getStorageConfigInfo();
     String defaultBaseLocation =
         storageConfig.getAllowedLocations().getFirst()
             + "/"
@@ -136,16 +137,26 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
             .setProperties(props)
             .setStorageConfigInfo(storageConfig)
             .build();
-    managementApi.createCatalog(principalRoleName, catalog);
+
+    createPolarisCatalog(catalog);
+    managementApi.makeAdmin(principalRoleName, catalog);
 
     restCatalog =
         IcebergHelper.restCatalog(
-            client, endpoints, principalCredentials, catalogName, DEFAULT_REST_CATALOG_CONFIG);
+            endpoints,
+            catalogName,
+            DEFAULT_REST_CATALOG_CONFIG,
+            client.obtainToken(principalCredentials));
   }
 
   @AfterEach
   public void cleanUp() {
-    client.cleanUp(adminCredentials);
+    client.cleanUp(adminToken);
+  }
+
+  /** Overridable methods to allow subclasses to execute additional logic on catalog creation. */
+  protected void createPolarisCatalog(Catalog catalog) {
+    managementApi.createCatalog(catalog);
   }
 
   /**
@@ -197,16 +208,10 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     TableIdentifier identifier = TableIdentifier.of("ns", "view");
 
     String location = Paths.get(tempDir.toUri().toString()).toString();
-    String customLocation = Paths.get(tempDir.toUri().toString(), "custom-location").toString();
-    String customLocation2 = Paths.get(tempDir.toUri().toString(), "custom-location2").toString();
-    String customLocationChild =
-        Paths.get(tempDir.toUri().toString(), "custom-location/child").toString();
+    String customLocation =
+        Paths.get(storageConfig.getAllowedLocations().getFirst(), "/custom-location1").toString();
 
-    catalog()
-        .createNamespace(
-            identifier.namespace(),
-            ImmutableMap.of(
-                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, location));
+    catalog().createNamespace(identifier.namespace());
 
     Assertions.assertThat(catalog().viewExists(identifier)).as("View should not exist").isFalse();
 
@@ -230,35 +235,5 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     Assertions.assertThat(((BaseView) view).operations().current().metadataFileLocation())
         .isNotNull()
         .startsWith(customLocation);
-
-    // CANNOT update the view with a new metadata location `baseLocation/customLocation2`,
-    // even though the new location is still under the parent namespace's
-    // `write.metadata.path=baseLocation`.
-    Assertions.assertThatThrownBy(
-            () ->
-                catalog()
-                    .loadView(identifier)
-                    .updateProperties()
-                    .set(
-                        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
-                        customLocation2)
-                    .commit())
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Forbidden: Invalid locations");
-
-    // CANNOT update the view with a child metadata location `baseLocation/customLocation/child`,
-    // even though it is a subpath of the original view's
-    // `write.metadata.path=baseLocation/customLocation`.
-    Assertions.assertThatThrownBy(
-            () ->
-                catalog()
-                    .loadView(identifier)
-                    .updateProperties()
-                    .set(
-                        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
-                        customLocationChild)
-                    .commit())
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Forbidden: Invalid locations");
   }
 }

@@ -62,9 +62,10 @@ public enum DatabaseType {
     } else {
       final String schemaSuffix;
       switch (schemaOptions.schemaVersion()) {
-        case null -> schemaSuffix = "schema-v2.sql";
+        case null -> schemaSuffix = "schema-v3.sql";
         case 1 -> schemaSuffix = "schema-v1.sql";
         case 2 -> schemaSuffix = "schema-v2.sql";
+        case 3 -> schemaSuffix = "schema-v3.sql";
         default ->
             throw new IllegalArgumentException(
                 "Unknown schema version " + schemaOptions.schemaVersion());

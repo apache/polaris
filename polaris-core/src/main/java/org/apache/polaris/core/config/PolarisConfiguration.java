@@ -209,10 +209,6 @@ public abstract class PolarisConfiguration<T> {
 
     public BehaviorChangeConfiguration<T> buildBehaviorChangeConfiguration() {
       validateOrThrow();
-      if (catalogConfig.isPresent() || catalogConfigUnsafe.isPresent()) {
-        throw new IllegalArgumentException(
-            "catalog configs are not valid for behavior change configs");
-      }
       BehaviorChangeConfiguration<T> config =
           new BehaviorChangeConfiguration<>(
               key, description, defaultValue, catalogConfig, catalogConfigUnsafe);

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
-import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Comparator;
@@ -30,6 +29,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -63,11 +63,11 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   private final PrincipalSecretsGenerator secretsGenerator;
 
   public TreeMapTransactionalPersistenceImpl(
+      @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull TreeMapMetaStore store,
       @Nonnull PolarisStorageIntegrationProvider storageIntegrationProvider,
       @Nonnull PrincipalSecretsGenerator secretsGenerator) {
-
-    // init store
+    super(diagnostics);
     this.store = store;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.secretsGenerator = secretsGenerator;
@@ -79,7 +79,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
 
     // run transaction on our underlying store
-    return store.runInTransaction(callCtx, transactionCode);
+    return store.runInTransaction(getDiagnostics(), transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -88,7 +88,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInTransaction(callCtx, transactionCode);
+    store.runActionInTransaction(getDiagnostics(), transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -96,7 +96,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   public <T> T runInReadTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
     // run transaction on our underlying store
-    return store.runInReadTransaction(callCtx, transactionCode);
+    return store.runInReadTransaction(getDiagnostics(), transactionCode);
   }
 
   /** {@inheritDoc} */
@@ -105,7 +105,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInReadTransaction(callCtx, transactionCode);
+    store.runActionInReadTransaction(getDiagnostics(), transactionCode);
   }
 
   /**
@@ -288,15 +288,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                     entityActiveKey.getName()));
 
     // return record
-    return (entity == null)
-        ? null
-        : new EntityNameLookupRecord(
-            entity.getCatalogId(),
-            entity.getId(),
-            entity.getParentId(),
-            entity.getName(),
-            entity.getTypeCode(),
-            entity.getSubTypeCode());
+    return entity == null ? null : new EntityNameLookupRecord(entity);
   }
 
   /** {@inheritDoc} */
@@ -311,50 +303,13 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
         .collect(Collectors.toList());
   }
 
-  /** {@inheritDoc} */
   @Override
-  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+  public @Nonnull <T> Page<T> loadEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull PageToken pageToken) {
-    return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
-  }
-
-  @Override
-  public @Nonnull Page<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull PageToken pageToken) {
-    // full range scan under the parent for that type
-    return this.listEntitiesInCurrentTxn(
-        callCtx,
-        catalogId,
-        parentId,
-        entityType,
-        entityFilter,
-        entity ->
-            new EntityNameLookupRecord(
-                entity.getCatalogId(),
-                entity.getId(),
-                entity.getParentId(),
-                entity.getName(),
-                entity.getTypeCode(),
-                entity.getSubTypeCode()),
-        pageToken);
-  }
-
-  @Override
-  public @Nonnull <T> Page<T> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
       @Nonnull Function<PolarisBaseEntity, T> transformer,
       @Nonnull PageToken pageToken) {
@@ -381,6 +336,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             .orElse(e -> true);
 
     data = data.sorted(Comparator.comparingLong(PolarisEntityCore::getId)).filter(tokenFilter);
+
+    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
+      data = data.filter(e -> e.getSubTypeCode() == entitySubType.getCode());
+    }
 
     data = data.filter(entityFilter);
 
@@ -496,8 +455,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
 
     // should be found
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .checkNotNull(
             principalSecrets,
             "cannot_find_secrets",
@@ -506,8 +464,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             principalId == principalSecrets.getPrincipalId(),
             "principal_id_mismatch",
@@ -528,6 +485,22 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     return principalSecrets;
   }
 
+  @Override
+  public @Nonnull PolarisPrincipalSecrets storePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx,
+      long principalId,
+      @Nonnull String resolvedClientId,
+      String customClientSecret) {
+    PolarisPrincipalSecrets principalSecrets =
+        new PolarisPrincipalSecrets(principalId, resolvedClientId, customClientSecret);
+
+    // write back new secrets
+    this.store.getSlicePrincipalSecrets().write(principalSecrets);
+
+    // return principal creds
+    return principalSecrets;
+  }
+
   /** {@inheritDoc} */
   @Override
   public void deletePrincipalSecretsInCurrentTxn(
@@ -536,8 +509,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
 
     // should be found
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .checkNotNull(
             principalSecrets,
             "cannot_find_secrets",
@@ -546,8 +518,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             principalId);
 
     // ensure principal id is matching
-    callCtx
-        .getDiagServices()
+    getDiagnostics()
         .check(
             principalId == principalSecrets.getPrincipalId(),
             "principal_id_mismatch",
@@ -577,7 +548,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
       PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(getDiagnostics(), entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

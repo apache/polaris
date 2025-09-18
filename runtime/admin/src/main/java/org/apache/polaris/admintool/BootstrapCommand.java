@@ -83,7 +83,7 @@ public class BootstrapCommand extends BaseCommand {
       @CommandLine.Option(
           names = {"-v", "--schema-version"},
           paramLabel = "<schema version>",
-          description = "The version of the schema to load in [1, 2, LATEST].")
+          description = "The version of the schema to load in [1, 2, 3, LATEST].")
       Integer schemaVersion;
 
       @CommandLine.Option(
@@ -103,8 +103,7 @@ public class BootstrapCommand extends BaseCommand {
       List<String> realms; // TODO Iterable
 
       if (inputOptions.fileOptions != null) {
-        rootCredentialsSet =
-            RootCredentialsSet.fromUrl(inputOptions.fileOptions.file.toUri().toURL());
+        rootCredentialsSet = RootCredentialsSet.fromUri(inputOptions.fileOptions.file.toUri());
         realms = rootCredentialsSet.credentials().keySet().stream().toList();
       } else {
         realms = inputOptions.stdinOptions.realms;

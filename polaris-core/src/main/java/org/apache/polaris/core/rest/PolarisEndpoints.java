@@ -22,7 +22,7 @@ import com.google.common.collect.ImmutableSet;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 
 public class PolarisEndpoints {
   // Generic table endpoints
@@ -77,10 +77,9 @@ public class PolarisEndpoints {
    * Get the generic table endpoints. Returns GENERIC_TABLE_ENDPOINTS if ENABLE_GENERIC_TABLES is
    * set to true, otherwise, returns an empty set.
    */
-  public static Set<Endpoint> getSupportedGenericTableEndpoints(CallContext callContext) {
+  public static Set<Endpoint> getSupportedGenericTableEndpoints(RealmConfig realmConfig) {
     // add the generic table endpoints as supported endpoints if generic table feature is enabled.
-    boolean genericTableEnabled =
-        callContext.getRealmConfig().getConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES);
+    boolean genericTableEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_GENERIC_TABLES);
 
     return genericTableEnabled ? GENERIC_TABLE_ENDPOINTS : ImmutableSet.of();
   }
@@ -89,9 +88,8 @@ public class PolarisEndpoints {
    * Get the policy store endpoints. Returns POLICY_ENDPOINTS if ENABLE_POLICY_STORE is set to true,
    * otherwise, returns an empty set
    */
-  public static Set<Endpoint> getSupportedPolicyEndpoints(CallContext callContext) {
-    boolean policyStoreEnabled =
-        callContext.getRealmConfig().getConfig(FeatureConfiguration.ENABLE_POLICY_STORE);
+  public static Set<Endpoint> getSupportedPolicyEndpoints(RealmConfig realmConfig) {
+    boolean policyStoreEnabled = realmConfig.getConfig(FeatureConfiguration.ENABLE_POLICY_STORE);
     return policyStoreEnabled ? POLICY_STORE_ENDPOINTS : ImmutableSet.of();
   }
 }

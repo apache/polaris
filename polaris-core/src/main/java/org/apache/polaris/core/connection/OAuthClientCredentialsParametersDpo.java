@@ -35,7 +35,7 @@ import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -53,7 +53,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
   private final String clientId;
 
   @JsonProperty(value = "clientSecretReference")
-  private final UserSecretReference clientSecretReference;
+  private final SecretReference clientSecretReference;
 
   @JsonProperty(value = "scopes")
   private final List<String> scopes;
@@ -62,7 +62,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
       @JsonProperty(value = "tokenUri", required = false) @Nullable String tokenUri,
       @JsonProperty(value = "clientId", required = true) @Nonnull String clientId,
       @JsonProperty(value = "clientSecretReference", required = true) @Nonnull
-          UserSecretReference clientSecretReference,
+          SecretReference clientSecretReference,
       @JsonProperty(value = "scopes", required = false) @Nullable List<String> scopes) {
     super(AuthenticationType.OAUTH.getCode());
 
@@ -82,11 +82,11 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
     return clientId;
   }
 
-  public @Nonnull UserSecretReference getClientSecretReference() {
+  public @Nonnull SecretReference getClientSecretReference() {
     return clientSecretReference;
   }
 
-  public @Nonnull List<String> getScopes() {
+  public @Nullable List<String> getScopes() {
     return scopes;
   }
 
@@ -115,7 +115,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
   }
 
   @Override
-  public AuthenticationParameters asAuthenticationParametersModel() {
+  public @Nonnull AuthenticationParameters asAuthenticationParametersModel() {
     return OAuthClientCredentialsParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
         .setTokenUri(getTokenUri())

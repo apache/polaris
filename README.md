@@ -22,7 +22,7 @@
 Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's 
 [REST API](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml),
 enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®,
-Apache Spark™, StarRocks, and Trino. 
+Apache Spark™, Dremio® OSS, StarRocks, and Trino. 
 
 Documentation is available at https://polaris.apache.org. The REST OpenAPI specifications are available here:
 [Polaris management API doc](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/polaris-management-service.yml)
@@ -42,17 +42,15 @@ Click [here](https://polaris.apache.org/in-dev/unreleased/) for a quick overview
 ## Quickstart
 Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/install-dependencies/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
 
-## Building and Running 
+## Project Structure
 
 Apache Polaris is organized into the following modules:
 
-- `polaris-core` - The main Polaris entity definitions and core business logic
+- [`polaris-core`](./polaris-core/README.md) - The main Polaris entity definitions and core business logic
 - API modules (implementing the Iceberg REST API and Polaris management API):
   - `polaris-api-management-model` - The Polaris management model
   - `polaris-api-management-service` - The Polaris management service
   - `polaris-api-iceberg-service` - The Iceberg REST service
-- Service modules:
-  - `polaris-service-common` - The main components of the Polaris server
 - Runtime modules:
   - `polaris-runtime-service` - The runtime components of the Polaris server
   - `polaris-runtime-defaults` - The runtime configuration defaults
@@ -61,13 +59,15 @@ Apache Polaris is organized into the following modules:
 - Persistence modules:
   - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
   - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
- 
+
+## Building and Running
+
 Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew check` - To run all checks, including unit tests and integration tests.
-- `./gradlew run` - To run the Polaris server locally; the server is reachable at localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. Set your own credentials by specifying system property `./gradlew run -Dpolaris.bootstrap.credentials=POLARIS,root,s3cr3t` where:
+- `./gradlew run` - To run the Polaris server locally; the server is reachable at localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. Set your own credentials by specifying system property `./gradlew run -Dpolaris.bootstrap.credentials=POLARIS,root,secret` where:
   - `POLARIS` is the realm
   - `root` is the CLIENT_ID
   - `secret` is the CLIENT_SECRET
@@ -89,6 +89,7 @@ To streamline the developer experience, especially for common setup and build ta
   - Managing development clusters: e.g., `make minikube-start-cluster, make minikube-cleanup`
   - Automating Helm tasks: e.g., `make helm-doc-generate, make helm-unittest`
   - Handling dependencies: e.g., `make install-dependencies-brew`
+  - Managing client operations: e.g., `make client-lint, make client-regenerate`
 
 To see available commands:
 ```bash
@@ -136,6 +137,19 @@ Default configuration values can be found in `runtime/defaults/src/main/resource
   site/bin/run-hugo-in-docker.sh
   ```
 - See [README in `site/`](site/README.md) for more information.
+
+#### Publishing Build Scans to develocity.apache.org
+
+All authenticated builds of Apache Polaris will automatically publish build scans to the ASF Develocity instance at 
+[develocity.apache.org](https://develocity.apache.org/scans?search.rootProjectNames=polaris). 
+
+CI builds originating from the `apache/polaris` repository will have access to the Apache organization-level secret 
+`DEVELOCITY_ACCESS_KEY` and publish build scans using the secret. CI builds originating from pull requests from forks 
+will not have access to the secret and will silently skip build scan publication.
+
+Apache committers can publish build scans from their local machine by 
+[provisioning an access key](https://docs.gradle.com/develocity/gradle-plugin/current/#automated_access_key_provisioning) 
+using ASF LDAP credentials. Builds by anonymous, unauthenticated contributors will silently skip build scan publication.
 
 ## License
 

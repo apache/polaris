@@ -18,16 +18,21 @@
  */
 package org.apache.polaris.service.storage.aws;
 
-import static org.apache.polaris.core.storage.PolarisStorageConfigurationInfo.StorageType.S3;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+
+import jakarta.annotation.Nullable;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -50,6 +55,19 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
 class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
+
+  private static final RealmConfigImpl REALM_CONFIG_WITH_KMS = new RealmConfigImpl(
+          new PolarisConfigurationStore() {
+            @Override
+            public <T> @Nullable T getConfiguration(
+                    @Nonnull RealmContext realmContext, String configName) {
+              if (FeatureConfiguration.KMS_SUPPORT_LEVEL_S3.key().equals(configName)) {
+                return (T) FeatureConfiguration.KmsSupportLevel.CATALOG;
+              }
+              return PolarisConfigurationStore.super.getConfiguration(realmContext, configName);
+            }
+          },
+          () -> "realm");
 
   public static final Instant EXPIRE_TIME = Instant.now().plusMillis(3600_000);
 
@@ -86,14 +104,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
     String warehouseDir = scheme + "://bucket/path/to/warehouse";
     AccessConfig accessConfig =
-        new AwsCredentialsStorageIntegration(stsClient)
-            .getSubscopedCreds(
-                newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    S3, List.of(warehouseDir), roleARN, externalId, null),
-                true,
-                Set.of(warehouseDir + "/namespace/table"),
-                Set.of(warehouseDir + "/namespace/table"));
+            new AwsCredentialsStorageIntegration(
+                    AwsStorageConfigurationInfo.builder()
+                            .addAllowedLocation(warehouseDir)
+                            .roleARN(roleARN)
+                            .externalId(externalId)
+                            .build(),
+                    stsClient)
+                    .getSubscopedCreds(
+                            EMPTY_REALM_CONFIG,
+                            true,
+                            Set.of(warehouseDir + "/namespace/table"),
+                            Set.of(warehouseDir + "/namespace/table"),
+                            Optional.of("/namespace/table/credentials"));
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -102,13 +125,15 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .containsEntry(
             StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    assertThat(accessConfig.extraProperties())
+        .containsEntry(
+            StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
+            "/namespace/table/credentials");
   }
 
   @ParameterizedTest
   @ValueSource(strings = {AWS_PARTITION, "aws-cn", "aws-us-gov"})
   public void testGetSubscopedCredsInlinePolicy(String awsPartition) {
-    PolarisStorageConfigurationInfo.StorageType storageType =
-        PolarisStorageConfigurationInfo.StorageType.S3;
     String roleARN;
     String region;
     String accountId = "012345678901";
@@ -263,35 +288,39 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       case "aws-cn":
         Assertions.assertThatThrownBy(
                 () ->
-                    new AwsCredentialsStorageIntegration(stsClient)
+                    new AwsCredentialsStorageIntegration(
+                            AwsStorageConfigurationInfo.builder()
+                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                                .roleARN(roleARN)
+                                .externalId(externalId)
+                                .region(region)
+                                .build(),
+                            stsClient)
                         .getSubscopedCreds(
-                            newCallContext(),
-                            new AwsStorageConfigurationInfo(
-                                storageType,
-                                List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                roleARN,
-                                externalId,
-                                region),
+                                REALM_CONFIG_WITH_KMS,
                             true,
                             Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                            Set.of(s3Path(bucket, firstPath))))
+                            Set.of(s3Path(bucket, firstPath)),
+                            null))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
         AccessConfig accessConfig =
-            new AwsCredentialsStorageIntegration(stsClient)
+            new AwsCredentialsStorageIntegration(
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                        .roleARN(roleARN)
+                        .externalId(externalId)
+                        .region(region)
+                        .build(),
+                    stsClient)
                 .getSubscopedCreds(
-                    newCallContext(),
-                    new AwsStorageConfigurationInfo(
-                        storageType,
-                        List.of(s3Path(bucket, warehouseKeyPrefix)),
-                        roleARN,
-                        externalId,
-                        region),
+                        REALM_CONFIG_WITH_KMS,
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                    Set.of(s3Path(bucket, firstPath)));
+                    Set.of(s3Path(bucket, firstPath)),
+                    Optional.empty());
         assertThat(accessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -414,14 +443,20 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     AccessConfig accessConfig =
-        new AwsCredentialsStorageIntegration(stsClient)
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-2")
+                    .build(),
+                stsClient)
             .getSubscopedCreds(
-                newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    S3, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, region),
+                    REALM_CONFIG_WITH_KMS,
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                Set.of(s3Path(bucket, firstPath)));
+                Set.of(s3Path(bucket, firstPath)),
+                Optional.empty());
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -537,21 +572,21 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    PolarisStorageConfigurationInfo.StorageType storageType =
-        PolarisStorageConfigurationInfo.StorageType.S3;
     AccessConfig accessConfig =
-        new AwsCredentialsStorageIntegration(stsClient)
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-2")
+                    .build(),
+                stsClient)
             .getSubscopedCreds(
-                newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    storageType,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId,
-                    region),
+                    REALM_CONFIG_WITH_KMS,
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                Set.of());
+                Set.of(),
+                Optional.empty());
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -640,14 +675,20 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     AccessConfig accessConfig =
-        new AwsCredentialsStorageIntegration(stsClient)
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-2")
+                    .build(),
+                stsClient)
             .getSubscopedCreds(
-                newCallContext(),
-                new AwsStorageConfigurationInfo(
-                    S3, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, region),
+                    REALM_CONFIG_WITH_KMS,
                 true, /* allowList = true */
                 Set.of(),
-                Set.of());
+                Set.of(),
+                Optional.empty());
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -676,35 +717,39 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       case "aws-cn":
         Assertions.assertThatThrownBy(
                 () ->
-                    new AwsCredentialsStorageIntegration(stsClient)
+                    new AwsCredentialsStorageIntegration(
+                            AwsStorageConfigurationInfo.builder()
+                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                                .roleARN(roleARN)
+                                .externalId(externalId)
+                                .region(clientRegion)
+                                .build(),
+                            stsClient)
                         .getSubscopedCreds(
-                            newCallContext(),
-                            new AwsStorageConfigurationInfo(
-                                PolarisStorageConfigurationInfo.StorageType.S3,
-                                List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                roleARN,
-                                externalId,
-                                clientRegion),
+                            EMPTY_REALM_CONFIG,
                             true, /* allowList = true */
                             Set.of(),
-                            Set.of()))
+                            Set.of(),
+                            Optional.empty()))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
         AccessConfig accessConfig =
-            new AwsCredentialsStorageIntegration(stsClient)
+            new AwsCredentialsStorageIntegration(
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                        .roleARN(roleARN)
+                        .externalId(externalId)
+                        .region(clientRegion)
+                        .build(),
+                    stsClient)
                 .getSubscopedCreds(
-                    newCallContext(),
-                    new AwsStorageConfigurationInfo(
-                        S3,
-                        List.of(s3Path(bucket, warehouseKeyPrefix)),
-                        roleARN,
-                        externalId,
-                        clientRegion),
+                    EMPTY_REALM_CONFIG,
                     true, /* allowList = true */
                     Set.of(),
-                    Set.of());
+                    Set.of(),
+                    Optional.empty());
         assertThat(accessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), clientRegion);
@@ -730,14 +775,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     switch (awsPartition) {
       case AWS_PARTITION:
         AccessConfig accessConfig =
-            new AwsCredentialsStorageIntegration(stsClient)
+            new AwsCredentialsStorageIntegration(
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                        .roleARN(roleARN)
+                        .externalId(externalId)
+                        .build(),
+                    stsClient)
                 .getSubscopedCreds(
-                    newCallContext(),
-                    new AwsStorageConfigurationInfo(
-                        S3, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, null),
+                    EMPTY_REALM_CONFIG,
                     true, /* allowList = true */
                     Set.of(),
-                    Set.of());
+                    Set.of(),
+                    Optional.empty());
         assertThat(accessConfig.credentials())
             .isNotEmpty()
             .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
@@ -746,18 +796,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
       case "aws-us-gov":
         Assertions.assertThatThrownBy(
                 () ->
-                    new AwsCredentialsStorageIntegration(stsClient)
+                    new AwsCredentialsStorageIntegration(
+                            AwsStorageConfigurationInfo.builder()
+                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                                .roleARN(roleARN)
+                                .externalId(externalId)
+                                .build(),
+                            stsClient)
                         .getSubscopedCreds(
-                            newCallContext(),
-                            new AwsStorageConfigurationInfo(
-                                PolarisStorageConfigurationInfo.StorageType.S3,
-                                List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                roleARN,
-                                externalId,
-                                null),
+                            EMPTY_REALM_CONFIG,
                             true, /* allowList = true */
                             Set.of(),
-                            Set.of()))
+                            Set.of(),
+                            Optional.empty()))
             .isInstanceOf(IllegalArgumentException.class);
         break;
       default:

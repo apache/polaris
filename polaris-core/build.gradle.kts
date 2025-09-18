@@ -19,7 +19,7 @@
 
 plugins {
   id("polaris-client")
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
 }
 
 dependencies {
@@ -42,11 +42,8 @@ dependencies {
   runtimeOnly("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
   implementation(libs.caffeine)
-  implementation(libs.commons.lang3)
-  implementation(libs.commons.codec1)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
-  compileOnly(libs.spotbugs.annotations)
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
@@ -61,10 +58,10 @@ dependencies {
     implementation("org.apache.commons:commons-configuration2:2.12.0") {
       because("Vulnerability detected in 2.8.0")
     }
-    implementation("org.apache.commons:commons-compress:1.27.1") {
+    implementation("org.apache.commons:commons-compress:1.28.0") {
       because("Vulnerability detected in 1.21")
     }
-    implementation("com.nimbusds:nimbus-jose-jwt:10.4") {
+    implementation("com.nimbusds:nimbus-jose-jwt:10.5") {
       because("Vulnerability detected in 9.8.1")
     }
   }
@@ -81,6 +78,7 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation("software.amazon.awssdk:kms")
 
   implementation("org.apache.iceberg:iceberg-azure")
   implementation(platform(libs.azuresdk.bom))
@@ -89,10 +87,10 @@ dependencies {
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
   constraints {
-    implementation("io.netty:netty-codec-http2:4.2.3.Final") {
+    implementation("io.netty:netty-codec-http2:4.2.6.Final") {
       because("Vulnerability detected in 4.1.72")
     }
-    implementation("io.projectreactor.netty:reactor-netty-http:1.2.8") {
+    implementation("io.projectreactor.netty:reactor-netty-http:1.2.10") {
       because("Vulnerability detected in 1.0.45")
     }
   }

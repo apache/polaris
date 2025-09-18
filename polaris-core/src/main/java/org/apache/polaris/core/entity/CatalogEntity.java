@@ -20,9 +20,9 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -42,9 +41,9 @@ import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -62,26 +61,39 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   // catalog, stored in the "properties" map.
   public static final String DEFAULT_BASE_LOCATION_KEY = "default-base-location";
 
-  // Specifies a prefix that will be replaced with the catalog's default-base-location whenever
-  // it matches a specified new table or view location. For example, if the catalog base location
-  // is "s3://my-bucket/base/location" and the prefix specified here is "file:/tmp" then any
-  // new table attempting to specify a base location of "file:/tmp/ns1/ns2/table1" will be
-  // translated into "s3://my-bucket/base/location/ns1/ns2/table1".
+  /**
+   * Test-only property that specifies a prefix that will be replaced with the catalog's
+   * default-base-location whenever it matches a specified new table or view location.
+   *
+   * <p>For example, if the catalog base location is "s3://my-bucket/base/location" and the prefix
+   * specified here is "file:/tmp" then any new table attempting to specify a base location of
+   * "file:/tmp/ns1/ns2/table1" will be translated into
+   * "s3://my-bucket/base/location/ns1/ns2/table1".
+   *
+   * <p><strong>WARNING:</strong> This property is intended for testing purposes only and should not
+   * be used in production environments.
+   */
   public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
       "replace-new-location-prefix-with-catalog-default";
 
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.CATALOG, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
-  public static CatalogEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable CatalogEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new CatalogEntity(sourceEntity);
     }
     return null;
   }
 
-  public static CatalogEntity fromCatalog(CallContext callContext, Catalog catalog) {
+  public static CatalogEntity fromCatalog(RealmConfig realmConfig, Catalog catalog) {
     Builder builder =
         new Builder()
             .setName(catalog.getName())
@@ -91,7 +103,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
-        callContext, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
+        realmConfig, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
     return builder.build();
   }
 
@@ -143,6 +155,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
             .setPathStyleAccess(awsConfig.getPathStyleAccess())
+            .setEndpointInternal(awsConfig.getEndpointInternal())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -195,8 +208,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     String configStr =
         getInternalPropertiesAsMap().get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
     if (configStr != null) {
-      return PolarisStorageConfigurationInfo.deserialize(
-          new PolarisDefaultDiagServiceImpl(), configStr);
+      return PolarisStorageConfigurationInfo.deserialize(configStr);
     }
     return null;
   }
@@ -207,9 +219,17 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         .orElse(null);
   }
 
+  public boolean isExternal() {
+    return getCatalogType() == Catalog.TypeEnum.EXTERNAL;
+  }
+
   public boolean isPassthroughFacade() {
     return getInternalPropertiesAsMap()
         .containsKey(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
+  }
+
+  public boolean isStaticFacade() {
+    return isExternal() && !isPassthroughFacade();
   }
 
   public ConnectionConfigInfoDpo getConnectionConfigInfoDpo() {
@@ -217,7 +237,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         getInternalPropertiesAsMap()
             .get(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
     if (configStr != null) {
-      return ConnectionConfigInfoDpo.deserialize(new PolarisDefaultDiagServiceImpl(), configStr);
+      return ConnectionConfigInfoDpo.deserialize(configStr);
     }
     return null;
   }
@@ -252,7 +272,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     }
 
     public Builder setStorageConfigurationInfo(
-        CallContext callContext, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
+        RealmConfig realmConfig, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
       if (storageConfigModel != null) {
         PolarisStorageConfigurationInfo config;
         Set<String> allowedLocations = new HashSet<>(storageConfigModel.getAllowedLocations());
@@ -266,41 +286,44 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           throw new BadRequestException("Must specify default base location");
         }
         allowedLocations.add(defaultBaseLocation);
-        validateMaxAllowedLocations(callContext, allowedLocations);
+        validateMaxAllowedLocations(realmConfig, allowedLocations);
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
             AwsStorageConfigurationInfo awsConfig =
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    new ArrayList<>(allowedLocations),
-                    awsConfigModel.getRoleArn(),
-                    awsConfigModel.getExternalId(),
-                    awsConfigModel.getRegion(),
-                    awsConfigModel.getEndpoint(),
-                    awsConfigModel.getStsEndpoint(),
-                    awsConfigModel.getPathStyleAccess());
-            awsConfig.validateArn(awsConfigModel.getRoleArn());
+                AwsStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .roleARN(awsConfigModel.getRoleArn())
+                    .externalId(awsConfigModel.getExternalId())
+                    .region(awsConfigModel.getRegion())
+                    .endpoint(awsConfigModel.getEndpoint())
+                    .stsEndpoint(awsConfigModel.getStsEndpoint())
+                    .pathStyleAccess(awsConfigModel.getPathStyleAccess())
+                    .endpointInternal(awsConfigModel.getEndpointInternal())
+                    .build();
             config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            AzureStorageConfigurationInfo azureConfigInfo =
-                new AzureStorageConfigurationInfo(
-                    new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
-            azureConfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
-            azureConfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
-            config = azureConfigInfo;
+            config =
+                AzureStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .tenantId(azureConfigModel.getTenantId())
+                    .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
+                    .consentUrl(azureConfigModel.getConsentUrl())
+                    .build();
             break;
           case GCS:
-            GcpStorageConfigurationInfo gcpConfig =
-                new GcpStorageConfigurationInfo(new ArrayList<>(allowedLocations));
-            gcpConfig.setGcpServiceAccount(
-                ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount());
-            config = gcpConfig;
+            config =
+                GcpStorageConfigurationInfo.builder()
+                    .allowedLocations(allowedLocations)
+                    .gcpServiceAccount(
+                        ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount())
+                    .build();
             break;
           case FILE:
-            config = new FileStorageConfigurationInfo(new ArrayList<>(allowedLocations));
+            config =
+                FileStorageConfigurationInfo.builder().allowedLocations(allowedLocations).build();
             break;
           default:
             throw new IllegalStateException(
@@ -314,11 +337,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     /** Validate the number of allowed locations not exceeding the max value. */
     private void validateMaxAllowedLocations(
-        CallContext callContext, Collection<String> allowedLocations) {
+        RealmConfig realmConfig, Collection<String> allowedLocations) {
       int maxAllowedLocations =
-          callContext
-              .getRealmConfig()
-              .getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
+          realmConfig.getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
       if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
         throw new IllegalArgumentException(
             String.format(
@@ -329,7 +350,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     public Builder setConnectionConfigInfoDpoWithSecrets(
         ConnectionConfigInfo connectionConfigurationModel,
-        Map<String, UserSecretReference> secretReferences) {
+        Map<String, SecretReference> secretReferences) {
       if (connectionConfigurationModel != null) {
         ConnectionConfigInfoDpo config =
             ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
@@ -337,6 +358,14 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         internalProperties.put(
             PolarisEntityConstants.getConnectionConfigInfoPropertyName(), config.serialize());
       }
+      return this;
+    }
+
+    public Builder setConnectionConfigInfoDpo(
+        @Nonnull ConnectionConfigInfoDpo connectionConfigInfoDpo) {
+      internalProperties.put(
+          PolarisEntityConstants.getConnectionConfigInfoPropertyName(),
+          connectionConfigInfoDpo.serialize());
       return this;
     }
 

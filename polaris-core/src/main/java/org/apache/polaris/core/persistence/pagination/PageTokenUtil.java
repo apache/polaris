@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.ServiceLoader;
+import java.util.function.BooleanSupplier;
 
 final class PageTokenUtil {
 
@@ -118,8 +119,10 @@ final class PageTokenUtil {
    * token.
    */
   static PageToken decodePageRequest(
-      @Nullable String requestedPageToken, @Nullable Integer requestedPageSize) {
-    if (requestedPageToken != null) {
+      @Nullable String requestedPageToken,
+      @Nullable Integer requestedPageSize,
+      BooleanSupplier shouldDecodeToken) {
+    if (requestedPageToken != null && shouldDecodeToken.getAsBoolean()) {
       var bytes = Base64.getUrlDecoder().decode(requestedPageToken);
       try {
         var pageToken = SMILE_MAPPER.readValue(bytes, PageToken.class);
@@ -134,7 +137,7 @@ final class PageTokenUtil {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
-    } else if (requestedPageSize != null) {
+    } else if (requestedPageSize != null && shouldDecodeToken.getAsBoolean()) {
       int pageSizeInt = requestedPageSize;
       checkArgument(pageSizeInt >= 0, "Invalid page size");
       return fromLimit(pageSizeInt);

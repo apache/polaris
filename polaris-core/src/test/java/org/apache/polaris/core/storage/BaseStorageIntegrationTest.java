@@ -19,6 +19,8 @@
 
 package org.apache.polaris.core.storage;
 
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.Clock;
@@ -32,24 +34,7 @@ import org.apache.polaris.core.persistence.BasePersistence;
 import org.mockito.Mockito;
 
 public abstract class BaseStorageIntegrationTest {
-  protected CallContext newCallContext() {
-    PolarisConfigurationStore configStore =
-        new PolarisConfigurationStore() {
-          @Override
-          public <T> @Nullable T getConfiguration(
-              @Nonnull RealmContext realmContext, String configName) {
-            if (FeatureConfiguration.KMS_SUPPORT_LEVEL_S3.key().equals(configName)) {
-              return (T) FeatureConfiguration.KmsSupportLevel.CATALOG;
-            }
-            return PolarisConfigurationStore.super.getConfiguration(realmContext, configName);
-          }
-        };
 
-    return new PolarisCallContext(
-        () -> "realm",
-        Mockito.mock(BasePersistence.class),
-        Mockito.mock(PolarisDiagnostics.class),
-        configStore,
-        Clock.systemDefaultZone());
-  }
+  protected static final RealmConfigImpl EMPTY_REALM_CONFIG =
+      new RealmConfigImpl(new PolarisConfigurationStore() {}, () -> "realm");
 }

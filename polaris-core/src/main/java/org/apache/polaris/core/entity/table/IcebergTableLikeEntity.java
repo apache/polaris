@@ -19,6 +19,8 @@
 package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Preconditions;
+import jakarta.annotation.Nullable;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -27,6 +29,7 @@ import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
 /**
@@ -46,9 +49,15 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
 
   public IcebergTableLikeEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    PolarisEntitySubType subType = getSubType();
+    Preconditions.checkState(
+        subType == PolarisEntitySubType.ICEBERG_TABLE
+            || subType == PolarisEntitySubType.ICEBERG_VIEW,
+        "Invalid entity sub type: %s",
+        subType);
   }
 
-  public static IcebergTableLikeEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable IcebergTableLikeEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new IcebergTableLikeEntity(sourceEntity);
     }
@@ -74,9 +83,11 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<IcebergTableLikeEntity, Builder> {
-    public Builder(TableIdentifier identifier, String metadataLocation) {
+    public Builder(
+        PolarisEntitySubType subType, TableIdentifier identifier, String metadataLocation) {
       super();
       setType(PolarisEntityType.TABLE_LIKE);
+      setSubType(subType);
       setTableIdentifier(identifier);
       setMetadataLocation(metadataLocation);
     }

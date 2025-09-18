@@ -19,7 +19,7 @@
 
 plugins {
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
 }
 
@@ -36,6 +36,7 @@ dependencies {
 
   testImplementation(project(":polaris-tests"))
   testImplementation(testFixtures(project(":polaris-runtime-service")))
+  testImplementation(project(":polaris-runtime-test-common"))
 
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
@@ -60,12 +61,11 @@ dependencies {
 
 tasks.named<Test>("intTest").configure {
   maxParallelForks = 1
-  systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
   // Note: the test secrets are referenced in
-  // org.apache.polaris.service.quarkus.it.QuarkusServerManager
+  // org.apache.polaris.service.it.ServerManager
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work

@@ -26,10 +26,14 @@ DOCKER ?= docker
 MINIKUBE_PROFILE ?= minikube
 DEPENDENCIES ?= ct helm helm-docs java21 git
 OPTIONAL_DEPENDENCIES := jq kubectl minikube
+VENV_DIR := .venv
+PYTHON_CLIENT_DIR := client/python
+ACTIVATE_AND_CD = source $(VENV_DIR)/bin/activate && cd $(PYTHON_CLIENT_DIR)
 
 ## Version information
 BUILD_VERSION := $(shell cat version.txt)
 GIT_COMMIT := $(shell git rev-parse HEAD)
+POETRY_VERSION := $(shell cat client/python/pyproject.toml | grep requires-poetry | sed 's/requires-poetry *= *"\(.*\)"/\1/')
 
 ##@ General
 
@@ -41,6 +45,7 @@ help: ## Display this help
 version: ## Display version information
 	@echo "Build version: ${BUILD_VERSION}"
 	@echo "Git commit: ${GIT_COMMIT}"
+	@echo "Poetry version: ${POETRY_VERSION}"
 
 ##@ Polaris Build
 
@@ -98,6 +103,102 @@ spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradl
 	@echo "--- Applying Spotless formatting ---"
 	@./gradlew spotlessApply
 	@echo "--- Spotless formatting applied ---"
+
+##@ Polaris Client
+
+# Target to create the virtual environment directory
+$(VENV_DIR):
+	@echo "Setting up Python virtual environment at $(VENV_DIR)..."
+	@python3 -m venv $(VENV_DIR)
+	@echo "Virtual environment created."
+
+.PHONY: client-install-dependencies
+client-install-dependencies: $(VENV_DIR)
+	@echo "Installing Poetry and project dependencies into $(VENV_DIR)..."
+	@$(VENV_DIR)/bin/pip install --upgrade pip
+	@if [ ! -f "$(VENV_DIR)/bin/poetry" ]; then \
+		$(VENV_DIR)/bin/pip install --upgrade "poetry$(POETRY_VERSION)"; \
+	fi
+	@$(ACTIVATE_AND_CD) && poetry install --all-extras
+	@echo "Poetry and dependencies installed."
+
+.PHONY: client-setup-env
+client-setup-env: $(VENV_DIR) client-install-dependencies
+
+.PHONY: client-lint
+client-lint: client-setup-env ## Run linting checks for Polaris client
+	@echo "--- Running client linting checks ---"
+	@$(ACTIVATE_AND_CD) && poetry run pre-commit run --files integration_tests/* python/cli/*
+	@echo "--- Client linting checks complete ---"
+
+.PHONY: client-regenerate
+client-regenerate: client-setup-env ## Regenerate the client code
+	@echo "--- Regenerating client code ---"
+	@$(ACTIVATE_AND_CD) && python3 -B generate_clients.py
+	@echo "--- Client code regeneration complete ---"
+
+.PHONY: client-unit-test
+client-unit-test: client-setup-env ## Run client unit tests
+	@echo "--- Running client unit tests ---"
+	@$(ACTIVATE_AND_CD) && poetry run pytest test/
+	@echo "--- Client unit tests complete ---"
+
+.PHONY: client-integration-test
+client-integration-test: client-setup-env ## Run client integration tests
+	@echo "--- Starting client integration tests ---"
+	@echo "Ensuring Docker Compose services are stopped and removed..."
+	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml kill || true # `|| true` prevents make from failing if containers don't exist
+	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml rm -f || true # `|| true` prevents make from failing if containers don't exist
+	@echo "Bringing up Docker Compose services in detached mode..."
+	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml up -d
+	@echo "Waiting for Polaris HTTP health check to pass..."
+	@until curl -s -f http://localhost:8182/q/health > /dev/null; do \
+		echo "Still waiting for HTTP 200 from /q/health (sleeping 2s)..."; \
+		sleep 2; \
+	done
+	@echo "Polaris is healthy. Starting integration tests..."
+	@$(ACTIVATE_AND_CD) && poetry run pytest integration_tests/
+	@echo "--- Client integration tests complete ---"
+	@echo "Tearing down Docker Compose services..."
+	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
+
+.PHONY: client-license-check
+client-license-check: client-setup-env ## Run license compliance check
+	@echo "--- Starting license compliance check ---"
+	@$(ACTIVATE_AND_CD) && pip-licenses
+	@echo "--- License compliance check complete ---"
+
+.PHONY: client-build
+client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format.
+	@echo "--- Building client distribution ---"
+	@if [ -n "$(FORMAT)" ]; then \
+		if [ "$(FORMAT)" != "sdist" ] && [ "$(FORMAT)" != "wheel" ]; then \
+			echo "Error: Invalid format '$(FORMAT)'. Supported formats are 'sdist' and 'wheel'." >&2; \
+			exit 1; \
+		fi; \
+		echo "Building with format: $(FORMAT)"; \
+		$(ACTIVATE_AND_CD) && poetry build --format $(FORMAT); \
+	else \
+		echo "Building default distribution (sdist and wheel)"; \
+		$(ACTIVATE_AND_CD) && poetry build; \
+	fi
+	@echo "--- Client distribution build complete ---"
+
+
+.PHONY: client-cleanup
+client-cleanup: ## Cleanup virtual environment and Python cache files
+	@echo "--- Cleaning up virtual environment and Python cache files ---"
+	@echo "Attempting to remove virtual environment directory: $(VENV_DIR)..."
+	@if [ -n "$(VENV_DIR)" ] && [ -d "$(VENV_DIR)" ]; then \
+		rm -rf "$(VENV_DIR)"; \
+		echo "Virtual environment removed."; \
+	else \
+		echo "Virtual environment directory '$(VENV_DIR)' not found or VENV_DIR is empty. No action taken."; \
+	fi
+	@echo "Cleaning up Python cache files..."
+	@find $(PYTHON_CLIENT_DIR) -type f -name "*.pyc" -delete
+	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -delete
+	@echo "--- Virtual environment and Python cache cleanup complete ---"
 
 ##@ Helm
 
@@ -178,7 +279,7 @@ minikube-cleanup: check-dependencies ## Cleanup the Minikube cluster
 ##@ Pre-commit
 
 .PHONY: pre-commit
-pre-commit: spotless-apply helm-doc-generate ## Run tasks for pre-commit
+pre-commit: spotless-apply helm-doc-generate client-lint ## Run tasks for pre-commit
 
 ##@ Dependencies
 

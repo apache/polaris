@@ -29,7 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -51,17 +51,21 @@ public class AwsCredentialsStorageIntegration
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
 
-  public AwsCredentialsStorageIntegration(StsClient fixedClient) {
-    this((destination) -> fixedClient);
-  }
-
-  public AwsCredentialsStorageIntegration(StsClientProvider stsClientProvider) {
-    this(stsClientProvider, Optional.empty());
+  public AwsCredentialsStorageIntegration(
+      AwsStorageConfigurationInfo config, StsClient fixedClient) {
+    this(config, (destination) -> fixedClient);
   }
 
   public AwsCredentialsStorageIntegration(
-      StsClientProvider stsClientProvider, Optional<AwsCredentialsProvider> credentialsProvider) {
-    super(AwsCredentialsStorageIntegration.class.getName());
+      AwsStorageConfigurationInfo config, StsClientProvider stsClientProvider) {
+    this(config, stsClientProvider, Optional.empty());
+  }
+
+  public AwsCredentialsStorageIntegration(
+      AwsStorageConfigurationInfo config,
+      StsClientProvider stsClientProvider,
+      Optional<AwsCredentialsProvider> credentialsProvider) {
+    super(config, AwsCredentialsStorageIntegration.class.getName());
     this.stsClientProvider = stsClientProvider;
     this.credentialsProvider = credentialsProvider;
   }
@@ -69,13 +73,14 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public AccessConfig getSubscopedCreds(
-      @Nonnull CallContext callContext,
-      @Nonnull AwsStorageConfigurationInfo storageConfig,
+      @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
     int storageCredentialDurationSeconds =
-        callContext.getRealmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+        realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
+    AwsStorageConfigurationInfo storageConfig = config();
     AssumeRoleRequest.Builder request =
         AssumeRoleRequest.builder()
             .externalId(storageConfig.getExternalId())
@@ -86,8 +91,7 @@ public class AwsCredentialsStorageIntegration
                         storageConfig,
                         allowListOperation,
                         allowedReadLocations,
-                        allowedWriteLocations,
-                        callContext)
+                        allowedWriteLocations,realmConfig)
                     .toJson())
             .durationSeconds(storageCredentialDurationSeconds);
     credentialsProvider.ifPresent(
@@ -119,16 +123,26 @@ public class AwsCredentialsStorageIntegration
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
 
+    refreshCredentialsEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+        });
+
     URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {
       accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
+    }
+    URI internalEndpointUri = storageConfig.getInternalEndpointUri();
+    if (internalEndpointUri != null) {
+      accessConfig.putInternalProperty(
+          StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
     }
 
     if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {
       accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
     }
 
-    if (storageConfig.getAwsPartition().equals("aws-us-gov") && region == null) {
+    if ("aws-us-gov".equals(storageConfig.getAwsPartition()) && region == null) {
       throw new IllegalArgumentException(
           String.format(
               "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
@@ -144,12 +158,12 @@ public class AwsCredentialsStorageIntegration
    * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
    * and just assuming the role with full privileges.
    */
+  // TODO - add KMS key access
   private IamPolicy policyString(
       AwsStorageConfigurationInfo awsStorageConfigurationInfo,
       boolean allowList,
       Set<String> readLocations,
-      Set<String> writeLocations,
-      CallContext callContext) {
+      Set<String> writeLocations,RealmConfig realmConfig) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -159,8 +173,8 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
+    String arnPrefix = arnPrefixForPartition(awsStorageConfigurationInfo.getAwsPartition());
     String roleARN = awsStorageConfigurationInfo.getRoleARN();
-    String arnPrefix = getArnPrefixFor(roleARN);
     String region = awsStorageConfigurationInfo.getRegion();
     String awsAccountId = awsStorageConfigurationInfo.getAwsAccountId();
     Stream.concat(readLocations.stream(), writeLocations.stream())
@@ -226,7 +240,7 @@ public class AwsCredentialsStorageIntegration
 
     policyBuilder.addStatement(allowGetObjectStatementBuilder.build());
 
-    if (isKMSSupported(callContext)) {
+    if (isKMSSupported(realmConfig)) {
       policyBuilder.addStatement(
           IamStatement.builder()
               .effect(IamEffect.ALLOW)
@@ -238,7 +252,7 @@ public class AwsCredentialsStorageIntegration
               .addCondition(
                   IamConditionOperator.STRING_LIKE,
                   "kms:EncryptionContext:aws:s3:arn",
-                  getArnPrefixFor(roleARN)
+                  arnPrefix
                       + StorageUtil.getBucket(
                           URI.create(awsStorageConfigurationInfo.getAllowedLocations().get(0)))
                       + "/*")
@@ -251,14 +265,8 @@ public class AwsCredentialsStorageIntegration
     return policyBuilder.build();
   }
 
-  private String getArnPrefixFor(String roleArn) {
-    if (roleArn.contains("aws-cn")) {
-      return "arn:aws-cn:s3:::";
-    } else if (roleArn.contains("aws-us-gov")) {
-      return "arn:aws-us-gov:s3:::";
-    } else {
-      return "arn:aws:s3:::";
-    }
+  private static String arnPrefixForPartition(String awsPartition) {
+    return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 
   private static String getKMSArnPrefix(String roleArn) {
@@ -292,9 +300,8 @@ public class AwsCredentialsStorageIntegration
     return path;
   }
 
-  private boolean isKMSSupported(CallContext callContext) {
-    return !callContext
-        .getRealmConfig()
+  private boolean isKMSSupported(RealmConfig realmConfig) {
+    return !realmConfig
         .getConfig(KMS_SUPPORT_LEVEL_S3)
         .equals(FeatureConfiguration.KmsSupportLevel.NONE);
   }

@@ -23,6 +23,8 @@ import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.named
+import org.kordamp.gradle.plugin.jandex.JandexExtension
+import org.kordamp.gradle.plugin.jandex.JandexPlugin
 import publishing.PublishingHelperPlugin
 
 plugins {
@@ -32,11 +34,26 @@ plugins {
   `jvm-test-suite`
   checkstyle
   id("polaris-spotless")
+  id("polaris-reproducible")
   id("jacoco-report-aggregation")
   id("net.ltgt.errorprone")
 }
 
 apply<PublishingHelperPlugin>()
+
+plugins.withType<JandexPlugin>().configureEach {
+  extensions.getByType(JandexExtension::class).run {
+    version =
+      versionCatalogs
+        .named("libs")
+        .findLibrary("jandex")
+        .orElseThrow { GradleException("jandex version not found in libs.versions.toml") }
+        .get()
+        .version
+    // https://smallrye.io/jandex/jandex/3.4.0/index.html#persistent_index_format_versions
+    indexVersion = 12
+  }
+}
 
 checkstyle {
   val checkstyleVersion =
@@ -107,11 +124,13 @@ testing {
       dependencies {
         implementation(project())
         implementation(testFixtures(project()))
-        runtimeOnly(
-          libs.findLibrary("logback-classic").orElseThrow {
-            GradleException("logback-classic not declared in libs.versions.toml")
-          }
-        )
+        if (!plugins.hasPlugin("io.quarkus")) {
+          implementation(
+            libs.findLibrary("logback-classic").orElseThrow {
+              GradleException("logback-classic not declared in libs.versions.toml")
+            }
+          )
+        }
         implementation(
           libs.findLibrary("assertj-core").orElseThrow {
             GradleException("assertj-core not declared in libs.versions.toml")
@@ -138,6 +157,8 @@ testing {
   }
 }
 
+val mockitoAgent = configurations.create("mockitoAgent")
+
 dependencies {
   val libs = versionCatalogs.named("libs")
   testFixturesImplementation(
@@ -153,11 +174,14 @@ dependencies {
       GradleException("assertj-core not declared in libs.versions.toml")
     }
   )
-  testFixturesImplementation(
+  val mockitoCoreLib =
     libs.findLibrary("mockito-core").orElseThrow {
       GradleException("mockito-core not declared in libs.versions.toml")
     }
-  )
+
+  testFixturesImplementation(mockitoCoreLib)
+
+  mockitoAgent(mockitoCoreLib) { isTransitive = false }
 }
 
 tasks.withType<Test>().configureEach {
@@ -165,6 +189,9 @@ tasks.withType<Test>().configureEach {
   systemProperty("user.language", "en")
   systemProperty("user.country", "US")
   systemProperty("user.variant", "")
+  jvmArgumentProviders.add(
+    CommandLineArgumentProvider { listOf("-javaagent:${mockitoAgent.asPath}") }
+  )
 }
 
 tasks.withType<Jar>().configureEach {
@@ -227,9 +254,20 @@ configurations.all {
     }
 }
 
-// ensure jars conform to reproducible builds
-// (https://docs.gradle.org/current/userguide/working_with_files.html#sec:reproducible_archives)
-tasks.withType<AbstractArchiveTask>().configureEach {
-  isPreserveFileTimestamps = false
-  isReproducibleFileOrder = true
+if (plugins.hasPlugin("io.quarkus")) {
+  tasks.named("quarkusBuild") {
+    actions.addLast {
+      listOf(
+          "quarkus-app/quarkus-run.jar",
+          "quarkus-app/quarkus/generated-bytecode.jar",
+          "quarkus-app/quarkus/transformed-bytecode.jar",
+        )
+        .forEach { name ->
+          val file = project.layout.buildDirectory.get().file(name).asFile
+          if (file.exists()) {
+            makeZipReproducible(file)
+          }
+        }
+    }
+  }
 }

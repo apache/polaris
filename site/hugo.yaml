@@ -65,6 +65,7 @@ params:
   # at the very right in the navbar.
   active_releases:
     # Mention all active releases here, in semver descending order
+    - "1.0.1"
     - "1.0.0"
     - "0.9.0"
 
@@ -102,14 +103,18 @@ menu:
       url: "/in-dev/unreleased/"
       parent: "releases"
       weight: 10
+    - name: "1.0.1"
+      url: "/releases/1.0.1/"
+      parent: "releases"
+      weight: 20
     - name: "1.0.0"
       url: "/releases/1.0.0/"
       parent: "releases"
-      weight: 20
+      weight: 30
     - name: "0.9.0"
       url: "/releases/0.9.0/"
       parent: "releases"
-      weight: 30
+      weight: 40
 
     - name: "Downloads"
       identifier: "downloads"
@@ -143,10 +148,22 @@ menu:
       parent: "community"
       url: "/community/contributing-guidelines"
       weight: 60
+    - name: "Community Guidelines"
+      parent: "community"
+      url: "/community/community-guidelines"
+      weight : 70
+    - name: "Security Report"
+      parent: "community"
+      url: "/community/security-report"
+      weight: 80
     - name: "Release Guide"
       parent: "community"
       url: "/community/release-guide"
-      wieght: 70
+      weight: 90
+    - name: "Blogs"
+      parent: "community"
+      url: "/blog"
+      weight: 100
 
     - name: "GitHub"
       url: "https://github.com/apache/polaris"

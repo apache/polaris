@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.spark.quarkus.it;
 
-import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.FormatMethod;
 import java.io.File;
@@ -26,7 +25,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -44,6 +42,7 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.ext.SparkSessionBuilder;
+import org.apache.polaris.test.commons.s3mock.S3Mock;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -58,8 +57,7 @@ import org.slf4j.LoggerFactory;
 
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class SparkIntegrationBase {
-  protected static final S3MockContainer s3Container =
-      new S3MockContainer("3.11.0").withInitialBuckets("my-bucket,my-old-bucket");
+  protected static final S3Mock s3Container = new S3Mock();
   protected static SparkSession spark;
   protected PolarisApiEndpoints endpoints;
   protected PolarisManagementClient client;
@@ -100,26 +98,9 @@ public abstract class SparkIntegrationBase {
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
     CatalogProperties props = new CatalogProperties("s3://my-bucket/path/to/data");
-    props.putAll(
-        Map.of(
-            "table-default.s3.endpoint",
-            s3Container.getHttpEndpoint(),
-            "table-default.s3.path-style-access",
-            "true",
-            "table-default.s3.access-key-id",
-            "foo",
-            "table-default.s3.secret-access-key",
-            "bar",
-            "s3.endpoint",
-            s3Container.getHttpEndpoint(),
-            "s3.path-style-access",
-            "true",
-            "s3.access-key-id",
-            "foo",
-            "s3.secret-access-key",
-            "bar",
-            "polaris.config.drop-with-purge.enabled",
-            "true"));
+    props.putAll(s3Container.getS3ConfigProperties());
+    props.put("polaris.config.drop-with-purge.enabled", "true");
+    props.put("polaris.config.namespace-custom-location.enabled", "true");
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)

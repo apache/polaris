@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.entity;
 
+import com.google.common.base.Preconditions;
+import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 
@@ -27,9 +29,15 @@ import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 public class PrincipalRoleEntity extends PolarisEntity {
   public PrincipalRoleEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.PRINCIPAL_ROLE, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
-  public static PrincipalRoleEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable PrincipalRoleEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new PrincipalRoleEntity(sourceEntity);
     }

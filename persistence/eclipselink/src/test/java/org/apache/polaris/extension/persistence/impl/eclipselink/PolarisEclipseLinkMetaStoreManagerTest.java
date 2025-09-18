@@ -30,13 +30,11 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.ZoneId;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
@@ -88,15 +86,11 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     RealmContext realmContext = () -> "realm";
     PolarisEclipseLinkMetaStoreSessionImpl session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
-            store, Mockito.mock(), realmContext, null, "polaris", RANDOM_SECRETS);
-    return new PolarisTestMetaStoreManager(
-        new TransactionalMetaStoreManagerImpl(),
-        new PolarisCallContext(
-            realmContext,
-            session,
-            diagServices,
-            new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault())));
+            diagServices, store, Mockito.mock(), realmContext, null, "polaris", RANDOM_SECRETS);
+    TransactionalMetaStoreManagerImpl metaStoreManager =
+        new TransactionalMetaStoreManagerImpl(clock, diagServices);
+    PolarisCallContext callCtx = new PolarisCallContext(realmContext, session);
+    return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
   }
 
   @ParameterizedTest
@@ -110,7 +104,13 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     try {
       var session =
           new PolarisEclipseLinkMetaStoreSessionImpl(
-              store, Mockito.mock(), () -> "realm", confFile, "polaris", RANDOM_SECRETS);
+              diagServices,
+              store,
+              Mockito.mock(),
+              () -> "realm",
+              confFile,
+              "polaris",
+              RANDOM_SECRETS);
       assertNotNull(session);
       assertTrue(success);
     } catch (Exception e) {
