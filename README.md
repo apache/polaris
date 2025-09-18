@@ -47,14 +47,13 @@ Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/instal
 Apache Polaris is organized into the following modules:
 - Primary modules:
   - [`polaris-core`](./polaris-core/README.md) - The main Polaris entity definitions and core business logic
-  - [API modules](./api/README.md) - Implements the Iceberg REST API and Polaris Management APIs:
+  - [API modules](./api/README.md) - Build scripts for generating Java classes from the OpenAPI specifications:
   - `polaris-api-management-model` - Polaris Management API model classes
   - `polaris-api-management-service` - Polaris Management API service classes
   - `polaris-api-iceberg-service` - The Iceberg REST service classes
   - `polaris-api-catalog-service` - The Polaris Catalog API service classes
   - Runtime modules:
-      - [`polaris-admin`](./runtime/admin/README.md) - The Polaris Admin Tool
-      - `polaris-runtime-common` - A package holding QuarkusRelationalJdbcConfiguration
+      - [`polaris-admin`](./runtime/admin/README.md) - The Polaris Admin Tool; mainly for bootstrapping persistence
       - [`polaris-runtime-defaults`](./runtime/defaults/README.md) - The runtime configuration defaults
       - [`polaris-distribution`](./runtime/distribution/README.md) - The Polaris distribution
       - [`polaris-server`](./runtime/server/README.md) - The Polaris Quarkus Server
@@ -71,7 +70,7 @@ Apache Polaris is organized into the following modules:
     - `agregated-license-report` - Generates the aggregated license report
     - `polaris-bom` - The Bill of Materials (BOM) for Polaris
     - `polaris-build-logic` - Establishes consistent build logic
-    - [`polaris-tests`](./integration-tests/README.md) - Integration tests
+    - [`polaris-tests`](./integration-tests/README.md) - Normative integration tests for reuse in downstream projects
 - Tool modules:
     - Documentation configuration:
         - `polaris-config-docs-annotations` - Annotations for documentation generator
@@ -79,7 +78,7 @@ Apache Polaris is organized into the following modules:
         - `polaris-config-docs-site` - The configuration documentation site
     - Other Tools:
         - `polaris-container-spec-helper` - Helper for container specifications
-        - `polaris-immutables` - Immutables for Polaris
+        - `polaris-immutables` - Predefined Immutables configuration & annotations for Polaris
         - `polaris-minio-testcontainer` - Minio test container
         - `polaris-misc-types` - Miscellaneous types for Polaris
         - `polaris-version` - Versioning for Polaris
