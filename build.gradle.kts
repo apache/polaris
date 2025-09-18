@@ -135,6 +135,16 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/*.png")
 }
 
+tasks.register<Exec>("buildPythonClient") {
+  description = "Build the python client"
+
+  workingDir = project.projectDir
+  if (project.hasProperty("python.format")) {
+    environment("FORMAT", project.property("python.format") as String)
+  }
+  commandLine("make", "client-build")
+}
+
 // Pass environment variables:
 //    ORG_GRADLE_PROJECT_apacheUsername
 //    ORG_GRADLE_PROJECT_apachePassword

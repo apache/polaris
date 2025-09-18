@@ -16,8 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.events;
 
-/** Emitted Polaris creates a catalog. */
-public record AfterCatalogCreatedEvent(String catalogName) implements PolarisEvent {}
+/**
+ * Emitted before an attempt of an async task, such as manifest file cleanup, begins.
+ *
+ * @param taskEntityId The ID of the TaskEntity
+ * @param attempt The attempt number. Each retry of the task will have its own attempt number. The
+ *     initial (non-retried) attempt starts counting from 1.
+ */
+public record BeforeAttemptTaskEvent(long taskEntityId, int attempt) implements PolarisEvent {}

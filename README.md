@@ -42,11 +42,11 @@ Click [here](https://polaris.apache.org/in-dev/unreleased/) for a quick overview
 ## Quickstart
 Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/install-dependencies/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
 
-## Building and Running 
+## Project Structure
 
 Apache Polaris is organized into the following modules:
 
-- `polaris-core` - The main Polaris entity definitions and core business logic
+- [`polaris-core`](./polaris-core/README.md) - The main Polaris entity definitions and core business logic
 - API modules (implementing the Iceberg REST API and Polaris management API):
   - `polaris-api-management-model` - The Polaris management model
   - `polaris-api-management-service` - The Polaris management service
@@ -59,7 +59,9 @@ Apache Polaris is organized into the following modules:
 - Persistence modules:
   - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
   - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
- 
+
+## Building and Running
+
 Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
