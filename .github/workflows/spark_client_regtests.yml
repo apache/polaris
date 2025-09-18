@@ -40,11 +40,6 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4
-        with:
-          validate-wrappers: false
-
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
 
@@ -55,9 +50,12 @@ jobs:
         env:
           # publishToMavenLocal causes a GH API requests, use the token for those requests
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: ./gradlew assemble publishToMavenLocal
 
       - name: Image build
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
           ./gradlew \
               :polaris-server:assemble \

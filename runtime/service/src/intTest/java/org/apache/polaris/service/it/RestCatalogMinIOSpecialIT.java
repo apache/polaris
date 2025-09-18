@@ -198,7 +198,7 @@ public class RestCatalogMinIOSpecialIT {
                 org.apache.iceberg.CatalogProperties.URI, endpoints.catalogApiEndpoint().toString())
             .put(OAuth2Properties.TOKEN, authToken)
             .put("warehouse", catalogName)
-            .put("header." + endpoints.realmHeaderName(), endpoints.realmId())
+            .putAll(endpoints.extraHeaders("header."))
             .put("header.X-Iceberg-Access-Delegation", "vended-credentials");
 
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());

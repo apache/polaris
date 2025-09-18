@@ -62,11 +62,18 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   // catalog, stored in the "properties" map.
   public static final String DEFAULT_BASE_LOCATION_KEY = "default-base-location";
 
-  // Specifies a prefix that will be replaced with the catalog's default-base-location whenever
-  // it matches a specified new table or view location. For example, if the catalog base location
-  // is "s3://my-bucket/base/location" and the prefix specified here is "file:/tmp" then any
-  // new table attempting to specify a base location of "file:/tmp/ns1/ns2/table1" will be
-  // translated into "s3://my-bucket/base/location/ns1/ns2/table1".
+  /**
+   * Test-only property that specifies a prefix that will be replaced with the catalog's
+   * default-base-location whenever it matches a specified new table or view location.
+   *
+   * <p>For example, if the catalog base location is "s3://my-bucket/base/location" and the prefix
+   * specified here is "file:/tmp" then any new table attempting to specify a base location of
+   * "file:/tmp/ns1/ns2/table1" will be translated into
+   * "s3://my-bucket/base/location/ns1/ns2/table1".
+   *
+   * <p><strong>WARNING:</strong> This property is intended for testing purposes only and should not
+   * be used in production environments.
+   */
   public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
       "replace-new-location-prefix-with-catalog-default";
 
@@ -74,6 +81,10 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     super(sourceEntity);
     Preconditions.checkState(
         getType() == PolarisEntityType.CATALOG, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
   public static @Nullable CatalogEntity of(@Nullable PolarisBaseEntity sourceEntity) {

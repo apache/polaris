@@ -108,7 +108,6 @@ CREATE TABLE IF NOT EXISTS principal_authentication_data (
 
 COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';
 
-DROP TABLE IF EXISTS policy_mapping_record;
 CREATE TABLE IF NOT EXISTS policy_mapping_record (
     realm_id TEXT NOT NULL,
     target_catalog_id BIGINT NOT NULL,
@@ -126,7 +125,7 @@ CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
     catalog_id TEXT NOT NULL,
     event_id TEXT NOT NULL,
-    request_id TEXT NOT NULL,
+    request_id TEXT,
     event_type TEXT NOT NULL,
     timestamp_ms BIGINT NOT NULL,
     principal_name TEXT,

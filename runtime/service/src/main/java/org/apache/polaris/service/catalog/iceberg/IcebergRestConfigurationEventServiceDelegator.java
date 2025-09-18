@@ -25,8 +25,11 @@ import jakarta.decorator.Delegate;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @Decorator
 @Priority(1000)
@@ -34,10 +37,16 @@ public class IcebergRestConfigurationEventServiceDelegator
     implements IcebergRestConfigurationApiService {
 
   @Inject @Delegate IcebergCatalogAdapter delegate;
+  @Inject PolarisEventListener polarisEventListener;
 
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
-    return delegate.getConfig(warehouse, realmContext, securityContext);
+    polarisEventListener.onBeforeGetConfig(
+        new IcebergRestCatalogEvents.BeforeGetConfigEvent(warehouse));
+    Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
+    polarisEventListener.onAfterGetConfig(
+        new IcebergRestCatalogEvents.AfterGetConfigEvent(resp.readEntity(ConfigResponse.class)));
+    return resp;
   }
 }

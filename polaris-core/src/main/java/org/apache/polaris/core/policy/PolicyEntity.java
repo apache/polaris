@@ -26,6 +26,7 @@ import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
 public class PolicyEntity extends PolarisEntity {
@@ -39,6 +40,10 @@ public class PolicyEntity extends PolarisEntity {
     super(sourceEntity);
     Preconditions.checkState(
         getType() == PolarisEntityType.POLICY, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
   public static @Nullable PolicyEntity of(@Nullable PolarisBaseEntity sourceEntity) {
