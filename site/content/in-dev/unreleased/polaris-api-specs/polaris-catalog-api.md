@@ -17,11 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Apache Polaris Management Service OpenAPI'
-linkTitle: 'Management OpenAPI'
-weight: 800
+title: 'Apache Polaris Catalog Service OpenAPI Specification'
+linkTitle: 'Catalog API ↗'
+weight: 200
 params:
   show_page_toc: false
 ---
 
-{{< redoc-polaris "polaris-management-service.yml" >}}
+{{< redoc-polaris "generated/bundled-polaris-catalog-service.yaml" >}}
