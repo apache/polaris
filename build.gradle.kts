@@ -139,7 +139,9 @@ tasks.register<Exec>("buildPythonClient") {
   description = "Build the python client"
 
   workingDir = project.projectDir
-  environment("FORMAT", project.findProperty("python.format") as? String ?: "sdist")
+  if (project.hasProperty("python.format")) {
+    environment("FORMAT", project.property("python.format") as String)
+  }
   commandLine("make", "client-build")
 }
 
