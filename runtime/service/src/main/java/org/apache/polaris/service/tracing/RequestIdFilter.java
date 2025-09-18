@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.logging;
-
-import static org.apache.polaris.service.context.RealmContextFilter.REALM_CONTEXT_KEY;
+package org.apache.polaris.service.tracing;
 
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -27,28 +25,28 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.ext.Provider;
-import org.apache.polaris.core.context.RealmContext;
+import java.util.UUID;
 import org.apache.polaris.service.config.FilterPriorities;
+import org.apache.polaris.service.logging.LoggingConfiguration;
 import org.slf4j.MDC;
 
 @PreMatching
 @ApplicationScoped
-@Priority(FilterPriorities.MDC_FILTER)
+@Priority(FilterPriorities.REQUEST_ID_FILTER)
 @Provider
-public class LoggingMDCFilter implements ContainerRequestFilter {
+public class RequestIdFilter implements ContainerRequestFilter {
 
-  public static final String REALM_ID_KEY = "realmId";
+  public static final String REQUEST_ID_KEY = "requestId";
 
   @Inject LoggingConfiguration loggingConfiguration;
 
   @Override
   public void filter(ContainerRequestContext rc) {
-    // The request scope is active here, so any MDC values set here will be propagated to
-    // threads handling the request.
-    // Also put the MDC values in the request context for use by other filters and handlers
-    loggingConfiguration.mdc().forEach(MDC::put);
-    loggingConfiguration.mdc().forEach(rc::setProperty);
-    RealmContext realmContext = (RealmContext) rc.getProperty(REALM_CONTEXT_KEY);
-    MDC.put(REALM_ID_KEY, realmContext.getRealmIdentifier());
+    var requestId = rc.getHeaderString(loggingConfiguration.requestIdHeaderName());
+    if (requestId == null) {
+      requestId = UUID.randomUUID().toString();
+    }
+    MDC.put(REQUEST_ID_KEY, requestId);
+    rc.setProperty(REQUEST_ID_KEY, requestId);
   }
 }

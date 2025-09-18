@@ -16,14 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.config;
 
-import jakarta.ws.rs.Priorities;
+package org.apache.polaris.service.tracing;
 
-public final class FilterPriorities {
-  public static final int REQUEST_ID_FILTER = Priorities.AUTHENTICATION - 101;
-  public static final int REALM_CONTEXT_FILTER = Priorities.AUTHENTICATION - 100;
-  public static final int RATE_LIMITER_FILTER = Priorities.USER;
-  public static final int MDC_FILTER = REALM_CONTEXT_FILTER + 1;
-  public static final int TRACING_FILTER = REALM_CONTEXT_FILTER + 2;
+import static org.apache.polaris.service.tracing.RequestIdFilter.REQUEST_ID_KEY;
+
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.container.ContainerResponseFilter;
+import jakarta.ws.rs.ext.Provider;
+
+@Provider
+public class RequestIdResponseFilter implements ContainerResponseFilter {
+  private static final String REQUEST_ID_HEADER = "X-Request-Id";
+
+  @Override
+  public void filter(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+    responseContext.getHeaders().add(REQUEST_ID_HEADER, requestContext.getProperty(REQUEST_ID_KEY));
+  }
 }
