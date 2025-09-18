@@ -160,9 +160,6 @@ jobs:
         uses: ./.github/actions/ci-incr-build-cache-prepare
         with:
           cache-read-only: false
-      - name: Trigger Gradle home cleanup
-        env:
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-        run: ./gradlew --no-daemon :showVersion
 
-      # Note: the "Post Gradle invocation" archives the updated build cache.
+      # Note: the "Post Collect partial Gradle build caches"-step cleans up stale cache entries
+      # and archives the updated build cache.
