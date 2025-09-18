@@ -357,4 +357,7 @@ When internal authentication is enabled, Polaris uses token brokers to handle th
 - Result 
 
   Polaris roles: `PRINCIPAL_ROLE:service_admin` and `PRINCIPAL_ROLE:catalog_admin` 
- 
+
+### Additional Examples
+
+For complete Keycloak integration example, see: [Keycloak External IDP Configuration Guide]({{< relref "getting-started/alternate-conf/keycloak-idp.md" >}})
