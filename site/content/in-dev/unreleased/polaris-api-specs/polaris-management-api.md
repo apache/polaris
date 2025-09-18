@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,9 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+title: 'Apache Polaris Management Service OpenAPI Specification'
+linkTitle: 'Management API ↗'
+weight: 100
+params:
+  show_page_toc: false
+---
 
-[versions]
-iceberg = "1.10.0"
-spark35 = "3.5.6"
-scala212 = "2.12.19"
-scala213 = "2.13.15"
+{{< redoc-polaris "polaris-management-service.yml" >}}
