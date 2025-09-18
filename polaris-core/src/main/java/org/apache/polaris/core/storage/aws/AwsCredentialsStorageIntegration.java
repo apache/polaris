@@ -91,7 +91,8 @@ public class AwsCredentialsStorageIntegration
                         storageConfig,
                         allowListOperation,
                         allowedReadLocations,
-                        allowedWriteLocations,realmConfig)
+                        allowedWriteLocations,
+                        realmConfig)
                     .toJson())
             .durationSeconds(storageCredentialDurationSeconds);
     credentialsProvider.ifPresent(
@@ -163,7 +164,8 @@ public class AwsCredentialsStorageIntegration
       AwsStorageConfigurationInfo awsStorageConfigurationInfo,
       boolean allowList,
       Set<String> readLocations,
-      Set<String> writeLocations,RealmConfig realmConfig) {
+      Set<String> writeLocations,
+      RealmConfig realmConfig) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()

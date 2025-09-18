@@ -21,17 +21,6 @@ package org.apache.polaris.core.storage;
 
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfigImpl;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import java.time.Clock;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.mockito.Mockito;
 
 public abstract class BaseStorageIntegrationTest {
 

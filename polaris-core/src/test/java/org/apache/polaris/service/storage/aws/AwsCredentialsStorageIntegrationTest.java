@@ -21,12 +21,11 @@ package org.apache.polaris.service.storage.aws;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfigImpl;
@@ -56,11 +55,12 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 
 class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
-  private static final RealmConfigImpl REALM_CONFIG_WITH_KMS = new RealmConfigImpl(
+  private static final RealmConfigImpl REALM_CONFIG_WITH_KMS =
+      new RealmConfigImpl(
           new PolarisConfigurationStore() {
             @Override
             public <T> @Nullable T getConfiguration(
-                    @Nonnull RealmContext realmContext, String configName) {
+                @Nonnull RealmContext realmContext, String configName) {
               if (FeatureConfiguration.KMS_SUPPORT_LEVEL_S3.key().equals(configName)) {
                 return (T) FeatureConfiguration.KmsSupportLevel.CATALOG;
               }
@@ -104,19 +104,19 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
     String warehouseDir = scheme + "://bucket/path/to/warehouse";
     AccessConfig accessConfig =
-            new AwsCredentialsStorageIntegration(
-                    AwsStorageConfigurationInfo.builder()
-                            .addAllowedLocation(warehouseDir)
-                            .roleARN(roleARN)
-                            .externalId(externalId)
-                            .build(),
-                    stsClient)
-                    .getSubscopedCreds(
-                            EMPTY_REALM_CONFIG,
-                            true,
-                            Set.of(warehouseDir + "/namespace/table"),
-                            Set.of(warehouseDir + "/namespace/table"),
-                            Optional.of("/namespace/table/credentials"));
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(warehouseDir)
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .build(),
+                stsClient)
+            .getSubscopedCreds(
+                EMPTY_REALM_CONFIG,
+                true,
+                Set.of(warehouseDir + "/namespace/table"),
+                Set.of(warehouseDir + "/namespace/table"),
+                Optional.of("/namespace/table/credentials"));
     assertThat(accessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -297,7 +297,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .build(),
                             stsClient)
                         .getSubscopedCreds(
-                                REALM_CONFIG_WITH_KMS,
+                            REALM_CONFIG_WITH_KMS,
                             true,
                             Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                             Set.of(s3Path(bucket, firstPath)),
@@ -316,7 +316,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .build(),
                     stsClient)
                 .getSubscopedCreds(
-                        REALM_CONFIG_WITH_KMS,
+                    REALM_CONFIG_WITH_KMS,
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
@@ -452,7 +452,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .build(),
                 stsClient)
             .getSubscopedCreds(
-                    REALM_CONFIG_WITH_KMS,
+                REALM_CONFIG_WITH_KMS,
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)),
@@ -582,7 +582,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .build(),
                 stsClient)
             .getSubscopedCreds(
-                    REALM_CONFIG_WITH_KMS,
+                REALM_CONFIG_WITH_KMS,
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
@@ -684,7 +684,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .build(),
                 stsClient)
             .getSubscopedCreds(
-                    REALM_CONFIG_WITH_KMS,
+                REALM_CONFIG_WITH_KMS,
                 true, /* allowList = true */
                 Set.of(),
                 Set.of(),
