@@ -71,8 +71,6 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
@@ -95,17 +93,20 @@ public class PolarisServiceImpl
   private final ReservedProperties reservedProperties;
   private final PolarisEventListener polarisEventListener;
   private final PolarisAdminService adminService;
+  private final ServiceIdentityRegistry serviceIdentityRegistry;
 
   @Inject
   public PolarisServiceImpl(
       RealmConfig realmConfig,
       ReservedProperties reservedProperties,
       PolarisEventListener polarisEventListener,
-      PolarisAdminService adminService) {
+      PolarisAdminService adminService,
+      ServiceIdentityRegistry serviceIdentityRegistry) {
     this.realmConfig = realmConfig;
     this.reservedProperties = reservedProperties;
     this.polarisEventListener = polarisEventListener;
     this.adminService = adminService;
+    this.serviceIdentityRegistry = serviceIdentityRegistry;
   }
 
   private static Response toResponse(BaseResult result, Response.Status successStatus) {
@@ -131,7 +132,8 @@ public class PolarisServiceImpl
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
     validateExternalCatalog(catalog);
-    Catalog newCatalog = CatalogEntity.of(adminService.createCatalog(request)).asCatalog();
+    Catalog newCatalog =
+        CatalogEntity.of(adminService.createCatalog(request)).asCatalog(serviceIdentityRegistry);
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();
   }
@@ -221,7 +223,8 @@ public class PolarisServiceImpl
   @Override
   public Response getCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    return Response.ok(adminService.getCatalog(catalogName).asCatalog()).build();
+    return Response.ok(adminService.getCatalog(catalogName).asCatalog(serviceIdentityRegistry))
+        .build();
   }
 
   /** From PolarisCatalogsApiService */
@@ -234,7 +237,11 @@ public class PolarisServiceImpl
     if (updateRequest.getStorageConfigInfo() != null) {
       validateStorageConfig(updateRequest.getStorageConfigInfo());
     }
-    return Response.ok(adminService.updateCatalog(catalogName, updateRequest).asCatalog()).build();
+    return Response.ok(
+            adminService
+                .updateCatalog(catalogName, updateRequest)
+                .asCatalog(serviceIdentityRegistry))
+        .build();
   }
 
   /** From PolarisCatalogsApiService */

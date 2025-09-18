@@ -202,7 +202,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
                         StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
                     "file://tmp")
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityRegistry)));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

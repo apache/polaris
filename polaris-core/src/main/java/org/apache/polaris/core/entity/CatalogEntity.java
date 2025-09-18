@@ -44,6 +44,7 @@ import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -108,7 +109,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return builder.build();
   }
 
-  public Catalog asCatalog() {
+  public Catalog asCatalog(ServiceIdentityRegistry serviceIdentityRegistry) {
     Map<String, String> internalProperties = getInternalPropertiesAsMap();
     Catalog.TypeEnum catalogType =
         Optional.ofNullable(internalProperties.get(CATALOG_TYPE_PROPERTY))
@@ -128,7 +129,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
-            .setConnectionConfigInfo(getConnectionInfo(internalProperties))
+            .setConnectionConfigInfo(getConnectionInfo(internalProperties, serviceIdentityRegistry))
             .build()
         : PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -187,11 +188,12 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return null;
   }
 
-  private ConnectionConfigInfo getConnectionInfo(Map<String, String> internalProperties) {
+  private ConnectionConfigInfo getConnectionInfo(
+      Map<String, String> internalProperties, ServiceIdentityRegistry serviceIdentityRegistry) {
     if (internalProperties.containsKey(
         PolarisEntityConstants.getConnectionConfigInfoPropertyName())) {
       ConnectionConfigInfoDpo configInfo = getConnectionConfigInfoDpo();
-      return configInfo.asConnectionConfigInfoModel();
+      return configInfo.asConnectionConfigInfoModel(serviceIdentityRegistry);
     }
     return null;
   }

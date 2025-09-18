@@ -122,12 +122,12 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
   }
 
   @Override
-  public ResolvedServiceIdentity resolveServiceIdentity(
+  public Optional<ResolvedServiceIdentity> resolveServiceIdentity(
       ServiceIdentityInfoDpo serviceIdentityInfo) {
     ResolvedServiceIdentity resolvedServiceIdentity =
         referenceToResolvedServiceIdentity.get(
             serviceIdentityInfo.getIdentityInfoReference().getUrn());
-    return resolvedServiceIdentity;
+    return Optional.ofNullable(resolvedServiceIdentity);
   }
 
   @VisibleForTesting

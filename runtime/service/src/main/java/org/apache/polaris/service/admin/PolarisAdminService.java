@@ -973,7 +973,9 @@ public class PolarisAdminService {
   /** List all catalogs after checking for permission. */
   public List<Catalog> listCatalogs() {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
-    return listCatalogsUnsafe().map(CatalogEntity::asCatalog).toList();
+    return listCatalogsUnsafe()
+        .map(catalogEntity -> catalogEntity.asCatalog(getServiceIdentityRegistry()))
+        .toList();
   }
 
   /** List all catalogs without checking for permission. */

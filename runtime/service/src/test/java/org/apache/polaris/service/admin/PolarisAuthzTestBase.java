@@ -276,7 +276,7 @@ public abstract class PolarisAuthzTestBase {
                     .setDefaultBaseLocation(storageLocation)
                     .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
-                    .asCatalog()));
+                    .asCatalog(serviceIdentityRegistry)));
 
     initBaseCatalog();
 

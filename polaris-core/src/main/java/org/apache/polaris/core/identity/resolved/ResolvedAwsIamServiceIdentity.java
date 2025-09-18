@@ -21,6 +21,8 @@ package org.apache.polaris.core.identity.resolved;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import jakarta.annotation.Nonnull;
+import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
+import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
@@ -55,6 +57,10 @@ public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
 
   /** The AWS session token of the AWS credential associated with the identity. */
   private final String sessionToken;
+
+  public ResolvedAwsIamServiceIdentity(String iamArn) {
+    this(null, iamArn, null, null, null);
+  }
 
   public ResolvedAwsIamServiceIdentity(
       String iamArn, String accessKeyId, String secretAccessKey, String sessionToken) {
@@ -94,6 +100,15 @@ public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
   @Override
   public ServiceIdentityInfoDpo asServiceIdentityInfoDpo() {
     return new AwsIamServiceIdentityInfoDpo(getIdentityInfoReference());
+  }
+
+  @Nonnull
+  @Override
+  public ServiceIdentityInfo asServiceIdentityInfoModel() {
+    return AwsIamServiceIdentityInfo.builder()
+        .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
+        .setIamArn(getIamArn())
+        .build();
   }
 
   /** Returns a memoized supplier for creating an STS client using the resolved credentials. */

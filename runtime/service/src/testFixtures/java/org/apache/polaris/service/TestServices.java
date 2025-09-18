@@ -297,7 +297,11 @@ public record TestServices(
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(
               new PolarisServiceImpl(
-                  realmConfig, reservedProperties, polarisEventListener, adminService));
+                  realmConfig,
+                  reservedProperties,
+                  polarisEventListener,
+                  adminService,
+                  serviceIdentityRegistry));
 
       return new TestServices(
           clock,

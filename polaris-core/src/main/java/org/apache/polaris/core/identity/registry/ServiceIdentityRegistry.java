@@ -19,6 +19,7 @@
 
 package org.apache.polaris.core.identity.registry;
 
+import java.util.Optional;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
@@ -52,5 +53,6 @@ public interface ServiceIdentityRegistry {
    * @param serviceIdentityInfo The service identity metadata to resolve.
    * @return A {@link ResolvedServiceIdentity} including credentials and other resolved data.
    */
-  ResolvedServiceIdentity resolveServiceIdentity(ServiceIdentityInfoDpo serviceIdentityInfo);
+  Optional<ResolvedServiceIdentity> resolveServiceIdentity(
+      ServiceIdentityInfoDpo serviceIdentityInfo);
 }

@@ -21,10 +21,8 @@ package org.apache.polaris.core.identity.dpo;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
-import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.secrets.SecretReference;
 
@@ -49,15 +47,6 @@ public class AwsIamServiceIdentityInfoDpo extends ServiceIdentityInfoDpo {
       @JsonProperty(value = "identityInfoReference", required = false) @Nullable
           SecretReference identityInfoReference) {
     super(ServiceIdentityType.AWS_IAM.getCode(), identityInfoReference);
-  }
-
-  @Override
-  public @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel() {
-    return AwsIamServiceIdentityInfo.builder()
-        .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
-        // TODO: inject service identity info
-        .setIamArn("")
-        .build();
   }
 
   @Override

@@ -41,7 +41,6 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -104,7 +103,12 @@ public class PolarisServiceImplTest {
             polarisAuthorizer,
             reservedProperties);
     polarisService =
-        new PolarisServiceImpl(realmConfig, reservedProperties, polarisEventListener, adminService);
+        new PolarisServiceImpl(
+            realmConfig,
+            reservedProperties,
+            polarisEventListener,
+            adminService,
+            serviceIdentityRegistry);
   }
 
   @Test

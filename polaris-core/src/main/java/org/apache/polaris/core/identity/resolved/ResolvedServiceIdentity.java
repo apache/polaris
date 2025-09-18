@@ -19,6 +19,7 @@
 package org.apache.polaris.core.identity.resolved;
 
 import jakarta.annotation.Nonnull;
+import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
@@ -59,4 +60,6 @@ public abstract class ResolvedServiceIdentity {
 
   /** Converts this resolved identity into its corresponding persisted form (DPO). */
   public abstract @Nonnull ServiceIdentityInfoDpo asServiceIdentityInfoDpo();
+
+  public abstract @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel();
 }

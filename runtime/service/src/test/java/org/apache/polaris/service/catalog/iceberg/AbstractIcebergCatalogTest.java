@@ -347,7 +347,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
                     .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
-                    .asCatalog()));
+                    .asCatalog(serviceIdentityRegistry)));
 
     this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
@@ -1311,7 +1311,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     .setDefaultBaseLocation("file://")
                     .setName(catalogWithoutStorage)
                     .build()
-                    .asCatalog()));
+                    .asCatalog(serviceIdentityRegistry)));
 
     IcebergCatalog catalog = newIcebergCatalog(catalogWithoutStorage);
     catalog.initialize(
@@ -1361,7 +1361,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 .setDefaultBaseLocation("http://maliciousdomain.com")
                 .setName(catalogName)
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityRegistry)));
 
     IcebergCatalog catalog = newIcebergCatalog(catalogName);
     catalog.initialize(
@@ -1879,7 +1879,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 .setStorageConfigurationInfo(
                     realmConfig, noPurgeStorageConfigModel, storageLocation)
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityRegistry)));
     IcebergCatalog noPurgeCatalog =
         newIcebergCatalog(noPurgeCatalogName, metaStoreManager, fileIOFactory);
     noPurgeCatalog.initialize(
@@ -2137,7 +2137,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                           .setName("createCatalogWithReservedProperty")
                           .setProperties(ImmutableMap.of("polaris.reserved", "true"))
                           .build()
-                          .asCatalog()));
+                          .asCatalog(serviceIdentityRegistry)));
             })
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
@@ -2152,7 +2152,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 .setName("updateCatalogWithReservedProperty")
                 .setProperties(ImmutableMap.of("a", "b"))
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityRegistry)));
     Assertions.assertThatCode(
             () -> {
               adminService.updateCatalog(
