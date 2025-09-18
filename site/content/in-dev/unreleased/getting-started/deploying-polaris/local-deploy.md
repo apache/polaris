@@ -98,7 +98,7 @@ When Polaris is run using the `./gradlew run` command, the root principal creden
 
 #### Apache Spark
 
-If you want to connect to Polaris with [Apache Spark](https://spark.apache.org/), you'll need to start by cloning Spark. As in the [prerequisites]({{% ref "install-dependencies#git" %}}), make sure [git](https://git-scm.com/) is installed first.
+If you want to connect to Polaris with [Apache Spark](https://spark.apache.org/), you'll need to start by cloning Spark. As in the [prerequisites]({{% ref "../install-dependencies#git" %}}), make sure [git](https://git-scm.com/) is installed first.
 
 Then, clone Spark and check out a versioned branch. This guide uses [Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html).
 
@@ -107,11 +107,11 @@ git clone --branch branch-3.5 https://github.com/apache/spark.git ~/spark
 ```
 
 #### Trino
-If you want to connect to Polaris with [Trino](https://trino.io/), it is recommended to set up a test instance of Trino using Docker. As in the [prerequisites]({{% ref "install-dependencies#docker" %}}), make sure [Docker](https://www.docker.com/) is installed first
+If you want to connect to Polaris with [Trino](https://trino.io/), it is recommended to set up a test instance of Trino using Docker. As in the [prerequisites]({{% ref "../install-dependencies#docker" %}}), make sure [Docker](https://www.docker.com/) is installed first
 
 ```shell
 docker run --name trino -d -p 8080:8080 trinodb/trino
 ```
 
 ## Next Steps
-Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% ref "using-polaris" %}}) page.
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% ref "../using-polaris" %}}) page.
