@@ -43,6 +43,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade Notes
 
+- The EclipseLink Persistence implementation has been deprecated since 1.0.0 and will be completely removed
+  in 1.3.0 or in 2.0.0 (whichever happens earlier).
+
 ### Breaking Changes
 
 - Helm chart: the default value of the `authentication.tokenBroker.secret.symmetricKey.secretKey` property has changed

@@ -46,7 +46,10 @@ Additionally the retries can be configured via `polaris.persistence.relational.j
 
 ## EclipseLink (Deprecated)
 > [!IMPORTANT]
-> Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
+> EclipseLink is deprecated, it is recommended to use Relational JDBC as persistence instead.
+
+> [!IMPORTANT]
+> EclipseLink persistence will be completely removed from Polaris in 1.3.0 or in 2.0.0 (whichever happens earlier).
 
 Polaris includes EclipseLink plugin by default with PostgresSQL driver.
 

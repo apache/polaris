@@ -57,7 +57,7 @@ Apache Polaris is organized into the following modules:
   - `polaris-server` - The Polaris server
   - `polaris-admin` - The Polaris admin & maintenance tool
 - Persistence modules:
-  - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
+  - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface (deprecated for removal)
   - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
 
 ## Building and Running
