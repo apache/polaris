@@ -19,7 +19,7 @@
 #
 Title: Using Polaris
 type: docs
-weight: 400
+weight: 300
 ---
 
 ## Setup
