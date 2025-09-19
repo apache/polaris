@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import org.apache.iceberg.aws.AwsClientProperties;
+import org.apache.iceberg.azure.AzureProperties;
 import org.apache.iceberg.gcp.GCPProperties;
 
 /**
@@ -69,7 +70,7 @@ public enum StorageAccessProperty {
   AZURE_SAS_TOKEN(String.class, "adls.sas-token.", "an azure shared access signature token"),
   AZURE_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
-      "adls.refresh-credentials-endpoint",
+      AzureProperties.ADLS_REFRESH_CREDENTIALS_ENDPOINT,
       "the endpoint to load vended credentials for a table from the catalog",
       false,
       false),
@@ -77,6 +78,12 @@ public enum StorageAccessProperty {
       Long.class,
       "expiration-time",
       "the expiration time for the access token, in milliseconds",
+      true,
+      true),
+  AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX(
+      Long.class,
+      AzureProperties.ADLS_SAS_TOKEN_EXPIRES_AT_MS_PREFIX,
+      "The expiration time for the access token, in milliseconds",
       true,
       true);
 
