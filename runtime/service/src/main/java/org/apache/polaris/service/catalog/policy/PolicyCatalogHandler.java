@@ -165,9 +165,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
   private void authorizeBasicPolicyOperationOrThrow(
       PolarisAuthorizableOperation op, PolicyIdentifier identifier) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
@@ -215,9 +213,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
   }
 
   private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.resolveAll();
 
     PolarisResolvedPathWrapper targetCatalog =
@@ -237,9 +233,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
   private void authorizePolicyMappingOperationOrThrow(
       PolicyIdentifier identifier, PolicyAttachmentTarget target, boolean isAttach) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),

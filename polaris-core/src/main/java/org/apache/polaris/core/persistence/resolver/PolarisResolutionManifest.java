@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -52,8 +52,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisResolutionManifest.class);
 
   private final ResolverFactory resolverFactory;
-  private final CallContext callContext;
   private final SecurityContext securityContext;
+  private final RealmContext realmContext;
   private final String catalogName;
   private final Resolver primaryResolver;
   private final PolarisDiagnostics diagnostics;
@@ -71,15 +71,14 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   public PolarisResolutionManifest(
       PolarisDiagnostics diagnostics,
-      CallContext callContext,
+      RealmContext realmContext,
       ResolverFactory resolverFactory,
       SecurityContext securityContext,
       String catalogName) {
-    this.callContext = callContext;
+    this.realmContext = realmContext;
     this.resolverFactory = resolverFactory;
     this.catalogName = catalogName;
-    this.primaryResolver =
-        resolverFactory.createResolver(callContext, securityContext, catalogName);
+    this.primaryResolver = resolverFactory.createResolver(securityContext, catalogName);
     this.diagnostics = diagnostics;
     this.diagnostics.checkNotNull(securityContext, "null_security_context_for_resolution_manifest");
     this.securityContext = securityContext;
@@ -187,8 +186,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     ResolverPath requestedPath = passthroughPaths.get(key);
 
     // Run a single-use Resolver for this path.
-    Resolver passthroughResolver =
-        resolverFactory.createResolver(callContext, securityContext, catalogName);
+    Resolver passthroughResolver = resolverFactory.createResolver(securityContext, catalogName);
     passthroughResolver.addPath(requestedPath);
     ResolverStatus status = passthroughResolver.resolveAll();
 
@@ -273,7 +271,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     if (resolvedEntity == null) {
       LOGGER.warn(
           "Failed to find rootContainer for realm: {} and catalog: {}",
-          callContext.getRealmContext().getRealmIdentifier(),
+          realmContext.getRealmIdentifier(),
           catalogName);
     }
     return resolvedEntity;
