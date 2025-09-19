@@ -175,16 +175,33 @@ Default configuration values can be found in `runtime/defaults/src/main/resource
 
 #### Publishing Build Scans to develocity.apache.org
 
-All authenticated builds of Apache Polaris will automatically publish build scans to the ASF Develocity instance at 
-[develocity.apache.org](https://develocity.apache.org/scans?search.rootProjectNames=polaris). 
+Build scans of CI builds from a branch or tag in the `apache/polaris` repository on GitHub publish build scans
+to the ASF Develocity instance at
+[develocity.apache.org](https://develocity.apache.org/scans?search.rootProjectNames=polaris), if the workflow runs have access to the Apache organization-level secret 
+`DEVELOCITY_ACCESS_KEY`.
 
-CI builds originating from the `apache/polaris` repository will have access to the Apache organization-level secret 
-`DEVELOCITY_ACCESS_KEY` and publish build scans using the secret. CI builds originating from pull requests from forks 
-will not have access to the secret and will silently skip build scan publication.
+Build scans of local developer builds publish build scans only if the Gradle command line option `--scan` is used.
+Those build scans are published to Gradle's public Develocity instance (see advanced configuration options below).
+Note that build scans on Gradle's public Develocity instance are publicly accessible to anyone.
+You have to accept Gradle's terms of service to publish to the Gradle's public Develocity instance.
 
-Apache committers can publish build scans from their local machine by 
-[provisioning an access key](https://docs.gradle.com/develocity/gradle-plugin/current/#automated_access_key_provisioning) 
-using ASF LDAP credentials. Builds by anonymous, unauthenticated contributors will silently skip build scan publication.
+CI builds originating from pull requests against the `apache/polaris` GitHub repository are published to Gradle's
+_public_ Develocity instance. 
+
+Other CI build scans do only publish build scans to the Gradle's _public_ Develocity instance, if the environment
+variable `GRADLE_TOS_ACCEPTED` is set to `true`.
+By setting this variable you agree to the [Gradle's terms of service](https://gradle.com/terms-of-service), because
+accepting these ToS is your personal decision. 
+You can configure this environment variable for your GitHub repository in the GitHub repository settings under
+`Secrets` > `Secrets and variables` > `Actions` > choose the `Variables` tab > `New repository variable`. 
+
+Advanced configuration options for publishing build scans (only local and non-`apache/polaris` repository CI):
+* The project ID published with the build scan can be specified using the environment variable `DEVELOCITY_PROJECT_ID`.
+  The project ID defaults to the GitHub repository owner/name, for example `octocat/polaris`.
+* The Develocity server can be specified using the environment variable `DEVELOCITY_SERVER` if build scans should be
+  published to another than Gradle's public Develocity instance.
+* If you have to publish build scans to your own Develocity instance, you can configure the access key using a
+  GitHub secret named `DEVELOCITY_ACCESS_KEY`.
 
 ## License
 
