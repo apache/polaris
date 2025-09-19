@@ -16,29 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
-import com.auth0.jwt.algorithms.Algorithm;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 
-/** Generates a JWT using a Public/Private RSA Key */
-public class JWTRSAKeyPair extends JWTBroker {
+interface KeyProvider {
+  PublicKey publicKey();
 
-  private final KeyProvider keyProvider;
-
-  public JWTRSAKeyPair(
-      PolarisMetaStoreManager metaStoreManager,
-      int maxTokenGenerationInSeconds,
-      KeyProvider keyProvider) {
-    super(metaStoreManager, maxTokenGenerationInSeconds);
-    this.keyProvider = keyProvider;
-  }
-
-  @Override
-  public Algorithm getAlgorithm() {
-    return Algorithm.RSA256(
-        (RSAPublicKey) keyProvider.getPublicKey(), (RSAPrivateKey) keyProvider.getPrivateKey());
-  }
+  PrivateKey privateKey();
 }

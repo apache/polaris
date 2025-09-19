@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
 import jakarta.annotation.Nonnull;
 import java.io.IOException;
@@ -28,24 +28,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Holds a public / private key pair in memory. */
-public class LocalRSAKeyProvider implements KeyProvider {
+record LocalRSAKeyProvider(PublicKey publicKey, PrivateKey privateKey) implements KeyProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalRSAKeyProvider.class);
 
-  private final PublicKey publicKey;
-  private final PrivateKey privateKey;
-
-  public LocalRSAKeyProvider(@Nonnull KeyPair keyPair) {
+  LocalRSAKeyProvider(@Nonnull KeyPair keyPair) {
     this(keyPair.getPublic(), keyPair.getPrivate());
   }
 
-  public LocalRSAKeyProvider(@Nonnull PublicKey publicKey, @Nonnull PrivateKey privateKey) {
-    this.publicKey = publicKey;
-    this.privateKey = privateKey;
-  }
-
-  public static LocalRSAKeyProvider fromFiles(
-      @Nonnull Path publicKeyFile, @Nonnull Path privateKeyFile) {
+  static LocalRSAKeyProvider fromFiles(@Nonnull Path publicKeyFile, @Nonnull Path privateKeyFile) {
     return new LocalRSAKeyProvider(
         readPublicKeyFile(publicKeyFile), readPrivateKeyFile(privateKeyFile));
   }
@@ -67,25 +58,5 @@ public class LocalRSAKeyProvider implements KeyProvider {
       LOGGER.error("Unable to read public key from file {}", publicKeyFileLocation, e);
       throw new RuntimeException("Unable to read public key from file " + publicKeyFileLocation, e);
     }
-  }
-
-  /**
-   * Getter for the Public Key instance
-   *
-   * @return the Public Key instance
-   */
-  @Override
-  public PublicKey getPublicKey() {
-    return publicKey;
-  }
-
-  /**
-   * Getter for the Private Key instance. Used to sign the content on the JWT signing stage.
-   *
-   * @return the Private Key instance
-   */
-  @Override
-  public PrivateKey getPrivateKey() {
-    return privateKey;
   }
 }
