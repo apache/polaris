@@ -54,6 +54,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
+        serviceIdentityRegistry,
         securityContext(authenticatedPrincipal),
         polarisAuthorizer,
         reservedProperties);
@@ -132,7 +133,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         adminService.grantPrivilegeOnRootContainerToPrincipalRole(
             PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_DROP));
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    final CreateCatalogRequest createRequest =
+        new CreateCatalogRequest(newCatalog.asCatalog(serviceIdentityRegistry));
 
     doTestSufficientPrivileges(
         List.of(
@@ -151,7 +153,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testCreateCatalogInsufficientPrivileges() {
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    final CreateCatalogRequest createRequest =
+        new CreateCatalogRequest(newCatalog.asCatalog(serviceIdentityRegistry));
 
     doTestInsufficientPrivileges(
         List.of(
@@ -286,7 +289,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         adminService.grantPrivilegeOnRootContainerToPrincipalRole(
             PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_CREATE));
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    final CreateCatalogRequest createRequest =
+        new CreateCatalogRequest(newCatalog.asCatalog(serviceIdentityRegistry));
     adminService.createCatalog(createRequest);
 
     doTestSufficientPrivileges(
@@ -306,7 +310,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testDeleteCatalogInsufficientPrivileges() {
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    final CreateCatalogRequest createRequest =
+        new CreateCatalogRequest(newCatalog.asCatalog(serviceIdentityRegistry));
     adminService.createCatalog(createRequest);
 
     doTestInsufficientPrivileges(
