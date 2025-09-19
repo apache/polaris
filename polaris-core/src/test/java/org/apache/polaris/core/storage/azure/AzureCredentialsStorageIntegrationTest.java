@@ -36,8 +36,10 @@ public class AzureCredentialsStorageIntegrationTest {
 
     AccessConfig noSuffixResult =
         toAccessConfig("sasToken", "some_account", expiresAt, Optional.empty());
-    Assertions.assertThat(noSuffixResult.credentials()).hasSize(2);
+    Assertions.assertThat(noSuffixResult.credentials()).hasSize(3);
     Assertions.assertThat(noSuffixResult.credentials()).containsKey("adls.sas-token.some_account");
+    Assertions.assertThat(noSuffixResult.credentials())
+        .containsKey("adls.sas-token-expires-at-ms.some_account");
     Assertions.assertThat(noSuffixResult.credentials())
         .doesNotContainKey(
             StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName());
@@ -48,9 +50,11 @@ public class AzureCredentialsStorageIntegrationTest {
             "some_account." + AzureLocation.ADLS_ENDPOINT,
             expiresAt,
             Optional.of("endpoint/credentials"));
-    Assertions.assertThat(adlsSuffixResult.credentials()).hasSize(3);
+    Assertions.assertThat(adlsSuffixResult.credentials()).hasSize(4);
     Assertions.assertThat(adlsSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account");
+    Assertions.assertThat(noSuffixResult.credentials())
+        .containsKey("adls.sas-token-expires-at-ms.some_account");
     Assertions.assertThat(adlsSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account." + AzureLocation.ADLS_ENDPOINT);
 
@@ -62,10 +66,12 @@ public class AzureCredentialsStorageIntegrationTest {
     AccessConfig blobSuffixResult =
         toAccessConfig(
             "sasToken", "some_account." + AzureLocation.BLOB_ENDPOINT, expiresAt, Optional.empty());
-    Assertions.assertThat(blobSuffixResult.credentials()).hasSize(3);
+    Assertions.assertThat(blobSuffixResult.credentials()).hasSize(4);
     Assertions.assertThat(blobSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account");
     Assertions.assertThat(blobSuffixResult.credentials())
         .containsKey("adls.sas-token.some_account." + AzureLocation.BLOB_ENDPOINT);
+    Assertions.assertThat(blobSuffixResult.credentials())
+        .containsKey("adls.sas-token-expires-at-ms.some_account.blob.core.windows.net");
   }
 }
