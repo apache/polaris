@@ -40,6 +40,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Changes
 
+* The following APIs will now return the newly-created objects as part of the successful 201 response: createCatalog, createPrincipalRole, createCatalogRole. 
+
 ### Deprecations
 
 * The property `polaris.active-roles-provider.type` is deprecated and has no effect anymore.
