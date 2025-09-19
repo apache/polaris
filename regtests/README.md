@@ -91,6 +91,13 @@ be set in order to succeed.
 ```
 polaris.features."ENABLE_CATALOG_FEDERATION"=true
 polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS"=true
+polaris.features."SUPPORTED_CATALOG_CONNECTION_TYPES"=["ICEBERG_REST", "HADOOP"]
+polaris.features."SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES"=["OAUTH", "BEARER", "IMPLICIT"]
+```
+
+Further, for Hadoop federation tests, it requires the hadoop-conf-dir environment variable to be set.
+```
+export HADOOP_CONF_DIR=./regtests/hadoop-conf
 ```
 
 To run the tests in verbose mode, with test stdout printing to console, set the `VERBOSE`
