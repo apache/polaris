@@ -45,7 +45,7 @@ repository = "https://github.com/apache/polaris/"
 polaris = "cli.polaris_cli:main"
 
 [tool.poetry]
-requires-poetry = "==2.1.4"
+requires-poetry = "==2.2.0"
 include = [
     { path = "polaris/**", format = ["sdist", "wheel"] },
     { path = "cli/**", format = ["sdist", "wheel"] },
@@ -79,11 +79,15 @@ ignore-packages = [
     "cffi",                  # MIT License (MIT)
     "click",                 # BSD-3-Clause
     "cryptography",          # Apache-2.0 or BSD-3-Clause
+    "dulwich",               # Apache-2.0 or GPL-2.0-or-later
     "fsspec",                # BSD-3-Clause
     "jaraco.functools",      # MIT License (MIT)
     "jeepney",               # MIT License (MIT)
     "more-itertools",        # MIT License (MIT)
     "mypy_extensions",       # MIT License (MIT)
+    "poetry",                # MIT License (MIT)
+    "poetry-core",           # MIT License (MIT)
+    "polaris",               # Apache-2.0
     "pyparsing",             # MIT License (MIT)
     "RapidFuzz",             # MIT License (MIT)
     "SecretStorage",         # BSD-3-Clause
