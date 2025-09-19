@@ -65,6 +65,7 @@ params:
   # at the very right in the navbar.
   active_releases:
     # Mention all active releases here, in semver descending order
+    - "1.1.0"
     - "1.0.1"
     - "1.0.0"
     - "0.9.0"
@@ -103,18 +104,22 @@ menu:
       url: "/in-dev/unreleased/"
       parent: "releases"
       weight: 10
+    - name: "1.1.0"
+      url: "/releases/1.1.0/"
+      parent: "releases"
+      weight: 20
     - name: "1.0.1"
       url: "/releases/1.0.1/"
       parent: "releases"
-      weight: 20
+      weight: 30
     - name: "1.0.0"
       url: "/releases/1.0.0/"
       parent: "releases"
-      weight: 30
+      weight: 40
     - name: "0.9.0"
       url: "/releases/0.9.0/"
       parent: "releases"
-      weight: 40
+      weight: 50
 
     - name: "Downloads"
       identifier: "downloads"
