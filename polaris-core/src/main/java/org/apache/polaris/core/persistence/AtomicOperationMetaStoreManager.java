@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -711,7 +712,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull Page<PolarisBaseEntity> loadEntities(
+  public @Nonnull Page<PolarisBaseEntity> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
@@ -734,7 +735,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // with sensitive data; but the window of inconsistency is only the duration of a single
     // in-flight request (the cache-based resolution follows a different path entirely).
 
-    return ms.loadEntities(
+    return ms.listFullEntities(
         callCtx,
         catalogId,
         parentId,
@@ -1218,7 +1219,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
-          ms.loadEntities(
+          ms.listFullEntities(
                   callCtx,
                   catalogId,
                   catalogId,
@@ -1531,6 +1532,34 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         : new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
   }
 
+  @Nonnull
+  @Override
+  public EntitiesResult loadEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
+    BasePersistence ms = callCtx.getMetaStore();
+    List<PolarisBaseEntity> entities =
+        ms.lookupEntities(
+            callCtx,
+            entityLookupRecords.stream()
+                .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
+                .collect(Collectors.toList()));
+    // mimic the behavior of loadEntity above, return null if not found or type mismatch
+    List<PolarisBaseEntity> ret =
+        IntStream.range(0, entityLookupRecords.size())
+            .mapToObj(
+                i -> {
+                  if (entities.get(i) != null
+                      && !entities.get(i).getType().equals(entityLookupRecords.get(i).getType())) {
+                    return null;
+                  } else {
+                    return entities.get(i);
+                  }
+                })
+            .collect(Collectors.toList());
+    return new EntitiesResult(Page.fromItems(ret));
+  }
+
   @Override
   public @Nonnull EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken) {
@@ -1538,7 +1567,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // find all available tasks
     Page<PolarisBaseEntity> availableTasks =
-        ms.loadEntities(
+        ms.listFullEntities(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
