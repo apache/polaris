@@ -28,7 +28,6 @@ import jakarta.ws.rs.ext.Provider;
 import java.util.UUID;
 import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.logging.LoggingConfiguration;
-import org.slf4j.MDC;
 
 @PreMatching
 @ApplicationScoped
@@ -46,7 +45,6 @@ public class RequestIdFilter implements ContainerRequestFilter {
     if (requestId == null) {
       requestId = UUID.randomUUID().toString();
     }
-    MDC.put(REQUEST_ID_KEY, requestId);
     rc.setProperty(REQUEST_ID_KEY, requestId);
   }
 }

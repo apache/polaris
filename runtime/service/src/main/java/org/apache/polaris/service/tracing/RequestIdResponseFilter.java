@@ -21,18 +21,24 @@ package org.apache.polaris.service.tracing;
 
 import static org.apache.polaris.service.tracing.RequestIdFilter.REQUEST_ID_KEY;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
+import org.apache.polaris.service.logging.LoggingConfiguration;
 
 @Provider
 public class RequestIdResponseFilter implements ContainerResponseFilter {
-  private static final String REQUEST_ID_HEADER = "X-Request-Id";
+
+  @Inject LoggingConfiguration loggingConfiguration;
 
   @Override
   public void filter(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-    responseContext.getHeaders().add(REQUEST_ID_HEADER, requestContext.getProperty(REQUEST_ID_KEY));
+    responseContext
+        .getHeaders()
+        .add(
+            loggingConfiguration.requestIdHeaderName(), requestContext.getProperty(REQUEST_ID_KEY));
   }
 }
