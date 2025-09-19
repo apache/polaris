@@ -90,12 +90,12 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
     processEvent(polarisEvent);
   }
 
-  protected record ContextSpecificInformation(long timestamp, @Nullable String principalName) {}
+  public record ContextSpecificInformation(long timestamp, @Nullable String principalName) {}
 
-  abstract ContextSpecificInformation getContextSpecificInformation();
+  protected abstract ContextSpecificInformation getContextSpecificInformation();
 
   @Nullable
-  abstract String getRequestId();
+  protected abstract String getRequestId();
 
-  abstract void processEvent(PolarisEvent event);
+  protected abstract void processEvent(PolarisEvent event);
 }
