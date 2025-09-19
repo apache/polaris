@@ -36,11 +36,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.slf4j.Logger;
@@ -63,7 +61,8 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   private final Duration timeToFlush;
   private final int maxBufferSize;
 
-  @Inject CallContext callContext;
+  @Inject RealmContext realmContext;
+  @Inject RealmConfig realmConfig;
   @Inject Clock clock;
   @Context SecurityContext securityContext;
   @Context ContainerRequestContext containerRequestContext;
@@ -136,7 +135,7 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
 
   @Override
   void processEvent(PolarisEvent polarisEvent) {
-    String realmId = callContext.getRealmContext().getRealmIdentifier();
+    String realmId = realmContext.getRealmIdentifier();
 
     ConcurrentLinkedQueueWithApproximateSize<PolarisEvent> realmQueue =
         buffer.computeIfAbsent(realmId, k -> new ConcurrentLinkedQueueWithApproximateSize<>());
@@ -178,10 +177,8 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
 
       RealmContext realmContext = () -> realmId;
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-      BasePersistence basePersistence = metaStoreManagerFactory.getOrCreateSession(realmContext);
-      metaStoreManager.writeEvents(
-          new PolarisCallContext(realmContext, basePersistence), queue.stream().toList());
+          metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
+      metaStoreManager.writeEvents(queue.stream().toList());
 
       if (buffer.get(realmId).size() >= maxBufferSize) {
         // Ensure that all events will be flushed, even if the race condition is triggered where
