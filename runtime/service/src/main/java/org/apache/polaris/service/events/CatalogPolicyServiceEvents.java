@@ -34,68 +34,84 @@ public class CatalogPolicyServiceEvents {
 
   // Policy CRUD Events
   public record BeforeCreatePolicyEvent(
-      String catalogName, String namespace, CreatePolicyRequest createPolicyRequest) {}
+      String catalogName, String namespace, CreatePolicyRequest createPolicyRequest)
+      implements PolarisEvent {}
 
   public record AfterCreatePolicyEvent(
-      String catalogName, String namespace, LoadPolicyResponse loadPolicyResponse) {}
+      String catalogName, String namespace, LoadPolicyResponse loadPolicyResponse)
+      implements PolarisEvent {}
 
-  public record BeforeListPoliciesEvent(String catalogName, String namespace, String policyType) {}
+  public record BeforeListPoliciesEvent(String catalogName, String namespace, String policyType)
+      implements PolarisEvent {}
 
-  public record AfterListPoliciesEvent(String catalogName, String namespace, String policyType) {}
+  public record AfterListPoliciesEvent(String catalogName, String namespace, String policyType)
+      implements PolarisEvent {}
 
-  public record BeforeLoadPolicyEvent(String catalogName, String namespace, String policyName) {}
+  public record BeforeLoadPolicyEvent(String catalogName, String namespace, String policyName)
+      implements PolarisEvent {}
 
   public record AfterLoadPolicyEvent(
-      String catalogName, String namespace, LoadPolicyResponse loadPolicyResponse) {}
+      String catalogName, String namespace, LoadPolicyResponse loadPolicyResponse)
+      implements PolarisEvent {}
 
   public record BeforeUpdatePolicyEvent(
       String catalogName,
       String namespace,
       String policyName,
-      UpdatePolicyRequest updatePolicyRequest) {}
+      UpdatePolicyRequest updatePolicyRequest)
+      implements PolarisEvent {}
 
   public record AfterUpdatePolicyEvent(
-      String catalogName, String namespace, LoadPolicyResponse loadPolicyResponse) {}
+      String catalogName, String namespace, LoadPolicyResponse loadPolicyResponse)
+      implements PolarisEvent {}
 
   public record BeforeDropPolicyEvent(
-      String catalogName, String namespace, String policyName, Boolean detachAll) {}
+      String catalogName, String namespace, String policyName, Boolean detachAll)
+      implements PolarisEvent {}
 
   public record AfterDropPolicyEvent(
-      String catalogName, String namespace, String policyName, Boolean detachAll) {}
+      String catalogName, String namespace, String policyName, Boolean detachAll)
+      implements PolarisEvent {}
 
   // Policy Attachment Events
   public record BeforeAttachPolicyEvent(
       String catalogName,
       String namespace,
       String policyName,
-      AttachPolicyRequest attachPolicyRequest) {}
+      AttachPolicyRequest attachPolicyRequest)
+      implements PolarisEvent {}
 
   public record AfterAttachPolicyEvent(
       String catalogName,
       String namespace,
       String policyName,
-      AttachPolicyRequest attachPolicyRequest) {}
+      AttachPolicyRequest attachPolicyRequest)
+      implements PolarisEvent {}
 
   public record BeforeDetachPolicyEvent(
       String catalogName,
       String namespace,
       String policyName,
-      DetachPolicyRequest detachPolicyRequest) {}
+      DetachPolicyRequest detachPolicyRequest)
+      implements PolarisEvent {}
 
   public record AfterDetachPolicyEvent(
       String catalogName,
       String namespace,
       String policyName,
-      DetachPolicyRequest detachPolicyRequest) {}
+      DetachPolicyRequest detachPolicyRequest)
+      implements PolarisEvent {}
 
   // Policy Query Events
   public record BeforeGetApplicablePoliciesEvent(
-      String catalogName, String namespace, String targetName, String policyType) {}
+      String catalogName, String namespace, String targetName, String policyType)
+      implements PolarisEvent {}
 
   public record AfterGetApplicablePoliciesEvent(
       String catalogName,
       String namespace,
       String targetName,
       String policyType,
-      GetApplicablePoliciesResponse getApplicablePoliciesResponse) {}
+      GetApplicablePoliciesResponse getApplicablePoliciesResponse)
+      implements PolarisEvent {}
 }
