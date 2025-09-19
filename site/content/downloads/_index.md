@@ -41,8 +41,14 @@ Repo: https://downloads.apache.org/incubator/polaris/helm-chart
 
 Apache Polaris 1.1.0-incubating was released on September 19th, 2025. 
 - **New features & enhancements**
-  - Support for non-AWS S3 compatible storage with STS
+  - HMS support
+  - IMPLICIT authentication type
+  - Support for non-AWS S3 compatible storage with STS: MinIO, s3a scheme support
   - Use of Realm instead of RealmId
+  - Modularized Federation Architecture
+  - Federated Catalog Support in Polaris CLI
+  - Expanded External Identity Provider support
+  - Python package (official)
   - Documentation improvements (release process, multi-realms configuration)
 - **Bug fixes**
   - Fix drop view with default server configuration
