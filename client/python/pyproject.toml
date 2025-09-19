@@ -84,6 +84,7 @@ ignore-packages = [
     "more-itertools",        # MIT License (MIT)
     "mypy_extensions",       # MIT License (MIT)
     "poetry",                # MIT License (MIT)
+    "poetry-core",           # MIT License (MIT)
     "polaris",               # Apache-2.0
     "pyparsing",             # MIT License (MIT)
     "RapidFuzz",             # MIT License (MIT)
