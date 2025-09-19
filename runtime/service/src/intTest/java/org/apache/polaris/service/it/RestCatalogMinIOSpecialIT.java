@@ -314,8 +314,8 @@ public class RestCatalogMinIOSpecialIT {
   }
 
   @ParameterizedTest
-  // TODO:  @CsvSource("true,")
-  //  @CsvSource("false,")
+  @CsvSource("true,")
+  @CsvSource("false,")
   @CsvSource("true,VENDED_CREDENTIALS")
   @CsvSource("false,VENDED_CREDENTIALS")
   public void testAppendFiles(boolean pathStyle, AccessDelegationMode delegationMode)
