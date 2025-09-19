@@ -36,6 +36,14 @@ dependencies {
     api(project(":polaris-version"))
     api(project(":polaris-persistence-nosql-varint"))
 
+    api(project(":polaris-async-api"))
+    api(project(":polaris-async-java"))
+    api(project(":polaris-async-vertx"))
+
+    api(project(":polaris-idgen-api"))
+    api(project(":polaris-idgen-impl"))
+    api(project(":polaris-idgen-spi"))
+
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
