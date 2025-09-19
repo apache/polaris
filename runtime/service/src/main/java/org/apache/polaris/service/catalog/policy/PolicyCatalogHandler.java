@@ -210,7 +210,9 @@ public class PolicyCatalogHandler extends CatalogHandler {
           PolarisAuthorizableOperation.GET_APPLICABLE_POLICIES_ON_TABLE;
       // only Iceberg tables are supported
       authorizeBasicTableLikeOperationOrThrow(
-          op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+          op,
+          List.of(PolarisEntitySubType.ICEBERG_TABLE, PolarisEntitySubType.GENERIC_TABLE),
+          tableIdentifier);
     }
   }
 
@@ -307,7 +309,8 @@ public class PolicyCatalogHandler extends CatalogHandler {
               : PolarisAuthorizableOperation.DETACH_POLICY_FROM_NAMESPACE;
       case TABLE_LIKE -> {
         PolarisEntitySubType subType = targetWrapper.getRawLeafEntity().getSubType();
-        if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
+        if (subType == PolarisEntitySubType.ICEBERG_TABLE
+            || subType == PolarisEntitySubType.GENERIC_TABLE) {
           yield isAttach
               ? PolarisAuthorizableOperation.ATTACH_POLICY_TO_TABLE
               : PolarisAuthorizableOperation.DETACH_POLICY_FROM_TABLE;
