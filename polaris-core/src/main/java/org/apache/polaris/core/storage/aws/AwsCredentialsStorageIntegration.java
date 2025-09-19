@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.KMS_SUPPORT_LEVEL_S3;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import jakarta.annotation.Nonnull;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
@@ -86,10 +88,11 @@ public class AwsCredentialsStorageIntegration
             .roleSessionName("PolarisAwsCredentialsStorageIntegration")
             .policy(
                 policyString(
-                        storageConfig.getAwsPartition(),
+                        storageConfig,
                         allowListOperation,
                         allowedReadLocations,
-                        allowedWriteLocations)
+                        allowedWriteLocations,
+                        realmConfig)
                     .toJson())
             .durationSeconds(storageCredentialDurationSeconds);
     credentialsProvider.ifPresent(
@@ -158,10 +161,11 @@ public class AwsCredentialsStorageIntegration
    */
   // TODO - add KMS key access
   private IamPolicy policyString(
-      String awsPartition,
+      AwsStorageConfigurationInfo awsStorageConfigurationInfo,
       boolean allowList,
       Set<String> readLocations,
-      Set<String> writeLocations) {
+      Set<String> writeLocations,
+      RealmConfig realmConfig) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -171,7 +175,10 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
-    String arnPrefix = arnPrefixForPartition(awsPartition);
+    String arnPrefix = arnPrefixForPartition(awsStorageConfigurationInfo.getAwsPartition());
+    String roleARN = awsStorageConfigurationInfo.getRoleARN();
+    String region = awsStorageConfigurationInfo.getRegion();
+    String awsAccountId = awsStorageConfigurationInfo.getAwsAccountId();
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
@@ -232,11 +239,54 @@ public class AwsCredentialsStorageIntegration
     bucketGetLocationStatementBuilder
         .values()
         .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
+
+    policyBuilder.addStatement(allowGetObjectStatementBuilder.build());
+
+    if (isKMSSupported(realmConfig)) {
+      policyBuilder.addStatement(
+          IamStatement.builder()
+              .effect(IamEffect.ALLOW)
+              .addAction("kms:GenerateDataKey")
+              .addAction("kms:Decrypt")
+              .addAction("kms:DescribeKey")
+              .addResource(getKMSArnPrefix(roleARN) + region + ":" + awsAccountId + ":key/*")
+              .addCondition(IamConditionOperator.STRING_EQUALS, "aws:PrincipalArn", roleARN)
+              .addCondition(
+                  IamConditionOperator.STRING_LIKE,
+                  "kms:EncryptionContext:aws:s3:arn",
+                  arnPrefix
+                      + StorageUtil.getBucket(
+                          URI.create(awsStorageConfigurationInfo.getAllowedLocations().get(0)))
+                      + "/*")
+              .addCondition(
+                  IamConditionOperator.STRING_EQUALS,
+                  "kms:ViaService",
+                  getS3Endpoint(roleARN, region))
+              .build());
+    }
+    return policyBuilder.build();
   }
 
   private static String arnPrefixForPartition(String awsPartition) {
     return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
+  }
+
+  private static String getKMSArnPrefix(String roleArn) {
+    if (roleArn.contains("aws-cn")) {
+      return "arn:aws-cn:kms:";
+    } else if (roleArn.contains("aws-us-gov")) {
+      return "arn:aws-us-gov:kms:";
+    } else {
+      return "arn:aws:kms:";
+    }
+  }
+
+  private static String getS3Endpoint(String roleArn, String region) {
+    if (roleArn.contains("aws-cn")) {
+      return "s3." + region + ".amazonaws.com.cn";
+    } else {
+      return "s3." + region + ".amazonaws.com";
+    }
   }
 
   private static @Nonnull String parseS3Path(URI uri) {
@@ -250,5 +300,11 @@ public class AwsCredentialsStorageIntegration
       path = path.substring(1);
     }
     return path;
+  }
+
+  private boolean isKMSSupported(RealmConfig realmConfig) {
+    return !realmConfig
+        .getConfig(KMS_SUPPORT_LEVEL_S3)
+        .equals(FeatureConfiguration.KmsSupportLevel.NONE);
   }
 }
