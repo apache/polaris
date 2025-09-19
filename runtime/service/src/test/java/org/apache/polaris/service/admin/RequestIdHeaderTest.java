@@ -43,8 +43,6 @@ public class RequestIdHeaderTest {
       return Map.of(
           "polaris.log.request-id-header-name",
           REQUEST_ID_HEADER,
-          "polaris.bootstrap.credentials",
-          String.format("%s,%s,%s", REALM, CLIENT_ID, CLIENT_SECRET),
           "polaris.realm-context.header-name",
           REALM_HEADER,
           "polaris.realm-context.realms",
