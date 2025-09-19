@@ -53,7 +53,6 @@ public class RequestIdHeaderTest {
   }
 
   private static final String REQUEST_ID_HEADER = "x-test-request-id-random";
-  private static final String RESPONSE_REQUEST_ID_HEADER = "X-Request-Id";
   private static final String REALM_HEADER = "realm";
   private static final String REALM = "realm1";
   private static final String CLIENT_ID = "client1";
@@ -94,10 +93,9 @@ public class RequestIdHeaderTest {
     String requestId = "pre-requested-request-id";
     Map<String, String> headers = Map.of(REALM_HEADER, REALM, REQUEST_ID_HEADER, requestId);
     try (Response response = request(headers)) {
-      assertThat(response.getHeaders()).containsKey(RESPONSE_REQUEST_ID_HEADER);
-      assertThat(response.getHeaders().get(RESPONSE_REQUEST_ID_HEADER)).hasSize(1);
-      assertThat(response.getHeaders().get(RESPONSE_REQUEST_ID_HEADER))
-          .allMatch(s -> s.equals(requestId));
+      assertThat(response.getHeaders()).containsKey(REQUEST_ID_HEADER);
+      assertThat(response.getHeaders().get(REQUEST_ID_HEADER)).hasSize(1);
+      assertThat(response.getHeaders().get(REQUEST_ID_HEADER)).allMatch(s -> s.equals(requestId));
     }
   }
 
@@ -105,9 +103,9 @@ public class RequestIdHeaderTest {
   public void testRequestIdHeaderNotSpecified() {
     Map<String, String> headers = Map.of(REALM_HEADER, REALM);
     try (Response response = request(headers)) {
-      assertThat(response.getHeaders()).containsKey(RESPONSE_REQUEST_ID_HEADER);
-      assertThat(response.getHeaders().get(RESPONSE_REQUEST_ID_HEADER)).hasSize(1);
-      assertThat(response.getHeaders().get(RESPONSE_REQUEST_ID_HEADER))
+      assertThat(response.getHeaders()).containsKey(REQUEST_ID_HEADER);
+      assertThat(response.getHeaders().get(REQUEST_ID_HEADER)).hasSize(1);
+      assertThat(response.getHeaders().get(REQUEST_ID_HEADER))
           .allMatch(s -> isValidUUID(s.toString()));
     }
   }

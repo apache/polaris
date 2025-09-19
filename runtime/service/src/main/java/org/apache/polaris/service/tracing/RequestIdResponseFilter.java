@@ -21,6 +21,7 @@ package org.apache.polaris.service.tracing;
 
 import static org.apache.polaris.service.tracing.RequestIdFilter.REQUEST_ID_KEY;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
@@ -28,6 +29,7 @@ import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.polaris.service.logging.LoggingConfiguration;
 
+@ApplicationScoped
 @Provider
 public class RequestIdResponseFilter implements ContainerResponseFilter {
 
