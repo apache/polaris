@@ -78,6 +78,7 @@ ignore-packages = [
     "cffi",                  # MIT License (MIT)
     "click",                 # BSD-3-Clause
     "cryptography",          # Apache-2.0 or BSD-3-Clause
+    "dulwich",               # Apache-2.0 or GPL-2.0-or-later
     "fsspec",                # BSD-3-Clause
     "jaraco.functools",      # MIT License (MIT)
     "jeepney",               # MIT License (MIT)
