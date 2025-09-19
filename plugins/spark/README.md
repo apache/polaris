@@ -50,7 +50,7 @@ Run the following command to build the Polaris Spark project and publish the sou
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -67,13 +67,13 @@ The Polaris version is defined in the `versions.txt` file located in the root di
 Assume the following values:
 - `spark_version`: 3.5
 - `scala_version`: 2.12
-- `polaris_version`: 1.1.0-incubating-SNAPSHOT
+- `polaris_version`: 1.2.0-incubating-SNAPSHOT
 - `catalog-name`: `polaris`
 The Spark command would look like following:
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-3.5_2.12:1.1.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-3.5_2.12:1.2.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.polaris.warehouse=polaris \
@@ -90,7 +90,7 @@ bin/spark-shell \
 The polaris-spark project also provides a Spark bundle JAR for the `--jars` use case. The resulting JAR will follow this naming format:
 polaris-spark-<spark_version>_<scala_version>-<polaris_version>-bundle.jar
 For example:
-polaris-spark-bundle-3.5_2.12-1.1.0-incubating-SNAPSHOT-bundle.jar
+polaris-spark-bundle-3.5_2.12-1.2.0-incubating-SNAPSHOT-bundle.jar
 
 Run `./gradlew assemble` to build the entire Polaris project without running tests. After the build completes, 
 the bundle JAR can be found under: plugins/spark/v3.5/spark/build/<scala_version>/libs/.
@@ -99,7 +99,7 @@ To start Spark using the bundle JAR, specify it with the `--jars` option as show
 ```shell
 bin/spark-shell \
 --jars <path-to-spark-client-jar> \
---packages org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \

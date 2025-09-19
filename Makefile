@@ -169,10 +169,21 @@ client-license-check: client-setup-env ## Run license compliance check
 	@echo "--- License compliance check complete ---"
 
 .PHONY: client-build
-client-build: client-setup-env ## Build client distribution
+client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format.
 	@echo "--- Building client distribution ---"
-	@$(ACTIVATE_AND_CD) && poetry build
+	@if [ -n "$(FORMAT)" ]; then \
+		if [ "$(FORMAT)" != "sdist" ] && [ "$(FORMAT)" != "wheel" ]; then \
+			echo "Error: Invalid format '$(FORMAT)'. Supported formats are 'sdist' and 'wheel'." >&2; \
+			exit 1; \
+		fi; \
+		echo "Building with format: $(FORMAT)"; \
+		$(ACTIVATE_AND_CD) && poetry build --format $(FORMAT); \
+	else \
+		echo "Building default distribution (sdist and wheel)"; \
+		$(ACTIVATE_AND_CD) && poetry build; \
+	fi
 	@echo "--- Client distribution build complete ---"
+
 
 .PHONY: client-cleanup
 client-cleanup: ## Cleanup virtual environment and Python cache files

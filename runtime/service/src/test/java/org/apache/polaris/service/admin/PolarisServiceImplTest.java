@@ -235,8 +235,8 @@ public class PolarisServiceImplTest {
       method.invoke(service, catalog);
     } catch (java.lang.reflect.InvocationTargetException e) {
       Throwable cause = e.getCause();
-      if (cause instanceof Exception) {
-        throw (Exception) cause;
+      if (cause instanceof Exception exception) {
+        throw exception;
       } else {
         throw e;
       }

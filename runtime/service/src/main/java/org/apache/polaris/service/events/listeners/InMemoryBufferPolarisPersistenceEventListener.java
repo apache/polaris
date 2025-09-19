@@ -127,7 +127,7 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
 
   @Nullable
   @Override
-  String getRequestId() {
+  protected String getRequestId() {
     if (containerRequestContext != null && containerRequestContext.hasProperty(REQUEST_ID_KEY)) {
       return (String) containerRequestContext.getProperty(REQUEST_ID_KEY);
     }
@@ -135,7 +135,7 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   }
 
   @Override
-  void processEvent(PolarisEvent polarisEvent) {
+  protected void processEvent(PolarisEvent polarisEvent) {
     String realmId = callContext.getRealmContext().getRealmIdentifier();
 
     ConcurrentLinkedQueueWithApproximateSize<PolarisEvent> realmQueue =
@@ -192,7 +192,7 @@ public class InMemoryBufferPolarisPersistenceEventListener extends PolarisPersis
   }
 
   @Override
-  ContextSpecificInformation getContextSpecificInformation() {
+  protected ContextSpecificInformation getContextSpecificInformation() {
     return new ContextSpecificInformation(
         clock.millis(),
         securityContext.getUserPrincipal() == null

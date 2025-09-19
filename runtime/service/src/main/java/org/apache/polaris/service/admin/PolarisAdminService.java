@@ -251,11 +251,8 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper topLevelEntityWrapper =
         resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, entityType);
 
-    // TODO: If we do add more "self" privilege operations for PRINCIPAL targets this should
-    // be extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
-    if (topLevelEntityWrapper.getResolvedLeafEntity().getEntity().getId()
-            == polarisPrincipal.getId()
-        && (op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS))) {
+    PolarisEntity entity = topLevelEntityWrapper.getResolvedLeafEntity().getEntity();
+    if (isSelfEntity(entity) && isSelfOperation(op)) {
       LOGGER
           .atDebug()
           .addKeyValue("principalName", topLevelEntityName)
@@ -268,6 +265,29 @@ public class PolarisAdminService {
         op,
         topLevelEntityWrapper,
         null /* secondary */);
+  }
+
+  /**
+   * Returns true if the target entity is the same as the current authenticated {@link
+   * PolarisPrincipal}.
+   */
+  private boolean isSelfEntity(PolarisEntity entity) {
+    // Entity name is unique for (realm_id, catalog_id, parent_id, type_code),
+    // which is reduced to (realm_id, type_code) for top-level entities;
+    // so there can be only one principal with a given name inside any realm.
+    return entity.getType() == PolarisEntityType.PRINCIPAL
+        && entity.getName().equals(polarisPrincipal.getName());
+  }
+
+  /**
+   * Returns true if the operation is a "self" operation, that is, an operation that is being
+   * performed by the principal on itself.
+   *
+   * <p>TODO: If we do add more "self" privilege operations for PRINCIPAL targets this should be
+   * extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
+   */
+  private static boolean isSelfOperation(PolarisAuthorizableOperation op) {
+    return op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS);
   }
 
   private void authorizeBasicCatalogRoleOperationOrThrow(
@@ -305,8 +325,6 @@ public class PolarisAdminService {
           status.getFailedToResolvedEntityName(), principalRoleName);
     }
 
-    // TODO: Merge this method into authorizeGrantOnTopLevelEntityToPrincipalRoleOperationOrThrow
-    // once we remove any special handling logic for the rootContainer.
     PolarisResolvedPathWrapper rootContainerWrapper =
         resolutionManifest.getResolvedRootContainerEntityAsPath();
     PolarisResolvedPathWrapper principalRoleWrapper =
@@ -318,42 +336,6 @@ public class PolarisAdminService {
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         rootContainerWrapper,
-        principalRoleWrapper);
-  }
-
-  private void authorizeGrantOnTopLevelEntityToPrincipalRoleOperationOrThrow(
-      PolarisAuthorizableOperation op,
-      String topLevelEntityName,
-      PolarisEntityType topLevelEntityType,
-      String principalRoleName) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(callContext, securityContext, null);
-    resolutionManifest.addTopLevelName(
-        topLevelEntityName, topLevelEntityType, false /* isOptional */);
-    resolutionManifest.addTopLevelName(
-        principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException(
-          "Entity %s not found when trying to assign %s of type %s to %s",
-          status.getFailedToResolvedEntityName(),
-          topLevelEntityName,
-          topLevelEntityType,
-          principalRoleName);
-    }
-
-    PolarisResolvedPathWrapper topLevelEntityWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, topLevelEntityType);
-    PolarisResolvedPathWrapper principalRoleWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(
-            principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
-
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        topLevelEntityWrapper,
         principalRoleWrapper);
   }
 

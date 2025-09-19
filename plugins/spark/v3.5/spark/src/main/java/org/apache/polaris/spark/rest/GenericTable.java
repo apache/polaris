@@ -144,7 +144,7 @@ public class GenericTable {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof GenericTable)) {
       return false;
     }
     GenericTable genericTable = (GenericTable) o;

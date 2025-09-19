@@ -20,12 +20,10 @@ package org.apache.polaris.service.auth;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
@@ -60,34 +58,22 @@ public abstract class JWTBroker implements TokenBroker {
   public abstract Algorithm getAlgorithm();
 
   @Override
-  public DecodedToken verify(String token) {
+  public PolarisCredential verify(String token) {
+    return verifyInternal(token);
+  }
+
+  private InternalPolarisToken verifyInternal(String token) {
     JWTVerifier verifier = JWT.require(getAlgorithm()).withClaim(CLAIM_KEY_ACTIVE, true).build();
 
     try {
       DecodedJWT decodedJWT = verifier.verify(token);
-      return new DecodedToken() {
-        @Override
-        public Long getPrincipalId() {
-          return decodedJWT.getClaim("principalId").asLong();
-        }
+      return InternalPolarisToken.of(
+          decodedJWT.getSubject(),
+          decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong(),
+          decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString(),
+          decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString());
 
-        @Override
-        public String getClientId() {
-          return decodedJWT.getClaim("client_id").asString();
-        }
-
-        @Override
-        public String getSub() {
-          return decodedJWT.getSubject();
-        }
-
-        @Override
-        public String getScope() {
-          return decodedJWT.getClaim("scope").asString();
-        }
-      };
-
-    } catch (JWTVerificationException e) {
+    } catch (Exception e) {
       throw (NotAuthorizedException)
           new NotAuthorizedException("Failed to verify the token").initCause(e);
     }
@@ -110,26 +96,26 @@ public abstract class JWTBroker implements TokenBroker {
     if (subjectToken == null || subjectToken.isBlank()) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
     }
-    DecodedToken decodedToken;
+    InternalPolarisToken decodedToken;
     try {
-      decodedToken = verify(subjectToken);
+      decodedToken = verifyInternal(subjectToken);
     } catch (NotAuthorizedException e) {
       LOGGER.error("Failed to verify the token", e.getCause());
       return new TokenResponse(Error.invalid_client);
     }
     EntityResult principalLookup =
         metaStoreManager.loadEntity(
-            polarisCallContext,
-            0L,
-            Objects.requireNonNull(decodedToken.getPrincipalId()),
-            PolarisEntityType.PRINCIPAL);
+            polarisCallContext, 0L, decodedToken.getPrincipalId(), PolarisEntityType.PRINCIPAL);
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
     }
     String tokenString =
         generateTokenString(
-            decodedToken.getClientId(), decodedToken.getScope(), decodedToken.getPrincipalId());
+            decodedToken.getPrincipalName(),
+            decodedToken.getPrincipalId(),
+            decodedToken.getClientId(),
+            decodedToken.getScope());
     return new TokenResponse(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }
@@ -156,16 +142,18 @@ public abstract class JWTBroker implements TokenBroker {
     if (principal.isEmpty()) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
     }
-    String tokenString = generateTokenString(clientId, scope, principal.get().getId());
+    String tokenString =
+        generateTokenString(principal.get().getName(), principal.get().getId(), clientId, scope);
     return new TokenResponse(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }
 
-  private String generateTokenString(String clientId, String scope, Long principalId) {
+  private String generateTokenString(
+      String principalName, long principalId, String clientId, String scope) {
     Instant now = Instant.now();
     return JWT.create()
         .withIssuer(ISSUER_KEY)
-        .withSubject(String.valueOf(principalId))
+        .withSubject(principalName)
         .withIssuedAt(now)
         .withExpiresAt(now.plus(maxTokenGenerationInSeconds, ChronoUnit.SECONDS))
         .withJWTId(UUID.randomUUID().toString())

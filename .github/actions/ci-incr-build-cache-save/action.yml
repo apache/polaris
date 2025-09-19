@@ -47,7 +47,6 @@ runs:
             -path './[0-9]*/kotlin-dsl/*' -or \
             -path './jars-*/*' -or \
             -path './modules-*/files-*/*' -or \
-            -path './modules-*/files-*/*' -or \
             -path './build-cache-*/*' \
             ')' | grep -v '[.]lock$'  > ~/ci-gradle-caches-diff || true
           echo "Identified $(wc -l < ~/ci-gradle-caches-diff) changed/added files in caches/"

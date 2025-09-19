@@ -17,9 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: Code Of Conduct
-type: docs
-weight: 300
+title: 'Apache Polaris Catalog Service OpenAPI Specification'
+linkTitle: 'Catalog API ↗'
+weight: 200
+params:
+  show_page_toc: false
 ---
 
-{{< readfile "/code-of-conduct.md" >}}
+{{< redoc-polaris "generated/bundled-polaris-catalog-service.yaml" >}}

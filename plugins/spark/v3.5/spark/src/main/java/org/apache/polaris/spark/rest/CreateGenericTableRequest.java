@@ -145,7 +145,7 @@ public class CreateGenericTableRequest {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof CreateGenericTableRequest)) {
       return false;
     }
     CreateGenericTableRequest createGenericTableRequest = (CreateGenericTableRequest) o;

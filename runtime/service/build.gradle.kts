@@ -129,22 +129,23 @@ dependencies {
   testImplementation("io.quarkus:quarkus-junit5-mockito")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
+  testImplementation("io.quarkus:quarkus-jdbc-h2")
+
   testImplementation("io.rest-assured:rest-assured")
+
   testImplementation(libs.localstack)
-  testImplementation("org.testcontainers:testcontainers")
+
+  testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
 
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
-  testImplementation(project(":polaris-runtime-test-common"))
-
-  testImplementation("io.quarkus:quarkus-junit5")
   testImplementation(libs.awaitility)
+
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:postgresql")
-  testImplementation("org.postgresql:postgresql")
 
   testFixturesImplementation(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-api-management-model"))
