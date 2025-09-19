@@ -114,8 +114,7 @@ public class PolarisServiceImpl
           .entity(icebergErrorResponse)
           .build();
     }
-    Response.ResponseBuilder responseBuilder = Response.status(successStatus);
-    return responseBuilder.build();
+    return Response.status(successStatus).build();
   }
 
   /** From PolarisCatalogsApiService */
