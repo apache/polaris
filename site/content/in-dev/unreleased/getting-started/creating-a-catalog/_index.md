@@ -17,10 +17,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Alternate Configurations
-linkTitle: Alternate configurations ⛕
+title: Creating a Catalog
+linkTitle: Creating a Catalog
 type: docs
-weight: 400
+weight: 300
 ---
 
-This section presents ready-to-use examples of alternative Apache Polaris configurations for various deployment scenarios and integrations.
+The following Object Storage providers can be configured as storage backends for your Polaris catalog:
+
+- [S3 compatible object stores]({{< ref "s3.md" >}})
+- [Google Cloud Storage]({{< ref "catalog-gcs.md" >}})
+- [Azure Blob Storage]({{< ref "catalog-azure.md" >}})
+- Local file system (By default for testing only)

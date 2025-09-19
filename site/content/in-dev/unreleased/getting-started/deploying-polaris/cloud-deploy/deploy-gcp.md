@@ -17,34 +17,30 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Deploying Polaris on Amazon Web Services (AWS)
+title: Deploying Polaris on Google Cloud Platform (GCP)
+linkTitle: GCP
 type: docs
-weight: 310
+weight: 330
 ---
 
-Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start an [Amazon RDS for PostgreSQL](https://aws.amazon.com/rds/postgresql/) instance, which will be used as the backend Postgres instance holding all Polaris data.
+Build and launch Polaris using the GCP Startup Script at the location provided in the command below. This script will start a [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres) instance, which will be used as the backend Postgres instance holding all Polaris data.
 Additionally, Polaris will be bootstrapped to use this database and Docker containers will be spun up for Spark SQL and Trino.
 
 The requirements to run the script below are:
-* There must be at least two subnets created in the VPC and region in which your EC2 instance reside. The span of subnets MUST include at least 2 availability zones (AZs) within the same region.
-* Your EC2 instance must be enabled with [IMDSv1 or IMDSv2 with 2+ hop limit](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-IMDS-new-instances.html#configure-IMDS-new-instances-instance-settings).
-* The AWS identity that you will use to run this script must have the following AWS permissions:
-  * "ec2:DescribeInstances"
-  * "rds:CreateDBInstance"
-  * "rds:DescribeDBInstances"
-  * "rds:CreateDBSubnetGroup"
-  * "sts:AssumeRole" on the same role as the Instance Profile role of the EC2 instance on which you are running this script. Additionally, you should ensure that the Instance Profile contains a trust policy that allows the role to trust itself to be assumed.
+* Install the `gcloud` CLI, if it is not already installed on the GCP VM. Instructions to download the `gcloud` CLI can be found [here](https://cloud.google.com/sdk/docs/install).
+* Ensure the `Cloud SQL Admin API` has been enabled in your project and that your VM's Principal has access to the correct role: `roles/cloudsql.admin`.
+* Ensure the VM's Principal has access to at least Read-only scope on Compute Engine: `compute.readonly`.
 
 ```shell
-chmod +x getting-started/assets/cloud_providers/deploy-aws.sh
+chmod +x getting-started/assets/cloud_providers/deploy-gcp.sh
 export ASSETS_PATH=$(pwd)/getting-started/assets/
 export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
-./getting-started/assets/cloud_providers/deploy-aws.sh
+./getting-started/assets/cloud_providers/deploy-gcp.sh
 ```
 
 ## Next Steps
-Congrats, you now have a running instance of1 Polaris! For details on how to use Polaris, check out the [Using Polaris]({{% relref "../../using-polaris" %}}) page.
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% relref "../../using-polaris" %}}) page.
 
 ## Cleanup Instructions
 To shut down the Polaris server, run the following commands:

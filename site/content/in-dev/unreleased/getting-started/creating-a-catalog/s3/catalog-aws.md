@@ -17,10 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Deploying Polaris on Cloud Providers
-linkTitle: On Cloud deployment
+title: Creating a catalog on AWS S3
+linkTitle: AWS
 type: docs
-weight: 300
+weight: 100
 ---
 
-Polaris can be deployed on various cloud providers, including Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP). In the following guides, we will walk you through the process of deploying Polaris on each of these cloud providers.
+TBD
