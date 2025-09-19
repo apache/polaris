@@ -17,13 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Deploying Polaris
-linkTitle: Deploying Polaris
+title: Creating a catalog on AWS S3
+linkTitle: AWS
 type: docs
-weight: 200
+weight: 100
 ---
 
-Here you can find the guides of how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).
-
-Locally, Polaris can be deployed using both docker and local build. 
-On the cloud, the following tutorials will deploy Polaris using docker environment.
+TBD

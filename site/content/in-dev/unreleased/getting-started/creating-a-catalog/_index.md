@@ -17,13 +17,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Deploying Polaris
-linkTitle: Deploying Polaris
+title: Creating a Catalog
+linkTitle: Creating a Catalog
 type: docs
-weight: 200
+weight: 300
 ---
 
-Here you can find the guides of how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).
+The following Object Storage providers can be configured as storage backends for your Polaris catalog:
 
-Locally, Polaris can be deployed using both docker and local build. 
-On the cloud, the following tutorials will deploy Polaris using docker environment.
+- [S3 compatible object stores]({{< ref "s3.md" >}})
+- [Google Cloud Storage]({{< ref "catalog-gcs.md" >}})
+- [Azure Blob Storage]({{< ref "catalog-azure.md" >}})
+- Local file system (By default for testing only)
