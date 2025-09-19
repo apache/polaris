@@ -42,9 +42,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisRestCatalogMinIOIT extends PolarisRestCatalogIntegrationBase {
 
-  private static final String BUCKET_URI_PREFIX = "/minio-test-polaris";
-  private static final String MINIO_ACCESS_KEY = "test-ak-123-polaris";
-  private static final String MINIO_SECRET_KEY = "test-sk-123-polaris";
+  protected static final String BUCKET_URI_PREFIX = "/minio-test-polaris";
+  protected static final String MINIO_ACCESS_KEY = "test-ak-123-polaris";
+  protected static final String MINIO_SECRET_KEY = "test-sk-123-polaris";
 
   public static class Profile implements QuarkusTestProfile {
 
