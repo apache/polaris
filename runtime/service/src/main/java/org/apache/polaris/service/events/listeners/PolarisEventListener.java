@@ -29,287 +29,287 @@ import org.apache.polaris.service.events.IcebergRestCatalogEvents;
  * Represents an event listener that can respond to notable moments during Polaris's execution.
  * Event details are documented under the event objects themselves.
  */
-public abstract class PolarisEventListener {
+public interface PolarisEventListener {
   /** {@link BeforeLimitRequestRateEvent} */
-  public void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {}
+  default void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeCommitTableEvent} */
-  public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {}
+  default void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCommitTableEvent} */
-  public void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {}
+  default void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeCommitViewEvent} */
-  public void onBeforeCommitView(IcebergRestCatalogEvents.BeforeCommitViewEvent event) {}
+  default void onBeforeCommitView(IcebergRestCatalogEvents.BeforeCommitViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCommitViewEvent} */
-  public void onAfterCommitView(IcebergRestCatalogEvents.AfterCommitViewEvent event) {}
+  default void onAfterCommitView(IcebergRestCatalogEvents.AfterCommitViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeRefreshTableEvent} */
-  public void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {}
+  default void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterRefreshTableEvent} */
-  public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {}
+  default void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeRefreshViewEvent} */
-  public void onBeforeRefreshView(IcebergRestCatalogEvents.BeforeRefreshViewEvent event) {}
+  default void onBeforeRefreshView(IcebergRestCatalogEvents.BeforeRefreshViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterRefreshViewEvent} */
-  public void onAfterRefreshView(IcebergRestCatalogEvents.AfterRefreshViewEvent event) {}
+  default void onAfterRefreshView(IcebergRestCatalogEvents.AfterRefreshViewEvent event) {}
 
   /** {@link BeforeAttemptTaskEvent} */
-  public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {}
+  default void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {}
 
   /** {@link AfterAttemptTaskEvent} */
-  public void onAfterAttemptTask(AfterAttemptTaskEvent event) {}
+  default void onAfterAttemptTask(AfterAttemptTaskEvent event) {}
 
   // Iceberg REST Catalog Namespace Events
   /** {@link IcebergRestCatalogEvents.BeforeCreateNamespaceEvent} */
-  public void onBeforeCreateNamespace(IcebergRestCatalogEvents.BeforeCreateNamespaceEvent event) {}
+  default void onBeforeCreateNamespace(IcebergRestCatalogEvents.BeforeCreateNamespaceEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCreateNamespaceEvent} */
-  public void onAfterCreateNamespace(IcebergRestCatalogEvents.AfterCreateNamespaceEvent event) {}
+  default void onAfterCreateNamespace(IcebergRestCatalogEvents.AfterCreateNamespaceEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeListNamespacesEvent} */
-  public void onBeforeListNamespaces(IcebergRestCatalogEvents.BeforeListNamespacesEvent event) {}
+  default void onBeforeListNamespaces(IcebergRestCatalogEvents.BeforeListNamespacesEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterListNamespacesEvent} */
-  public void onAfterListNamespaces(IcebergRestCatalogEvents.AfterListNamespacesEvent event) {}
+  default void onAfterListNamespaces(IcebergRestCatalogEvents.AfterListNamespacesEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeLoadNamespaceMetadataEvent} */
-  public void onBeforeLoadNamespaceMetadata(
+  default void onBeforeLoadNamespaceMetadata(
       IcebergRestCatalogEvents.BeforeLoadNamespaceMetadataEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterLoadNamespaceMetadataEvent} */
-  public void onAfterLoadNamespaceMetadata(
+  default void onAfterLoadNamespaceMetadata(
       IcebergRestCatalogEvents.AfterLoadNamespaceMetadataEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeCheckExistsNamespaceEvent} */
-  public void onBeforeCheckExistsNamespace(
+  default void onBeforeCheckExistsNamespace(
       IcebergRestCatalogEvents.BeforeCheckExistsNamespaceEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCheckExistsNamespaceEvent} */
-  public void onAfterCheckExistsNamespace(
+  default void onAfterCheckExistsNamespace(
       IcebergRestCatalogEvents.AfterCheckExistsNamespaceEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeDropNamespaceEvent} */
-  public void onBeforeDropNamespace(IcebergRestCatalogEvents.BeforeDropNamespaceEvent event) {}
+  default void onBeforeDropNamespace(IcebergRestCatalogEvents.BeforeDropNamespaceEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterDropNamespaceEvent} */
-  public void onAfterDropNamespace(IcebergRestCatalogEvents.AfterDropNamespaceEvent event) {}
+  default void onAfterDropNamespace(IcebergRestCatalogEvents.AfterDropNamespaceEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeUpdateNamespacePropertiesEvent} */
-  public void onBeforeUpdateNamespaceProperties(
+  default void onBeforeUpdateNamespaceProperties(
       IcebergRestCatalogEvents.BeforeUpdateNamespacePropertiesEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterUpdateNamespacePropertiesEvent} */
-  public void onAfterUpdateNamespaceProperties(
+  default void onAfterUpdateNamespaceProperties(
       IcebergRestCatalogEvents.AfterUpdateNamespacePropertiesEvent event) {}
 
   // Iceberg REST Catalog Table Events
   /** {@link IcebergRestCatalogEvents.BeforeCreateTableEvent} */
-  public void onBeforeCreateTable(IcebergRestCatalogEvents.BeforeCreateTableEvent event) {}
+  default void onBeforeCreateTable(IcebergRestCatalogEvents.BeforeCreateTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCreateTableEvent} */
-  public void onAfterCreateTable(IcebergRestCatalogEvents.AfterCreateTableEvent event) {}
+  default void onAfterCreateTable(IcebergRestCatalogEvents.AfterCreateTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeListTablesEvent} */
-  public void onBeforeListTables(IcebergRestCatalogEvents.BeforeListTablesEvent event) {}
+  default void onBeforeListTables(IcebergRestCatalogEvents.BeforeListTablesEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterListTablesEvent} */
-  public void onAfterListTables(IcebergRestCatalogEvents.AfterListTablesEvent event) {}
+  default void onAfterListTables(IcebergRestCatalogEvents.AfterListTablesEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeLoadTableEvent} */
-  public void onBeforeLoadTable(IcebergRestCatalogEvents.BeforeLoadTableEvent event) {}
+  default void onBeforeLoadTable(IcebergRestCatalogEvents.BeforeLoadTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterLoadTableEvent} */
-  public void onAfterLoadTable(IcebergRestCatalogEvents.AfterLoadTableEvent event) {}
+  default void onAfterLoadTable(IcebergRestCatalogEvents.AfterLoadTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeCheckExistsTableEvent} */
-  public void onBeforeCheckExistsTable(
+  default void onBeforeCheckExistsTable(
       IcebergRestCatalogEvents.BeforeCheckExistsTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCheckExistsTableEvent} */
-  public void onAfterCheckExistsTable(IcebergRestCatalogEvents.AfterCheckExistsTableEvent event) {}
+  default void onAfterCheckExistsTable(IcebergRestCatalogEvents.AfterCheckExistsTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeDropTableEvent} */
-  public void onBeforeDropTable(IcebergRestCatalogEvents.BeforeDropTableEvent event) {}
+  default void onBeforeDropTable(IcebergRestCatalogEvents.BeforeDropTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterDropTableEvent} */
-  public void onAfterDropTable(IcebergRestCatalogEvents.AfterDropTableEvent event) {}
+  default void onAfterDropTable(IcebergRestCatalogEvents.AfterDropTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeRegisterTableEvent} */
-  public void onBeforeRegisterTable(IcebergRestCatalogEvents.BeforeRegisterTableEvent event) {}
+  default void onBeforeRegisterTable(IcebergRestCatalogEvents.BeforeRegisterTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterRegisterTableEvent} */
-  public void onAfterRegisterTable(IcebergRestCatalogEvents.AfterRegisterTableEvent event) {}
+  default void onAfterRegisterTable(IcebergRestCatalogEvents.AfterRegisterTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeRenameTableEvent} */
-  public void onBeforeRenameTable(IcebergRestCatalogEvents.BeforeRenameTableEvent event) {}
+  default void onBeforeRenameTable(IcebergRestCatalogEvents.BeforeRenameTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterRenameTableEvent} */
-  public void onAfterRenameTable(IcebergRestCatalogEvents.AfterRenameTableEvent event) {}
+  default void onAfterRenameTable(IcebergRestCatalogEvents.AfterRenameTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeUpdateTableEvent} */
-  public void onBeforeUpdateTable(IcebergRestCatalogEvents.BeforeUpdateTableEvent event) {}
+  default void onBeforeUpdateTable(IcebergRestCatalogEvents.BeforeUpdateTableEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterUpdateTableEvent} */
-  public void onAfterUpdateTable(IcebergRestCatalogEvents.AfterUpdateTableEvent event) {}
+  default void onAfterUpdateTable(IcebergRestCatalogEvents.AfterUpdateTableEvent event) {}
 
   // Iceberg REST Catalog View Events
   /** {@link IcebergRestCatalogEvents.BeforeCreateViewEvent} */
-  public void onBeforeCreateView(IcebergRestCatalogEvents.BeforeCreateViewEvent event) {}
+  default void onBeforeCreateView(IcebergRestCatalogEvents.BeforeCreateViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCreateViewEvent} */
-  public void onAfterCreateView(IcebergRestCatalogEvents.AfterCreateViewEvent event) {}
+  default void onAfterCreateView(IcebergRestCatalogEvents.AfterCreateViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeListViewsEvent} */
-  public void onBeforeListViews(IcebergRestCatalogEvents.BeforeListViewsEvent event) {}
+  default void onBeforeListViews(IcebergRestCatalogEvents.BeforeListViewsEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterListViewsEvent} */
-  public void onAfterListViews(IcebergRestCatalogEvents.AfterListViewsEvent event) {}
+  default void onAfterListViews(IcebergRestCatalogEvents.AfterListViewsEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeLoadViewEvent} */
-  public void onBeforeLoadView(IcebergRestCatalogEvents.BeforeLoadViewEvent event) {}
+  default void onBeforeLoadView(IcebergRestCatalogEvents.BeforeLoadViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterLoadViewEvent} */
-  public void onAfterLoadView(IcebergRestCatalogEvents.AfterLoadViewEvent event) {}
+  default void onAfterLoadView(IcebergRestCatalogEvents.AfterLoadViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeCheckExistsViewEvent} */
-  public void onBeforeCheckExistsView(IcebergRestCatalogEvents.BeforeCheckExistsViewEvent event) {}
+  default void onBeforeCheckExistsView(IcebergRestCatalogEvents.BeforeCheckExistsViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCheckExistsViewEvent} */
-  public void onAfterCheckExistsView(IcebergRestCatalogEvents.AfterCheckExistsViewEvent event) {}
+  default void onAfterCheckExistsView(IcebergRestCatalogEvents.AfterCheckExistsViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeDropViewEvent} */
-  public void onBeforeDropView(IcebergRestCatalogEvents.BeforeDropViewEvent event) {}
+  default void onBeforeDropView(IcebergRestCatalogEvents.BeforeDropViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterDropViewEvent} */
-  public void onAfterDropView(IcebergRestCatalogEvents.AfterDropViewEvent event) {}
+  default void onAfterDropView(IcebergRestCatalogEvents.AfterDropViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeRenameViewEvent} */
-  public void onBeforeRenameView(IcebergRestCatalogEvents.BeforeRenameViewEvent event) {}
+  default void onBeforeRenameView(IcebergRestCatalogEvents.BeforeRenameViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterRenameViewEvent} */
-  public void onAfterRenameView(IcebergRestCatalogEvents.AfterRenameViewEvent event) {}
+  default void onAfterRenameView(IcebergRestCatalogEvents.AfterRenameViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeReplaceViewEvent} */
-  public void onBeforeReplaceView(IcebergRestCatalogEvents.BeforeReplaceViewEvent event) {}
+  default void onBeforeReplaceView(IcebergRestCatalogEvents.BeforeReplaceViewEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterReplaceViewEvent} */
-  public void onAfterReplaceView(IcebergRestCatalogEvents.AfterReplaceViewEvent event) {}
+  default void onAfterReplaceView(IcebergRestCatalogEvents.AfterReplaceViewEvent event) {}
 
   // Iceberg REST Catalog Credential Events
   /** {@link IcebergRestCatalogEvents.BeforeLoadCredentialsEvent} */
-  public void onBeforeLoadCredentials(IcebergRestCatalogEvents.BeforeLoadCredentialsEvent event) {}
+  default void onBeforeLoadCredentials(IcebergRestCatalogEvents.BeforeLoadCredentialsEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterLoadCredentialsEvent} */
-  public void onAfterLoadCredentials(IcebergRestCatalogEvents.AfterLoadCredentialsEvent event) {}
+  default void onAfterLoadCredentials(IcebergRestCatalogEvents.AfterLoadCredentialsEvent event) {}
 
   // Iceberg REST Catalog Transactions Events
   /** {@link IcebergRestCatalogEvents.BeforeCommitTransactionEvent} */
-  public void onBeforeCommitTransaction(
+  default void onBeforeCommitTransaction(
       IcebergRestCatalogEvents.BeforeCommitTransactionEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterCommitTransactionEvent} */
-  public void onAfterCommitTransaction(
+  default void onAfterCommitTransaction(
       IcebergRestCatalogEvents.AfterCommitTransactionEvent event) {}
 
   // Iceberg REST Catalog Notification Events
   /** {@link IcebergRestCatalogEvents.BeforeSendNotificationEvent} */
-  public void onBeforeSendNotification(
+  default void onBeforeSendNotification(
       IcebergRestCatalogEvents.BeforeSendNotificationEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterSendNotificationEvent} */
-  public void onAfterSendNotification(IcebergRestCatalogEvents.AfterSendNotificationEvent event) {}
+  default void onAfterSendNotification(IcebergRestCatalogEvents.AfterSendNotificationEvent event) {}
 
   // Iceberg REST Catalog Configuration Events
   /** {@link IcebergRestCatalogEvents.BeforeGetConfigEvent} */
-  public void onBeforeGetConfig(IcebergRestCatalogEvents.BeforeGetConfigEvent event) {}
+  default void onBeforeGetConfig(IcebergRestCatalogEvents.BeforeGetConfigEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.AfterGetConfigEvent} */
-  public void onAfterGetConfig(IcebergRestCatalogEvents.AfterGetConfigEvent event) {}
+  default void onAfterGetConfig(IcebergRestCatalogEvents.AfterGetConfigEvent event) {}
 
   // Catalog Policy Service Events
   /** {@link CatalogPolicyServiceEvents.BeforeCreatePolicyEvent} */
-  public void onBeforeCreatePolicy(CatalogPolicyServiceEvents.BeforeCreatePolicyEvent event) {}
+  default void onBeforeCreatePolicy(CatalogPolicyServiceEvents.BeforeCreatePolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.AfterCreatePolicyEvent} */
-  public void onAfterCreatePolicy(CatalogPolicyServiceEvents.AfterCreatePolicyEvent event) {}
+  default void onAfterCreatePolicy(CatalogPolicyServiceEvents.AfterCreatePolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.BeforeListPoliciesEvent} */
-  public void onBeforeListPolicies(CatalogPolicyServiceEvents.BeforeListPoliciesEvent event) {}
+  default void onBeforeListPolicies(CatalogPolicyServiceEvents.BeforeListPoliciesEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.AfterListPoliciesEvent} */
-  public void onAfterListPolicies(CatalogPolicyServiceEvents.AfterListPoliciesEvent event) {}
+  default void onAfterListPolicies(CatalogPolicyServiceEvents.AfterListPoliciesEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.BeforeLoadPolicyEvent} */
-  public void onBeforeLoadPolicy(CatalogPolicyServiceEvents.BeforeLoadPolicyEvent event) {}
+  default void onBeforeLoadPolicy(CatalogPolicyServiceEvents.BeforeLoadPolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.AfterLoadPolicyEvent} */
-  public void onAfterLoadPolicy(CatalogPolicyServiceEvents.AfterLoadPolicyEvent event) {}
+  default void onAfterLoadPolicy(CatalogPolicyServiceEvents.AfterLoadPolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.BeforeUpdatePolicyEvent} */
-  public void onBeforeUpdatePolicy(CatalogPolicyServiceEvents.BeforeUpdatePolicyEvent event) {}
+  default void onBeforeUpdatePolicy(CatalogPolicyServiceEvents.BeforeUpdatePolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.AfterUpdatePolicyEvent} */
-  public void onAfterUpdatePolicy(CatalogPolicyServiceEvents.AfterUpdatePolicyEvent event) {}
+  default void onAfterUpdatePolicy(CatalogPolicyServiceEvents.AfterUpdatePolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.BeforeDropPolicyEvent} */
-  public void onBeforeDropPolicy(CatalogPolicyServiceEvents.BeforeDropPolicyEvent event) {}
+  default void onBeforeDropPolicy(CatalogPolicyServiceEvents.BeforeDropPolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.AfterDropPolicyEvent} */
-  public void onAfterDropPolicy(CatalogPolicyServiceEvents.AfterDropPolicyEvent event) {}
+  default void onAfterDropPolicy(CatalogPolicyServiceEvents.AfterDropPolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.BeforeAttachPolicyEvent} */
-  public void onBeforeAttachPolicy(CatalogPolicyServiceEvents.BeforeAttachPolicyEvent event) {}
+  default void onBeforeAttachPolicy(CatalogPolicyServiceEvents.BeforeAttachPolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.AfterAttachPolicyEvent} */
-  public void onAfterAttachPolicy(CatalogPolicyServiceEvents.AfterAttachPolicyEvent event) {}
+  default void onAfterAttachPolicy(CatalogPolicyServiceEvents.AfterAttachPolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.BeforeDetachPolicyEvent} */
-  public void onBeforeDetachPolicy(CatalogPolicyServiceEvents.BeforeDetachPolicyEvent event) {}
+  default void onBeforeDetachPolicy(CatalogPolicyServiceEvents.BeforeDetachPolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.AfterDetachPolicyEvent} */
-  public void onAfterDetachPolicy(CatalogPolicyServiceEvents.AfterDetachPolicyEvent event) {}
+  default void onAfterDetachPolicy(CatalogPolicyServiceEvents.AfterDetachPolicyEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.BeforeGetApplicablePoliciesEvent} */
-  public void onBeforeGetApplicablePolicies(
+  default void onBeforeGetApplicablePolicies(
       CatalogPolicyServiceEvents.BeforeGetApplicablePoliciesEvent event) {}
 
   /** {@link CatalogPolicyServiceEvents.AfterGetApplicablePoliciesEvent} */
-  public void onAfterGetApplicablePolicies(
+  default void onAfterGetApplicablePolicies(
       CatalogPolicyServiceEvents.AfterGetApplicablePoliciesEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent} */
-  public void onBeforeCreateGenericTable(
+  default void onBeforeCreateGenericTable(
       CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.AfterCreateGenericTableEvent} */
-  public void onAfterCreateGenericTable(
+  default void onAfterCreateGenericTable(
       CatalogGenericTableServiceEvents.AfterCreateGenericTableEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.BeforeDropGenericTableEvent} */
-  public void onBeforeDropGenericTable(
+  default void onBeforeDropGenericTable(
       CatalogGenericTableServiceEvents.BeforeDropGenericTableEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.AfterDropGenericTableEvent} */
-  public void onAfterDropGenericTable(
+  default void onAfterDropGenericTable(
       CatalogGenericTableServiceEvents.AfterDropGenericTableEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.BeforeListGenericTablesEvent} */
-  public void onBeforeListGenericTables(
+  default void onBeforeListGenericTables(
       CatalogGenericTableServiceEvents.BeforeListGenericTablesEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.AfterListGenericTablesEvent} */
-  public void onAfterListGenericTables(
+  default void onAfterListGenericTables(
       CatalogGenericTableServiceEvents.AfterListGenericTablesEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.BeforeLoadGenericTableEvent} */
-  public void onBeforeLoadGenericTable(
+  default void onBeforeLoadGenericTable(
       CatalogGenericTableServiceEvents.BeforeLoadGenericTableEvent event) {}
 
   /** {@link CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent} */
-  public void onAfterLoadGenericTable(
+  default void onAfterLoadGenericTable(
       CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent event) {}
 }

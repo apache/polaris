@@ -47,54 +47,69 @@ public class IcebergRestCatalogEvents {
 
   // Namespace Events
   public record BeforeCreateNamespaceEvent(
-      String catalogName, CreateNamespaceRequest createNamespaceRequest) {}
+      String catalogName, CreateNamespaceRequest createNamespaceRequest) implements PolarisEvent {}
 
   public record AfterCreateNamespaceEvent(
-      String catalogName, Namespace namespace, Map<String, String> namespaceProperties) {}
+      String catalogName, Namespace namespace, Map<String, String> namespaceProperties)
+      implements PolarisEvent {}
 
-  public record BeforeListNamespacesEvent(String catalogName, String parent) {}
+  public record BeforeListNamespacesEvent(String catalogName, String parent)
+      implements PolarisEvent {}
 
-  public record AfterListNamespacesEvent(String catalogName, String parent) {}
+  public record AfterListNamespacesEvent(String catalogName, String parent)
+      implements PolarisEvent {}
 
-  public record BeforeLoadNamespaceMetadataEvent(String catalogName, Namespace namespace) {}
+  public record BeforeLoadNamespaceMetadataEvent(String catalogName, Namespace namespace)
+      implements PolarisEvent {}
 
   public record AfterLoadNamespaceMetadataEvent(
-      String catalogName, Namespace namespace, Map<String, String> namespaceProperties) {}
+      String catalogName, Namespace namespace, Map<String, String> namespaceProperties)
+      implements PolarisEvent {}
 
-  public record BeforeCheckExistsNamespaceEvent(String catalogName, Namespace namespace) {}
+  public record BeforeCheckExistsNamespaceEvent(String catalogName, Namespace namespace)
+      implements PolarisEvent {}
 
-  public record AfterCheckExistsNamespaceEvent(String catalogName, Namespace namespace) {}
+  public record AfterCheckExistsNamespaceEvent(String catalogName, Namespace namespace)
+      implements PolarisEvent {}
 
-  public record BeforeDropNamespaceEvent(String catalogName, Namespace namespace) {}
+  public record BeforeDropNamespaceEvent(String catalogName, Namespace namespace)
+      implements PolarisEvent {}
 
-  public record AfterDropNamespaceEvent(String catalogName, String namespace) {}
+  public record AfterDropNamespaceEvent(String catalogName, String namespace)
+      implements PolarisEvent {}
 
   public record BeforeUpdateNamespacePropertiesEvent(
       String catalogName,
       Namespace namespace,
-      UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest) {}
+      UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest)
+      implements PolarisEvent {}
 
   public record AfterUpdateNamespacePropertiesEvent(
       String catalogName,
       Namespace namespace,
-      UpdateNamespacePropertiesResponse updateNamespacePropertiesResponse) {}
+      UpdateNamespacePropertiesResponse updateNamespacePropertiesResponse)
+      implements PolarisEvent {}
 
   // Table Events
   public record BeforeCreateTableEvent(
       String catalogName,
       Namespace namespace,
       CreateTableRequest createTableRequest,
-      String accessDelegationMode) {}
+      String accessDelegationMode)
+      implements PolarisEvent {}
 
   public record AfterCreateTableEvent(
       String catalogName,
       Namespace namespace,
       String tableName,
-      LoadTableResponse loadTableResponse) {}
+      LoadTableResponse loadTableResponse)
+      implements PolarisEvent {}
 
-  public record BeforeListTablesEvent(String catalogName, Namespace namespace) {}
+  public record BeforeListTablesEvent(String catalogName, Namespace namespace)
+      implements PolarisEvent {}
 
-  public record AfterListTablesEvent(String catalogName, Namespace namespace) {}
+  public record AfterListTablesEvent(String catalogName, Namespace namespace)
+      implements PolarisEvent {}
 
   public record BeforeLoadTableEvent(
       String catalogName,
@@ -102,111 +117,139 @@ public class IcebergRestCatalogEvents {
       String table,
       String accessDelegationMode,
       String ifNoneMatchString,
-      String snapshots) {}
+      String snapshots)
+      implements PolarisEvent {}
 
   public record AfterLoadTableEvent(
-      String catalogName, Namespace namespace, LoadTableResponse loadTableResponse) {}
+      String catalogName, Namespace namespace, LoadTableResponse loadTableResponse)
+      implements PolarisEvent {}
 
-  public record BeforeCheckExistsTableEvent(
-      String catalogName, Namespace namespace, String table) {}
+  public record BeforeCheckExistsTableEvent(String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {}
 
-  public record AfterCheckExistsTableEvent(String catalogName, Namespace namespace, String table) {}
+  public record AfterCheckExistsTableEvent(String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {}
 
   public record BeforeDropTableEvent(
-      String catalogName, Namespace namespace, String table, Boolean purgeRequested) {}
+      String catalogName, Namespace namespace, String table, Boolean purgeRequested)
+      implements PolarisEvent {}
 
   public record AfterDropTableEvent(
-      String catalogName, Namespace namespace, String table, Boolean purgeRequested) {}
+      String catalogName, Namespace namespace, String table, Boolean purgeRequested)
+      implements PolarisEvent {}
 
   public record BeforeRegisterTableEvent(
-      String catalogName, Namespace namespace, RegisterTableRequest registerTableRequest) {}
+      String catalogName, Namespace namespace, RegisterTableRequest registerTableRequest)
+      implements PolarisEvent {}
 
   public record AfterRegisterTableEvent(
-      String catalogName, Namespace namespace, LoadTableResponse loadTableResponse) {}
+      String catalogName, Namespace namespace, LoadTableResponse loadTableResponse)
+      implements PolarisEvent {}
 
-  public record BeforeRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest) {}
+  public record BeforeRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest)
+      implements PolarisEvent {}
 
-  public record AfterRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest) {}
+  public record AfterRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest)
+      implements PolarisEvent {}
 
   public record BeforeUpdateTableEvent(
       String catalogName,
       Namespace namespace,
       String sourceTable,
-      CommitTableRequest commitTableRequest) {}
+      CommitTableRequest commitTableRequest)
+      implements PolarisEvent {}
 
   public record AfterUpdateTableEvent(
       String catalogName,
       Namespace namespace,
       String sourceTable,
-      LoadTableResponse loadTableResponse) {}
+      LoadTableResponse loadTableResponse)
+      implements PolarisEvent {}
 
   // View Events
   public record BeforeCreateViewEvent(
-      String catalogName, Namespace namespace, CreateViewRequest createViewRequest) {}
+      String catalogName, Namespace namespace, CreateViewRequest createViewRequest)
+      implements PolarisEvent {}
 
   public record AfterCreateViewEvent(
-      String catalogName, Namespace namespace, LoadViewResponse loadViewResponse) {}
+      String catalogName, Namespace namespace, LoadViewResponse loadViewResponse)
+      implements PolarisEvent {}
 
-  public record BeforeListViewsEvent(String catalogName, Namespace namespace) {}
+  public record BeforeListViewsEvent(String catalogName, Namespace namespace)
+      implements PolarisEvent {}
 
-  public record AfterListViewsEvent(String catalogName, Namespace namespace) {}
+  public record AfterListViewsEvent(String catalogName, Namespace namespace)
+      implements PolarisEvent {}
 
-  public record BeforeLoadViewEvent(String catalogName, Namespace namespace, String view) {}
+  public record BeforeLoadViewEvent(String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {}
 
   public record AfterLoadViewEvent(
-      String catalogName, Namespace namespace, LoadViewResponse loadViewResponse) {}
+      String catalogName, Namespace namespace, LoadViewResponse loadViewResponse)
+      implements PolarisEvent {}
 
-  public record BeforeCheckExistsViewEvent(String catalogName, Namespace namespace, String view) {}
+  public record BeforeCheckExistsViewEvent(String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {}
 
-  public record AfterCheckExistsViewEvent(String catalogName, Namespace namespace, String view) {}
+  public record AfterCheckExistsViewEvent(String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {}
 
-  public record BeforeDropViewEvent(String catalogName, Namespace namespace, String view) {}
+  public record BeforeDropViewEvent(String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {}
 
-  public record AfterDropViewEvent(String catalogName, Namespace namespace, String view) {}
+  public record AfterDropViewEvent(String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {}
 
-  public record BeforeRenameViewEvent(String catalogName, RenameTableRequest renameTableRequest) {}
+  public record BeforeRenameViewEvent(String catalogName, RenameTableRequest renameTableRequest)
+      implements PolarisEvent {}
 
-  public record AfterRenameViewEvent(String catalogName, RenameTableRequest renameTableRequest) {}
+  public record AfterRenameViewEvent(String catalogName, RenameTableRequest renameTableRequest)
+      implements PolarisEvent {}
 
   public record BeforeReplaceViewEvent(
       String catalogName,
       Namespace namespace,
       String sourceView,
-      CommitViewRequest commitViewRequest) {}
+      CommitViewRequest commitViewRequest)
+      implements PolarisEvent {}
 
   public record AfterReplaceViewEvent(
-      String catalogName,
-      Namespace namespace,
-      String sourceView,
-      LoadViewResponse loadViewResponse) {}
+      String catalogName, Namespace namespace, String sourceView, LoadViewResponse loadViewResponse)
+      implements PolarisEvent {}
 
   // Credential Events
-  public record BeforeLoadCredentialsEvent(String catalogName, Namespace namespace, String table) {}
+  public record BeforeLoadCredentialsEvent(String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {}
 
-  public record AfterLoadCredentialsEvent(String catalogName, Namespace namespace, String table) {}
+  public record AfterLoadCredentialsEvent(String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {}
 
   // Transaction Events
   public record BeforeCommitTransactionEvent(
-      String catalogName, CommitTransactionRequest commitTransactionRequest) {}
+      String catalogName, CommitTransactionRequest commitTransactionRequest)
+      implements PolarisEvent {}
 
   // TODO: Add all PolarisEntities that were modified with this transaction.
   public record AfterCommitTransactionEvent(
-      String catalogName, CommitTransactionRequest commitTransactionRequest) {}
+      String catalogName, CommitTransactionRequest commitTransactionRequest)
+      implements PolarisEvent {}
 
   // Notification Events
   public record BeforeSendNotificationEvent(
       String catalogName,
       Namespace namespace,
       String table,
-      NotificationRequest notificationRequest) {}
+      NotificationRequest notificationRequest)
+      implements PolarisEvent {}
 
   // TODO: Add result once SendNotification API changes are confirmed to return the result.
-  public record AfterSendNotificationEvent(String catalogName, Namespace namespace, String table) {}
+  public record AfterSendNotificationEvent(String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {}
 
   // Configuration Events
-  public record BeforeGetConfigEvent(String warehouse) {}
+  public record BeforeGetConfigEvent(String warehouse) implements PolarisEvent {}
 
-  public record AfterGetConfigEvent(ConfigResponse configResponse) {}
+  public record AfterGetConfigEvent(ConfigResponse configResponse) implements PolarisEvent {}
 
   // Legacy events
   public record BeforeCommitTableEvent(
