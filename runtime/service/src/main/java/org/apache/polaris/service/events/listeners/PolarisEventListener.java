@@ -23,7 +23,10 @@ import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
 import org.apache.polaris.service.events.CatalogGenericTableServiceEvents;
 import org.apache.polaris.service.events.CatalogPolicyServiceEvents;
+import org.apache.polaris.service.events.CatalogsServiceEvents;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.PrincipalRolesServiceEvents;
+import org.apache.polaris.service.events.PrincipalsServiceEvents;
 
 /**
  * Represents an event listener that can respond to notable moments during Polaris's execution.
@@ -69,6 +72,237 @@ public abstract class PolarisEventListener {
 
   /** {@link IcebergRestCatalogEvents.AfterCreateNamespaceEvent} */
   public void onAfterCreateNamespace(IcebergRestCatalogEvents.AfterCreateNamespaceEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeCreateCatalogEvent} */
+  public void onBeforeCreateCatalog(CatalogsServiceEvents.BeforeCreateCatalogEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterCreateCatalogEvent} */
+  public void onAfterCreateCatalog(CatalogsServiceEvents.AfterCreateCatalogEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeDeleteCatalogEvent} */
+  public void onBeforeDeleteCatalog(CatalogsServiceEvents.BeforeDeleteCatalogEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterDeleteCatalogEvent} */
+  public void onAfterDeleteCatalog(CatalogsServiceEvents.AfterDeleteCatalogEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeGetCatalogEvent} */
+  public void onBeforeGetCatalog(CatalogsServiceEvents.BeforeGetCatalogEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterGetCatalogEvent} */
+  public void onAfterGetCatalog(CatalogsServiceEvents.AfterGetCatalogEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeUpdateCatalogEvent} */
+  public void onBeforeUpdateCatalog(CatalogsServiceEvents.BeforeUpdateCatalogEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterUpdateCatalogEvent} */
+  public void onAfterUpdateCatalog(CatalogsServiceEvents.AfterUpdateCatalogEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeListCatalogEvent} */
+  public void onBeforeListCatalog(CatalogsServiceEvents.BeforeListCatalogEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterListCatalogEvent} */
+  public void onAfterListCatalog(CatalogsServiceEvents.AfterListCatalogEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeCreatePrincipalEvent} */
+  public void onBeforeCreatePrincipal(PrincipalsServiceEvents.BeforeCreatePrincipalEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterCreatePrincipalEvent} */
+  public void onAfterCreatePrincipal(PrincipalsServiceEvents.AfterCreatePrincipalEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeDeletePrincipalEvent} */
+  public void onBeforeDeletePrincipal(PrincipalsServiceEvents.BeforeDeletePrincipalEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterDeletePrincipalEvent} */
+  public void onAfterDeletePrincipal(PrincipalsServiceEvents.AfterDeletePrincipalEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeGetPrincipalEvent} */
+  public void onBeforeGetPrincipal(PrincipalsServiceEvents.BeforeGetPrincipalEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterGetPrincipalEvent} */
+  public void onAfterGetPrincipal(PrincipalsServiceEvents.AfterGetPrincipalEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeUpdatePrincipalEvent} */
+  public void onBeforeUpdatePrincipal(PrincipalsServiceEvents.BeforeUpdatePrincipalEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterUpdatePrincipalEvent} */
+  public void onAfterUpdatePrincipal(PrincipalsServiceEvents.AfterUpdatePrincipalEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeRotateCredentialsEvent} */
+  public void onBeforeRotateCredentials(
+      PrincipalsServiceEvents.BeforeRotateCredentialsEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterRotateCredentialsEvent} */
+  public void onAfterRotateCredentials(PrincipalsServiceEvents.AfterRotateCredentialsEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeListPrincipalsEvent} */
+  public void onBeforeListPrincipals(PrincipalsServiceEvents.BeforeListPrincipalsEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterListPrincipalsEvent} */
+  public void onAfterListPrincipals(PrincipalsServiceEvents.AfterListPrincipalsEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeResetCredentialsEvent} */
+  public void onBeforeResetCredentials(PrincipalsServiceEvents.BeforeResetCredentialsEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterResetCredentialsEvent} */
+  public void onAfterResetCredentials(PrincipalsServiceEvents.AfterResetCredentialsEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.BeforeCreatePrincipalRoleEvent} */
+  public void onBeforeCreatePrincipalRole(
+      PrincipalRolesServiceEvents.BeforeCreatePrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.AfterCreatePrincipalRoleEvent} */
+  public void onAfterCreatePrincipalRole(
+      PrincipalRolesServiceEvents.AfterCreatePrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.BeforeDeletePrincipalRoleEvent} */
+  public void onBeforeDeletePrincipalRole(
+      PrincipalRolesServiceEvents.BeforeDeletePrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.AfterDeletePrincipalRoleEvent} */
+  public void onAfterDeletePrincipalRole(
+      PrincipalRolesServiceEvents.AfterDeletePrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.BeforeGetPrincipalRoleEvent} */
+  public void onBeforeGetPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeGetPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.AfterGetPrincipalRoleEvent} */
+  public void onAfterGetPrincipalRole(
+      PrincipalRolesServiceEvents.AfterGetPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.BeforeUpdatePrincipalRoleEvent} */
+  public void onBeforeUpdatePrincipalRole(
+      PrincipalRolesServiceEvents.BeforeUpdatePrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.AfterUpdatePrincipalRoleEvent} */
+  public void onAfterUpdatePrincipalRole(
+      PrincipalRolesServiceEvents.AfterUpdatePrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.BeforeListPrincipalRolesEvent} */
+  public void onBeforeListPrincipalRoles(
+      PrincipalRolesServiceEvents.BeforeListPrincipalRolesEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.AfterListPrincipalRolesEvent} */
+  public void onAfterListPrincipalRoles(
+      PrincipalRolesServiceEvents.AfterListPrincipalRolesEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeCreateCatalogRoleEvent} */
+  public void onBeforeCreateCatalogRole(CatalogsServiceEvents.BeforeCreateCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterCreateCatalogRoleEvent} */
+  public void onAfterCreateCatalogRole(CatalogsServiceEvents.AfterCreateCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeDeleteCatalogRoleEvent} */
+  public void onBeforeDeleteCatalogRole(CatalogsServiceEvents.BeforeDeleteCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterDeleteCatalogRoleEvent} */
+  public void onAfterDeleteCatalogRole(CatalogsServiceEvents.AfterDeleteCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeGetCatalogRoleEvent} */
+  public void onBeforeGetCatalogRole(CatalogsServiceEvents.BeforeGetCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterGetCatalogRoleEvent} */
+  public void onAfterGetCatalogRole(CatalogsServiceEvents.AfterGetCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeUpdateCatalogRoleEvent} */
+  public void onBeforeUpdateCatalogRole(CatalogsServiceEvents.BeforeUpdateCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterUpdateCatalogRoleEvent} */
+  public void onAfterUpdateCatalogRole(CatalogsServiceEvents.AfterUpdateCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeListCatalogRolesEvent} */
+  public void onBeforeListCatalogRoles(CatalogsServiceEvents.BeforeListCatalogRolesEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterListCatalogRolesEvent} */
+  public void onAfterListCatalogRoles(CatalogsServiceEvents.AfterListCatalogRolesEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeAssignPrincipalRoleEvent} */
+  public void onBeforeAssignPrincipalRole(
+      PrincipalsServiceEvents.BeforeAssignPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterAssignPrincipalRoleEvent} */
+  public void onAfterAssignPrincipalRole(
+      PrincipalsServiceEvents.AfterAssignPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeRevokePrincipalRoleEvent} */
+  public void onBeforeRevokePrincipalRole(
+      PrincipalsServiceEvents.BeforeRevokePrincipalRoleEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterRevokePrincipalRoleEvent} */
+  public void onAfterRevokePrincipalRole(
+      PrincipalsServiceEvents.AfterRevokePrincipalRoleEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.BeforeListAssignedPrincipalRolesEvent} */
+  public void onBeforeListAssignedPrincipalRoles(
+      PrincipalsServiceEvents.BeforeListAssignedPrincipalRolesEvent event) {}
+
+  /** {@link PrincipalsServiceEvents.AfterListAssignedPrincipalRolesEvent} */
+  public void onAfterListAssignedPrincipalRoles(
+      PrincipalsServiceEvents.AfterListAssignedPrincipalRolesEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.BeforeAssignCatalogRoleToPrincipalRoleEvent} */
+  public void onBeforeAssignCatalogRoleToPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeAssignCatalogRoleToPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.AfterAssignCatalogRoleToPrincipalRoleEvent} */
+  public void onAfterAssignCatalogRoleToPrincipalRole(
+      PrincipalRolesServiceEvents.AfterAssignCatalogRoleToPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.BeforeRevokeCatalogRoleFromPrincipalRoleEvent} */
+  public void onBeforeRevokeCatalogRoleFromPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeRevokeCatalogRoleFromPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.AfterRevokeCatalogRoleFromPrincipalRoleEvent} */
+  public void onAfterRevokeCatalogRoleFromPrincipalRole(
+      PrincipalRolesServiceEvents.AfterRevokeCatalogRoleFromPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.BeforeListAssigneePrincipalsForPrincipalRoleEvent} */
+  public void onBeforeListAssigneePrincipalsForPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeListAssigneePrincipalsForPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.AfterListAssigneePrincipalsForPrincipalRoleEvent} */
+  public void onAfterListAssigneePrincipalsForPrincipalRole(
+      PrincipalRolesServiceEvents.AfterListAssigneePrincipalsForPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.BeforeListCatalogRolesForPrincipalRoleEvent} */
+  public void onBeforeListCatalogRolesForPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeListCatalogRolesForPrincipalRoleEvent event) {}
+
+  /** {@link PrincipalRolesServiceEvents.AfterListCatalogRolesForPrincipalRoleEvent} */
+  public void onAfterListCatalogRolesForPrincipalRole(
+      PrincipalRolesServiceEvents.AfterListCatalogRolesForPrincipalRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeAddGrantToCatalogRoleEvent} */
+  public void onBeforeAddGrantToCatalogRole(
+      CatalogsServiceEvents.BeforeAddGrantToCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterAddGrantToCatalogRoleEvent} */
+  public void onAfterAddGrantToCatalogRole(
+      CatalogsServiceEvents.AfterAddGrantToCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeRevokeGrantFromCatalogRoleEvent} */
+  public void onBeforeRevokeGrantFromCatalogRole(
+      CatalogsServiceEvents.BeforeRevokeGrantFromCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterRevokeGrantFromCatalogRoleEvent} */
+  public void onAfterRevokeGrantFromCatalogRole(
+      CatalogsServiceEvents.AfterRevokeGrantFromCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeListAssigneePrincipalRolesForCatalogRoleEvent} */
+  public void onBeforeListAssigneePrincipalRolesForCatalogRole(
+      CatalogsServiceEvents.BeforeListAssigneePrincipalRolesForCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterListAssigneePrincipalRolesForCatalogRoleEvent} */
+  public void onAfterListAssigneePrincipalRolesForCatalogRole(
+      CatalogsServiceEvents.AfterListAssigneePrincipalRolesForCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.BeforeListGrantsForCatalogRoleEvent} */
+  public void onBeforeListGrantsForCatalogRole(
+      CatalogsServiceEvents.BeforeListGrantsForCatalogRoleEvent event) {}
+
+  /** {@link CatalogsServiceEvents.AfterListGrantsForCatalogRoleEvent} */
+  public void onAfterListGrantsForCatalogRole(
+      CatalogsServiceEvents.AfterListGrantsForCatalogRoleEvent event) {}
 
   /** {@link IcebergRestCatalogEvents.BeforeListNamespacesEvent} */
   public void onBeforeListNamespaces(IcebergRestCatalogEvents.BeforeListNamespacesEvent event) {}

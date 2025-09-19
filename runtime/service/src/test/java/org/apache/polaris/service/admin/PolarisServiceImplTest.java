@@ -96,8 +96,7 @@ public class PolarisServiceImplTest {
             securityContext,
             polarisAuthorizer,
             reservedProperties);
-    polarisService =
-        new PolarisServiceImpl(realmConfig, reservedProperties, polarisEventListener, adminService);
+    polarisService = new PolarisServiceImpl(realmConfig, reservedProperties, adminService);
   }
 
   @Test

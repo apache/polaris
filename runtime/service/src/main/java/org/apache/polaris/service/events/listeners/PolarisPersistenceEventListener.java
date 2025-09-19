@@ -28,6 +28,7 @@ import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
+import org.apache.polaris.service.events.CatalogsServiceEvents;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 
 public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
@@ -87,6 +88,22 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
             "metadata",
             TableMetadataParser.toJson(tableMetadata));
     polarisEvent.setAdditionalProperties(additionalParameters);
+    processEvent(polarisEvent);
+  }
+
+  @Override
+  public void onAfterCreateCatalog(CatalogsServiceEvents.AfterCreateCatalogEvent event) {
+    ContextSpecificInformation contextSpecificInformation = getContextSpecificInformation();
+    PolarisEvent polarisEvent =
+        new PolarisEvent(
+            event.catalog().getName(),
+            org.apache.polaris.service.events.PolarisEvent.createEventId(),
+            getRequestId(),
+            event.getClass().getSimpleName(),
+            contextSpecificInformation.timestamp(),
+            contextSpecificInformation.principalName(),
+            PolarisEvent.ResourceType.CATALOG,
+            event.catalog().getName());
     processEvent(polarisEvent);
   }
 
