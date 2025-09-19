@@ -78,6 +78,7 @@ public class PolarisSparkCatalog implements TableCatalog {
   }
 
   @Override
+  @SuppressWarnings({"deprecation", "RedundantSuppression"})
   public Table createTable(
       Identifier identifier,
       StructType schema,

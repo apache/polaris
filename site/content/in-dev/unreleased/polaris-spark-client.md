@@ -23,7 +23,7 @@ weight: 650
 ---
 
 Apache Polaris now provides Catalog support for Generic Tables (non-Iceberg tables), please check out
-the [Catalog API Spec]({{% ref "polaris-catalog-service" %}}) for Generic Table API specs.
+the [Polaris Catalog OpenAPI Spec]({{% ref "polaris-api-specs/polaris-catalog-api.md" %}}) for Generic Table API specs.
 
 Along with the Generic Table Catalog support, Polaris is also releasing a Spark client, which helps to
 provide an end-to-end solution for Apache Spark to manage Delta tables using Polaris.

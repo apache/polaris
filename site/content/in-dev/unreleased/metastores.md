@@ -42,11 +42,14 @@ The Relational JDBC metastore currently relies on a Quarkus-managed datasource a
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
 
-Additionally the retries can be configured via `polaris.persistence.relational.jdbc.*` properties please ref [configuration]({{% ref "configuration" %}})
+Additionally, the retries can be configured via `polaris.persistence.relational.jdbc.*` properties please ref [configuration]({{% ref "configuration" %}})
 
 ## EclipseLink (Deprecated)
 > [!IMPORTANT]
-> Eclipse link is deprecated, its recommend to use Relational JDBC as persistence instead.
+> EclipseLink is deprecated, it is recommended to use Relational JDBC as persistence instead.
+
+> [!IMPORTANT]
+> EclipseLink persistence will be completely removed from Polaris in 1.3.0 or in 2.0.0 (whichever happens earlier).
 
 Polaris includes EclipseLink plugin by default with PostgresSQL driver.
 

@@ -54,7 +54,7 @@ public class NotificationRequest {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof NotificationRequest)) {
       return false;
     }
     NotificationRequest notificationRequest = (NotificationRequest) o;
