@@ -46,6 +46,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+* Fixed incorrect Azure expires at field for the credentials refresh response, leading to client failure via #2633
+
 ### Commits
 
 ## [1.1.0-incubating]
