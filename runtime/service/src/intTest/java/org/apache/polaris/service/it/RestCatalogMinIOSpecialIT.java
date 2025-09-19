@@ -80,6 +80,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -226,19 +227,36 @@ public class RestCatalogMinIOSpecialIT {
   }
 
   @ParameterizedTest
-  @CsvSource("true,")
-  @CsvSource("false,")
-  @CsvSource("true,VENDED_CREDENTIALS")
-  @CsvSource("false,VENDED_CREDENTIALS")
-  public void testCreateTable(boolean pathStyle, AccessDelegationMode dm) throws IOException {
+  @ValueSource(booleans = {true, false})
+  public void testCreateTable(boolean pathStyle) throws IOException {
+    LoadTableResponse response = doTestCreateTable(pathStyle, Optional.empty());
+    assertThat(response.config()).doesNotContainKey(SECRET_ACCESS_KEY);
+    assertThat(response.config()).doesNotContainKey(ACCESS_KEY_ID);
+    assertThat(response.config()).doesNotContainKey(REFRESH_CREDENTIALS_ENDPOINT);
+    assertThat(response.credentials()).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testCreateTableVendedCredentials(boolean pathStyle) throws IOException {
+    LoadTableResponse response = doTestCreateTable(pathStyle, Optional.of(VENDED_CREDENTIALS));
+    assertThat(response.config())
+        .containsEntry(
+            REFRESH_CREDENTIALS_ENDPOINT,
+            "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials");
+    assertThat(response.credentials()).hasSize(1);
+  }
+
+  private LoadTableResponse doTestCreateTable(boolean pathStyle, Optional<AccessDelegationMode> dm)
+      throws IOException {
     try (RESTCatalog restCatalog =
-        createCatalog(
-            Optional.of(endpoint), Optional.empty(), pathStyle, Optional.ofNullable(dm))) {
-      LoadTableResponse loadTableResponse = doTestCreateTable(restCatalog, Optional.ofNullable(dm));
+        createCatalog(Optional.of(endpoint), Optional.empty(), pathStyle, dm)) {
+      LoadTableResponse loadTableResponse = doTestCreateTable(restCatalog, dm);
       if (pathStyle) {
         assertThat(loadTableResponse.config())
             .containsEntry("s3.path-style-access", Boolean.TRUE.toString());
       }
+      return loadTableResponse;
     }
   }
 
@@ -294,19 +312,6 @@ public class RestCatalogMinIOSpecialIT {
             dm.map(v -> Map.of("X-Iceberg-Access-Delegation", v.protocolValue())).orElse(Map.of()));
 
     assertThat(loadTableResponse.config()).containsKey(ENDPOINT);
-
-    if (dm.map(VENDED_CREDENTIALS::equals).orElse(false)) {
-      assertThat(loadTableResponse.config())
-          .containsEntry(
-              REFRESH_CREDENTIALS_ENDPOINT,
-              "v1/" + catalogName + "/namespaces/test-ns/tables/t1/credentials");
-      assertThat(loadTableResponse.credentials()).hasSize(1);
-    } else {
-      assertThat(loadTableResponse.config()).doesNotContainKey(SECRET_ACCESS_KEY);
-      assertThat(loadTableResponse.config()).doesNotContainKey(ACCESS_KEY_ID);
-      assertThat(loadTableResponse.config()).doesNotContainKey(REFRESH_CREDENTIALS_ENDPOINT);
-      assertThat(loadTableResponse.credentials()).isEmpty();
-    }
 
     restCatalog.dropTable(id);
     assertThat(restCatalog.tableExists(id)).isFalse();
