@@ -251,11 +251,8 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper topLevelEntityWrapper =
         resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, entityType);
 
-    // TODO: If we do add more "self" privilege operations for PRINCIPAL targets this should
-    // be extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
-    if (topLevelEntityWrapper.getResolvedLeafEntity().getEntity().getId()
-            == polarisPrincipal.getId()
-        && (op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS))) {
+    PolarisEntity entity = topLevelEntityWrapper.getResolvedLeafEntity().getEntity();
+    if (isSelfEntity(entity) && isSelfOperation(op)) {
       LOGGER
           .atDebug()
           .addKeyValue("principalName", topLevelEntityName)
@@ -268,6 +265,29 @@ public class PolarisAdminService {
         op,
         topLevelEntityWrapper,
         null /* secondary */);
+  }
+
+  /**
+   * Returns true if the target entity is the same as the current authenticated {@link
+   * PolarisPrincipal}.
+   */
+  private boolean isSelfEntity(PolarisEntity entity) {
+    // Entity name is unique for (realm_id, catalog_id, parent_id, type_code),
+    // which is reduced to (realm_id, type_code) for top-level entities;
+    // so there can be only one principal with a given name inside any realm.
+    return entity.getType() == PolarisEntityType.PRINCIPAL
+        && entity.getName().equals(polarisPrincipal.getName());
+  }
+
+  /**
+   * Returns true if the operation is a "self" operation, that is, an operation that is being
+   * performed by the principal on itself.
+   *
+   * <p>TODO: If we do add more "self" privilege operations for PRINCIPAL targets this should be
+   * extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
+   */
+  private static boolean isSelfOperation(PolarisAuthorizableOperation op) {
+    return op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS);
   }
 
   private void authorizeBasicCatalogRoleOperationOrThrow(

@@ -52,12 +52,6 @@ abstract class PersistedPolarisPrincipal implements PolarisPrincipal {
     return getEntity().getName();
   }
 
-  @Value.Derived
-  @Override
-  public long getId() {
-    return getEntity().getId();
-  }
-
   @Value.Lazy
   @Override
   public Map<String, String> getProperties() {
