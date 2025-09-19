@@ -106,7 +106,7 @@ public class TableUpdateNotification {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof TableUpdateNotification)) {
       return false;
     }
     TableUpdateNotification tableUpdateNotification = (TableUpdateNotification) o;

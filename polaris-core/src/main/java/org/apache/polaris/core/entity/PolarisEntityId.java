@@ -49,7 +49,7 @@ public class PolarisEntityId {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (!(o instanceof PolarisEntityId)) return false;
     PolarisEntityId that = (PolarisEntityId) o;
     return catalogId == that.catalogId && id == that.id;
   }

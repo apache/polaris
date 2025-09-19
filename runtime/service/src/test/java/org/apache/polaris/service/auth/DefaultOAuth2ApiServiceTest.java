@@ -21,7 +21,6 @@ package org.apache.polaris.service.auth;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.SecurityContext;
 import java.nio.charset.Charset;
 import java.util.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
@@ -270,12 +269,7 @@ class DefaultOAuth2ApiServiceTest {
     private String clientId;
     private String clientSecret;
     private TokenType requestedTokenType;
-    private String subjectToken;
-    private TokenType subjectTokenType;
-    private String actorToken;
-    private TokenType actorTokenType;
     private RealmContext realmContext;
-    private SecurityContext securityContext;
 
     public InvocationBuilder authHeader(String authHeader) {
       this.authHeader = authHeader;
@@ -307,33 +301,8 @@ class DefaultOAuth2ApiServiceTest {
       return this;
     }
 
-    public InvocationBuilder subjectToken(String subjectToken) {
-      this.subjectToken = subjectToken;
-      return this;
-    }
-
-    public InvocationBuilder subjectTokenType(TokenType subjectTokenType) {
-      this.subjectTokenType = subjectTokenType;
-      return this;
-    }
-
-    public InvocationBuilder actorToken(String actorToken) {
-      this.actorToken = actorToken;
-      return this;
-    }
-
-    public InvocationBuilder actorTokenType(TokenType actorTokenType) {
-      this.actorTokenType = actorTokenType;
-      return this;
-    }
-
     public InvocationBuilder realmContext(RealmContext realmContext) {
       this.realmContext = realmContext;
-      return this;
-    }
-
-    public InvocationBuilder securityContext(SecurityContext securityContext) {
-      this.securityContext = securityContext;
       return this;
     }
 
@@ -345,12 +314,12 @@ class DefaultOAuth2ApiServiceTest {
           clientId,
           clientSecret,
           requestedTokenType,
-          subjectToken,
-          subjectTokenType,
-          actorToken,
-          actorTokenType,
+          null, // subjectToken
+          null, // subjectTokenType
+          null, // actorToken
+          null, // actorTokenType
           realmContext,
-          securityContext);
+          null); // securityContext
     }
   }
 }
