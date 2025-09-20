@@ -318,7 +318,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
 
     InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
-    TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFile);
+    TableMetadata metadata = TableMetadataParser.read(metadataFile);
     ops.commit(null, metadata);
 
     return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());

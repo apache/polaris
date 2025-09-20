@@ -64,7 +64,7 @@ public class NoneTokenBrokerFactory implements TokenBrokerFactory {
         }
 
         @Override
-        public DecodedToken verify(String token) {
+        public PolarisCredential verify(String token) {
           return null;
         }
       };

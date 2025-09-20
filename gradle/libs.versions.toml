@@ -40,7 +40,7 @@ swagger = "1.6.16"
 # (aka mention of the dependency removed).
 #
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
-assertj-core = { module = "org.assertj:assertj-core", version = "3.27.4" }
+assertj-core = { module = "org.assertj:assertj-core", version = "3.27.5" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.33.9" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
@@ -85,16 +85,16 @@ micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.4" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.19.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.19.0" }
-opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.54.0" }
+opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.54.1" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.37.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
-postgresql = { module = "org.postgresql:postgresql", version = "42.7.7" }
+postgresql = { module = "org.postgresql:postgresql", version = "42.7.8" }
 prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.4.1" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
 scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref = "scala212" }
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
-s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.8.0" }
+s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.9.1" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.13.9" }
 smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.13.4" }

@@ -39,14 +39,11 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
   @Override
   public Catalog createCatalog(
       ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager) {
-    if (!(connectionConfig instanceof IcebergRestConnectionConfigInfoDpo)) {
+    if (!(connectionConfig instanceof IcebergRestConnectionConfigInfoDpo icebergConfig)) {
       throw new IllegalArgumentException(
           "Expected IcebergRestConnectionConfigInfoDpo but got: "
               + connectionConfig.getClass().getSimpleName());
     }
-
-    IcebergRestConnectionConfigInfoDpo icebergConfig =
-        (IcebergRestConnectionConfigInfoDpo) connectionConfig;
 
     SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
     RESTCatalog federatedCatalog =

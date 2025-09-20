@@ -17,9 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Apache Polaris Management Service OpenAPI'
-linkTitle: 'Management OpenAPI'
-weight: 800
+title: 'Apache Polaris Management Service OpenAPI Specification'
+linkTitle: 'Management API ↗'
+weight: 100
 params:
   show_page_toc: false
 ---
