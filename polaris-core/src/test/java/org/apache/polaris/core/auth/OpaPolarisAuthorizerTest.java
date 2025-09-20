@@ -20,10 +20,14 @@ public class OpaPolarisAuthorizerTest {
     server.enqueue(new MockResponse().setBody("{\"result\":{\"allow\":true}}"));
     server.start();
     String url = server.url("/v1/data/polaris/authz/allow").toString();
-    System.setProperty("opa.server.url", url.replace("/v1/data/polaris/authz/allow", ""));
-    System.setProperty("opa.policy.path", "/v1/data/polaris/authz/allow");
 
-    OpaPolarisAuthorizer authorizer = new OpaPolarisAuthorizer();
+    OpaPolarisAuthorizer authorizer =
+        OpaPolarisAuthorizer.create(
+            url.replace("/v1/data/polaris/authz/allow", ""),
+            "/v1/data/polaris/authz/allow",
+            2000,
+            null,
+            null);
     PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
     Mockito.when(principal.getName()).thenReturn("eve");
     Mockito.when(principal.getRoles()).thenReturn(Set.of("auditor"));
@@ -62,10 +66,14 @@ public class OpaPolarisAuthorizerTest {
     server.enqueue(new MockResponse().setBody("{\"result\":{\"allow\":true}}"));
     server.start();
     String url = server.url("/v1/data/polaris/authz/allow").toString();
-    System.setProperty("opa.server.url", url.replace("/v1/data/polaris/authz/allow", ""));
-    System.setProperty("opa.policy.path", "/v1/data/polaris/authz/allow");
 
-    OpaPolarisAuthorizer authorizer = new OpaPolarisAuthorizer();
+    OpaPolarisAuthorizer authorizer =
+        OpaPolarisAuthorizer.create(
+            url.replace("/v1/data/polaris/authz/allow", ""),
+            "/v1/data/polaris/authz/allow",
+            2000,
+            null,
+            null);
     PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
     Mockito.when(principal.getName()).thenReturn("alice");
     Mockito.when(principal.getRoles()).thenReturn(Set.of("admin"));
@@ -93,10 +101,14 @@ public class OpaPolarisAuthorizerTest {
     server.enqueue(new MockResponse().setBody("{\"result\":{\"allow\":true}}"));
     server.start();
     String url = server.url("/v1/data/polaris/authz/allow").toString();
-    System.setProperty("opa.server.url", url.replace("/v1/data/polaris/authz/allow", ""));
-    System.setProperty("opa.policy.path", "/v1/data/polaris/authz/allow");
 
-    OpaPolarisAuthorizer authorizer = new OpaPolarisAuthorizer();
+    OpaPolarisAuthorizer authorizer =
+        OpaPolarisAuthorizer.create(
+            url.replace("/v1/data/polaris/authz/allow", ""),
+            "/v1/data/polaris/authz/allow",
+            2000,
+            null,
+            null);
     PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
     Mockito.when(principal.getName()).thenReturn("bob");
     Mockito.when(principal.getRoles()).thenReturn(Set.of("user"));

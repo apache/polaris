@@ -45,27 +45,46 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final String opaServerUrl;
   private final String opaPolicyPath;
+  private final OkHttpClient httpClient;
+  private final ObjectMapper objectMapper;
 
-  /**
-   * Constructs an OpaPolarisAuthorizer using system properties or environment variables for
-   * configuration.
-   *
-   * <p>The OPA server URL and policy path are read from either system properties or environment
-   * variables. Defaults are provided if not set.
-   */
-  public OpaPolarisAuthorizer() {
-    this.opaServerUrl =
-        System.getProperty(
-            "opa.server.url",
-            System.getenv().getOrDefault("OPA_SERVER_URL", "http://localhost:8181"));
-    this.opaPolicyPath =
-        System.getProperty(
-            "opa.policy.path",
-            System.getenv().getOrDefault("OPA_POLICY_PATH", "/v1/data/polaris/authz/allow"));
+  /** Private constructor for factory method and advanced wiring. */
+  private OpaPolarisAuthorizer(
+      String opaServerUrl,
+      String opaPolicyPath,
+      OkHttpClient httpClient,
+      ObjectMapper objectMapper) {
+    this.opaServerUrl = opaServerUrl;
+    this.opaPolicyPath = opaPolicyPath;
+    this.httpClient = httpClient;
+    this.objectMapper = objectMapper;
   }
 
-  private final OkHttpClient httpClient = new OkHttpClient();
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  /**
+   * Static factory for runtime configuration and CDI producer compatibility.
+   *
+   * @param opaServerUrl OPA server URL
+   * @param opaPolicyPath OPA policy path
+   * @param timeoutMs HTTP call timeout in milliseconds
+   * @param client OkHttpClient (optional, can be null)
+   * @param mapper ObjectMapper (optional, can be null)
+   * @return OpaPolarisAuthorizer instance
+   */
+  public static OpaPolarisAuthorizer create(
+      String opaServerUrl,
+      String opaPolicyPath,
+      int timeoutMs,
+      OkHttpClient client,
+      ObjectMapper mapper) {
+    OkHttpClient clientWithTimeout =
+        (client != null)
+            ? client.newBuilder().callTimeout(java.time.Duration.ofMillis(timeoutMs)).build()
+            : new OkHttpClient.Builder()
+                .callTimeout(java.time.Duration.ofMillis(timeoutMs))
+                .build();
+    ObjectMapper objectMapper = (mapper != null) ? mapper : new ObjectMapper();
+    return new OpaPolarisAuthorizer(opaServerUrl, opaPolicyPath, clientWithTimeout, objectMapper);
+  }
 
   /**
    * Authorizes a single target and secondary entity for the given principal and operation.
