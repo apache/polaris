@@ -16,36 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
-
-import static com.google.common.base.Preconditions.checkState;
+package org.apache.polaris.service.auth.internal.broker;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.auth.AuthenticationConfiguration;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 
 @ApplicationScoped
-@Identifier("symmetric-key")
-public class JWTSymmetricKeyFactory implements TokenBrokerFactory {
+@Identifier("rsa-key-pair")
+public class RSAKeyPairJWTBrokerFactory implements TokenBrokerFactory {
 
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final AuthenticationConfiguration authenticationConfiguration;
 
-  private final ConcurrentMap<String, JWTSymmetricKeyBroker> tokenBrokers =
-      new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, RSAKeyPairJWTBroker> tokenBrokers = new ConcurrentHashMap<>();
 
   @Inject
-  public JWTSymmetricKeyFactory(
+  public RSAKeyPairJWTBrokerFactory(
       MetaStoreManagerFactory metaStoreManagerFactory,
       AuthenticationConfiguration authenticationConfiguration) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -58,31 +55,30 @@ public class JWTSymmetricKeyFactory implements TokenBrokerFactory {
         realmContext.getRealmIdentifier(), k -> createTokenBroker(realmContext));
   }
 
-  private JWTSymmetricKeyBroker createTokenBroker(RealmContext realmContext) {
+  private RSAKeyPairJWTBroker createTokenBroker(RealmContext realmContext) {
     AuthenticationRealmConfiguration config = authenticationConfiguration.forRealm(realmContext);
     Duration maxTokenGeneration = config.tokenBroker().maxTokenGeneration();
-    SymmetricKeyConfiguration symmetricKeyConfiguration =
+    KeyProvider keyProvider =
         config
             .tokenBroker()
-            .symmetricKey()
-            .orElseThrow(() -> new IllegalStateException("Symmetric key configuration is missing"));
-    String secret = symmetricKeyConfiguration.secret().orElse(null);
-    Path file = symmetricKeyConfiguration.file().orElse(null);
-    checkState(secret != null || file != null, "Either file or secret must be set");
-    Supplier<String> secretSupplier = secret != null ? () -> secret : readSecretFromDisk(file);
-    return new JWTSymmetricKeyBroker(
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
-        (int) maxTokenGeneration.toSeconds(),
-        secretSupplier);
+            .rsaKeyPair()
+            .map(this::fileSystemKeyPair)
+            .orElseGet(this::generateEphemeralKeyPair);
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+    return new RSAKeyPairJWTBroker(
+        metaStoreManager, (int) maxTokenGeneration.toSeconds(), keyProvider);
   }
 
-  private static Supplier<String> readSecretFromDisk(Path file) {
-    return () -> {
-      try {
-        return Files.readString(file);
-      } catch (IOException e) {
-        throw new RuntimeException("Failed to read secret from file: " + file, e);
-      }
-    };
+  private KeyProvider fileSystemKeyPair(RSAKeyPairConfiguration config) {
+    return LocalRSAKeyProvider.fromFiles(config.publicKeyFile(), config.privateKeyFile());
+  }
+
+  private KeyProvider generateEphemeralKeyPair() {
+    try {
+      return new LocalRSAKeyProvider(PemUtils.generateKeyPair());
+    } catch (NoSuchAlgorithmException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

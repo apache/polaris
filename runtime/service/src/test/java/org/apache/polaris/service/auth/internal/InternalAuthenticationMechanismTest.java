@@ -35,7 +35,7 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.PolarisCredential;
-import org.apache.polaris.service.auth.TokenBroker;
+import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

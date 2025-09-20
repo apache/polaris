@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
 import static org.assertj.core.api.InstanceOfAssertFactories.BYTE_ARRAY;
 
@@ -46,11 +46,11 @@ public class LocalRSAKeyProviderTest {
 
     var keyProvider = LocalRSAKeyProvider.fromFiles(publicKeyFile, privateKeyFile);
     soft.assertThat(keyProvider)
-        .extracting(KeyProvider::getPublicKey)
+        .extracting(KeyProvider::publicKey)
         .extracting(PublicKey::getEncoded, BYTE_ARRAY)
         .containsExactly(generatedPublicKey.getEncoded());
     soft.assertThat(keyProvider)
-        .extracting(KeyProvider::getPrivateKey)
+        .extracting(KeyProvider::privateKey)
         .extracting(PrivateKey::getEncoded, BYTE_ARRAY)
         .containsExactly(generatedPrivateKey.getEncoded());
   }
@@ -64,11 +64,11 @@ public class LocalRSAKeyProviderTest {
 
     var keyProvider = new LocalRSAKeyProvider(keyPair);
     soft.assertThat(keyProvider)
-        .extracting(KeyProvider::getPublicKey)
+        .extracting(KeyProvider::publicKey)
         .extracting(PublicKey::getEncoded, BYTE_ARRAY)
         .containsExactly(generatedPublicKey.getEncoded());
     soft.assertThat(keyProvider)
-        .extracting(KeyProvider::getPrivateKey)
+        .extracting(KeyProvider::privateKey)
         .extracting(PrivateKey::getEncoded, BYTE_ARRAY)
         .containsExactly(generatedPrivateKey.getEncoded());
   }

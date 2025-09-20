@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,7 +24,12 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -36,15 +41,21 @@ import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class JWTSymmetricKeyGeneratorTest {
+@QuarkusTest
+public class RSAKeyPairJWTBrokerTest {
 
-  /** Sanity test to verify that we can generate a token */
+  @Inject protected PolarisConfigurationStore configurationStore;
+
   @Test
-  public void testJWTSymmetricKeyGenerator() {
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, null);
+  public void testSuccessfulTokenGeneration() throws Exception {
+    var keyPair = PemUtils.generateKeyPair();
+
+    final String clientId = "test-client-id";
+    final String scope = "PRINCIPAL_ROLE:TEST";
+
+    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, configurationStore);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
-    String mainSecret = "test_secret";
-    String clientId = "test_client_id";
+    String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(1L, clientId, mainSecret, "otherSecret");
     Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
@@ -60,22 +71,30 @@ public class JWTSymmetricKeyGeneratorTest {
     Mockito.when(
             metastoreManager.loadEntity(polarisCallContext, 0L, 1L, PolarisEntityType.PRINCIPAL))
         .thenReturn(new EntityResult(principal));
-    TokenBroker generator = new JWTSymmetricKeyBroker(metastoreManager, 666, () -> "polaris");
+    KeyProvider provider = new LocalRSAKeyProvider(keyPair);
+    TokenBroker tokenBroker = new RSAKeyPairJWTBroker(metastoreManager, 420, provider);
     TokenResponse token =
-        generator.generateFromClientSecrets(
+        tokenBroker.generateFromClientSecrets(
             clientId,
             mainSecret,
             TokenRequestValidator.CLIENT_CREDENTIALS,
-            "PRINCIPAL_ROLE:TEST",
+            scope,
             polarisCallContext,
             TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
+    assertThat(token.getExpiresIn()).isEqualTo(420);
 
-    JWTVerifier verifier = JWT.require(Algorithm.HMAC256("polaris")).withIssuer("polaris").build();
+    assertThat(provider.privateKey()).isNotNull();
+    assertThat(provider.publicKey()).isNotNull();
+    JWTVerifier verifier =
+        JWT.require(
+                Algorithm.RSA256(
+                    (RSAPublicKey) provider.publicKey(), (RSAPrivateKey) provider.privateKey()))
+            .withIssuer("polaris")
+            .build();
     DecodedJWT decodedJWT = verifier.verify(token.getAccessToken());
     assertThat(decodedJWT).isNotNull();
-    assertThat(token.getExpiresIn()).isEqualTo(666);
     assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo("PRINCIPAL_ROLE:TEST");
-    assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo(clientId);
+    assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo("test-client-id");
   }
 }

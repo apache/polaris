@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
+import org.apache.polaris.service.auth.internal.service.OAuthError;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,12 +31,12 @@ public class TokenRequestValidatorTest {
             new TokenRequestValidator()
                 .validateForClientCredentialsFlow(null, "notnull", "notnull", "nontnull")
                 .get())
-        .isEqualTo(OAuthTokenErrorResponse.Error.invalid_client);
+        .isEqualTo(OAuthError.invalid_client);
     Assertions.assertThat(
             new TokenRequestValidator()
                 .validateForClientCredentialsFlow("", "notnull", "notnull", "nonnull")
                 .get())
-        .isEqualTo(OAuthTokenErrorResponse.Error.invalid_client);
+        .isEqualTo(OAuthError.invalid_client);
   }
 
   @Test
@@ -44,12 +45,12 @@ public class TokenRequestValidatorTest {
             new TokenRequestValidator()
                 .validateForClientCredentialsFlow("client-id", null, "notnull", "nontnull")
                 .get())
-        .isEqualTo(OAuthTokenErrorResponse.Error.invalid_client);
+        .isEqualTo(OAuthError.invalid_client);
     Assertions.assertThat(
             new TokenRequestValidator()
                 .validateForClientCredentialsFlow("client-id", "", "notnull", "notnull")
                 .get())
-        .isEqualTo(OAuthTokenErrorResponse.Error.invalid_client);
+        .isEqualTo(OAuthError.invalid_client);
   }
 
   @Test
@@ -59,12 +60,12 @@ public class TokenRequestValidatorTest {
                 .validateForClientCredentialsFlow(
                     "client-id", "client-secret", "not-client-credentials", "notnull")
                 .get())
-        .isEqualTo(OAuthTokenErrorResponse.Error.invalid_grant);
+        .isEqualTo(OAuthError.invalid_grant);
     Assertions.assertThat(
             new TokenRequestValidator()
                 .validateForClientCredentialsFlow("client-id", "client-secret", "grant", "notnull")
                 .get())
-        .isEqualTo(OAuthTokenErrorResponse.Error.invalid_grant);
+        .isEqualTo(OAuthError.invalid_grant);
   }
 
   @ParameterizedTest
@@ -75,7 +76,7 @@ public class TokenRequestValidatorTest {
                 .validateForClientCredentialsFlow(
                     "client-id", "client-secret", "client_credentials", scope)
                 .get())
-        .isEqualTo(OAuthTokenErrorResponse.Error.invalid_scope);
+        .isEqualTo(OAuthError.invalid_scope);
   }
 
   @Test

@@ -16,13 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
-import java.util.function.Function;
-import org.apache.polaris.core.context.RealmContext;
+import com.auth0.jwt.algorithms.Algorithm;
+import java.util.function.Supplier;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 
-/**
- * Factory that creates a {@link TokenBroker} for generating and parsing. The {@link TokenBroker} is
- * created based on the realm context.
- */
-public interface TokenBrokerFactory extends Function<RealmContext, TokenBroker> {}
+/** Generates a JWT using a Symmetric Key. */
+public class SymmetricKeyJWTBroker extends JWTBroker {
+  private final Supplier<String> secretSupplier;
+
+  public SymmetricKeyJWTBroker(
+      PolarisMetaStoreManager metaStoreManager,
+      int maxTokenGenerationInSeconds,
+      Supplier<String> secretSupplier) {
+    super(metaStoreManager, maxTokenGenerationInSeconds);
+    this.secretSupplier = secretSupplier;
+  }
+
+  @Override
+  public Algorithm getAlgorithm() {
+    return Algorithm.HMAC256(secretSupplier.get());
+  }
+}

@@ -39,7 +39,7 @@ import java.util.Set;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.PolarisCredential;
-import org.apache.polaris.service.auth.TokenBroker;
+import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 
 /**
  * A custom {@link HttpAuthenticationMechanism} that handles internal token authentication, that is,

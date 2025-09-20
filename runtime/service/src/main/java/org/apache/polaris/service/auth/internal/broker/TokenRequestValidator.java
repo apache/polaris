@@ -16,22 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
+import org.apache.polaris.service.auth.internal.service.OAuthError;
 
-public class TokenRequestValidator {
+final class TokenRequestValidator {
 
   static final Logger LOGGER = Logger.getLogger(TokenRequestValidator.class.getName());
 
-  public static final String TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
-  public static final String CLIENT_CREDENTIALS = "client_credentials";
-  public static final Set<String> ALLOWED_GRANT_TYPES = Set.of(CLIENT_CREDENTIALS, TOKEN_EXCHANGE);
+  static final String TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
+  static final String CLIENT_CREDENTIALS = "client_credentials";
+  static final Set<String> ALLOWED_GRANT_TYPES = Set.of(CLIENT_CREDENTIALS, TOKEN_EXCHANGE);
+  static final String POLARIS_ROLE_PREFIX = "PRINCIPAL_ROLE:";
 
   /** Default constructor */
-  public TokenRequestValidator() {}
+  TokenRequestValidator() {}
 
   /**
    * Validates the incoming Client Credentials flow.
@@ -44,7 +46,7 @@ public class TokenRequestValidator {
    * @param scope while optional in the Iceberg REST API Spec we make it required and expect it to
    *     conform to the format "PRINCIPAL_ROLE:NAME PRINCIPAL_ROLE:NAME2 ..."
    */
-  public Optional<OAuthTokenErrorResponse.Error> validateForClientCredentialsFlow(
+  Optional<OAuthError> validateForClientCredentialsFlow(
       final String clientId,
       final String clientSecret,
       final String grantType,
@@ -52,25 +54,25 @@ public class TokenRequestValidator {
     if (clientId == null || clientId.isEmpty() || clientSecret == null || clientSecret.isEmpty()) {
       // TODO: Figure out how to get the authorization header from `securityContext`
       LOGGER.info("Missing Client ID or Client Secret in Request Body");
-      return Optional.of(OAuthTokenErrorResponse.Error.invalid_client);
+      return Optional.of(OAuthError.invalid_client);
     }
     if (grantType == null || grantType.isEmpty() || !ALLOWED_GRANT_TYPES.contains(grantType)) {
       LOGGER.info("Invalid grant type: " + grantType);
-      return Optional.of(OAuthTokenErrorResponse.Error.invalid_grant);
+      return Optional.of(OAuthError.invalid_grant);
     }
     if (scope == null || scope.isEmpty()) {
       LOGGER.info("Missing scope in Request Body");
-      return Optional.of(OAuthTokenErrorResponse.Error.invalid_scope);
+      return Optional.of(OAuthError.invalid_scope);
     }
     String[] scopes = scope.split(" ");
     for (String s : scopes) {
-      if (!s.startsWith(OAuthUtils.POLARIS_ROLE_PREFIX)) {
+      if (!s.startsWith(POLARIS_ROLE_PREFIX)) {
         LOGGER.info("Invalid scope provided. scopes=" + s + "scopes=" + scope);
-        return Optional.of(OAuthTokenErrorResponse.Error.invalid_scope);
+        return Optional.of(OAuthError.invalid_scope);
       }
-      if (s.replaceFirst(OAuthUtils.POLARIS_ROLE_PREFIX, "").isEmpty()) {
+      if (s.replaceFirst(POLARIS_ROLE_PREFIX, "").isEmpty()) {
         LOGGER.info("Invalid scope provided. scopes=" + s + "scopes=" + scope);
-        return Optional.of(OAuthTokenErrorResponse.Error.invalid_scope);
+        return Optional.of(OAuthError.invalid_scope);
       }
     }
     return Optional.empty();

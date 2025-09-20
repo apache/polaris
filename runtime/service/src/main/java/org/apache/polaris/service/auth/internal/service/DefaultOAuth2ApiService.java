@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.service;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -29,6 +29,8 @@ import java.util.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.auth.internal.broker.TokenBroker;
+import org.apache.polaris.service.auth.internal.broker.TokenResponse;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
@@ -71,13 +73,13 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
       SecurityContext securityContext) {
 
     if (!tokenBroker.supportsGrantType(grantType)) {
-      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
+      return OAuthUtils.getResponseFromError(OAuthError.unsupported_grant_type);
     }
     if (!tokenBroker.supportsRequestedTokenType(requestedTokenType)) {
-      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
+      return OAuthUtils.getResponseFromError(OAuthError.invalid_request);
     }
     if (authHeader == null && clientSecret == null) {
-      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_client);
+      return OAuthUtils.getResponseFromError(OAuthError.invalid_client);
     }
     // token exchange with client id and client secret in the authorization header means the client
     // has previously attempted to refresh an access token, but refreshing was not supported by the
@@ -86,7 +88,7 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
       String credentials =
           new String(Base64.getDecoder().decode(authHeader.substring(6).getBytes(UTF_8)), UTF_8);
       if (!credentials.contains(":")) {
-        return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
+        return OAuthUtils.getResponseFromError(OAuthError.invalid_request);
       }
       LOGGER.debug("Found credentials in auth header - treating as client_credentials");
       String[] parts = credentials.split(":", 2);
@@ -95,7 +97,7 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
         clientSecret = parts[1];
       } else {
         LOGGER.debug("Don't know how to parse Basic auth header");
-        return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
+        return OAuthUtils.getResponseFromError(OAuthError.invalid_request);
       }
     }
     TokenResponse tokenResponse;
@@ -118,12 +120,12 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
               callContext.getPolarisCallContext(),
               requestedTokenType);
     } else {
-      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
+      return OAuthUtils.getResponseFromError(OAuthError.invalid_request);
     }
     if (tokenResponse == null) {
-      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
+      return OAuthUtils.getResponseFromError(OAuthError.unsupported_grant_type);
     }
-    if (!tokenResponse.isValid()) {
+    if (tokenResponse.getError() != null) {
       return OAuthUtils.getResponseFromError(tokenResponse.getError());
     }
     return Response.ok(
