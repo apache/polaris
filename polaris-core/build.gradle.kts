@@ -24,6 +24,7 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-api-management-model"))
+  implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
@@ -99,6 +100,7 @@ dependencies {
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
 
+  testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
   testCompileOnly(project(":polaris-immutables"))
   testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
