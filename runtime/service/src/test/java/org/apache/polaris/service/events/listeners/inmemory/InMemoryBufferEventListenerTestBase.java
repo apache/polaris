@@ -42,7 +42,7 @@ import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.junit.jupiter.api.AfterEach;
 
-abstract class InMemoryEventListenerTestBase {
+abstract class InMemoryBufferEventListenerTestBase {
 
   static final Map<String, String> BASE_CONFIG =
       ImmutableMap.<String, String>builder()
@@ -53,18 +53,18 @@ abstract class InMemoryEventListenerTestBase {
           .put(
               "quarkus.datasource.jdbc.url",
               "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE")
-          .put("polaris.event-listener.type", "persistence-in-memory")
+          .put("polaris.event-listener.type", "persistence-in-memory-buffer")
           .put(
-              "quarkus.fault-tolerance.\"org.apache.polaris.service.events.listeners.inmemory.InMemoryEventListener/flush\".retry.max-retries",
+              "quarkus.fault-tolerance.\"org.apache.polaris.service.events.listeners.inmemory.InMemoryBufferEventListener/flush\".retry.max-retries",
               "1")
           .put(
-              "quarkus.fault-tolerance.\"org.apache.polaris.service.events.listeners.inmemory.InMemoryEventListener/flush\".retry.delay",
+              "quarkus.fault-tolerance.\"org.apache.polaris.service.events.listeners.inmemory.InMemoryBufferEventListener/flush\".retry.delay",
               "10")
           .build();
 
   @Inject
-  @Identifier("persistence-in-memory")
-  InMemoryEventListener producer;
+  @Identifier("persistence-in-memory-buffer")
+  InMemoryBufferEventListener producer;
 
   @InjectSpy
   @Identifier("relational-jdbc")

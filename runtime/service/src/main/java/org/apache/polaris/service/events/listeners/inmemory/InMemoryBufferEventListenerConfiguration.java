@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events.listeners;
+package org.apache.polaris.service.events.listeners.inmemory;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
