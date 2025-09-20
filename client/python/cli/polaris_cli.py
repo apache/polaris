@@ -16,15 +16,15 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+import argparse
+import functools
 import json
 import os
 import sys
 from json import JSONDecodeError
-import urllib3
-import functools
+from typing import Dict, Callable
 
-from typing import Dict
+import urllib3
 
 from cli.constants import (
     Arguments,
@@ -38,6 +38,7 @@ from cli.constants import (
 )
 from cli.options.option_tree import Argument
 from cli.options.parser import Parser
+from polaris.catalog import ApiException
 from polaris.management import ApiClient, Configuration
 from polaris.management import PolarisDefaultApi
 
@@ -59,26 +60,23 @@ class PolarisCli:
     DIRECT_AUTHENTICATION_ENABLED = False
 
     @staticmethod
-    def execute(args=None):
+    def execute(args=None) -> None:
+        from cli.command import Command
         options = Parser.parse(args)
         if options.command == Commands.PROFILES:
-            from cli.command import Command
-
             command = Command.from_options(options)
             command.execute()
         else:
             client_builder = PolarisCli._get_client_builder(options)
             with client_builder() as api_client:
                 try:
-                    from cli.command import Command
-
                     admin_api = PolarisDefaultApi(api_client)
-                    command = Command.from_options(options)
+                    command: Command = Command.from_options(options)
                     if options.debug:
                         PolarisCli._enable_api_request_logging()
                     command.execute(admin_api)
-                except Exception as e:
-                    PolarisCli._try_print_exception(e)
+                except ApiException as exc:
+                    PolarisCli._try_print_exception(exc)
                     sys.exit(1)
 
     @staticmethod
@@ -102,9 +100,9 @@ class PolarisCli:
         urllib3.PoolManager.urlopen = urlopen_wrapper
 
     @staticmethod
-    def _try_print_exception(e):
+    def _try_print_exception(exc: ApiException):
         try:
-            error = json.loads(e.body)["error"]
+            error = json.loads(exc.body)["error"]
             sys.stderr.write(
                 f"Exception when communicating with the Polaris server."
                 f" {error['type']}: {error['message']}{os.linesep}"
@@ -112,11 +110,11 @@ class PolarisCli:
         except JSONDecodeError as _:
             sys.stderr.write(
                 f"Exception when communicating with the Polaris server."
-                f" {e.status}: {e.reason}{os.linesep}"
+                f" {exc.status}: {exc.reason}{os.linesep}"
             )
         except Exception as _:
             sys.stderr.write(
-                f"Exception when communicating with the Polaris server. {e}{os.linesep}"
+                f"Exception when communicating with the Polaris server. {exc}{os.linesep}"
             )
 
     @staticmethod
@@ -144,7 +142,7 @@ class PolarisCli:
         return json.loads(response)["access_token"]
 
     @staticmethod
-    def _get_client_builder(options):
+    def _get_client_builder(options: argparse.Namespace) -> Callable[[], ApiClient]:
         profile = {}
         client_profile = options.profile or os.getenv(CLIENT_PROFILE_ENV)
         if client_profile:

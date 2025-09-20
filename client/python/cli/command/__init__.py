@@ -18,6 +18,7 @@
 #
 import argparse
 from abc import ABC
+from typing import Optional
 
 from cli.constants import Commands, Arguments
 from cli.options.parser import Parser
@@ -176,7 +177,7 @@ class Command(ABC):
                 "Please specify a command or run ./polaris --help to view the available commands"
             )
 
-    def execute(self, api: PolarisDefaultApi) -> None:
+    def execute(self, api: Optional[PolarisDefaultApi] = None) -> None:
         """
         Execute a given command and, where applicable, print the response as JSON.
         """
