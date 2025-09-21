@@ -22,7 +22,7 @@ import json
 import os
 import sys
 from json import JSONDecodeError
-from typing import Dict, Callable
+from typing import Dict, Callable, Optional
 
 import urllib3
 
@@ -125,11 +125,21 @@ class PolarisCli:
             return json.load(f)
 
     @staticmethod
-    def _get_token(api_client: ApiClient, catalog_url: str, client_id: str, client_secret: str) -> str:
+    def _get_token(
+            api_client: ApiClient,
+            catalog_url: str,
+            client_id: str,
+            client_secret: str,
+            context_header_name: Optional[str] = None,
+            context_realms: Optional[str] = None
+    ) -> str:
+        header_params = {"Content-Type": "application/x-www-form-urlencoded"}
+        if context_realms and context_header_name:
+            header_params[context_header_name] = context_realms
         response = api_client.call_api(
             "POST",
             f"{catalog_url}/oauth/tokens",
-            header_params={"Content-Type": "application/x-www-form-urlencoded"},
+            header_params=header_params,
             post_params={
                 "grant_type": "client_credentials",
                 "client_id": client_id,
@@ -159,8 +169,6 @@ class PolarisCli:
                 or os.getenv(CLIENT_SECRET_ENV)
                 or profile.get("client_secret")
         )
-        context_realms = options.context_realms
-        context_header_name = options.context_header_name
 
         # Validates
         has_access_token = options.access_token is not None
@@ -206,7 +214,12 @@ class PolarisCli:
 
         if not has_access_token and not PolarisCli.DIRECT_AUTHENTICATION_ENABLED:
             token = PolarisCli._get_token(
-                ApiClient(config), polaris_catalog_url, client_id, client_secret
+                ApiClient(config),
+                polaris_catalog_url,
+                client_id,
+                client_secret,
+                options.context_realms,
+                options.context_header_name
             )
             config.username = None
             config.password = None
