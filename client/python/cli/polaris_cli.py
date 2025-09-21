@@ -228,7 +228,12 @@ class PolarisCli:
             config.password = None
             config.access_token = token
 
-        return lambda: ApiClient(config)
+        client_params = {}
+        if context_realms and context_header_name:
+            client_params["header_name"] = context_header_name
+            client_params["header_value"] = context_realms
+
+        return lambda: ApiClient(config, **client_params)
 
 
 def main():
