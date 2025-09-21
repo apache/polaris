@@ -56,10 +56,9 @@ class Parser(object):
             hint="access token for token-based authentication",
         ),
         Argument(
-            Arguments.CONTEXT_REALMS,
+            Arguments.CONTEXT_REALM,
             str,
-            hint="define the list of realms to use. default = null",
-            allow_repeats=True,
+            hint="define the realm to use. default = null",
             default=None
         ),
         Argument(
