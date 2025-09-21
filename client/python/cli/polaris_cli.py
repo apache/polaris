@@ -71,7 +71,7 @@ class PolarisCli:
             with client_builder() as api_client:
                 try:
                     admin_api = PolarisDefaultApi(api_client)
-                    command: Command = Command.from_options(options)
+                    command = Command.from_options(options)
                     if options.debug:
                         PolarisCli._enable_api_request_logging()
                     command.execute(admin_api)
@@ -125,7 +125,7 @@ class PolarisCli:
             return json.load(f)
 
     @staticmethod
-    def _get_token(api_client: ApiClient, catalog_url, client_id, client_secret) -> str:
+    def _get_token(api_client: ApiClient, catalog_url: str, client_id: str, client_secret: str) -> str:
         response = api_client.call_api(
             "POST",
             f"{catalog_url}/oauth/tokens",
@@ -152,13 +152,15 @@ class PolarisCli:
                 raise Exception(f"Polaris profile {client_profile} not found")
         # Determine which credentials to use
         client_id = (
-            options.client_id or os.getenv(CLIENT_ID_ENV) or profile.get("client_id")
+                options.client_id or os.getenv(CLIENT_ID_ENV) or profile.get("client_id")
         )
         client_secret = (
-            options.client_secret
-            or os.getenv(CLIENT_SECRET_ENV)
-            or profile.get("client_secret")
+                options.client_secret
+                or os.getenv(CLIENT_SECRET_ENV)
+                or profile.get("client_secret")
         )
+        context_realms = options.context_realms
+        context_header_name = options.context_header_name
 
         # Validates
         has_access_token = options.access_token is not None

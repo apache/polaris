@@ -186,6 +186,8 @@ class Arguments:
     CATALOG_EXTERNAL_ID = "catalog_external_id"
     CATALOG_SIGNING_REGION = "catalog_signing_region"
     CATALOG_SIGNING_NAME = "catalog_signing_name"
+    CONTEXT_REALMS = "context_realms"
+    CONTEXT_HEADER_NAME = "context_header_name"
 
 
 class Hints:

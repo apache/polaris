@@ -55,6 +55,19 @@ class Parser(object):
             str,
             hint="access token for token-based authentication",
         ),
+        Argument(
+            Arguments.CONTEXT_REALMS,
+            str,
+            hint="define the list of realms to use. default = null",
+            allow_repeats=True,
+            default=None
+        ),
+        Argument(
+            Arguments.CONTEXT_HEADER_NAME,
+            str,
+            hint="define the header name defining the realm context. default = Polaris-Realm",
+            default="Polaris-Realm"
+        ),
         Argument(Arguments.PROFILE, str, hint="profile for token-based authentication"),
         Argument(Arguments.PROXY, str, hint="proxy URL"),
         Argument(Arguments.DEBUG, bool, hint="Enable debug mode"),
@@ -64,6 +77,7 @@ class Parser(object):
     def _build_parser() -> argparse.ArgumentParser:
         parser = TreeHelpParser(description="Polaris CLI")
 
+        # Add root arguments
         for arg in Parser._ROOT_ARGUMENTS:
             kwargs = {"help": arg.hint}
             if arg.default is not None:
@@ -73,6 +87,9 @@ class Parser(object):
                 kwargs["action"] = "store_true"
             else:
                 kwargs["type"] = arg.type
+
+            if arg.allow_repeats:
+                kwargs["action"] = "append"
 
             parser.add_argument(arg.get_flag_name(), **kwargs)
 
