@@ -35,6 +35,8 @@ from cli.constants import (
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
     CONFIG_FILE,
+    CONTEXT_REALMS_ENV,
+    CONTEXT_HEADER_NAME_ENV
 )
 from cli.options.option_tree import Argument
 from cli.options.parser import Parser
@@ -169,7 +171,8 @@ class PolarisCli:
                 or os.getenv(CLIENT_SECRET_ENV)
                 or profile.get("client_secret")
         )
-
+        context_realms = options.context_realms or os.getenv(CONTEXT_REALMS_ENV)
+        context_header_name = options.context_header_name or os.getenv(CONTEXT_HEADER_NAME_ENV)
         # Validates
         has_access_token = options.access_token is not None
         has_client_secret = client_id is not None and client_secret is not None
@@ -218,8 +221,8 @@ class PolarisCli:
                 polaris_catalog_url,
                 client_id,
                 client_secret,
-                options.context_realms,
-                options.context_header_name
+                context_header_name,
+                context_realms
             )
             config.username = None
             config.password = None

@@ -65,8 +65,8 @@ class Parser(object):
         Argument(
             Arguments.CONTEXT_HEADER_NAME,
             str,
-            hint="define the header name defining the realm context. default = Polaris-Realm",
-            default="Polaris-Realm"
+            hint="define the header name defining the realm context. default = null",
+            default=None
         ),
         Argument(Arguments.PROFILE, str, hint="profile for token-based authentication"),
         Argument(Arguments.PROXY, str, hint="proxy URL"),
