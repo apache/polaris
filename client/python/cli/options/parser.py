@@ -58,13 +58,13 @@ class Parser(object):
         Argument(
             Arguments.CONTEXT_REALM,
             str,
-            hint="define the realm to use. default = null",
+            hint="realm to use. if not defined will be used default realm from Polaris server. read more: https://polaris.apache.org/releases/1.1.0/configuration/",
             default=None
         ),
         Argument(
             Arguments.CONTEXT_HEADER_NAME,
             str,
-            hint="define the header name defining the realm context. default = null",
+            hint="header name defining the realm context to use. if not defined will be used default realm context header name from Polaris server",
             default=None
         ),
         Argument(Arguments.PROFILE, str, hint="profile for token-based authentication"),
@@ -74,23 +74,6 @@ class Parser(object):
 
     @staticmethod
     def _build_parser() -> argparse.ArgumentParser:
-        parser = TreeHelpParser(description="Polaris CLI")
-
-        # Add root arguments
-        for arg in Parser._ROOT_ARGUMENTS:
-            kwargs = {"help": arg.hint}
-            if arg.default is not None:
-                kwargs["default"] = arg.default
-
-            if arg.type is bool:
-                kwargs["action"] = "store_true"
-            else:
-                kwargs["type"] = arg.type
-
-            if arg.allow_repeats:
-                kwargs["action"] = "append"
-
-            parser.add_argument(arg.get_flag_name(), **kwargs)
 
         # Add everything from the option tree to the parser:
         def add_arguments(parser, args: List[Argument]):
@@ -129,6 +112,9 @@ class Parser(object):
                         dest=f"{option.name}_subcommand", required=False
                     )
                     recurse_options(children_subparser, option.children)
+
+        parser = TreeHelpParser(description="Polaris CLI")
+        add_arguments(parser, Parser._ROOT_ARGUMENTS)
 
         subparser = parser.add_subparsers(dest="command", required=False)
         recurse_options(subparser, OptionTree.get_tree())

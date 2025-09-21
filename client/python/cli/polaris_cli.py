@@ -48,10 +48,11 @@ class PolarisCli:
     DIRECT_AUTHENTICATION_ENABLED = False
 
     @staticmethod
-    def execute(args=None) -> None:
-        from cli.command import Command
+    def execute(args=None):
         options = Parser.parse(args)
         if options.command == Commands.PROFILES:
+            from cli.command import Command
+
             command = Command.from_options(options)
             command.execute()
         else:
@@ -60,13 +61,15 @@ class PolarisCli:
             )
             with client_builder.build() as api_client:
                 try:
+                    from cli.command import Command
+
                     admin_api = PolarisDefaultApi(api_client)
                     command = Command.from_options(options)
                     if options.debug:
                         PolarisCli._enable_api_request_logging()
                     command.execute(admin_api)
-                except ApiException as exc:
-                    PolarisCli._try_print_exception(exc)
+                except ApiException as e:
+                    PolarisCli._try_print_exception(e)
                     sys.exit(1)
 
     @staticmethod
@@ -90,9 +93,9 @@ class PolarisCli:
         urllib3.PoolManager.urlopen = urlopen_wrapper
 
     @staticmethod
-    def _try_print_exception(exc: ApiException):
+    def _try_print_exception(e):
         try:
-            error = json.loads(exc.body)["error"]
+            error = json.loads(e.body)["error"]
             sys.stderr.write(
                 f"Exception when communicating with the Polaris server."
                 f" {error['type']}: {error['message']}{os.linesep}"
@@ -100,11 +103,11 @@ class PolarisCli:
         except JSONDecodeError as _:
             sys.stderr.write(
                 f"Exception when communicating with the Polaris server."
-                f" {exc.status}: {exc.reason}{os.linesep}"
+                f" {e.status}: {e.reason}{os.linesep}"
             )
         except Exception as _:
             sys.stderr.write(
-                f"Exception when communicating with the Polaris server. {exc}{os.linesep}"
+                f"Exception when communicating with the Polaris server. {e}{os.linesep}"
             )
 
 
