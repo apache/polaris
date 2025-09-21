@@ -101,14 +101,22 @@ class BuilderConfig:
 
     @cached_property
     def context_realm(self) -> Optional[str]:
-        realms = self.options.context_realm or os.getenv(CONTEXT_REALMS_ENV)
+        realms = (
+                self.options.context_realm
+                or os.getenv(CONTEXT_REALMS_ENV)
+                or self.profile.get("context_realm")
+        )
         if isinstance(realms, list):
             return ','.join(realms)
         return realms
 
     @cached_property
     def context_header_name(self) -> Optional[str]:
-        return self.options.context_header_name or os.getenv(CONTEXT_HEADER_NAME_ENV)
+        return (
+                self.options.context_header_name
+                or os.getenv(CONTEXT_HEADER_NAME_ENV)
+                or self.profile.get("context_header_name")
+        )
 
 
 class ApiClientBuilder:
