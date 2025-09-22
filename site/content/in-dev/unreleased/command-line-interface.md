@@ -36,6 +36,8 @@ options:
 --client-id
 --client-secret
 --access-token
+--realm
+--realm-header
 --profile
 ```
 
