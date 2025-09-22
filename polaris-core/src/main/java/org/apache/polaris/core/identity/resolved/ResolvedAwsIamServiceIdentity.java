@@ -21,90 +21,73 @@ package org.apache.polaris.core.identity.resolved;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 /**
  * Represents a fully resolved AWS IAM service identity, including the associated IAM ARN and
- * credentials. This class is used internally by Polaris to access AWS services on behalf of a
- * configured service identity.
+ * credentials. Polaris uses this class internally to access AWS services on behalf of a configured
+ * service identity.
  *
  * <p>It contains AWS credentials (access key, secret, and optional session token) and provides a
  * lazily initialized {@link StsClient} for performing role assumptions or identity verification.
  *
  * <p>The resolved identity can be converted back into its persisted DPO form using {@link
  * #asServiceIdentityInfoDpo()}.
+ *
+ * <p>The resolved identity can also be converted into its API model representation using {@link
+ * #asServiceIdentityInfoModel()}
  */
 public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
 
   /** IAM role or user ARN representing the Polaris service identity. */
   private final String iamArn;
 
-  /** AWS access key ID of the AWS credential associated with the identity. */
-  private final String accessKeyId;
+  /** AWS credentials provider for accessing AWS services. */
+  private final AwsCredentialsProvider awsCredentialsProvider;
 
-  /** AWS secret access key of the AWS credential associated with the identity. */
-  private final String secretAccessKey;
-
-  /** The AWS session token of the AWS credential associated with the identity. */
-  private final String sessionToken;
-
-  public ResolvedAwsIamServiceIdentity(String iamArn) {
-    this(null, iamArn, null, null, null);
+  public ResolvedAwsIamServiceIdentity(@Nullable String iamArn) {
+    this(null, iamArn, DefaultCredentialsProvider.builder().build());
   }
 
   public ResolvedAwsIamServiceIdentity(
-      String iamArn, String accessKeyId, String secretAccessKey, String sessionToken) {
-    this(null, iamArn, accessKeyId, secretAccessKey, sessionToken);
+      @Nullable String iamArn, @Nonnull AwsCredentialsProvider awsCredentialsProvider) {
+    this(null, iamArn, awsCredentialsProvider);
   }
 
   public ResolvedAwsIamServiceIdentity(
-      ServiceSecretReference serviceSecretReference,
-      String iamArn,
-      String accessKeyId,
-      String secretAccessKey,
-      String sessionToken) {
+      @Nullable ServiceSecretReference serviceSecretReference,
+      @Nullable String iamArn,
+      @Nonnull AwsCredentialsProvider awsCredentialsProvider) {
     super(ServiceIdentityType.AWS_IAM, serviceSecretReference);
     this.iamArn = iamArn;
-    this.accessKeyId = accessKeyId;
-    this.secretAccessKey = secretAccessKey;
-    this.sessionToken = sessionToken;
+    this.awsCredentialsProvider = awsCredentialsProvider;
   }
 
-  public String getIamArn() {
+  public @Nullable String getIamArn() {
     return iamArn;
   }
 
-  public String getAccessKeyId() {
-    return accessKeyId;
+  public @Nonnull AwsCredentialsProvider getAwsCredentialsProvider() {
+    return awsCredentialsProvider;
   }
 
-  public String getSecretAccessKey() {
-    return secretAccessKey;
-  }
-
-  public String getSessionToken() {
-    return sessionToken;
-  }
-
-  @Nonnull
   @Override
-  public ServiceIdentityInfoDpo asServiceIdentityInfoDpo() {
+  public @Nonnull ServiceIdentityInfoDpo asServiceIdentityInfoDpo() {
     return new AwsIamServiceIdentityInfoDpo(getIdentityInfoReference());
   }
 
-  @Nonnull
   @Override
-  public ServiceIdentityInfo asServiceIdentityInfoModel() {
+  public @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel() {
     return AwsIamServiceIdentityInfo.builder()
         .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
         .setIamArn(getIamArn())
@@ -112,22 +95,11 @@ public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
   }
 
   /** Returns a memoized supplier for creating an STS client using the resolved credentials. */
-  public Supplier<StsClient> stsClientSupplier() {
+  public @Nonnull Supplier<StsClient> stsClientSupplier() {
     return Suppliers.memoize(
         () -> {
-          StsClientBuilder stsClientBuilder = StsClient.builder();
-          if (getAccessKeyId() != null && getSecretAccessKey() != null) {
-            StaticCredentialsProvider awsCredentialsProvider =
-                StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(getAccessKeyId(), getSecretAccessKey()));
-            if (getSessionToken() != null) {
-              awsCredentialsProvider =
-                  StaticCredentialsProvider.create(
-                      AwsSessionCredentials.create(
-                          getAccessKeyId(), getSecretAccessKey(), getSessionToken()));
-            }
-            stsClientBuilder.credentialsProvider(awsCredentialsProvider);
-          }
+          StsClientBuilder stsClientBuilder =
+              StsClient.builder().credentialsProvider(getAwsCredentialsProvider());
           return stsClientBuilder.build();
         });
   }

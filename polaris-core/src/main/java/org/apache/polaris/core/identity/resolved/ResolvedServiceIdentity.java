@@ -19,6 +19,7 @@
 package org.apache.polaris.core.identity.resolved;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
@@ -36,12 +37,13 @@ public abstract class ResolvedServiceIdentity {
   private final ServiceIdentityType identityType;
   private ServiceSecretReference identityInfoReference;
 
-  public ResolvedServiceIdentity(ServiceIdentityType identityType) {
+  public ResolvedServiceIdentity(@Nonnull ServiceIdentityType identityType) {
     this(identityType, null);
   }
 
   public ResolvedServiceIdentity(
-      ServiceIdentityType identityType, ServiceSecretReference identityInfoReference) {
+      @Nonnull ServiceIdentityType identityType,
+      @Nullable ServiceSecretReference identityInfoReference) {
     this.identityType = identityType;
     this.identityInfoReference = identityInfoReference;
   }

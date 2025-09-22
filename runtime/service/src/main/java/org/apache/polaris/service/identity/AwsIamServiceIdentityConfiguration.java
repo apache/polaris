@@ -19,8 +19,10 @@
 
 package org.apache.polaris.service.identity;
 
+import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.core.identity.resolved.ResolvedAwsIamServiceIdentity;
+import software.amazon.awssdk.auth.credentials.*;
 
 /**
  * Configuration for an AWS IAM service identity used by Polaris to access AWS services.
@@ -63,12 +65,30 @@ public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIde
     if (iamArn() == null) {
       return Optional.empty();
     } else {
-      return Optional.of(
-          new ResolvedAwsIamServiceIdentity(
-              iamArn(),
-              accessKeyId().orElse(null),
-              secretAccessKey().orElse(null),
-              sessionToken().orElse(null)));
+      return Optional.of(new ResolvedAwsIamServiceIdentity(iamArn(), awsCredentialsProvider()));
+    }
+  }
+
+  /**
+   * Constructs an {@link AwsCredentialsProvider} based on the configured access key, secret key,
+   * and session token. If the access key and secret key are provided, a static credentials provider
+   * is created; otherwise, the default credentials provider chain is used.
+   *
+   * @return the constructed AWS credentials provider
+   */
+  @Nonnull
+  default AwsCredentialsProvider awsCredentialsProvider() {
+    if (accessKeyId().isPresent() && secretAccessKey().isPresent()) {
+      if (sessionToken().isPresent()) {
+        return StaticCredentialsProvider.create(
+            AwsSessionCredentials.create(
+                accessKeyId().get(), secretAccessKey().get(), sessionToken().get()));
+      } else {
+        return StaticCredentialsProvider.create(
+            AwsBasicCredentials.create(accessKeyId().get(), secretAccessKey().get()));
+      }
+    } else {
+      return DefaultCredentialsProvider.builder().build();
     }
   }
 }
