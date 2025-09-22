@@ -28,7 +28,7 @@ The following S3 compatible cloud providers can be configured as storage backend
 - [AWS S3]({{< ref "catalog-aws.md" >}})
 - [MinIO]({{< ref "catalog-minio.md" >}})
 
-For the `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) there are few `s3` only options
+For the `polaris catalogs create` [command]({{% ref "../../../command-line-interface#create" %}}) there are few `s3` only options
 
 ```text
 --storage-type s3
