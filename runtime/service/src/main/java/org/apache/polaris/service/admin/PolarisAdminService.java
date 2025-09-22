@@ -1832,7 +1832,6 @@ public class PolarisAdminService {
     return resolvedPathWrapper;
   }
 
-  public boolean grantPrivilegeOnTableToRole(
   public PrivilegeResult grantPrivilegeOnTableToRole(
       String catalogName,
       String catalogRoleName,
@@ -2194,10 +2193,9 @@ public class PolarisAdminService {
     // TODO: Instead of creating a synthetic table-like entity, rely on external catalog mediated
     // backfill and use the metadata location from the external catalog.
     PolarisEntity syntheticTableEntity =
-        new IcebergTableLikeEntity.Builder(identifier, "")
+        new IcebergTableLikeEntity.Builder(syntheticEntitySubType, identifier, "")
             .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
             .setCatalogId(parentNamespaceEntity.getCatalogId())
-            .setSubType(syntheticEntitySubType)
             .setCreateTimestamp(System.currentTimeMillis())
             .build();
 

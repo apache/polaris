@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.admin;
 
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -34,9 +36,9 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -83,7 +85,11 @@ public class PolarisAdminServiceTest {
     MockitoAnnotations.openMocks(this);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedPrincipal);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.getDiagServices()).thenReturn(polarisDiagnostics);
+    when(polarisCallContext.getRealmConfig()).thenReturn(realmConfig);
+
+    // Default feature configuration - enabled by default
+    when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
+        .thenReturn(true);
 
     when(resolutionManifestFactory.createResolutionManifest(any(), any(), any()))
         .thenReturn(resolutionManifest);
@@ -336,10 +342,10 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any(), any()))
         .thenReturn(successResult);
 
-    boolean result =
+    PrivilegeResult result =
         adminService.grantPrivilegeOnNamespaceToRole(
             catalogName, catalogRoleName, namespace, privilege);
-    assertThat(result).isTrue();
+    assertThat(result.isSuccess()).isTrue();
   }
 
   @Test
@@ -481,8 +487,7 @@ public class PolarisAdminServiceTest {
 
     when(idResult.getId()).thenReturn(6L);
     when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
-    PolarisEntity tableEntity =
-        createTableEntity(identifier, PolarisEntitySubType.ICEBERG_TABLE, 6L, 5L);
+    PolarisEntity tableEntity = createTableEntity(identifier, ICEBERG_TABLE, 6L, 5L);
     EntityResult tableCreateResult = mock(EntityResult.class);
     when(tableCreateResult.isSuccess()).thenReturn(true);
     when(tableCreateResult.getEntity()).thenReturn(tableEntity);
@@ -500,10 +505,10 @@ public class PolarisAdminServiceTest {
     when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any(), any()))
         .thenReturn(successResult);
 
-    boolean result =
+    PrivilegeResult result =
         adminService.grantPrivilegeOnTableToRole(
             catalogName, catalogRoleName, identifier, privilege);
-    assertThat(result).isTrue();
+    assertThat(result.isSuccess()).isTrue();
   }
 
   @Test
@@ -532,8 +537,7 @@ public class PolarisAdminServiceTest {
 
     // Create a table entity for authorization but later it should not be found
     PolarisEntity tableEntity =
-        createEntity(
-            "test-table", PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE, 5L, 4L);
+        createEntity("test-table", PolarisEntityType.TABLE_LIKE, ICEBERG_TABLE, 5L, 4L);
     PolarisResolvedPathWrapper tableWrapper = mock(PolarisResolvedPathWrapper.class);
     when(tableWrapper.getRawLeafEntity()).thenReturn(tableEntity);
 
@@ -624,16 +628,17 @@ public class PolarisAdminServiceTest {
         .build();
   }
 
-  private PolarisEntity createEntity(String name, PolarisEntityType type, long id, long parentId) {
-    return new PolarisEntity.Builder()
-        .setName(name)
-        .setType(type)
-        .setId(id)
-        .setCatalogId(1L)
-        .setParentId(parentId)
-        .setCreateTimestamp(System.currentTimeMillis())
-        .build();
-  }
+  //  private PolarisEntity createEntity(String name, PolarisEntityType type, long id, long
+  // parentId) {
+  //    return new PolarisEntity.Builder()
+  //        .setName(name)
+  //        .setType(type)
+  //        .setId(id)
+  //        .setCatalogId(1L)
+  //        .setParentId(parentId)
+  //        .setCreateTimestamp(System.currentTimeMillis())
+  //        .build();
+  //  }
 
   private PolarisEntity createEntity(
       String name, PolarisEntityType type, PolarisEntitySubType subType, long id, long parentId) {
@@ -659,11 +664,10 @@ public class PolarisAdminServiceTest {
 
   private PolarisEntity createTableEntity(
       TableIdentifier identifier, PolarisEntitySubType subType, long id, long parentId) {
-    return new IcebergTableLikeEntity.Builder(identifier, "")
+    return new IcebergTableLikeEntity.Builder(subType, identifier, "")
         .setId(id)
         .setCatalogId(1L)
         .setParentId(parentId)
-        .setSubType(subType)
         .setCreateTimestamp(System.currentTimeMillis())
         .build();
   }
