@@ -38,7 +38,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -163,10 +162,19 @@ public class ServiceProducers {
     return callContext.getRealmConfig();
   }
 
+  @jakarta.inject.Inject AuthorizationConfiguration authorizationConfig;
+
+  @jakarta.inject.Inject RealmConfig realmConfig;
+
   @Produces
-  @RequestScoped
-  public PolarisAuthorizer polarisAuthorizer(RealmConfig realmConfig) {
-    return new PolarisAuthorizerImpl(realmConfig);
+  @ApplicationScoped
+  public PolarisAuthorizer polarisAuthorizer() {
+    if ("opa".equalsIgnoreCase(authorizationConfig.implementation())) {
+      AuthorizationConfiguration.OpaConfig opa = authorizationConfig.opa();
+      return org.apache.polaris.core.auth.OpaPolarisAuthorizer.create(
+          opa.url(), opa.policyPath(), opa.timeoutMs(), null, null);
+    }
+    return new org.apache.polaris.core.auth.PolarisAuthorizerImpl(realmConfig);
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans
