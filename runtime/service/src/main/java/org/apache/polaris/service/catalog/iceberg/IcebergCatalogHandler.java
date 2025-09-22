@@ -794,10 +794,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
 
-    if (!delegationModes.contains(VENDED_CREDENTIALS)) {
-      return responseBuilder;
-    }
-
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
       LOGGER
           .atDebug()
@@ -808,15 +804,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           credentialDelegation.getAccessConfig(
               tableIdentifier, tableMetadata, actions, refreshCredentialsEndpoint);
       Map<String, String> credentialConfig = accessConfig.credentials();
-      responseBuilder.addAllConfig(credentialConfig);
-      responseBuilder.addAllConfig(accessConfig.extraProperties());
-      if (!credentialConfig.isEmpty()) {
+      if (!credentialConfig.isEmpty() && delegationModes.contains(VENDED_CREDENTIALS)) {
+        responseBuilder.addAllConfig(credentialConfig);
         responseBuilder.addCredential(
             ImmutableCredential.builder()
                 .prefix(tableMetadata.location())
                 .config(credentialConfig)
                 .build());
       }
+      responseBuilder.addAllConfig(accessConfig.extraProperties());
     }
     return responseBuilder;
   }
