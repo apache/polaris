@@ -35,6 +35,9 @@ dependencies {
 
   implementation(libs.smallrye.common.annotation) // @Identifier
   implementation(libs.postgresql)
+  implementation("software.amazon.awssdk:url-connection-client")
+  implementation(platform(libs.quarkus.amazon.services.bom))
+  implementation("io.quarkiverse.amazonservices:quarkus-amazon-rds")
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
