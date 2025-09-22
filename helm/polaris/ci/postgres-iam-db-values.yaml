@@ -33,7 +33,7 @@ logging:
       size: 50Mi
 
 advancedConfig:
-  quarkus.datasource.jdbc.url: jdbc:aws-wrapper:postgresql://aurora-cluster-url:6160/polaris
+  quarkus.datasource.jdbc.url: jdbc:postgresql://aurora-cluster-url:6160/polaris
   quarkus.datasource.jdbc.additional-jdbc-properties.wrapperPlugins: iam
   quarkus.datasource.username: dbusername
   quarkus.datasource.active: "true"
