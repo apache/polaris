@@ -31,29 +31,13 @@ export CLIENT_ID=YOUR_CLIENT_ID
 export CLIENT_SECRET=YOUR_CLIENT_SECRET
 ```
 
-## Defining a Catalog
+Refer to the [Creating a Catalog]({{% ref "creating-a-catalog" %}}) page for instructions on defining a
+catalog for your specific storage type. The following examples assume the catalog's name is `quickstart_catalog`.
 
-In Polaris, the [catalog]({{% relref "../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../entities#table" %}}) and [views]({{% relref "../entities#view" %}}) are organized under. With a Polaris service running, you can create a catalog like so:
+In Polaris, the [catalog]({{% relref "../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../entities#table" %}}) and [views]({{% relref "../entities#view" %}}) are organized under.
 
-```shell
-cd ~/polaris
-
-./polaris \
-  --client-id ${CLIENT_ID} \
-  --client-secret ${CLIENT_SECRET} \
-  catalogs \
-  create \
-  --storage-type s3 \
-  --default-base-location ${DEFAULT_BASE_LOCATION} \
-  --role-arn ${ROLE_ARN} \
-  quickstart_catalog
-```
-
-This will create a new catalog called **quickstart_catalog**. If you are using one of the Getting Started locally-built Docker images, we have already created a catalog named `quickstart_catalog` for you.
-
-The `DEFAULT_BASE_LOCATION` you provide will be the default location that objects in this catalog should be stored in, and the `ROLE_ARN` you provide should be a [Role ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) with access to read and write data in that location. These credentials will be provided to engines reading data from the catalog once they have authenticated with Polaris using credentials that have access to those resources.
-
-If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs]({{% relref "../entities#storage-type" %}}).
+The `DEFAULT_BASE_LOCATION` value you provided at catalog creation time will be the default location that objects in
+this catalog should be stored in.
 
 Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs]({{% relref "../command-line-interface" %}}).
 

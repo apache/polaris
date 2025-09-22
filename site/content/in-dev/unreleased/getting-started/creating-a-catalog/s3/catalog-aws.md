@@ -23,16 +23,21 @@ type: docs
 weight: 100
 ---
 
+When creating a catalog based on AWS S3 storage only the `role-arn` is a required parameter. However, usually
+one also provides the `region` and
+[externa-id](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html).
 
-### example
+Note: the name `quickstart_catalog` from the example below is referenced in other Getting Started examples,
+but of course, it can be any valid catalog name.
 
 ```shell
-CLIENT_ID=root \
-CLIENT_SECRET=s3cr3t \
-DEFAULT_BASE_LOCATION=s3://example-bucket/my_data \
-ROLE_ARN=arn:aws:iam::111122223333:role/ExampleCorpRole \
-REGION=us-west-2 \
-EXTERNAL_ID=12345678901234567890 \
+CLIENT_ID=root
+CLIENT_SECRET=s3cr3t
+DEFAULT_BASE_LOCATION=s3://example-bucket/my_data
+ROLE_ARN=arn:aws:iam::111122223333:role/ExampleCorpRole
+REGION=us-west-2
+EXTERNAL_ID=12345678901234567890
+
 ./polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
@@ -43,5 +48,5 @@ EXTERNAL_ID=12345678901234567890 \
   --role-arn ${ROLE_ARN} \
   --region ${REGION} \
   --external-id ${EXTERNAL_ID} \
-  my_aws_catalog
+  quickstart_catalog
 ```
