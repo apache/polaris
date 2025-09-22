@@ -39,8 +39,8 @@ import org.mockito.Mockito;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@TestProfile(InMemoryEventListenerBufferSizeTest.Profile.class)
-class InMemoryEventListenerBufferSizeTest extends InMemoryEventListenerTestBase {
+@TestProfile(InMemoryBufferEventListenerBufferSizeTest.Profile.class)
+class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListenerTestBase {
 
   public static class Profile implements QuarkusTestProfile {
 
