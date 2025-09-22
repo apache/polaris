@@ -84,7 +84,7 @@ If the `--host` and `--port` options are not provided, the CLI will default to c
 Alternatively, the `--base-url` option can be used instead of `--host` and `--port`, but both options cannot be used simultaneously. This allows specifying arbitrary Polaris URLs, including HTTPS ones, that have additional base prefixes before the `/api/*/v1` subpaths.
 
 If your polaris server is configured to use multy realm (or not default realm), you can use `--realm` option to specify the realm you want to use. If `--realm` is not provided, the CLI will check the `REALM` environment variable. If neither is provided, the CLI will not use realm context header.
-Also, if you polaris server uses custom realm header name, you can use `--realm-header` option to specify the header name. If `--realm-header` is not provided, the CLI will check the `REALM_HEADER` environment variable. If neither is provided, the CLI will use default header name `Polaris-Realm`.
+Also, if your Polaris server uses a custom realm header name, you can use the `--realm-header` option to specify it. If `--realm-header` is not provided, the CLI will check the `REALM_HEADER` environment variable. If neither is provided, the CLI will use default header name `Polaris-Realm`.
 
 Read [here]({{% ref "./configuration.md" %}}) more about configuring polaris server to work with multiple realms. 
 
