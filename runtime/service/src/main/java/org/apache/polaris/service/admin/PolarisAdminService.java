@@ -784,17 +784,31 @@ public class PolarisAdminService {
               "Implicit authentication based catalog federation is not supported.");
         }
 
-        ServiceIdentityInfoDpo serviceIdentityInfo = null;
+        // Discover service identity if needed for the authentication type.
+        Optional<ServiceIdentityInfoDpo> serviceIdentityInfoDpoOptional = Optional.empty();
         if (connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
             == AuthenticationParameters.AuthenticationTypeEnum.SIGV4) {
-          serviceIdentityInfo =
+          serviceIdentityInfoDpoOptional =
               serviceIdentityRegistry.discoverServiceIdentity(ServiceIdentityType.AWS_IAM);
+          if (serviceIdentityInfoDpoOptional.isEmpty()) {
+            throw new IllegalStateException(
+                String.format(
+                    "Cannot create Catalog %s. Failed to discover %s service identity for %s authentication",
+                    entity.getName(),
+                    ServiceIdentityType.AWS_IAM.name(),
+                    connectionConfigInfo
+                        .getAuthenticationParameters()
+                        .getAuthenticationType()
+                        .name()));
+          }
         }
 
         entity =
             new CatalogEntity.Builder(entity)
                 .setConnectionConfigInfoDpoWithSecrets(
-                    connectionConfigInfo, processedSecretReferences, serviceIdentityInfo)
+                    connectionConfigInfo,
+                    processedSecretReferences,
+                    serviceIdentityInfoDpoOptional.orElse(null))
                 .build();
       }
     }

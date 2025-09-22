@@ -31,8 +31,6 @@ import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
-import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
-import org.apache.polaris.service.identity.ResolvableServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
 
 /**
@@ -80,20 +78,8 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
   @Inject
   public DefaultServiceIdentityRegistry(
       RealmContext realmContext, ServiceIdentityConfiguration serviceIdentityConfiguration) {
-    String serviceIdentityConfigKey = serviceIdentityConfiguration.resolveRealm(realmContext);
-    RealmServiceIdentityConfiguration realmServiceIdentityConfiguration =
-        serviceIdentityConfiguration.forRealm(realmContext);
-
     this.resolvedServiceIdentities =
-        realmServiceIdentityConfiguration.serviceIdentityConfigurations().stream()
-            .map(ResolvableServiceIdentityConfiguration::resolve)
-            .flatMap(Optional::stream)
-            .peek(
-                // Set the identity info reference for each resolved identity
-                identity ->
-                    identity.setIdentityInfoReference(
-                        buildIdentityInfoReference(
-                            serviceIdentityConfigKey, identity.getIdentityType())))
+        serviceIdentityConfiguration.resolveServiceIdentities(realmContext).stream()
             .collect(
                 // Collect to an EnumMap, grouping by ServiceIdentityType
                 Collectors.toMap(
@@ -111,14 +97,14 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
   }
 
   @Override
-  public ServiceIdentityInfoDpo discoverServiceIdentity(ServiceIdentityType serviceIdentityType) {
+  public Optional<ServiceIdentityInfoDpo> discoverServiceIdentity(
+      ServiceIdentityType serviceIdentityType) {
     ResolvedServiceIdentity resolvedServiceIdentity =
         resolvedServiceIdentities.get(serviceIdentityType);
     if (resolvedServiceIdentity == null) {
-      throw new IllegalArgumentException(
-          "Service identity type not supported: " + serviceIdentityType);
+      return Optional.empty();
     }
-    return resolvedServiceIdentity.asServiceIdentityInfoDpo();
+    return Optional.of(resolvedServiceIdentity.asServiceIdentityInfoDpo());
   }
 
   @Override
@@ -147,7 +133,7 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
    * @param type the service identity type
    * @return the constructed service secret reference
    */
-  private ServiceSecretReference buildIdentityInfoReference(
+  public static ServiceSecretReference buildIdentityInfoReference(
       String realm, ServiceIdentityType type) {
     // urn:polaris-service-secret:default-identity-registry:<realm>:<type>
     return new ServiceSecretReference(

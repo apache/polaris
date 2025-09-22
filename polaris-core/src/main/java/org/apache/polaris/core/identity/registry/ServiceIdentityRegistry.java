@@ -44,7 +44,7 @@ public interface ServiceIdentityRegistry {
    * @param serviceIdentityType The type of service identity (e.g., AWS_IAM).
    * @return A new {@link ServiceIdentityInfoDpo} representing the discovered service identity.
    */
-  ServiceIdentityInfoDpo discoverServiceIdentity(ServiceIdentityType serviceIdentityType);
+  Optional<ServiceIdentityInfoDpo> discoverServiceIdentity(ServiceIdentityType serviceIdentityType);
 
   /**
    * Resolves the given service identity by retrieving the actual credential or secret referenced by

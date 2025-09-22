@@ -23,8 +23,11 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefaults;
 import io.smallrye.config.WithParentName;
 import io.smallrye.config.WithUnnamedKey;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 
 /**
  * Represents the service identity configuration for one or more realms.
@@ -54,48 +57,38 @@ public interface ServiceIdentityConfiguration {
   Map<String, RealmServiceIdentityConfiguration> realms();
 
   /**
-   * Returns the service identity configuration for the given {@link RealmContext}. Falls back to
-   * the default if the realm is not explicitly configured.
-   *
-   * @param realmContext the realm context
-   * @return the matching or default realm configuration
+   * Resolves the actual realm configuration entry (identifier + config) to use for the given
+   * context. Falls back to the default if the specified realm is not configured.
    */
-  default RealmServiceIdentityConfiguration forRealm(RealmContext realmContext) {
+  default RealmConfigEntry forRealm(RealmContext realmContext) {
     return forRealm(realmContext.getRealmIdentifier());
   }
 
   /**
-   * Returns the service identity configuration for the given realm identifier. Falls back to the
-   * default if the realm is not explicitly configured.
-   *
-   * @param realmIdentifier the identifier of the realm
-   * @return the matching or default realm configuration
+   * Resolves the actual realm configuration entry (identifier + config) for the given realm
+   * identifier. Falls back to the default if the specified realm is not configured.
    */
-  default RealmServiceIdentityConfiguration forRealm(String realmIdentifier) {
-    return realms().containsKey(realmIdentifier)
-        ? realms().get(realmIdentifier)
-        : realms().get(DEFAULT_REALM_KEY);
+  default RealmConfigEntry forRealm(String realmIdentifier) {
+    String resolvedRealmIdentifier =
+        realms().containsKey(realmIdentifier) ? realmIdentifier : DEFAULT_REALM_KEY;
+    return new RealmConfigEntry(resolvedRealmIdentifier, realms().get(resolvedRealmIdentifier));
   }
 
   /**
-   * Returns the actual key of the service identity configuration to use for the given {@link
-   * RealmContext}, falling back to the default if the specified realm is not configured.
-   *
-   * @param realmContext the realm context
-   * @return the actual realm identifier to use
+   * Resolves and returns the list of {@link ResolvedServiceIdentity} objects for the given realm.
    */
-  default String resolveRealm(RealmContext realmContext) {
-    return resolveRealm(realmContext.getRealmIdentifier());
+  default List<? extends ResolvedServiceIdentity> resolveServiceIdentities(
+      RealmContext realmContext) {
+    RealmConfigEntry entry = forRealm(realmContext);
+
+    return entry.config().serviceIdentityConfigurations().stream()
+        .map(
+            resolvableServiceIdentityConfiguration ->
+                resolvableServiceIdentityConfiguration.resolve(entry.realm()))
+        .flatMap(Optional::stream)
+        .toList();
   }
 
-  /**
-   * Returns the actual key of the service identity configuration to use for the given realm
-   * identifier, falling back to the default if the specified realm is not configured.
-   *
-   * @param realmIdentifier the identifier of the realm
-   * @return the actual realm identifier to use
-   */
-  default String resolveRealm(String realmIdentifier) {
-    return realms().containsKey(realmIdentifier) ? realmIdentifier : DEFAULT_REALM_KEY;
-  }
+  /** A pairing of a resolved realm identifier and its associated configuration. */
+  record RealmConfigEntry(String realm, RealmServiceIdentityConfiguration config) {}
 }

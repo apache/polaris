@@ -21,8 +21,14 @@ package org.apache.polaris.service.identity;
 
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
+import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.resolved.ResolvedAwsIamServiceIdentity;
-import software.amazon.awssdk.auth.credentials.*;
+import org.apache.polaris.service.identity.registry.DefaultServiceIdentityRegistry;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 
 /**
  * Configuration for an AWS IAM service identity used by Polaris to access AWS services.
@@ -61,11 +67,16 @@ public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIde
    * @return the resolved identity, or an empty optional if the ARN is missing
    */
   @Override
-  default Optional<ResolvedAwsIamServiceIdentity> resolve() {
+  default Optional<ResolvedAwsIamServiceIdentity> resolve(@Nonnull String realmIdentifier) {
     if (iamArn() == null) {
       return Optional.empty();
     } else {
-      return Optional.of(new ResolvedAwsIamServiceIdentity(iamArn(), awsCredentialsProvider()));
+      return Optional.of(
+          new ResolvedAwsIamServiceIdentity(
+              DefaultServiceIdentityRegistry.buildIdentityInfoReference(
+                  realmIdentifier, ServiceIdentityType.AWS_IAM),
+              iamArn(),
+              awsCredentialsProvider()));
     }
   }
 

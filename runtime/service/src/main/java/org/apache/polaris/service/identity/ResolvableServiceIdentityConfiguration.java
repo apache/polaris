@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.identity;
 
+import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 
@@ -37,5 +38,7 @@ public interface ResolvableServiceIdentityConfiguration {
    * @return an optional resolved service identity, or empty if resolution fails or is not
    *     configured
    */
-  Optional<? extends ResolvedServiceIdentity> resolve();
+  default Optional<? extends ResolvedServiceIdentity> resolve(@Nonnull String realmIdentifier) {
+    return Optional.empty();
+  }
 }
