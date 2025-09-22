@@ -117,7 +117,7 @@ External authentication is configured via Quarkus OIDC and Polaris-specific OIDC
 
 ### OIDC Tenant Configuration 
 
-At least one OIDC tenant must be explicitly enabled. In Polaris, realms and OIDC tenants are distinct concepts. An OIDC tenant represents a specific identity provider configuration (e.g., `quarkus.oidc.idp1`). A [realm]({{% ref "realm" %}}) is a logical partition within Polaris.
+At least one OIDC tenant must be explicitly enabled. In Polaris, realms and OIDC tenants are distinct concepts. An OIDC tenant represents a specific identity provider configuration (e.g., `quarkus.oidc.idp1`). A [realm]({{% ref "../../realm" %}}) is a logical partition within Polaris.
 
 - Multiple realms can share a single OIDC tenant. 
 - Each realm can be associated with only one OIDC tenant. 
