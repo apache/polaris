@@ -27,7 +27,6 @@ import urllib3
 from cli.api_client_builder import ApiClientBuilder
 from cli.constants import Commands
 from cli.options.parser import Parser
-from polaris.catalog import ApiException
 from polaris.management import PolarisDefaultApi
 
 
@@ -68,7 +67,7 @@ class PolarisCli:
                     if options.debug:
                         PolarisCli._enable_api_request_logging()
                     command.execute(admin_api)
-                except ApiException as e:
+                except Exception as e:
                     PolarisCli._try_print_exception(e)
                     sys.exit(1)
 
