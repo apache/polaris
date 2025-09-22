@@ -23,9 +23,10 @@ type: docs
 weight: 300
 ---
 
-From `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) we see there are a few `azure` only options
+For the `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) there are few `azure` only options
 
-```shell
+```text
+--storage-type azure
 --tenant-id  (Required for Azure) A tenant ID to use when connecting to Azure Storage
 --multi-tenant-app-name  (Only for Azure) The app name to use when connecting to Azure Storage
 --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location

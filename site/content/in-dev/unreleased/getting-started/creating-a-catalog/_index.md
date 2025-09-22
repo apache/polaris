@@ -33,7 +33,7 @@ The following Object Storage providers can be configured as storage backends for
 
 ## Create a catalog using polaris CLI
 
-Check full list of options for `polaris catalogs create` command [here]({{% ref "../../command-line-interface#create" %}})
+Check full list of options for the `polaris catalogs create` command [here]({{% ref "../../command-line-interface#create" %}})
 
 ### Example
 
