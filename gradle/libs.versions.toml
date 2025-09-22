@@ -72,7 +72,7 @@ jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-ap
 jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version = "6.1.0" }
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.1" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
-jandex = { module = "io.smallrye.jandex:jandex", version ="3.4.0" }
+jandex = { module = "io.smallrye.jandex:jandex", version ="3.5.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.13.4" }
 localstack = { module = "org.testcontainers:localstack", version = "1.21.3" }
