@@ -20,7 +20,7 @@ import argparse
 import sys
 from typing import List, Optional, Dict
 
-from cli.constants import Arguments
+from cli.constants import Arguments, DEFAULT_REALM_HEADER
 from cli.options.option_tree import OptionTree, Option, Argument
 
 
@@ -56,16 +56,16 @@ class Parser(object):
             hint="access token for token-based authentication",
         ),
         Argument(
-            Arguments.CONTEXT_REALM,
+            Arguments.REALM,
             str,
             hint="realm to use. if not defined will be used default realm from Polaris server. read more: https://polaris.apache.org/releases/1.1.0/configuration/",
             default=None
         ),
         Argument(
-            Arguments.CONTEXT_HEADER_NAME,
+            Arguments.REALM_HEADER,
             str,
-            hint="header name defining the realm context to use. if not defined will be used default realm context header name from Polaris server",
-            default=None
+            hint="realm header is defining header name to use as context header name. if not defined will be used default from Polaris server",
+            default=DEFAULT_REALM_HEADER
         ),
         Argument(Arguments.PROFILE, str, hint="profile for token-based authentication"),
         Argument(Arguments.PROXY, str, hint="proxy URL"),

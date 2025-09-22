@@ -26,6 +26,8 @@ from typing import Dict, Optional, List
 from cli.command import Command
 from cli.constants import (
     Subcommands,
+    Arguments,
+    DEFAULT_REALM_HEADER,
     DEFAULT_HOSTNAME,
     DEFAULT_PORT,
     CONFIG_DIR,
@@ -72,15 +74,15 @@ class ProfilesCommand(Command):
             client_secret = input("Polaris Client Secret: ")
             host = input(f"Polaris Host [{DEFAULT_HOSTNAME}]: ") or DEFAULT_HOSTNAME
             port = input(f"Polaris Port [{DEFAULT_PORT}]: ") or DEFAULT_PORT
-            context_realm = input(f"Polaris Context Realm: ")
-            context_header_name = input(f"Polaris Context Header Name: ")
+            realm = input(f"Polaris Context Realm: ")
+            realm_header = input(f"Polaris Context Header Name [{DEFAULT_REALM_HEADER}]: ")
             profiles[name] = {
                 "client_id": client_id,
                 "client_secret": client_secret,
                 "host": host,
                 "port": port,
-                "context_realm": context_realm,
-                "context_header_name": context_header_name,
+                Arguments.REALM: realm,
+                Arguments.REALM_HEADER: realm_header,
             }
             self._save_profiles(profiles)
         else:
@@ -108,8 +110,8 @@ class ProfilesCommand(Command):
             current_client_secret = profiles[name].get("client_secret")
             current_host = profiles[name].get("host")
             current_port = profiles[name].get("port")
-            current_context_realm = profiles[name].get("context_realm")
-            current_context_header_name = profiles[name].get("current_context_header_name")
+            current_realm = profiles[name].get(Arguments.REALM)
+            current_realm_header = profiles[name].get(Arguments.REALM_HEADER)
 
             client_id = (
                 input(f"Polaris Client ID [{current_client_id}]: ") or current_client_id
@@ -120,15 +122,15 @@ class ProfilesCommand(Command):
             )
             host = input(f"Polaris Client ID [{current_host}]: ") or current_host
             port = input(f"Polaris Client Secret [{current_port}]: ") or current_port
-            context_realm = input(f"Polaris Context Realm [{current_context_realm}]: ") or current_context_realm
-            context_header_name = input(f"Polaris Context Header Name [{current_context_header_name}]: ") or current_context_header_name
+            realm = input(f"Polaris Context Realm [{current_realm}]: ") or current_realm
+            current_realm_header = input(f"Polaris Context Header Name [{current_realm_header}]: ") or current_realm_header
             profiles[name] = {
                 "client_id": client_id,
                 "client_secret": client_secret,
                 "host": host,
                 "port": port,
-                "context_realm": context_realm,
-                "context_header_name": context_header_name,
+                Arguments.REALM: realm,
+                Arguments.REALM_HEADER: current_realm_header,
             }
             self._save_profiles(profiles)
         else:

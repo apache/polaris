@@ -22,15 +22,15 @@ from functools import cached_property
 from typing import Iterator, Optional, Dict
 
 from cli.constants import (
-    CONFIG_FILE,
-    CLIENT_PROFILE_ENV,
-    CLIENT_ID_ENV,
-    CLIENT_SECRET_ENV,
-    CONTEXT_REALMS_ENV,
-    CONTEXT_HEADER_NAME_ENV,
-    Arguments,
-    DEFAULT_HOSTNAME,
-    DEFAULT_PORT
+  CONFIG_FILE,
+  CLIENT_PROFILE_ENV,
+  CLIENT_ID_ENV,
+  CLIENT_SECRET_ENV,
+  REALM_ENV,
+  REALM_HEADER_ENV,
+  Arguments,
+  DEFAULT_HOSTNAME,
+  DEFAULT_PORT
 )
 from cli.options.option_tree import Argument
 from polaris.management import ApiClient, Configuration
@@ -100,22 +100,22 @@ class BuilderConfig:
         )
 
     @cached_property
-    def context_realm(self) -> Optional[str]:
+    def realm(self) -> Optional[str]:
         realms = (
-                self.options.context_realm
-                or os.getenv(CONTEXT_REALMS_ENV)
-                or self.profile.get("context_realm")
+                self.options.realm
+                or os.getenv(REALM_ENV)
+                or self.profile.get("realm")
         )
         if isinstance(realms, list):
             return ','.join(realms)
         return realms
 
     @cached_property
-    def context_header_name(self) -> Optional[str]:
+    def realm_header(self) -> Optional[str]:
         return (
-                self.options.context_header_name
-                or os.getenv(CONTEXT_HEADER_NAME_ENV)
-                or self.profile.get("context_header_name")
+                self.options.realm_header
+                or os.getenv(REALM_HEADER_ENV)
+                or self.profile.get("realm_header")
         )
 
 
@@ -126,8 +126,8 @@ class ApiClientBuilder:
 
     def _get_token(self):
         header_params = {"Content-Type": "application/x-www-form-urlencoded"}
-        if self.conf.context_header_name and self.conf.context_realm:
-            header_params[self.conf.context_header_name] = self.conf.context_realm
+        if self.conf.realm_header and self.conf.realm:
+            header_params[self.conf.realm_header] = self.conf.realm
 
         conf = Configuration(host=self.conf.management_url)
         conf.proxy = self.conf.proxy
@@ -179,9 +179,9 @@ class ApiClientBuilder:
             config.access_token = self._get_token()
 
         client_params = {}
-        if self.conf.context_realm and self.conf.context_header_name:
-            client_params["header_name"] = self.conf.context_header_name
-            client_params["header_value"] = self.conf.context_realm
+        if self.conf.realm and self.conf.realm_header:
+            client_params["header_name"] = self.conf.realm_header
+            client_params["header_value"] = self.conf.realm
 
         return ApiClient(config, **client_params)
 
