@@ -23,4 +23,32 @@ type: docs
 weight: 300
 ---
 
-TBD
+From `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) we see there are a few `azure` only options
+
+```shell
+--tenant-id  (Required for Azure) A tenant ID to use when connecting to Azure Storage
+--multi-tenant-app-name  (Only for Azure) The app name to use when connecting to Azure Storage
+--consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
+```
+
+### example
+
+```shell
+CLIENT_ID=root \
+CLIENT_SECRET=s3cr3t \
+DEFAULT_BASE_LOCATION=abfss://tenant123@blob.core.windows.net \
+TENANT_ID=tenant123.onmicrosoft.com \
+MULTI_TENANT_APP_NAME=myapp \
+CONSENT_URL=https://myapp.com/consent
+./polaris \
+  --client-id ${CLIENT_ID} \
+  --client-secret ${CLIENT_SECRET} \
+  catalogs \
+  create \
+  --storage-type azure \
+  --tenant-id ${TENANT_ID} \
+  --multi-tenant-app-name ${MULTI_TENANT_APP_NAME} \
+  --consent-url ${CONSENT_URL} \
+  --default-base-location ${DEFAULT_BASE_LOCATION} \
+  my_azure_catalog
+```

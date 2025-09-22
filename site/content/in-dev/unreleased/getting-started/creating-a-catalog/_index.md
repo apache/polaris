@@ -29,3 +29,26 @@ The following Object Storage providers can be configured as storage backends for
 - [Google Cloud Storage]({{< ref "catalog-gcs.md" >}})
 - [Azure Blob Storage]({{< ref "catalog-azure.md" >}})
 - Local file system (By default for testing only)
+
+
+## Create a catalog using polaris CLI
+
+Check full list of options for `polaris catalogs create` command [here]({{% ref "../../command-line-interface#create" %}})
+
+### Example
+
+```shell
+CLIENT_ID=root \
+CLIENT_SECRET=s3cr3t \
+DEFAULT_BASE_LOCATION=s3://example-bucket/my_data \
+ROLE_ARN=arn:aws:iam::111122223333:role/ExampleCorpRole \
+./polaris \
+  --client-id ${CLIENT_ID} \
+  --client-secret ${CLIENT_SECRET} \
+  catalogs \
+  create \
+  --storage-type s3 \
+  --default-base-location ${DEFAULT_BASE_LOCATION} \
+  --role-arn ${ROLE_ARN} \
+  my_catalog
+```
