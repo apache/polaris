@@ -17,24 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Getting Started'
+title: Creating a catalog on Azure
+linkTitle: Azure
 type: docs
-weight: 101
+weight: 300
 ---
 
-# Getting Started with Apache Polaris
-
-The fastest way to get started is with our Docker Compose examples. Each example provides a complete working environment with detailed instructions.
-
-## Next Steps
-
-1. Check/Install dependencies
-2. Choose the way you want to deply Polaris
-3. Create a catalog
-4. Check Using polaris page
-
-## Getting Help
-
-- Documentation: https://polaris.apache.org
-- GitHub Issues: https://github.com/apache/polaris/issues
-- Slack: [Join Apache Polaris Community](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
+TBD

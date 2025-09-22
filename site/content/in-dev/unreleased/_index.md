@@ -172,7 +172,7 @@ Polaris RBAC uses two different role types to delegate privileges:
 - **Catalog roles:** Configured with certain privileges on Polaris
   catalog resources and granted to principal roles.
 
-For more information, see [Access control]({{% ref "access-control" %}}).
+For more information, see [Access control]({{% ref "managing-security/access-control" %}}).
 
 ## Legal Notices
 

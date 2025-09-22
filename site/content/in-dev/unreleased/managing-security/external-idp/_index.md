@@ -17,9 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: External Identity Providers 
+title: Identity Providers
+linkTitle: Identity Providers
 type: docs
-weight: 550
+weight: 300
 ---
 
 Apache Polaris supports authentication via external identity providers (IdPs) using OpenID Connect (OIDC) in addition to the internal authentication system. This feature enables flexible identity federation with enterprise IdPs and allows gradual migration or hybrid authentication strategies across realms in Polaris. 
@@ -344,4 +345,7 @@ When internal authentication is enabled, Polaris uses token brokers to handle th
 - Result 
 
   Polaris roles: `PRINCIPAL_ROLE:service_admin` and `PRINCIPAL_ROLE:catalog_admin` 
- 
+
+### Additional Examples 
+
+For complete Keycloak integration example, see: [Keycloak External IDP Configuration Guide]({{< relref "keycloak-idp.md" >}})
