@@ -51,8 +51,6 @@ import org.apache.spark.sql.connector.catalog.ViewChange;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * SparkCatalog Implementation that is able to interact with both Iceberg SparkCatalog and Polaris
@@ -66,7 +64,6 @@ public class SparkCatalog
         SupportsNamespaces,
         ViewCatalog,
         SupportsReplaceView {
-  private static final Logger LOG = LoggerFactory.getLogger(SparkCatalog.class);
 
   @VisibleForTesting protected String catalogName = null;
   @VisibleForTesting protected org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;

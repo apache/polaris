@@ -316,7 +316,6 @@ Sets the configmap authentication options for a given realm.
 {{- end -}}
 {{- $_ := set $map (printf "%s.type" $prefix) $authType -}}
 {{- $_ = set $map (printf "%s.authenticator.type" $prefix) (dig "authenticator" "type" "default" $auth) -}}
-{{- $_ = set $map (printf "%s.active-roles-provider.type" $prefix) (dig "activeRolesProvider" "type" "default" $auth) -}}
 {{- if (or (eq $authType "mixed") (eq $authType "internal")) -}}
 {{- $tokenBrokerType := dig "tokenBroker" "type" "rsa-key-pair" $auth -}}
 {{- $_ = set $map (printf "%s.token-service.type" $prefix) (dig "tokenService" "type" "default" $auth) -}}

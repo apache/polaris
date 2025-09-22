@@ -45,20 +45,55 @@ Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/instal
 ## Project Structure
 
 Apache Polaris is organized into the following modules:
+- Primary modules:
+  - [`polaris-core`](./polaris-core/README.md) - The main Polaris entity definitions and core business logic
+  - [API modules](./api/README.md) - Build scripts for generating Java classes from the OpenAPI specifications:
+  - `polaris-api-management-model` - Polaris Management API model classes
+  - `polaris-api-management-service` - Polaris Management API service classes
+  - `polaris-api-iceberg-service` - The Iceberg REST service classes
+  - `polaris-api-catalog-service` - The Polaris Catalog API service classes
+  - Runtime modules:
+      - [`polaris-admin`](./runtime/admin/README.md) - The Polaris Admin Tool; mainly for bootstrapping persistence
+      - [`polaris-runtime-defaults`](./runtime/defaults/README.md) - The runtime configuration defaults
+      - [`polaris-distribution`](./runtime/distribution/README.md) - The Polaris distribution
+      - [`polaris-server`](./runtime/server/README.md) - The Polaris Quarkus Server
+      - [`polaris-runtime-service`](./runtime/service/README.md) - The package containing the Polaris service.
+      - `polaris-runtime-spark-tests` - Integration tests for the Polaris Spark plugin
+      - `polaris-runtime-test-common` - Test utilities
+  - Persistence modules:
+      - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface (deprecated for removal)
+      - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
+  - Extensions modules:
+      - `polaris-extensions-federation-hadoop` - The Hadoop federation extension
+      - [`polaris-extensions-federation-hive`](./extensions/federation/hive/README.md) - The Hive federation extension
+- Secondary modules:
+    - `agregated-license-report` - Generates the aggregated license report
+    - `polaris-bom` - The Bill of Materials (BOM) for Polaris
+    - `polaris-build-logic` - Establishes consistent build logic
+    - [`polaris-tests`](./integration-tests/README.md) - Normative integration tests for reuse in downstream projects
+- Tool modules:
+    - Documentation configuration:
+        - `polaris-config-docs-annotations` - Annotations for documentation generator
+        - `polaris-config-docs-generator` - Generates Polaris reference docs
+        - `polaris-config-docs-site` - The configuration documentation site
+    - Other Tools:
+        - `polaris-container-spec-helper` - Helper for container specifications
+        - `polaris-immutables` - Predefined Immutables configuration & annotations for Polaris
+        - `polaris-minio-testcontainer` - Minio test container
+        - `polaris-misc-types` - Miscellaneous types for Polaris
+        - `polaris-version` - Versioning for Polaris
 
-- [`polaris-core`](./polaris-core/README.md) - The main Polaris entity definitions and core business logic
-- API modules (implementing the Iceberg REST API and Polaris management API):
-  - `polaris-api-management-model` - The Polaris management model
-  - `polaris-api-management-service` - The Polaris management service
-  - `polaris-api-iceberg-service` - The Iceberg REST service
-- Runtime modules:
-  - `polaris-runtime-service` - The runtime components of the Polaris server
-  - `polaris-runtime-defaults` - The runtime configuration defaults
-  - `polaris-server` - The Polaris server
-  - `polaris-admin` - The Polaris admin & maintenance tool
-- Persistence modules:
-  - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
-  - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
+In addition to modules, there are:
+- [API specifications](./spec/README.md) - The OpenAPI specifications
+- [Python client](./client/python/README.md) - The Python client
+- [codestyle](./codestyle/README.md) - The code style guidelines
+- [getting-started](./getting-started/README.md) - A collection of getting started examples
+- [gradle](./gradle) - The Gradle wrapper and Gradle configuration files including banned dependencies
+- [helm](./helm) - The Helm charts for Polaris.
+- [Spark Plugin](./plugins/spark/README.md) - The Polaris Spark plugin
+- [regtests](./regtests/README.md) - Regression tests
+- [server-templates](./server-templates) - OpenAPI Generator templates to generate the server code
+- [site](./site/README.md) - The Polaris website
 
 ## Building and Running
 

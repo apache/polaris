@@ -375,23 +375,14 @@ public class IcebergCatalogAdapter
                   prefix,
                   TableIdentifier.of(namespace, createTableRequest.name()));
           if (createTableRequest.stageCreate()) {
-            if (delegationModes.isEmpty()) {
-              return Response.ok(catalog.createTableStaged(ns, createTableRequest)).build();
-            } else {
-              return Response.ok(
-                      catalog.createTableStagedWithWriteDelegation(
-                          ns, createTableRequest, refreshCredentialsEndpoint))
-                  .build();
-            }
-          } else if (delegationModes.isEmpty()) {
-            LoadTableResponse response = catalog.createTableDirect(ns, createTableRequest);
-            return tryInsertETagHeader(
-                    Response.ok(response), response, namespace, createTableRequest.name())
+            return Response.ok(
+                    catalog.createTableStaged(
+                        ns, createTableRequest, delegationModes, refreshCredentialsEndpoint))
                 .build();
           } else {
             LoadTableResponse response =
-                catalog.createTableDirectWithWriteDelegation(
-                    ns, createTableRequest, refreshCredentialsEndpoint);
+                catalog.createTableDirect(
+                    ns, createTableRequest, delegationModes, refreshCredentialsEndpoint);
             return tryInsertETagHeader(
                     Response.ok(response), response, namespace, createTableRequest.name())
                 .build();
@@ -439,17 +430,13 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          Optional<LoadTableResponse> response;
-
-          if (delegationModes.isEmpty()) {
-            response = catalog.loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots);
-          } else {
-            Optional<String> refreshCredentialsEndpoint =
-                getRefreshCredentialsEndpoint(delegationModes, prefix, tableIdentifier);
-            response =
-                catalog.loadTableWithAccessDelegationIfStale(
-                    tableIdentifier, ifNoneMatch, snapshots, refreshCredentialsEndpoint);
-          }
+          Optional<LoadTableResponse> response =
+              catalog.loadTable(
+                  tableIdentifier,
+                  snapshots,
+                  ifNoneMatch,
+                  delegationModes,
+                  getRefreshCredentialsEndpoint(delegationModes, prefix, tableIdentifier));
 
           if (response.isEmpty()) {
             return Response.notModified().build();

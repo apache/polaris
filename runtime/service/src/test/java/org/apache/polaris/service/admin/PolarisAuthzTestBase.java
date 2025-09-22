@@ -402,9 +402,8 @@ public abstract class PolarisAuthzTestBase {
   protected @Nonnull Set<String> loadPrincipalRolesNames(PolarisPrincipal p) {
     PolarisBaseEntity principal =
         metaStoreManager
-            .loadEntity(
-                callContext.getPolarisCallContext(), 0L, p.getId(), PolarisEntityType.PRINCIPAL)
-            .getEntity();
+            .findPrincipalByName(callContext.getPolarisCallContext(), p.getName())
+            .orElseThrow();
     return metaStoreManager
         .loadGrantsToGrantee(callContext.getPolarisCallContext(), principal)
         .getGrantRecords()

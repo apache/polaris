@@ -755,11 +755,7 @@ public class Resolver {
 
     // resolve the principal, by name or id
     this.resolvedCallerPrincipal =
-        this.resolveById(
-            toValidate,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntityConstants.getNullId(),
-            polarisPrincipal.getId());
+        this.resolveByName(toValidate, PolarisEntityType.PRINCIPAL, polarisPrincipal.getName());
 
     // if the principal was not found, we can end right there
     if (this.resolvedCallerPrincipal == null

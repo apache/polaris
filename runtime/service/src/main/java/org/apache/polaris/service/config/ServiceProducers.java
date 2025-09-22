@@ -57,7 +57,6 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
-import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
@@ -387,16 +386,6 @@ public class ServiceProducers {
   public AuthenticationRealmConfiguration realmAuthConfig(
       AuthenticationConfiguration config, RealmContext realmContext) {
     return config.forRealm(realmContext);
-  }
-
-  @Produces
-  @Deprecated
-  public ActiveRolesProvider activeRolesProvider(
-      AuthenticationRealmConfiguration config,
-      @Any Instance<ActiveRolesProvider> activeRolesProviders) {
-    return activeRolesProviders
-        .select(Identifier.Literal.of(config.activeRolesProvider().type()))
-        .get();
   }
 
   @Produces

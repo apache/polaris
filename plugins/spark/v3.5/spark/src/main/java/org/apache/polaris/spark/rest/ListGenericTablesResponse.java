@@ -98,7 +98,7 @@ public class ListGenericTablesResponse {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof ListGenericTablesResponse)) {
       return false;
     }
     ListGenericTablesResponse listGenericTablesResponse = (ListGenericTablesResponse) o;
