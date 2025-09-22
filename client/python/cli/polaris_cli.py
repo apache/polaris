@@ -55,21 +55,20 @@ class PolarisCli:
             command = Command.from_options(options)
             command.execute()
         else:
-            client_builder = ApiClientBuilder(
+            api_client = ApiClientBuilder(
                 options, direct_authentication=PolarisCli.DIRECT_AUTHENTICATION_ENABLED
-            )
-            with client_builder.build() as api_client:
-                try:
-                    from cli.command import Command
+            ).get_api_client()
+            try:
+                from cli.command import Command
 
-                    admin_api = PolarisDefaultApi(api_client)
-                    command = Command.from_options(options)
-                    if options.debug:
-                        PolarisCli._enable_api_request_logging()
-                    command.execute(admin_api)
-                except Exception as e:
-                    PolarisCli._try_print_exception(e)
-                    sys.exit(1)
+                admin_api = PolarisDefaultApi(api_client)
+                command = Command.from_options(options)
+                if options.debug:
+                    PolarisCli._enable_api_request_logging()
+                command.execute(admin_api)
+            except Exception as e:
+                PolarisCli._try_print_exception(e)
+                sys.exit(1)
 
     @staticmethod
     def _enable_api_request_logging():

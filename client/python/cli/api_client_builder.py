@@ -187,7 +187,3 @@ class ApiClientBuilder:
 
     def get_api_client(self) -> ApiClient:
         return self._build()
-
-    @contextlib.contextmanager
-    def build(self) -> Iterator[ApiClient]:
-        yield self._build()
