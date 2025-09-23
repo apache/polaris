@@ -118,7 +118,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
     List<PolarisBaseEntity> listedEntities =
-        metaStoreManager.loadFullEntitiesAll(
+        metaStoreManager.listFullEntitiesAll(
             polarisTestMetaStoreManager.polarisCallContext,
             null,
             PolarisEntityType.TASK,

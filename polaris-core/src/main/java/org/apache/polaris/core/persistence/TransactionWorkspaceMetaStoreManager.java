@@ -390,6 +390,16 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
     return null;
   }
 
+  @Nonnull
+  @Override
+  public ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull List<PolarisEntityId> entityIds) {
+    diagnostics.fail("illegal_method_in_transaction_workspace", "loadResolvedEntities");
+    return null;
+  }
+
   @Override
   public ResolvedEntityResult refreshResolvedEntity(
       @Nonnull PolarisCallContext callCtx,

@@ -1786,24 +1786,51 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                     return entities.get(i);
                   }
                 })
-            .map(
-                e -> {
-                  if (e == null) {
-                    return null;
-                  } else {
-                    // load the grant records
-                    final List<PolarisGrantRecord> grantRecordsAsSecurable =
-                        ms.loadAllGrantRecordsOnSecurable(callCtx, e.getCatalogId(), e.getId());
-                    final List<PolarisGrantRecord> grantRecordsAsGrantee =
-                        e.getType().isGrantee()
-                            ? ms.loadAllGrantRecordsOnGrantee(callCtx, e.getCatalogId(), e.getId())
-                            : List.of();
-                    return new ResolvedPolarisEntity(
-                        PolarisEntity.of(e), grantRecordsAsGrantee, grantRecordsAsSecurable);
-                  }
-                })
+            .map(e -> toResolvedPolarisEntity(callCtx, e, ms))
             .collect(Collectors.toList());
     return new ResolvedEntitiesResult(ret);
+  }
+
+  @Nonnull
+  @Override
+  public ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull List<PolarisEntityId> entityIds) {
+    BasePersistence ms = callCtx.getMetaStore();
+    List<PolarisBaseEntity> entities = ms.lookupEntities(callCtx, entityIds);
+
+    // mimic the behavior of loadEntity above, return null if not found or type mismatch
+    List<ResolvedPolarisEntity> ret =
+        IntStream.range(0, entityIds.size())
+            .mapToObj(
+                i -> {
+                  if (entities.get(i) != null && !entities.get(i).getType().equals(entityType)) {
+                    return null;
+                  } else {
+                    return entities.get(i);
+                  }
+                })
+            .map(e -> toResolvedPolarisEntity(callCtx, e, ms))
+            .collect(Collectors.toList());
+    return new ResolvedEntitiesResult(ret);
+  }
+
+  private static ResolvedPolarisEntity toResolvedPolarisEntity(
+      PolarisCallContext callCtx, PolarisBaseEntity e, BasePersistence ms) {
+    if (e == null) {
+      return null;
+    } else {
+      // load the grant records
+      final List<PolarisGrantRecord> grantRecordsAsSecurable =
+          ms.loadAllGrantRecordsOnSecurable(callCtx, e.getCatalogId(), e.getId());
+      final List<PolarisGrantRecord> grantRecordsAsGrantee =
+          e.getType().isGrantee()
+              ? ms.loadAllGrantRecordsOnGrantee(callCtx, e.getCatalogId(), e.getId())
+              : List.of();
+      return new ResolvedPolarisEntity(
+          PolarisEntity.of(e), grantRecordsAsGrantee, grantRecordsAsSecurable);
+    }
   }
 
   /** {@inheritDoc} */

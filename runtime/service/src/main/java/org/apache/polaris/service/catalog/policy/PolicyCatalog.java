@@ -188,7 +188,7 @@ public class PolicyCatalog {
     }
     // with a policyType filter we need to load the full PolicyEntity to apply the filter
     return metaStoreManager
-        .loadFullEntitiesAll(
+        .listFullEntitiesAll(
             callContext.getPolarisCallContext(),
             catalogPath,
             PolarisEntityType.POLICY,
