@@ -75,7 +75,7 @@ class ProfilesCommand(Command):
             host = input(f"Polaris Host [{DEFAULT_HOSTNAME}]: ") or DEFAULT_HOSTNAME
             port = input(f"Polaris Port [{DEFAULT_PORT}]: ") or DEFAULT_PORT
             realm = input(f"Polaris Context Realm: ")
-            header = input(f"Polaris Context Header Name [{DEFAULT_HEADER}]: ")
+            header = input(f"Polaris Context Header Name [{DEFAULT_HEADER}]: ") or DEFAULT_HEADER
             profiles[name] = {
                 "client_id": client_id,
                 "client_secret": client_secret,
