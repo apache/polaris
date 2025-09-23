@@ -31,7 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
-public class DefaultConfigurationStore implements PolarisConfigurationStore {
+public class DefaultConfigurationStore implements `PolarisConfigurationStore` {
   Logger LOGGER = LoggerFactory.getLogger(DefaultConfigurationStore.class);
 
   private final Map<String, Object> defaults;
