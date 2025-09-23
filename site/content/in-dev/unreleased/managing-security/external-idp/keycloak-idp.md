@@ -1,25 +1,27 @@
-<!--
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
- 
-   http://www.apache.org/licenses/LICENSE-2.0
- 
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
--->
-
-# Getting Started with Apache Polaris, External Authentication and Keycloak
-
-## Overview
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+title: Using Polaris with Keycloak as external IDP
+linkTitle: Using Keycloak IDP
+type: docs
+weight: 100
+---
 
 This example uses Keycloak as an **external** identity provider for Polaris. The "iceberg" realm is automatically
 created and configured from the `iceberg-realm.json` file.
@@ -29,7 +31,7 @@ fixed claims:
 
 - `principal_id`: the principal ID of the user. It is always set to zero (0) in this example.
 - `principal_name`: the principal name of the user. It is always set to "root" in this example.
-- `principal_roles`: the principal roles of the user. It is always set to `["server_admin", "catalog_admin"]` in this 
+- `principal_roles`: the principal roles of the user. It is always set to `["server_admin", "catalog_admin"]` in this
   example.
 
 This is obviously not a realistic configuration. In a real-world scenario, you would configure Keycloak to return the
@@ -42,11 +44,11 @@ Polaris is configured with 3 realms:
   token issues by Polaris itself only.
 - `realm-external`: This realm is configured to use an external identity provider (IDP) for authentication only. It
   accepts tokens issued by Keycloak only.
-- `realm-mixed`: This realm is configured to use both the internal and external authentication. It accepts tokens 
+- `realm-mixed`: This realm is configured to use both the internal and external authentication. It accepts tokens
   issued by both Polaris and Keycloak.
 
 For more information about how to configure Polaris with external authentication, see the
-[Polaris documentation](https://polaris.apache.org/in-dev/unreleased/managing-security/external-idp/).
+[Polaris documentation]({{% ref "../external-idp" %}}).
 
 ## Starting the Example
 
@@ -82,9 +84,9 @@ You can request a token from Polaris for realms `realm-internal` and `realm-mixe
       -d 'grant_type=client_credentials' \
       -d 'scope=PRINCIPAL_ROLE:ALL' | jq -r .access_token)
     ```
-   
-    This token is valid only for the `realm-internal` realm.
-   
+
+   This token is valid only for the `realm-internal` realm.
+
 2. Open a terminal and run the following command to request an access token for the `realm-mixed` realm:
 
     ```shell
@@ -94,8 +96,8 @@ You can request a token from Polaris for realms `realm-internal` and `realm-mixe
       -d 'grant_type=client_credentials' \
       -d 'scope=PRINCIPAL_ROLE:ALL' | jq -r .access_token)
     ```
-   
-    This token is valid only for the `realm-mixed` realm.
+
+   This token is valid only for the `realm-mixed` realm.
 
 Polaris tokens are valid for 1 hour.
 
@@ -151,7 +153,7 @@ You can access Polaris using the tokens you obtained above. The following exampl
       -H 'Polaris-Realm: realm-internal' \
       -H 'Accept: application/json'
     ```
-   
+
 2. Open a terminal and run the following command to list the principal roles in the `realm-mixed` realm:
 
     ```shell
@@ -186,7 +188,7 @@ both (both realms share the same OIDC tenant configuration).
       -H 'Polaris-Realm: realm-external' \
       -H 'Accept: application/json'
     ```
-   
+
 2. Open a terminal and run the following command to list the principal roles in the `realm-mixed` realm:
 
     ```shell

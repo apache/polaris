@@ -17,9 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Deploying Polaris on MinIO
+title: Creating a catalog on MinIO
+linkTitle: MinIO
 type: docs
-weight: 350
+weight: 200
 ---
 
 In this guide we walk through setting up a simple Polaris Server with local [MinIO](https://www.min.io/) storage.
@@ -42,7 +43,7 @@ docker compose -f getting-started/minio/docker-compose.yml up
 ```
 
 The compose script will start MinIO on default ports (API on 9000, UI on 9001)
-plus a Polaris Server pre-configured to that MinIO instance. 
+plus a Polaris Server pre-configured to that MinIO instance.
 
 In this example the `root` principal has its password set to `s3cr3t`.
 
@@ -86,7 +87,7 @@ mc ls pol/bucket123/ns/t1
 [2025-08-13 18:52:38 EDT]     0B metadata/
 ```
 
-Note: the values of `minio_root`, `m1n1opwd` and `bucket123` are defined in the docker compose file. 
+Note: the values of `minio_root`, `m1n1opwd` and `bucket123` are defined in the docker compose file.
 
 # Notes on Storage Configuation
 
