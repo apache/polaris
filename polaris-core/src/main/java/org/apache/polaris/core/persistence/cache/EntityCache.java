@@ -20,8 +20,11 @@ package org.apache.polaris.core.persistence.cache;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 
@@ -80,4 +83,36 @@ public interface EntityCache {
   @Nullable
   EntityCacheLookupResult getOrLoadEntityByName(
       @Nonnull PolarisCallContext callContext, @Nonnull EntityCacheByNameKey entityNameKey);
+
+  /**
+   * Load multiple entities by id, returning those found in the cache and loading those not found.
+   *
+   * @param callCtx the Polaris call context
+   * @param entityType the entity type
+   * @param entityIds the list of entity ids to load
+   * @return the list of resolved entities, in the same order as the requested entity ids. As in
+   *     {@link
+   *     org.apache.polaris.core.persistence.PolarisMetaStoreManager#loadResolvedEntities(PolarisCallContext,
+   *     PolarisEntityType, List)}, elements in the returned list may be null if the corresponding
+   *     entity id does not exist.
+   */
+  List<EntityCacheLookupResult> getOrLoadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull List<PolarisEntityId> entityIds);
+
+  /**
+   * Load multiple entities by {@link EntityNameLookupRecord}, returning those found in the cache
+   * and loading those not found.
+   *
+   * @param callCtx the Polaris call context
+   * @param lookupRecords the list of entity name to load
+   * @return the list of resolved entities, in the same order as the requested entity records. As in
+   *     {@link
+   *     org.apache.polaris.core.persistence.PolarisMetaStoreManager#loadResolvedEntities(PolarisCallContext,
+   *     PolarisEntityType, List)}, elements in the returned list may be null if the corresponding
+   *     entity id does not exist.
+   */
+  List<EntityCacheLookupResult> getOrLoadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityNameLookupRecord> lookupRecords);
 }

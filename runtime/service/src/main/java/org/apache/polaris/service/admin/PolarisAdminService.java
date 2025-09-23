@@ -953,7 +953,7 @@ public class PolarisAdminService {
   /** List all catalogs without checking for permission. */
   private Stream<CatalogEntity> listCatalogsUnsafe() {
     return metaStoreManager
-        .loadFullEntitiesAll(
+        .listFullEntitiesAll(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.CATALOG,
@@ -1195,7 +1195,7 @@ public class PolarisAdminService {
     authorizeBasicRootOperationOrThrow(op);
 
     return metaStoreManager
-        .loadFullEntitiesAll(
+        .listFullEntitiesAll(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL,
@@ -1303,7 +1303,7 @@ public class PolarisAdminService {
     authorizeBasicRootOperationOrThrow(op);
 
     return metaStoreManager
-        .loadFullEntitiesAll(
+        .listFullEntitiesAll(
             getCurrentPolarisContext(),
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
@@ -1431,7 +1431,7 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     List<PolarisEntityCore> catalogPath = PolarisEntity.toCoreList(List.of(catalogEntity));
     return metaStoreManager
-        .loadFullEntitiesAll(
+        .listFullEntitiesAll(
             getCurrentPolarisContext(),
             catalogPath,
             PolarisEntityType.CATALOG_ROLE,
