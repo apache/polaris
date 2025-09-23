@@ -87,6 +87,17 @@ public interface EntityCache {
   /**
    * Load multiple entities by id, returning those found in the cache and loading those not found.
    *
+   * <p>Cached entity versions and grant versions must be verified against the versions returned by
+   * the {@link
+   * org.apache.polaris.core.persistence.PolarisMetaStoreManager#loadEntitiesChangeTracking(PolarisCallContext,
+   * List)} API to ensure the returned entities are consistent with the current state of the
+   * metastore. Cache implementations must never return a mix of stale entities and fresh entities,
+   * as authorization or table conflict decisions could be made based on inconsistent data. For
+   * example, a Principal may have a grant to a Principal Role in a cached entry, but that grant may
+   * be revoked prior to the Principal Role being granted a privilege on a Catalog. If the Principal
+   * record is stale, but the Principal Role is refreshed, the Principal may be incorrectly
+   * authorized to access the Catalog.
+   *
    * @param callCtx the Polaris call context
    * @param entityType the entity type
    * @param entityIds the list of entity ids to load
@@ -104,6 +115,11 @@ public interface EntityCache {
   /**
    * Load multiple entities by {@link EntityNameLookupRecord}, returning those found in the cache
    * and loading those not found.
+   *
+   * <p>see note in {@link #getOrLoadResolvedEntities(PolarisCallContext, PolarisEntityType, List)}
+   * re: the need to validate cache contents against the {@link
+   * org.apache.polaris.core.persistence.PolarisMetaStoreManager#loadEntitiesChangeTracking(PolarisCallContext,
+   * List)} to avoid invalid authorization or conflict detection decisions based on stale entries.
    *
    * @param callCtx the Polaris call context
    * @param lookupRecords the list of entity name to load

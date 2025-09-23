@@ -58,6 +58,7 @@ import java.util.stream.Collectors;
 /** An in-memory entity cache with a limit of 100k entities and a 1h TTL. */
 public class InMemoryEntityCache implements EntityCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryEntityCache.class);
+  public static final int MAX_CACHE_REFRESH_ATTEMPTS = 100;
   private final PolarisDiagnostics diagnostics;
   private final PolarisMetaStoreManager polarisMetaStoreManager;
   private final Cache<Long, ResolvedPolarisEntity> byId;
@@ -477,12 +478,21 @@ public class InMemoryEntityCache implements EntityCache {
     // trying to populate
     // the cache from a different snapshot
     Map<PolarisEntityId, ResolvedPolarisEntity> resolvedEntities = new HashMap<>();
-    for (int i = 0; i < 100; i++) {
+    boolean stateResolved = false;
+    for (int i = 0; i < MAX_CACHE_REFRESH_ATTEMPTS; i++) {
       Function<List<PolarisEntityId>, ResolvedEntitiesResult> loaderFunc =
           idsToLoad -> polarisMetaStoreManager.loadResolvedEntities(callCtx, entityType, idsToLoad);
       if (isCacheStateValid(callCtx, resolvedEntities, entityIds, loaderFunc)) {
+        stateResolved = true;
         break;
       }
+    }
+    if (!stateResolved) {
+      LOGGER.warn(
+          "Unable to resolve entities in cache after multiple attempts {} - resolved: {}",
+          entityIds,
+          resolvedEntities);
+      diagnostics.fail("cannot_resolve_all_entities", "Unable to resolve entities in cache");
     }
 
     return entityIds.stream()
@@ -517,10 +527,19 @@ public class InMemoryEntityCache implements EntityCache {
         lookupRecords.stream()
             .map(e -> new PolarisEntityId(e.getCatalogId(), e.getId()))
             .collect(Collectors.toList());
-    for (int i = 0; i < 100; i++) {
+    boolean stateResolved = false;
+    for (int i = 0; i < MAX_CACHE_REFRESH_ATTEMPTS; i++) {
       if (isCacheStateValid(callCtx, resolvedEntities, entityIds, loaderFunc)) {
+        stateResolved = true;
         break;
       }
+    }
+    if (!stateResolved) {
+      LOGGER.warn(
+          "Unable to resolve entities in cache after multiple attempts {} - resolved: {}",
+          entityIds,
+          resolvedEntities);
+      diagnostics.fail("cannot_resolve_all_entities", "Unable to resolve entities in cache");
     }
 
     return lookupRecords.stream()
