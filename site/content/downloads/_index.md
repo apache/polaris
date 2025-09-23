@@ -54,6 +54,20 @@ Apache Polaris 1.1.0-incubating was released on September 19th, 2025.
   - Fix drop view with default server configuration
   - Fix MinIO support
   - Remove ThreadLocal
+- **Breaking changes**
+  - Helm chart: the default value of the `authentication.tokenBroker.secret.symmetricKey.secretKey` property has changed 
+    from `symmetric.pem` to `symmetric.key`.
+  - For migrations from 1.0.x to 1.1.x, users using JDBC persistence must ensure that they,
+    run following SQL statement under `POLARIS_SCHEMA` to make sure version table exists:
+    `CREATE TABLE IF NOT EXISTS version (
+       version_key TEXT PRIMARY KEY,
+       version_value INTEGER NOT NULL
+    );
+    INSERT INTO version (version_key, version_value)
+      VALUES ('version', 1)
+    ON CONFLICT (version_key) DO UPDATE
+                            SET version_value = EXCLUDED.version_value;
+    COMMENT ON TABLE version IS 'the version of the JDBC schema in use';`
 
 ## 1.0.1
 | Artifact                                                                                                                                                                                         | PGP Sig                                                                                                                                                  | SHA-512 |
