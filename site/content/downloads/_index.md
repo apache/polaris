@@ -57,8 +57,8 @@ Apache Polaris 1.1.0-incubating was released on September 19th, 2025.
 - **Breaking changes**
   - Helm chart: the default value of the `authentication.tokenBroker.secret.symmetricKey.secretKey` property has changed 
     from `symmetric.pem` to `symmetric.key`.
-  - For migrations from 1.0.x to 1.1.x, users using JDBC persistence must ensure that they and wanting to continue using v1 schema,
-    run following SQL statement under `POLARIS_SCHEMA` to make sure version table exists:
+  - For migrations from 1.0.x to 1.1.x, users using JDBC persistence and wanting to continue using v1 schema, must ensure
+    that they, run following SQL statement under `POLARIS_SCHEMA` to make sure version table exists:
     ```sql 
     CREATE TABLE IF NOT EXISTS version (
        version_key TEXT PRIMARY KEY,
