@@ -28,8 +28,11 @@ import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
 import org.apache.polaris.service.events.CatalogGenericTableServiceEvents;
 import org.apache.polaris.service.events.CatalogPolicyServiceEvents;
+import org.apache.polaris.service.events.CatalogsServiceEvents;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PrincipalRolesServiceEvents;
+import org.apache.polaris.service.events.PrincipalsServiceEvents;
 
 /** Event listener that stores all emitted events forever. Not recommended for use in production. */
 @ApplicationScoped
@@ -44,47 +47,365 @@ public class TestPolarisEventListener implements PolarisEventListener {
   }
 
   @Override
-  public void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {
+  public void onBeforeCreateCatalog(CatalogsServiceEvents.BeforeCreateCatalogEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {
+  public void onAfterCreateCatalog(CatalogsServiceEvents.AfterCreateCatalogEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {
+  public void onBeforeDeleteCatalog(CatalogsServiceEvents.BeforeDeleteCatalogEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeCommitView(IcebergRestCatalogEvents.BeforeCommitViewEvent event) {
+  public void onAfterDeleteCatalog(CatalogsServiceEvents.AfterDeleteCatalogEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterCommitView(IcebergRestCatalogEvents.AfterCommitViewEvent event) {
+  public void onBeforeGetCatalog(CatalogsServiceEvents.BeforeGetCatalogEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {
+  public void onAfterGetCatalog(CatalogsServiceEvents.AfterGetCatalogEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
+  public void onBeforeUpdateCatalog(CatalogsServiceEvents.BeforeUpdateCatalogEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeRefreshView(IcebergRestCatalogEvents.BeforeRefreshViewEvent event) {
+  public void onAfterUpdateCatalog(CatalogsServiceEvents.AfterUpdateCatalogEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterRefreshView(IcebergRestCatalogEvents.AfterRefreshViewEvent event) {
+  public void onBeforeListCatalogs(CatalogsServiceEvents.BeforeListCatalogsEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterListCatalogs(CatalogsServiceEvents.AfterListCatalogsEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeCreatePrincipal(PrincipalsServiceEvents.BeforeCreatePrincipalEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterCreatePrincipal(PrincipalsServiceEvents.AfterCreatePrincipalEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeDeletePrincipal(PrincipalsServiceEvents.BeforeDeletePrincipalEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterDeletePrincipal(PrincipalsServiceEvents.AfterDeletePrincipalEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeGetPrincipal(PrincipalsServiceEvents.BeforeGetPrincipalEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterGetPrincipal(PrincipalsServiceEvents.AfterGetPrincipalEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeUpdatePrincipal(PrincipalsServiceEvents.BeforeUpdatePrincipalEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterUpdatePrincipal(PrincipalsServiceEvents.AfterUpdatePrincipalEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeRotateCredentials(
+      PrincipalsServiceEvents.BeforeRotateCredentialsEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterRotateCredentials(PrincipalsServiceEvents.AfterRotateCredentialsEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeListPrincipals(PrincipalsServiceEvents.BeforeListPrincipalsEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterListPrincipals(PrincipalsServiceEvents.AfterListPrincipalsEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeResetCredentials(PrincipalsServiceEvents.BeforeResetCredentialsEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterResetCredentials(PrincipalsServiceEvents.AfterResetCredentialsEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeAssignPrincipalRole(
+      PrincipalsServiceEvents.BeforeAssignPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterAssignPrincipalRole(
+      PrincipalsServiceEvents.AfterAssignPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeRevokePrincipalRole(
+      PrincipalsServiceEvents.BeforeRevokePrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterRevokePrincipalRole(
+      PrincipalsServiceEvents.AfterRevokePrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeListAssignedPrincipalRoles(
+      PrincipalsServiceEvents.BeforeListAssignedPrincipalRolesEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterListAssignedPrincipalRoles(
+      PrincipalsServiceEvents.AfterListAssignedPrincipalRolesEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeCreatePrincipalRole(
+      PrincipalRolesServiceEvents.BeforeCreatePrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterCreatePrincipalRole(
+      PrincipalRolesServiceEvents.AfterCreatePrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeDeletePrincipalRole(
+      PrincipalRolesServiceEvents.BeforeDeletePrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterDeletePrincipalRole(
+      PrincipalRolesServiceEvents.AfterDeletePrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeGetPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeGetPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterGetPrincipalRole(
+      PrincipalRolesServiceEvents.AfterGetPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeUpdatePrincipalRole(
+      PrincipalRolesServiceEvents.BeforeUpdatePrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterUpdatePrincipalRole(
+      PrincipalRolesServiceEvents.AfterUpdatePrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeListPrincipalRoles(
+      PrincipalRolesServiceEvents.BeforeListPrincipalRolesEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterListPrincipalRoles(
+      PrincipalRolesServiceEvents.AfterListPrincipalRolesEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeCreateCatalogRole(CatalogsServiceEvents.BeforeCreateCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterCreateCatalogRole(CatalogsServiceEvents.AfterCreateCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeDeleteCatalogRole(CatalogsServiceEvents.BeforeDeleteCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterDeleteCatalogRole(CatalogsServiceEvents.AfterDeleteCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeGetCatalogRole(CatalogsServiceEvents.BeforeGetCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterGetCatalogRole(CatalogsServiceEvents.AfterGetCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeUpdateCatalogRole(CatalogsServiceEvents.BeforeUpdateCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterUpdateCatalogRole(CatalogsServiceEvents.AfterUpdateCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeListCatalogRoles(CatalogsServiceEvents.BeforeListCatalogRolesEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterListCatalogRoles(CatalogsServiceEvents.AfterListCatalogRolesEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeAssignCatalogRoleToPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeAssignCatalogRoleToPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterAssignCatalogRoleToPrincipalRole(
+      PrincipalRolesServiceEvents.AfterAssignCatalogRoleToPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeRevokeCatalogRoleFromPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeRevokeCatalogRoleFromPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterRevokeCatalogRoleFromPrincipalRole(
+      PrincipalRolesServiceEvents.AfterRevokeCatalogRoleFromPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeListAssigneePrincipalsForPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeListAssigneePrincipalsForPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterListAssigneePrincipalsForPrincipalRole(
+      PrincipalRolesServiceEvents.AfterListAssigneePrincipalsForPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeListCatalogRolesForPrincipalRole(
+      PrincipalRolesServiceEvents.BeforeListCatalogRolesForPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterListCatalogRolesForPrincipalRole(
+      PrincipalRolesServiceEvents.AfterListCatalogRolesForPrincipalRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeAddGrantToCatalogRole(
+      CatalogsServiceEvents.BeforeAddGrantToCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterAddGrantToCatalogRole(
+      CatalogsServiceEvents.AfterAddGrantToCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeRevokeGrantFromCatalogRole(
+      CatalogsServiceEvents.BeforeRevokeGrantFromCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterRevokeGrantFromCatalogRole(
+      CatalogsServiceEvents.AfterRevokeGrantFromCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeListAssigneePrincipalRolesForCatalogRole(
+      CatalogsServiceEvents.BeforeListAssigneePrincipalRolesForCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterListAssigneePrincipalRolesForCatalogRole(
+      CatalogsServiceEvents.AfterListAssigneePrincipalRolesForCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeListGrantsForCatalogRole(
+      CatalogsServiceEvents.BeforeListGrantsForCatalogRoleEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterListGrantsForCatalogRole(
+      CatalogsServiceEvents.AfterListGrantsForCatalogRoleEvent event) {
     history.add(event);
   }
 
@@ -165,6 +486,26 @@ public class TestPolarisEventListener implements PolarisEventListener {
   }
 
   @Override
+  public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
+    history.add(event);
+  }
+
+  @Override
   public void onBeforeListTables(IcebergRestCatalogEvents.BeforeListTablesEvent event) {
     history.add(event);
   }
@@ -241,6 +582,26 @@ public class TestPolarisEventListener implements PolarisEventListener {
 
   @Override
   public void onAfterCreateView(IcebergRestCatalogEvents.AfterCreateViewEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeCommitView(IcebergRestCatalogEvents.BeforeCommitViewEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterCommitView(IcebergRestCatalogEvents.AfterCommitViewEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeRefreshView(IcebergRestCatalogEvents.BeforeRefreshViewEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onAfterRefreshView(IcebergRestCatalogEvents.AfterRefreshViewEvent event) {
     history.add(event);
   }
 
@@ -482,6 +843,11 @@ public class TestPolarisEventListener implements PolarisEventListener {
 
   @Override
   public void onAfterAttemptTask(AfterAttemptTaskEvent event) {
+    history.add(event);
+  }
+
+  @Override
+  public void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {
     history.add(event);
   }
 }
