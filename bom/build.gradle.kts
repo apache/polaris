@@ -86,6 +86,9 @@ dependencies {
 
     api(project(":polaris-core"))
 
+    api(project(":polaris-storage-files-api"))
+    api(project(":polaris-storage-files-impl"))
+
     api(project(":polaris-relational-jdbc"))
 
     api(project(":polaris-extensions-auth-opa"))
