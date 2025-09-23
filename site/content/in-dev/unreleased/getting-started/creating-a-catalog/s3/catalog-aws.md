@@ -25,7 +25,7 @@ weight: 100
 
 When creating a catalog based on AWS S3 storage only the `role-arn` is a required parameter. However, usually
 one also provides the `region` and
-[externa-id](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html).
+[external-id](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html).
 
 Note: the name `quickstart_catalog` from the example below is referenced in other Getting Started examples,
 but of course, it can be any valid catalog name.
