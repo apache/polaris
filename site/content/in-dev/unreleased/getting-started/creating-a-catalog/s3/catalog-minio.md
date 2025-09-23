@@ -23,94 +23,41 @@ type: docs
 weight: 200
 ---
 
-In this guide we walk through setting up a simple Polaris Server with local [MinIO](https://www.min.io/) storage.
+When creating a catalog based on MinIO storage it is important to configure the `endpoint` property to point
+to your own MinIO cluster. If the `endpoint` property is not set, Polaris will attempt to contact AWS
+storage services (which is certain to fail in this case).
 
-Similar configurations are expected to work with other S3-compatible systems that also have the
-[STS](https://docs.aws.amazon.com/STS/latest/APIReference/welcome.html) API.
+Note: the region setting is not required by MinIO, but it is set in this example for the sake of
+simplicity as it is usually required by the AWS SDK (used internally by Polaris). One can also 
+set the `AWS_REGION` environment variable in the Polaris server process and avoid setting region
+as a catalog property.
 
-# Setup
-
-Clone the Polaris source repository, then build a docker image for Polaris.
-
-```shell
-./gradlew :polaris-server:assemble -Dquarkus.container-image.build=true
-```
-
-Start MinIO with Polaris using the `docker compose` example.
+Note: the name `quickstart_catalog` from the example below is referenced in other Getting Started examples,
+but of course, it can be any valid catalog name.
 
 ```shell
-docker compose -f getting-started/minio/docker-compose.yml up
+CLIENT_ID=root
+CLIENT_SECRET=s3cr3t
+DEFAULT_BASE_LOCATION=s3://example-bucket/my_data
+REGION=us-west-2
+
+./polaris \
+  --client-id ${CLIENT_ID} \
+  --client-secret ${CLIENT_SECRET} \
+  catalogs \
+  create \
+  --storage-type s3 \
+  --endpoint http://127.0.0.1:9100
+  --default-base-location ${DEFAULT_BASE_LOCATION} \
+  --region ${REGION} \
+  quickstart_catalog
 ```
 
-The compose script will start MinIO on default ports (API on 9000, UI on 9001)
-plus a Polaris Server pre-configured to that MinIO instance.
+In more complex deployments it may be necessary to configure different endpoints for S3 requests
+and for STS (AssumeRole) requests. This can be achieved via the `--sts-endpoint` CLI option.
 
-In this example the `root` principal has its password set to `s3cr3t`.
+Additionally, the `--endpoint-internal` CLI option cane be used to set the S3 endpoint for use by
+the Polaris Server itself, if it needs to be different from the endpoint used by clients / engines.
 
-# Connecting from Spark
-
-Start Spark.
-
-```shell
-export AWS_REGION=us-west-2
-
-bin/spark-sql \
- --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.0,org.apache.iceberg:iceberg-aws-bundle:1.9.0 \
- --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
- --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
- --conf spark.sql.catalog.polaris.type=rest \
- --conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \
- --conf spark.sql.catalog.polaris.token-refresh-enabled=false \
- --conf spark.sql.catalog.polaris.warehouse=quickstart_catalog \
- --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
- --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials \
- --conf spark.sql.catalog.polaris.credential=root:s3cr3t
-```
-
-Note: `AWS_REGION` is required by the AWS SDK used by Spark, but the value is irrelevant in this case.
-
-Create a table in Spark.
-
-```sql
-use polaris;
-create namespace ns;
-create table ns.t1 as select 'abc';
-select * from ns.t1;
-```
-
-# Connecting from MinIO client
-
-```shell
-mc alias set pol http://localhost:9000 minio_root m1n1opwd
-mc ls pol/bucket123/ns/t1
-[2025-08-13 18:52:38 EDT]     0B data/
-[2025-08-13 18:52:38 EDT]     0B metadata/
-```
-
-Note: the values of `minio_root`, `m1n1opwd` and `bucket123` are defined in the docker compose file.
-
-# Notes on Storage Configuation
-
-In this example the Polaris Catalog is defined as (excluding uninteresting properties):
-
-```json
-    {
-      "name": "quickstart_catalog",
-      "storageConfigInfo": {
-        "endpoint": "http://localhost:9000",
-        "endpointInternal": "http://minio:9000",
-        "pathStyleAccess": true,
-        "storageType": "S3",
-        "allowedLocations": [
-          "s3://bucket123"
-        ]
-      }
-    }
-```
-
-Note that the `roleArn` parameter, which is required for AWS storage, does not need to be set for MinIO.
-
-Note the two endpoint values. `endpointInternal` is used by the Polaris Server, while `endpoint` is communicated
-to clients (such as Spark) in Iceberg REST API responses. This distinction allows the system to work smoothly
-when the clients and the server have different views of the network (in this example the host name `minio` is
-resolvable only inside the docker compose environment). 
+A usable MinIO example for `docker-compose` is available in the Polaris source code under the
+[getting-started/minio](https://github.com/apache/polaris/tree/main/getting-started/minio) module.
