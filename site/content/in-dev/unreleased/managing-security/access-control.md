@@ -17,9 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Access Control
+title: Role-Based Access Control
+linkTitle: Access Control
 type: docs
-weight: 500
+weight: 200
 ---
 
 This section provides information about how access control works for Apache Polaris (Incubating).

@@ -43,7 +43,7 @@ NEW_CLIENT_SECRET=$(echo "$PRINCIPAL_RESPONSE" | jq -r '.credentials.clientSecre
 
 # Step 2: Create local catalog
 echo "Creating local catalog..."
-RESPONSE_CODE=$(curl -s -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Content-Type: application/json' \
+RESPONSE_CODE=$(curl -s -o /dev/null -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
   -d '{
     "type": "INTERNAL",
@@ -87,7 +87,7 @@ echo "Assign service_admin to new-user response code: $RESPONSE_CODE"
 
 # Step 4: Create external catalog
 echo "Creating external catalog (passthrough facade)..."
-RESPONSE_CODE=$(curl -s -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Content-Type: application/json' \
+RESPONSE_CODE=$(curl -s -o /dev/null -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
   -d "{
     \"type\": \"EXTERNAL\",

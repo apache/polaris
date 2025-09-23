@@ -17,23 +17,33 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Getting Started with Apache Polaris
-linkTitle: Getting Started
+title: Creating a catalog on Google Cloud Storage (GCS)
+linkTitle: GCS
 type: docs
-weight: 101
+weight: 200
 ---
 
-The fastest way to get started is with our Docker Compose examples. Each example provides a complete working environment with detailed instructions.
+For the `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) there are few `gcs` only options
 
-## Next Steps
+```text
+--storage-type gcs
+--service-account  (Only for GCS) The service account to use when connecting to GCS
+```
 
-1. Check/Install dependencies
-2. Choose the way you want to deploy Polaris
-3. Create a catalog
-4. Check Using polaris page
+### example
 
-## Getting Help
-
-- Documentation: https://polaris.apache.org
-- GitHub Issues: https://github.com/apache/polaris/issues
-- Slack: [Join Apache Polaris Community](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
+```shell
+CLIENT_ID=root \
+CLIENT_SECRET=s3cr3t \
+DEFAULT_BASE_LOCATION=gs://my-ml-bucket/predictions/  \
+SERVICE_ACCOUNT=serviceAccount:my-service-account@my-project.iam.gserviceaccount.com \
+./polaris \
+  --client-id ${CLIENT_ID} \
+  --client-secret ${CLIENT_SECRET} \
+  catalogs \
+  create \
+  --storage-type gcs \
+  --service-account ${SERVICE_ACCOUNT} \
+  --default-base-location ${DEFAULT_BASE_LOCATION} \
+  my_gcs_catalog
+```

@@ -29,8 +29,8 @@ import org.junit.jupiter.api.TestInstance;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@TestProfile(InMemoryEventListenerBufferTimeTest.Profile.class)
-class InMemoryEventListenerBufferTimeTest extends InMemoryEventListenerTestBase {
+@TestProfile(InMemoryBufferEventListenerBufferTimeTest.Profile.class)
+class InMemoryBufferEventListenerBufferTimeTest extends InMemoryBufferEventListenerTestBase {
 
   public static class Profile implements QuarkusTestProfile {
 
