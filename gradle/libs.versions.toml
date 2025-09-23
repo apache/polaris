@@ -83,7 +83,9 @@ microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-to
 mockito-core = { module = "org.mockito:mockito-core", version = "5.22.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.22.0" }
 mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5.6.4" }
+nessie-bom = { module = "org.projectnessie.nessie:nessie-bom", version = "0.107.3" }
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
+opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.37.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.10" }
