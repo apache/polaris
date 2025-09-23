@@ -1805,22 +1805,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                     return entities.get(i);
                   }
                 })
-            .map(
-                e -> {
-                  if (e == null) {
-                    return null;
-                  } else {
-                    // load the grant records
-                    final List<PolarisGrantRecord> grantRecordsAsSecurable =
-                        ms.loadAllGrantRecordsOnSecurable(callCtx, e.getCatalogId(), e.getId());
-                    final List<PolarisGrantRecord> grantRecordsAsGrantee =
-                        e.getType().isGrantee()
-                            ? ms.loadAllGrantRecordsOnGrantee(callCtx, e.getCatalogId(), e.getId())
-                            : List.of();
-                    return new ResolvedPolarisEntity(
-                        PolarisEntity.of(e), grantRecordsAsGrantee, grantRecordsAsSecurable);
-                  }
-                })
+            .map(e -> toResolvedPolarisEntity(callCtx, e, ms))
             .collect(Collectors.toList());
     return new ResolvedEntitiesResult(ret);
   }
