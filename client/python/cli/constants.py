@@ -187,7 +187,7 @@ class Arguments:
     CATALOG_SIGNING_REGION = "catalog_signing_region"
     CATALOG_SIGNING_NAME = "catalog_signing_name"
     REALM = "realm"
-    REALM_HEADER = "realm_header"
+    HEADER = "header"
 
 
 class Hints:
@@ -373,7 +373,7 @@ CLIENT_SECRET_ENV = "CLIENT_SECRET"
 CLIENT_PROFILE_ENV = "CLIENT_PROFILE"
 REALM_ENV = "REALM"
 REALM_HEADER_ENV = "REALM_HEADER"
-DEFAULT_REALM_HEADER = "Polaris-Realm"
+DEFAULT_HEADER = "Polaris-Realm"
 DEFAULT_HOSTNAME = "localhost"
 DEFAULT_PORT = 8181
 CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduser("~/.polaris")
