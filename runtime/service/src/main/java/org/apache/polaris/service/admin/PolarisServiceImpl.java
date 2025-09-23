@@ -739,7 +739,7 @@ public class PolarisServiceImpl
             .log("Don't know how to handle privilege revocation: {}", grantRequest);
         return Response.status(Response.Status.BAD_REQUEST).build();
     }
-    return toResponse(result, Response.Status.CREATED);
+    return toResponse(result, Response.Status.NO_CONTENT);
   }
 
   /** From PolarisCatalogsApiService */
