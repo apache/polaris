@@ -81,9 +81,10 @@ The inheritance follows an override mechanism:
 1. Table-level policies override namespace and catalog policies
 2. Namespace-level policies override parent namespace and catalog policies
 
-> [!IMPORTANT]
-> Because an override completely replaces the same policy type at higher levels,
-> **only one instance of a given policy type can be attached to (and therefore affect) a resource**.
+{{< alert important >}}
+Because an override completely replaces the same policy type at higher levels,
+**only one instance of a given policy type can be attached to (and therefore affect) a resource**.
+{{< /alert >}}
 
 ## Working with Policies
 

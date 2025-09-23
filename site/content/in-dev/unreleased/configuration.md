@@ -28,8 +28,9 @@ This page provides information on how to configure Apache Polaris (Incubating). 
 otherwise, this information is valid both for Polaris Docker images (and Kubernetes deployments) as
 well as for Polaris binary distributions.
 
-> [!NOTE]
-> For Production tips and best practices, refer to [Configuring Polaris for Production]({{% ref "configuring-polaris-for-production.md" %}}).
+{{< alert note >}}
+For Production tips and best practices, refer to [Configuring Polaris for Production]({{% ref "configuring-polaris-for-production.md" %}}).
+{{< /alert >}}
 
 First off, Polaris server runs on Quarkus, and uses its configuration mechanisms. Read Quarkus
 [configuration guide](https://quarkus.io/guides/config) to get familiar with the basics.
@@ -64,9 +65,11 @@ When using environment variables, there are two naming conventions:
    `polaris.realm-context.realms` becomes `POLARIS_REALM_CONTEXT_REALMS`. See
    [here](https://smallrye.io/smallrye-config/Main/config/environment-variables/) for more details.
 
-> [!IMPORTANT]
-> While convenient, uppercase-only environment variables can be problematic for complex property
-> names. In these situations, it's preferable to use system properties or a configuration file.
+{{< alert important >}}
+While convenient, uppercase-only environment variables can be problematic for complex property
+names. In these situations, it's preferable to use system properties or a configuration file.
+{{< /alert >}}
+
 
 As stated above, a configuration file can also be provided at runtime; it should be available
 (mounted) at `$PWD/config/application.properties` for Polaris server to recognize it. In Polaris
@@ -145,8 +148,9 @@ There are non Polaris configuration properties that can be useful:
 | `quarkus.management.root-path`                       |                                 | Define the root path where `/metrics` and `/health` endpoints are based on. |
 | `quarkus.otel.sdk.disabled`                          | `true`                          | Enable the OpenTelemetry layer.                                             |
 
-> [!NOTE]
-> This section is only relevant for Polaris Docker images and Kubernetes deployments.
+{{< alert note >}}
+This section is only relevant for Polaris Docker images and Kubernetes deployments.
+{{< /alert >}}
 
 There are many other actionable environment variables available in the official Polaris Docker
 image; they come from the base image used by Polaris, [ubi9/openjdk-21-runtime]. They should be used
@@ -191,5 +195,7 @@ quarkus.log.console.level=DEBUG
 quarkus.log.category."io.smallrye.config".level=DEBUG
 ```
 
-> [!IMPORTANT] This will print out all configuration values, including sensitive ones like
-> passwords. Don't do this in production, and don't share this output with anyone you don't trust!
+{{< alert important >}}
+This will print out all configuration values, including sensitive ones like
+passwords. Don't do this in production, and don't share this output with anyone you don't trust!
+{{< /alert >}}

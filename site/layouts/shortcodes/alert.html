@@ -1,0 +1,57 @@
+{{- $type := .Get 0 | default "info" | lower -}}
+{{- $title := .Get 1 | default "" -}}
+
+{{- /* Define emoji mappings for different alert types */ -}}
+{{- $emojis := dict
+    "danger" "🛑 "
+    "error" "❌ "
+    "caution" "⚠️ "
+    "warning" "⚠️ "
+    "important" "❗"
+    "info" "ℹ️ "
+    "note" "📝 "
+    "tip" "💡 "
+    "success" "✅ "
+    "primary" "ℹ️ "
+-}}
+
+{{- /* Define title mappings for different alert types */ -}}
+{{- $titles := dict
+    "danger" "Danger"
+    "error" "Error"
+    "caution" "Caution"
+    "warning" "Warning"
+    "important" "Important"
+    "info" "Info"
+    "note" "Note"
+    "tip" "Tip"
+    "success" "Success"
+    "primary" "Info"
+-}}
+
+{{- /* Define styles for different alert types */ -}}
+{{- $styles := dict
+"danger" "danger"
+"error" "danger"
+"caution" "danger"
+"warning" "warning"
+"important" "primary"
+"info" "info"
+"note" "info"
+"tip" "info"
+"success" "success"
+"primary" "primary"
+-}}
+
+<div class="alert alert-{{- index $styles $type -}}">
+  {{- $emoji := index $emojis $type | default "ℹ️" -}}
+  <p class="alert-heading">
+    {{ $emoji }}
+    {{- if $title -}}
+      {{ $title }}
+    {{- else -}}
+      {{ index $titles $type | default (title $type) }}
+    {{- end -}}
+  </p>
+  {{ .Inner | markdownify }}
+</div>
