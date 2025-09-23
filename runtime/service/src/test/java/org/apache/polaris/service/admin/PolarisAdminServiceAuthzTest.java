@@ -37,6 +37,8 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusTest
 @TestProfile(PolarisAuthzTestBase.Profile.class)
@@ -1498,8 +1500,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
             adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
   }
 
-  @Test
-  public void testGrantPrivilegeOnNamespaceToRoleSufficientPrivileges() {
+  @ParameterizedTest(name = "{displayName}({0})")
+  @ValueSource(strings = {CATALOG_NAME, FEDERATED_CATALOG_NAME})
+  public void testGrantPrivilegeOnNamespaceToRoleSufficientPrivileges(String catalogName) {
     doTestSufficientPrivileges(
         List.of(
             PolarisPrivilege.CATALOG_MANAGE_ACCESS,
@@ -1507,16 +1510,17 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         () ->
             newTestAdminService(Set.of(PRINCIPAL_ROLE1))
                 .grantPrivilegeOnNamespaceToRole(
-                    CATALOG_NAME, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+                        catalogName, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
         null, // cleanupAction
         (privilege) ->
-            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+            adminService.grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege),
         (privilege) ->
-            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+            adminService.revokePrivilegeOnCatalogFromRole(catalogName, CATALOG_ROLE1, privilege));
   }
 
-  @Test
-  public void testGrantPrivilegeOnNamespaceToRoleInsufficientPrivileges() {
+  @ParameterizedTest(name = "{displayName}({0})")
+  @ValueSource(strings = {CATALOG_NAME, FEDERATED_CATALOG_NAME})
+  public void testGrantPrivilegeOnNamespaceToRoleInsufficientPrivileges(String catalogName) {
     doTestInsufficientPrivileges(
         List.of(
             PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
@@ -1543,11 +1547,11 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         () ->
             newTestAdminService(Set.of(PRINCIPAL_ROLE1))
                 .grantPrivilegeOnNamespaceToRole(
-                    CATALOG_NAME, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+                        catalogName, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
         (privilege) ->
-            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+            adminService.grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege),
         (privilege) ->
-            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+            adminService.revokePrivilegeOnCatalogFromRole(catalogName, CATALOG_ROLE1, privilege));
   }
 
   @Test
@@ -1606,8 +1610,9 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
             adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
   }
 
-  @Test
-  public void testGrantPrivilegeOnTableToRoleSufficientPrivileges() {
+  @ParameterizedTest(name = "{displayName}({0})")
+  @ValueSource(strings = {CATALOG_NAME, FEDERATED_CATALOG_NAME})
+  public void testGrantPrivilegeOnTableToRoleSufficientPrivileges(String catalogName) {
     doTestSufficientPrivileges(
         List.of(
             PolarisPrivilege.CATALOG_MANAGE_ACCESS,
@@ -1615,15 +1620,15 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         () ->
             newTestAdminService(Set.of(PRINCIPAL_ROLE1))
                 .grantPrivilegeOnTableToRole(
-                    CATALOG_NAME,
+                        catalogName,
                     CATALOG_ROLE2,
                     TABLE_NS1_1,
                     PolarisPrivilege.CATALOG_MANAGE_ACCESS),
         null, // cleanupAction
         (privilege) ->
-            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+            adminService.grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege),
         (privilege) ->
-            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+            adminService.revokePrivilegeOnCatalogFromRole(catalogName, CATALOG_ROLE1, privilege));
   }
 
   @Test

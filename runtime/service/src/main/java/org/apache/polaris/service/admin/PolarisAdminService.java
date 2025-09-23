@@ -446,7 +446,7 @@ public class PolarisAdminService {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
             callContext, securityContext, catalogName);
-    resolutionManifest.addPath(
+    resolutionManifest.addPassthroughPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
     resolutionManifest.addPath(
@@ -487,7 +487,11 @@ public class PolarisAdminService {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
             callContext, securityContext, catalogName);
-    resolutionManifest.addPath(
+    resolutionManifest.addPassthroughPath(
+            new ResolverPath(
+                    Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE),
+            identifier.namespace());
+    resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier), PolarisEntityType.TABLE_LIKE),
         identifier);
@@ -1813,7 +1817,7 @@ public class PolarisAdminService {
       } else {
         Namespace partialNamespace = Namespace.of(Arrays.copyOf(allNamespaceLevels, i + 1));
         PolarisResolvedPathWrapper partialPath =
-            resolutionManifest.getResolvedPath(partialNamespace);
+            resolutionManifest.getPassthroughResolvedPath(partialNamespace);
         PolarisEntity partialLeafEntity = partialPath.getRawLeafEntity();
         if (partialLeafEntity == null
             || !(partialLeafEntity.getName().equals(leafNamespace)
@@ -1828,7 +1832,7 @@ public class PolarisAdminService {
       completePath.add(syntheticNamespace);
       currentParent = syntheticNamespace;
     }
-    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getPassthroughResolvedPath(namespace);
     return resolvedPathWrapper;
   }
 
@@ -2194,6 +2198,7 @@ public class PolarisAdminService {
     // backfill and use the metadata location from the external catalog.
     PolarisEntity syntheticTableEntity =
         new IcebergTableLikeEntity.Builder(syntheticEntitySubType, identifier, "")
+            .setParentId(parentNamespaceEntity.getId())
             .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
             .setCatalogId(parentNamespaceEntity.getCatalogId())
             .setCreateTimestamp(System.currentTimeMillis())
@@ -2208,7 +2213,7 @@ public class PolarisAdminService {
     if (result.isSuccess()) {
       syntheticTableEntity = PolarisEntity.of(result.getEntity());
     } else {
-      PolarisResolvedPathWrapper tablePathWrapper = resolutionManifest.getResolvedPath(identifier);
+      PolarisResolvedPathWrapper tablePathWrapper = resolutionManifest.getPassthroughResolvedPath(identifier);
       PolarisEntity leafEntity =
           tablePathWrapper != null ? tablePathWrapper.getRawLeafEntity() : null;
       if (leafEntity == null || !subTypes.contains(leafEntity.getSubType())) {
@@ -2218,7 +2223,7 @@ public class PolarisAdminService {
                 identifier.name(), catalogEntity.getName()));
       }
     }
-    return resolutionManifest.getResolvedPath(identifier);
+    return resolutionManifest.getPassthroughResolvedPath(identifier);
   }
 
   /**
