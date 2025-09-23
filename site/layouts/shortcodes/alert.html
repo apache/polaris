@@ -53,5 +53,5 @@
       {{ index $titles $type | default (title $type) }}
     {{- end -}}
   </p>
-  {{ .Inner | markdownify }}
+  {{ .Inner | .Page.RenderString }}
 </div>
