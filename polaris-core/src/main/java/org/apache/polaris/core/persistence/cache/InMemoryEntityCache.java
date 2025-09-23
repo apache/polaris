@@ -23,25 +23,41 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalListener;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.AbstractMap;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** An in-memory entity cache with a limit of 100k entities and a 1h TTL. */
 public class InMemoryEntityCache implements EntityCache {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryEntityCache.class);
   private final PolarisDiagnostics diagnostics;
   private final PolarisMetaStoreManager polarisMetaStoreManager;
   private final Cache<Long, ResolvedPolarisEntity> byId;
@@ -450,5 +466,153 @@ public class InMemoryEntityCache implements EntityCache {
 
     // return what we found
     return new EntityCacheLookupResult(entry, cacheHit);
+  }
+
+  @Override
+  public List<EntityCacheLookupResult> getOrLoadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull List<PolarisEntityId> entityIds) {
+    // use a map to collect cached entries to avoid concurrency problems in case a second thread is
+    // trying to populate
+    // the cache from a different snapshot
+    Map<PolarisEntityId, ResolvedPolarisEntity> resolvedEntities = new HashMap<>();
+    for (int i = 0; i < 100; i++) {
+      Function<List<PolarisEntityId>, ResolvedEntitiesResult> loaderFunc =
+          idsToLoad -> polarisMetaStoreManager.loadResolvedEntities(callCtx, entityType, idsToLoad);
+      if (isCacheStateValid(callCtx, resolvedEntities, entityIds, loaderFunc)) {
+        break;
+      }
+    }
+
+    return entityIds.stream()
+        .map(
+            id -> {
+              ResolvedPolarisEntity entity = resolvedEntities.get(id);
+              return entity == null ? null : new EntityCacheLookupResult(entity, true);
+            })
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<EntityCacheLookupResult> getOrLoadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityNameLookupRecord> lookupRecords) {
+    Map<PolarisEntityId, EntityNameLookupRecord> entityIdMap =
+        lookupRecords.stream()
+            .collect(
+                Collectors.toMap(
+                    e -> new PolarisEntityId(e.getCatalogId(), e.getId()),
+                    Function.identity(),
+                    (a, b) -> a));
+    Function<List<PolarisEntityId>, ResolvedEntitiesResult> loaderFunc =
+        idsToLoad ->
+            polarisMetaStoreManager.loadResolvedEntities(
+                callCtx, idsToLoad.stream().map(entityIdMap::get).collect(Collectors.toList()));
+
+    // use a map to collect cached entries to avoid concurrency problems in case a second thread is
+    // trying to populate
+    // the cache from a different snapshot
+    Map<PolarisEntityId, ResolvedPolarisEntity> resolvedEntities = new HashMap<>();
+    List<PolarisEntityId> entityIds =
+        lookupRecords.stream()
+            .map(e -> new PolarisEntityId(e.getCatalogId(), e.getId()))
+            .collect(Collectors.toList());
+    for (int i = 0; i < 100; i++) {
+      if (isCacheStateValid(callCtx, resolvedEntities, entityIds, loaderFunc)) {
+        break;
+      }
+    }
+
+    return lookupRecords.stream()
+        .map(
+            lookupRecord -> {
+              ResolvedPolarisEntity entity =
+                  resolvedEntities.get(
+                      new PolarisEntityId(lookupRecord.getCatalogId(), lookupRecord.getId()));
+              return entity == null ? null : new EntityCacheLookupResult(entity, true);
+            })
+        .collect(Collectors.toList());
+  }
+
+  private boolean isCacheStateValid(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull Map<PolarisEntityId, ResolvedPolarisEntity> resolvedEntities,
+      @Nonnull List<PolarisEntityId> entityIds,
+      @Nonnull Function<List<PolarisEntityId>, ResolvedEntitiesResult> loaderFunc) {
+    ChangeTrackingResult changeTrackingResult =
+        polarisMetaStoreManager.loadEntitiesChangeTracking(callCtx, entityIds);
+    List<PolarisEntityId> idsToLoad = new ArrayList<>();
+    if (changeTrackingResult.isSuccess()) {
+      idsToLoad.addAll(validateCacheEntries(entityIds, resolvedEntities, changeTrackingResult));
+    } else {
+      idsToLoad.addAll(entityIds);
+    }
+    if (!idsToLoad.isEmpty()) {
+      ResolvedEntitiesResult resolvedEntitiesResult = loaderFunc.apply(idsToLoad);
+      if (resolvedEntitiesResult.isSuccess()) {
+        LOGGER.debug("Resolved entities - validating cache");
+        resolvedEntitiesResult.getResolvedEntities().stream()
+            .filter(Objects::nonNull)
+            .forEach(
+                e -> {
+                  this.cacheNewEntry(e);
+                  resolvedEntities.put(
+                      new PolarisEntityId(e.getEntity().getCatalogId(), e.getEntity().getId()), e);
+                });
+      }
+    }
+
+    // the loader function should always return a batch of results from the same "snapshot" of the
+    // persistence, so
+    // if the changeTracking call above failed, we should have loaded the entire batch in one shot.
+    // There should be no
+    // need to revalidate the entities.
+    List<PolarisEntityId> idsToReload =
+        changeTrackingResult.isSuccess()
+            ? validateCacheEntries(entityIds, resolvedEntities, changeTrackingResult)
+            : List.of();
+    return idsToReload.isEmpty();
+  }
+
+  private List<PolarisEntityId> validateCacheEntries(
+      List<PolarisEntityId> entityIds,
+      Map<PolarisEntityId, ResolvedPolarisEntity> resolvedEntities,
+      ChangeTrackingResult changeTrackingResult) {
+    List<PolarisEntityId> idsToReload = new ArrayList<>();
+    Iterator<PolarisEntityId> idIterator = entityIds.iterator();
+    Iterator<PolarisChangeTrackingVersions> changeTrackingIterator =
+        changeTrackingResult.getChangeTrackingVersions().iterator();
+    while (idIterator.hasNext() && changeTrackingIterator.hasNext()) {
+      PolarisEntityId entityId = idIterator.next();
+      PolarisChangeTrackingVersions changeTrackingVersions = changeTrackingIterator.next();
+      if (changeTrackingVersions == null) {
+        // entity has been purged
+        ResolvedPolarisEntity cachedEntity = getEntityById(entityId.getId());
+        if (cachedEntity != null || resolvedEntities.containsKey(entityId)) {
+          LOGGER.debug("Entity {} has been purged, removing from cache", entityId);
+          Optional.ofNullable(cachedEntity).ifPresent(this::removeCacheEntry);
+          resolvedEntities.remove(entityId);
+        }
+        continue;
+      }
+      // compare versions using equals rather than less than so we can use the same function to
+      // validate that the cache
+      // entries are consistent with a single call to the change tracking table, rather than some
+      // grants ahead and some
+      // grants behind
+      ResolvedPolarisEntity cachedEntity =
+          resolvedEntities.computeIfAbsent(entityId, id -> this.getEntityById(id.getId()));
+      if (cachedEntity == null
+          || cachedEntity.getEntity().getEntityVersion()
+              != changeTrackingVersions.getEntityVersion()
+          || cachedEntity.getEntity().getGrantRecordsVersion()
+              != changeTrackingVersions.getGrantRecordsVersion()) {
+        idsToReload.add(entityId);
+      } else {
+        resolvedEntities.put(entityId, cachedEntity);
+      }
+    }
+    LOGGER.debug("Cache entries {} need to be reloaded", idsToReload);
+    return idsToReload;
   }
 }

@@ -2296,24 +2296,19 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     return result;
   }
 
-  /** Refer to {@link #loadEntity(PolarisCallContext, long, long, PolarisEntityType)} */
-  private @Nonnull ResolvedEntitiesResult loadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull TransactionalPersistence ms,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
-    List<PolarisBaseEntity> entities =
-        ms.lookupEntitiesInCurrentTxn(
-            callCtx,
-            entityLookupRecords.stream()
-                .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
-                .collect(Collectors.toList()));
+  private static ResolvedEntitiesResult getResolvedEntitiesResult(
+      PolarisCallContext callCtx,
+      TransactionalPersistence ms,
+      List<PolarisEntityId> entityIds,
+      Function<Integer, PolarisEntityType> entityTypeForIndex) {
+    List<PolarisBaseEntity> entities = ms.lookupEntitiesInCurrentTxn(callCtx, entityIds);
     // mimic the behavior of loadEntity above, return null if not found or type mismatch
     List<ResolvedPolarisEntity> ret =
-        IntStream.range(0, entityLookupRecords.size())
+        IntStream.range(0, entityIds.size())
             .mapToObj(
                 i -> {
                   if (entities.get(i) != null
-                      && !entities.get(i).getType().equals(entityLookupRecords.get(i).getType())) {
+                      && !entities.get(i).getType().equals(entityTypeForIndex.apply(i))) {
                     return null;
                   } else {
                     return entities.get(i);
@@ -2347,11 +2342,25 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    List<PolarisEntityId> entityIds =
+        entityLookupRecords.stream()
+            .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
+            .collect(Collectors.toList());
+    Function<Integer, PolarisEntityType> entityTypeForIndex =
+        i -> entityLookupRecords.get(i).getType();
     return ms.runInReadTransaction(
-        callCtx,
-        () ->
-            this.loadResolvedEntities(
-                callCtx, (TransactionalPersistence) callCtx.getMetaStore(), entityLookupRecords));
+        callCtx, () -> getResolvedEntitiesResult(callCtx, ms, entityIds, entityTypeForIndex));
+  }
+
+  @Nonnull
+  @Override
+  public ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull List<PolarisEntityId> entityIds) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    return ms.runInReadTransaction(
+        callCtx, () -> getResolvedEntitiesResult(callCtx, ms, entityIds, i -> entityType));
   }
 
   /** {@inheritDoc} */
