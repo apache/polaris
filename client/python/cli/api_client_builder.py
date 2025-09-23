@@ -27,7 +27,7 @@ from cli.constants import (
   CLIENT_ID_ENV,
   CLIENT_SECRET_ENV,
   REALM_ENV,
-  REALM_HEADER_ENV,
+  HEADER_ENV,
   Arguments,
   DEFAULT_HOSTNAME,
   DEFAULT_PORT
@@ -71,8 +71,8 @@ class BuilderConfig:
                 )
             return self.options.base_url
 
-        host = self.options.host or self.profile.get("host") or DEFAULT_HOSTNAME
-        port = self.options.port or self.profile.get("port") or DEFAULT_PORT
+        host = self.options.host or self.profile.get(Arguments.HOST) or DEFAULT_HOSTNAME
+        port = self.options.port or self.profile.get(Arguments.PORT) or DEFAULT_PORT
         return f"http://{host}:{port}"
 
     @cached_property
@@ -88,7 +88,7 @@ class BuilderConfig:
         return (
                 self.options.client_id
                 or os.getenv(CLIENT_ID_ENV)
-                or self.profile.get("client_id")
+                or self.profile.get(Arguments.CLIENT_ID)
         )
 
     @cached_property
@@ -96,7 +96,7 @@ class BuilderConfig:
         return (
                 self.options.client_secret
                 or os.getenv(CLIENT_SECRET_ENV)
-                or self.profile.get("client_secret")
+                or self.profile.get(Arguments.CLIENT_SECRET)
         )
 
     @cached_property
@@ -104,18 +104,16 @@ class BuilderConfig:
         realms = (
                 self.options.realm
                 or os.getenv(REALM_ENV)
-                or self.profile.get("realm")
+                or self.profile.get(Arguments.REALM)
         )
-        if isinstance(realms, list):
-            return ','.join(realms)
         return realms
 
     @cached_property
-    def realm_header(self) -> Optional[str]:
+    def header(self) -> Optional[str]:
         return (
-                self.options.realm_header
-                or os.getenv(REALM_HEADER_ENV)
-                or self.profile.get("realm_header")
+                self.options.header
+                or os.getenv(HEADER_ENV)
+                or self.profile.get(Arguments.HEADER)
         )
 
 
@@ -126,8 +124,8 @@ class ApiClientBuilder:
 
     def _get_token(self):
         header_params = {"Content-Type": "application/x-www-form-urlencoded"}
-        if self.conf.realm_header and self.conf.realm:
-            header_params[self.conf.realm_header] = self.conf.realm
+        if self.conf.header and self.conf.realm:
+            header_params[self.conf.header] = self.conf.realm
 
         conf = Configuration(host=self.conf.management_url)
         conf.proxy = self.conf.proxy
@@ -179,8 +177,8 @@ class ApiClientBuilder:
             config.access_token = self._get_token()
 
         client_params = {}
-        if self.conf.realm and self.conf.realm_header:
-            client_params["header_name"] = self.conf.realm_header
+        if self.conf.realm and self.conf.header:
+            client_params["header_name"] = self.conf.header
             client_params["header_value"] = self.conf.realm
 
         return ApiClient(config, **client_params)
