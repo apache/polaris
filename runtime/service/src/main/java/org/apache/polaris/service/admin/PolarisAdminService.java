@@ -488,9 +488,9 @@ public class PolarisAdminService {
         resolutionManifestFactory.createResolutionManifest(
             callContext, securityContext, catalogName);
     resolutionManifest.addPassthroughPath(
-            new ResolverPath(
-                    Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE),
-            identifier.namespace());
+        new ResolverPath(
+            Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE),
+        identifier.namespace());
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier), PolarisEntityType.TABLE_LIKE),
@@ -1817,7 +1817,8 @@ public class PolarisAdminService {
       } else {
         PolarisResolvedPathWrapper partialPath =
             resolutionManifest.getPassthroughResolvedPath(namespace);
-        PolarisEntity partialLeafEntity = partialPath != null ? partialPath.getRawLeafEntity() : null;
+        PolarisEntity partialLeafEntity =
+            partialPath != null ? partialPath.getRawLeafEntity() : null;
         if (partialLeafEntity == null
             || !(partialLeafEntity.getName().equals(leafNamespace)
                 && partialLeafEntity.getType() == PolarisEntityType.NAMESPACE)) {
@@ -1831,7 +1832,8 @@ public class PolarisAdminService {
       completePath.add(syntheticNamespace);
       currentParent = syntheticNamespace;
     }
-    PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getPassthroughResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedPathWrapper =
+        resolutionManifest.getPassthroughResolvedPath(namespace);
     return resolvedPathWrapper;
   }
 
@@ -2212,7 +2214,8 @@ public class PolarisAdminService {
     if (result.isSuccess()) {
       syntheticTableEntity = PolarisEntity.of(result.getEntity());
     } else {
-      PolarisResolvedPathWrapper tablePathWrapper = resolutionManifest.getPassthroughResolvedPath(identifier);
+      PolarisResolvedPathWrapper tablePathWrapper =
+          resolutionManifest.getPassthroughResolvedPath(identifier);
       PolarisEntity leafEntity =
           tablePathWrapper != null ? tablePathWrapper.getRawLeafEntity() : null;
       if (leafEntity == null || !subTypes.contains(leafEntity.getSubType())) {

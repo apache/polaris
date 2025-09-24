@@ -1510,7 +1510,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         () ->
             newTestAdminService(Set.of(PRINCIPAL_ROLE1))
                 .grantPrivilegeOnNamespaceToRole(
-                        catalogName, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+                    catalogName, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
         null, // cleanupAction
         (privilege) ->
             adminService.grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege),
@@ -1521,18 +1521,23 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testGrantPrivilegeOnNamespaceToRoleSufficientPrivileges_FederationNestedNamespace() {
     doTestSufficientPrivileges(
-            List.of(
-                    PolarisPrivilege.CATALOG_MANAGE_ACCESS,
-                    PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE),
-            () ->
-                    newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                            .grantPrivilegeOnNamespaceToRole(
-                                    FEDERATED_CATALOG_NAME, CATALOG_ROLE2, NS1AA, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
-            null, // cleanupAction
-            (privilege) ->
-                    adminService.grantPrivilegeOnCatalogToRole(FEDERATED_CATALOG_NAME, CATALOG_ROLE1, privilege),
-            (privilege) ->
-                    adminService.revokePrivilegeOnCatalogFromRole(FEDERATED_CATALOG_NAME, CATALOG_ROLE1, privilege));
+        List.of(
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnNamespaceToRole(
+                    FEDERATED_CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    NS1AA,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(
+                FEDERATED_CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(
+                FEDERATED_CATALOG_NAME, CATALOG_ROLE1, privilege));
   }
 
   @ParameterizedTest(name = "{displayName}({0})")
@@ -1564,7 +1569,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         () ->
             newTestAdminService(Set.of(PRINCIPAL_ROLE1))
                 .grantPrivilegeOnNamespaceToRole(
-                        catalogName, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+                    catalogName, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
         (privilege) ->
             adminService.grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege),
         (privilege) ->
@@ -1637,7 +1642,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         () ->
             newTestAdminService(Set.of(PRINCIPAL_ROLE1))
                 .grantPrivilegeOnTableToRole(
-                        catalogName,
+                    catalogName,
                     CATALOG_ROLE2,
                     TABLE_NS1_1,
                     PolarisPrivilege.CATALOG_MANAGE_ACCESS),
