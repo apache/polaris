@@ -79,10 +79,11 @@ fail if these resources are not created beforehand. You can find some examples i
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
 
-> [!WARNING]
-> The examples below use values files located in the `helm/polaris/ci` directory.
-> **These files are intended for testing purposes primarily, and may not be suitable for production use**.
-> For production deployments, create your own values files based on the provided examples.
+{{< alert warning >}}
+The examples below use values files located in the `helm/polaris/ci` directory.
+**These files are intended for testing purposes primarily, and may not be suitable for production use**. 
+For production deployments, create your own values files based on the provided examples.
+{{< /alert >}}
 
 #### Non-persistent backend
 
@@ -94,8 +95,9 @@ helm upgrade --install --namespace polaris \
 
 #### Persistent backend
 
-> [!WARNING]
-> The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{< alert warning >}}
+The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+{{< /alert >}}
 
 Install the chart with a persistent backend. From Polaris repo root:
 ```bash
