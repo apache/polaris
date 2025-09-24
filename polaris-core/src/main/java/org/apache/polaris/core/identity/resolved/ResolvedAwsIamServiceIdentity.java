@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.identity.resolved;
 
-import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
@@ -31,7 +29,6 @@ import org.apache.polaris.core.secrets.ServiceSecretReference;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 /**
  * Represents a fully resolved AWS IAM service identity, including the associated IAM ARN and
@@ -92,15 +89,5 @@ public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
         .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
         .setIamArn(getIamArn())
         .build();
-  }
-
-  /** Returns a memoized supplier for creating an STS client using the resolved credentials. */
-  public @Nonnull Supplier<StsClient> stsClientSupplier() {
-    return Suppliers.memoize(
-        () -> {
-          StsClientBuilder stsClientBuilder =
-              StsClient.builder().credentialsProvider(getAwsCredentialsProvider());
-          return stsClientBuilder.build();
-        });
   }
 }

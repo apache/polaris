@@ -21,7 +21,9 @@ package org.apache.polaris.service.identity;
 
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
+import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
+import org.apache.polaris.core.secrets.ServiceSecretReference;
 
 /**
  * Represents a service identity configuration that can be resolved into a fully initialized {@link
@@ -33,12 +35,22 @@ import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
  */
 public interface ResolvableServiceIdentityConfiguration {
   /**
+   * Returns the type of service identity represented by this configuration.
+   *
+   * @return the service identity type, or {@link ServiceIdentityType#NULL_TYPE} if not specified
+   */
+  default ServiceIdentityType getType() {
+    return ServiceIdentityType.NULL_TYPE;
+  }
+
+  /**
    * Attempts to resolve this configuration into a {@link ResolvedServiceIdentity}.
    *
    * @return an optional resolved service identity, or empty if resolution fails or is not
    *     configured
    */
-  default Optional<? extends ResolvedServiceIdentity> resolve(@Nonnull String realmIdentifier) {
+  default Optional<? extends ResolvedServiceIdentity> resolve(
+      @Nonnull ServiceSecretReference serviceIdentityReference) {
     return Optional.empty();
   }
 }

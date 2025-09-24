@@ -23,7 +23,7 @@ import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.resolved.ResolvedAwsIamServiceIdentity;
-import org.apache.polaris.service.identity.registry.DefaultServiceIdentityRegistry;
+import org.apache.polaris.core.secrets.ServiceSecretReference;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
@@ -61,22 +61,31 @@ public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIde
   Optional<String> sessionToken();
 
   /**
+   * Returns the type of service identity represented by this configuration, which is always {@link
+   * ServiceIdentityType#AWS_IAM}.
+   *
+   * @return the AWS IAM service identity type
+   */
+  @Override
+  default ServiceIdentityType getType() {
+    return ServiceIdentityType.AWS_IAM;
+  }
+
+  /**
    * Resolves this configuration into a {@link ResolvedAwsIamServiceIdentity} if the IAM ARN is
    * present.
    *
    * @return the resolved identity, or an empty optional if the ARN is missing
    */
   @Override
-  default Optional<ResolvedAwsIamServiceIdentity> resolve(@Nonnull String realmIdentifier) {
+  default Optional<ResolvedAwsIamServiceIdentity> resolve(
+      @Nonnull ServiceSecretReference serviceIdentityReference) {
     if (iamArn() == null) {
       return Optional.empty();
     } else {
       return Optional.of(
           new ResolvedAwsIamServiceIdentity(
-              DefaultServiceIdentityRegistry.buildIdentityInfoReference(
-                  realmIdentifier, ServiceIdentityType.AWS_IAM),
-              iamArn(),
-              awsCredentialsProvider()));
+              serviceIdentityReference, iamArn(), awsCredentialsProvider()));
     }
   }
 

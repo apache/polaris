@@ -109,6 +109,10 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return builder.build();
   }
 
+  public Catalog asCatalog() {
+    return this.asCatalog(null);
+  }
+
   public Catalog asCatalog(ServiceIdentityRegistry serviceIdentityRegistry) {
     Map<String, String> internalProperties = getInternalPropertiesAsMap();
     Catalog.TypeEnum catalogType =
@@ -120,6 +124,12 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         CatalogProperties.builder(propertiesMap.get(DEFAULT_BASE_LOCATION_KEY))
             .putAll(propertiesMap)
             .build();
+
+    // Right now, only external catalog may use ServiceIdentityRegistry to resolve identity
+    Preconditions.checkState(
+        catalogType != Catalog.TypeEnum.EXTERNAL || serviceIdentityRegistry != null,
+        "%s catalog needs ServiceIdentityRegistry to resolve service identities",
+        Catalog.TypeEnum.EXTERNAL);
     return catalogType == Catalog.TypeEnum.EXTERNAL
         ? ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
