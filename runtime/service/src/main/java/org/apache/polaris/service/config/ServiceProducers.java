@@ -172,7 +172,11 @@ public class ServiceProducers {
     if ("opa".equalsIgnoreCase(authorizationConfig.implementation())) {
       AuthorizationConfiguration.OpaConfig opa = authorizationConfig.opa();
       return org.apache.polaris.core.auth.OpaPolarisAuthorizer.create(
-          opa.url(), opa.policyPath(), opa.timeoutMs(), null, null);
+          opa.url().orElse(null),
+          opa.policyPath().orElse(null),
+          opa.timeoutMs().orElse(2000), // Default to 2000ms if not specified
+          null,
+          null);
     }
     return new org.apache.polaris.core.auth.PolarisAuthorizerImpl(realmConfig);
   }

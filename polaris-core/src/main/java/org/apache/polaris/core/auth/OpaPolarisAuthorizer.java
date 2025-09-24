@@ -32,6 +32,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 
@@ -96,7 +97,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param authzOp the operation to authorize
    * @param target the main target entity
    * @param secondary the secondary entity (if any)
-   * @throws RuntimeException if authorization is denied by OPA
+   * @throws ForbiddenException if authorization is denied by OPA
    */
   @Override
   public void authorizeOrThrow(
@@ -123,7 +124,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param authzOp the operation to authorize
    * @param targets the list of main target entities
    * @param secondaries the list of secondary entities (if any)
-   * @throws RuntimeException if authorization is denied by OPA
+   * @throws ForbiddenException if authorization is denied by OPA
    */
   @Override
   public void authorizeOrThrow(
@@ -134,7 +135,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     boolean allowed = queryOpa(polarisPrincipal, activatedEntities, authzOp, targets, secondaries);
     if (!allowed) {
-      throw new RuntimeException("OPA denied authorization");
+      throw new ForbiddenException("OPA denied authorization");
     }
   }
 

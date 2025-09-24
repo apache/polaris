@@ -19,18 +19,24 @@
 package org.apache.polaris.service.config;
 
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
+import java.util.Optional;
 
 @ConfigMapping(prefix = "polaris.authorization")
 public interface AuthorizationConfiguration {
+  @WithDefault("default")
   String implementation();
 
   OpaConfig opa();
 
   interface OpaConfig {
-    String url();
+    Optional<String> url();
 
-    String policyPath();
+    @WithName("policy-path")
+    Optional<String> policyPath();
 
-    int timeoutMs();
+    @WithName("timeout-ms")
+    Optional<Integer> timeoutMs();
   }
 }
