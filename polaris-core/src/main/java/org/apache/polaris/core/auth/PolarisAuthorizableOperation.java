@@ -71,6 +71,11 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROLE_WRI
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROTATE_CREDENTIALS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SERVICE_MANAGE_ACCESS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_PARTITION_SPEC;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SCHEMA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SNAPSHOT;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SORT_ORDER;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ASSIGN_UUID;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
@@ -80,6 +85,18 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOTS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOT_REF;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_STATISTICS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_CURRENT_SCHEMA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_DEFAULT_SORT_ORDER;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_LOCATION;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_SNAPSHOT_REF;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_STATISTICS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
@@ -212,7 +229,24 @@ public enum PolarisAuthorizableOperation {
   GET_APPLICABLE_POLICIES_ON_TABLE(TABLE_READ_PROPERTIES),
   ADD_POLICY_GRANT_TO_CATALOG_ROLE(POLICY_MANAGE_GRANTS_ON_SECURABLE),
   REVOKE_POLICY_GRANT_FROM_CATALOG_ROLE(
-      POLICY_MANAGE_GRANTS_ON_SECURABLE, CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE);
+      POLICY_MANAGE_GRANTS_ON_SECURABLE, CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
+  ASSIGN_TABLE_UUID(TABLE_ASSIGN_UUID),
+  UPGRADE_TABLE_FORMAT_VERSION(TABLE_UPGRADE_FORMAT_VERSION),
+  ADD_TABLE_SCHEMA(TABLE_ADD_SCHEMA),
+  SET_TABLE_CURRENT_SCHEMA(TABLE_SET_CURRENT_SCHEMA),
+  ADD_TABLE_PARTITION_SPEC(TABLE_ADD_PARTITION_SPEC),
+  ADD_TABLE_SORT_ORDER(TABLE_ADD_SORT_ORDER),
+  SET_TABLE_DEFAULT_SORT_ORDER(TABLE_SET_DEFAULT_SORT_ORDER),
+  ADD_TABLE_SNAPSHOT(TABLE_ADD_SNAPSHOT),
+  SET_TABLE_SNAPSHOT_REF(TABLE_SET_SNAPSHOT_REF),
+  REMOVE_TABLE_SNAPSHOTS(TABLE_REMOVE_SNAPSHOTS),
+  REMOVE_TABLE_SNAPSHOT_REF(TABLE_REMOVE_SNAPSHOT_REF),
+  SET_TABLE_LOCATION(TABLE_SET_LOCATION),
+  SET_TABLE_PROPERTIES(TABLE_SET_PROPERTIES),
+  REMOVE_TABLE_PROPERTIES(TABLE_REMOVE_PROPERTIES),
+  SET_TABLE_STATISTICS(TABLE_SET_STATISTICS),
+  REMOVE_TABLE_STATISTICS(TABLE_REMOVE_STATISTICS),
+  REMOVE_TABLE_PARTITION_SPECS(TABLE_REMOVE_PARTITION_SPECS);
 
   private final EnumSet<PolarisPrivilege> privilegesOnTarget;
   private final EnumSet<PolarisPrivilege> privilegesOnSecondary;
