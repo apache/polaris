@@ -51,7 +51,7 @@ polaris.authentication.realm2.type=mixed
 
 ### Authenticator 
 
-The [`Authenticator`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/Authenticator.java) is a component responsible for resolving the principal and the principal roles, and for creating a `PolarisPrincipal` from the credentials provided by the authentication process. It is a central component and is invoked for all types of authentication.
+The [`Authenticator`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/Authenticator.java) is a component responsible for resolving the principal and the principal roles, and for creating a `PolarisPrincipal` from the credentials provided by the authentication process. It is a central component and is invoked for all types of authentication.
 
 The `type` property is used to define the `Authenticator` implementation. It is overridable per realm: 
 
@@ -64,7 +64,7 @@ polaris.authentication.realm1.authenticator.type=custom
 
 ### Token Broker
 
-The [`TokenBroker`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) signs and verifies tokens to ensure that they can be validated and remain unaltered. 
+The [`TokenBroker`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) signs and verifies tokens to ensure that they can be validated and remain unaltered. 
 
 ```properties
 polaris.authentication.token-broker.type=rsa-key-pair
@@ -210,10 +210,10 @@ Polaris separates authentication into two logical phases using [Quarkus Security
 
 ### Key Interfaces 
 
-- [`Authenticator`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/Authenticator.java): A core interface used to authenticate credentials and resolve principal and principal roles. Roles may be derived from OIDC claims or internal mappings. 
-- [`DecodedToken`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/DecodedToken.java): Used in internal auth and inherits from `PrincipalCredential`. 
+- [`Authenticator`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/Authenticator.java): A core interface used to authenticate credentials and resolve principal and principal roles. Roles may be derived from OIDC claims or internal mappings. 
+- [`InternalPolarisToken`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/InternalPolarisToken.java): Used in internal auth and inherits from `PrincipalCredential`. 
 
-- The [`DefaultAuthenticator`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/DefaultAuthenticator.java) is used to implement realm-specific logic based on these abstractions. 
+- The [`DefaultAuthenticator`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/DefaultAuthenticator.java) is used to implement realm-specific logic based on these abstractions. 
 
 ### Token Broker Configuration 
 
@@ -223,21 +223,21 @@ When internal authentication is enabled, Polaris uses token brokers to handle th
 
 ### Internal Authentication 
 
-1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/internal/InternalAuthenticationMechanism.java) parses the auth header. 
-2. Uses [`TokenBroker`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) to decode the token. 
-3. Builds [`PrincipalAuthInfo`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/PrincipalAuthInfo.java) and generates `SecurityIdentity` (Quarkus). 
+1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/InternalAuthenticationMechanism.java) parses the auth header. 
+2. Uses [`TokenBroker`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) to decode the token. 
+3. Builds [`InternalAuthenticationRequest`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/InternalAuthenticationRequest.java) and generates `SecurityIdentity` (Quarkus). 
 4. `Authenticator.authenticate()` validates the credential, resolves the principal and principal roles, then creates the `PolarisPrincipal`. 
 
 ### External Authentication 
 
 1. `OidcAuthenticationMechanism` (Quarkus) processes the auth header. 
-2. [`OidcTenantResolvingAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/external/OidcTenantResolvingAugmentor.java) selects the OIDC tenant. 
-3. [`PrincipalAuthInfoAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/external/PrincipalAuthInfoAugmentor.java) extracts JWT claims. 
+2. [`OidcTenantResolvingAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/tenant/OidcTenantResolvingAugmentor.java) selects the OIDC tenant. 
+3. [`OidcPolarisCredentialAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/OidcPolarisCredentialAugmentor.java) extracts JWT claims. 
 4. `Authenticator.authenticate()` validates the claims, resolves the principal and principal roles, then creates the `PolarisPrincipal`.
 
 ### Mixed Authentication 
 
-1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/internal/InternalAuthenticationMechanism.java) tries decoding. 
+1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/internal/InternalAuthenticationMechanism.java) tries decoding. 
 2. If successful, proceed with internal authentication. 
 3. Otherwise, fall back to external (OIDC) authentication. 
 
@@ -245,7 +245,7 @@ When internal authentication is enabled, Polaris uses token brokers to handle th
 
 ### Principal Mapping 
 
-- Interface: [`PrincipalMapper`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/external/mapping/PrincipalMapper.java)
+- Interface: [`PrincipalMapper`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/mapping/PrincipalMapper.java)
 
   The `PrincipalMapper` is responsible for extracting the Polaris principal ID and display name from OIDC tokens. 
 
@@ -268,7 +268,7 @@ When internal authentication is enabled, Polaris uses token brokers to handle th
 
 ### Roles Mapping 
 
-- Interface: [`PrincipalRolesMapper`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/external/mapping/PrincipalRolesMapper.java)
+- Interface: [`PrincipalRolesMapper`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/external/mapping/PrincipalRolesMapper.java)
 
   Polaris uses this component to transform role claims from OIDC tokens into Polaris roles. 
 
