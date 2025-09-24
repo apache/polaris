@@ -119,6 +119,14 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
+  public void testStsUnavailable() {
+    assertThat(newBuilder().build().shouldUseSts()).isTrue();
+    assertThat(newBuilder().stsUnavailable(null).build().shouldUseSts()).isTrue();
+    assertThat(newBuilder().stsUnavailable(false).build().shouldUseSts()).isTrue();
+    assertThat(newBuilder().stsUnavailable(true).build().shouldUseSts()).isFalse();
+  }
+
+  @Test
   public void testRoleArnParsing() {
     AwsStorageConfigurationInfo awsConfig =
         AwsStorageConfigurationInfo.builder()

@@ -98,6 +98,18 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   /** Flag indicating whether path-style bucket access should be forced in S3 clients. */
   public abstract @Nullable Boolean getPathStyleAccess();
 
+  /**
+   * Flag indicating whether STS is available or not. It is modeled in the negative to simplify
+   * support for unset values ({@code null} being interpreted as {@code false}).
+   */
+  public abstract @Nullable Boolean getStsUnavailable();
+
+  /** Convenience getter for {@link #getStsUnavailable()} that handles defaults. */
+  @JsonIgnore
+  public boolean shouldUseSts() {
+    return !Boolean.TRUE.equals(getStsUnavailable());
+  }
+
   /** Endpoint URI for STS API calls */
   @Nullable
   public abstract String getStsEndpoint();
