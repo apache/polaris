@@ -1815,10 +1815,9 @@ public class PolarisAdminService {
       if (result.isSuccess()) {
         syntheticNamespace = PolarisEntity.of(result.getEntity());
       } else {
-        Namespace partialNamespace = Namespace.of(Arrays.copyOf(allNamespaceLevels, i + 1));
         PolarisResolvedPathWrapper partialPath =
-            resolutionManifest.getPassthroughResolvedPath(partialNamespace);
-        PolarisEntity partialLeafEntity = partialPath.getRawLeafEntity();
+            resolutionManifest.getPassthroughResolvedPath(namespace);
+        PolarisEntity partialLeafEntity = partialPath != null ? partialPath.getRawLeafEntity() : null;
         if (partialLeafEntity == null
             || !(partialLeafEntity.getName().equals(leafNamespace)
                 && partialLeafEntity.getType() == PolarisEntityType.NAMESPACE)) {
