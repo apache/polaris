@@ -1715,10 +1715,11 @@ public class PolarisAdminService {
             createSyntheticNamespaceEntities(catalogEntity, namespace, resolvedPathWrapper);
         if (resolvedPathWrapper == null
             || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
+          // TODO: update the exception thrown as we refine the possible retry scenarios
           throw new RuntimeException(
               String.format(
                   "Failed to create synthetic namespace entities for namespace %s in catalog %s",
-                  namespace.toString(), catalogName));
+                  namespace, catalogName));
         }
       } else {
         throw new NotFoundException("Namespace %s not found", namespace);
@@ -2136,6 +2137,7 @@ public class PolarisAdminService {
                 catalogEntity, identifier, subTypes, resolvedPathWrapper);
         if (resolvedPathWrapper == null
             || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
+          // TODO: update the exception thrown as we refine the possible retry scenarios
           throw new RuntimeException(
               String.format(
                   "Failed to create synthetic table-like entity for table %s in catalog %s",
