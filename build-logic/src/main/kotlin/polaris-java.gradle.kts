@@ -253,21 +253,3 @@ configurations.all {
       }
     }
 }
-
-if (plugins.hasPlugin("io.quarkus")) {
-  tasks.named("quarkusBuild") {
-    actions.addLast {
-      listOf(
-          "quarkus-app/quarkus-run.jar",
-          "quarkus-app/quarkus/generated-bytecode.jar",
-          "quarkus-app/quarkus/transformed-bytecode.jar",
-        )
-        .forEach { name ->
-          val file = project.layout.buildDirectory.get().file(name).asFile
-          if (file.exists()) {
-            makeZipReproducible(file)
-          }
-        }
-    }
-  }
-}
