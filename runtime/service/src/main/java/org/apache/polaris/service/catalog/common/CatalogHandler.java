@@ -23,6 +23,7 @@ import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
@@ -240,6 +241,13 @@ public abstract class CatalogHandler {
 
   protected void authorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
+    authorizeBasicTableLikeOperationsOrThrow(EnumSet.of(op), subType, identifier);
+  }
+
+  protected void authorizeBasicTableLikeOperationsOrThrow(
+      EnumSet<PolarisAuthorizableOperation> ops,
+      PolarisEntitySubType subType,
+      TableIdentifier identifier) {
     resolutionManifest = newResolutionManifest();
 
     // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
@@ -255,12 +263,15 @@ public abstract class CatalogHandler {
     if (target == null) {
       throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
     }
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+
+    for (PolarisAuthorizableOperation op : ops) {
+      authorizer.authorizeOrThrow(
+          polarisPrincipal,
+          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+          op,
+          target,
+          null /* secondary */);
+    }
 
     initializeCatalog();
   }

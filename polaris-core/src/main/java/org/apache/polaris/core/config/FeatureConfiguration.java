@@ -420,4 +420,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .catalogConfig("polaris.config.allow-dropping-non-empty-passthrough-facade-catalog")
               .defaultValue(false)
               .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES")
+          .description(
+              "When true, enables finer grained update table privileges which are passed to the authorizer for update table operations")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }

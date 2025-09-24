@@ -113,7 +113,24 @@ public class PolarisPrivilegeTest {
         Arguments.of(82, PolarisPrivilege.NAMESPACE_DETACH_POLICY),
         Arguments.of(83, PolarisPrivilege.TABLE_DETACH_POLICY),
         Arguments.of(84, PolarisPrivilege.POLICY_MANAGE_GRANTS_ON_SECURABLE),
-        Arguments.of(85, null));
+        Arguments.of(85, PolarisPrivilege.TABLE_ASSIGN_UUID),
+        Arguments.of(86, PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION),
+        Arguments.of(87, PolarisPrivilege.TABLE_ADD_SCHEMA),
+        Arguments.of(88, PolarisPrivilege.TABLE_SET_CURRENT_SCHEMA),
+        Arguments.of(89, PolarisPrivilege.TABLE_ADD_PARTITION_SPEC),
+        Arguments.of(90, PolarisPrivilege.TABLE_ADD_SORT_ORDER),
+        Arguments.of(91, PolarisPrivilege.TABLE_SET_DEFAULT_SORT_ORDER),
+        Arguments.of(92, PolarisPrivilege.TABLE_ADD_SNAPSHOT),
+        Arguments.of(93, PolarisPrivilege.TABLE_SET_SNAPSHOT_REF),
+        Arguments.of(94, PolarisPrivilege.TABLE_REMOVE_SNAPSHOTS),
+        Arguments.of(95, PolarisPrivilege.TABLE_REMOVE_SNAPSHOT_REF),
+        Arguments.of(96, PolarisPrivilege.TABLE_SET_LOCATION),
+        Arguments.of(97, PolarisPrivilege.TABLE_SET_PROPERTIES),
+        Arguments.of(98, PolarisPrivilege.TABLE_REMOVE_PROPERTIES),
+        Arguments.of(99, PolarisPrivilege.TABLE_SET_STATISTICS),
+        Arguments.of(100, PolarisPrivilege.TABLE_REMOVE_STATISTICS),
+        Arguments.of(101, PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS),
+        Arguments.of(102, null));
   }
 
   @ParameterizedTest
