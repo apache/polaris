@@ -95,7 +95,6 @@ public class AuthenticatingAugmentorTest {
 
   @Test
   public void testServiceFailureExceptionBubblesUp() {
-    // Given
     Principal nonPolarisPrincipal = mock(Principal.class);
     PolarisCredential credential = mock(PolarisCredential.class);
     SecurityIdentity identity =
@@ -108,12 +107,10 @@ public class AuthenticatingAugmentorTest {
         new ServiceFailureException("Unable to fetch principal entity");
     when(authenticator.authenticate(credential)).thenThrow(serviceException);
 
-    // When/Then
     assertThatThrownBy(
             () -> augmentor.augment(identity, Uni.createFrom()::item).await().indefinitely())
         .isInstanceOf(ServiceFailureException.class)
-        .hasMessage("Unable to fetch principal entity")
-        .isNotInstanceOf(AuthenticationFailedException.class);
+        .hasMessage("Unable to fetch principal entity");
   }
 
   @Test
