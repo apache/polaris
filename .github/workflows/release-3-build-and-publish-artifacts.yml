@@ -172,30 +172,35 @@ jobs:
           Artifacts staged to Apache dist dev repository
           EOT
 
-      - name: Publish artifacts to Apache Nexus staging repository
+      - name: Publish and close Apache Nexus staging repository
         env:
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
           ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          exec_process ./gradlew publishToApache -Prelease -PuseGpgAgent
+          # Publish artifacts to staging repository
+          exec_process ./gradlew publishToApache closeApacheStagingRepository -Prelease -PuseGpgAgent --info > gradle_publish_output.txt 2>&1
+
+          # Extract staging repository ID and URL from Gradle output
+          staging_repo_id=""
+          staging_repo_url=""
+
+          # Look for staging repository ID in the output
+          if grep -q "Created staging repository" gradle_publish_output.txt; then
+            staging_repo_id=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\1/")
+            staging_repo_url=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\2/")
+          fi
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
-          ## Staging to Nexus
-          Artifacts published to Apache Nexus staging repository
-          EOT
+          ## Nexus Staging Repository
+          Artifacts published and staging repository closed successfully
 
-      - name: Close Nexus staging repository
-        env:
-          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
-        run: |
-          source "${LIBS_DIR}/_exec.sh"
+          | Property | Value |
+          | --- | --- |
+          | Staging Repository ID | \`${staging_repo_id:-"Not extracted"}\` |
+          | Staging Repository URL | ${staging_repo_url:-"Not extracted"} |
 
-          exec_process ./gradlew closeApacheStagingRepository
-
-          cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Summary
           🎉 Artifacts built and published successfully:
 

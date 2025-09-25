@@ -27,6 +27,10 @@ on:
         required: false
         type: boolean
         default: true
+      staging_repository_id:
+        description: 'Nexus staging repository ID to release (e.g., orgapachepolaris-1234)'
+        required: true
+        type: string
 
 jobs:
   publish-release:
@@ -62,6 +66,19 @@ jobs:
             echo "DRY_RUN=0" >> $GITHUB_ENV
             echo "DRY_RUN mode disabled - Performing actual operations" >> $GITHUB_STEP_SUMMARY
           fi
+
+          # Validate staging repository ID parameter
+          staging_repo_id="${{ github.event.inputs.staging_repository_id }}"
+          if [[ -z "${staging_repo_id}" ]]; then
+            echo "❌ Staging repository ID is required but not provided." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "STAGING_REPOSITORY_ID=${staging_repo_id}" >> $GITHUB_ENV
+
+          echo "## Input Parameters" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Staging Repository ID | \`${staging_repo_id}\` |" >> $GITHUB_STEP_SUMMARY
 
       - name: Auto-determine release parameters from branch and Git state
         run: |
@@ -322,8 +339,8 @@ jobs:
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          # Use the Gradle task to release the Apache staging repository
-          exec_process ./gradlew releaseApacheStagingRepository
+          # Use the Gradle task to release the Apache staging repository with the specific staging repository ID
+          exec_process ./gradlew releaseApacheStagingRepository --staging-repository-id "${STAGING_REPOSITORY_ID}"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Summary
