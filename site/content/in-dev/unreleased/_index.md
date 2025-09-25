@@ -102,8 +102,8 @@ nested namespaces. Iceberg tables belong to namespaces.
 
 ### Storage configuration
 
-A storage configuration stores a generated identity and access management (IAM) entity for your cloud storage and is created
-when you create a catalog. The storage configuration is used to set the values to connect Polaris to your cloud storage. During the
+A storage configuration stores a generated identity and access management (IAM) entity for your storage and is created
+when you create a catalog. The storage configuration is used to set the values to connect Polaris to your storage. During the
 catalog creation process, an IAM entity is generated and used to create a trust relationship between the cloud storage provider and Polaris
 Catalog.
 
@@ -114,6 +114,7 @@ When you create a catalog, you supply the following information about your cloud
 | Amazon S3 | <ul><li>Default base location for your Amazon S3 bucket</li><li>Locations for your Amazon S3 bucket</li><li>S3 role ARN</li><li>External ID (optional)</li></ul> |
 | Google Cloud Storage (GCS) | <ul><li>Default base location for your GCS bucket</li><li>Locations for your GCS bucket</li></ul> |
 | Azure | <ul><li>Default base location for your Microsoft Azure container</li><li>Locations for your Microsoft Azure container</li><li>Azure tenant ID</li></ul> |
+| MinIO | <ul><li>Default base location for your Minio bucket</li><li>Locations for your MinIO bucket</li><li>MinIO STS</li> |
 
 ## Example workflow
 
