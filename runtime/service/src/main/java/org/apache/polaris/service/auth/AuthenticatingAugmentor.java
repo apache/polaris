@@ -26,6 +26,7 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 
 /**
@@ -83,6 +84,10 @@ public class AuthenticatingAugmentor implements SecurityIdentityAugmentor {
       // Also include the Polaris principal properties as attributes of the identity
       polarisPrincipal.getProperties().forEach(builder::addAttribute);
       return builder.build();
+    } catch (ServiceFailureException e) {
+      // Let ServiceFailureException bubble up to be handled by IcebergExceptionMapper
+      // This will result in 503 Service Unavailable instead of 401 Unauthorized
+      throw e;
     } catch (RuntimeException e) {
       throw new AuthenticationFailedException(e);
     }
