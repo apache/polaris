@@ -17,23 +17,22 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Getting Started with Apache Polaris
-linkTitle: Getting Started
+title: Creating a catalog on S3 compatible cloud providers
+linkTitle: S3
 type: docs
-weight: 101
+weight: 100
 ---
 
-The fastest way to get started is with our Docker Compose examples. Each example provides a complete working environment with detailed instructions.
+The following S3 compatible cloud providers can be configured as storage backends for your Polaris catalog:
 
-## Next Steps
+- [AWS S3]({{< ref "catalog-aws.md" >}})
+- [MinIO]({{< ref "catalog-minio.md" >}})
 
-1. Check/Install dependencies
-2. Choose the way you want to deploy Polaris
-3. Create a catalog
-4. Check Using polaris page
+For the `polaris catalogs create` [command]({{% ref "../../../command-line-interface#create" %}}) there are few `s3` only options
 
-## Getting Help
-
-- Documentation: https://polaris.apache.org
-- GitHub Issues: https://github.com/apache/polaris/issues
-- Slack: [Join Apache Polaris Community](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
+```text
+--storage-type s3
+--role-arn  (Required for S3) A role ARN to use when connecting to S3
+--region  (Only for S3) The region to use when connecting to S3
+--external-id  (Only for S3) The external ID to use when connecting to S3
+```

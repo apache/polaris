@@ -44,7 +44,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.events.listeners.InMemoryBufferEventListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisPersistenceEventListener;
 import org.eclipse.microprofile.faulttolerance.Fallback;
 import org.eclipse.microprofile.faulttolerance.Retry;
@@ -52,10 +51,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
-@Identifier("persistence-in-memory")
-public class InMemoryEventListener extends PolarisPersistenceEventListener {
+@Identifier("persistence-in-memory-buffer")
+public class InMemoryBufferEventListener extends PolarisPersistenceEventListener {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryEventListener.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryBufferEventListener.class);
 
   @Inject CallContext callContext;
   @Inject Clock clock;

@@ -17,12 +17,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Deploying Polaris on Azure
+title: Deploying Polaris on Azure
+linkTitle: Azure
 type: docs
 weight: 320
 ---
 
-Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start an [Azure Database for PostgreSQL - Flexible Server](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/overview) instance, which will be used as the backend Postgres instance holding all Polaris data.
+Build and launch Polaris using the Azure Startup Script at the location provided in the command below. This script will start an [Azure Database for PostgreSQL - Flexible Server](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/overview) instance, which will be used as the backend Postgres instance holding all Polaris data.
 Additionally, Polaris will be bootstrapped to use this database and Docker containers will be spun up for Spark SQL and Trino.
 
 The requirements to run the script below are:
@@ -39,7 +40,9 @@ export CLIENT_SECRET=s3cr3t
 ```
 
 ## Next Steps
-Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% relref "../using-polaris" %}}) page.
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris,
+check out the [Creating a Catalog]({{% ref "../../creating-a-catalog" %}}) and
+[Using Polaris]({{% relref "../../using-polaris" %}}) pages.
 
 ## Cleanup Instructions
 To shut down the Polaris server, run the following commands:
@@ -49,4 +52,4 @@ export ASSETS_PATH=$(pwd)/getting-started/assets/
 docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml down
 ```
 
-To deploy Polaris in a production setting, please review further recommendations at the [Configuring Polaris for Production]({{% relref "../../configuring-polaris-for-production" %}}) page.
+To deploy Polaris in a production setting, please review further recommendations at the [Configuring Polaris for Production]({{% relref "../../../configuring-polaris-for-production" %}}) page.
