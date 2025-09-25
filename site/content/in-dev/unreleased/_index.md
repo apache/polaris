@@ -64,7 +64,7 @@ query engine to manage and organize tables. The catalog forms the first architec
 - Performing atomic operations so that you can update the current metadata pointer for a table to the metadata pointer of a new version of
   the table.
 
-To learn more about Iceberg catalogs, see the [Apache Iceberg&trade; documentation](https://iceberg.apache.org/concepts/catalog/).
+To learn more about Iceberg REST catalogs, see the [Apache Iceberg&trade; REST catalog specification](https://iceberg.apache.org/rest-catalog-spec/).
 
 #### Catalog types
 
