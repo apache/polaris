@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
@@ -32,6 +33,7 @@ import java.util.Objects;
 import java.util.UUID;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
+import org.apache.polaris.service.tracing.RequestIdGenerator;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -49,6 +51,8 @@ public class RequestIdHeaderTest {
           REALM);
     }
   }
+
+  @Inject RequestIdGenerator requestIdGenerator;
 
   private static final String REQUEST_ID_HEADER = "x-test-request-id-random";
   private static final String REALM_HEADER = "realm";
@@ -90,30 +94,48 @@ public class RequestIdHeaderTest {
   public void testRequestIdHeaderSpecified() {
     String requestId = "pre-requested-request-id";
     Map<String, String> headers = Map.of(REALM_HEADER, REALM, REQUEST_ID_HEADER, requestId);
-    try (Response response = request(headers)) {
-      assertThat(response.getHeaders()).containsKey(REQUEST_ID_HEADER);
-      assertThat(response.getHeaders().get(REQUEST_ID_HEADER)).hasSize(1);
-      assertThat(response.getHeaders().get(REQUEST_ID_HEADER)).allMatch(s -> s.equals(requestId));
-    }
+    assertThat(sendRequest(headers)).matches(s -> s.equals(requestId));
   }
 
   @Test
   public void testRequestIdHeaderNotSpecified() {
     Map<String, String> headers = Map.of(REALM_HEADER, REALM);
-    try (Response response = request(headers)) {
-      assertThat(response.getHeaders()).containsKey(REQUEST_ID_HEADER);
-      assertThat(response.getHeaders().get(REQUEST_ID_HEADER)).hasSize(1);
-      assertThat(response.getHeaders().get(REQUEST_ID_HEADER))
-          .allMatch(s -> isValidUUID(s.toString()));
-    }
+    assertThat(sendRequest(headers)).matches(this::isValidDefaultUUID);
   }
 
-  private boolean isValidUUID(String str) {
+  @Test
+  public void testRequestIdHeaderNotSpecifiedAndCounterExhausted() {
+    requestIdGenerator.setCounter(Long.MAX_VALUE / 2 + 1);
+    Map<String, String> headers = Map.of(REALM_HEADER, REALM);
+    String requestId = sendRequest(headers);
+    assertThat(requestId).matches(this::isValidDefaultUUID);
+    String currentRequestIdBase = requestId.split("_")[0];
+    String uuidBase = currentRequestIdBase;
+
+    requestId = sendRequest(headers);
+    assertThat(requestId).matches(this::isValidDefaultUUID);
+    currentRequestIdBase = requestId.split("_")[0];
+    assertThat(currentRequestIdBase).isNotEqualTo(uuidBase);
+  }
+
+  private boolean isValidDefaultUUID(String str) {
     try {
-      UUID.fromString(str);
+      String[] requestIdParts = str.split("_");
+      String uuid = requestIdParts[0];
+      String counter = requestIdParts[1];
+      UUID.fromString(uuid);
+      Long.parseLong(counter);
       return true;
     } catch (IllegalArgumentException e) {
       return false;
+    }
+  }
+
+  private String sendRequest(Map<String, String> headers) {
+    try (Response response = request(headers)) {
+      assertThat(response.getHeaders()).containsKey(REQUEST_ID_HEADER);
+      assertThat(response.getHeaders().get(REQUEST_ID_HEADER)).hasSize(1);
+      return response.getHeaders().get(REQUEST_ID_HEADER).getFirst().toString();
     }
   }
 }

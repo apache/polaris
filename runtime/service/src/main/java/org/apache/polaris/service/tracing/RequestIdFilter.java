@@ -25,7 +25,6 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.ext.Provider;
-import java.util.UUID;
 import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.logging.LoggingConfiguration;
 
@@ -34,6 +33,7 @@ import org.apache.polaris.service.logging.LoggingConfiguration;
 @Priority(FilterPriorities.REQUEST_ID_FILTER)
 @Provider
 public class RequestIdFilter implements ContainerRequestFilter {
+  @Inject RequestIdGenerator requestIdGenerator;
 
   public static final String REQUEST_ID_KEY = "requestId";
 
@@ -43,7 +43,7 @@ public class RequestIdFilter implements ContainerRequestFilter {
   public void filter(ContainerRequestContext rc) {
     var requestId = rc.getHeaderString(loggingConfiguration.requestIdHeaderName());
     if (requestId == null) {
-      requestId = UUID.randomUUID().toString();
+      requestId = requestIdGenerator.generateRequestId();
     }
     rc.setProperty(REQUEST_ID_KEY, requestId);
   }
