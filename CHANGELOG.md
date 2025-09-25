@@ -110,7 +110,7 @@ Apache Polaris 1.1.0-incubating was released on September 19th, 2025.
     
     ALTER TABLE polaris_schema.entities ADD COLUMN IF NOT EXISTS location_without_scheme TEXT;
     ```
-    - Please don't enable [OPTIMIZED_SIBLING_CHECK](https://github.com/apache/polaris/blob/740993963cb41c2c1b4638be5e04dd00f1263c98/polaris-core/src/main/java/org/apache/polaris/core/config/FeatureConfiguration.java#L346) feature configuration, once the above SQL statements are run. As it may lead to incorrect behavior.
+    - Please don't enable [OPTIMIZED_SIBLING_CHECK](https://github.com/apache/polaris/blob/740993963cb41c2c1b4638be5e04dd00f1263c98/polaris-core/src/main/java/org/apache/polaris/core/config/FeatureConfiguration.java#L346) feature configuration, once the above SQL statements are run. As it may lead to incorrect behavior, due to missing data for location_without_scheme column.
 - **Deprecations**
   - The property `polaris.active-roles-provider.type` is deprecated for removal.
   - The `ActiveRolesProvider` interface is deprecated for removal.
