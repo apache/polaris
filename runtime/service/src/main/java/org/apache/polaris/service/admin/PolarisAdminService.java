@@ -511,13 +511,18 @@ public class PolarisAdminService {
       }
     }
 
+    CatalogEntity catalogEntity =
+        CatalogEntity.of(
+            findCatalogByName(catalogName)
+                .orElseThrow(() -> new NotFoundException("Catalog %s not found", catalogName)));
     PolarisResolvedPathWrapper tableLikeWrapper =
         resolutionManifest.getResolvedPath(
             identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
     boolean rbacForFederatedCatalogsEnabled =
         getCurrentPolarisContext()
             .getRealmConfig()
-            .getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS);
+            .getConfig(
+                FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS, catalogEntity);
     if (!(resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled)
         && !subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
       CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
@@ -1710,7 +1715,9 @@ public class PolarisAdminService {
       boolean rbacForFederatedCatalogsEnabled =
           getCurrentPolarisContext()
               .getRealmConfig()
-              .getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS);
+              .getConfig(
+                  FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS,
+                  catalogEntity);
       if (resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled) {
         resolvedPathWrapper =
             createSyntheticNamespaceEntities(catalogEntity, namespace, resolvedPathWrapper);
@@ -2136,7 +2143,9 @@ public class PolarisAdminService {
       boolean rbacForFederatedCatalogsEnabled =
           getCurrentPolarisContext()
               .getRealmConfig()
-              .getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS);
+              .getConfig(
+                  FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS,
+                  catalogEntity);
       if (resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled) {
         resolvedPathWrapper =
             createSyntheticTableLikeEntities(
