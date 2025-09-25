@@ -39,5 +39,8 @@ public @interface Minio {
   /** Optional, use this bucket instead of a random one. */
   String bucket() default DEFAULT;
 
+  /** Optional, use this region. */
+  String region() default DEFAULT;
+
   String DEFAULT = "minio_default_value__";
 }

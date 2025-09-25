@@ -21,6 +21,7 @@ package org.apache.polaris.test.minio;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.Optional;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 
@@ -42,6 +43,8 @@ public interface MinioAccess {
   String secretKey();
 
   String bucket();
+
+  Optional<String> region();
 
   /** HTTP protocol endpoint. */
   String s3endpoint();

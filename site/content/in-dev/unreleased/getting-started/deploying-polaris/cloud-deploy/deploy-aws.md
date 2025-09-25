@@ -17,7 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Deploying Polaris on Amazon Web Services (AWS)
+title: Deploying Polaris on Amazon Web Services (AWS)
+linkTitle: AWS
 type: docs
 weight: 310
 ---
@@ -44,7 +45,9 @@ export CLIENT_SECRET=s3cr3t
 ```
 
 ## Next Steps
-Congrats, you now have a running instance of1 Polaris! For details on how to use Polaris, check out the [Using Polaris]({{% relref "../using-polaris" %}}) page.
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris,
+check out the [Creating a Catalog]({{% ref "../../creating-a-catalog" %}}) and
+[Using Polaris]({{% relref "../../using-polaris" %}}) pages.
 
 ## Cleanup Instructions
 To shut down the Polaris server, run the following commands:
@@ -54,4 +57,4 @@ export ASSETS_PATH=$(pwd)/getting-started/assets/
 docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml down
 ```
 
-To deploy Polaris in a production setting, please review further recommendations at the [Configuring Polaris for Production]({{% relref "../../configuring-polaris-for-production" %}}) page.
+To deploy Polaris in a production setting, please review further recommendations at the [Configuring Polaris for Production]({{% relref "../../../configuring-polaris-for-production" %}}) page.

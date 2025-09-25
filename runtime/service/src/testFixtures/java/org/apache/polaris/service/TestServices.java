@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.annotation.Nonnull;
@@ -79,6 +82,9 @@ import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
+import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
+import software.amazon.awssdk.services.sts.model.Credentials;
 
 public record TestServices(
     Clock clock,
@@ -131,10 +137,21 @@ public record TestServices(
     private PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
-    private StsClient stsClient = Mockito.mock(StsClient.class);
+    private StsClient stsClient;
     private FileIOFactorySupplier fileIOFactorySupplier = MeasuredFileIOFactory::new;
 
-    private Builder() {}
+    private Builder() {
+      stsClient = Mockito.mock(StsClient.class, RETURNS_DEEP_STUBS);
+      AssumeRoleResponse arr = Mockito.mock(AssumeRoleResponse.class, RETURNS_DEEP_STUBS);
+      Mockito.when(stsClient.assumeRole(any(AssumeRoleRequest.class))).thenReturn(arr);
+      Mockito.when(arr.credentials())
+          .thenReturn(
+              Credentials.builder()
+                  .accessKeyId("test-access-key-id-111")
+                  .secretAccessKey("test-secret-access-key-222")
+                  .sessionToken("test-session-token-333")
+                  .build());
+    }
 
     public Builder realmContext(RealmContext realmContext) {
       this.realmContext = realmContext;
@@ -225,7 +242,7 @@ public record TestServices(
 
       @SuppressWarnings("unchecked")
       Instance<ExternalCatalogFactory> externalCatalogFactory = Mockito.mock(Instance.class);
-      Mockito.when(externalCatalogFactory.select(Mockito.any())).thenReturn(externalCatalogFactory);
+      Mockito.when(externalCatalogFactory.select(any())).thenReturn(externalCatalogFactory);
       Mockito.when(externalCatalogFactory.isUnsatisfied()).thenReturn(true);
 
       IcebergCatalogAdapter catalogService =

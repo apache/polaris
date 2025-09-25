@@ -17,7 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Quickstart
+title: Deploying Polaris locally
+linkTitle: Local deployment
 type: docs
 weight: 200
 ---
@@ -89,7 +90,7 @@ INFO  [io.quarkus] [,] [,,,] (main) Installed features: [...]
 At this point, Polaris is running.
 
 When using a Gradle-launched Polaris instance in this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down.
-For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../configuring-polaris-for-production" %}}).
+For more information on how to configure Polaris for production usage, see the [docs]({{% relref "../../configuring-polaris-for-production" %}}).
 
 When Polaris is run using the `./gradlew run` command, the root principal credentials are `root` and `s3cr3t` for the `CLIENT_ID` and `CLIENT_SECRET`, respectively.
 
@@ -97,7 +98,7 @@ When Polaris is run using the `./gradlew run` command, the root principal creden
 
 #### Apache Spark
 
-If you want to connect to Polaris with [Apache Spark](https://spark.apache.org/), you'll need to start by cloning Spark. As in the [prerequisites]({{% ref "install-dependencies#git" %}}), make sure [git](https://git-scm.com/) is installed first.
+If you want to connect to Polaris with [Apache Spark](https://spark.apache.org/), you'll need to start by cloning Spark. As in the [prerequisites]({{% ref "../install-dependencies#git" %}}), make sure [git](https://git-scm.com/) is installed first.
 
 Then, clone Spark and check out a versioned branch. This guide uses [Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html).
 
@@ -106,11 +107,13 @@ git clone --branch branch-3.5 https://github.com/apache/spark.git ~/spark
 ```
 
 #### Trino
-If you want to connect to Polaris with [Trino](https://trino.io/), it is recommended to set up a test instance of Trino using Docker. As in the [prerequisites]({{% ref "install-dependencies#docker" %}}), make sure [Docker](https://www.docker.com/) is installed first
+If you want to connect to Polaris with [Trino](https://trino.io/), it is recommended to set up a test instance of Trino using Docker. As in the [prerequisites]({{% ref "../install-dependencies#docker" %}}), make sure [Docker](https://www.docker.com/) is installed first
 
 ```shell
 docker run --name trino -d -p 8080:8080 trinodb/trino
 ```
 
 ## Next Steps
-Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% ref "using-polaris" %}}) page.
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris,
+check out the [Creating a Catalog]({{% ref "../creating-a-catalog" %}}) and
+[Using Polaris]({{% ref "../using-polaris" %}}) pages.
