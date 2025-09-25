@@ -61,6 +61,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 public class PolarisAdminServiceTest {
@@ -89,6 +90,9 @@ public class PolarisAdminServiceTest {
 
     // Default feature configuration - enabled by default
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
+        .thenReturn(true);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS), Mockito.any()))
         .thenReturn(true);
 
     when(resolutionManifestFactory.createResolutionManifest(any(), any(), any()))
@@ -358,6 +362,9 @@ public class PolarisAdminServiceTest {
     // Disable the feature configuration
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
         .thenReturn(false);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS), Mockito.any()))
+        .thenReturn(false);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
     PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -521,6 +528,9 @@ public class PolarisAdminServiceTest {
 
     // Disable the feature configuration
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
+        .thenReturn(false);
+    when(realmConfig.getConfig(
+            eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS), Mockito.any()))
         .thenReturn(false);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
