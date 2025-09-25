@@ -279,7 +279,8 @@ jobs:
           exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${release_helm_url}" "${artifacts_dir}/helm"
 
-          # Create GitHub release
+          # Prepare the content of the Github Release
+          # ********************************************************************************
           release_title="Release ${version_without_rc}"
           release_notes="Apache Polaris ${version_without_rc} Release
 
@@ -296,8 +297,9 @@ jobs:
           ## Docker Images
           - \`apache/polaris:${final_release_tag}\` - Polaris Server
           - \`apache/polaris-admin:${final_release_tag}\` - Polaris Admin Tool"
+          # ********************************************************************************
 
-          # Create the release
+          # Create GitHub release
           exec_process gh release create "${final_release_tag}" \
             --title "${release_title}" \
             --notes "${release_notes}" \
