@@ -33,11 +33,11 @@ import org.apache.polaris.service.logging.LoggingConfiguration;
 @Priority(FilterPriorities.REQUEST_ID_FILTER)
 @Provider
 public class RequestIdFilter implements ContainerRequestFilter {
-  @Inject RequestIdGenerator requestIdGenerator;
 
   public static final String REQUEST_ID_KEY = "requestId";
 
   @Inject LoggingConfiguration loggingConfiguration;
+  @Inject RequestIdGenerator requestIdGenerator;
 
   @Override
   public void filter(ContainerRequestContext rc) {
