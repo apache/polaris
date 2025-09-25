@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
@@ -66,10 +67,10 @@ public class CatalogFederationIntegrationTest {
   private static SparkSession spark;
   private static String sparkToken;
   private static String adminToken;
+  private static String localCatalogName;
+  private static String federatedCatalogName;
 
   private static final String PRINCIPAL_NAME = "test-catalog-federation-user";
-  private static final String LOCAL_CATALOG_NAME = "test_catalog_local";
-  private static final String EXTERNAL_CATALOG_NAME = "test_catalog_external";
   private static final String CATALOG_ROLE_NAME = "catalog_admin";
   private static final String PRINCIPAL_ROLE_NAME = "service_admin";
 
@@ -96,23 +97,25 @@ public class CatalogFederationIntegrationTest {
 
   @BeforeEach
   void before() {
-    this.baseLocation = URI.create("file:///tmp/warehouse");
+    setupCatalogs();
+    setupExampleNamespacesAndTables();
   }
 
   @AfterEach
   void after() {
+    cleanupExampleNamespacesAndTables();
     if (spark != null) {
       SparkSession.clearDefaultSession();
       SparkSession.clearActiveSession();
       spark.close();
     }
-    managementApi.dropCatalog(EXTERNAL_CATALOG_NAME);
-    managementApi.dropCatalog(LOCAL_CATALOG_NAME);
+    managementApi.dropCatalog(federatedCatalogName);
+    managementApi.dropCatalog(localCatalogName);
     managementApi.deletePrincipal(PRINCIPAL_NAME);
   }
 
-  @Test
-  void testCatalogFederation() {
+  private void setupCatalogs() {
+    baseLocation = URI.create("file:///tmp/warehouse");
     newUserCredentials = managementApi.createPrincipal(PRINCIPAL_NAME);
 
     FileStorageConfigInfo storageConfig =
@@ -123,10 +126,13 @@ public class CatalogFederationIntegrationTest {
 
     CatalogProperties catalogProperties = new CatalogProperties(baseLocation.toString());
 
+    localCatalogName = "test_catalog_local_" + UUID.randomUUID().toString().replace("-", "");
+    federatedCatalogName = "test_catalog_external_" + UUID.randomUUID().toString().replace("-", "");
+
     Catalog localCatalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(LOCAL_CATALOG_NAME)
+            .setName(localCatalogName)
             .setProperties(catalogProperties)
             .setStorageConfigInfo(storageConfig)
             .build();
@@ -137,12 +143,12 @@ public class CatalogFederationIntegrationTest {
             .setType(CatalogGrant.TypeEnum.CATALOG)
             .setPrivilege(CatalogPrivilege.TABLE_WRITE_DATA)
             .build();
-    managementApi.addGrant(LOCAL_CATALOG_NAME, CATALOG_ROLE_NAME, catalogGrant);
+    managementApi.addGrant(localCatalogName, CATALOG_ROLE_NAME, catalogGrant);
     managementApi.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE_NAME);
     CatalogRole localCatalogAdminRole =
-        managementApi.getCatalogRole(LOCAL_CATALOG_NAME, CATALOG_ROLE_NAME);
+        managementApi.getCatalogRole(localCatalogName, CATALOG_ROLE_NAME);
     managementApi.grantCatalogRoleToPrincipalRole(
-        PRINCIPAL_ROLE_NAME, LOCAL_CATALOG_NAME, localCatalogAdminRole);
+        PRINCIPAL_ROLE_NAME, localCatalogName, localCatalogAdminRole);
 
     AuthenticationParameters authParams =
         OAuthClientCredentialsParameters.builder()
@@ -156,38 +162,39 @@ public class CatalogFederationIntegrationTest {
         IcebergRestConnectionConfigInfo.builder()
             .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
             .setUri(endpoints.catalogApiEndpoint().toString())
-            .setRemoteCatalogName(LOCAL_CATALOG_NAME)
+            .setRemoteCatalogName(localCatalogName)
             .setAuthenticationParameters(authParams)
             .build();
     ExternalCatalog externalCatalog =
         ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
-            .setName(EXTERNAL_CATALOG_NAME)
+            .setName(federatedCatalogName)
             .setConnectionConfigInfo(connectionConfig)
             .setProperties(catalogProperties)
             .setStorageConfigInfo(storageConfig)
             .build();
     managementApi.createCatalog(externalCatalog);
 
-    managementApi.addGrant(EXTERNAL_CATALOG_NAME, CATALOG_ROLE_NAME, catalogGrant);
+    managementApi.addGrant(federatedCatalogName, CATALOG_ROLE_NAME, catalogGrant);
     CatalogRole externalCatalogAdminRole =
-        managementApi.getCatalogRole(EXTERNAL_CATALOG_NAME, CATALOG_ROLE_NAME);
+        managementApi.getCatalogRole(federatedCatalogName, CATALOG_ROLE_NAME);
     managementApi.grantCatalogRoleToPrincipalRole(
-        PRINCIPAL_ROLE_NAME, EXTERNAL_CATALOG_NAME, externalCatalogAdminRole);
-
+        PRINCIPAL_ROLE_NAME, federatedCatalogName, externalCatalogAdminRole);
     spark =
         SparkSessionBuilder.buildWithTestDefaults()
             .withWarehouse(warehouseDir.toUri())
             .addCatalog(
-                LOCAL_CATALOG_NAME, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
+                localCatalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
             .addCatalog(
-                EXTERNAL_CATALOG_NAME,
+                federatedCatalogName,
                 "org.apache.iceberg.spark.SparkCatalog",
                 endpoints,
                 sparkToken)
             .getOrCreate();
+  }
 
-    spark.sql("USE " + LOCAL_CATALOG_NAME);
+  private void setupExampleNamespacesAndTables() {
+    spark.sql("USE " + localCatalogName);
     spark.sql("CREATE NAMESPACE IF NOT EXISTS ns1");
     spark.sql("CREATE TABLE IF NOT EXISTS ns1.test_table (id int, name string)");
     spark.sql("INSERT INTO ns1.test_table VALUES (1, 'Alice')");
@@ -197,43 +204,53 @@ public class CatalogFederationIntegrationTest {
     spark.sql("CREATE TABLE IF NOT EXISTS ns2.test_table (id int, name string)");
     spark.sql("INSERT INTO ns2.test_table VALUES (1, 'Apache Spark')");
     spark.sql("INSERT INTO ns2.test_table VALUES (2, 'Apache Iceberg')");
+  }
 
-    spark.sql("USE " + EXTERNAL_CATALOG_NAME);
+  private void cleanupExampleNamespacesAndTables() {
+    spark.sql("USE " + localCatalogName);
+    spark.sql("DROP TABLE IF EXISTS ns1.test_table");
+    spark.sql("DROP TABLE IF EXISTS ns2.test_table");
+    spark.sql("DROP NAMESPACE IF EXISTS ns1");
+    spark.sql("DROP NAMESPACE IF EXISTS ns2");
+  }
+
+  @Test
+  void testFederatedCatalogBasicReadWriteOperations() {
+    spark.sql("USE " + federatedCatalogName);
     List<Row> namespaces = spark.sql("SHOW NAMESPACES").collectAsList();
     assertThat(namespaces).hasSize(2);
-
     List<Row> ns1Data = spark.sql("SELECT * FROM ns1.test_table ORDER BY id").collectAsList();
-    assertThat(ns1Data).hasSize(2);
-    assertThat(ns1Data.get(0).getInt(0)).isEqualTo(1);
-    assertThat(ns1Data.get(0).getString(1)).isEqualTo("Alice");
-    assertThat(ns1Data.get(1).getInt(0)).isEqualTo(2);
-    assertThat(ns1Data.get(1).getString(1)).isEqualTo("Bob");
+    List<Row> refNs1Data =
+        spark
+            .sql(String.format("SELECT * FROM %s.ns1.test_table ORDER BY id", localCatalogName))
+            .collectAsList();
+    assertThat(ns1Data).isEqualTo(refNs1Data);
     spark.sql("INSERT INTO ns1.test_table VALUES (3, 'Charlie')");
+
     List<Row> ns2Data = spark.sql("SELECT * FROM ns2.test_table ORDER BY id").collectAsList();
-    assertThat(ns2Data).hasSize(2);
-    assertThat(ns2Data.get(0).getInt(0)).isEqualTo(1);
-    assertThat(ns2Data.get(0).getString(1)).isEqualTo("Apache Spark");
-    assertThat(ns2Data.get(1).getInt(0)).isEqualTo(2);
-    assertThat(ns2Data.get(1).getString(1)).isEqualTo("Apache Iceberg");
+    List<Row> refNs2Data =
+        spark
+            .sql(String.format("SELECT * FROM %s.ns2.test_table ORDER BY id", localCatalogName))
+            .collectAsList();
+    assertThat(ns2Data).isEqualTo(refNs2Data);
     spark.sql("INSERT INTO ns2.test_table VALUES (3, 'Apache Polaris')");
 
-    spark.sql("USE " + LOCAL_CATALOG_NAME);
-    spark.sql("REFRESH TABLE ns1.test_table");
-    spark.sql("REFRESH TABLE ns2.test_table");
+    spark.sql(String.format("REFRESH TABLE %s.ns1.test_table", localCatalogName));
+    spark.sql(String.format("REFRESH TABLE %s.ns2.test_table", localCatalogName));
+
     List<Row> updatedNs1Data =
-        spark.sql("SELECT * FROM ns1.test_table ORDER BY id").collectAsList();
+        spark
+            .sql(String.format("SELECT * FROM %s.ns1.test_table ORDER BY id", localCatalogName))
+            .collectAsList();
     assertThat(updatedNs1Data).hasSize(3);
     assertThat(updatedNs1Data.get(2).getInt(0)).isEqualTo(3);
     assertThat(updatedNs1Data.get(2).getString(1)).isEqualTo("Charlie");
     List<Row> updatedNs2Data =
-        spark.sql("SELECT * FROM ns2.test_table ORDER BY id").collectAsList();
+        spark
+            .sql(String.format("SELECT * FROM %s.ns2.test_table ORDER BY id", localCatalogName))
+            .collectAsList();
     assertThat(updatedNs2Data).hasSize(3);
     assertThat(updatedNs2Data.get(2).getInt(0)).isEqualTo(3);
     assertThat(updatedNs2Data.get(2).getString(1)).isEqualTo("Apache Polaris");
-
-    spark.sql("DROP TABLE ns1.test_table");
-    spark.sql("DROP TABLE ns2.test_table");
-    spark.sql("DROP NAMESPACE ns1");
-    spark.sql("DROP NAMESPACE ns2");
   }
 }
