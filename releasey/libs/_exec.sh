@@ -24,12 +24,9 @@ source "$LIBS_DIR/_constants.sh"
 source "$LIBS_DIR/_log.sh"
 
 function exec_process {
-  # See print_command for information on why fd 3 is used.
   if [[ ${DRY_RUN:-1} -ne 1 ]]; then
     print_command "Executing '${*}'"
     "$@"
-  elif { >&3; } 2>/dev/null; then
-    print_command "${*}"
   else
     print_command "Dry-run, WOULD execute '${*}'"
   fi

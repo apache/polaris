@@ -57,23 +57,7 @@ function print_success() {
 }
 
 function print_command() {
-  # This function can be used to print the bash commands that are executed by a
-  # script.  It either prints its arguments as-is to file descriptor 3, if it
-  # is open, or prepends "DEBUG: " and prints them to stdout if it is unset.
-  #
-  # This allows the programmatic verification of all commands that are executed
-  # by a script, by running it as follows:
-  #
-  #   $ ./script.sh 3>/tmp/script.log
-  #   $ cat /tmp/script.log
-  #   ./gradlew clean build
-  #   rm -rf ./regtests/output
-  #   mkdir -p ./regtests/output
-  #   chmod -R 777 ./regtests/output
-  #
-  if { >&3; } 2>/dev/null; then
-    echo "$*" >&3
-  else
-    echo -e "${BLUE}DEBUG: $*${RESET}" >&2
-  fi
+  # This function prints the bash commands that are executed by a script
+  # with a DEBUG prefix to stderr for visibility.
+  echo -e "${BLUE}DEBUG: $*${RESET}" >&2
 }
