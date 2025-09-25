@@ -159,14 +159,14 @@ public class OpaIntegrationTest {
 
   /** Helper method to create a principal and get an OAuth access token for that principal */
   private String createPrincipalAndGetToken(String principalName) {
-    // First get admin token to create the principal
-    String adminToken = getAdminToken();
+    // First get root token to create the principal
+    String rootToken = getRootToken();
 
-    // Create the principal using the admin token
+    // Create the principal using the root token
     String createResponse =
         given()
             .contentType("application/json")
-            .header("Authorization", "Bearer " + adminToken)
+            .header("Authorization", "Bearer " + rootToken)
             .body("{\"principal\":{\"name\":\"" + principalName + "\",\"properties\":{}}}")
             .when()
             .post("/api/management/v1/principals")
@@ -208,8 +208,8 @@ public class OpaIntegrationTest {
     return accessToken;
   }
 
-  /** Helper method to get admin access token */
-  private String getAdminToken() {
+  /** Helper method to get root access token */
+  private String getRootToken() {
     String response =
         given()
             .contentType("application/x-www-form-urlencoded")

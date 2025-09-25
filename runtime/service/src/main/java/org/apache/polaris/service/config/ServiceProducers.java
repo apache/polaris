@@ -167,7 +167,7 @@ public class ServiceProducers {
   @jakarta.inject.Inject RealmConfig realmConfig;
 
   @Produces
-  @ApplicationScoped
+  @RequestScoped
   public PolarisAuthorizer polarisAuthorizer() {
     if ("opa".equalsIgnoreCase(authorizationConfig.implementation())) {
       AuthorizationConfiguration.OpaConfig opa = authorizationConfig.opa();
