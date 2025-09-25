@@ -27,7 +27,7 @@ immutables = "2.11.3"
 jmh = "1.37"
 picocli = "4.7.7"
 scala212 = "2.12.19"
-spark35 = "3.5.6"
+spark35 = "3.5.7"
 slf4j = "2.0.17"
 swagger = "1.6.16"
 
@@ -46,13 +46,13 @@ awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.34.0" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.38" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.18.0" }
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.19.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.14.0" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.7" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.42.0" }
-google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.57.0" }
+google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.58.0" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
-h2 = { module = "com.h2database:h2", version = "2.3.232" }
+h2 = { module = "com.h2database:h2", version = "2.4.240" }
 dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
 hadoop-client-runtime = { module = "org.apache.hadoop:hadoop-client-runtime", version.ref = "hadoop" }
