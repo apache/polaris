@@ -22,7 +22,7 @@
 # Common Logging Functions
 #
 
-# Colors for output - only use colors if terminal supports them and user hasn't disabled them
+# Colors for output - only use colors if terminal supports them
 if [[ -t 2 ]] &&
    [[ "${NO_COLOR:-}" != "1" ]] &&
    [[ "${TERM:-}" != "dumb" ]] &&
