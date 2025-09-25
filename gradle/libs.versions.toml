@@ -52,7 +52,7 @@ eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.7
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.42.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.58.0" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
-h2 = { module = "com.h2database:h2", version = "2.3.232" }
+h2 = { module = "com.h2database:h2", version = "2.4.240" }
 dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
 hadoop-client-runtime = { module = "org.apache.hadoop:hadoop-client-runtime", version.ref = "hadoop" }
