@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
@@ -808,7 +809,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     PolarisResolvedPathWrapper resolvedStoragePath =
         CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
 
-    if (baseCatalog instanceof IcebergCatalog && resolvedStoragePath != null) {
+    if ((baseCatalog instanceof IcebergCatalog
+            || realmConfig.getConfig(
+                ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, getResolvedCatalogEntity()))
+        && resolvedStoragePath != null) {
 
       AccessConfig accessConfig =
           accessConfigProvider.getAccessConfig(
