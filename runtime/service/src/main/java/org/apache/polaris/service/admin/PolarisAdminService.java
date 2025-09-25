@@ -102,6 +102,7 @@ import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
@@ -1815,7 +1816,7 @@ public class PolarisAdminService {
 
       if (result.isSuccess()) {
         syntheticNamespace = PolarisEntity.of(result.getEntity());
-      } else {
+      } else if (result.getReturnStatus() == BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS) {
         PolarisResolvedPathWrapper partialPath =
             resolutionManifest.getPassthroughResolvedPath(namespace);
         PolarisEntity partialLeafEntity =
@@ -1829,6 +1830,11 @@ public class PolarisAdminService {
                   leafNamespace, catalogEntity.getName()));
         }
         syntheticNamespace = partialLeafEntity;
+      } else {
+        throw new RuntimeException(
+            String.format(
+                "Failed to create or find namespace entity '%s' in federated catalog '%s'",
+                leafNamespace, catalogEntity.getName()));
       }
       completePath.add(syntheticNamespace);
       currentParent = syntheticNamespace;
@@ -2206,28 +2212,27 @@ public class PolarisAdminService {
             .setCatalogId(parentNamespaceEntity.getCatalogId())
             .setCreateTimestamp(System.currentTimeMillis())
             .build();
+    // We will re-resolve later anyway, so
+    metaStoreManager.createEntityIfNotExists(
+        getCurrentPolarisContext(),
+        PolarisEntity.toCoreList(resolvedNamespacePathWrapper.getRawFullPath()),
+        syntheticTableEntity);
 
-    EntityResult result =
-        metaStoreManager.createEntityIfNotExists(
-            getCurrentPolarisContext(),
-            PolarisEntity.toCoreList(resolvedNamespacePathWrapper.getRawFullPath()),
-            syntheticTableEntity);
-
-    if (result.isSuccess()) {
-      syntheticTableEntity = PolarisEntity.of(result.getEntity());
-    } else {
-      PolarisResolvedPathWrapper tablePathWrapper =
-          resolutionManifest.getPassthroughResolvedPath(identifier);
-      PolarisEntity leafEntity =
-          tablePathWrapper != null ? tablePathWrapper.getRawLeafEntity() : null;
-      if (leafEntity == null || !subTypes.contains(leafEntity.getSubType())) {
-        throw new RuntimeException(
-            String.format(
-                "Failed to create or find table entity '%s' in federated catalog '%s'",
-                identifier.name(), catalogEntity.getName()));
-      }
+    PolarisResolvedPathWrapper completePathWrapper =
+        resolutionManifest.getPassthroughResolvedPath(identifier);
+    PolarisEntity leafEntity =
+        completePathWrapper != null ? completePathWrapper.getRawLeafEntity() : null;
+    if (completePathWrapper == null
+        || leafEntity == null
+        || !(leafEntity.getType() == PolarisEntityType.TABLE_LIKE
+            && leafEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+            && Objects.equals(leafEntity.getName(), identifier.name()))) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to create or find table entity '%s' in federated catalog '%s'",
+              identifier.name(), catalogEntity.getName()));
     }
-    return resolutionManifest.getPassthroughResolvedPath(identifier);
+    return completePathWrapper;
   }
 
   /**
