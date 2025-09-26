@@ -42,7 +42,7 @@ Polaris separates authentication into two logical phases using [Quarkus Security
 ### Token Broker Configuration
 
 When internal authentication is enabled, Polaris uses [`TokenBroker`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) to handle the decoding and validation of authentication tokens. These brokers are request-scoped and can be configured per realm. Each realm may use its own strategy, such as RSA key pairs or shared secrets, depending on security requirements.
-See [Token Broker description]({{< relref "external-idp#token-broker" >}}) for configuration details.
+See [Token Broker description]({{< relref "../external-idp#token-broker" >}}) for configuration details.
 
 ## Developer Authentication Workflows
 

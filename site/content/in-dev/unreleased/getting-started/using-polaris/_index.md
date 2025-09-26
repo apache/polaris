@@ -34,17 +34,17 @@ export CLIENT_SECRET=YOUR_CLIENT_SECRET
 Refer to the [Creating a Catalog]({{% ref "creating-a-catalog" %}}) page for instructions on defining a
 catalog for your specific storage type. The following examples assume the catalog's name is `quickstart_catalog`.
 
-In Polaris, the [catalog]({{% relref "entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "entities#table" %}}) and [views]({{% relref "entities#view" %}}) are organized under.
+In Polaris, the [catalog]({{% relref "../../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../../entities#table" %}}) and [views]({{% relref "../../entities#view" %}}) are organized under.
 
 The `DEFAULT_BASE_LOCATION` value you provided at catalog creation time will be the default location that objects in
 this catalog should be stored in.
 
-Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs]({{% relref "command-line-interface" %}}).
+Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs]({{% relref "../../command-line-interface" %}}).
 
 
 ### Creating a Principal and Assigning it Privileges
 
-With a catalog created, we can create a [principal]({{% relref "entities#principal" %}}) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs]({{% relref "command-line-interface" %}}).
+With a catalog created, we can create a [principal]({{% relref "../../entities#principal" %}}) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs]({{% relref "../../command-line-interface" %}}).
 
 ```shell
 ./polaris \
@@ -81,7 +81,7 @@ export USER_CLIENT_ID=XXXX
 export USER_CLIENT_SECRET=YYYY
 ```
 
-Now, we grant the principal the [principal role]({{% relref "entities#principal-role" %}}) we created, and grant the [catalog role]({{% relref "entities#catalog-role" %}}) the principal role we created. For more information on these entities, please refer to the linked documentation.
+Now, we grant the principal the [principal role]({{% relref "../../entities#principal-role" %}}) we created, and grant the [catalog role]({{% relref "../../entities#catalog-role" %}}) the principal role we created. For more information on these entities, please refer to the linked documentation.
 
 ```shell
 ./polaris \
@@ -106,7 +106,7 @@ Now, we’ve linked our principal to the catalog via roles like so:
 
 ![Principal to Catalog](/img/quickstart/privilege-illustration-1.png "Principal to Catalog")
 
-In order to give this principal the ability to interact with the catalog, we must assign some [privileges]({{% relref "entities#privilege" %}}). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:
+In order to give this principal the ability to interact with the catalog, we must assign some [privileges]({{% relref "../../entities#privilege" %}}). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:
 
 ```shell
 ./polaris \
@@ -120,7 +120,7 @@ In order to give this principal the ability to interact with the catalog, we mus
   CATALOG_MANAGE_CONTENT
 ```
 
-This grants the [catalog privileges]({{% relref "entities#privilege" %}}) `CATALOG_MANAGE_CONTENT` to our catalog role, linking everything together like so:
+This grants the [catalog privileges]({{% relref "../../entities#privilege" %}}) `CATALOG_MANAGE_CONTENT` to our catalog role, linking everything together like so:
 
 ![Principal to Catalog with Catalog Role](/img/quickstart/privilege-illustration-2.png "Principal to Catalog with Catalog Role")
 
@@ -336,7 +336,7 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 ## Next Steps
 * Visit [Using Keycloak as the external identity provider]({{% relref "keycloak-idp" %}}).
 * Visit [Using Polaris with telemetry tools]({{% relref "telemetry-tools" %}}).
-* Visit [Configuring Polaris for Production]({{% relref "configuring-polaris-for-production" %}}).
+* Visit [Configuring Polaris for Production]({{% relref "../../configuring-polaris-for-production" %}}).
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
 * To shut down a locally-deployed Polaris server and clean up all related Docker containers, run the command listed below. Cloud Deployments have their respective termination commands on their Deployment page, while Polaris running on Gradle will terminate when the Gradle process terminates.
 ```shell
