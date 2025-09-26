@@ -16,26 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.service;
 
-import com.auth0.jwt.algorithms.Algorithm;
-import java.util.function.Supplier;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 
-/** Generates a JWT using a Symmetric Key. */
-public class JWTSymmetricKeyBroker extends JWTBroker {
-  private final Supplier<String> secretSupplier;
-
-  public JWTSymmetricKeyBroker(
-      PolarisMetaStoreManager metaStoreManager,
-      int maxTokenGenerationInSeconds,
-      Supplier<String> secretSupplier) {
-    super(metaStoreManager, maxTokenGenerationInSeconds);
-    this.secretSupplier = secretSupplier;
-  }
-
-  @Override
-  public Algorithm getAlgorithm() {
-    return Algorithm.HMAC256(secretSupplier.get());
-  }
-}
+@ApplicationScoped
+@Identifier("disabled")
+public class DisabledOAuth2ApiService implements IcebergRestOAuth2ApiService {}

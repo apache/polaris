@@ -16,21 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
-import jakarta.annotation.Nullable;
+import java.util.function.Function;
+import org.apache.polaris.core.context.RealmContext;
 
 /**
- * This is a union of configuration settings of all token brokers.
- *
- * @see TokenBrokerFactory
+ * Factory that creates a {@link TokenBroker} for generating and parsing. The {@link TokenBroker} is
+ * created based on the realm context.
  */
-public interface TokenBrokerFactoryConfig {
-  @Nullable
-  String file();
-
-  @Nullable
-  String secret();
-
-  int maxTokenGenerationInSeconds();
-}
+public interface TokenBrokerFactory extends Function<RealmContext, TokenBroker> {}

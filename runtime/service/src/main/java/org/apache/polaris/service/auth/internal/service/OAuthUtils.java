@@ -16,41 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.service;
 
 import jakarta.ws.rs.core.Response;
 
 /** Simple utility class to assist with OAuth operations */
-public class OAuthUtils {
-  public static final String POLARIS_ROLE_PREFIX = "PRINCIPAL_ROLE:";
+final class OAuthUtils {
 
-  public static Response getResponseFromError(OAuthTokenErrorResponse.Error error) {
+  static Response getResponseFromError(OAuthError error) {
     return switch (error) {
       case unauthorized_client ->
           Response.status(Response.Status.UNAUTHORIZED)
-              .entity(
-                  new OAuthTokenErrorResponse(OAuthTokenErrorResponse.Error.unauthorized_client))
+              .entity(OAuthTokenErrorResponse.of(OAuthError.unauthorized_client))
               .build();
       case invalid_client ->
           Response.status(Response.Status.BAD_REQUEST)
-              .entity(new OAuthTokenErrorResponse(OAuthTokenErrorResponse.Error.invalid_client))
+              .entity(OAuthTokenErrorResponse.of(OAuthError.invalid_client))
               .build();
       case invalid_grant ->
           Response.status(Response.Status.BAD_REQUEST)
-              .entity(new OAuthTokenErrorResponse(OAuthTokenErrorResponse.Error.invalid_grant))
+              .entity(OAuthTokenErrorResponse.of(OAuthError.invalid_grant))
               .build();
       case unsupported_grant_type ->
           Response.status(Response.Status.BAD_REQUEST)
-              .entity(
-                  new OAuthTokenErrorResponse(OAuthTokenErrorResponse.Error.unsupported_grant_type))
+              .entity(OAuthTokenErrorResponse.of(OAuthError.unsupported_grant_type))
               .build();
       case invalid_scope ->
           Response.status(Response.Status.BAD_REQUEST)
-              .entity(new OAuthTokenErrorResponse(OAuthTokenErrorResponse.Error.invalid_scope))
+              .entity(OAuthTokenErrorResponse.of(OAuthError.invalid_scope))
               .build();
       default ->
           Response.status(Response.Status.BAD_REQUEST)
-              .entity(new OAuthTokenErrorResponse(OAuthTokenErrorResponse.Error.invalid_request))
+              .entity(OAuthTokenErrorResponse.of(OAuthError.invalid_request))
               .build();
     };
   }

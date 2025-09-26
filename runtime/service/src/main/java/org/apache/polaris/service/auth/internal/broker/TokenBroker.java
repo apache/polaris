@@ -16,19 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
-import jakarta.annotation.Nonnull;
-import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.types.TokenType;
 
-/** Generic token class intended to be extended by different token types */
+/** A broker for generating and verifying tokens. */
 public interface TokenBroker {
 
   boolean supportsGrantType(String grantType);
@@ -63,30 +57,4 @@ public interface TokenBroker {
 
   /** Decodes and verifies the token, then returns the associated {@link PolarisCredential}. */
   PolarisCredential verify(String token);
-
-  static @Nonnull Optional<PrincipalEntity> findPrincipalEntity(
-      PolarisMetaStoreManager metaStoreManager,
-      String clientId,
-      String clientSecret,
-      PolarisCallContext polarisCallContext) {
-    // Validate the principal is present and secrets match
-    PrincipalSecretsResult principalSecrets =
-        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
-    if (!principalSecrets.isSuccess()) {
-      return Optional.empty();
-    }
-    if (!principalSecrets.getPrincipalSecrets().matchesSecret(clientSecret)) {
-      return Optional.empty();
-    }
-    EntityResult result =
-        metaStoreManager.loadEntity(
-            polarisCallContext,
-            0L,
-            principalSecrets.getPrincipalSecrets().getPrincipalId(),
-            PolarisEntityType.PRINCIPAL);
-    if (!result.isSuccess() || result.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
-      return Optional.empty();
-    }
-    return Optional.of(PrincipalEntity.of(result.getEntity()));
-  }
 }

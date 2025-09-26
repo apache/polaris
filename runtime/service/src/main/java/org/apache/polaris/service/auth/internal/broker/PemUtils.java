@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -38,7 +38,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
-public class PemUtils {
+final class PemUtils {
 
   private static byte[] parsePEMFile(Path pemPath) throws IOException {
     if (!Files.isRegularFile(pemPath) || !Files.exists(pemPath)) {
@@ -108,31 +108,29 @@ public class PemUtils {
     }
   }
 
-  public static PublicKey readPublicKeyFromFile(Path filepath, String algorithm)
-      throws IOException {
+  static PublicKey readPublicKeyFromFile(Path filepath, String algorithm) throws IOException {
     byte[] bytes = PemUtils.parsePEMFile(filepath);
     return PemUtils.getPublicKey(bytes, algorithm);
   }
 
-  public static PrivateKey readPrivateKeyFromFile(Path filepath, String algorithm)
-      throws IOException {
+  static PrivateKey readPrivateKeyFromFile(Path filepath, String algorithm) throws IOException {
     byte[] bytes = PemUtils.parsePEMFile(filepath);
     return PemUtils.getPrivateKey(bytes, algorithm);
   }
 
-  public static KeyPair generateKeyPair() throws NoSuchAlgorithmException {
+  static KeyPair generateKeyPair() throws NoSuchAlgorithmException {
     KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
     kpg.initialize(2048);
     return kpg.generateKeyPair();
   }
 
-  public static void generateKeyPairFiles(Path privateFileLocation, Path publicFileLocation)
+  static void generateKeyPairFiles(Path privateFileLocation, Path publicFileLocation)
       throws NoSuchAlgorithmException, IOException {
     writeKeyPairFiles(generateKeyPair(), privateFileLocation, publicFileLocation);
   }
 
-  public static void writeKeyPairFiles(
-      KeyPair keyPair, Path privateFileLocation, Path publicFileLocation) throws IOException {
+  static void writeKeyPairFiles(KeyPair keyPair, Path privateFileLocation, Path publicFileLocation)
+      throws IOException {
     try (BufferedWriter writer = Files.newBufferedWriter(privateFileLocation, UTF_8)) {
       writer.write("-----BEGIN PRIVATE KEY-----");
       writer.newLine();
