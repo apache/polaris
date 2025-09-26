@@ -27,7 +27,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -85,7 +84,6 @@ public abstract class JWTBroker implements TokenBroker {
       String subjectToken,
       String grantType,
       String scope,
-      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType) {
     if (requestedTokenType != null && !TokenType.ACCESS_TOKEN.equals(requestedTokenType)) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
@@ -104,8 +102,7 @@ public abstract class JWTBroker implements TokenBroker {
       return new TokenResponse(Error.invalid_client);
     }
     EntityResult principalLookup =
-        metaStoreManager.loadEntity(
-            polarisCallContext, 0L, decodedToken.getPrincipalId(), PolarisEntityType.PRINCIPAL);
+        metaStoreManager.loadEntity(0L, decodedToken.getPrincipalId(), PolarisEntityType.PRINCIPAL);
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
@@ -126,7 +123,6 @@ public abstract class JWTBroker implements TokenBroker {
       String clientSecret,
       String grantType,
       String scope,
-      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType) {
     // Initial sanity checks
     TokenRequestValidator validator = new TokenRequestValidator();
@@ -137,8 +133,7 @@ public abstract class JWTBroker implements TokenBroker {
     }
 
     Optional<PrincipalEntity> principal =
-        TokenBroker.findPrincipalEntity(
-            metaStoreManager, clientId, clientSecret, polarisCallContext);
+        TokenBroker.findPrincipalEntity(metaStoreManager, clientId, clientSecret);
     if (principal.isEmpty()) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
     }

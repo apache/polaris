@@ -27,7 +27,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
@@ -47,12 +46,10 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
   private static final String BEARER = "bearer";
 
   private final TokenBroker tokenBroker;
-  private final CallContext callContext;
 
   @Inject
-  public DefaultOAuth2ApiService(TokenBroker tokenBroker, CallContext callContext) {
+  public DefaultOAuth2ApiService(TokenBroker tokenBroker) {
     this.tokenBroker = tokenBroker;
-    this.callContext = callContext;
   }
 
   @Override
@@ -102,21 +99,11 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     if (clientSecret != null) {
       tokenResponse =
           tokenBroker.generateFromClientSecrets(
-              clientId,
-              clientSecret,
-              grantType,
-              scope,
-              callContext.getPolarisCallContext(),
-              requestedTokenType);
+              clientId, clientSecret, grantType, scope, requestedTokenType);
     } else if (subjectToken != null) {
       tokenResponse =
           tokenBroker.generateFromToken(
-              subjectTokenType,
-              subjectToken,
-              grantType,
-              scope,
-              callContext.getPolarisCallContext(),
-              requestedTokenType);
+              subjectTokenType, subjectToken, grantType, scope, requestedTokenType);
     } else {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
     }

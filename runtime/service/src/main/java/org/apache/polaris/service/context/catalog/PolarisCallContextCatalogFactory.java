@@ -27,10 +27,12 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -74,7 +76,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
   @Override
   public Catalog createCallContextCatalog(
-      CallContext context,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
       PolarisPrincipal polarisPrincipal,
       SecurityContext securityContext,
       final PolarisResolutionManifest resolvedManifest) {
@@ -82,17 +85,19 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
         resolvedManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
     String catalogName = baseCatalogEntity.getName();
 
-    String realm = context.getRealmContext().getRealmIdentifier();
-    String catalogKey = realm + "/" + catalogName;
+    String catalogKey = realmContext.getRealmIdentifier() + "/" + catalogName;
     LOGGER.debug("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
     IcebergCatalog catalogInstance =
         new IcebergCatalog(
             diagnostics,
             storageCredentialCache,
             resolverFactory,
-            metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
-            context,
+            metaStoreManager,
+            realmContext,
+            realmConfig,
             resolvedManifest,
             securityContext,
             taskExecutor,
@@ -115,8 +120,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
     catalogProperties.put(CatalogProperties.WAREHOUSE_LOCATION, defaultBaseLocation);
 
-    // TODO: The initialize properties might need to take more from CallContext and the
-    // CatalogEntity.
+    // TODO: The initialize properties might need to take more from the CatalogEntity.
     catalogInstance.initialize(catalogName, catalogProperties);
 
     return catalogInstance;

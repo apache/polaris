@@ -24,26 +24,15 @@ import jakarta.ws.rs.core.Response;
 import java.nio.charset.Charset;
 import java.util.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.types.TokenType;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 class DefaultOAuth2ApiServiceTest {
   private static final String CLIENT_CREDENTIALS = "client_credentials";
-
-  private CallContext callContext;
-
-  @BeforeEach
-  void setUp() {
-    callContext = Mockito.mock(CallContext.class);
-    when(callContext.getPolarisCallContext()).thenReturn(Mockito.mock(PolarisCallContext.class));
-  }
 
   @Test
   public void testNoSupportGrantType() {
@@ -52,12 +41,7 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(false);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            "client",
-            "secret",
-            CLIENT_CREDENTIALS,
-            "scope",
-            callContext.getPolarisCallContext(),
-            TokenType.ACCESS_TOKEN))
+            "client", "secret", CLIENT_CREDENTIALS, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -67,7 +51,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(CLIENT_CREDENTIALS)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenErrorResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenErrorResponse.class))
@@ -83,12 +67,7 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(false);
     when(tokenBroker.generateFromClientSecrets(
-            "client",
-            "secret",
-            CLIENT_CREDENTIALS,
-            "scope",
-            callContext.getPolarisCallContext(),
-            TokenType.ACCESS_TOKEN))
+            "client", "secret", CLIENT_CREDENTIALS, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -98,7 +77,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(CLIENT_CREDENTIALS)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenErrorResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenErrorResponse.class))
@@ -114,12 +93,7 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            null,
-            "secret",
-            CLIENT_CREDENTIALS,
-            "scope",
-            callContext.getPolarisCallContext(),
-            TokenType.ACCESS_TOKEN))
+            null, "secret", CLIENT_CREDENTIALS, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -128,7 +102,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(CLIENT_CREDENTIALS)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenResponse.class))
@@ -142,12 +116,7 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            "client",
-            "secret",
-            CLIENT_CREDENTIALS,
-            "scope",
-            callContext.getPolarisCallContext(),
-            TokenType.ACCESS_TOKEN))
+            "client", "secret", CLIENT_CREDENTIALS, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -157,7 +126,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(CLIENT_CREDENTIALS)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenResponse.class))
@@ -175,7 +144,6 @@ class DefaultOAuth2ApiServiceTest {
             "secret",
             TokenRequestValidator.TOKEN_EXCHANGE,
             "scope",
-            callContext.getPolarisCallContext(),
             TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
@@ -188,7 +156,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(TokenRequestValidator.TOKEN_EXCHANGE)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenResponse.class))
@@ -202,12 +170,7 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(TokenRequestValidator.TOKEN_EXCHANGE)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            null,
-            "secret",
-            TokenRequestValidator.TOKEN_EXCHANGE,
-            "scope",
-            callContext.getPolarisCallContext(),
-            TokenType.ACCESS_TOKEN))
+            null, "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -219,7 +182,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(TokenRequestValidator.TOKEN_EXCHANGE)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenErrorResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenErrorResponse.class))
@@ -236,12 +199,7 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
 
     when(tokenBroker.generateFromClientSecrets(
-            "",
-            "secret",
-            TokenRequestValidator.TOKEN_EXCHANGE,
-            "scope",
-            callContext.getPolarisCallContext(),
-            TokenType.ACCESS_TOKEN))
+            "", "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -255,7 +213,7 @@ class DefaultOAuth2ApiServiceTest {
             .grantType(TokenRequestValidator.TOKEN_EXCHANGE)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
             .realmContext(realmContext)
-            .invoke(new DefaultOAuth2ApiService(tokenBroker, callContext));
+            .invoke(new DefaultOAuth2ApiService(tokenBroker));
     Assertions.assertThat(response.getEntity())
         .isInstanceOf(OAuthTokenResponse.class)
         .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenResponse.class))

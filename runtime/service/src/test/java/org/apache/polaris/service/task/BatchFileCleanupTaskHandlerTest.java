@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -42,32 +41,27 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.TestFileIOFactory;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 public class BatchFileCleanupTaskHandlerTest {
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   private final RealmContext realmContext = () -> "realmName";
+  private final RealmConfig realmConfig =
+      new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
 
   private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
     return new TaskFileIOSupplier(new TestFileIOFactory(fileIO));
   }
 
-  private PolarisCallContext newCallContext() {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore);
-  }
-
   @Test
   public void testMetadataFileCleanup() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -167,7 +161,7 @@ public class BatchFileCleanupTaskHandlerTest {
 
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThat(handler.handleTask(realmContext, realmConfig, task)).isTrue();
 
     for (String cleanupFile : cleanupFiles) {
       assertThatPredicate((String file) -> TaskUtils.exists(file, fileIO)).rejects(cleanupFile);
@@ -176,7 +170,6 @@ public class BatchFileCleanupTaskHandlerTest {
 
   @Test
   public void testMetadataFileCleanupIfFileNotExist() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     BatchFileCleanupTaskHandler handler =
@@ -211,12 +204,11 @@ public class BatchFileCleanupTaskHandlerTest {
 
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThat(handler.handleTask(realmContext, realmConfig, task)).isTrue();
   }
 
   @Test
   public void testCleanupWithRetries() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -271,7 +263,7 @@ public class BatchFileCleanupTaskHandlerTest {
               var newTask = addTaskLocation(task);
               assertThatPredicate(handler::canHandleTask).accepts(newTask);
               handler.handleTask(
-                  newTask, polarisCallContext); // this will schedule the batch deletion
+                  realmContext, realmConfig, newTask); // this will schedule the batch deletion
             });
 
     // Wait for all async tasks to finish
