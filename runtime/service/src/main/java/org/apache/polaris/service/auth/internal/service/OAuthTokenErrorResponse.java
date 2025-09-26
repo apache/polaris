@@ -16,26 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.service;
 
-import com.auth0.jwt.algorithms.Algorithm;
-import java.util.function.Supplier;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nullable;
+import org.apache.polaris.immutables.PolarisImmutable;
 
-/** Generates a JWT using a Symmetric Key. */
-public class JWTSymmetricKeyBroker extends JWTBroker {
-  private final Supplier<String> secretSupplier;
+/** An OAuth Error Token Response as defined by the Iceberg REST API OpenAPI Spec. */
+@PolarisImmutable
+interface OAuthTokenErrorResponse {
 
-  public JWTSymmetricKeyBroker(
-      PolarisMetaStoreManager metaStoreManager,
-      int maxTokenGenerationInSeconds,
-      Supplier<String> secretSupplier) {
-    super(metaStoreManager, maxTokenGenerationInSeconds);
-    this.secretSupplier = secretSupplier;
+  static OAuthTokenErrorResponse of(OAuthError error) {
+    return ImmutableOAuthTokenErrorResponse.builder()
+        .error(error.name())
+        .errorDescription(error.getErrorDescription())
+        .build();
   }
 
-  @Override
-  public Algorithm getAlgorithm() {
-    return Algorithm.HMAC256(secretSupplier.get());
-  }
+  @JsonProperty("error")
+  String getError();
+
+  @JsonProperty("error_description")
+  String getErrorDescription();
+
+  @Nullable // currently unused
+  @JsonProperty("error_uri")
+  String getErrorUri();
 }

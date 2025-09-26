@@ -16,12 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
+package org.apache.polaris.service.events.listeners;
 
-@ApplicationScoped
-@Identifier("disabled")
-public class DisabledOAuth2ApiService implements IcebergRestOAuth2ApiService {}
+import java.lang.reflect.Method;
+import org.junit.jupiter.api.Test;
+
+class TestPolarisEventListenerTest {
+
+  @Test
+  @SuppressWarnings("ReturnValueIgnored")
+  void testAllMethodsOverridden() {
+    for (Method method : PolarisEventListener.class.getMethods()) {
+      try {
+        TestPolarisEventListener.class.getDeclaredMethod(
+            method.getName(), method.getParameterTypes());
+      } catch (NoSuchMethodException e) {
+        throw new AssertionError(
+            "Method " + method.getName() + " is not overridden in TestPolarisEventListener");
+      }
+    }
+  }
+}

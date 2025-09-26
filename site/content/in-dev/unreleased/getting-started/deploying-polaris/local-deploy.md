@@ -114,4 +114,6 @@ docker run --name trino -d -p 8080:8080 trinodb/trino
 ```
 
 ## Next Steps
-Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris, check out the [Using Polaris]({{% ref "../using-polaris" %}}) page.
+Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris,
+check out the [Creating a Catalog]({{% ref "../creating-a-catalog" %}}) and
+[Using Polaris]({{% ref "../using-polaris" %}}) pages.

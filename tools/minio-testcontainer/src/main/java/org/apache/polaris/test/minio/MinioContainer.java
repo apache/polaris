@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.polaris.containerspec.ContainerSpecHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,15 +123,16 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
   private String hostPort;
   private String s3endpoint;
   private S3Client s3;
-  private String region;
+  private Optional<String> region;
 
   @SuppressWarnings("unused")
   public MinioContainer() {
-    this(null, null, null, null);
+    this(null, null, null, null, null);
   }
 
   @SuppressWarnings("resource")
-  public MinioContainer(String image, String accessKey, String secretKey, String bucket) {
+  public MinioContainer(
+      String image, String accessKey, String secretKey, String bucket, String region) {
     super(
         ContainerSpecHelper.containerSpecHelper("minio", MinioContainer.class)
             .dockerImageName(image));
@@ -143,6 +145,7 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
         bucket != null
             ? validateBucketHost(bucket)
             : (FIXED_BUCKET_NAME != null ? FIXED_BUCKET_NAME : randomString("bucket"));
+    this.region = Optional.ofNullable(region);
     withEnv(MINIO_ACCESS_KEY, this.accessKey);
     withEnv(MINIO_SECRET_KEY, this.secretKey);
     // S3 SDK encodes bucket names in host names - need to tell Minio which domain to use
@@ -156,7 +159,7 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
   }
 
   public MinioContainer withRegion(String region) {
-    this.region = region;
+    this.region = Optional.of(region);
     return this;
   }
 
@@ -186,6 +189,11 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
   }
 
   @Override
+  public Optional<String> region() {
+    return region;
+  }
+
+  @Override
   public String s3endpoint() {
     Preconditions.checkState(s3endpoint != null, "Container not yet started");
     return s3endpoint;
@@ -204,6 +212,7 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
     props.put("s3.secret-access-key", secretKey());
     props.put("s3.endpoint", s3endpoint());
     props.put("http-client.type", "urlconnection");
+    region().ifPresent(r -> props.put("client.region", r));
     return props;
   }
 
@@ -259,12 +268,7 @@ public final class MinioContainer extends GenericContainer<MinioContainer>
     return S3Client.builder()
         .httpClientBuilder(UrlConnectionHttpClient.builder())
         .applyMutation(builder -> builder.endpointOverride(URI.create(s3endpoint())))
-        .applyMutation(
-            builder -> {
-              if (region != null) {
-                builder.region(Region.of(region));
-              }
-            })
+        .applyMutation(builder -> region.ifPresent(r -> builder.region(Region.of(r))))
         // .serviceConfiguration(s3Configuration(s3PathStyleAccess, s3UseArnRegionEnabled))
         // credentialsProvider(s3AccessKeyId, s3SecretAccessKey, s3SessionToken)
         .credentialsProvider(

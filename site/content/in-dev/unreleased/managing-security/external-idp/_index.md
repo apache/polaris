@@ -157,7 +157,9 @@ polaris.oidc.oidc-tenant1.principal-mapper.id-claim-path=polaris/principal_id
 polaris.oidc.oidc-tenant1.principal-mapper.name-claim-path=polaris/principal_name
 ```
 
-> [!IMPORTANT]: The default implementation of PrincipalMapper can only work with JWT tokens. If your IDP issues opaque tokens instead, you will need to provide a custom implementation. 
+{{< alert important >}}
+The default implementation of PrincipalMapper can only work with JWT tokens. If your IDP issues opaque tokens instead, you will need to provide a custom implementation.
+{{< /alert >}}
 
 ### Role Mapping 
 

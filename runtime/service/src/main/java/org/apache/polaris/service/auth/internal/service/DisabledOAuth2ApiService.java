@@ -16,21 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.service;
 
-import jakarta.annotation.Nullable;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 
-/**
- * This is a union of configuration settings of all token brokers.
- *
- * @see TokenBrokerFactory
- */
-public interface TokenBrokerFactoryConfig {
-  @Nullable
-  String file();
-
-  @Nullable
-  String secret();
-
-  int maxTokenGenerationInSeconds();
-}
+@ApplicationScoped
+@Identifier("disabled")
+public class DisabledOAuth2ApiService implements IcebergRestOAuth2ApiService {}

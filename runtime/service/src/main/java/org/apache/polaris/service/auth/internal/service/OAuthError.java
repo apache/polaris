@@ -16,12 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events.listeners;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
+package org.apache.polaris.service.auth.internal.service;
 
-/** Event listener that does nothing. */
-@ApplicationScoped
-@Identifier("no-op")
-public class NoOpPolarisEventListener implements PolarisEventListener {}
+public enum OAuthError {
+  invalid_request("The request is invalid"),
+  invalid_client("The Client is invalid"),
+  invalid_grant("The grant is invalid"),
+  unauthorized_client("The client is not authorized"),
+  unsupported_grant_type("The grant type is invalid"),
+  invalid_scope("The scope is invalid"),
+  ;
+
+  final String errorDescription;
+
+  OAuthError(String errorDescription) {
+    this.errorDescription = errorDescription;
+  }
+
+  public String getErrorDescription() {
+    return errorDescription;
+  }
+}
