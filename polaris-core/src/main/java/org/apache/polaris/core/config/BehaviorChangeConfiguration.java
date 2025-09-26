@@ -89,9 +89,9 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("SCHEMA_VERSION_FALL_BACK_ON_DNE")
           .description(
-              "If set to true, when attempting to load the persistence schema version SQLException containing"
-                  + " 'does not exist' will be interpreted as indicating that the VERSION table does not exist and"
-                  + " that the schema version is therefore 0.")
+              "If set to true, exceptions encountered while loading the VERSION table which appear to be"
+                  + " caused by the VERSION table not existing will be interpreted as meaning that the"
+                  + " schema version is currently 0.")
           .defaultValue(true)
           .buildBehaviorChangeConfiguration();
 }

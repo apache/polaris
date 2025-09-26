@@ -737,7 +737,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       return schemaVersion.getFirst().getValue();
     } catch (SQLException e) {
       LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
-      if (fallbackOnDoesNotExist && e.getMessage().contains("does not exist")) {
+      if (fallbackOnDoesNotExist && datasourceOperations.isRelationDoesNotExist(e)) {
         return SchemaVersion.MINIMUM.getValue();
       }
       throw new IllegalStateException("Failed to retrieve schema version", e);
