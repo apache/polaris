@@ -25,7 +25,6 @@ plugins {
 }
 
 dependencies {
-  // HTTP client already included via AWS SDK
   implementation(project(":polaris-core"))
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-management-service"))
