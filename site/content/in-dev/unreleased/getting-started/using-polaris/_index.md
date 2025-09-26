@@ -335,6 +335,7 @@ curl -v http://127.0.0.1:8181/api/management/v1/catalogs/quickstart_catalog -H "
 
 ## Next Steps
 * Visit [Using Keycloak as the external identity provider]({{% relref "keycloak-idp" %}}).
+* Visit [Using Polaris with telemetry tools]({{% relref "telemetry-tools" %}}).
 * Visit [Configuring Polaris for Production]({{% relref "configuring-polaris-for-production" %}}).
 * A Getting Started experience for using Spark with Jupyter Notebooks is documented [here](https://github.com/apache/polaris/blob/main/getting-started/spark/README.md).
 * To shut down a locally-deployed Polaris server and clean up all related Docker containers, run the command listed below. Cloud Deployments have their respective termination commands on their Deployment page, while Polaris running on Gradle will terminate when the Gradle process terminates.
