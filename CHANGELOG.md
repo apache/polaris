@@ -31,6 +31,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade Notes
 
+- Amazon RDS plugin enabled, this allows polaris to connect to AWS Aurora PostgreSQL using IAM authentication.
 - The EclipseLink Persistence implementation has been deprecated since 1.0.0 and will be completely removed
   in 1.3.0 or in 2.0.0 (whichever happens earlier).
 
