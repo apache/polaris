@@ -17,11 +17,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Using Polaris with Keycloak as external IDP
+title: Getting Started with Apache Polaris, External Authentication and Keycloak
 linkTitle: Using Keycloak IDP
 type: docs
-weight: 100
+weight: 400
 ---
+
+## Overview
 
 This example uses Keycloak as an **external** identity provider for Polaris. The "iceberg" realm is automatically
 created and configured from the `iceberg-realm.json` file.
@@ -48,7 +50,7 @@ Polaris is configured with 3 realms:
   issued by both Polaris and Keycloak.
 
 For more information about how to configure Polaris with external authentication, see the
-[Polaris documentation]({{% ref "../external-idp" %}}).
+[Polaris documentation](https://polaris.apache.org/in-dev/unreleased/managing-security/external-idp/).
 
 ## Starting the Example
 
