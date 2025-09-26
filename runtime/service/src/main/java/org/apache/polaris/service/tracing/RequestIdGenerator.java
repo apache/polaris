@@ -36,14 +36,12 @@ public class RequestIdGenerator {
   public String generateRequestId() {
     long currentCounter = COUNTER.incrementAndGet();
     String requestId = baseDefaultUuid + "_" + currentCounter;
-    if (currentCounter >= COUNTER_SOFT_MAX) {
-      if (resetInProgress.compareAndSet(false, true)) {
-        // If we get anywhere close to danger of overflowing Long (which, theoretically,
-        // would be extremely unlikely) rotate the UUID and start again.
-        baseDefaultUuid = UUID.randomUUID().toString();
-        COUNTER.set(0);
-        resetInProgress.set(false);
-      }
+    if (currentCounter >= COUNTER_SOFT_MAX && resetInProgress.compareAndSet(false, true)) {
+      // If we get anywhere close to danger of overflowing Long (which, theoretically,
+      // would be extremely unlikely) rotate the UUID and start again.
+      baseDefaultUuid = UUID.randomUUID().toString();
+      COUNTER.set(0);
+      resetInProgress.set(false);
     }
     return requestId;
   }
