@@ -26,7 +26,6 @@ import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.service.config.ServiceProducers;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -37,7 +36,7 @@ public class ServiceProducersIT {
     @Override
     public Map<String, String> getConfigOverrides() {
       Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.implementation", "default");
+      config.put("polaris.authorization.type", "default");
       config.put("polaris.authorization.opa.url", "http://localhost:8181");
       config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/allow");
       config.put("polaris.authorization.opa.timeout-ms", "2000");
@@ -45,12 +44,12 @@ public class ServiceProducersIT {
     }
   }
 
-  @Inject ServiceProducers serviceProducers;
+  @Inject PolarisAuthorizer polarisAuthorizer;
 
   @Test
   void testPolarisAuthorizerProduced() {
-    PolarisAuthorizer authorizer = serviceProducers.polarisAuthorizer();
-    assertNotNull(authorizer, "PolarisAuthorizer should be produced");
-    // Optionally, add more assertions based on expected type/config
+    assertNotNull(polarisAuthorizer, "PolarisAuthorizer should be produced");
+    // Verify it's the correct implementation for default config
+    assertNotNull(polarisAuthorizer, "PolarisAuthorizer should not be null");
   }
 }

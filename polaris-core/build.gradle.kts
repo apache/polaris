@@ -24,7 +24,7 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-api-management-model"))
-  implementation("com.squareup.okhttp3:okhttp:4.12.0")
+  implementation(libs.apache.httpclient)
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")

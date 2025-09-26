@@ -25,11 +25,9 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.QuarkusTestProfile.TestResourceEntry;
 import io.quarkus.test.junit.TestProfile;
-import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.test.commons.OpaTestResource;
 import org.junit.jupiter.api.Test;
 
@@ -37,13 +35,11 @@ import org.junit.jupiter.api.Test;
 @TestProfile(OpaIntegrationTest.InternalOpaProfile.class)
 public class OpaIntegrationTest {
 
-  @Inject PolarisAdminService adminService;
-
   public static class InternalOpaProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.implementation", "opa");
+      config.put("polaris.authorization.type", "opa");
       config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/authz");
       config.put("polaris.authorization.opa.timeout-ms", "2000");
 

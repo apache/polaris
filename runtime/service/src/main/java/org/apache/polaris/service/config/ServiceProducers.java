@@ -38,6 +38,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -162,23 +163,15 @@ public class ServiceProducers {
     return callContext.getRealmConfig();
   }
 
-  @jakarta.inject.Inject AuthorizationConfiguration authorizationConfig;
-
-  @jakarta.inject.Inject RealmConfig realmConfig;
-
   @Produces
   @RequestScoped
-  public PolarisAuthorizer polarisAuthorizer() {
-    if ("opa".equalsIgnoreCase(authorizationConfig.implementation())) {
-      AuthorizationConfiguration.OpaConfig opa = authorizationConfig.opa();
-      return org.apache.polaris.core.auth.OpaPolarisAuthorizer.create(
-          opa.url().orElse(null),
-          opa.policyPath().orElse(null),
-          opa.timeoutMs().orElse(2000), // Default to 2000ms if not specified
-          null,
-          null);
-    }
-    return new org.apache.polaris.core.auth.PolarisAuthorizerImpl(realmConfig);
+  public PolarisAuthorizer polarisAuthorizer(
+      AuthorizationConfiguration authorizationConfig,
+      RealmConfig realmConfig,
+      @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
+    PolarisAuthorizerFactory factory =
+        authorizerFactories.select(Identifier.Literal.of(authorizationConfig.type())).get();
+    return factory.create(realmConfig);
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans

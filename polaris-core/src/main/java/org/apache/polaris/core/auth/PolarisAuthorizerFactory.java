@@ -16,24 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.config;
+package org.apache.polaris.core.auth;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import java.util.Optional;
+import org.apache.polaris.core.config.RealmConfig;
 
-@ConfigMapping(prefix = "polaris.authorization")
-public interface AuthorizationConfiguration {
-  @WithDefault("default")
-  String type();
+/**
+ * Factory interface for creating PolarisAuthorizer instances.
+ *
+ * <p>This follows the standard Polaris pattern of using CDI with @Identifier annotations to select
+ * different implementations at runtime.
+ */
+public interface PolarisAuthorizerFactory {
 
-  OpaConfig opa();
-
-  interface OpaConfig {
-    Optional<String> url();
-
-    Optional<String> policyPath();
-
-    Optional<Integer> timeoutMs();
-  }
+  /**
+   * Creates a PolarisAuthorizer instance with the given realm configuration.
+   *
+   * @param realmConfig the realm configuration
+   * @return a configured PolarisAuthorizer instance
+   */
+  PolarisAuthorizer create(RealmConfig realmConfig);
 }

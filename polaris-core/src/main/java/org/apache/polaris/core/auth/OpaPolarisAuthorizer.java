@@ -25,13 +25,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -46,14 +49,14 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final String opaServerUrl;
   private final String opaPolicyPath;
-  private final OkHttpClient httpClient;
+  private final CloseableHttpClient httpClient;
   private final ObjectMapper objectMapper;
 
   /** Private constructor for factory method and advanced wiring. */
   private OpaPolarisAuthorizer(
       String opaServerUrl,
       String opaPolicyPath,
-      OkHttpClient httpClient,
+      CloseableHttpClient httpClient,
       ObjectMapper objectMapper) {
     this.opaServerUrl = opaServerUrl;
     this.opaPolicyPath = opaPolicyPath;
@@ -67,7 +70,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param opaServerUrl OPA server URL
    * @param opaPolicyPath OPA policy path
    * @param timeoutMs HTTP call timeout in milliseconds
-   * @param client OkHttpClient (optional, can be null)
+   * @param client Apache HttpClient (optional, can be null)
    * @param mapper ObjectMapper (optional, can be null)
    * @return OpaPolarisAuthorizer instance
    */
@@ -75,16 +78,25 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
       String opaServerUrl,
       String opaPolicyPath,
       int timeoutMs,
-      OkHttpClient client,
+      Object client, // Accept any client type for compatibility
       ObjectMapper mapper) {
-    OkHttpClient clientWithTimeout =
-        (client != null)
-            ? client.newBuilder().callTimeout(java.time.Duration.ofMillis(timeoutMs)).build()
-            : new OkHttpClient.Builder()
-                .callTimeout(java.time.Duration.ofMillis(timeoutMs))
-                .build();
-    ObjectMapper objectMapper = (mapper != null) ? mapper : new ObjectMapper();
-    return new OpaPolarisAuthorizer(opaServerUrl, opaPolicyPath, clientWithTimeout, objectMapper);
+
+    // Create Apache HttpClient with timeout configuration
+    RequestConfig requestConfig =
+        RequestConfig.custom()
+            .setConnectTimeout(timeoutMs)
+            .setSocketTimeout(timeoutMs)
+            .setConnectionRequestTimeout(timeoutMs)
+            .build();
+
+    CloseableHttpClient httpClient =
+        (client instanceof CloseableHttpClient)
+            ? (CloseableHttpClient) client
+            : HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
+
+    ObjectMapper objectMapperWithDefaults = mapper != null ? mapper : new ObjectMapper();
+    return new OpaPolarisAuthorizer(
+        opaServerUrl, opaPolicyPath, httpClient, objectMapperWithDefaults);
   }
 
   /**
@@ -161,12 +173,22 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
       List<PolarisResolvedPathWrapper> secondaries) {
     try {
       String inputJson = buildOpaInputJson(principal, entities, op, targets, secondaries);
-      RequestBody body = RequestBody.create(inputJson, MediaType.parse("application/json"));
-      Request request = new Request.Builder().url(opaServerUrl + opaPolicyPath).post(body).build();
-      try (Response response = httpClient.newCall(request).execute()) {
-        if (!response.isSuccessful()) return false;
-        // Parse response JSON for 'result.allow'
-        ObjectNode respNode = (ObjectNode) objectMapper.readTree(response.body().string());
+
+      // Create HTTP POST request using Apache HttpComponents
+      HttpPost httpPost = new HttpPost(opaServerUrl + opaPolicyPath);
+      httpPost.setHeader("Content-Type", "application/json");
+      httpPost.setEntity(new StringEntity(inputJson, StandardCharsets.UTF_8));
+
+      // Execute request
+      try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+        int statusCode = response.getStatusLine().getStatusCode();
+        if (statusCode != 200) {
+          return false;
+        }
+
+        // Read and parse response
+        String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+        ObjectNode respNode = (ObjectNode) objectMapper.readTree(responseBody);
         return respNode.path("result").path("allow").asBoolean(false);
       }
     } catch (IOException e) {
