@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
@@ -49,8 +50,6 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
-import org.apache.iceberg.MetadataUpdate;
-import com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -79,15 +78,20 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /**
- * Base authorization test class for IcebergCatalogHandler with fine-grained authorization disabled.
- * 
- * This class tests:
- * - Standard authorization behavior when fine-grained features are disabled (default)
- * - Fallback behavior ensuring coarse-grained privileges work
- * - Negative test that fine-grained privileges alone are insufficient when feature is disabled
- * 
- * This class is also extended by IcebergCatalogHandlerFineGrainedAuthzTest to validate
- * that all existing authorization behavior continues to work when the feature is enabled.
+ * Base authorization test class for IcebergCatalogHandler. Runs with the default value for
+ * ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES. Has one test class that extends it -
+ * IcebergCatalogHandlerFineGrainedAuthzTest which runs these tests with the fine-grained authz
+ * enabled to ensure backwards compatibility.
+ *
+ * <p>This class tests:
+ *
+ * <ul>
+ *   <li>Standard authorization behavior when fine-grained authz is set to default value (currently
+ *       disabled by default)
+ *   <li>Backwards compatibility when IcebergCatalogHandlerFineGrainedAuthzTest extends this class
+ *       and runs these tests with the feature enabled
+ *   <li>Negative test that fine-grained privileges alone are insufficient when feature is disabled
+ * </ul>
  */
 @QuarkusTest
 @TestProfile(PolarisAuthzTestBase.Profile.class)
@@ -1084,12 +1088,14 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testUpdateTableFallbackToCoarseGrainedWhenFeatureDisabled() {
-    // Test that when fine-grained authorization is disabled, it falls back to TABLE_WRITE_PROPERTIES
+    // Test that when fine-grained authorization is disabled, it falls back to
+    // TABLE_WRITE_PROPERTIES
     // This test validates that the feature flag works correctly by testing the negative case
-    UpdateTableRequest request = UpdateTableRequest.create(
-        TABLE_NS1A_2,
-        List.of(), // no requirements
-        List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
 
     // With fine-grained authorization disabled, TABLE_WRITE_PROPERTIES should work
     // even for operations that would require specific privileges when enabled
@@ -1105,18 +1111,22 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
   @Test
   public void testUpdateTableFineGrainedPrivilegesIgnoredWhenFeatureDisabled() {
-    // Test that when fine-grained authorization is disabled, fine-grained privileges alone are insufficient
-    // This ensures the feature flag properly controls behavior and fine-grained privileges don't "leak through"
-    UpdateTableRequest request = UpdateTableRequest.create(
-        TABLE_NS1A_2,
-        List.of(), // no requirements
-        List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
+    // Test that when fine-grained authorization is disabled, fine-grained privileges alone are
+    // insufficient
+    // This ensures the feature flag properly controls behavior and fine-grained privileges don't
+    // "leak through"
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
 
     // With fine-grained authorization disabled, even having the specific fine-grained privilege
     // should be insufficient - the system should require the broader privileges
     doTestInsufficientPrivileges(
         List.of(
-            PolarisPrivilege.TABLE_ASSIGN_UUID, // This alone should be insufficient when feature disabled
+            PolarisPrivilege
+                .TABLE_ASSIGN_UUID, // This alone should be insufficient when feature disabled
             PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION,
             PolarisPrivilege.TABLE_SET_PROPERTIES,
             PolarisPrivilege.TABLE_REMOVE_PROPERTIES,
