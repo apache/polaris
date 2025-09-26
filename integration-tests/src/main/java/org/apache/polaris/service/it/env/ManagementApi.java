@@ -303,6 +303,13 @@ public class ManagementApi extends PolarisRestApi {
     }
   }
 
+  public void deletePrincipalRole(String roleName) {
+    try (Response response =
+        request("v1/principal-roles/{name}", Map.of("name", roleName)).delete()) {
+      assertThat(response.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
+    }
+  }
+
   public void dropCatalog(String catalogName) {
     listCatalogRoles(catalogName).stream()
         .filter(cr -> !cr.getName().equals(PolarisEntityConstants.getNameOfCatalogAdminRole()))
