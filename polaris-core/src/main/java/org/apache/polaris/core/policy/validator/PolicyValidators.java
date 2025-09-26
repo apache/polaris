@@ -22,11 +22,13 @@ import com.google.common.base.Preconditions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.policy.content.conversion.TableConversionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.DataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.MetadataCompactionPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.OrphanFileRemovalPolicyContent;
 import org.apache.polaris.core.policy.content.maintenance.SnapshotExpiryPolicyContent;
 import org.apache.polaris.core.policy.exceptions.PolicyAttachException;
+import org.apache.polaris.core.policy.validator.conversion.TableConversionPolicyValidator;
 import org.apache.polaris.core.policy.validator.maintenance.BaseMaintenancePolicyValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +68,9 @@ public class PolicyValidators {
       case ORPHAN_FILE_REMOVAL:
         OrphanFileRemovalPolicyContent.fromString(policy.getContent());
         break;
+      case TABLE_CONVERSION:
+        TableConversionPolicyContent.fromString(policy.getContent());
+        break;
       default:
         throw new IllegalArgumentException("Unsupported policy type: " + type.getName());
     }
@@ -97,7 +102,8 @@ public class PolicyValidators {
       case SNAPSHOT_EXPIRY:
       case ORPHAN_FILE_REMOVAL:
         return BaseMaintenancePolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
-
+      case TABLE_CONVERSION:
+        return TableConversionPolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
       default:
         LOGGER.warn("Attachment not supported for policy type: {}", policyType.getName());
         return false;

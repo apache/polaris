@@ -22,6 +22,7 @@ import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.DATA_COMPACTION;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.METADATA_COMPACTION;
 import static org.apache.polaris.core.policy.PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL;
+import static org.apache.polaris.core.policy.PredefinedPolicyTypes.TABLE_CONVERSION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,6 +37,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -51,6 +53,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
@@ -77,6 +80,7 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -132,6 +136,7 @@ public abstract class AbstractPolicyCatalogTest {
   @Inject ResolutionManifestFactory resolutionManifestFactory;
 
   private PolicyCatalog policyCatalog;
+  private GenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
   private AwsStorageConfigInfo storageConfigModel;
   private String realmName;
@@ -250,6 +255,8 @@ public abstract class AbstractPolicyCatalogTest {
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.policyCatalog = new PolicyCatalog(metaStoreManager, polarisContext, passthroughView);
+    this.genericTableCatalog =
+        new PolarisGenericTableCatalog(metaStoreManager, polarisContext, passthroughView);
     this.icebergCatalog =
         new IcebergCatalog(
             diagServices,
@@ -485,6 +492,33 @@ public abstract class AbstractPolicyCatalogTest {
     var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
     policyCatalog.attachPolicy(POLICY1, target, null);
     assertThat(policyCatalog.getApplicablePolicies(null, null, null).size()).isEqualTo(1);
+  }
+
+  @Test
+  public void testAttachPolicyToGenericTable() {
+    icebergCatalog.createNamespace(NS);
+    TableIdentifier GENERIC_TABLE = TableIdentifier.of(NS, "test-generic-table");
+    genericTableCatalog.createGenericTable(GENERIC_TABLE, "delta", "test", "test", Map.of());
+    policyCatalog.createPolicy(POLICY1, TABLE_CONVERSION.getName(), "test", "{\"enable\": false}");
+    var target =
+        new PolicyAttachmentTarget(
+            PolicyAttachmentTarget.TypeEnum.TABLE_LIKE,
+            List.of(GENERIC_TABLE.toString().split("\\.")));
+    policyCatalog.attachPolicy(POLICY1, target, null);
+    assertThat(policyCatalog.getApplicablePolicies(NS, GENERIC_TABLE.name(), null).size())
+        .isEqualTo(1);
+  }
+
+  @Test
+  public void testAttachPolicyToCatalogAndGenericTableInherit() {
+    icebergCatalog.createNamespace(NS);
+    TableIdentifier GENERIC_TABLE = TableIdentifier.of(NS, "test-generic-table");
+    genericTableCatalog.createGenericTable(GENERIC_TABLE, "delta", "test", "test", Map.of());
+    policyCatalog.createPolicy(POLICY1, TABLE_CONVERSION.getName(), "test", "{\"enable\": false}");
+    var target = new PolicyAttachmentTarget(PolicyAttachmentTarget.TypeEnum.CATALOG, List.of());
+    policyCatalog.attachPolicy(POLICY1, target, null);
+    assertThat(policyCatalog.getApplicablePolicies(NS, GENERIC_TABLE.name(), null).size())
+        .isEqualTo(1);
   }
 
   @Test

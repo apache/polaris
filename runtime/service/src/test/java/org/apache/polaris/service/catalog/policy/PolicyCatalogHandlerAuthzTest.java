@@ -452,6 +452,34 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   }
 
   @Test
+  public void testAttachPolicyToGenericTableSufficientPrivileges() {
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.POLICY_DETACH));
+    assertSuccess(
+        adminService.grantPrivilegeOnCatalogToRole(
+            CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DETACH_POLICY));
+
+    PolicyAttachmentTarget tableTarget =
+        PolicyAttachmentTarget.builder()
+            .setType(PolicyAttachmentTarget.TypeEnum.TABLE_LIKE)
+            .setPath(PolarisCatalogHelpers.tableIdentifierToList(TABLE_NS1_1_GENERIC))
+            .build();
+    AttachPolicyRequest attachPolicyRequest =
+        AttachPolicyRequest.builder().setTarget(tableTarget).build();
+    DetachPolicyRequest detachPolicyRequest =
+        DetachPolicyRequest.builder().setTarget(tableTarget).build();
+
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.POLICY_ATTACH, PolarisPrivilege.TABLE_ATTACH_POLICY),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_METADATA),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE1)).attachPolicy(POLICY_NS1_2, attachPolicyRequest),
+        () -> newWrapper(Set.of(PRINCIPAL_ROLE2)).detachPolicy(POLICY_NS1_2, detachPolicyRequest));
+  }
+
+  @Test
   public void testAttachPolicyToTableInsufficientPrivileges() {
     PolicyAttachmentTarget tableTarget =
         PolicyAttachmentTarget.builder()
@@ -747,6 +775,20 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_WRITE_PROPERTIES,
             PolarisPrivilege.CATALOG_MANAGE_METADATA),
         () -> newWrapper().getApplicablePolicies(TABLE_NS1_1.namespace(), TABLE_NS1_1.name(), null),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testGetApplicablePoliciesOnGenericTableSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA),
+        () ->
+            newWrapper()
+                .getApplicablePolicies(
+                    TABLE_NS1_1_GENERIC.namespace(), TABLE_NS1_1_GENERIC.name(), null),
         null /* cleanupAction */);
   }
 
