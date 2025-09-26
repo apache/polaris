@@ -905,6 +905,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 actions.add(operation);
               });
 
+      // If there are no MetadataUpdates, then default to the UPDATE_TABLE operation.
+      if (actions.isEmpty()) {
+        actions.add(PolarisAuthorizableOperation.UPDATE_TABLE);
+      }
+
       // Authorize all collected operations
       for (PolarisAuthorizableOperation action : actions) {
         authorizeBasicTableLikeOperationOrThrow(
