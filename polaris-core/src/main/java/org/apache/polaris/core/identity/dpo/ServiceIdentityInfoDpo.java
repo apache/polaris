@@ -23,10 +23,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 import org.apache.polaris.core.secrets.SecretReference;
 
 /**
@@ -73,9 +74,21 @@ public abstract class ServiceIdentityInfoDpo {
 
   /**
    * Converts this persistence object to the corresponding API model. During the conversion, some
-   * fields will be dropped, e.g. the reference to the service identity's credential
+   * fields will be dropped, e.g., the reference to the service identity's credential
+   *
+   * @param serviceIdentityRegistry the service identity registry to resolve the identity
    */
-  public abstract @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel();
+  public @Nullable ServiceIdentityInfo asServiceIdentityInfoModel(
+      ServiceIdentityRegistry serviceIdentityRegistry) {
+    if (serviceIdentityRegistry == null) {
+      return null;
+    }
+
+    return serviceIdentityRegistry
+        .resolveServiceIdentity(this)
+        .map(ResolvedServiceIdentity::asServiceIdentityInfoModel)
+        .orElse(null);
+  }
 
   @Override
   public String toString() {
