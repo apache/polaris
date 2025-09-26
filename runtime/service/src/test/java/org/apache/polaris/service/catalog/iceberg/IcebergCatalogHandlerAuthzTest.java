@@ -49,6 +49,8 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.MetadataUpdate;
+import com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -76,6 +78,17 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+/**
+ * Base authorization test class for IcebergCatalogHandler with fine-grained authorization disabled.
+ * 
+ * This class tests:
+ * - Standard authorization behavior when fine-grained features are disabled (default)
+ * - Fallback behavior ensuring coarse-grained privileges work
+ * - Negative test that fine-grained privileges alone are insufficient when feature is disabled
+ * 
+ * This class is also extended by IcebergCatalogHandlerFineGrainedAuthzTest to validate
+ * that all existing authorization behavior continues to work when the feature is enabled.
+ */
 @QuarkusTest
 @TestProfile(PolarisAuthzTestBase.Profile.class)
 public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
@@ -88,7 +101,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     return mock;
   }
 
-  private IcebergCatalogHandler newWrapper() {
+  protected IcebergCatalogHandler newWrapper() {
     return newWrapper(Set.of());
   }
 
@@ -130,7 +143,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
    *     either the cleanup privileges must be latent, or the cleanup action could be run with
    *     PRINCIPAL_ROLE2 while runnint {@code action} with PRINCIPAL_ROLE1.
    */
-  private void doTestSufficientPrivileges(
+  protected void doTestSufficientPrivileges(
       List<PolarisPrivilege> sufficientPrivileges, Runnable action, Runnable cleanupAction) {
     doTestSufficientPrivilegeSets(
         sufficientPrivileges.stream().map(Set::of).toList(), action, cleanupAction, PRINCIPAL_NAME);
@@ -160,7 +173,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
    * @param principalName
    * @param catalogName
    */
-  private void doTestSufficientPrivilegeSets(
+  protected void doTestSufficientPrivilegeSets(
       List<Set<PolarisPrivilege>> sufficientPrivileges,
       Runnable action,
       Runnable cleanupAction,
@@ -177,7 +190,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             adminService.revokePrivilegeOnCatalogFromRole(catalogName, CATALOG_ROLE1, privilege));
   }
 
-  private void doTestInsufficientPrivileges(
+  protected void doTestInsufficientPrivileges(
       List<PolarisPrivilege> insufficientPrivileges, Runnable action) {
     doTestInsufficientPrivileges(insufficientPrivileges, PRINCIPAL_NAME, action);
   }
@@ -1067,6 +1080,54 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.TABLE_LIST),
         () -> newWrapper().updateTableForStagedCreate(TABLE_NS1A_2, new UpdateTableRequest()));
+  }
+
+  @Test
+  public void testUpdateTableFallbackToCoarseGrainedWhenFeatureDisabled() {
+    // Test that when fine-grained authorization is disabled, it falls back to TABLE_WRITE_PROPERTIES
+    // This test validates that the feature flag works correctly by testing the negative case
+    UpdateTableRequest request = UpdateTableRequest.create(
+        TABLE_NS1A_2,
+        List.of(), // no requirements
+        List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
+
+    // With fine-grained authorization disabled, TABLE_WRITE_PROPERTIES should work
+    // even for operations that would require specific privileges when enabled
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testUpdateTableFineGrainedPrivilegesIgnoredWhenFeatureDisabled() {
+    // Test that when fine-grained authorization is disabled, fine-grained privileges alone are insufficient
+    // This ensures the feature flag properly controls behavior and fine-grained privileges don't "leak through"
+    UpdateTableRequest request = UpdateTableRequest.create(
+        TABLE_NS1A_2,
+        List.of(), // no requirements
+        List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
+
+    // With fine-grained authorization disabled, even having the specific fine-grained privilege
+    // should be insufficient - the system should require the broader privileges
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_ASSIGN_UUID, // This alone should be insufficient when feature disabled
+            PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION,
+            PolarisPrivilege.TABLE_SET_PROPERTIES,
+            PolarisPrivilege.TABLE_REMOVE_PROPERTIES,
+            PolarisPrivilege.TABLE_ADD_SCHEMA,
+            PolarisPrivilege.TABLE_SET_LOCATION,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request));
   }
 
   @Test
