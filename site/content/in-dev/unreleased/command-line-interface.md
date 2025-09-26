@@ -138,7 +138,7 @@ options:
       --sts-endpoint  (Only for S3) The STS endpoint to use when connecting to STS
       --path-style-access  (Only for S3) Whether to use path-style-access for S3
       --allowed-location  An allowed location for files tracked by the catalog. Multiple locations can be provided by specifying this option more than once.
-      --role-arn  (Only for S3) A role ARN to use when connecting to S3
+      --role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
       --region  (Only for S3) The region to use when connecting to S3
       --external-id  (Only for S3) The external ID to use when connecting to S3
       --tenant-id  (Required for Azure) A tenant ID to use when connecting to Azure Storage

@@ -50,7 +50,7 @@ Polaris is configured with 3 realms:
   issued by both Polaris and Keycloak.
 
 For more information about how to configure Polaris with external authentication, see the
-[Polaris documentation](https://polaris.apache.org/in-dev/unreleased/managing-security/external-idp/).
+[IDP integration documentation]({{% relref "external-idp" %}}).
 
 ## Starting the Example
 
