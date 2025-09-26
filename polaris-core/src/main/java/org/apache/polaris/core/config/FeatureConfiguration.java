@@ -392,8 +392,9 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           PolarisConfiguration.<Boolean>builder()
               .key("ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS")
               .description(
-                  "If set to true (default), Polaris will allow configuring namespace/table-level RBAC for federated catalogs per catalog."
-                      + "If set to false, Polaris will only allow configuring namespace/table-level RBAC for federated catalogs at realm level.")
+                  "If set to true (default), Polaris will allow setting or changing "
+                      + "catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs."
+                      + "If set to false, Polaris will disallow setting or changing the above catalog property")
               .defaultValue(true)
               .buildFeatureConfiguration();
 }
