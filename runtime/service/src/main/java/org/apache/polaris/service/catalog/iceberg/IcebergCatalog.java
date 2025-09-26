@@ -2579,7 +2579,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(nsLevel);
         PolarisResolvedPathWrapper resolvedParent =
             resolvedEntityView.getPassthroughResolvedPath(parentNamespace);
-        createNamespaceInternal(nsLevel, Collections.emptyMap(), resolvedParent);
+        try {
+          createNamespaceInternal(nsLevel, Collections.emptyMap(), resolvedParent);
+        } catch (AlreadyExistsException aee) {
+          LOGGER
+              .atInfo()
+              .setCause(aee)
+              .addKeyValue("namespace", namespace)
+              .log(
+                  "Namespace already exists in createNonExistingNamespace; possible race condition");
+        }
       }
     }
   }
