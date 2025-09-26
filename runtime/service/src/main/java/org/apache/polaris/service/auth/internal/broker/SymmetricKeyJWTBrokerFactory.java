@@ -16,31 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.auth.internal.broker;
+
+import static com.google.common.base.Preconditions.checkState;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.security.NoSuchAlgorithmException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
+import org.apache.polaris.service.auth.AuthenticationConfiguration;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
+import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 
 @ApplicationScoped
-@Identifier("rsa-key-pair")
-public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
+@Identifier("symmetric-key")
+public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
 
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final AuthenticationConfiguration authenticationConfiguration;
 
-  private final ConcurrentMap<String, JWTRSAKeyPair> tokenBrokers = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, SymmetricKeyJWTBroker> tokenBrokers =
+      new ConcurrentHashMap<>();
 
   @Inject
-  public JWTRSAKeyPairFactory(
+  public SymmetricKeyJWTBrokerFactory(
       MetaStoreManagerFactory metaStoreManagerFactory,
       AuthenticationConfiguration authenticationConfiguration) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -53,29 +60,31 @@ public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
         realmContext.getRealmIdentifier(), k -> createTokenBroker(realmContext));
   }
 
-  private JWTRSAKeyPair createTokenBroker(RealmContext realmContext) {
+  private SymmetricKeyJWTBroker createTokenBroker(RealmContext realmContext) {
     AuthenticationRealmConfiguration config = authenticationConfiguration.forRealm(realmContext);
     Duration maxTokenGeneration = config.tokenBroker().maxTokenGeneration();
-    KeyProvider keyProvider =
+    SymmetricKeyConfiguration symmetricKeyConfiguration =
         config
             .tokenBroker()
-            .rsaKeyPair()
-            .map(this::fileSystemKeyPair)
-            .orElseGet(this::generateEphemeralKeyPair);
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    return new JWTRSAKeyPair(metaStoreManager, (int) maxTokenGeneration.toSeconds(), keyProvider);
+            .symmetricKey()
+            .orElseThrow(() -> new IllegalStateException("Symmetric key configuration is missing"));
+    String secret = symmetricKeyConfiguration.secret().orElse(null);
+    Path file = symmetricKeyConfiguration.file().orElse(null);
+    checkState(secret != null || file != null, "Either file or secret must be set");
+    Supplier<String> secretSupplier = secret != null ? () -> secret : readSecretFromDisk(file);
+    return new SymmetricKeyJWTBroker(
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
+        (int) maxTokenGeneration.toSeconds(),
+        secretSupplier);
   }
 
-  private KeyProvider fileSystemKeyPair(RSAKeyPairConfiguration config) {
-    return LocalRSAKeyProvider.fromFiles(config.publicKeyFile(), config.privateKeyFile());
-  }
-
-  private KeyProvider generateEphemeralKeyPair() {
-    try {
-      return new LocalRSAKeyProvider(PemUtils.generateKeyPair());
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException(e);
-    }
+  private static Supplier<String> readSecretFromDisk(Path file) {
+    return () -> {
+      try {
+        return Files.readString(file);
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to read secret from file: " + file, e);
+      }
+    };
   }
 }

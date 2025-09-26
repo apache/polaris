@@ -46,9 +46,9 @@ public class CatalogsServiceEvents {
 
   public record AfterUpdateCatalogEvent(Catalog catalog) implements PolarisEvent {}
 
-  public record BeforeListCatalogEvent() implements PolarisEvent {}
+  public record BeforeListCatalogsEvent() implements PolarisEvent {}
 
-  public record AfterListCatalogEvent() implements PolarisEvent {}
+  public record AfterListCatalogsEvent() implements PolarisEvent {}
 
   public record BeforeCreateCatalogRoleEvent(String catalogName, String catalogRoleName)
       implements PolarisEvent {}

@@ -30,7 +30,7 @@ import org.apache.polaris.service.events.listeners.PolarisEventListener;
  * {{@code @link#transformAndSendEvent(HashMap)}} method to define how the event data should be
  * transformed into a JSON string, transmitted, and/or stored.
  */
-public abstract class PropertyMapEventListener extends PolarisEventListener {
+public abstract class PropertyMapEventListener implements PolarisEventListener {
   protected abstract void transformAndSendEvent(HashMap<String, Object> properties);
 
   @Override

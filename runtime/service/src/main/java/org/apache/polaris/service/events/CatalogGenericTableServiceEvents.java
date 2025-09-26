@@ -24,24 +24,27 @@ import org.apache.polaris.service.types.GenericTable;
 
 public class CatalogGenericTableServiceEvents {
   public record BeforeCreateGenericTableEvent(
-      String catalogName, String namespace, CreateGenericTableRequest request) {}
+      String catalogName, String namespace, CreateGenericTableRequest request)
+      implements PolarisEvent {}
 
   public record AfterCreateGenericTableEvent(
-      String catalogName, String namespace, GenericTable table) {}
+      String catalogName, String namespace, GenericTable table) implements PolarisEvent {}
 
-  public record BeforeDropGenericTableEvent(
-      String catalogName, String namespace, String tableName) {}
+  public record BeforeDropGenericTableEvent(String catalogName, String namespace, String tableName)
+      implements PolarisEvent {}
 
-  public record AfterDropGenericTableEvent(
-      String catalogName, String namespace, String tableName) {}
+  public record AfterDropGenericTableEvent(String catalogName, String namespace, String tableName)
+      implements PolarisEvent {}
 
-  public record BeforeListGenericTablesEvent(String catalogName, String namespace) {}
+  public record BeforeListGenericTablesEvent(String catalogName, String namespace)
+      implements PolarisEvent {}
 
-  public record AfterListGenericTablesEvent(String catalogName, String namespace) {}
+  public record AfterListGenericTablesEvent(String catalogName, String namespace)
+      implements PolarisEvent {}
 
-  public record BeforeLoadGenericTableEvent(
-      String catalogName, String namespace, String tableName) {}
+  public record BeforeLoadGenericTableEvent(String catalogName, String namespace, String tableName)
+      implements PolarisEvent {}
 
-  public record AfterLoadGenericTableEvent(
-      String catalogName, String namespace, GenericTable table) {}
+  public record AfterLoadGenericTableEvent(String catalogName, String namespace, GenericTable table)
+      implements PolarisEvent {}
 }

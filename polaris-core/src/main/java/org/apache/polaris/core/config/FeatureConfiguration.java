@@ -277,6 +277,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "When enabled, allows RBAC operations to create synthetic entities for"
                   + " entities in federated catalogs that don't exist in the local metastore.")
+          .catalogConfig("polaris.config.enable-sub-catalog-rbac-for-federated-catalogs")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
