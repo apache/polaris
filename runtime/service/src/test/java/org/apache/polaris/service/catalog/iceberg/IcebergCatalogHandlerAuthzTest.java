@@ -106,6 +106,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
+        credentialManager,
         securityContext(authenticatedPrincipal),
         factory,
         catalogName,
@@ -247,6 +248,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            credentialManager,
             securityContext(authenticatedPrincipal),
             callContextCatalogFactory,
             CATALOG_NAME,
@@ -285,6 +287,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            credentialManager,
             securityContext(authenticatedPrincipal1),
             callContextCatalogFactory,
             CATALOG_NAME,
@@ -1710,7 +1713,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
                 .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                 .setCatalogType("EXTERNAL")
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityRegistry)));
     adminService.createCatalogRole(
         externalCatalog, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
     adminService.createCatalogRole(

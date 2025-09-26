@@ -45,7 +45,10 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.credentials.PolarisCredentialManagerFactory;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -72,8 +75,10 @@ import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.credentials.DefaultPolarisCredentialManagerFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.identity.registry.DefaultServiceIdentityRegistry;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -191,6 +196,8 @@ public record TestServices(
 
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
+      PolarisCredentialManagerFactory credentialManagerFactory =
+          new DefaultPolarisCredentialManagerFactory();
 
       BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
       CallContext callContext =
@@ -216,6 +223,10 @@ public record TestServices(
           new ResolutionManifestFactoryImpl(diagnostics, resolverFactory);
       UserSecretsManager userSecretsManager =
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
+      ServiceIdentityRegistry serviceIdentityRegistry = new DefaultServiceIdentityRegistry();
+      PolarisCredentialManager credentialManager =
+          credentialManagerFactory.getOrCreatePolarisCredentialManager(
+              realmContext, serviceIdentityRegistry);
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);
@@ -252,6 +263,7 @@ public record TestServices(
               resolutionManifestFactory,
               metaStoreManager,
               userSecretsManager,
+              credentialManager,
               authorizer,
               new DefaultCatalogPrefixParser(),
               reservedProperties,
@@ -304,12 +316,14 @@ public record TestServices(
               resolutionManifestFactory,
               metaStoreManager,
               userSecretsManager,
+              serviceIdentityRegistry,
               securityContext,
               authorizer,
               reservedProperties);
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(
-              new PolarisServiceImpl(realmConfig, reservedProperties, adminService));
+              new PolarisServiceImpl(
+                  realmConfig, reservedProperties, adminService, serviceIdentityRegistry));
 
       return new TestServices(
           clock,

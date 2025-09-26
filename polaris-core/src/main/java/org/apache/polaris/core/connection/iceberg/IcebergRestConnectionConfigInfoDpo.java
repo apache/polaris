@@ -31,7 +31,9 @@ import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -62,13 +64,19 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
 
   @Override
   public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager) {
+      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     properties.put(CatalogProperties.URI, getUri());
     if (getRemoteCatalogName() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getRemoteCatalogName());
     }
-    properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(secretsManager));
+    properties.putAll(
+        getAuthenticationParameters()
+            .asIcebergCatalogProperties(
+                secretsManager,
+                (serviceIdentity, authenticationParameters) ->
+                    credentialManager.getConnectionCredentials(
+                        getServiceIdentity(), authenticationParameters)));
     return properties;
   }
 
@@ -80,7 +88,8 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
   }
 
   @Override
-  public ConnectionConfigInfo asConnectionConfigInfoModel() {
+  public ConnectionConfigInfo asConnectionConfigInfoModel(
+      ServiceIdentityRegistry serviceIdentityRegistry) {
     return IcebergRestConnectionConfigInfo.builder()
         .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
         .setUri(getUri())
@@ -89,7 +98,9 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
             getAuthenticationParameters().asAuthenticationParametersModel())
         .setServiceIdentity(
             Optional.ofNullable(getServiceIdentity())
-                .map(ServiceIdentityInfoDpo::asServiceIdentityInfoModel)
+                .map(
+                    serviceIdentityInfoDpo ->
+                        serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityRegistry))
                 .orElse(null))
         .build();
   }

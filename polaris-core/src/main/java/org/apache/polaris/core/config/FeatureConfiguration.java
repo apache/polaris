@@ -303,7 +303,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(
                   List.of(
                       AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name(),
-                      AuthenticationParameters.AuthenticationTypeEnum.BEARER.name()))
+                      AuthenticationParameters.AuthenticationTypeEnum.BEARER.name(),
+                      AuthenticationParameters.AuthenticationTypeEnum.SIGV4.name()))
               .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> ICEBERG_COMMIT_MAX_RETRIES =
