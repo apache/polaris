@@ -16,12 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events.listeners;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
+import java.lang.reflect.Method;
+import org.junit.jupiter.api.Test;
 
-/** Event listener that does nothing. */
-@ApplicationScoped
-@Identifier("no-op")
-public class NoOpPolarisEventListener implements PolarisEventListener {}
+class TestPolarisEventListenerTest {
+
+  @Test
+  @SuppressWarnings("ReturnValueIgnored")
+  void testAllMethodsOverridden() {
+    for (Method method : PolarisEventListener.class.getMethods()) {
+      try {
+        TestPolarisEventListener.class.getDeclaredMethod(
+            method.getName(), method.getParameterTypes());
+      } catch (NoSuchMethodException e) {
+        throw new AssertionError(
+            "Method " + method.getName() + " is not overridden in TestPolarisEventListener");
+      }
+    }
+  }
+}
