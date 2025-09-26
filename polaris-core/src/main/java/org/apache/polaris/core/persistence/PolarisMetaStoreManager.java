@@ -194,7 +194,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PrincipalEntity principal);
 
   /**
    * Create a new catalog. This not only creates the new catalog entity but also the initial admin

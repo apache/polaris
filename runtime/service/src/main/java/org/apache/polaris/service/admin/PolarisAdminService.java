@@ -962,7 +962,7 @@ public class PolarisAdminService {
         .map(CatalogEntity::of);
   }
 
-  public PrincipalWithCredentials createPrincipal(PolarisEntity entity) {
+  public PrincipalWithCredentials createPrincipal(PrincipalEntity entity) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_PRINCIPAL;
     authorizeBasicRootOperationOrThrow(op);
 
@@ -975,7 +975,7 @@ public class PolarisAdminService {
     CreatePrincipalResult principalResult =
         metaStoreManager.createPrincipal(
             getCurrentPolarisContext(),
-            new PolarisEntity.Builder(entity)
+            new PrincipalEntity.Builder(entity)
                 .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
                 .setCreateTimestamp(System.currentTimeMillis())
                 .build());
@@ -985,7 +985,7 @@ public class PolarisAdminService {
           entity.getName());
     }
     return new PrincipalWithCredentials(
-        new PrincipalEntity(principalResult.getPrincipal()).asPrincipal(),
+        principalResult.getPrincipal().asPrincipal(),
         new PrincipalWithCredentialsCredentials(
             principalResult.getPrincipalSecrets().getPrincipalClientId(),
             principalResult.getPrincipalSecrets().getMainSecret()));
