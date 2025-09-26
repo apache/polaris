@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -1416,10 +1417,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     if (refreshEntityToDrop.getType() == PolarisEntityType.CATALOG) {
       // the id of the catalog
       long catalogId = refreshEntityToDrop.getId();
+      CatalogEntity catalogEntityToDrop = CatalogEntity.of(refreshEntityToDrop);
 
-      // if not all namespaces are dropped, we cannot drop this catalog
-      if (ms.hasChildrenInCurrentTxn(callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
-        return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
+      if (!catalogEntityToDrop.isPassthroughFacade()) {
+        // if not all namespaces are dropped, we cannot drop this catalog
+        if (ms.hasChildrenInCurrentTxn(
+            callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
+          return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
+        }
       }
 
       // get the list of catalog roles, at most 2
