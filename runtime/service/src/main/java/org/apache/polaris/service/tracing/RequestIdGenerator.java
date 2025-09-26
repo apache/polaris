@@ -22,7 +22,6 @@ package org.apache.polaris.service.tracing;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 @ApplicationScoped
@@ -31,17 +30,18 @@ public class RequestIdGenerator {
   static final AtomicLong COUNTER = new AtomicLong();
   static final Long COUNTER_SOFT_MAX = Long.MAX_VALUE / 2;
 
-  private final AtomicBoolean resetInProgress = new AtomicBoolean(false);
-
   public String generateRequestId() {
     long currentCounter = COUNTER.incrementAndGet();
     String requestId = baseDefaultUuid + "_" + currentCounter;
-    if (currentCounter >= COUNTER_SOFT_MAX && resetInProgress.compareAndSet(false, true)) {
-      // If we get anywhere close to danger of overflowing Long (which, theoretically,
-      // would be extremely unlikely) rotate the UUID and start again.
-      baseDefaultUuid = UUID.randomUUID().toString();
-      COUNTER.set(0);
-      resetInProgress.set(false);
+    if (currentCounter >= COUNTER_SOFT_MAX) {
+      synchronized (this) {
+        if (COUNTER.get() >= COUNTER_SOFT_MAX) {
+          // If we get anywhere close to danger of overflowing Long (which, theoretically,
+          // would be extremely unlikely) rotate the UUID and start again.
+          baseDefaultUuid = UUID.randomUUID().toString();
+          COUNTER.set(0);
+        }
+      }
     }
     return requestId;
   }
