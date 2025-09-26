@@ -122,7 +122,7 @@ public class CatalogFederationIntegrationTest {
       spark.close();
     }
     catalogApi.purge(localCatalogName);
-    // managementApi.dropCatalog(federatedCatalogName);
+    managementApi.dropCatalog(federatedCatalogName);
     managementApi.dropCatalog(localCatalogName);
     managementApi.deletePrincipalRole(PRINCIPAL_ROLE_NAME);
     managementApi.deletePrincipal(PRINCIPAL_NAME);
