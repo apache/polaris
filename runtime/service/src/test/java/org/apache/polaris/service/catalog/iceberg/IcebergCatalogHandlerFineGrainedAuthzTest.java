@@ -33,14 +33,18 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
- * Test class for fine-grained authorization features in IcebergCatalogHandler.
- * This class extends the base authorization test and enables the fine-grained 
- * update table privileges feature flag to test the new authorization behavior.
- * 
- * This class runs:
- * - All tests from the base class (validating they still work with the feature enabled)
- * - Additional fine-grained authorization tests specific to the enabled feature
- * - Disables the "feature disabled" test since it's not applicable here
+ * Test class for fine-grained authorization features in IcebergCatalogHandler. This class extends
+ * the base authorization test and enables the fine-grained update table privileges feature flag to
+ * test the new authorization behavior.
+ *
+ * <p>This class runs:
+ *
+ * <ul>
+ *   <li>All tests from the base class (validating they still work with the fine-grained authz
+ *       enabled)
+ *   <li>Additional fine-grained authz specific tests
+ *   <li>Disables the "feature disabled" test since it's not applicable here
+ * </ul>
  */
 @QuarkusTest
 @TestProfile(IcebergCatalogHandlerFineGrainedAuthzTest.Profile.class)
@@ -59,10 +63,11 @@ public class IcebergCatalogHandlerFineGrainedAuthzTest extends IcebergCatalogHan
   @Test
   public void testUpdateTableWithFineGrainedPrivileges_AssignUuid() {
     // Test that TABLE_ASSIGN_UUID privilege is required for AssignUUID MetadataUpdate
-    UpdateTableRequest request = UpdateTableRequest.create(
-        TABLE_NS1A_2,
-        List.of(), // no requirements
-        List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
 
     doTestSufficientPrivileges(
         List.of(
@@ -76,10 +81,11 @@ public class IcebergCatalogHandlerFineGrainedAuthzTest extends IcebergCatalogHan
 
   @Test
   public void testUpdateTableWithFineGrainedPrivileges_AssignUuidInsufficientPermissions() {
-    UpdateTableRequest request = UpdateTableRequest.create(
-        TABLE_NS1A_2,
-        List.of(), // no requirements  
-        List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
 
     doTestInsufficientPrivileges(
         List.of(
@@ -98,11 +104,13 @@ public class IcebergCatalogHandlerFineGrainedAuthzTest extends IcebergCatalogHan
 
   @Test
   public void testUpdateTableWithFineGrainedPrivileges_UpgradeFormatVersion() {
-    // Test that TABLE_UPGRADE_FORMAT_VERSION privilege is required for UpgradeFormatVersion MetadataUpdate
-    UpdateTableRequest request = UpdateTableRequest.create(
-        TABLE_NS1A_2,
-        List.of(), // no requirements
-        List.of(new MetadataUpdate.UpgradeFormatVersion(2)));
+    // Test that TABLE_UPGRADE_FORMAT_VERSION privilege is required for UpgradeFormatVersion
+    // MetadataUpdate
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.UpgradeFormatVersion(2)));
 
     doTestSufficientPrivileges(
         List.of(
@@ -117,10 +125,11 @@ public class IcebergCatalogHandlerFineGrainedAuthzTest extends IcebergCatalogHan
   @Test
   public void testUpdateTableWithFineGrainedPrivileges_SetProperties() {
     // Test that TABLE_SET_PROPERTIES privilege is required for SetProperties MetadataUpdate
-    UpdateTableRequest request = UpdateTableRequest.create(
-        TABLE_NS1A_2,
-        List.of(), // no requirements
-        List.of(new MetadataUpdate.SetProperties(Map.of("test.property", "test.value"))));
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.SetProperties(Map.of("test.property", "test.value"))));
 
     doTestSufficientPrivileges(
         List.of(
@@ -135,10 +144,11 @@ public class IcebergCatalogHandlerFineGrainedAuthzTest extends IcebergCatalogHan
   @Test
   public void testUpdateTableWithFineGrainedPrivileges_RemoveProperties() {
     // Test that TABLE_REMOVE_PROPERTIES privilege is required for RemoveProperties MetadataUpdate
-    UpdateTableRequest request = UpdateTableRequest.create(
-        TABLE_NS1A_2,
-        List.of(), // no requirements
-        List.of(new MetadataUpdate.RemoveProperties(Set.of("property.to.remove"))));
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.RemoveProperties(Set.of("property.to.remove"))));
 
     doTestSufficientPrivileges(
         List.of(
@@ -153,17 +163,20 @@ public class IcebergCatalogHandlerFineGrainedAuthzTest extends IcebergCatalogHan
   @Test
   public void testUpdateTableWithFineGrainedPrivileges_MultipleUpdates() {
     // Test that multiple MetadataUpdate types require multiple specific privileges
-    UpdateTableRequest request = UpdateTableRequest.create(
-        TABLE_NS1A_2,
-        List.of(), // no requirements
-        List.of(
-            new MetadataUpdate.UpgradeFormatVersion(2),
-            new MetadataUpdate.SetProperties(Map.of("test.prop", "test.val"))));
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(
+                new MetadataUpdate.UpgradeFormatVersion(2),
+                new MetadataUpdate.SetProperties(Map.of("test.prop", "test.val"))));
 
     // Test that having both specific privileges works
     doTestSufficientPrivilegeSets(
         List.of(
-            Set.of(PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION, PolarisPrivilege.TABLE_SET_PROPERTIES),
+            Set.of(
+                PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION,
+                PolarisPrivilege.TABLE_SET_PROPERTIES),
             Set.of(PolarisPrivilege.TABLE_WRITE_PROPERTIES), // Broader privilege should work
             Set.of(PolarisPrivilege.TABLE_FULL_METADATA),
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
@@ -176,12 +189,13 @@ public class IcebergCatalogHandlerFineGrainedAuthzTest extends IcebergCatalogHan
   @Test
   public void testUpdateTableWithFineGrainedPrivileges_MultipleUpdatesInsufficientPermissions() {
     // Test that having only one of the required privileges fails
-    UpdateTableRequest request = UpdateTableRequest.create(
-        TABLE_NS1A_2,
-        List.of(), // no requirements
-        List.of(
-            new MetadataUpdate.UpgradeFormatVersion(2),
-            new MetadataUpdate.SetProperties(Map.of("test.prop", "test.val"))));
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(
+                new MetadataUpdate.UpgradeFormatVersion(2),
+                new MetadataUpdate.SetProperties(Map.of("test.prop", "test.val"))));
 
     // Test that having only one specific privilege fails (need both)
     doTestInsufficientPrivileges(
@@ -195,8 +209,8 @@ public class IcebergCatalogHandlerFineGrainedAuthzTest extends IcebergCatalogHan
   }
 
   /**
-   * Override the "feature disabled" test from the parent class since it's not applicable
-   * when the fine-grained authorization feature is enabled in this test class.
+   * Override the "feature disabled" test from the parent class since it's not applicable when the
+   * fine-grained authorization feature is enabled in this test class.
    */
   @Override
   @Disabled("This test is only applicable when fine-grained authorization is disabled")
