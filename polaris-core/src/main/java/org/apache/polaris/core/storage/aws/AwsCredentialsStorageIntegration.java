@@ -82,7 +82,7 @@ public class AwsCredentialsStorageIntegration
     String region = storageConfig.getRegion();
     AccessConfig.Builder accessConfig = AccessConfig.builder();
 
-    if (storageConfig.shouldUseSts()) {
+    if (shouldUseSts(storageConfig)) {
       AssumeRoleRequest.Builder request =
           AssumeRoleRequest.builder()
               .externalId(storageConfig.getExternalId())
@@ -150,6 +150,10 @@ public class AwsCredentialsStorageIntegration
     }
 
     return accessConfig.build();
+  }
+
+  private boolean shouldUseSts(AwsStorageConfigurationInfo storageConfig) {
+    return !Boolean.TRUE.equals(storageConfig.getStsUnavailable());
   }
 
   /**

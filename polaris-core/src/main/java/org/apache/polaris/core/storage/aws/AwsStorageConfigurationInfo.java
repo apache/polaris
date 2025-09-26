@@ -104,12 +104,6 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
    */
   public abstract @Nullable Boolean getStsUnavailable();
 
-  /** Convenience getter for {@link #getStsUnavailable()} that handles defaults. */
-  @JsonIgnore
-  public boolean shouldUseSts() {
-    return !Boolean.TRUE.equals(getStsUnavailable());
-  }
-
   /** Endpoint URI for STS API calls */
   @Nullable
   public abstract String getStsEndpoint();

@@ -120,10 +120,10 @@ public class AwsStorageConfigurationInfoTest {
 
   @Test
   public void testStsUnavailable() {
-    assertThat(newBuilder().build().shouldUseSts()).isTrue();
-    assertThat(newBuilder().stsUnavailable(null).build().shouldUseSts()).isTrue();
-    assertThat(newBuilder().stsUnavailable(false).build().shouldUseSts()).isTrue();
-    assertThat(newBuilder().stsUnavailable(true).build().shouldUseSts()).isFalse();
+    assertThat(newBuilder().build().getStsUnavailable()).isNull();
+    assertThat(newBuilder().stsUnavailable(null).build().getStsUnavailable()).isNull();
+    assertThat(newBuilder().stsUnavailable(false).build().getStsUnavailable()).isFalse();
+    assertThat(newBuilder().stsUnavailable(true).build().getStsUnavailable()).isTrue();
   }
 
   @Test
