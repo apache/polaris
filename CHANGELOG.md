@@ -41,6 +41,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
 
+- Added support for S3-compatible storage that does not have STS (use `stsUavailable: true` in catalog storage configuration)
+
 ### Changes
 
 * The following APIs will now return the newly-created objects as part of the successful 201 response: createCatalog, createPrincipalRole, createCatalogRole. 

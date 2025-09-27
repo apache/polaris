@@ -19,12 +19,15 @@
 package org.apache.polaris.service.it;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX;
 import static org.apache.iceberg.aws.AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.ACCESS_KEY_ID;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.ENDPOINT;
 import static org.apache.iceberg.aws.s3.S3FileIOProperties.SECRET_ACCESS_KEY;
 import static org.apache.iceberg.types.Types.NestedField.optional;
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_KEY_ID;
+import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_SECRET_KEY;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -165,8 +168,10 @@ public class RestCatalogMinIOSpecialIT {
       Optional<String> endpoint,
       Optional<String> stsEndpoint,
       boolean pathStyleAccess,
-      Optional<AccessDelegationMode> delegationMode) {
-    return createCatalog(endpoint, stsEndpoint, pathStyleAccess, Optional.empty(), delegationMode);
+      Optional<AccessDelegationMode> delegationMode,
+      boolean stsEnabled) {
+    return createCatalog(
+        endpoint, stsEndpoint, pathStyleAccess, Optional.empty(), delegationMode, stsEnabled);
   }
 
   private RESTCatalog createCatalog(
@@ -174,11 +179,13 @@ public class RestCatalogMinIOSpecialIT {
       Optional<String> stsEndpoint,
       boolean pathStyleAccess,
       Optional<String> endpointInternal,
-      Optional<AccessDelegationMode> delegationMode) {
+      Optional<AccessDelegationMode> delegationMode,
+      boolean stsEnabled) {
     AwsStorageConfigInfo.Builder storageConfig =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(pathStyleAccess)
+            .setStsUnavailable(!stsEnabled)
             .setAllowedLocations(List.of(storageBase.toString()));
 
     endpoint.ifPresent(storageConfig::setEndpoint);
@@ -187,6 +194,12 @@ public class RestCatalogMinIOSpecialIT {
 
     CatalogProperties.Builder catalogProps =
         CatalogProperties.builder(storageBase.toASCIIString() + "/" + catalogName);
+    if (!stsEnabled) {
+      catalogProps.addProperty(
+          TABLE_DEFAULT_PREFIX + AWS_KEY_ID.getPropertyName(), MINIO_ACCESS_KEY);
+      catalogProps.addProperty(
+          TABLE_DEFAULT_PREFIX + AWS_SECRET_KEY.getPropertyName(), MINIO_SECRET_KEY);
+    }
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -227,9 +240,12 @@ public class RestCatalogMinIOSpecialIT {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  public void testCreateTable(boolean pathStyle) throws IOException {
-    LoadTableResponse response = doTestCreateTable(pathStyle, Optional.empty());
+  @CsvSource("true,  true,")
+  @CsvSource("false, true,")
+  @CsvSource("true,  false,")
+  @CsvSource("false, false,")
+  public void testCreateTable(boolean pathStyle, boolean stsEnabled) throws IOException {
+    LoadTableResponse response = doTestCreateTable(pathStyle, Optional.empty(), stsEnabled);
     assertThat(response.config()).doesNotContainKey(SECRET_ACCESS_KEY);
     assertThat(response.config()).doesNotContainKey(ACCESS_KEY_ID);
     assertThat(response.config()).doesNotContainKey(REFRESH_CREDENTIALS_ENDPOINT);
@@ -239,7 +255,8 @@ public class RestCatalogMinIOSpecialIT {
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testCreateTableVendedCredentials(boolean pathStyle) throws IOException {
-    LoadTableResponse response = doTestCreateTable(pathStyle, Optional.of(VENDED_CREDENTIALS));
+    LoadTableResponse response =
+        doTestCreateTable(pathStyle, Optional.of(VENDED_CREDENTIALS), true);
     assertThat(response.config())
         .containsEntry(
             REFRESH_CREDENTIALS_ENDPOINT,
@@ -247,10 +264,10 @@ public class RestCatalogMinIOSpecialIT {
     assertThat(response.credentials()).hasSize(1);
   }
 
-  private LoadTableResponse doTestCreateTable(boolean pathStyle, Optional<AccessDelegationMode> dm)
-      throws IOException {
+  private LoadTableResponse doTestCreateTable(
+      boolean pathStyle, Optional<AccessDelegationMode> dm, boolean stsEnabled) throws IOException {
     try (RESTCatalog restCatalog =
-        createCatalog(Optional.of(endpoint), Optional.empty(), pathStyle, dm)) {
+        createCatalog(Optional.of(endpoint), Optional.empty(), pathStyle, dm, stsEnabled)) {
       LoadTableResponse loadTableResponse = doTestCreateTable(restCatalog, dm);
       if (pathStyle) {
         assertThat(loadTableResponse.config())
@@ -268,7 +285,8 @@ public class RestCatalogMinIOSpecialIT {
             Optional.of(endpoint),
             false,
             Optional.of(endpoint),
-            Optional.empty())) {
+            Optional.empty(),
+            true)) {
       StorageConfigInfo storageConfig =
           managementApi.getCatalog(catalogName).getStorageConfigInfo();
       assertThat((AwsStorageConfigInfo) storageConfig)
@@ -319,18 +337,22 @@ public class RestCatalogMinIOSpecialIT {
   }
 
   @ParameterizedTest
-  @CsvSource("true,")
-  @CsvSource("false,")
-  @CsvSource("true,VENDED_CREDENTIALS")
-  @CsvSource("false,VENDED_CREDENTIALS")
-  public void testAppendFiles(boolean pathStyle, AccessDelegationMode delegationMode)
+  @CsvSource("true,  true,")
+  @CsvSource("false, true,")
+  @CsvSource("true,  false,")
+  @CsvSource("false, false,")
+  @CsvSource("true,  true,  VENDED_CREDENTIALS")
+  @CsvSource("false, true,  VENDED_CREDENTIALS")
+  public void testAppendFiles(
+      boolean pathStyle, boolean stsEnabled, AccessDelegationMode delegationMode)
       throws IOException {
     try (RESTCatalog restCatalog =
         createCatalog(
             Optional.of(endpoint),
             Optional.of(endpoint),
             pathStyle,
-            Optional.ofNullable(delegationMode))) {
+            Optional.ofNullable(delegationMode),
+            stsEnabled)) {
       catalogApi.createNamespace(catalogName, "test-ns");
       TableIdentifier id = TableIdentifier.of("test-ns", "t1");
       Table table = restCatalog.createTable(id, SCHEMA);
@@ -344,7 +366,8 @@ public class RestCatalogMinIOSpecialIT {
               table
                   .locationProvider()
                   .newDataLocation(
-                      String.format("test-file-%s-%s.txt", pathStyle, delegationMode)));
+                      String.format(
+                          "test-file-%s-%s-%s.txt", pathStyle, delegationMode, stsEnabled)));
       OutputFile f1 = io.newOutputFile(loc.toString());
       try (PositionOutputStream os = f1.create()) {
         os.write("Hello World".getBytes(UTF_8));

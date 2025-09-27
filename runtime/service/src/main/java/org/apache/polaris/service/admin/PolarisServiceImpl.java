@@ -160,6 +160,10 @@ public class PolarisServiceImpl
             || s3Config.getEndpointInternal() != null) {
           throw new IllegalArgumentException("Explicitly setting S3 endpoints is not allowed.");
         }
+
+        if (s3Config.getStsUnavailable() != null) {
+          throw new IllegalArgumentException("Explicitly disabling STS is not allowed.");
+        }
       }
     }
   }
