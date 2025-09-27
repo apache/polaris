@@ -283,6 +283,7 @@ The `principals` command is used to manage principals within Polaris.
 5. rotate-credentials
 6. update
 7. access
+8. reset
 
 #### create
 
@@ -416,6 +417,32 @@ options:
 
 ```
 polaris principals access quickstart_user
+```
+
+#### reset
+
+The `reset` subcommand is used to reset principal credentials.
+
+```
+input: polaris principals reset --help
+options:
+  reset
+    Named arguments:
+      --new-client-id  The new client ID for the principal
+      --new-client-secret  The new client secret for the principal
+    Positional arguments:
+      principal
+```
+
+##### Examples
+
+```
+polaris principals create some_user
+
+polaris principals reset some_user
+polaris principals reset --new-client-id ${NEW_CLIENT_ID} some_user
+polaris principals reset --new-client-secret ${NEW_CLIENT_SECRET} some_user
+polaris principals reset --new-client-id ${NEW_CLIENT_ID} --new-client-secret ${NEW_CLIENT_SECRET} some_user
 ```
 
 ### Principal Roles

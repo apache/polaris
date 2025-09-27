@@ -99,6 +99,8 @@ class Command(ABC):
                 remove_properties=[]
                 if remove_properties is None
                 else remove_properties,
+                new_client_id=options_get(Arguments.NEW_CLIENT_ID),
+                new_client_secret=options_get(Arguments.NEW_CLIENT_SECRET),
             )
         elif options.command == Commands.PRINCIPAL_ROLES:
             from cli.command.principal_roles import PrincipalRolesCommand
