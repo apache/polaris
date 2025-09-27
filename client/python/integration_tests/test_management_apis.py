@@ -134,7 +134,7 @@ def test_grants(management_client: PolarisDefaultApi, test_catalog: Catalog) -> 
 def test_reset_principal_credentials_default(
     management_client: PolarisDefaultApi,
 ) -> None:
-    principal_name = f"test_principal_for_reset_creds_default"
+    principal_name = "test_principal_for_reset_creds_default"
     principal_with_creds = create_principal(management_client, principal_name)
     initial_client_id = principal_with_creds.principal.client_id
     initial_client_secret = (
@@ -159,7 +159,7 @@ def test_reset_principal_credentials_default(
 def test_reset_principal_credentials_custom(
     management_client: PolarisDefaultApi,
 ) -> None:
-    principal_name = f"test_principal_for_reset_creds_custom"
+    principal_name = "test_principal_for_reset_creds_custom"
     create_principal(management_client, principal_name)
     custom_client_id = "e469c048cf866df1"
     custom_client_secret = "1f37adcd21bf1586ed090332eded9cd3"
@@ -184,7 +184,7 @@ def test_reset_principal_credentials_custom(
 def test_reset_principal_credentials_custom_client_id(
     management_client: PolarisDefaultApi,
 ) -> None:
-    principal_name = f"test_principal_for_reset_creds_client_id"
+    principal_name = "test_principal_for_reset_creds_client_id"
     principal_with_creds = create_principal(management_client, principal_name)
     initial_client_secret = (
         principal_with_creds.credentials.client_secret.get_secret_value()
@@ -209,7 +209,7 @@ def test_reset_principal_credentials_custom_client_id(
 def test_reset_principal_credentials_custom_client_secret(
     management_client: PolarisDefaultApi,
 ) -> None:
-    principal_name = f"test_principal_for_reset_creds_client_secret"
+    principal_name = "test_principal_for_reset_creds_client_secret"
     principal_with_creds = create_principal(management_client, principal_name)
     initial_client_id = principal_with_creds.principal.client_id
     custom_client_secret = "1f37adcd21bf1586ed090332eded9cd3"
