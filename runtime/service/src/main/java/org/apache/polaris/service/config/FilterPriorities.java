@@ -21,7 +21,8 @@ package org.apache.polaris.service.config;
 import jakarta.ws.rs.Priorities;
 
 public final class FilterPriorities {
-  public static final int REALM_CONTEXT_FILTER = Priorities.AUTHENTICATION - 100;
+  public static final int REQUEST_ID_FILTER = Priorities.AUTHENTICATION - 101;
+  public static final int REALM_CONTEXT_FILTER = REQUEST_ID_FILTER + 1;
   public static final int RATE_LIMITER_FILTER = Priorities.USER;
   public static final int MDC_FILTER = REALM_CONTEXT_FILTER + 1;
   public static final int TRACING_FILTER = REALM_CONTEXT_FILTER + 2;

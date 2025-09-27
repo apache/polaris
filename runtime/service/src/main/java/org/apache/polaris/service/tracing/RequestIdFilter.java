@@ -18,41 +18,33 @@
  */
 package org.apache.polaris.service.tracing;
 
-import io.opentelemetry.api.trace.Span;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.ext.Provider;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.FilterPriorities;
-import org.apache.polaris.service.context.RealmContextFilter;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.apache.polaris.service.logging.LoggingConfiguration;
 
 @PreMatching
 @ApplicationScoped
-@Priority(FilterPriorities.TRACING_FILTER)
+@Priority(FilterPriorities.REQUEST_ID_FILTER)
 @Provider
-public class TracingFilter implements ContainerRequestFilter {
+public class RequestIdFilter implements ContainerRequestFilter {
 
-  public static final String REQUEST_ID_ATTRIBUTE = "polaris.request.id";
-  public static final String REALM_ID_ATTRIBUTE = "polaris.realm.id";
+  public static final String REQUEST_ID_KEY = "requestId";
 
-  @ConfigProperty(name = "quarkus.otel.sdk.disabled")
-  boolean sdkDisabled;
+  @Inject LoggingConfiguration loggingConfiguration;
+  @Inject RequestIdGenerator requestIdGenerator;
 
   @Override
   public void filter(ContainerRequestContext rc) {
-    if (!sdkDisabled) {
-      Span span = Span.current();
-      String requestId = (String) rc.getProperty(RequestIdFilter.REQUEST_ID_KEY);
-      if (requestId != null) {
-        span.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
-      }
-      RealmContext realmContext =
-          (RealmContext) rc.getProperty(RealmContextFilter.REALM_CONTEXT_KEY);
-      span.setAttribute(REALM_ID_ATTRIBUTE, realmContext.getRealmIdentifier());
+    var requestId = rc.getHeaderString(loggingConfiguration.requestIdHeaderName());
+    if (requestId == null) {
+      requestId = requestIdGenerator.generateRequestId();
     }
+    rc.setProperty(REQUEST_ID_KEY, requestId);
   }
 }
