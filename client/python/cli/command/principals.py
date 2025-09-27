@@ -30,6 +30,7 @@ from polaris.management import (
     Principal,
     PrincipalWithCredentials,
     UpdatePrincipalRequest,
+    ResetPrincipalRequest
 )
 
 
@@ -55,6 +56,8 @@ class PrincipalsCommand(Command):
     properties: Optional[Dict[str, StrictStr]]
     set_properties: Dict[str, StrictStr]
     remove_properties: List[str]
+    new_client_id: Optional[str] = None
+    new_client_secret: Optional[str] = None
 
     def _get_catalogs(self, api: PolarisDefaultApi):
         for catalog in api.list_catalogs().catalogs:
@@ -170,6 +173,21 @@ class PrincipalsCommand(Command):
                         )
                         role_data["catalog_roles"].append(catalog_data)
                 result["principal_roles"].append(role_data)
-            print(json.dumps(result))
+        elif self.principals_subcommand == Subcommands.RESET:
+            if self.new_client_id or self.new_client_secret:
+                request = ResetPrincipalRequest(
+                    clientId=self.new_client_id, clientSecret=self.new_client_secret
+                )
+                print(
+                    self.build_credential_json(
+                        api.reset_credentials(self.principal_name, request)
+                    )
+                )
+            else:
+                print(
+                    self.build_credential_json(
+                        api.reset_credentials(self.principal_name, None)
+                    )
+                )
         else:
             raise Exception(f"{self.principals_subcommand} is not supported in the CLI")

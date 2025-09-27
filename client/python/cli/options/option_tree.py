@@ -160,6 +160,10 @@ class OptionTree:
                     Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
                 ], input_name=Arguments.PRINCIPAL),
                 Option(Subcommands.ACCESS, input_name=Arguments.PRINCIPAL),
+                Option(Subcommands.RESET, args=[
+                    Argument(Arguments.NEW_CLIENT_ID, str, Hints.Principals.Reset.CLIENT_ID),
+                    Argument(Arguments.NEW_CLIENT_SECRET, str, Hints.Principals.Reset.CLIENT_SECRET),
+                ], input_name=Arguments.PRINCIPAL),
             ]),
             Option(Commands.PRINCIPAL_ROLES, 'manage principal roles', children=[
                 Option(Subcommands.CREATE, args=[
