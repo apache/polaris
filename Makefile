@@ -144,7 +144,7 @@ client-unit-test: client-setup-env ## Run client unit tests
 	@echo "--- Client unit tests complete ---"
 
 .PHONY: client-integration-test
-client-integration-test: client-setup-env ## Run client integration tests
+client-integration-test: build-server client-setup-env ## Run client integration tests
 	@echo "--- Starting client integration tests ---"
 	@echo "Ensuring Docker Compose services are stopped and removed..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml kill || true # `|| true` prevents make from failing if containers don't exist
