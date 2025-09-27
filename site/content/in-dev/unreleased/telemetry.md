@@ -190,3 +190,7 @@ polaris.log.mdc.region=us-west-2
 ```
 
 MDC context is propagated across threads, including in `TaskExecutor` threads.
+
+## Links
+
+Visit [Using Polaris with telemetry tools]({{% relref "telemetry-tools" %}}) to see sample Polaris config with Prometheus and Jaeger.

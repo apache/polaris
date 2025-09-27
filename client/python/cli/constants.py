@@ -224,7 +224,7 @@ class Hints:
                 "Multiple locations can be provided by specifying this option more than once."
             )
 
-            ROLE_ARN = "(Only for S3) A role ARN to use when connecting to S3"
+            ROLE_ARN = "(Only for AWS S3) A role ARN to use when connecting to S3"
             EXTERNAL_ID = "(Only for S3) The external ID to use when connecting to S3"
             REGION = "(Only for S3) The region to use when connecting to S3"
             USER_ARN = "(Only for S3) A user ARN to use when connecting to S3"

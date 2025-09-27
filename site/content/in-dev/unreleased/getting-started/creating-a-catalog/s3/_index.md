@@ -32,7 +32,7 @@ For the `polaris catalogs create` [command]({{% ref "../../../command-line-inter
 
 ```text
 --storage-type s3
---role-arn  (Required for S3) A role ARN to use when connecting to S3
+--role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
 --region  (Only for S3) The region to use when connecting to S3
 --external-id  (Only for S3) The external ID to use when connecting to S3
 ```
