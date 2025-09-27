@@ -1,3 +1,4 @@
+#
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
 #  distributed with this work for additional information
@@ -14,12 +15,12 @@
 #  KIND, either express or implied.  See the License for the
 #  specific language governing permissions and limitations
 #  under the License.
-import contextlib
+#
 import json
 import os
 from argparse import Namespace
 from functools import cached_property
-from typing import Iterator, Optional, Dict
+from typing import Optional, Dict
 
 from cli.constants import (
   CONFIG_FILE,
