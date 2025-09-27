@@ -588,11 +588,11 @@ class TestCliParsing(unittest.TestCase):
             })
 
         check_arguments(
-            mock_execute(['principals', 'reset', 'test', '--new-client-id', 'id1', '--new-client-secret', 'secret1']),
+            mock_execute(['principals', 'reset', 'test', '--new-client-id', 'e469c048cf866df1', '--new-client-secret', 'e469c048cf866dfae469c048cf866df1']),
             'reset_credentials', {
                 (0, None): 'test',
-                (1, 'client_id'): 'id1',
-                (1, 'client_secret'): 'secret1',
+                (1, 'client_id'): 'e469c048cf866df1',
+                (1, 'client_secret'): 'e469c048cf866dfae469c048cf866df1',
             })
 
         check_arguments(
@@ -603,19 +603,19 @@ class TestCliParsing(unittest.TestCase):
             })
 
         check_arguments(
-            mock_execute(['principals', 'reset', 'test', '--new-client-id', 'id1']),
+            mock_execute(['principals', 'reset', 'test', '--new-client-id', 'e469c048cf866df1']),
             'reset_credentials', {
                 (0, None): 'test',
-                (1, 'client_id'): 'id1',
+                (1, 'client_id'): 'e469c048cf866df1',
                 (1, 'client_secret'): None,
             })
 
         check_arguments(
-            mock_execute(['principals', 'reset', 'test', '--new-client-secret', 'secret1']),
+            mock_execute(['principals', 'reset', 'test', '--new-client-secret', 'e469c048cf866dfae469c048cf866df1']),
             'reset_credentials', {
                 (0, None): 'test',
                 (1, 'client_id'): None,
-                (1, 'client_secret'): 'secret1',
+                (1, 'client_secret'): 'e469c048cf866dfae469c048cf866df1',
             })
 
 
