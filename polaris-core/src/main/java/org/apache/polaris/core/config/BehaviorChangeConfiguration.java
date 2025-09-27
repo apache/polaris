@@ -84,4 +84,14 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
                   + " credential vending.")
           .defaultValue(false)
           .buildBehaviorChangeConfiguration();
+
+  public static final BehaviorChangeConfiguration<Boolean> SCHEMA_VERSION_FALL_BACK_ON_DNE =
+      PolarisConfiguration.<Boolean>builder()
+          .key("SCHEMA_VERSION_FALL_BACK_ON_DNE")
+          .description(
+              "If set to true, exceptions encountered while loading the VERSION table which appear to be"
+                  + " caused by the VERSION table not existing will be interpreted as meaning that the"
+                  + " schema version is currently 0.")
+          .defaultValue(true)
+          .buildBehaviorChangeConfiguration();
 }

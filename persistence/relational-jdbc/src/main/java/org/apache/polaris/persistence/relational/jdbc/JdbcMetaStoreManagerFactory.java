@@ -32,6 +32,8 @@ import java.util.function.Supplier;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -74,6 +76,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
+  @Inject PolarisConfigurationStore configurationStore;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -98,7 +101,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     // RealmContext (request-scoped bean) can still create a JdbcBasePersistenceImpl
     String realmId = realmContext.getRealmIdentifier();
     // determine schemaVersion once per realm
-    final int schemaVersion = JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations);
+    final int schemaVersion =
+        JdbcBasePersistenceImpl.loadSchemaVersion(
+            datasourceOperations,
+            configurationStore.getConfiguration(
+                realmContext, BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
     sessionSupplierMap.put(
         realmId,
         () ->
