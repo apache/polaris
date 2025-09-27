@@ -852,74 +852,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public LoadTableResponse updateTable(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
-    boolean useFineGrainedOperations =
-        realmConfig.getConfig(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES);
 
-    if (useFineGrainedOperations) {
-      EnumSet<PolarisAuthorizableOperation> actions =
-          EnumSet.noneOf(PolarisAuthorizableOperation.class);
-      request
-          .updates()
-          .forEach(
-              update -> {
-                PolarisAuthorizableOperation operation =
-                    switch (update) {
-                      case MetadataUpdate.AssignUUID assignUuid ->
-                          PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
-                      case MetadataUpdate.UpgradeFormatVersion upgradeFormat ->
-                          PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
-                      case MetadataUpdate.AddSchema addSchema ->
-                          PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
-                      case MetadataUpdate.SetCurrentSchema setCurrentSchema ->
-                          PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
-                      case MetadataUpdate.AddPartitionSpec addPartitionSpec ->
-                          PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
-                      case MetadataUpdate.AddSortOrder addSortOrder ->
-                          PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
-                      case MetadataUpdate.SetDefaultSortOrder setDefaultSortOrder ->
-                          PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
-                      case MetadataUpdate.AddSnapshot addSnapshot ->
-                          PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
-                      case MetadataUpdate.SetSnapshotRef setSnapshotRef ->
-                          PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
-                      case MetadataUpdate.RemoveSnapshots removeSnapshots ->
-                          PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
-                      case MetadataUpdate.RemoveSnapshotRef removeSnapshotRef ->
-                          PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
-                      case MetadataUpdate.SetLocation setLocation ->
-                          PolarisAuthorizableOperation.SET_TABLE_LOCATION;
-                      case MetadataUpdate.SetProperties setProperties ->
-                          PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
-                      case MetadataUpdate.RemoveProperties removeProperties ->
-                          PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
-                      case MetadataUpdate.SetStatistics setStatistics ->
-                          PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
-                      case MetadataUpdate.RemoveStatistics removeStatistics ->
-                          PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
-                      case MetadataUpdate.RemovePartitionSpecs removePartitionSpecs ->
-                          PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
-                      default ->
-                          PolarisAuthorizableOperation
-                              .UPDATE_TABLE; // Fallback for unknown update types
-                    };
-                actions.add(operation);
-              });
+    EnumSet<PolarisAuthorizableOperation> authorizableOperations =
+        getUpdateTableAuthorizableOperations(request);
 
-      // If there are no MetadataUpdates, then default to the UPDATE_TABLE operation.
-      if (actions.isEmpty()) {
-        actions.add(PolarisAuthorizableOperation.UPDATE_TABLE);
-      }
-
-      // Authorize all collected operations
-      for (PolarisAuthorizableOperation action : actions) {
-        authorizeBasicTableLikeOperationOrThrow(
-            action, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
-      }
-    } else {
-      PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_TABLE;
-      authorizeBasicTableLikeOperationOrThrow(
-          op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
-    }
+    authorizeBasicTableLikeOperationsOrThrow(
+        authorizableOperations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
@@ -1184,6 +1122,72 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .build();
     } else {
       throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
+    }
+  }
+
+  private EnumSet<PolarisAuthorizableOperation> getUpdateTableAuthorizableOperations(
+      UpdateTableRequest request) {
+    boolean useFineGrainedOperations =
+        realmConfig.getConfig(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES);
+
+    if (useFineGrainedOperations) {
+      EnumSet<PolarisAuthorizableOperation> actions =
+          EnumSet.noneOf(PolarisAuthorizableOperation.class);
+      request
+          .updates()
+          .forEach(
+              update -> {
+                PolarisAuthorizableOperation operation =
+                    switch (update) {
+                      case MetadataUpdate.AssignUUID assignUuid ->
+                          PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
+                      case MetadataUpdate.UpgradeFormatVersion upgradeFormat ->
+                          PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
+                      case MetadataUpdate.AddSchema addSchema ->
+                          PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
+                      case MetadataUpdate.SetCurrentSchema setCurrentSchema ->
+                          PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
+                      case MetadataUpdate.AddPartitionSpec addPartitionSpec ->
+                          PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
+                      case MetadataUpdate.AddSortOrder addSortOrder ->
+                          PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
+                      case MetadataUpdate.SetDefaultSortOrder setDefaultSortOrder ->
+                          PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
+                      case MetadataUpdate.AddSnapshot addSnapshot ->
+                          PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
+                      case MetadataUpdate.SetSnapshotRef setSnapshotRef ->
+                          PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
+                      case MetadataUpdate.RemoveSnapshots removeSnapshots ->
+                          PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
+                      case MetadataUpdate.RemoveSnapshotRef removeSnapshotRef ->
+                          PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
+                      case MetadataUpdate.SetLocation setLocation ->
+                          PolarisAuthorizableOperation.SET_TABLE_LOCATION;
+                      case MetadataUpdate.SetProperties setProperties ->
+                          PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
+                      case MetadataUpdate.RemoveProperties removeProperties ->
+                          PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
+                      case MetadataUpdate.SetStatistics setStatistics ->
+                          PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
+                      case MetadataUpdate.RemoveStatistics removeStatistics ->
+                          PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
+                      case MetadataUpdate.RemovePartitionSpecs removePartitionSpecs ->
+                          PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
+                      default ->
+                          PolarisAuthorizableOperation
+                              .UPDATE_TABLE; // Fallback for unknown update types
+                    };
+                actions.add(operation);
+              });
+
+      // If there are no MetadataUpdates, then default to the UPDATE_TABLE operation.
+      if (actions.isEmpty()) {
+        actions.add(PolarisAuthorizableOperation.UPDATE_TABLE);
+      }
+
+      return actions;
+    } else {
+      return EnumSet.of(PolarisAuthorizableOperation.UPDATE_TABLE);
     }
   }
 
