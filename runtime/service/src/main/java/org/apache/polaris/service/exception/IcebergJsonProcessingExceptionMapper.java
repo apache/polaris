@@ -61,7 +61,7 @@ public class IcebergJsonProcessingExceptionMapper
     if (exception instanceof JsonGenerationException
         || exception instanceof InvalidDefinitionException) {
       long id = ThreadLocalRandom.current().nextLong();
-      getLogger()
+      getLoggerForExceptionLogging()
           .error(String.format(Locale.ROOT, "Error handling a request: %016x", id), exception);
       String message =
           String.format(
@@ -77,8 +77,8 @@ public class IcebergJsonProcessingExceptionMapper
     /*
      * Otherwise, it's those pesky users.
      */
-    getLogger().info("Unable to process JSON: {}", exception.getMessage());
-    getLogger().debug("Full JsonProcessingException", exception);
+    LOGGER.info("Unable to process JSON: {}", exception.getMessage());
+    getLoggerForExceptionLogging().debug("Full JsonProcessingException", exception);
 
     String messagePrefix =
         switch (exception) {
@@ -99,8 +99,12 @@ public class IcebergJsonProcessingExceptionMapper
         .build();
   }
 
+  /**
+   * This function is only present for the {@code ExceptionMapperTest} and must only be used during
+   * once any execution of {@link #toResponse(JsonProcessingException)}.
+   */
   @VisibleForTesting
-  Logger getLogger() {
+  Logger getLoggerForExceptionLogging() {
     return LOGGER;
   }
 }

@@ -19,7 +19,7 @@
 
 plugins {
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
 }
 
@@ -65,7 +65,7 @@ dependencies {
   }
   // enforce the usage of log4j 2.24.3. This is for the log4j-api compatibility
   // of spark-sql dependency
-  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.25.1")
+  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.25.2")
 
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
 

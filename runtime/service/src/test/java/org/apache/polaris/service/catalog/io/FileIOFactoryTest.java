@@ -169,14 +169,13 @@ public class FileIOFactoryTest {
 
     List<PolarisBaseEntity> tasks =
         testServices
-            .metaStoreManagerFactory()
-            .getOrCreateMetaStoreManager(realmContext)
+            .metaStoreManager()
             .loadTasks(callContext.getPolarisCallContext(), "testExecutor", PageToken.fromLimit(1))
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     FileIO fileIO =
-        new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, callContext);
+        new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, TABLE, callContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
         .isInstanceOf(InMemoryFileIO.class);
@@ -225,9 +224,10 @@ public class FileIOFactoryTest {
             CATALOG_NAME);
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
+            services.polarisDiagnostics(),
             services.storageCredentialCache(),
             services.resolverFactory(),
-            services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),
+            services.metaStoreManager(),
             callContext,
             passthroughView,
             services.securityContext(),

@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.polaris.core.DigestUtils;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 
 /**
@@ -48,8 +48,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public UserSecretReference writeSecret(
-      @Nonnull String secret, @Nonnull PolarisEntityCore forEntity) {
+  public SecretReference writeSecret(@Nonnull String secret, @Nonnull PolarisEntityCore forEntity) {
     // For illustrative purposes and to exercise the control flow of requiring both the stored
     // secret as well as the secretReferencePayload to recover the original secret, we'll use
     // basic XOR encryption and store the randomly generated key in the reference payload.
@@ -97,15 +96,15 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
     // key is ever shared and/or the key isn't a one-time-pad of the same length as the source
     // secret.
     referencePayload.put(ENCRYPTION_KEY, encryptedSecretKeyBase64);
-    UserSecretReference secretReference = new UserSecretReference(secretUrn, referencePayload);
+    SecretReference secretReference = new SecretReference(secretUrn, referencePayload);
     return secretReference;
   }
 
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public String readSecret(@Nonnull UserSecretReference secretReference) {
-    String secretManagerType = secretReference.getUserSecretManagerType();
+  public String readSecret(@Nonnull SecretReference secretReference) {
+    String secretManagerType = secretReference.getSecretManagerType();
     Preconditions.checkState(
         secretManagerType.equals(SECRET_MANAGER_TYPE),
         "Invalid secret manager type, expected: "
@@ -148,7 +147,7 @@ public class UnsafeInMemorySecretsManager implements UserSecretsManager {
 
   /** {@inheritDoc} */
   @Override
-  public void deleteSecret(@Nonnull UserSecretReference secretReference) {
+  public void deleteSecret(@Nonnull SecretReference secretReference) {
     rawSecretStore.remove(secretReference.getUrn());
   }
 }

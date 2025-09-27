@@ -47,17 +47,17 @@ public abstract class UserSecretsManagerBaseTest {
     String secret1 = "sensitivesecret1";
     String secret2 = "sensitivesecret2";
 
-    UserSecretReference reference1 = secretsManager.writeSecret(secret1, entity1);
-    UserSecretReference reference2 = secretsManager.writeSecret(secret2, entity2);
+    SecretReference reference1 = secretsManager.writeSecret(secret1, entity1);
+    SecretReference reference2 = secretsManager.writeSecret(secret2, entity2);
 
-    // Make sure we can JSON-serialize and deserialize the UserSecretReference objects.
+    // Make sure we can JSON-serialize and deserialize the SecretReference objects.
     String serializedReference1 = DEFAULT_MAPPER.writeValueAsString(reference1);
     String serializedReference2 = DEFAULT_MAPPER.writeValueAsString(reference2);
 
-    UserSecretReference reassembledReference1 =
-        DEFAULT_MAPPER.readValue(serializedReference1, UserSecretReference.class);
-    UserSecretReference reassembledReference2 =
-        DEFAULT_MAPPER.readValue(serializedReference2, UserSecretReference.class);
+    SecretReference reassembledReference1 =
+        DEFAULT_MAPPER.readValue(serializedReference1, SecretReference.class);
+    SecretReference reassembledReference2 =
+        DEFAULT_MAPPER.readValue(serializedReference2, SecretReference.class);
 
     Assertions.assertThat(reassembledReference1).isEqualTo(reference1);
     Assertions.assertThat(reassembledReference2).isEqualTo(reference2);
@@ -74,8 +74,8 @@ public abstract class UserSecretsManagerBaseTest {
     String secret1 = "sensitivesecret1";
     String secret2 = "sensitivesecret2";
 
-    UserSecretReference reference1 = secretsManager.writeSecret(secret1, entity1);
-    UserSecretReference reference2 = secretsManager.writeSecret(secret2, entity1);
+    SecretReference reference1 = secretsManager.writeSecret(secret1, entity1);
+    SecretReference reference2 = secretsManager.writeSecret(secret2, entity1);
 
     Assertions.assertThat(secretsManager.readSecret(reference1)).isEqualTo(secret1);
     Assertions.assertThat(secretsManager.readSecret(reference2)).isEqualTo(secret2);
@@ -89,7 +89,7 @@ public abstract class UserSecretsManagerBaseTest {
 
     String secret1 = "sensitivesecret1";
 
-    UserSecretReference reference1 = secretsManager.writeSecret(secret1, entity1);
+    SecretReference reference1 = secretsManager.writeSecret(secret1, entity1);
 
     Assertions.assertThat(secretsManager.readSecret(reference1)).isEqualTo(secret1);
 

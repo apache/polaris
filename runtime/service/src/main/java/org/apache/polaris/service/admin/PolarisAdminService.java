@@ -21,9 +21,11 @@ package org.apache.polaris.service.admin;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
+import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.validation.constraints.NotNull;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,7 +39,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -66,6 +67,7 @@ import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
+import org.apache.polaris.core.admin.model.ResetPrincipalRequest;
 import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -74,11 +76,12 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -99,19 +102,20 @@ import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
-import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
@@ -133,13 +137,15 @@ import org.slf4j.LoggerFactory;
  * provide different implementations of PolarisEntityManager to abstract away the implementation of
  * the persistence layer.
  */
+@RequestScoped
 public class PolarisAdminService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAdminService.class);
 
   private final CallContext callContext;
+  private final RealmConfig realmConfig;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final SecurityContext securityContext;
-  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
+  private final PolarisPrincipal polarisPrincipal;
   private final PolarisAuthorizer authorizer;
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
@@ -148,28 +154,29 @@ public class PolarisAdminService {
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
 
+  @Inject
   public PolarisAdminService(
-      @NotNull CallContext callContext,
-      @NotNull ResolutionManifestFactory resolutionManifestFactory,
-      @NotNull PolarisMetaStoreManager metaStoreManager,
-      @NotNull UserSecretsManager userSecretsManager,
-      @NotNull SecurityContext securityContext,
-      @NotNull PolarisAuthorizer authorizer,
-      @NotNull ReservedProperties reservedProperties) {
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull CallContext callContext,
+      @Nonnull ResolutionManifestFactory resolutionManifestFactory,
+      @Nonnull PolarisMetaStoreManager metaStoreManager,
+      @Nonnull UserSecretsManager userSecretsManager,
+      @Nonnull SecurityContext securityContext,
+      @Nonnull PolarisAuthorizer authorizer,
+      @Nonnull ReservedProperties reservedProperties) {
     this.callContext = callContext;
+    this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.securityContext = securityContext;
-    PolarisDiagnostics diagServices = callContext.getPolarisCallContext().getDiagServices();
-    diagServices.checkNotNull(securityContext, "null_security_context");
-    diagServices.checkNotNull(securityContext.getUserPrincipal(), "null_security_context");
-    diagServices.check(
-        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+    diagnostics.checkNotNull(securityContext, "null_security_context");
+    diagnostics.checkNotNull(securityContext.getUserPrincipal(), "null_security_context");
+    diagnostics.check(
+        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
         "unexpected_principal_type",
         "class={}",
         securityContext.getUserPrincipal().getClass().getName());
-    this.authenticatedPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+    this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
     this.userSecretsManager = userSecretsManager;
     this.reservedProperties = reservedProperties;
@@ -183,7 +190,7 @@ public class PolarisAdminService {
     return userSecretsManager;
   }
 
-  private Optional<CatalogEntity> findCatalogByName(String name) {
+  private Optional<CatalogEntity> currentCatalog() {
     return Optional.ofNullable(resolutionManifest.getResolvedReferenceCatalogEntity())
         .map(path -> CatalogEntity.of(path.getRawLeafEntity()));
   }
@@ -205,43 +212,6 @@ public class PolarisAdminService {
         .map(path -> CatalogRoleEntity.of(path.getRawLeafEntity()));
   }
 
-  private <T> Stream<T> loadEntities(
-      @Nonnull PolarisEntityType entityType,
-      @Nonnull PolarisEntitySubType entitySubType,
-      @Nullable PolarisEntity catalogEntity,
-      @Nonnull Function<PolarisBaseEntity, T> transformer) {
-    List<PolarisEntityCore> catalogPath;
-    long catalogId;
-    if (catalogEntity == null) {
-      catalogPath = null;
-      catalogId = 0;
-    } else {
-      catalogPath = PolarisEntity.toCoreList(List.of(catalogEntity));
-      catalogId = catalogEntity.getId();
-    }
-    // TODO: add loadEntities method to PolarisMetaStoreManager
-    // loadEntity may return null due to multiple non-atomic API calls to the persistence layer.
-    // Specifically, this can happen when a PolarisEntity is returned by listEntities, but cannot be
-    // loaded afterward because it was purged by another process before it could be loaded.
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            catalogPath,
-            entityType,
-            entitySubType,
-            PageToken.readEverything())
-        .getEntities()
-        .stream()
-        .map(
-            nameAndId ->
-                metaStoreManager.loadEntity(
-                    getCurrentPolarisContext(), catalogId, nameAndId.getId(), nameAndId.getType()))
-        .map(PolarisEntity::of)
-        .filter(Objects::nonNull)
-        .map(transformer)
-        .filter(Objects::nonNull);
-  }
-
   private void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
@@ -250,8 +220,7 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper rootContainerWrapper =
         resolutionManifest.getResolvedRootContainerEntityAsPath();
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedPrincipalRoleEntities(),
         op,
         rootContainerWrapper,
@@ -283,12 +252,8 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper topLevelEntityWrapper =
         resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, entityType);
 
-    // TODO: If we do add more "self" privilege operations for PRINCIPAL targets this should
-    // be extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
-    if (topLevelEntityWrapper.getResolvedLeafEntity().getEntity().getId()
-            == authenticatedPrincipal.getPrincipalEntity().getId()
-        && (op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS)
-            || op.equals(PolarisAuthorizableOperation.RESET_CREDENTIALS))) {
+    PolarisEntity entity = topLevelEntityWrapper.getResolvedLeafEntity().getEntity();
+    if (isSelfEntity(entity) && isSelfOperation(op)) {
       LOGGER
           .atDebug()
           .addKeyValue("principalName", topLevelEntityName)
@@ -296,12 +261,34 @@ public class PolarisAdminService {
       return;
     }
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         topLevelEntityWrapper,
         null /* secondary */);
+  }
+
+  /**
+   * Returns true if the target entity is the same as the current authenticated {@link
+   * PolarisPrincipal}.
+   */
+  private boolean isSelfEntity(PolarisEntity entity) {
+    // Entity name is unique for (realm_id, catalog_id, parent_id, type_code),
+    // which is reduced to (realm_id, type_code) for top-level entities;
+    // so there can be only one principal with a given name inside any realm.
+    return entity.getType() == PolarisEntityType.PRINCIPAL
+        && entity.getName().equals(polarisPrincipal.getName());
+  }
+
+  /**
+   * Returns true if the operation is a "self" operation, that is, an operation that is being
+   * performed by the principal on itself.
+   *
+   * <p>TODO: If we do add more "self" privilege operations for PRINCIPAL targets this should be
+   * extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
+   */
+  private static boolean isSelfOperation(PolarisAuthorizableOperation op) {
+    return op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS);
   }
 
   private void authorizeBasicCatalogRoleOperationOrThrow(
@@ -318,8 +305,7 @@ public class PolarisAdminService {
       throw new NotFoundException("CatalogRole does not exist: %s", catalogRoleName);
     }
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
@@ -340,8 +326,6 @@ public class PolarisAdminService {
           status.getFailedToResolvedEntityName(), principalRoleName);
     }
 
-    // TODO: Merge this method into authorizeGrantOnTopLevelEntityToPrincipalRoleOperationOrThrow
-    // once we remove any special handling logic for the rootContainer.
     PolarisResolvedPathWrapper rootContainerWrapper =
         resolutionManifest.getResolvedRootContainerEntityAsPath();
     PolarisResolvedPathWrapper principalRoleWrapper =
@@ -349,48 +333,10 @@ public class PolarisAdminService {
             principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
 
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         rootContainerWrapper,
-        principalRoleWrapper);
-  }
-
-  private void authorizeGrantOnTopLevelEntityToPrincipalRoleOperationOrThrow(
-      PolarisAuthorizableOperation op,
-      String topLevelEntityName,
-      PolarisEntityType topLevelEntityType,
-      String principalRoleName) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(callContext, securityContext, null);
-    resolutionManifest.addTopLevelName(
-        topLevelEntityName, topLevelEntityType, false /* isOptional */);
-    resolutionManifest.addTopLevelName(
-        principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException(
-          "Entity %s not found when trying to assign %s of type %s to %s",
-          status.getFailedToResolvedEntityName(),
-          topLevelEntityName,
-          topLevelEntityType,
-          principalRoleName);
-    }
-
-    PolarisResolvedPathWrapper topLevelEntityWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, topLevelEntityType);
-    PolarisResolvedPathWrapper principalRoleWrapper =
-        resolutionManifest.getResolvedTopLevelEntity(
-            principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
-
-    authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        topLevelEntityWrapper,
         principalRoleWrapper);
   }
 
@@ -417,8 +363,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedTopLevelEntity(principalName, PolarisEntityType.PRINCIPAL);
 
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         principalRoleWrapper,
@@ -457,8 +402,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         catalogRoleWrapper,
@@ -488,8 +432,7 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(catalogRoleName, true);
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         catalogWrapper,
@@ -504,7 +447,7 @@ public class PolarisAdminService {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
             callContext, securityContext, catalogName);
-    resolutionManifest.addPath(
+    resolutionManifest.addPassthroughPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
     resolutionManifest.addPath(
@@ -529,8 +472,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         namespaceWrapper,
@@ -546,7 +488,11 @@ public class PolarisAdminService {
     resolutionManifest =
         resolutionManifestFactory.createResolutionManifest(
             callContext, securityContext, catalogName);
-    resolutionManifest.addPath(
+    resolutionManifest.addPassthroughPath(
+        new ResolverPath(
+            Arrays.asList(identifier.namespace().levels()), PolarisEntityType.NAMESPACE),
+        identifier.namespace());
+    resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier), PolarisEntityType.TABLE_LIKE),
         identifier);
@@ -565,10 +511,20 @@ public class PolarisAdminService {
       }
     }
 
+    CatalogEntity catalogEntity =
+        CatalogEntity.of(
+            currentCatalog()
+                .orElseThrow(() -> new NotFoundException("Catalog %s not found", catalogName)));
     PolarisResolvedPathWrapper tableLikeWrapper =
         resolutionManifest.getResolvedPath(
             identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
-    if (!subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
+    boolean rbacForFederatedCatalogsEnabled =
+        getCurrentPolarisContext()
+            .getRealmConfig()
+            .getConfig(
+                FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS, catalogEntity);
+    if (!(resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled)
+        && !subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
       CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
     }
 
@@ -576,8 +532,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         tableLikeWrapper,
@@ -616,8 +571,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
-        callContext,
-        authenticatedPrincipal,
+        polarisPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         policyWrapper,
@@ -654,7 +608,7 @@ public class PolarisAdminService {
    */
   private boolean catalogOverlapsWithExistingCatalog(CatalogEntity catalogEntity) {
     boolean allowOverlappingCatalogUrls =
-        callContext.getRealmConfig().getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
+        realmConfig.getConfig(FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
     if (allowOverlappingCatalogUrls) {
       return false;
     }
@@ -684,8 +638,8 @@ public class PolarisAdminService {
 
   /**
    * Secrets embedded *or* simply referenced through the API model will require separate processing
-   * for normalizing into resolved/verified/offloaded UserSecretReference objects which are then
-   * placed appropriately into persistence objects.
+   * for normalizing into resolved/verified/offloaded SecretReference objects which are then placed
+   * appropriately into persistence objects.
    *
    * <p>If secrets are already direct URIs/URNs to an external secret store, we may need to validate
    * the URI/URN and/or transform into a polaris-internal URN format along with type-information or
@@ -698,9 +652,9 @@ public class PolarisAdminService {
    * secrets into a Polaris service-level secrets manager and return the associated internal
    * references to the stored secret.
    */
-  private Map<String, UserSecretReference> extractSecretReferences(
+  private Map<String, SecretReference> extractSecretReferences(
       CreateCatalogRequest catalogRequest, PolarisEntity forEntity) {
-    Map<String, UserSecretReference> secretReferences = new HashMap<>();
+    Map<String, SecretReference> secretReferences = new HashMap<>();
     Catalog catalog = catalogRequest.getCatalog();
     UserSecretsManager secretsManager = getUserSecretsManager();
     if (catalog instanceof ExternalCatalog externalCatalog) {
@@ -715,7 +669,7 @@ public class PolarisAdminService {
               OAuthClientCredentialsParameters oauthClientCredentialsModel =
                   (OAuthClientCredentialsParameters) authenticationParameters;
               String inlineClientSecret = oauthClientCredentialsModel.getClientSecret();
-              UserSecretReference secretReference =
+              SecretReference secretReference =
                   secretsManager.writeSecret(inlineClientSecret, forEntity);
               secretReferences.put(
                   AuthenticationParametersDpo.INLINE_CLIENT_SECRET_REFERENCE_KEY, secretReference);
@@ -726,7 +680,7 @@ public class PolarisAdminService {
               BearerAuthenticationParameters bearerAuthenticationParametersModel =
                   (BearerAuthenticationParameters) authenticationParameters;
               String inlineBearerToken = bearerAuthenticationParametersModel.getBearerToken();
-              UserSecretReference secretReference =
+              SecretReference secretReference =
                   secretsManager.writeSecret(inlineBearerToken, forEntity);
               secretReferences.put(
                   AuthenticationParametersDpo.INLINE_BEARER_TOKEN_REFERENCE_KEY, secretReference);
@@ -746,7 +700,7 @@ public class PolarisAdminService {
    * @see #extractSecretReferences
    */
   private boolean requiresSecretReferenceExtraction(
-      @NotNull ConnectionConfigInfo connectionConfigInfo) {
+      @Nonnull ConnectionConfigInfo connectionConfigInfo) {
     return connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
         != AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT;
   }
@@ -755,7 +709,7 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
     authorizeBasicRootOperationOrThrow(op);
 
-    CatalogEntity entity = CatalogEntity.fromCatalog(callContext, catalogRequest.getCatalog());
+    CatalogEntity entity = CatalogEntity.fromCatalog(realmConfig, catalogRequest.getCatalog());
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
@@ -783,11 +737,10 @@ public class PolarisAdminService {
             .addKeyValue("catalogName", entity.getName())
             .log("Creating a federated catalog");
         FeatureConfiguration.enforceFeatureEnabledOrThrow(
-            callContext, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
-        Map<String, UserSecretReference> processedSecretReferences = Map.of();
+            realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+        Map<String, SecretReference> processedSecretReferences = Map.of();
         List<String> supportedAuthenticationTypes =
-            callContext
-                .getRealmConfig()
+            realmConfig
                 .getConfig(FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES)
                 .stream()
                 .map(s -> s.toUpperCase(Locale.ROOT))
@@ -828,6 +781,13 @@ public class PolarisAdminService {
       throw new AlreadyExistsException(
           "Cannot create Catalog %s. Catalog already exists or resolution failed",
           entity.getName());
+    } else if (!catalogResult.isSuccess()) {
+      throw new IllegalStateException(
+          String.format(
+              "Cannot create Catalog %s: %s with extraInfo %s",
+              entity.getName(),
+              catalogResult.getReturnStatus(),
+              catalogResult.getExtraInformation()));
     }
     return PolarisEntity.of(catalogResult.getCatalog());
   }
@@ -837,11 +797,9 @@ public class PolarisAdminService {
     authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.CATALOG);
 
     PolarisEntity entity =
-        findCatalogByName(name)
-            .orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
+        currentCatalog().orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
     // TODO: Handle return value in case of concurrent modification
-    boolean cleanup =
-        callContext.getRealmConfig().getConfig(FeatureConfiguration.CLEANUP_ON_CATALOG_DROP);
+    boolean cleanup = realmConfig.getConfig(FeatureConfiguration.CLEANUP_ON_CATALOG_DROP);
     DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), cleanup);
@@ -864,8 +822,7 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.GET_CATALOG;
     authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.CATALOG);
 
-    return findCatalogByName(name)
-        .orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
+    return currentCatalog().orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
   }
 
   /**
@@ -893,7 +850,7 @@ public class PolarisAdminService {
     if (currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
         && newStorageConfig instanceof AwsStorageConfigurationInfo newAwsConfig) {
 
-      if (!currentAwsConfig.getAwsAccountId().equals(newAwsConfig.getAwsAccountId())) {
+      if (!Objects.equals(currentAwsConfig.getAwsAccountId(), newAwsConfig.getAwsAccountId())) {
         throw new BadRequestException(
             "Cannot modify Role ARN in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
@@ -924,8 +881,7 @@ public class PolarisAdminService {
     authorizeBasicTopLevelEntityOperationOrThrow(op, name, PolarisEntityType.CATALOG);
 
     CatalogEntity currentCatalogEntity =
-        findCatalogByName(name)
-            .orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
+        currentCatalog().orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
 
     if (currentCatalogEntity.getEntityVersion() != updateRequest.getCurrentEntityVersion()) {
       throw new CommitConflictException(
@@ -948,19 +904,19 @@ public class PolarisAdminService {
       // additionalProperties while neglecting to "echo" the default-base-location from the
       // fetched catalog, it's most user-friendly to treat a null or empty default-base-location
       // as meaning no intended change to the default-base-location.
-      if (StringUtils.isNotEmpty(newDefaultBaseLocation)) {
-        // New base location is already in the updated properties; we'll also potentially
-        // plumb it into the logic for setting an updated StorageConfigurationInfo.
-        defaultBaseLocation = newDefaultBaseLocation;
-      } else {
+      if (Strings.isNullOrEmpty(newDefaultBaseLocation)) {
         // No default-base-location present at all in the properties of the update request,
         // so we must restore it explicitly in the updateBuilder.
         updateBuilder.setDefaultBaseLocation(defaultBaseLocation);
+      } else {
+        // New base location is already in the updated properties; we'll also potentially
+        // plumb it into the logic for setting an updated StorageConfigurationInfo.
+        defaultBaseLocation = newDefaultBaseLocation;
       }
     }
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(
-          callContext, updateRequest.getStorageConfigInfo(), defaultBaseLocation);
+          realmConfig, updateRequest.getStorageConfigInfo(), defaultBaseLocation);
     }
     CatalogEntity updatedEntity = updateBuilder.build();
 
@@ -993,8 +949,14 @@ public class PolarisAdminService {
 
   /** List all catalogs without checking for permission. */
   private Stream<CatalogEntity> listCatalogsUnsafe() {
-    return loadEntities(
-        PolarisEntityType.CATALOG, PolarisEntitySubType.ANY_SUBTYPE, null, CatalogEntity::of);
+    return metaStoreManager
+        .loadEntitiesAll(
+            getCurrentPolarisContext(),
+            null,
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.ANY_SUBTYPE)
+        .stream()
+        .map(CatalogEntity::of);
   }
 
   public PrincipalWithCredentials createPrincipal(PolarisEntity entity) {
@@ -1098,6 +1060,69 @@ public class PolarisAdminService {
     return returnedEntity;
   }
 
+  private @Nonnull PrincipalWithCredentials resetCredentialsHelper(
+      String principalName, String customClientId, String customClientSecret) {
+    PrincipalEntity currentPrincipalEntity =
+        findPrincipalByName(principalName)
+            .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
+
+    if (FederatedEntities.isFederated(currentPrincipalEntity)) {
+      throw new ValidationException(
+          "Cannot reset credentials for a federated principal: %s", principalName);
+    }
+    PolarisPrincipalSecrets currentSecrets =
+        metaStoreManager
+            .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
+            .getPrincipalSecrets();
+    // delete the existing creds if present
+    if (currentSecrets != null) {
+      metaStoreManager.deletePrincipalSecrets(
+          getCurrentPolarisContext(),
+          currentPrincipalEntity.getClientId(),
+          currentPrincipalEntity.getId());
+    }
+    PrincipalEntity newPrincipalEntity = currentPrincipalEntity;
+    // update the clientId tied to the principal entity
+    if (customClientId != null) {
+      PrincipalEntity.Builder updateBuilder = new PrincipalEntity.Builder(newPrincipalEntity);
+      updateBuilder.setClientId(customClientId);
+      PrincipalEntity updatedNewPrincipalEntity = updateBuilder.build();
+      newPrincipalEntity =
+          Optional.ofNullable(
+                  PrincipalEntity.of(
+                      PolarisEntity.of(
+                          metaStoreManager.updateEntityPropertiesIfNotChanged(
+                              getCurrentPolarisContext(), null, updatedNewPrincipalEntity))))
+              .orElseThrow(
+                  () ->
+                      new CommitConflictException(
+                          "Concurrent modification on Principal '%s'; retry later", principalName));
+    }
+
+    String resolvedClientId =
+        (customClientId != null) ? customClientId : currentPrincipalEntity.getClientId();
+
+    // generate new secrets
+    PolarisPrincipalSecrets newSecrets =
+        metaStoreManager
+            .resetPrincipalSecrets(
+                getCurrentPolarisContext(),
+                currentPrincipalEntity.getId(),
+                resolvedClientId,
+                customClientSecret)
+            .getPrincipalSecrets();
+
+    if (newSecrets == null) {
+      throw new IllegalStateException(
+          String.format("Failed to %s secrets for principal '%s'", "reset", principalName));
+    }
+
+    return new PrincipalWithCredentials(
+        newPrincipalEntity.asPrincipal(),
+        new PrincipalWithCredentialsCredentials(
+            newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
+  }
+
   private @Nonnull PrincipalWithCredentials rotateOrResetCredentialsHelper(
       String principalName, boolean shouldReset) {
     PrincipalEntity currentPrincipalEntity =
@@ -1151,22 +1176,29 @@ public class PolarisAdminService {
     return rotateOrResetCredentialsHelper(principalName, false);
   }
 
-  public @Nonnull PrincipalWithCredentials resetCredentials(String principalName) {
+  public @Nonnull PrincipalWithCredentials resetCredentials(
+      String principalName, ResetPrincipalRequest resetPrincipalRequest) {
+    FeatureConfiguration.enforceFeatureEnabledOrThrow(
+        realmConfig, FeatureConfiguration.ENABLE_CREDENTIAL_RESET);
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.RESET_CREDENTIALS;
     authorizeBasicTopLevelEntityOperationOrThrow(op, principalName, PolarisEntityType.PRINCIPAL);
-
-    return rotateOrResetCredentialsHelper(principalName, true);
+    var customClientId = resetPrincipalRequest.getClientId();
+    var customClientSecret = resetPrincipalRequest.getClientSecret();
+    return resetCredentialsHelper(principalName, customClientId, customClientSecret);
   }
 
   public List<Principal> listPrincipals() {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPALS;
     authorizeBasicRootOperationOrThrow(op);
 
-    return loadEntities(
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
+    return metaStoreManager
+        .loadEntitiesAll(
+            getCurrentPolarisContext(),
             null,
-            PrincipalEntity::of)
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE)
+        .stream()
+        .map(PrincipalEntity::of)
         .map(PrincipalEntity::asPrincipal)
         .toList();
   }
@@ -1267,11 +1299,14 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
     authorizeBasicRootOperationOrThrow(op);
 
-    return loadEntities(
-            PolarisEntityType.PRINCIPAL_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE,
+    return metaStoreManager
+        .loadEntitiesAll(
+            getCurrentPolarisContext(),
             null,
-            PrincipalRoleEntity::of)
+            PolarisEntityType.PRINCIPAL_ROLE,
+            PolarisEntitySubType.NULL_SUBTYPE)
+        .stream()
+        .map(PrincipalRoleEntity::of)
         .map(PrincipalRoleEntity::asPrincipalRole)
         .toList();
   }
@@ -1283,7 +1318,7 @@ public class PolarisAdminService {
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
     PolarisEntity catalogEntity =
-        findCatalogByName(catalogName)
+        currentCatalog()
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
 
     PolarisEntity returnedEntity =
@@ -1348,7 +1383,7 @@ public class PolarisAdminService {
     authorizeBasicCatalogRoleOperationOrThrow(op, catalogName, name);
 
     CatalogEntity catalogEntity =
-        findCatalogByName(catalogName)
+        currentCatalog()
             .orElseThrow(() -> new NotFoundException("Catalog %s not found", catalogName));
     CatalogRoleEntity currentCatalogRoleEntity =
         findCatalogRoleByName(catalogName, name)
@@ -1389,18 +1424,22 @@ public class PolarisAdminService {
     authorizeBasicTopLevelEntityOperationOrThrow(op, catalogName, PolarisEntityType.CATALOG);
 
     PolarisEntity catalogEntity =
-        findCatalogByName(catalogName)
+        currentCatalog()
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
-    return loadEntities(
+    List<PolarisEntityCore> catalogPath = PolarisEntity.toCoreList(List.of(catalogEntity));
+    return metaStoreManager
+        .loadEntitiesAll(
+            getCurrentPolarisContext(),
+            catalogPath,
             PolarisEntityType.CATALOG_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            catalogEntity,
-            CatalogRoleEntity::of)
+            PolarisEntitySubType.NULL_SUBTYPE)
+        .stream()
+        .map(CatalogRoleEntity::of)
         .map(CatalogRoleEntity::asCatalogRole)
         .toList();
   }
 
-  public boolean assignPrincipalRole(String principalName, String principalRoleName) {
+  public PrivilegeResult assignPrincipalRole(String principalName, String principalRoleName) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ASSIGN_PRINCIPAL_ROLE;
     authorizeGrantOnPrincipalRoleToPrincipalOperationOrThrow(op, principalRoleName, principalName);
 
@@ -1417,13 +1456,11 @@ public class PolarisAdminService {
     if (FederatedEntities.isFederated(principalRoleEntity)) {
       throw new ValidationException("Cannot assign a federated role to a principal");
     }
-    return metaStoreManager
-        .grantUsageOnRoleToGrantee(
-            getCurrentPolarisContext(), null, principalRoleEntity, principalEntity)
-        .isSuccess();
+    return metaStoreManager.grantUsageOnRoleToGrantee(
+        getCurrentPolarisContext(), null, principalRoleEntity, principalEntity);
   }
 
-  public boolean revokePrincipalRole(String principalName, String principalRoleName) {
+  public PrivilegeResult revokePrincipalRole(String principalName, String principalRoleName) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REVOKE_PRINCIPAL_ROLE;
     authorizeGrantOnPrincipalRoleToPrincipalOperationOrThrow(op, principalRoleName, principalName);
 
@@ -1440,10 +1477,8 @@ public class PolarisAdminService {
     if (FederatedEntities.isFederated(principalRoleEntity)) {
       throw new ValidationException("Cannot revoke a federated role from a principal");
     }
-    return metaStoreManager
-        .revokeUsageOnRoleFromGrantee(
-            getCurrentPolarisContext(), null, principalRoleEntity, principalEntity)
-        .isSuccess();
+    return metaStoreManager.revokeUsageOnRoleFromGrantee(
+        getCurrentPolarisContext(), null, principalRoleEntity, principalEntity);
   }
 
   public List<PolarisEntity> listPrincipalRolesAssigned(String principalName) {
@@ -1459,7 +1494,7 @@ public class PolarisAdminService {
     return buildEntitiesFromGrantResults(grantList, false, PolarisEntityType.PRINCIPAL_ROLE, null);
   }
 
-  public boolean assignCatalogRoleToPrincipalRole(
+  public PrivilegeResult assignCatalogRoleToPrincipalRole(
       String principalRoleName, String catalogName, String catalogRoleName) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE;
@@ -1471,19 +1506,17 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
     PolarisEntity catalogEntity =
-        findCatalogByName(catalogName)
+        currentCatalog()
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    return metaStoreManager
-        .grantUsageOnRoleToGrantee(
-            getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity)
-        .isSuccess();
+    return metaStoreManager.grantUsageOnRoleToGrantee(
+        getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity);
   }
 
-  public boolean revokeCatalogRoleFromPrincipalRole(
+  public PrivilegeResult revokeCatalogRoleFromPrincipalRole(
       String principalRoleName, String catalogName, String catalogRoleName) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE;
@@ -1495,15 +1528,13 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
     PolarisEntity catalogEntity =
-        findCatalogByName(catalogName)
+        currentCatalog()
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
-    return metaStoreManager
-        .revokeUsageOnRoleFromGrantee(
-            getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity)
-        .isSuccess();
+    return metaStoreManager.revokeUsageOnRoleFromGrantee(
+        getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity);
   }
 
   public List<PolarisEntity> listAssigneePrincipalsForPrincipalRole(String principalRoleName) {
@@ -1563,7 +1594,7 @@ public class PolarisAdminService {
         op, principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, catalogName);
 
     PolarisEntity catalogEntity =
-        findCatalogByName(catalogName)
+        currentCatalog()
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     PolarisEntity principalRoleEntity =
         findPrincipalRoleByName(principalRoleName)
@@ -1579,7 +1610,7 @@ public class PolarisAdminService {
   }
 
   /** Adds a grant on the root container of this realm to {@code principalRoleName}. */
-  public boolean grantPrivilegeOnRootContainerToPrincipalRole(
+  public PrivilegeResult grantPrivilegeOnRootContainerToPrincipalRole(
       String principalRoleName, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ADD_ROOT_GRANT_TO_PRINCIPAL_ROLE;
     authorizeGrantOnRootContainerToPrincipalRoleOperationOrThrow(op, principalRoleName);
@@ -1591,14 +1622,12 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege);
   }
 
   /** Revokes a grant on the root container of this realm from {@code principalRoleName}. */
-  public boolean revokePrivilegeOnRootContainerFromPrincipalRole(
+  public PrivilegeResult revokePrivilegeOnRootContainerFromPrincipalRole(
       String principalRoleName, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.REVOKE_ROOT_GRANT_FROM_PRINCIPAL_ROLE;
@@ -1611,17 +1640,15 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege);
   }
 
   /**
    * Adds a catalog-level grant on {@code catalogName} to {@code catalogRoleName} which resides
    * within the same catalog on which it is being granted the privilege.
    */
-  public boolean grantPrivilegeOnCatalogToRole(
+  public PrivilegeResult grantPrivilegeOnCatalogToRole(
       String catalogName, String catalogRoleName, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.ADD_CATALOG_GRANT_TO_CATALOG_ROLE;
@@ -1629,53 +1656,52 @@ public class PolarisAdminService {
     authorizeGrantOnCatalogOperationOrThrow(op, catalogName, catalogRoleName);
 
     PolarisEntity catalogEntity =
-        findCatalogByName(catalogName)
+        currentCatalog()
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(List.of(catalogEntity)),
-            catalogEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(List.of(catalogEntity)),
+        catalogEntity,
+        privilege);
   }
 
   /** Removes a catalog-level grant on {@code catalogName} from {@code catalogRoleName}. */
-  public boolean revokePrivilegeOnCatalogFromRole(
+  public PrivilegeResult revokePrivilegeOnCatalogFromRole(
       String catalogName, String catalogRoleName, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.REVOKE_CATALOG_GRANT_FROM_CATALOG_ROLE;
     authorizeGrantOnCatalogOperationOrThrow(op, catalogName, catalogRoleName);
 
     PolarisEntity catalogEntity =
-        findCatalogByName(catalogName)
+        currentCatalog()
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(List.of(catalogEntity)),
-            catalogEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(List.of(catalogEntity)),
+        catalogEntity,
+        privilege);
   }
 
   /** Adds a namespace-level grant on {@code namespace} to {@code catalogRoleName}. */
-  public boolean grantPrivilegeOnNamespaceToRole(
+  public PrivilegeResult grantPrivilegeOnNamespaceToRole(
       String catalogName, String catalogRoleName, Namespace namespace, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.ADD_NAMESPACE_GRANT_TO_CATALOG_ROLE;
     authorizeGrantOnNamespaceOperationOrThrow(op, catalogName, namespace, catalogRoleName);
 
+    CatalogEntity catalogEntity =
+        currentCatalog()
+            .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
@@ -1683,23 +1709,40 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper resolvedPathWrapper = resolutionManifest.getResolvedPath(namespace);
     if (resolvedPathWrapper == null
         || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
-      throw new NotFoundException("Namespace %s not found", namespace);
+      boolean rbacForFederatedCatalogsEnabled =
+          getCurrentPolarisContext()
+              .getRealmConfig()
+              .getConfig(
+                  FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS,
+                  catalogEntity);
+      if (resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled) {
+        resolvedPathWrapper =
+            createSyntheticNamespaceEntities(catalogEntity, namespace, resolvedPathWrapper);
+        if (resolvedPathWrapper == null
+            || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
+          // TODO: update the exception thrown as we refine the possible retry scenarios
+          throw new RuntimeException(
+              String.format(
+                  "Failed to create synthetic namespace entities for namespace %s in catalog %s",
+                  namespace, catalogName));
+        }
+      } else {
+        throw new NotFoundException("Namespace %s not found", namespace);
+      }
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity namespaceEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            namespaceEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        namespaceEntity,
+        privilege);
   }
 
   /** Removes a namespace-level grant on {@code namespace} from {@code catalogRoleName}. */
-  public boolean revokePrivilegeOnNamespaceFromRole(
+  public PrivilegeResult revokePrivilegeOnNamespaceFromRole(
       String catalogName, String catalogRoleName, Namespace namespace, PolarisPrivilege privilege) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.REVOKE_NAMESPACE_GRANT_FROM_CATALOG_ROLE;
@@ -1717,17 +1760,95 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity namespaceEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            namespaceEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        namespaceEntity,
+        privilege);
   }
 
-  public boolean grantPrivilegeOnTableToRole(
+  /**
+   * Creates and persists the missing synthetic namespace entities for external catalogs.
+   *
+   * @param catalogEntity the external passthrough facade catalog entity.
+   * @param namespace the expected fully resolved namespace to be created.
+   * @param existingPath the partially resolved path currently stored in the metastore.
+   * @return the fully resolved path wrapper.
+   */
+  private PolarisResolvedPathWrapper createSyntheticNamespaceEntities(
+      CatalogEntity catalogEntity, Namespace namespace, PolarisResolvedPathWrapper existingPath) {
+
+    if (existingPath == null) {
+      throw new IllegalStateException(
+          String.format("Catalog entity %s does not exist.", catalogEntity.getName()));
+    }
+
+    List<PolarisEntity> completePath = new ArrayList<>(existingPath.getRawFullPath());
+    PolarisEntity currentParent = existingPath.getRawLeafEntity();
+
+    String[] allNamespaceLevels = namespace.levels();
+    int numMatchingLevels = 0;
+    // Find parts of the complete path that match the namespace levels.
+    // We skip index 0 because it is the CatalogEntity.
+    for (PolarisEntity entity : completePath.subList(1, completePath.size())) {
+      if (!entity.getName().equals(allNamespaceLevels[numMatchingLevels])) {
+        break;
+      }
+      numMatchingLevels++;
+    }
+
+    for (int i = numMatchingLevels; i < allNamespaceLevels.length; i++) {
+      String[] namespacePart = Arrays.copyOfRange(allNamespaceLevels, 0, i + 1);
+      String leafNamespace = namespacePart[namespacePart.length - 1];
+      Namespace currentNamespace = Namespace.of(namespacePart);
+
+      // TODO: Instead of creating synthetic entitties, rely on external catalog mediated backfill.
+      PolarisEntity syntheticNamespace =
+          new NamespaceEntity.Builder(currentNamespace)
+              .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
+              .setCatalogId(catalogEntity.getId())
+              .setParentId(currentParent.getId())
+              .setCreateTimestamp(System.currentTimeMillis())
+              .build();
+
+      EntityResult result =
+          metaStoreManager.createEntityIfNotExists(
+              getCurrentPolarisContext(),
+              PolarisEntity.toCoreList(completePath),
+              syntheticNamespace);
+
+      if (result.isSuccess()) {
+        syntheticNamespace = PolarisEntity.of(result.getEntity());
+      } else if (result.getReturnStatus() == BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS) {
+        PolarisResolvedPathWrapper partialPath =
+            resolutionManifest.getPassthroughResolvedPath(namespace);
+        PolarisEntity partialLeafEntity =
+            partialPath != null ? partialPath.getRawLeafEntity() : null;
+        if (partialLeafEntity == null
+            || !(partialLeafEntity.getName().equals(leafNamespace)
+                && partialLeafEntity.getType() == PolarisEntityType.NAMESPACE)) {
+          throw new RuntimeException(
+              String.format(
+                  "Failed to create or find namespace entity '%s' in federated catalog '%s'",
+                  leafNamespace, catalogEntity.getName()));
+        }
+        syntheticNamespace = partialLeafEntity;
+      } else {
+        throw new RuntimeException(
+            String.format(
+                "Failed to create or find namespace entity '%s' in federated catalog '%s'",
+                leafNamespace, catalogEntity.getName()));
+      }
+      completePath.add(syntheticNamespace);
+      currentParent = syntheticNamespace;
+    }
+    PolarisResolvedPathWrapper resolvedPathWrapper =
+        resolutionManifest.getPassthroughResolvedPath(namespace);
+    return resolvedPathWrapper;
+  }
+
+  public PrivilegeResult grantPrivilegeOnTableToRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -1749,7 +1870,7 @@ public class PolarisAdminService {
         privilege);
   }
 
-  public boolean revokePrivilegeOnTableFromRole(
+  public PrivilegeResult revokePrivilegeOnTableFromRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -1772,7 +1893,7 @@ public class PolarisAdminService {
         privilege);
   }
 
-  public boolean grantPrivilegeOnViewToRole(
+  public PrivilegeResult grantPrivilegeOnViewToRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -1790,7 +1911,7 @@ public class PolarisAdminService {
         privilege);
   }
 
-  public boolean revokePrivilegeOnViewFromRole(
+  public PrivilegeResult revokePrivilegeOnViewFromRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
@@ -1809,7 +1930,7 @@ public class PolarisAdminService {
         privilege);
   }
 
-  public boolean grantPrivilegeOnPolicyToRole(
+  public PrivilegeResult grantPrivilegeOnPolicyToRole(
       String catalogName,
       String catalogRoleName,
       PolicyIdentifier identifier,
@@ -1821,7 +1942,7 @@ public class PolarisAdminService {
     return grantPrivilegeOnPolicyEntityToRole(catalogName, catalogRoleName, identifier, privilege);
   }
 
-  public boolean revokePrivilegeOnPolicyFromRole(
+  public PrivilegeResult revokePrivilegeOnPolicyFromRole(
       String catalogName,
       String catalogRoleName,
       PolicyIdentifier identifier,
@@ -1841,7 +1962,7 @@ public class PolarisAdminService {
         PolarisAuthorizableOperation.LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE;
     authorizeBasicCatalogRoleOperationOrThrow(op, catalogName, catalogRoleName);
 
-    if (findCatalogByName(catalogName).isEmpty()) {
+    if (currentCatalog().isEmpty()) {
       throw new NotFoundException("Parent catalog %s not found", catalogName);
     }
     PolarisEntity catalogRoleEntity =
@@ -1998,15 +2119,15 @@ public class PolarisAdminService {
   }
 
   /** Adds a table-level or view-level grant on {@code identifier} to {@code catalogRoleName}. */
-  private boolean grantPrivilegeOnTableLikeToRole(
+  private PrivilegeResult grantPrivilegeOnTableLikeToRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
       List<PolarisEntitySubType> subTypes,
       PolarisPrivilege privilege) {
-    if (findCatalogByName(catalogName).isEmpty()) {
-      throw new NotFoundException("Parent catalog %s not found", catalogName);
-    }
+    CatalogEntity catalogEntity =
+        currentCatalog()
+            .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
@@ -2016,31 +2137,120 @@ public class PolarisAdminService {
             identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedPathWrapper == null
         || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
-      CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
+      boolean rbacForFederatedCatalogsEnabled =
+          getCurrentPolarisContext()
+              .getRealmConfig()
+              .getConfig(
+                  FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS,
+                  catalogEntity);
+      if (resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled) {
+        resolvedPathWrapper =
+            createSyntheticTableLikeEntities(
+                catalogEntity, identifier, subTypes, resolvedPathWrapper);
+        if (resolvedPathWrapper == null
+            || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
+          // TODO: update the exception thrown as we refine the possible retry scenarios
+          throw new RuntimeException(
+              String.format(
+                  "Failed to create synthetic table-like entity for table %s in catalog %s",
+                  identifier.name(), catalogEntity.getName()));
+        }
+      } else {
+        CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
+      }
     }
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            tableLikeEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        tableLikeEntity,
+        privilege);
+  }
+
+  /**
+   * Creates and persists the missing synthetic table-like entity and its parent namespace entities
+   * for external catalogs.
+   *
+   * @param catalogEntity the external passthrough facade catalog entity.
+   * @param identifier the path of the table-like entity(including the namespace).
+   * @param subTypes the expected subtypes of the table-like entity
+   * @param existingPathWrapper the partially resolved path currently stored in the metastore.
+   * @return the resolved path wrapper
+   */
+  private PolarisResolvedPathWrapper createSyntheticTableLikeEntities(
+      CatalogEntity catalogEntity,
+      TableIdentifier identifier,
+      List<PolarisEntitySubType> subTypes,
+      PolarisResolvedPathWrapper existingPathWrapper) {
+
+    Namespace namespace = identifier.namespace();
+    PolarisResolvedPathWrapper resolvedNamespacePathWrapper =
+        !namespace.isEmpty()
+            ? createSyntheticNamespaceEntities(catalogEntity, namespace, existingPathWrapper)
+            : existingPathWrapper;
+
+    if (resolvedNamespacePathWrapper == null
+        || (!namespace.isEmpty()
+            && !resolvedNamespacePathWrapper.isFullyResolvedNamespace(
+                catalogEntity.getName(), namespace))) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to create synthetic namespace entities for namespace %s in catalog %s",
+              namespace.toString(), catalogEntity.getName()));
+    }
+
+    PolarisEntity parentNamespaceEntity = resolvedNamespacePathWrapper.getRawLeafEntity();
+
+    // TODO: Once we support GENERIC_TABLE federation, select the intended type depending on the
+    // callsite; if it is instantiated via an Iceberg RESTCatalog factory or a different factory
+    // for GenericCatalogs.
+    PolarisEntitySubType syntheticEntitySubType = selectEntitySubType(subTypes);
+
+    // TODO: Instead of creating a synthetic table-like entity, rely on external catalog mediated
+    // backfill and use the metadata location from the external catalog.
+    PolarisEntity syntheticTableEntity =
+        new IcebergTableLikeEntity.Builder(syntheticEntitySubType, identifier, "")
+            .setParentId(parentNamespaceEntity.getId())
+            .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
+            .setCatalogId(parentNamespaceEntity.getCatalogId())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
+    // We will re-resolve later anyway, so
+    metaStoreManager.createEntityIfNotExists(
+        getCurrentPolarisContext(),
+        PolarisEntity.toCoreList(resolvedNamespacePathWrapper.getRawFullPath()),
+        syntheticTableEntity);
+
+    PolarisResolvedPathWrapper completePathWrapper =
+        resolutionManifest.getPassthroughResolvedPath(identifier);
+    PolarisEntity leafEntity =
+        completePathWrapper != null ? completePathWrapper.getRawLeafEntity() : null;
+    if (completePathWrapper == null
+        || leafEntity == null
+        || !(leafEntity.getType() == PolarisEntityType.TABLE_LIKE
+            && leafEntity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE
+            && Objects.equals(leafEntity.getName(), identifier.name()))) {
+      throw new RuntimeException(
+          String.format(
+              "Failed to create or find table entity '%s' in federated catalog '%s'",
+              identifier.name(), catalogEntity.getName()));
+    }
+    return completePathWrapper;
   }
 
   /**
    * Removes a table-level or view-level grant on {@code identifier} from {@code catalogRoleName}.
    */
-  private boolean revokePrivilegeOnTableLikeFromRole(
+  private PrivilegeResult revokePrivilegeOnTableLikeFromRole(
       String catalogName,
       String catalogRoleName,
       TableIdentifier identifier,
       List<PolarisEntitySubType> subTypes,
       PolarisPrivilege privilege) {
-    if (findCatalogByName(catalogName).isEmpty()) {
+    if (currentCatalog().isEmpty()) {
       throw new NotFoundException("Parent catalog %s not found", catalogName);
     }
     PolarisEntity catalogRoleEntity =
@@ -2057,22 +2267,20 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            tableLikeEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        tableLikeEntity,
+        privilege);
   }
 
-  private boolean grantPrivilegeOnPolicyEntityToRole(
+  private PrivilegeResult grantPrivilegeOnPolicyEntityToRole(
       String catalogName,
       String catalogRoleName,
       PolicyIdentifier identifier,
       PolarisPrivilege privilege) {
-    if (findCatalogByName(catalogName).isEmpty()) {
+    if (currentCatalog().isEmpty()) {
       throw new NotFoundException("Parent catalog %s not found", catalogName);
     }
     PolarisEntity catalogRoleEntity =
@@ -2087,22 +2295,20 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity policyEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .grantPrivilegeOnSecurableToRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            policyEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.grantPrivilegeOnSecurableToRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        policyEntity,
+        privilege);
   }
 
-  private boolean revokePrivilegeOnPolicyEntityFromRole(
+  private PrivilegeResult revokePrivilegeOnPolicyEntityFromRole(
       String catalogName,
       String catalogRoleName,
       PolicyIdentifier identifier,
       PolarisPrivilege privilege) {
-    if (findCatalogByName(catalogName).isEmpty()) {
+    if (currentCatalog().isEmpty()) {
       throw new NotFoundException("Parent catalog %s not found", catalogName);
     }
     PolarisEntity catalogRoleEntity =
@@ -2117,13 +2323,32 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity policyEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
-        .revokePrivilegeOnSecurableFromRole(
-            getCurrentPolarisContext(),
-            catalogRoleEntity,
-            PolarisEntity.toCoreList(catalogPath),
-            policyEntity,
-            privilege)
-        .isSuccess();
+    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
+        getCurrentPolarisContext(),
+        catalogRoleEntity,
+        PolarisEntity.toCoreList(catalogPath),
+        policyEntity,
+        privilege);
+  }
+
+  /**
+   * Selects the appropriate entity subtype for synthetic entities in external catalogs.
+   *
+   * @param subTypes list of candidate subtypes
+   * @return the selected subtype for the synthetic entity
+   * @throws IllegalStateException if no supported subtype is found
+   */
+  private static PolarisEntitySubType selectEntitySubType(List<PolarisEntitySubType> subTypes) {
+    if (subTypes.contains(PolarisEntitySubType.ICEBERG_TABLE)) {
+      return PolarisEntitySubType.ICEBERG_TABLE;
+    } else if (subTypes.contains(PolarisEntitySubType.ICEBERG_VIEW)) {
+      return PolarisEntitySubType.ICEBERG_VIEW;
+    } else {
+      throw new IllegalStateException(
+          String.format(
+              "No supported subtype found in %s. Only ICEBERG_TABLE and ICEBERG_VIEW are"
+                  + " supported for synthetic entities in external catalogs.",
+              subTypes));
+    }
   }
 }

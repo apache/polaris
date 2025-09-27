@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
@@ -36,7 +37,6 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -50,7 +50,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class StorageCredentialCacheTest {
-
+  private final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
   private final PolarisCallContext callCtx;
   private final StorageCredentialCacheConfig storageCredentialCacheConfig;
   private final PolarisMetaStoreManager metaStoreManager;
@@ -58,21 +58,20 @@ public class StorageCredentialCacheTest {
   private StorageCredentialCache storageCredentialCache;
 
   public StorageCredentialCacheTest() {
-    // diag services
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     // the entity store, use treemap implementation
     TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
     // to interact with the metastore
     TransactionalPersistence metaStore =
-        new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
-    callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+        new TreeMapTransactionalPersistenceImpl(
+            diagServices, store, Mockito.mock(), RANDOM_SECRETS);
+    callCtx = new PolarisCallContext(() -> "testRealm", metaStore);
     storageCredentialCacheConfig = () -> 10_000;
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     storageCredentialCache = newStorageCredentialCache();
   }
 
   private StorageCredentialCache newStorageCredentialCache() {
-    return new StorageCredentialCache(storageCredentialCacheConfig);
+    return new StorageCredentialCache(diagServices, storageCredentialCacheConfig);
   }
 
   @Test
@@ -89,7 +88,8 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
-                Mockito.anySet()))
+                Mockito.anySet(),
+                Mockito.any()))
         .thenReturn(badResult);
     PolarisEntity polarisEntity =
         new PolarisEntity(
@@ -103,7 +103,8 @@ public class StorageCredentialCacheTest {
                     polarisEntity,
                     true,
                     Set.of("s3://bucket1/path"),
-                    Set.of("s3://bucket3/path")))
+                    Set.of("s3://bucket3/path"),
+                    Optional.empty()))
         .isInstanceOf(UnprocessableEntityException.class)
         .hasMessage("Failed to get subscoped credentials: extra_error_info");
   }
@@ -121,7 +122,8 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
-                Mockito.anySet()))
+                Mockito.anySet(),
+                Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(1));
@@ -137,7 +139,8 @@ public class StorageCredentialCacheTest {
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket3/path", "s3://bucket4/path"));
+        Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        Optional.empty());
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
     // subscope for the same entity and same allowed locations, will hit the cache
@@ -147,7 +150,8 @@ public class StorageCredentialCacheTest {
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket3/path", "s3://bucket4/path"));
+        Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        Optional.empty());
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
   }
 
@@ -164,7 +168,8 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
-                Mockito.anySet()))
+                Mockito.anySet(),
+                Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(2));
@@ -178,7 +183,8 @@ public class StorageCredentialCacheTest {
             polarisEntity,
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
-            Set.of("s3://bucket/path"));
+            Set.of("s3://bucket/path"),
+            Optional.empty());
 
     // the entry will be evicted immediately because the token is expired
     storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -187,7 +193,8 @@ public class StorageCredentialCacheTest {
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket/path"));
+        Set.of("s3://bucket/path"),
+        Optional.empty());
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -196,7 +203,8 @@ public class StorageCredentialCacheTest {
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket/path"));
+        Set.of("s3://bucket/path"),
+        Optional.empty());
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -205,7 +213,8 @@ public class StorageCredentialCacheTest {
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket/path"));
+        Set.of("s3://bucket/path"),
+        Optional.empty());
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
   }
 
@@ -222,7 +231,8 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
-                Mockito.anySet()))
+                Mockito.anySet(),
+                Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(2));
@@ -236,7 +246,8 @@ public class StorageCredentialCacheTest {
           entity,
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket/path"));
+          Set.of("s3://bucket/path"),
+          Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // update the entity's storage config, since StorageConfig changed, cache will generate new
@@ -246,16 +257,15 @@ public class StorageCredentialCacheTest {
       internalMap.put(
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
-          new PolarisBaseEntity.Builder(entity)
-              .internalProperties(PolarisObjectMapperUtil.serializeProperties(internalMap))
-              .build();
+          new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,
           PolarisEntity.of(updateEntity),
           /* allowedListAction= */ true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket/path"));
+          Set.of("s3://bucket/path"),
+          Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // allowedListAction changed to different value FALSE, will generate new entry
@@ -266,7 +276,8 @@ public class StorageCredentialCacheTest {
           entity,
           /* allowedListAction= */ false,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket/path"));
+          Set.of("s3://bucket/path"),
+          Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // different allowedWriteLocations, will generate new entry
@@ -277,7 +288,8 @@ public class StorageCredentialCacheTest {
           entity,
           /* allowedListAction= */ false,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://differentbucket/path"));
+          Set.of("s3://differentbucket/path"),
+          Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // different allowedReadLocations, will generate new try
@@ -286,16 +298,15 @@ public class StorageCredentialCacheTest {
       internalMap.put(
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       PolarisBaseEntity updateEntity =
-          new PolarisBaseEntity.Builder(entity)
-              .internalProperties(PolarisObjectMapperUtil.serializeProperties(internalMap))
-              .build();
+          new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
           callCtx,
           PolarisEntity.of(updateEntity),
           /* allowedListAction= */ false,
           Set.of("s3://differentbucket/path", "s3://bucket2/path"),
-          Set.of("s3://bucket/path"));
+          Set.of("s3://bucket/path"),
+          Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
   }
@@ -314,7 +325,8 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
-                Mockito.anySet()))
+                Mockito.anySet(),
+                Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(2));
@@ -326,7 +338,8 @@ public class StorageCredentialCacheTest {
           entity,
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket3/path", "s3://bucket4/path"));
+          Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          Optional.empty());
     }
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
 
@@ -338,7 +351,8 @@ public class StorageCredentialCacheTest {
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).id(1234).build()),
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket3/path", "s3://bucket4/path"));
+          Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
@@ -350,7 +364,8 @@ public class StorageCredentialCacheTest {
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
-          Set.of("s3://bucket3/path", "s3://bucket4/path"));
+          Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
     // order of the allowedReadLocations does not affect the cache
@@ -361,7 +376,8 @@ public class StorageCredentialCacheTest {
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
           Set.of("s3://bucket2/path", "s3://bucket1/path"),
-          Set.of("s3://bucket3/path", "s3://bucket4/path"));
+          Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
@@ -373,7 +389,8 @@ public class StorageCredentialCacheTest {
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
           Set.of("s3://bucket2/path", "s3://bucket1/path"),
-          Set.of("s3://bucket4/path", "s3://bucket3/path"));
+          Set.of("s3://bucket4/path", "s3://bucket3/path"),
+          Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
   }
@@ -455,7 +472,8 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
-                Mockito.anySet()))
+                Mockito.anySet(),
+                Mockito.any()))
         .thenReturn(properties);
     List<PolarisEntity> entityList = getPolarisEntities();
 
@@ -466,7 +484,8 @@ public class StorageCredentialCacheTest {
             entityList.get(0),
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
-            Set.of("s3://bucket3/path", "s3://bucket4/path"));
+            Set.of("s3://bucket3/path", "s3://bucket4/path"),
+            Optional.empty());
     Assertions.assertThat(config.credentials())
         .containsExactly(Map.entry("s3.secret-access-key", "super-secret-123"));
     Assertions.assertThat(config.extraProperties())

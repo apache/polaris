@@ -272,7 +272,7 @@ public enum PolarisPrivilege {
   @JsonCreator
   public static @Nullable PolarisPrivilege fromCode(int code) {
     // ensure it is within bounds
-    if (code >= REVERSE_MAPPING_ARRAY.length) {
+    if (code < 0 || code >= REVERSE_MAPPING_ARRAY.length) {
       return null;
     }
 

@@ -23,6 +23,7 @@ import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.BaseServiceException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
@@ -34,7 +35,6 @@ import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CherrypickAncestorCommitException;
 import org.apache.iceberg.exceptions.CleanableFailure;
@@ -89,15 +89,16 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
 
   @Override
   public Response toResponse(RuntimeException runtimeException) {
-    getLogger().info("Handling runtimeException {}", runtimeException.getMessage());
+    LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
 
     int responseCode = mapExceptionToResponseCode(runtimeException);
-    getLogger()
-        .atLevel(responseCode >= 500 ? Level.INFO : Level.DEBUG)
-        .log("Full RuntimeException", runtimeException);
-
-    if (responseCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
-      getLogger().error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
+    if (responseCode == Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
+      getLoggerForExceptionLogging()
+          .error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
+    } else {
+      getLoggerForExceptionLogging()
+          .atLevel(responseCode > 500 ? Level.INFO : Level.DEBUG)
+          .log("Full RuntimeException", runtimeException);
     }
 
     ErrorResponse icebergErrorResponse =
@@ -111,7 +112,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
             .entity(icebergErrorResponse)
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
-    getLogger().debug("Mapped exception to errorResp: {}", errorResp);
+    LOGGER.debug("Mapped exception to errorResp: {}", errorResp);
     return errorResp;
   }
 
@@ -156,7 +157,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   static int mapExceptionToResponseCode(RuntimeException rex) {
-    for (Throwable t : ExceptionUtils.getThrowables(rex)) {
+    for (Throwable t : Throwables.getCausalChain(rex)) {
       // Cloud exceptions can be wrapped by the Iceberg SDK
       Optional<Integer> code = mapCloudExceptionToResponseCode(t);
       if (code.isPresent()) {
@@ -261,8 +262,12 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     return Optional.of(Status.INTERNAL_SERVER_ERROR.getStatusCode());
   }
 
+  /**
+   * This function is only present for the {@code ExceptionMapperTest} and must only be used once
+   * during any execution of {@link #toResponse(RuntimeException)}.
+   */
   @VisibleForTesting
-  Logger getLogger() {
+  Logger getLoggerForExceptionLogging() {
     return LOGGER;
   }
 }

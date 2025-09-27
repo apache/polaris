@@ -23,6 +23,7 @@ dependencies {
   implementation(gradleKotlinDsl())
   implementation(baselibs.errorprone)
   implementation(baselibs.idea.ext)
+  implementation(baselibs.jandex)
   implementation(baselibs.license.report)
   implementation(baselibs.nexus.publish)
   implementation(baselibs.shadow)

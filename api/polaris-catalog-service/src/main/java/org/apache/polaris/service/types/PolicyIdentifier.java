@@ -104,7 +104,7 @@ public class PolicyIdentifier {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof PolicyIdentifier)) {
       return false;
     }
     PolicyIdentifier policyIdentifier = (PolicyIdentifier) o;

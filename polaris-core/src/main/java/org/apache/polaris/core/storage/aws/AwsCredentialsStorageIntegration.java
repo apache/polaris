@@ -74,7 +74,8 @@ public class AwsCredentialsStorageIntegration
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
@@ -85,7 +86,7 @@ public class AwsCredentialsStorageIntegration
             .roleSessionName("PolarisAwsCredentialsStorageIntegration")
             .policy(
                 policyString(
-                        storageConfig.getRoleARN(),
+                        storageConfig.getAwsPartition(),
                         allowListOperation,
                         allowedReadLocations,
                         allowedWriteLocations)
@@ -120,6 +121,11 @@ public class AwsCredentialsStorageIntegration
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
 
+    refreshCredentialsEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+        });
+
     URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {
       accessConfig.put(StorageAccessProperty.AWS_ENDPOINT, endpointUri.toString());
@@ -134,7 +140,7 @@ public class AwsCredentialsStorageIntegration
       accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
     }
 
-    if (storageConfig.getAwsPartition().equals("aws-us-gov") && region == null) {
+    if ("aws-us-gov".equals(storageConfig.getAwsPartition()) && region == null) {
       throw new IllegalArgumentException(
           String.format(
               "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
@@ -152,7 +158,10 @@ public class AwsCredentialsStorageIntegration
    */
   // TODO - add KMS key access
   private IamPolicy policyString(
-      String roleArn, boolean allowList, Set<String> readLocations, Set<String> writeLocations) {
+      String awsPartition,
+      boolean allowList,
+      Set<String> readLocations,
+      Set<String> writeLocations) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -162,7 +171,7 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
-    String arnPrefix = getArnPrefixFor(roleArn);
+    String arnPrefix = arnPrefixForPartition(awsPartition);
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
@@ -226,14 +235,8 @@ public class AwsCredentialsStorageIntegration
     return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
   }
 
-  private String getArnPrefixFor(String roleArn) {
-    if (roleArn.contains("aws-cn")) {
-      return "arn:aws-cn:s3:::";
-    } else if (roleArn.contains("aws-us-gov")) {
-      return "arn:aws-us-gov:s3:::";
-    } else {
-      return "arn:aws:s3:::";
-    }
+  private static String arnPrefixForPartition(String awsPartition) {
+    return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 
   private static @Nonnull String parseS3Path(URI uri) {

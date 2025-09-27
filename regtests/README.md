@@ -85,6 +85,14 @@ project, just run:
 env POLARIS_HOST=localhost ./regtests/run.sh
 ```
 
+The catalog federation tests rely on the following configurations in `application.properties` to
+be set in order to succeed.
+
+```
+polaris.features."ENABLE_CATALOG_FEDERATION"=true
+polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS"=true
+```
+
 To run the tests in verbose mode, with test stdout printing to console, set the `VERBOSE`
 environment variable to `1`; you can also choose to run only a subset of tests by specifying the
 test directories as arguments to `run.sh`. For example, to run only the `t_spark_sql` tests in

@@ -24,6 +24,7 @@ dependencies {
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-catalog-service"))
 
+  implementation(libs.jakarta.annotation.api)
   implementation(libs.jakarta.ws.rs.api)
   implementation(libs.guava)
 
@@ -47,13 +48,9 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
-  implementation(platform(libs.testcontainers.bom))
-  implementation("org.testcontainers:testcontainers")
-  implementation(libs.s3mock.testcontainers)
-
   implementation("org.apache.iceberg:iceberg-spark-3.5_2.12")
   implementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12")
-  implementation("org.apache.spark:spark-sql_2.12:3.5.6") {
+  implementation("org.apache.spark:spark-sql_2.12:3.5.7") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
@@ -68,6 +65,8 @@ dependencies {
   implementation(libs.assertj.core)
   implementation(libs.mockito.core)
   implementation(libs.awaitility)
+  implementation(libs.s3mock.testcontainers)
+  implementation(project(":polaris-runtime-test-common"))
 }
 
 copiedCodeChecks {

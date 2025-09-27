@@ -23,6 +23,7 @@ import publishing.PublishingHelperPlugin
 plugins {
     id("distribution")
     id("signing")
+    id("polaris-reproducible")
 }
 
 description = "Apache Polaris Binary Distribution"

@@ -20,11 +20,13 @@ package org.apache.polaris.core.policy;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
+import jakarta.annotation.Nullable;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
 public class PolicyEntity extends PolarisEntity {
@@ -36,13 +38,18 @@ public class PolicyEntity extends PolarisEntity {
 
   PolicyEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.POLICY, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
-  public static PolicyEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable PolicyEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new PolicyEntity(sourceEntity);
     }
-
     return null;
   }
 
@@ -53,10 +60,8 @@ public class PolicyEntity extends PolarisEntity {
 
   @JsonIgnore
   public int getPolicyTypeCode() {
-    Preconditions.checkArgument(
-        getPropertiesAsMap().containsKey(POLICY_TYPE_CODE_KEY),
-        "Invalid policy entity: policy type must exist");
     String policyTypeCode = getPropertiesAsMap().get(POLICY_TYPE_CODE_KEY);
+    Preconditions.checkNotNull(policyTypeCode, "Invalid policy entity: policy type must exist");
     return Integer.parseInt(policyTypeCode);
   }
 

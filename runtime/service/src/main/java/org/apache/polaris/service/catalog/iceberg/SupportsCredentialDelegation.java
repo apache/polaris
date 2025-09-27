@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -35,5 +36,6 @@ public interface SupportsCredentialDelegation {
   AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      Set<PolarisStorageActions> storageActions);
+      Set<PolarisStorageActions> storageActions,
+      Optional<String> refreshCredentialsEndpoint);
 }

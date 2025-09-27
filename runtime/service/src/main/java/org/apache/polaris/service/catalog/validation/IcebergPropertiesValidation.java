@@ -27,7 +27,7 @@ import jakarta.annotation.Nullable;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.exceptions.ValidationException;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,15 +36,14 @@ public class IcebergPropertiesValidation {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergPropertiesValidation.class);
 
   public static void validateIcebergProperties(
-      @Nonnull CallContext callContext, @Nonnull Map<String, String> properties) {
-    determineFileIOClassName(callContext, properties, null);
+      @Nonnull RealmConfig realmConfig, @Nonnull Map<String, String> properties) {
+    determineFileIOClassName(realmConfig, properties, null);
   }
 
   public static String determineFileIOClassName(
-      @Nonnull CallContext callContext,
+      @Nonnull RealmConfig realmConfig,
       @Nonnull Map<String, String> properties,
       @Nullable PolarisStorageConfigurationInfo storageConfigurationInfo) {
-    var realmConfig = callContext.getPolarisCallContext().getRealmConfig();
     var ioImpl = properties.get(CatalogProperties.FILE_IO_IMPL);
 
     if (ioImpl != null) {

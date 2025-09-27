@@ -134,13 +134,13 @@ client-lint: client-setup-env ## Run linting checks for Polaris client
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code
 	@echo "--- Regenerating client code ---"
-	@client/templates/regenerate.sh
+	@$(ACTIVATE_AND_CD) && python3 -B generate_clients.py
 	@echo "--- Client code regeneration complete ---"
 
 .PHONY: client-unit-test
 client-unit-test: client-setup-env ## Run client unit tests
 	@echo "--- Running client unit tests ---"
-	@$(ACTIVATE_AND_CD) && SCRIPT_DIR="non-existing-mock-directory" poetry run pytest test/
+	@$(ACTIVATE_AND_CD) && poetry run pytest test/
 	@echo "--- Client unit tests complete ---"
 
 .PHONY: client-integration-test
@@ -161,6 +161,29 @@ client-integration-test: client-setup-env ## Run client integration tests
 	@echo "--- Client integration tests complete ---"
 	@echo "Tearing down Docker Compose services..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
+
+.PHONY: client-license-check
+client-license-check: client-setup-env ## Run license compliance check
+	@echo "--- Starting license compliance check ---"
+	@$(ACTIVATE_AND_CD) && pip-licenses
+	@echo "--- License compliance check complete ---"
+
+.PHONY: client-build
+client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format.
+	@echo "--- Building client distribution ---"
+	@if [ -n "$(FORMAT)" ]; then \
+		if [ "$(FORMAT)" != "sdist" ] && [ "$(FORMAT)" != "wheel" ]; then \
+			echo "Error: Invalid format '$(FORMAT)'. Supported formats are 'sdist' and 'wheel'." >&2; \
+			exit 1; \
+		fi; \
+		echo "Building with format: $(FORMAT)"; \
+		$(ACTIVATE_AND_CD) && poetry build --format $(FORMAT); \
+	else \
+		echo "Building default distribution (sdist and wheel)"; \
+		$(ACTIVATE_AND_CD) && poetry build; \
+	fi
+	@echo "--- Client distribution build complete ---"
+
 
 .PHONY: client-cleanup
 client-cleanup: ## Cleanup virtual environment and Python cache files

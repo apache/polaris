@@ -51,9 +51,9 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 /**
  * A simple, non-exhaustive set of helper methods for accessing the Polaris Management API.
  *
- * @see PolarisClient#managementApi(ClientCredentials)
+ * @see PolarisClient#managementApi(String)
  */
-public class ManagementApi extends RestApi {
+public class ManagementApi extends PolarisRestApi {
   public ManagementApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);
   }
@@ -77,6 +77,20 @@ public class ManagementApi extends RestApi {
     try (Response createPResponse = request("v1/principals").post(Entity.json(request))) {
       assertThat(createPResponse).returns(CREATED.getStatusCode(), Response::getStatus);
       return createPResponse.readEntity(PrincipalWithCredentials.class);
+    }
+  }
+
+  /**
+   * Retrieves a Principal by name via the management API.
+   *
+   * @param principalName the name of the principal to fetch
+   * @return the Principal object
+   */
+  public Principal getPrincipal(String principalName) {
+    try (Response response =
+        request("v1/principals/{principalName}", Map.of("principalName", principalName)).get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      return response.readEntity(Principal.class);
     }
   }
 
@@ -150,7 +164,10 @@ public class ManagementApi extends RestApi {
 
   public void createCatalog(String principalRoleName, Catalog catalog) {
     createCatalog(catalog);
+    makeAdmin(principalRoleName, catalog);
+  }
 
+  public void makeAdmin(String principalRoleName, Catalog catalog) {
     // Create a new CatalogRole that has CATALOG_MANAGE_CONTENT and CATALOG_MANAGE_ACCESS
     String catalogRoleName = "custom-admin";
     createCatalogRole(catalog.getName(), catalogRoleName);

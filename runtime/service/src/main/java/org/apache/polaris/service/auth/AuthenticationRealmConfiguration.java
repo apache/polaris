@@ -22,6 +22,8 @@ import io.smallrye.config.WithDefault;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
+import org.apache.polaris.service.auth.internal.broker.TokenBrokerFactory;
+import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 
 public interface AuthenticationRealmConfiguration {
 
@@ -31,32 +33,14 @@ public interface AuthenticationRealmConfiguration {
 
   /**
    * The configuration for the authenticator. The authenticator is responsible for validating token
-   * credentials and mapping those credentials to an existing Polaris principal.
+   * credentials and mapping those credentials to an existing principal and validated principal
+   * roles.
    */
   AuthenticatorConfiguration authenticator();
 
   interface AuthenticatorConfiguration {
 
-    /**
-     * The type of the identity provider. Must be a registered {@link
-     * org.apache.polaris.service.auth.Authenticator} identifier.
-     */
-    @WithDefault("default")
-    String type();
-  }
-
-  /**
-   * The configuration for the active roles provider. The active roles provider is responsible for
-   * determining the active roles for a given Polaris principal.
-   */
-  ActiveRolesProviderConfiguration activeRolesProvider();
-
-  interface ActiveRolesProviderConfiguration {
-
-    /**
-     * The type of the active roles provider. Must be a registered {@link
-     * org.apache.polaris.service.auth.ActiveRolesProvider} identifier.
-     */
+    /** The type of the identity provider. Must be a registered {@link Authenticator} identifier. */
     @WithDefault("default")
     String type();
   }
@@ -69,8 +53,8 @@ public interface AuthenticationRealmConfiguration {
 
   interface TokenServiceConfiguration {
     /**
-     * The type of the OAuth2 service. Must be a registered {@link
-     * org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService} identifier.
+     * The type of the OAuth2 service. Must be a registered {@link IcebergRestOAuth2ApiService}
+     * identifier.
      */
     @WithDefault("default")
     String type();
@@ -90,8 +74,8 @@ public interface AuthenticationRealmConfiguration {
     Duration maxTokenGeneration();
 
     /**
-     * The type of the token broker factory. Must be a registered {@link
-     * org.apache.polaris.service.auth.TokenBrokerFactory} identifier.
+     * The type of the token broker factory. Must be a registered {@link TokenBrokerFactory}
+     * identifier.
      */
     @WithDefault("rsa-key-pair")
     String type();

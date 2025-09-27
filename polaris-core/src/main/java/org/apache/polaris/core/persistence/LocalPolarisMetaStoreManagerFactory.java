@@ -88,8 +88,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
    * Subclasses can override this to inject different implementations of PolarisMetaStoreManager
    * into the existing realm-based setup flow.
    */
-  protected PolarisMetaStoreManager createNewMetaStoreManager(Clock clock) {
-    return new TransactionalMetaStoreManagerImpl(clock);
+  protected PolarisMetaStoreManager createNewMetaStoreManager(
+      Clock clock, PolarisDiagnostics diagnostics) {
+    return new TransactionalMetaStoreManagerImpl(clock, diagnostics);
   }
 
   private void initializeForRealm(
@@ -99,7 +100,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         realmContext.getRealmIdentifier(),
         () -> createMetaStoreSession(backingStore, realmContext, rootCredentialsSet, diagnostics));
 
-    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager(clock);
+    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager(clock, diagnostics);
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
@@ -130,7 +131,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       TransactionalPersistence session = getOrCreateSession(realmContext);
 
-      PolarisCallContext callContext = new PolarisCallContext(realmContext, session, diagnostics);
+      PolarisCallContext callContext = new PolarisCallContext(realmContext, session);
       BaseResult result = metaStoreManager.purge(callContext);
       results.put(realm, result);
 
@@ -168,7 +169,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       entityCacheMap.put(
           realmContext.getRealmIdentifier(),
-          new InMemoryEntityCache(realmConfig, metaStoreManager));
+          new InMemoryEntityCache(diagnostics, realmConfig, metaStoreManager));
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());
@@ -185,8 +186,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
     BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStore, diagnostics);
+    PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
     Optional<PrincipalEntity> preliminaryRootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext);
@@ -220,8 +220,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerMap.get(realmContext.getRealmIdentifier());
     BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStore, diagnostics);
+    PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal(polarisContext);
     if (rootPrincipal.isEmpty()) {

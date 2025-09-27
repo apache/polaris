@@ -31,9 +31,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.ManifestFile;
-import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
@@ -41,7 +39,6 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -52,7 +49,6 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class ManifestFileCleanupTaskHandlerTest {
-  @Inject PolarisDiagnostics diagnostics;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
 
   private final RealmContext realmContext = () -> "realmName";
@@ -63,7 +59,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
   private PolarisCallContext newCallContext() {
     BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore, diagnostics);
+    return new PolarisCallContext(realmContext, metaStore);
   }
 
   @Test
@@ -83,8 +79,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
             .withData(
-                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+                ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                    tableIdentifier, manifestFile))
             .setName(UUID.randomUUID().toString())
             .build();
     task = addTaskLocation(task);
@@ -107,8 +103,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
             .withData(
-                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+                ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                    tableIdentifier, manifestFile))
             .setName(UUID.randomUUID().toString())
             .build();
     task = addTaskLocation(task);
@@ -146,8 +142,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
             .withData(
-                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+                ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                    tableIdentifier, manifestFile))
             .setName(UUID.randomUUID().toString())
             .build();
     task = addTaskLocation(task);
@@ -201,8 +197,8 @@ class ManifestFileCleanupTaskHandlerTest {
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
             .withData(
-                new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                    tableIdentifier, Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
+                ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                    tableIdentifier, manifestFile))
             .setName(UUID.randomUUID().toString())
             .build();
     task = addTaskLocation(task);

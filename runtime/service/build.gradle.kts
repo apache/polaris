@@ -19,7 +19,7 @@
 
 plugins {
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
   id("java-test-fixtures")
 }
@@ -35,6 +35,9 @@ dependencies {
 
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
+
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
@@ -72,28 +75,11 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
-  implementation(libs.hadoop.common) {
-    exclude("org.slf4j", "slf4j-reload4j")
-    exclude("org.slf4j", "slf4j-log4j12")
-    exclude("ch.qos.reload4j", "reload4j")
-    exclude("log4j", "log4j")
-    exclude("org.apache.zookeeper", "zookeeper")
-    exclude("org.apache.hadoop.thirdparty", "hadoop-shaded-protobuf_3_25")
-    exclude("com.github.pjfanning", "jersey-json")
-    exclude("com.sun.jersey", "jersey-core")
-    exclude("com.sun.jersey", "jersey-server")
-    exclude("com.sun.jersey", "jersey-servlet")
-    exclude("com.sun.jersey", "jersey-servlet")
-    exclude("io.dropwizard.metrics", "metrics-core")
-  }
-  implementation(libs.hadoop.hdfs.client)
-
   implementation(libs.smallrye.common.annotation)
   implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
 
   compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.spotbugs.annotations)
 
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
@@ -101,6 +87,8 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation("software.amazon.awssdk:kms")
+  implementation("software.amazon.awssdk:cloudwatchlogs")
   implementation("software.amazon.awssdk:apache-client") {
     exclude("commons-logging", "commons-logging")
   }
@@ -136,24 +124,28 @@ dependencies {
   testImplementation("software.amazon.awssdk:kms")
   testImplementation("software.amazon.awssdk:dynamodb")
 
-  testImplementation(platform(libs.quarkus.bom))
+  testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
   testImplementation("io.quarkus:quarkus-junit5-mockito")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
+  testImplementation("io.quarkus:quarkus-jdbc-h2")
+
   testImplementation("io.rest-assured:rest-assured")
+
+  testImplementation(libs.localstack)
+
+  testImplementation(project(":polaris-runtime-test-common"))
+  testImplementation(project(":polaris-container-spec-helper"))
 
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
-  testImplementation(project(":polaris-runtime-test-common"))
-
-  testImplementation("io.quarkus:quarkus-junit5")
   testImplementation(libs.awaitility)
+
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:postgresql")
-  testImplementation("org.postgresql:postgresql")
 
   testFixturesImplementation(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-api-management-model"))
@@ -180,11 +172,16 @@ dependencies {
   testFixturesImplementation("software.amazon.awssdk:sts")
   testFixturesImplementation("software.amazon.awssdk:iam-policy-builder")
   testFixturesImplementation("software.amazon.awssdk:s3")
+  testFixturesImplementation("software.amazon.awssdk:kms")
 
   testFixturesImplementation(platform(libs.azuresdk.bom))
   testFixturesImplementation("com.azure:azure-core")
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
+
+  // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
+  // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
+  intTestRuntimeOnly(libs.keycloak.admin.client)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
@@ -212,50 +209,56 @@ tasks.named<Test>("test").configure {
   jvmArgs("-Xshare:off")
 }
 
-tasks.named<Test>("intTest").configure {
-  maxParallelForks = 1
+listOf("intTest", "cloudTest")
+  .map { tasks.named<Test>(it) }
+  .forEach {
+    it.configure {
+      maxParallelForks = 1
 
-  val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
+      val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
 
-  // JVM arguments provider does not interfere with Gradle's cache keys
-  jvmArgumentProviders.add(
-    CommandLineArgumentProvider {
-      // Same issue as above: allow a java security manager after Java 21
-      // (this setting is for the application under test, while the setting above is for test code).
-      val securityManagerAllow = "-Djava.security.manager=allow"
+      // JVM arguments provider does not interfere with Gradle's cache keys
+      jvmArgumentProviders.add(
+        CommandLineArgumentProvider {
+          // Same issue as above: allow a java security manager after Java 21
+          // (this setting is for the application under test, while the setting above is for test
+          // code).
+          val securityManagerAllow = "-Djava.security.manager=allow"
 
-      val args = mutableListOf<String>()
+          val args = mutableListOf<String>()
 
-      // Example: to attach a debugger to the spawned JVM running Quarkus, add
-      // -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
-      // to your test configuration.
-      val explicitQuarkusTestArgLine = System.getProperty("quarkus.test.arg-line")
-      var quarkusTestArgLine =
-        if (explicitQuarkusTestArgLine != null) "$explicitQuarkusTestArgLine $securityManagerAllow"
-        else securityManagerAllow
+          // Example: to attach a debugger to the spawned JVM running Quarkus, add
+          // -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+          // to your test configuration.
+          val explicitQuarkusTestArgLine = System.getProperty("quarkus.test.arg-line")
+          var quarkusTestArgLine =
+            if (explicitQuarkusTestArgLine != null)
+              "$explicitQuarkusTestArgLine $securityManagerAllow"
+            else securityManagerAllow
 
-      args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
-      // This property is not honored in a per-profile application.properties file,
-      // so we need to set it here.
-      args.add("-Dquarkus.log.file.path=${logsDir.resolve("polaris.log").absolutePath}")
+          args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
+          // This property is not honored in a per-profile application.properties file,
+          // so we need to set it here.
+          args.add("-Dquarkus.log.file.path=${logsDir.resolve("polaris.log").absolutePath}")
 
-      // Add `quarkus.*` system properties, other than the ones explicitly set above
-      System.getProperties()
-        .filter {
-          it.key.toString().startsWith("quarkus.") &&
-            !"quarkus.test.arg-line".equals(it.key) &&
-            !"quarkus.log.file.path".equals(it.key)
+          // Add `quarkus.*` system properties, other than the ones explicitly set above
+          System.getProperties()
+            .filter {
+              it.key.toString().startsWith("quarkus.") &&
+                !"quarkus.test.arg-line".equals(it.key) &&
+                !"quarkus.log.file.path".equals(it.key)
+            }
+            .forEach { args.add("${it.key}=${it.value}") }
+
+          args
         }
-        .forEach { args.add("${it.key}=${it.value}") }
-
-      args
+      )
+      // delete files from previous runs
+      doFirst {
+        // delete log files written by Polaris
+        logsDir.deleteRecursively()
+        // delete quarkus.log file (captured Polaris stdout/stderr)
+        project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
+      }
     }
-  )
-  // delete files from previous runs
-  doFirst {
-    // delete log files written by Polaris
-    logsDir.deleteRecursively()
-    // delete quarkus.log file (captured Polaris stdout/stderr)
-    project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
   }
-}

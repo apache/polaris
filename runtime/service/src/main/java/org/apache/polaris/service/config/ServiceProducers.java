@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
@@ -57,23 +56,21 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
-import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.PrincipalAuthInfo;
-import org.apache.polaris.service.auth.TokenBroker;
-import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
+import org.apache.polaris.service.auth.internal.broker.TokenBroker;
+import org.apache.polaris.service.auth.internal.broker.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOConfiguration;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
-import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -105,13 +102,14 @@ public class ServiceProducers {
   @Produces
   @ApplicationScoped
   public StorageCredentialCache storageCredentialCache(
-      StorageCredentialCacheConfig storageCredentialCacheConfig) {
-    return new StorageCredentialCache(storageCredentialCacheConfig);
+      PolarisDiagnostics diagnostics, StorageCredentialCacheConfig storageCredentialCacheConfig) {
+    return new StorageCredentialCache(diagnostics, storageCredentialCacheConfig);
   }
 
   @Produces
   @ApplicationScoped
   public ResolverFactory resolverFactory(
+      PolarisDiagnostics diagnostics,
       MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisMetaStoreManager polarisMetaStoreManager) {
     return (callContext, securityContext, referenceCatalogName) -> {
@@ -119,6 +117,7 @@ public class ServiceProducers {
           metaStoreManagerFactory.getOrCreateEntityCache(
               callContext.getRealmContext(), callContext.getRealmConfig());
       return new Resolver(
+          diagnostics,
           callContext.getPolarisCallContext(),
           polarisMetaStoreManager,
           securityContext,
@@ -129,14 +128,9 @@ public class ServiceProducers {
 
   @Produces
   @ApplicationScoped
-  public ResolutionManifestFactory resolutionManifestFactory(ResolverFactory resolverFactory) {
-    return new ResolutionManifestFactoryImpl(resolverFactory);
-  }
-
-  @Produces
-  @ApplicationScoped
-  public PolarisAuthorizer polarisAuthorizer() {
-    return new PolarisAuthorizerImpl();
+  public ResolutionManifestFactory resolutionManifestFactory(
+      PolarisDiagnostics diagnostics, ResolverFactory resolverFactory) {
+    return new ResolutionManifestFactoryImpl(diagnostics, resolverFactory);
   }
 
   @Produces
@@ -157,17 +151,22 @@ public class ServiceProducers {
   @RequestScoped
   public CallContext polarisCallContext(
       RealmContext realmContext,
-      PolarisDiagnostics diagServices,
       PolarisConfigurationStore configurationStore,
       MetaStoreManagerFactory metaStoreManagerFactory) {
     BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStoreSession, diagServices, configurationStore);
+    return new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
   }
 
   @Produces
   @RequestScoped
   public RealmConfig realmConfig(CallContext callContext) {
     return callContext.getRealmConfig();
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisAuthorizer polarisAuthorizer(RealmConfig realmConfig) {
+    return new PolarisAuthorizerImpl(realmConfig);
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans
@@ -329,11 +328,8 @@ public class ServiceProducers {
 
   @Produces
   @RequestScoped
-  public Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> authenticator(
-      AuthenticationRealmConfiguration config,
-      @Any
-          Instance<Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal>>
-              authenticators) {
+  public Authenticator authenticator(
+      AuthenticationRealmConfiguration config, @Any Instance<Authenticator> authenticators) {
     return authenticators.select(Identifier.Literal.of(config.authenticator().type())).get();
   }
 
@@ -386,15 +382,6 @@ public class ServiceProducers {
   public AuthenticationRealmConfiguration realmAuthConfig(
       AuthenticationConfiguration config, RealmContext realmContext) {
     return config.forRealm(realmContext);
-  }
-
-  @Produces
-  public ActiveRolesProvider activeRolesProvider(
-      AuthenticationRealmConfiguration config,
-      @Any Instance<ActiveRolesProvider> activeRolesProviders) {
-    return activeRolesProviders
-        .select(Identifier.Literal.of(config.activeRolesProvider().type()))
-        .get();
   }
 
   @Produces

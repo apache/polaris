@@ -28,19 +28,18 @@ import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import java.security.Principal;
-import java.util.Optional;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.iceberg.exceptions.ServiceFailureException;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class AuthenticatingAugmentorTest {
 
   private AuthenticatingAugmentor augmentor;
-  private Authenticator<PrincipalAuthInfo, AuthenticatedPolarisPrincipal> authenticator;
+  private Authenticator authenticator;
 
   @BeforeEach
-  @SuppressWarnings("unchecked")
   public void setup() {
     authenticator = mock(Authenticator.class);
     augmentor = new AuthenticatingAugmentor(authenticator);
@@ -77,27 +76,7 @@ public class AuthenticatingAugmentorTest {
   public void testAugmentAuthenticationFailure() {
     // Given
     Principal nonPolarisPrincipal = mock(Principal.class);
-    PrincipalAuthInfo credential = mock(PrincipalAuthInfo.class);
-    SecurityIdentity identity =
-        QuarkusSecurityIdentity.builder()
-            .setPrincipal(nonPolarisPrincipal)
-            .addCredential(credential)
-            .build();
-
-    when(authenticator.authenticate(credential)).thenReturn(Optional.empty());
-
-    // When/Then
-    assertThatThrownBy(
-            () -> augmentor.augment(identity, Uni.createFrom()::item).await().indefinitely())
-        .isInstanceOf(AuthenticationFailedException.class)
-        .hasCauseInstanceOf(NotAuthorizedException.class);
-  }
-
-  @Test
-  public void testAugmentRuntimeException() {
-    // Given
-    Principal nonPolarisPrincipal = mock(Principal.class);
-    PrincipalAuthInfo credential = mock(PrincipalAuthInfo.class);
+    PolarisCredential credential = mock(PolarisCredential.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(nonPolarisPrincipal)
@@ -115,18 +94,38 @@ public class AuthenticatingAugmentorTest {
   }
 
   @Test
+  public void testServiceFailureExceptionBubblesUp() {
+    Principal nonPolarisPrincipal = mock(Principal.class);
+    PolarisCredential credential = mock(PolarisCredential.class);
+    SecurityIdentity identity =
+        QuarkusSecurityIdentity.builder()
+            .setPrincipal(nonPolarisPrincipal)
+            .addCredential(credential)
+            .build();
+
+    ServiceFailureException serviceException =
+        new ServiceFailureException("Unable to fetch principal entity");
+    when(authenticator.authenticate(credential)).thenThrow(serviceException);
+
+    assertThatThrownBy(
+            () -> augmentor.augment(identity, Uni.createFrom()::item).await().indefinitely())
+        .isInstanceOf(ServiceFailureException.class)
+        .hasMessage("Unable to fetch principal entity");
+  }
+
+  @Test
   public void testAugmentSuccessfulAuthentication() {
     // Given
-    AuthenticatedPolarisPrincipal polarisPrincipal = mock(AuthenticatedPolarisPrincipal.class);
+    PolarisPrincipal polarisPrincipal = mock(PolarisPrincipal.class);
     when(polarisPrincipal.getName()).thenReturn("user1");
-    PrincipalAuthInfo credential = mock(PrincipalAuthInfo.class);
+    PolarisCredential credential = mock(PolarisCredential.class);
     SecurityIdentity identity =
         QuarkusSecurityIdentity.builder()
             .setPrincipal(polarisPrincipal)
             .addCredential(credential)
             .build();
 
-    when(authenticator.authenticate(credential)).thenReturn(Optional.of(polarisPrincipal));
+    when(authenticator.authenticate(credential)).thenReturn(polarisPrincipal);
 
     // When
     SecurityIdentity result =

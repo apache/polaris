@@ -29,14 +29,13 @@ import static org.mockito.Mockito.when;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
-import io.quarkus.security.identity.request.TokenAuthenticationRequest;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
-import org.apache.polaris.service.auth.DecodedToken;
-import org.apache.polaris.service.auth.TokenBroker;
+import org.apache.polaris.service.auth.PolarisCredential;
+import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -128,7 +127,7 @@ public class InternalAuthenticationMechanismTest {
         .isInstanceOf(AuthenticationFailedException.class)
         .hasCause(cause);
     verify(tokenBroker).verify("invalidToken");
-    verify(identityProviderManager, never()).authenticate(any(TokenAuthenticationRequest.class));
+    verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
   }
 
   @Test
@@ -148,7 +147,7 @@ public class InternalAuthenticationMechanismTest {
 
     assertThat(result.await().indefinitely()).isNull();
     verify(tokenBroker).verify("invalidToken");
-    verify(identityProviderManager, never()).authenticate(any(TokenAuthenticationRequest.class));
+    verify(identityProviderManager, never()).authenticate(any(InternalAuthenticationRequest.class));
   }
 
   @Test
@@ -157,7 +156,7 @@ public class InternalAuthenticationMechanismTest {
     when(routingContext.request()).thenReturn(mock(io.vertx.core.http.HttpServerRequest.class));
     when(routingContext.request().getHeader("Authorization")).thenReturn("Bearer validToken");
 
-    DecodedToken decodedToken = mock(DecodedToken.class);
+    PolarisCredential decodedToken = mock(PolarisCredential.class);
     when(tokenBroker.verify("validToken")).thenReturn(decodedToken);
 
     SecurityIdentity securityIdentity = mock(SecurityIdentity.class);
@@ -168,6 +167,6 @@ public class InternalAuthenticationMechanismTest {
 
     assertThat(result.await().indefinitely()).isSameAs(securityIdentity);
     verify(tokenBroker).verify("validToken");
-    verify(identityProviderManager).authenticate(any(TokenAuthenticationRequest.class));
+    verify(identityProviderManager).authenticate(any(InternalAuthenticationRequest.class));
   }
 }

@@ -66,6 +66,7 @@ class Command(ABC):
                 iceberg_remote_catalog_name=options_get(Arguments.ICEBERG_REMOTE_CATALOG_NAME),
                 remove_properties=[] if remove_properties is None else remove_properties,
                 endpoint=options_get(Arguments.ENDPOINT),
+                endpoint_internal=options_get(Arguments.ENDPOINT_INTERNAL),
                 sts_endpoint=options_get(Arguments.STS_ENDPOINT),
                 path_style_access=options_get(Arguments.PATH_STYLE_ACCESS),
                 catalog_connection_type=options_get(Arguments.CATALOG_CONNECTION_TYPE),

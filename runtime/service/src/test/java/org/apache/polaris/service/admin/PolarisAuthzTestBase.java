@@ -19,6 +19,7 @@
 package org.apache.polaris.service.admin;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.apache.polaris.core.entity.CatalogEntity.DEFAULT_BASE_LOCATION_KEY;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -28,6 +29,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.Date;
@@ -46,15 +48,21 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -66,7 +74,9 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -84,7 +94,7 @@ import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -116,11 +126,14 @@ public abstract class PolarisAuthzTestBase {
               "polaris.features.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
               "true")
           .put("polaris.features.\"DROP_WITH_PURGE_ENABLED\"", "true")
+          .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
+          .put("polaris.features.\"ENABLE_CATALOG_FEDERATION\"", "true")
           .build();
     }
   }
 
   protected static final String CATALOG_NAME = "polaris-catalog";
+  protected static final String FEDERATED_CATALOG_NAME = "federated-polaris-catalog";
   protected static final String PRINCIPAL_NAME = "snowman";
 
   // catalog_role1 will be assigned only to principal_role1 and
@@ -197,12 +210,14 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisMetaStoreManager metaStoreManager;
   protected UserSecretsManager userSecretsManager;
   protected PolarisBaseEntity catalogEntity;
+  protected PolarisBaseEntity federatedCatalogEntity;
   protected PrincipalEntity principalEntity;
   protected CallContext callContext;
-  protected AuthenticatedPolarisPrincipal authenticatedRoot;
+  protected RealmConfig realmConfig;
+  protected PolarisPrincipal authenticatedRoot;
   protected PolarisAuthorizer polarisAuthorizer;
 
-  private PolarisCallContext polarisContext;
+  protected PolarisCallContext polarisContext;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -221,40 +236,90 @@ public abstract class PolarisAuthzTestBase {
 
     RealmContext realmContext = testInfo::getDisplayName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    ContainerRequestContext containerRequestContext = Mockito.mock(ContainerRequestContext.class);
+    Mockito.when(containerRequestContext.getProperty(Mockito.anyString()))
+        .thenReturn("request-id-1");
+    QuarkusMock.installMockForType(containerRequestContext, ContainerRequestContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
-    polarisAuthorizer = new PolarisAuthorizerImpl();
-
     polarisContext =
         new PolarisCallContext(
-            realmContext,
-            managerFactory.getOrCreateSession(realmContext),
-            diagServices,
-            configurationStore);
+            realmContext, managerFactory.getOrCreateSession(realmContext), configurationStore);
 
     callContext = polarisContext;
+    realmConfig = polarisContext.getRealmConfig();
+
+    polarisAuthorizer = new PolarisAuthorizerImpl(realmConfig);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    this.authenticatedRoot = new AuthenticatedPolarisPrincipal(rootPrincipal, Set.of());
+    this.authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     this.adminService =
         new PolarisAdminService(
+            diagServices,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
-            securityContext(authenticatedRoot, Set.of()),
+            securityContext(authenticatedRoot),
             polarisAuthorizer,
             reservedProperties);
 
     String storageLocation = "file:///tmp/authz";
+    String storageLocationForFederatedCatalog = "file:///tmp/authz_federated";
     FileStorageConfigInfo storageConfigModel =
         FileStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of(storageLocation, "file:///tmp/authz"))
             .build();
+    FileStorageConfigInfo storageConfigModelForFederatedCatalog =
+        FileStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(
+                List.of(storageLocationForFederatedCatalog, "file:///tmp/authz_federated"))
+            .build();
+    ConnectionConfigInfo connectionConfigInfo =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog")
+            .setRemoteCatalogName("my-remote-catalog")
+            .setAuthenticationParameters(
+                OAuthClientCredentialsParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
+                    .setClientId("my-client-id")
+                    .setClientSecret("my-client-secret")
+                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+    CatalogEntity externalCatalogEntity =
+        new CatalogEntity.Builder()
+            .setName(FEDERATED_CATALOG_NAME)
+            .setCatalogType("EXTERNAL")
+            .setDefaultBaseLocation(storageLocationForFederatedCatalog)
+            .setStorageConfigurationInfo(
+                realmConfig,
+                storageConfigModelForFederatedCatalog,
+                storageLocationForFederatedCatalog)
+            .addProperty("polaris.config.enable-sub-catalog-rbac-for-federated-catalogs", "true")
+            .build();
+    ExternalCatalog externalCatalog =
+        ExternalCatalog.builder()
+            .setName(externalCatalogEntity.getName())
+            .setType(ExternalCatalog.TypeEnum.EXTERNAL)
+            .setProperties(
+                org.apache.polaris.core.admin.model.CatalogProperties.builder(
+                        externalCatalogEntity.getPropertiesAsMap().get(DEFAULT_BASE_LOCATION_KEY))
+                    .putAll(externalCatalogEntity.getPropertiesAsMap())
+                    .build())
+            .setCreateTimestamp(externalCatalogEntity.getCreateTimestamp())
+            .setLastUpdateTimestamp(externalCatalogEntity.getLastUpdateTimestamp())
+            .setEntityVersion(externalCatalogEntity.getEntityVersion())
+            .setStorageConfigInfo(storageConfigModelForFederatedCatalog)
+            .setConnectionConfigInfo(connectionConfigInfo)
+            .build();
+
     catalogEntity =
         adminService.createCatalog(
             new CreateCatalogRequest(
@@ -262,9 +327,10 @@ public abstract class PolarisAuthzTestBase {
                     .setName(CATALOG_NAME)
                     .setCatalogType("INTERNAL")
                     .setDefaultBaseLocation(storageLocation)
-                    .setStorageConfigurationInfo(callContext, storageConfigModel, storageLocation)
+                    .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
                     .asCatalog()));
+    federatedCatalogEntity = adminService.createCatalog(new CreateCatalogRequest(externalCatalog));
 
     initBaseCatalog();
 
@@ -287,16 +353,32 @@ public abstract class PolarisAuthzTestBase {
         CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
     adminService.createCatalogRole(
         CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE_SHARED).build());
+    adminService.createCatalogRole(
+        FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
+    adminService.createCatalogRole(
+        FEDERATED_CATALOG_NAME, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE2).build());
 
-    adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1);
-    adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE2);
+    assertSuccess(adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE1));
+    assertSuccess(adminService.assignPrincipalRole(PRINCIPAL_NAME, PRINCIPAL_ROLE2));
 
-    adminService.assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE1);
-    adminService.assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE2);
-    adminService.assignCatalogRoleToPrincipalRole(
-        PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE_SHARED);
-    adminService.assignCatalogRoleToPrincipalRole(
-        PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE_SHARED);
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE1));
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE2));
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE1, CATALOG_NAME, CATALOG_ROLE_SHARED));
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE_SHARED));
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE1, FEDERATED_CATALOG_NAME, CATALOG_ROLE1));
+    assertSuccess(
+        adminService.assignCatalogRoleToPrincipalRole(
+            PRINCIPAL_ROLE2, FEDERATED_CATALOG_NAME, CATALOG_ROLE2));
 
     // Do some shared setup with non-authz-aware baseCatalog.
     baseCatalog.createNamespace(NS1);
@@ -368,8 +450,11 @@ public abstract class PolarisAuthzTestBase {
     }
   }
 
-  protected @Nonnull SecurityContext securityContext(
-      AuthenticatedPolarisPrincipal p, Set<String> roles) {
+  protected static void assertSuccess(BaseResult result) {
+    Assertions.assertThat(result.isSuccess()).isTrue();
+  }
+
+  protected @Nonnull SecurityContext securityContext(PolarisPrincipal p) {
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     Mockito.when(securityContext.getUserPrincipal()).thenReturn(p);
     Set<String> principalRoleNames = loadPrincipalRolesNames(p);
@@ -378,9 +463,13 @@ public abstract class PolarisAuthzTestBase {
     return securityContext;
   }
 
-  protected @Nonnull Set<String> loadPrincipalRolesNames(AuthenticatedPolarisPrincipal p) {
+  protected @Nonnull Set<String> loadPrincipalRolesNames(PolarisPrincipal p) {
+    PolarisBaseEntity principal =
+        metaStoreManager
+            .findPrincipalByName(callContext.getPolarisCallContext(), p.getName())
+            .orElseThrow();
     return metaStoreManager
-        .loadGrantsToGrantee(callContext.getPolarisCallContext(), p.getPrincipalEntity())
+        .loadGrantsToGrantee(callContext.getPolarisCallContext(), principal)
         .getGrantRecords()
         .stream()
         .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
@@ -434,6 +523,7 @@ public abstract class PolarisAuthzTestBase {
             callContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
+            diagServices,
             storageCredentialCache,
             resolverFactory,
             metaStoreManager,
@@ -460,11 +550,12 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisCallContextCatalogFactory() {
-      this(null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null);
     }
 
     @Inject
     public TestPolarisCallContextCatalogFactory(
+        PolarisDiagnostics diagnostics,
         StorageCredentialCache storageCredentialCache,
         ResolverFactory resolverFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
@@ -472,6 +563,7 @@ public abstract class PolarisAuthzTestBase {
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener) {
       super(
+          diagnostics,
           storageCredentialCache,
           resolverFactory,
           metaStoreManagerFactory,
@@ -483,14 +575,14 @@ public abstract class PolarisAuthzTestBase {
     @Override
     public Catalog createCallContextCatalog(
         CallContext context,
-        AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+        PolarisPrincipal polarisPrincipal,
         SecurityContext securityContext,
         final PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
       Catalog catalog =
           super.createCallContextCatalog(
-              context, authenticatedPolarisPrincipal, securityContext, resolvedManifest);
+              context, polarisPrincipal, securityContext, resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(
@@ -522,12 +614,12 @@ public abstract class PolarisAuthzTestBase {
       Runnable action,
       Runnable cleanupAction,
       String principalName,
-      Function<PolarisPrivilege, Boolean> grantAction,
-      Function<PolarisPrivilege, Boolean> revokeAction) {
+      Function<PolarisPrivilege, PrivilegeResult> grantAction,
+      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
     for (Set<PolarisPrivilege> privilegeSet : sufficientPrivileges) {
       for (PolarisPrivilege privilege : privilegeSet) {
         // Grant the single privilege at a catalog level to cascade to all objects.
-        Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+        assertSuccess(grantAction.apply(privilege));
       }
 
       // Should run without issues.
@@ -556,7 +648,7 @@ public abstract class PolarisAuthzTestBase {
         // Knockout testing - Revoke single privileges and the same action should throw
         // NotAuthorizedException.
         for (PolarisPrivilege privilege : privilegeSet) {
-          Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
+          assertSuccess(revokeAction.apply(privilege));
 
           try {
             Assertions.assertThatThrownBy(() -> action.run())
@@ -572,13 +664,13 @@ public abstract class PolarisAuthzTestBase {
           }
 
           // Grant the single privilege at a catalog level to cascade to all objects.
-          Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+          assertSuccess(grantAction.apply(privilege));
         }
       }
 
       // Now remove all the privileges
       for (PolarisPrivilege privilege : privilegeSet) {
-        Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
+        assertSuccess(revokeAction.apply(privilege));
       }
       try {
         Assertions.assertThatThrownBy(() -> action.run())
@@ -602,10 +694,10 @@ public abstract class PolarisAuthzTestBase {
       List<PolarisPrivilege> insufficientPrivileges,
       String principalName,
       Runnable action,
-      Function<PolarisPrivilege, Boolean> grantAction,
-      Function<PolarisPrivilege, Boolean> revokeAction) {
+      Function<PolarisPrivilege, PrivilegeResult> grantAction,
+      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
     doTestInsufficientPrivilegeSets(
-        insufficientPrivileges.stream().map(priv -> Set.of(priv)).toList(),
+        insufficientPrivileges.stream().map(Set::of).toList(),
         principalName,
         action,
         grantAction,
@@ -620,16 +712,16 @@ public abstract class PolarisAuthzTestBase {
       List<Set<PolarisPrivilege>> insufficientPrivilegeSets,
       String principalName,
       Runnable action,
-      Function<PolarisPrivilege, Boolean> grantAction,
-      Function<PolarisPrivilege, Boolean> revokeAction) {
+      Function<PolarisPrivilege, PrivilegeResult> grantAction,
+      Function<PolarisPrivilege, PrivilegeResult> revokeAction) {
     for (Set<PolarisPrivilege> privilegeSet : insufficientPrivilegeSets) {
       for (PolarisPrivilege privilege : privilegeSet) {
         // Grant the single privilege at a catalog level to cascade to all objects.
-        Assertions.assertThat(grantAction.apply(privilege)).isTrue();
+        assertSuccess(grantAction.apply(privilege));
 
         // Should be insufficient
         try {
-          Assertions.assertThatThrownBy(() -> action.run())
+          Assertions.assertThatThrownBy(action::run)
               .isInstanceOf(ForbiddenException.class)
               .hasMessageContaining(principalName)
               .hasMessageContaining("is not authorized");
@@ -640,7 +732,7 @@ public abstract class PolarisAuthzTestBase {
 
         // Revoking only matters in case there are some multi-privilege actions being tested with
         // only granting individual privileges in isolation.
-        Assertions.assertThat(revokeAction.apply(privilege)).isTrue();
+        assertSuccess(revokeAction.apply(privilege));
       }
     }
   }

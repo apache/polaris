@@ -106,7 +106,7 @@ public class PolicyValidatorsTest {
   @Test
   public void testCanAttachReturnsTrueForIcebergTableLikeWithTableSubtype() {
     var targetEntity =
-        new IcebergTableLikeEntity.Builder(tableIdentifier, "").setSubType(ICEBERG_TABLE).build();
+        new IcebergTableLikeEntity.Builder(ICEBERG_TABLE, tableIdentifier, "").build();
     var result = PolicyValidators.canAttach(policyEntity, targetEntity);
     assertThat(result)
         .isTrue()
@@ -116,7 +116,7 @@ public class PolicyValidatorsTest {
   @Test
   public void testCanAttachReturnsFalseForIcebergTableLikeWithNonTableSubtype() {
     var targetEntity =
-        new IcebergTableLikeEntity.Builder(tableIdentifier, "").setSubType(ICEBERG_VIEW).build();
+        new IcebergTableLikeEntity.Builder(ICEBERG_VIEW, tableIdentifier, "").build();
     var result = PolicyValidators.canAttach(policyEntity, targetEntity);
     assertThat(result)
         .isFalse()

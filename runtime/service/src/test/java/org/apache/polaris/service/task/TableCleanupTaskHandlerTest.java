@@ -28,9 +28,7 @@ import java.io.IOException;
 import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.ManifestFile;
-import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
@@ -40,16 +38,17 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestFileIOFactory;
 import org.assertj.core.api.Assertions;
@@ -63,8 +62,8 @@ class TableCleanupTaskHandlerTest {
   @Inject Clock clock;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
-  @Inject PolarisDiagnostics diagServices;
 
+  private PolarisMetaStoreManager metaStoreManager;
   private CallContext callContext;
 
   private final RealmContext realmContext = () -> "realmName";
@@ -79,11 +78,11 @@ class TableCleanupTaskHandlerTest {
   void setup() {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
+    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     callContext =
         new PolarisCallContext(
             realmContext,
             metaStoreManagerFactory.getOrCreateSession(realmContext),
-            diagServices,
             configurationStore);
   }
 
@@ -112,7 +111,8 @@ class TableCleanupTaskHandlerTest {
             .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
-                new IcebergTableLikeEntity.Builder(tableIdentifier, metadataFile)
+                new IcebergTableLikeEntity.Builder(
+                        PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, metadataFile)
                     .setName("table1")
                     .setCatalogId(1)
                     .setCreateTimestamp(100)
@@ -124,8 +124,7 @@ class TableCleanupTaskHandlerTest {
     handler.handleTask(task, callContext);
 
     assertThat(
-            metaStoreManagerFactory
-                .getOrCreateMetaStoreManager(realmContext)
+            metaStoreManager
                 .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(2))
                 .getEntities())
         .hasSize(2)
@@ -136,9 +135,8 @@ class TableCleanupTaskHandlerTest {
                     .extracting(TaskEntity::of)
                     .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -177,7 +175,8 @@ class TableCleanupTaskHandlerTest {
     TaskTestUtils.writeTableMetadata(fileIO, metadataFile, snapshot);
 
     IcebergTableLikeEntity icebergTableLikeEntity =
-        new IcebergTableLikeEntity.Builder(tableIdentifier, metadataFile)
+        new IcebergTableLikeEntity.Builder(
+                PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, metadataFile)
             .setName("table1")
             .setCatalogId(1)
             .setCreateTimestamp(100)
@@ -199,8 +198,7 @@ class TableCleanupTaskHandlerTest {
 
     // both tasks successfully executed, but only one should queue subtasks
     assertThat(
-            metaStoreManagerFactory
-                .getOrCreateMetaStoreManager(realmContext)
+            metaStoreManager
                 .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
                 .getEntities())
         .hasSize(2);
@@ -239,7 +237,8 @@ class TableCleanupTaskHandlerTest {
             .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
-                new IcebergTableLikeEntity.Builder(tableIdentifier, metadataFile)
+                new IcebergTableLikeEntity.Builder(
+                        PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, metadataFile)
                     .setName("table1")
                     .setCatalogId(1)
                     .setCreateTimestamp(100)
@@ -256,8 +255,7 @@ class TableCleanupTaskHandlerTest {
 
     // both tasks successfully executed, but only one should queue subtasks
     assertThat(
-            metaStoreManagerFactory
-                .getOrCreateMetaStoreManager(realmContext)
+            metaStoreManager
                 .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
                 .getEntities())
         .hasSize(4)
@@ -290,9 +288,8 @@ class TableCleanupTaskHandlerTest {
                     .extracting(TaskEntity::of)
                     .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -302,9 +299,8 @@ class TableCleanupTaskHandlerTest {
                     .extracting(TaskEntity::of)
                     .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
@@ -358,7 +354,8 @@ class TableCleanupTaskHandlerTest {
             .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
-                new IcebergTableLikeEntity.Builder(tableIdentifier, metadataFile)
+                new IcebergTableLikeEntity.Builder(
+                        PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, metadataFile)
                     .setName("table1")
                     .setCatalogId(1)
                     .setCreateTimestamp(100)
@@ -370,8 +367,7 @@ class TableCleanupTaskHandlerTest {
     handler.handleTask(task, callContext);
 
     List<PolarisBaseEntity> entities =
-        metaStoreManagerFactory
-            .getOrCreateMetaStoreManager(realmContext)
+        metaStoreManager
             .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(5))
             .getEntities();
 
@@ -421,9 +417,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile1))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile1),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -432,9 +427,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile2))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile2),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -443,9 +437,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile3))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile3),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
@@ -527,7 +520,8 @@ class TableCleanupTaskHandlerTest {
             .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
-                new IcebergTableLikeEntity.Builder(tableIdentifier, secondMetadataFile)
+                new IcebergTableLikeEntity.Builder(
+                        PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, secondMetadataFile)
                     .setName("table1")
                     .setCatalogId(1)
                     .setCreateTimestamp(100)
@@ -540,8 +534,7 @@ class TableCleanupTaskHandlerTest {
     handler.handleTask(task, callContext);
 
     List<PolarisBaseEntity> entities =
-        metaStoreManagerFactory
-            .getOrCreateMetaStoreManager(callContext.getRealmContext())
+        metaStoreManager
             .loadTasks(callContext.getPolarisCallContext(), "test", PageToken.fromLimit(6))
             .getEntities();
 
@@ -592,9 +585,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile1))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile1),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -603,9 +595,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile2))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile2),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
@@ -614,9 +605,8 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier,
-                            Base64.encodeBase64String(ManifestFiles.encode(manifestFile3))),
+                        ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                            tableIdentifier, manifestFile3),
                         entity ->
                             entity.readData(
                                 ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));

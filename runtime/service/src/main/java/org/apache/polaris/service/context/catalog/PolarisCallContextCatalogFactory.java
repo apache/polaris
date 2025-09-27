@@ -25,7 +25,8 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -35,7 +36,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);
 
+  private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
   private final StorageCredentialCache storageCredentialCache;
@@ -54,12 +56,14 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
   @Inject
   public PolarisCallContextCatalogFactory(
+      PolarisDiagnostics diagnostics,
       StorageCredentialCache storageCredentialCache,
       ResolverFactory resolverFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
+    this.diagnostics = diagnostics;
     this.storageCredentialCache = storageCredentialCache;
     this.resolverFactory = resolverFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -71,7 +75,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   @Override
   public Catalog createCallContextCatalog(
       CallContext context,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      PolarisPrincipal polarisPrincipal,
       SecurityContext securityContext,
       final PolarisResolutionManifest resolvedManifest) {
     PolarisBaseEntity baseCatalogEntity =
@@ -84,6 +88,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
     IcebergCatalog catalogInstance =
         new IcebergCatalog(
+            diagnostics,
             storageCredentialCache,
             resolverFactory,
             metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),

@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
@@ -289,6 +290,7 @@ public class PolarisEclipseLinkStore {
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull PageToken pageToken) {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
@@ -297,6 +299,10 @@ public class PolarisEclipseLinkStore {
     String hql =
         "SELECT m from ModelEntity m where"
             + " m.catalogId=:catalogId and m.parentId=:parentId and m.typeCode=:typeCode";
+
+    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
+      hql += " and m.subTypeCode=:subTypeCode";
+    }
 
     var entityIdToken = pageToken.valueAs(EntityIdToken.class);
     if (entityIdToken.isPresent()) {
@@ -313,6 +319,10 @@ public class PolarisEclipseLinkStore {
             .setParameter("catalogId", catalogId)
             .setParameter("parentId", parentId)
             .setParameter("typeCode", entityType.getCode());
+
+    if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
+      query.setParameter("subTypeCode", entitySubType.getCode());
+    }
 
     if (entityIdToken.isPresent()) {
       long tokenId = entityIdToken.get().entityId();

@@ -31,29 +31,13 @@ export CLIENT_ID=YOUR_CLIENT_ID
 export CLIENT_SECRET=YOUR_CLIENT_SECRET
 ```
 
-## Defining a Catalog
+Refer to the [Creating a Catalog]({{% ref "creating-a-catalog" %}}) page for instructions on defining a
+catalog for your specific storage type. The following examples assume the catalog's name is `quickstart_catalog`.
 
-In Polaris, the [catalog]({{% relref "../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../entities#table" %}}) and [views]({{% relref "../entities#view" %}}) are organized under. With a Polaris service running, you can create a catalog like so:
+In Polaris, the [catalog]({{% relref "../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../entities#table" %}}) and [views]({{% relref "../entities#view" %}}) are organized under.
 
-```shell
-cd ~/polaris
-
-./polaris \
-  --client-id ${CLIENT_ID} \
-  --client-secret ${CLIENT_SECRET} \
-  catalogs \
-  create \
-  --storage-type s3 \
-  --default-base-location ${DEFAULT_BASE_LOCATION} \
-  --role-arn ${ROLE_ARN} \
-  quickstart_catalog
-```
-
-This will create a new catalog called **quickstart_catalog**. If you are using one of the Getting Started locally-built Docker images, we have already created a catalog named `quickstart_catalog` for you.
-
-The `DEFAULT_BASE_LOCATION` you provide will be the default location that objects in this catalog should be stored in, and the `ROLE_ARN` you provide should be a [Role ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) with access to read and write data in that location. These credentials will be provided to engines reading data from the catalog once they have authenticated with Polaris using credentials that have access to those resources.
-
-If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs]({{% relref "../entities#storage-type" %}}).
+The `DEFAULT_BASE_LOCATION` value you provided at catalog creation time will be the default location that objects in
+this catalog should be stored in.
 
 Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs]({{% relref "../command-line-interface" %}}).
 
@@ -158,14 +142,14 @@ _Note: the credentials provided here are those for our principal, not the root c
 
 ```shell
 bin/spark-sql \
---packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.1,org.apache.iceberg:iceberg-aws-bundle:1.9.1 \
+--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.0,org.apache.iceberg:iceberg-aws-bundle:1.10.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \
 --conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=vended-credentials \
 --conf spark.sql.catalog.quickstart_catalog=org.apache.iceberg.spark.SparkCatalog \
 --conf spark.sql.catalog.quickstart_catalog.catalog-impl=org.apache.iceberg.rest.RESTCatalog \
 --conf spark.sql.catalog.quickstart_catalog.uri=http://localhost:8181/api/catalog \
---conf spark.sql.catalog.quickstart_catalog.credential='${USER_CLIENT_ID}:${USER_CLIENT_SECRET}' \
+--conf spark.sql.catalog.quickstart_catalog.credential=${USER_CLIENT_ID}:${USER_CLIENT_SECRET} \
 --conf spark.sql.catalog.quickstart_catalog.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true \
 --conf spark.sql.catalog.quickstart_catalog.client.region=us-west-2
@@ -284,6 +268,51 @@ SELECT * FROM iceberg.quickstart_schema.quickstart_table;
 
 org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```
+
+### Connecting with PyIceberg
+
+#### Using Credentials
+
+```python
+from pyiceberg.catalog import load_catalog
+
+catalog = load_catalog(
+    type='rest',
+    uri='http://localhost:8181/api/catalog',
+    warehouse='quickstart_catalog',
+    scope="PRINCIPAL_ROLE:ALL",
+    credential=f"{CLIENT_ID}:{CLIENT_SECRET}",
+)
+```
+
+If the `load_catalog` function is used with credentials, then PyIceberg will automatically request an authorization token from the `v1/oauth/tokens` endpoint, and will later use this token to prove its identity to the Polaris Catalog.
+
+#### Using a Token
+
+```python
+from pyiceberg.catalog import load_catalog
+import requests
+
+# Step 1: Get OAuth token
+response = requests.post(
+    "http://localhost:8181/api/catalog/v1/oauth/tokens",
+    auth =(CLIENT_ID, CLIENT_SECRET),
+    data = {
+        "grant_type": "client_credentials",
+        "scope": "PRINCIPAL_ROLE:ALL"
+    })
+token = response.json()["access_token"]
+
+# Step 2: Load the catalog using the token
+catalog = load_catalog(
+    type='rest',
+    uri='http://localhost:8181/api/catalog',
+    warehouse='quickstart_catalog',
+    token=token,
+)
+```
+
+It is possible to use `load_catalog` function by providing an authorization token directly. This method is useful when using an external identity provider (e.g. Google Identity).
 
 ### Connecting Using REST APIs
 

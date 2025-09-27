@@ -20,6 +20,8 @@ package org.apache.polaris.service.it.env;
 
 import java.io.Serializable;
 import java.net.URI;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This class contains the most fundamental information for accessing Polaris APIs, such as the base
@@ -30,12 +32,16 @@ public final class PolarisApiEndpoints implements Serializable {
 
   private final URI baseUri;
   private final String realmId;
-  private final String realmHeaderName;
+  private final Map<String, String> headers;
 
   public PolarisApiEndpoints(URI baseUri, String realmId, String realmHeaderName) {
+    this(baseUri, realmId, Map.of(realmHeaderName, realmId));
+  }
+
+  public PolarisApiEndpoints(URI baseUri, String realmId, Map<String, String> headers) {
     this.baseUri = baseUri;
     this.realmId = realmId;
-    this.realmHeaderName = realmHeaderName;
+    this.headers = headers;
   }
 
   public URI catalogApiEndpoint() {
@@ -50,7 +56,13 @@ public final class PolarisApiEndpoints implements Serializable {
     return realmId;
   }
 
-  public String realmHeaderName() {
-    return realmHeaderName;
+  public Map<String, String> extraHeaders() {
+    return headers;
+  }
+
+  public Map<String, String> extraHeaders(String keyPrefix) {
+    return headers.entrySet().stream()
+        .map(e -> Map.entry(keyPrefix + e.getKey(), e.getValue()))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 }

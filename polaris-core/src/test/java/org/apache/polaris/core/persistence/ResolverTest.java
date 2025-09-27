@@ -22,7 +22,6 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
@@ -38,11 +37,11 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisCallContext callCtx() {
     if (callCtx == null) {
-      PolarisDefaultDiagServiceImpl diagServices = new PolarisDefaultDiagServiceImpl();
       TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
       TreeMapTransactionalPersistenceImpl metaStore =
-          new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
-      callCtx = new PolarisCallContext(() -> "testRealm", metaStore, diagServices);
+          new TreeMapTransactionalPersistenceImpl(
+              diagServices, store, Mockito.mock(), RANDOM_SECRETS);
+      callCtx = new PolarisCallContext(() -> "testRealm", metaStore);
     }
     return callCtx;
   }
@@ -50,7 +49,7 @@ public class ResolverTest extends BaseResolverTest {
   @Override
   protected PolarisMetaStoreManager metaStoreManager() {
     if (metaStoreManager == null) {
-      metaStoreManager = new TransactionalMetaStoreManagerImpl(clock);
+      metaStoreManager = new TransactionalMetaStoreManagerImpl(clock, diagServices);
     }
     return metaStoreManager;
   }

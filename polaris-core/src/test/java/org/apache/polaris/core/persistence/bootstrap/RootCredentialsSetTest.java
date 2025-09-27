@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -89,25 +90,29 @@ class RootCredentialsSetTest {
   }
 
   @Test
-  void getSecretsValidJson() {
+  void getSecretsValidJson() throws URISyntaxException {
     URL resource = getClass().getResource("credentials.json");
-    RootCredentialsSet set = RootCredentialsSet.fromUrl(resource);
+    assertThat(resource).isNotNull();
+    RootCredentialsSet set = RootCredentialsSet.fromUri(resource.toURI());
     assertCredentials(set);
   }
 
   @Test
-  void getSecretsValidYaml() {
+  void getSecretsValidYaml() throws URISyntaxException {
     URL resource = getClass().getResource("credentials.yaml");
-    RootCredentialsSet set = RootCredentialsSet.fromUrl(resource);
+    assertThat(resource).isNotNull();
+
+    RootCredentialsSet set = RootCredentialsSet.fromUri(resource.toURI());
     assertCredentials(set);
   }
 
   @Test
   void getSecretsInvalidJson() {
     URL resource = getClass().getResource("credentials-invalid.json");
-    assertThatThrownBy(() -> RootCredentialsSet.fromUrl(resource))
+    assertThat(resource).isNotNull();
+    assertThatThrownBy(() -> RootCredentialsSet.fromUri(resource.toURI()))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Failed to read credentials file")
+        .hasMessageContaining("Failed to read credentials")
         .rootCause()
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining(
@@ -117,9 +122,10 @@ class RootCredentialsSetTest {
   @Test
   void getSecretsInvalidYaml() {
     URL resource = getClass().getResource("credentials-invalid.yaml");
-    assertThatThrownBy(() -> RootCredentialsSet.fromUrl(resource))
+    assertThat(resource).isNotNull();
+    assertThatThrownBy(() -> RootCredentialsSet.fromUri(resource.toURI()))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Failed to read credentials file")
+        .hasMessageContaining("Failed to read credentials")
         .rootCause()
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining(

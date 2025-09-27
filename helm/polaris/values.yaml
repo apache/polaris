@@ -62,6 +62,21 @@ podLabels: {}
 # -- Additional Labels to apply to polaris configmap.
 configMapLabels: {}
 
+# -- Pod disruption budget settings.
+podDisruptionBudget:
+  # -- Specifies whether a pod disruption budget should be created.
+  enabled: false
+  # -- The minimum number of pods that should remain available during disruptions.
+  # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
+  # IMPORTANT: Cannot be used simultaneously with maxUnavailable.
+  minAvailable: ~
+  # -- The maximum number of pods that can be unavailable during disruptions.
+  # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
+  # IMPORTANT: Cannot be used simultaneously with minAvailable.
+  maxUnavailable: ~
+  # -- Annotations to add to the pod disruption budget.
+  annotations: {}
+
 # -- The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10).
 revisionHistoryLimit: ~
 
@@ -565,9 +580,6 @@ authentication:
   # -- The `Authenticator` implementation to use. Only one built-in type is supported: default.
   authenticator:
     type: default
-  # -- The `ActiveRolesProvider` implementation to use. Only one built-in type is supported: default.
-  activeRolesProvider:
-    type: default
   # -- The token service (`IcebergRestOAuth2ApiService`) implementation to use. Two built-in types are supported: default and disabled.
   # Only relevant when using internal (or mixed) authentication. When using external authentication, the token service is always disabled.
   tokenService:
@@ -656,7 +668,7 @@ oidc:
     filter: ~  # ^(?!profile$|email$).*
     # -- A list of regex mappings that will be applied to each role name in the identity. This can
     # be used to transform the role names in the identity into role names as expected by Polaris.
-    # The default ActiveRolesProvider expects the security identity to expose role names in the
+    # The default Authenticator expects the security identity to expose role names in the
     # format `POLARIS_ROLE:<role name>`.
     mappings: []
       # - regex: role_(.*)
