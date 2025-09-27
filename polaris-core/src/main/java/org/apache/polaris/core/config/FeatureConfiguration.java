@@ -386,4 +386,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "Defaults to enabled, but service providers may want to disable it.")
           .defaultValue(true)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES")
+          .description(
+              "When true, enables finer grained update table privileges which are passed to the authorizer for update table operations")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }
