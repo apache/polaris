@@ -173,6 +173,7 @@ class PrincipalsCommand(Command):
                         )
                         role_data["catalog_roles"].append(catalog_data)
                 result["principal_roles"].append(role_data)
+            print(json.dumps(result))
         elif self.principals_subcommand == Subcommands.RESET:
             if self.new_client_id or self.new_client_secret:
                 request = ResetPrincipalRequest(
