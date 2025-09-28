@@ -59,8 +59,6 @@ class PoliciesCommand(Command):
         if self.policies_subcommand in [Subcommands.CREATE, Subcommands.UPDATE]:
             if not self.policy_file:
                 raise Exception(f"Missing required argument: {Argument.to_flag_name(Arguments.POLICY_FILE)}")
-            if not os.path.exists(self.policy_file):
-                raise Exception(f"Policy file not found: {self.policy_file}")
         if self.policies_subcommand in [Subcommands.ATTACH, Subcommands.DETACH]:
             if not self.attach_target:
                 raise Exception(f"Missing required argument: {Argument.to_flag_name(Arguments.ATTACH_TARGET)}")
@@ -113,7 +111,7 @@ class PoliciesCommand(Command):
                 applicable_policies_list = []
 
                 if self.target_name:
-                    # Table-like-level policies
+                    # Table-like level policies
                     applicable_policies_list = policy_api.get_applicable_policies(
                         prefix=self.catalog_name,
                         namespace=namespace_str,
@@ -121,14 +119,14 @@ class PoliciesCommand(Command):
                         policy_type=self.policy_type
                     ).applicable_policies
                 elif self.namespace:
-                    # Namespace-level policies
+                    # Namespace level policies
                     applicable_policies_list = policy_api.get_applicable_policies(
                         prefix=self.catalog_name,
                         namespace=namespace_str,
                         policy_type=self.policy_type
                     ).applicable_policies
                 else:
-                    # Catalog-level policies
+                    # Catalog level policies
                     applicable_policies_list = policy_api.get_applicable_policies(
                         prefix=self.catalog_name,
                         policy_type=self.policy_type
