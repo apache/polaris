@@ -40,6 +40,7 @@ class Command(ABC):
         set_properties = Parser.parse_properties(options_get(Arguments.SET_PROPERTY))
         remove_properties = options_get(Arguments.REMOVE_PROPERTY)
         catalog_client_scopes = options_get(Arguments.CATALOG_CLIENT_SCOPE)
+        parameters = Parser.parse_properties(options_get(Arguments.PARAMETERS)),
 
         command = None
         if options.command == Commands.CATALOGS:
@@ -180,7 +181,7 @@ class Command(ABC):
                 policy_type=options_get(Arguments.POLICY_TYPE),
                 policy_description=options_get(Arguments.POLICY_DESCRIPTION),
                 target_name=options_get(Arguments.TARGET_NAME),
-                parameters=Parser.parse_properties(options_get(Arguments.PARAMETERS)),
+                parameters={} if parameters is None else parameters,
                 detach_all=options_get(Arguments.DETACH_ALL),
                 applicable=options_get(Arguments.APPLICABLE),
                 attach_target=options_get(Arguments.ATTACH_TARGET),

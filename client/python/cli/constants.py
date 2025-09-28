@@ -384,7 +384,7 @@ class Hints:
         TARGET_NAME = "The name of the target entity (e.g., table name, namespace name)."
         PARAMETERS = "Optional key-value pairs for the attachment/detachment, e.g., key=value. Can be specified multiple times."
         DETACH_ALL = "When set to true, the policy will be deleted along with all its attached mappings."
-        APPLICABLE = "When set, lists policies applicable to the target entity (considering inheritance) instead of policies defined directly in the namespace."
+        APPLICABLE = "When set, lists policies applicable to the target entity (considering inheritance) instead of policies defined directly in the target."
         ATTACH_TARGET = "The target to attach the policy to, e.g. 'namespace:ns1' or 'table:ns1.tb1'"
 
 

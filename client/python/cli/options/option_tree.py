@@ -296,6 +296,7 @@ class OptionTree:
                     Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
                     Argument(Arguments.TARGET_NAME, str, Hints.Policies.TARGET_NAME),
                     Argument(Arguments.APPLICABLE, bool, Hints.Policies.APPLICABLE),
+                    Argument(Arguments.POLICY_TYPE, str, Hints.Policies.POLICY_TYPE),
                 ]),
                 Option(Subcommands.UPDATE, args=[
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),

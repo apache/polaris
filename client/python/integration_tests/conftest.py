@@ -28,8 +28,10 @@ from pyiceberg.types import NestedField, StringType, IntegerType, BooleanType
 from polaris.catalog import OAuthTokenResponse
 from polaris.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
 from polaris.catalog.api.iceberg_o_auth2_api import IcebergOAuth2API
+from polaris.catalog.api.policy_api import PolicyAPI
 from polaris.catalog.api_client import ApiClient as CatalogApiClient
 from polaris.catalog.api_client import Configuration as CatalogApiClientConfiguration
+
 from polaris.management import (
     Catalog,
     ApiClient,
@@ -195,8 +197,23 @@ def test_catalog_client(
 
     return IcebergCatalogAPI(
         CatalogApiClient(
-            Configuration(
+            CatalogApiClientConfiguration(
                 access_token=test_principal_token.access_token, host=polaris_catalog_url
+            )
+        )
+    )
+
+
+@pytest.fixture
+def test_policy_api(
+    polaris_catalog_url: str,
+    test_principal_token: OAuthTokenResponse,
+) -> PolicyAPI:
+    return PolicyAPI(
+        CatalogApiClient(
+            CatalogApiClientConfiguration(
+                access_token=test_principal_token.access_token,
+                host=polaris_catalog_url,
             )
         )
     )
@@ -354,3 +371,47 @@ def clear_namespace(
 
 def format_namespace(namespace: List[str]) -> str:
     return codecs.decode("1F", "hex").decode("UTF-8").join(namespace)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _patch_generated_models() -> None:
+    """
+    The OpenAPI generator creates an `api_client` that dynamically looks up
+    model classes from the `polaris.catalog.models` module using `getattr()`.
+    For example, when a response for a `create_policy` call is received, the
+    deserializer tries to find the `LoadPolicyResponse` class by looking for
+    `polaris.catalog.models.LoadPolicyResponse`.
+
+    However, the generator fails to add the necessary `import` statements
+    to the `polaris/catalog/models/__init__.py` file. This means that even
+    though the model files exist (e.g., `load_policy_response.py`), the classes
+    are not part of the `polaris.catalog.models` namespace.
+
+    This fixture works around the bug in the generated code without modifying
+    the source files. It runs once per test session, before any tests, and
+    manually injects the missing response-side model classes into the
+    `polaris.catalog.models` namespace, allowing the deserializer to find them.
+    """
+    import polaris.catalog.models
+    from polaris.catalog.models.applicable_policy import ApplicablePolicy
+    from polaris.catalog.models.get_applicable_policies_response import (
+        GetApplicablePoliciesResponse,
+    )
+    from polaris.catalog.models.list_policies_response import ListPoliciesResponse
+    from polaris.catalog.models.load_policy_response import LoadPolicyResponse
+    from polaris.catalog.models.policy import Policy
+    from polaris.catalog.models.policy_attachment_target import PolicyAttachmentTarget
+    from polaris.catalog.models.policy_identifier import PolicyIdentifier
+
+    models_to_patch = {
+        "ApplicablePolicy": ApplicablePolicy,
+        "GetApplicablePoliciesResponse": GetApplicablePoliciesResponse,
+        "ListPoliciesResponse": ListPoliciesResponse,
+        "LoadPolicyResponse": LoadPolicyResponse,
+        "Policy": Policy,
+        "PolicyAttachmentTarget": PolicyAttachmentTarget,
+        "PolicyIdentifier": PolicyIdentifier,
+    }
+
+    for name, model_class in models_to_patch.items():
+        setattr(polaris.catalog.models, name, model_class)
