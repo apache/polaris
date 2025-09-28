@@ -50,4 +50,18 @@ public interface Converter<T> {
       throw new RuntimeException(e);
     }
   }
+
+  /**
+   * Creates a JSON object based on the database type.
+   */
+  default Object toJsonObject(String props, DatabaseType databaseType) {
+    switch (databaseType) {
+      case POSTGRES:
+        return toJsonbPGobject(props);
+      case MYSQL:
+      case H2:
+      default:
+        return props; 
+    }
+  }
 }

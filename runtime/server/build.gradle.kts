@@ -44,6 +44,8 @@ dependencies {
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
+  implementation("com.mysql:mysql-connector-j:8.0.33")
+  implementation("io.quarkus:quarkus-jdbc-mysql")
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
 
   if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {

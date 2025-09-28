@@ -250,7 +250,8 @@ public class QueryGenerator {
 
   @VisibleForTesting
   static PreparedQuery generateVersionQuery() {
-    return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
+    String tableName = getFullyQualifiedTableName("VERSION");
+    return new PreparedQuery("SELECT version_value FROM " + tableName, List.of());
   }
 
   /**
