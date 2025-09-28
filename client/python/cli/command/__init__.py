@@ -167,6 +167,24 @@ class Command(ABC):
             command = ProfilesCommand(
                 subcommand, profile_name=options_get(Arguments.PROFILE)
             )
+        elif options.command == Commands.POLICIES:
+            from cli.command.policies import PoliciesCommand
+
+            subcommand = options_get(f"{Commands.POLICIES}_subcommand")
+            command = PoliciesCommand(
+                subcommand,
+                catalog_name=options_get(Arguments.CATALOG),
+                namespace=options_get(Arguments.NAMESPACE),
+                policy_name=options_get(Arguments.POLICY),
+                policy_file=options_get(Arguments.POLICY_FILE),
+                policy_type=options_get(Arguments.POLICY_TYPE),
+                policy_description=options_get(Arguments.POLICY_DESCRIPTION),
+                target_name=options_get(Arguments.TARGET_NAME),
+                parameters=Parser.parse_properties(options_get(Arguments.PARAMETERS)),
+                detach_all=options_get(Arguments.DETACH_ALL),
+                applicable=options_get(Arguments.APPLICABLE),
+                attach_target=options_get(Arguments.ATTACH_TARGET),
+            )
 
         if command is not None:
             command.validate()

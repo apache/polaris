@@ -273,5 +273,47 @@ class OptionTree:
                 Option(Subcommands.UPDATE, input_name=Arguments.PROFILE),
                 Option(Subcommands.GET, input_name=Arguments.PROFILE),
                 Option(Subcommands.LIST),
-            ])
+            ]),
+            Option(Commands.POLICIES, 'manage policies', children=[
+                Option(Subcommands.CREATE, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                    Argument(Arguments.POLICY_FILE, str, Hints.Policies.POLICY_FILE),
+                    Argument(Arguments.POLICY_TYPE, str, Hints.Policies.POLICY_TYPE),
+                    Argument(Arguments.POLICY_DESCRIPTION, str, Hints.Policies.POLICY_DESCRIPTION),
+                ], input_name=Arguments.POLICY),
+                Option(Subcommands.DELETE, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                    Argument(Arguments.DETACH_ALL, bool, Hints.Policies.DETACH_ALL),
+                ], input_name=Arguments.POLICY),
+                Option(Subcommands.GET, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                ], input_name=Arguments.POLICY),
+                Option(Subcommands.LIST, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                    Argument(Arguments.TARGET_NAME, str, Hints.Policies.TARGET_NAME),
+                    Argument(Arguments.APPLICABLE, bool, Hints.Policies.APPLICABLE),
+                ]),
+                Option(Subcommands.UPDATE, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                    Argument(Arguments.POLICY_FILE, str, Hints.Policies.POLICY_FILE),
+                    Argument(Arguments.POLICY_DESCRIPTION, str, Hints.Policies.POLICY_DESCRIPTION),
+                ], input_name=Arguments.POLICY),
+                Option(Subcommands.ATTACH, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                    Argument(Arguments.ATTACH_TARGET, str, Hints.Policies.ATTACH_TARGET),
+                    Argument(Arguments.PARAMETERS, str, Hints.Policies.PARAMETERS, allow_repeats=True),
+                ], input_name=Arguments.POLICY),
+                Option(Subcommands.DETACH, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
+                    Argument(Arguments.ATTACH_TARGET, str, Hints.Policies.ATTACH_TARGET),
+                    Argument(Arguments.PARAMETERS, str, Hints.Policies.PARAMETERS, allow_repeats=True),
+                ], input_name=Arguments.POLICY),
+            ]),
         ]

@@ -88,6 +88,7 @@ class Commands:
     PRIVILEGES = "privileges"
     NAMESPACES = "namespaces"
     PROFILES = "profiles"
+    POLICIES = "policies"
 
 
 class Subcommands:
@@ -109,6 +110,8 @@ class Subcommands:
     GRANT = "grant"
     REVOKE = "revoke"
     ACCESS = "access"
+    ATTACH = "attach"
+    DETACH = "detach"
 
 
 class Actions:
@@ -186,6 +189,15 @@ class Arguments:
     CATALOG_EXTERNAL_ID = "catalog_external_id"
     CATALOG_SIGNING_REGION = "catalog_signing_region"
     CATALOG_SIGNING_NAME = "catalog_signing_name"
+    POLICY = "policy"
+    POLICY_FILE = "policy_file"
+    POLICY_TYPE = "policy_type"
+    POLICY_DESCRIPTION = "policy_description"
+    TARGET_NAME = "target_name"
+    PARAMETERS = "parameters"
+    DETACH_ALL = "detach_all"
+    APPLICABLE = "applicable"
+    ATTACH_TARGET = "attach_target"
 
 
 class Hints:
@@ -363,6 +375,17 @@ class Hints:
     class Namespaces:
         LOCATION = "If specified, the location at which to store the namespace and entities inside it"
         PARENT = "If specified, list namespaces inside this parent namespace"
+
+    class Policies:
+        POLICY = "The name of a policy"
+        POLICY_FILE = "The path to a JSON file containing the policy definition"
+        POLICY_TYPE = "The type of the policy, e.g., 'system.data-compaction'"
+        POLICY_DESCRIPTION = "An optional description for the policy."
+        TARGET_NAME = "The name of the target entity (e.g., table name, namespace name)."
+        PARAMETERS = "Optional key-value pairs for the attachment/detachment, e.g., key=value. Can be specified multiple times."
+        DETACH_ALL = "When set to true, the policy will be deleted along with all its attached mappings."
+        APPLICABLE = "When set, lists policies applicable to the target entity (considering inheritance) instead of policies defined directly in the namespace."
+        ATTACH_TARGET = "The target to attach the policy to, e.g. 'namespace:ns1' or 'table:ns1.tb1'"
 
 
 UNIT_SEPARATOR = chr(0x1F)
