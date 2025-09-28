@@ -183,8 +183,8 @@ def test_policies(
     test_table_schema: Schema,
 ) -> None:
     # Resource identifiers
-    namespace_name = "POLNS1"
-    sub_namespace = "POLNS2"
+    namespace_name = "POLICY_NS1"
+    sub_namespace = "POLICY_NS2"
     sub_namespace_path = [namespace_name, sub_namespace]
     policy_name = "test_policy"
     table_name = "test_table_for_policy"
