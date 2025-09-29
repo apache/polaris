@@ -16,15 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.async;
+package org.apache.polaris.nosql.async;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Produces;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Async-API-specific tests check utility, only used to verify that invocations into CDI beans work,
+ * <em>not</em> for "general reuse".
+ */
 @ApplicationScoped
-public class AsyncTestConfigProvider {
-  @Produces
-  AsyncConfiguration asyncConfiguration() {
-    return AsyncConfiguration.builder().build();
+class AppScopedChecker {
+  static final AtomicInteger COUNTER = new AtomicInteger();
+
+  int getAndIncrement() {
+    return COUNTER.getAndIncrement();
   }
 }

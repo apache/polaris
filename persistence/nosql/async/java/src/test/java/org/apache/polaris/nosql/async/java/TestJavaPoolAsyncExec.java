@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.async.java;
+package org.apache.polaris.nosql.async.java;
 
-import org.apache.polaris.async.AsyncExecTestBase;
+import org.apache.polaris.nosql.async.AsyncExecTestBase;
 
 public class TestJavaPoolAsyncExec extends AsyncExecTestBase {
   @Override

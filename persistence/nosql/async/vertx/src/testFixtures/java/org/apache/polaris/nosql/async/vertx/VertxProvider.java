@@ -16,14 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.async.vertx;
+package org.apache.polaris.nosql.async.vertx;
 
-import org.apache.polaris.async.AsyncExecTestBase;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Disposes;
+import jakarta.enterprise.inject.Produces;
+import java.util.concurrent.TimeUnit;
 
-public class TestVertxAsyncExec extends AsyncExecTestBase {
-  @Override
-  protected void threadAssertion() {
-    var t = Thread.currentThread();
-    soft.assertThat(t.getName()).startsWith(VertxAsyncExec.EXECUTOR_THREAD_NAME_PREFIX);
+@ApplicationScoped
+public class VertxProvider {
+  @Produces
+  Vertx vertx() {
+    return Vertx.vertx(
+        new VertxOptions()
+            .setInternalBlockingPoolSize(16)
+            .setEventLoopPoolSize(16)
+            .setWorkerPoolSize(32));
+  }
+
+  void dispose(@Disposes Vertx vertx) throws Exception {
+    vertx.close().toCompletionStage().toCompletableFuture().get(5, TimeUnit.MINUTES);
   }
 }

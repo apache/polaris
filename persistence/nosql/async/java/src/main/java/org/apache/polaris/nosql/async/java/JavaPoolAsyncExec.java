@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.async.java;
+package org.apache.polaris.nosql.async.java;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.apache.polaris.async.AsyncConfiguration.DEFAULT_MAX_THREADS;
-import static org.apache.polaris.async.AsyncConfiguration.DEFAULT_THREAD_KEEP_ALIVE;
+import static org.apache.polaris.nosql.async.AsyncConfiguration.DEFAULT_MAX_THREADS;
+import static org.apache.polaris.nosql.async.AsyncConfiguration.DEFAULT_THREAD_KEEP_ALIVE;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.PreDestroy;
@@ -48,9 +48,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.polaris.async.AsyncConfiguration;
-import org.apache.polaris.async.AsyncExec;
-import org.apache.polaris.async.Cancelable;
+import org.apache.polaris.nosql.async.AsyncConfiguration;
+import org.apache.polaris.nosql.async.AsyncExec;
+import org.apache.polaris.nosql.async.Cancelable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
