@@ -75,7 +75,6 @@ Please refer to the documentation here:
 
 Additionally, the retries can be configured via `polaris.persistence.relational.jdbc.*` properties please ref [configuration]({{% ref "configuration" %}})
 
-```
 ## EclipseLink (Deprecated)
 {{< alert important >}}
 EclipseLink persistence will be completely removed from Polaris in 1.3.0 or in 2.0.0 (whichever happens earlier).
