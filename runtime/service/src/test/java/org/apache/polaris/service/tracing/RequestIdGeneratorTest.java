@@ -43,7 +43,8 @@ public class RequestIdGeneratorTest {
 
     assertThat(requestId).isNotNull();
     assertThat(requestId).matches(this::isValidRequestIdFormat);
-    assertThat(requestId).contains("_1"); // First call should increment counter to 1
+    // First call should increment counter to 1
+    assertThat(extractCounterFromRequestId(requestId)).isEqualTo(1);
   }
 
   @Test
@@ -62,22 +63,22 @@ public class RequestIdGeneratorTest {
 
   @Test
   void testCounterIncrementsSequentially() {
-    requestIdGenerator.setCounter(0);
+    //    requestIdGenerator.setCounter(0);
 
     String firstId = requestIdGenerator.generateRequestId();
     String secondId = requestIdGenerator.generateRequestId();
     String thirdId = requestIdGenerator.generateRequestId();
 
-    assertThat(firstId).endsWith("_1");
-    assertThat(secondId).endsWith("_2");
-    assertThat(thirdId).endsWith("_3");
+    assertThat(extractCounterFromRequestId(firstId)).isEqualTo(1);
+    assertThat(extractCounterFromRequestId(secondId)).isEqualTo(2);
+    assertThat(extractCounterFromRequestId(thirdId)).isEqualTo(3);
   }
 
   @Test
   void testCounterRotationAtSoftMax() {
     // Set counter close to soft max
     long softMax = RequestIdGenerator.COUNTER_SOFT_MAX;
-    requestIdGenerator.setCounter(softMax - 1);
+    requestIdGenerator.setCounter(softMax);
 
     String beforeRotation = requestIdGenerator.generateRequestId();
     String afterRotation = requestIdGenerator.generateRequestId();
@@ -87,9 +88,9 @@ public class RequestIdGeneratorTest {
     String afterUuidPart = afterRotation.substring(0, afterRotation.lastIndexOf('_'));
     assertNotEquals(beforeUuidPart, afterUuidPart);
 
-    // After rotation, counter should be reset and UUID should be different
-    assertThat(beforeRotation).endsWith("_" + softMax);
-    assertThat(afterRotation).endsWith("_1"); // Counter reset to 1 (after increment from 0)
+    assertThat(extractCounterFromRequestId(beforeRotation)).isEqualTo(softMax);
+    // Counter reset to 1 (after increment from 0)
+    assertThat(extractCounterFromRequestId(afterRotation)).isEqualTo(1);
   }
 
   @Test
@@ -98,7 +99,8 @@ public class RequestIdGeneratorTest {
 
     String requestId = requestIdGenerator.generateRequestId();
 
-    assertThat(requestId).endsWith("_101"); // Should increment from set value
+    // Should increment from set value
+    assertThat(extractCounterFromRequestId(requestId)).isEqualTo(100);
   }
 
   private boolean isValidRequestIdFormat(String str) {
@@ -112,5 +114,9 @@ public class RequestIdGeneratorTest {
     } catch (IllegalArgumentException e) {
       return false;
     }
+  }
+
+  private long extractCounterFromRequestId(String requestId) {
+    return Long.parseLong(requestId.split("_")[1]);
   }
 }

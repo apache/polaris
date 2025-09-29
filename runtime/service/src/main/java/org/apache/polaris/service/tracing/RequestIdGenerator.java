@@ -22,32 +22,35 @@ package org.apache.polaris.service.tracing;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 @ApplicationScoped
 public class RequestIdGenerator {
-  private volatile String baseDefaultUuid = UUID.randomUUID().toString();
-  static final AtomicLong COUNTER = new AtomicLong();
   static final Long COUNTER_SOFT_MAX = Long.MAX_VALUE / 2;
 
-  public String generateRequestId() {
-    long currentCounter = COUNTER.incrementAndGet();
-    String requestId = baseDefaultUuid + "_" + currentCounter;
-    if (currentCounter >= COUNTER_SOFT_MAX) {
-      synchronized (this) {
-        if (COUNTER.get() >= COUNTER_SOFT_MAX) {
-          // If we get anywhere close to danger of overflowing Long (which, theoretically,
-          // would be extremely unlikely) rotate the UUID and start again.
-          baseDefaultUuid = UUID.randomUUID().toString();
-          COUNTER.set(0);
-        }
-      }
+  record State(String uuid, long counter) {
+
+    State() {
+      this(UUID.randomUUID().toString(), 1);
     }
-    return requestId;
+
+    String requestId() {
+      return String.format("%s_%019d", uuid, counter);
+    }
+
+    State increment() {
+      return counter >= COUNTER_SOFT_MAX ? new State() : new State(uuid, counter + 1);
+    }
+  }
+
+  final AtomicReference<State> state = new AtomicReference<>(new State());
+
+  public String generateRequestId() {
+    return state.getAndUpdate(State::increment).requestId();
   }
 
   @VisibleForTesting
   public void setCounter(long counter) {
-    COUNTER.set(counter);
+    state.set(new State(state.get().uuid, counter));
   }
 }
