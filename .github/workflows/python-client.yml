@@ -72,15 +72,6 @@ jobs:
         run: |
           make client-unit-test
 
-      - name: Image build
-        env:
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-        run: |
-          ./gradlew \
-            :polaris-server:assemble \
-            :polaris-server:quarkusAppPartsBuild --rerun \
-            -Dquarkus.container-image.build=true
-
       - name: Integration Tests
         run: |
           make client-integration-test
