@@ -188,7 +188,5 @@ class Command(ABC):
         """
         Used to validate a command. Should always be called before `execute`. The arg parser will catch many issues
         with options, but this is used to apply additional constraints that the arg parser can't currently handle.
-        One example is that a catalog cannot be created with the `s3` storage type without a `--role-arn` option, but
-        one can be created without this flag if it's using the `gcs` storage type.
         """
         raise Exception("`validate` called on abstract `Command`")
