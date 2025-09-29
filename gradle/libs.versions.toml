@@ -39,10 +39,11 @@ swagger = "1.6.16"
 # If a dependency is removed, check whether the LICENSE and/or NOTICE files need to be adopted
 # (aka mention of the dependency removed).
 #
+quarkus-amazon-services-bom = { module = "io.quarkus.platform:quarkus-amazon-services-bom", version.ref="quarkus" }
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.6" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.34.0" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.34.5" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.38" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }

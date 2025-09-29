@@ -16,13 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
 
-import java.security.PrivateKey;
-import java.security.PublicKey;
+package org.apache.polaris.service.auth.internal.service;
 
-public interface KeyProvider {
-  PublicKey getPublicKey();
+public enum OAuthError {
+  invalid_request("The request is invalid"),
+  invalid_client("The Client is invalid"),
+  invalid_grant("The grant is invalid"),
+  unauthorized_client("The client is not authorized"),
+  unsupported_grant_type("The grant type is invalid"),
+  invalid_scope("The scope is invalid"),
+  ;
 
-  PrivateKey getPrivateKey();
+  final String errorDescription;
+
+  OAuthError(String errorDescription) {
+    this.errorDescription = errorDescription;
+  }
+
+  public String getErrorDescription() {
+    return errorDescription;
+  }
 }
