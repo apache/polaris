@@ -140,6 +140,12 @@ public class ManagementServiceTest {
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+
+    storageConfig.setEndpointInternal(null);
+    storageConfig.setStsUnavailable(false);
+    assertThatThrownBy(createCatalog::get)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly disabling STS is not allowed.");
   }
 
   @Test
