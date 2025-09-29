@@ -23,15 +23,32 @@ import java.util.List;
 import java.util.Map;
 
 public class RelationalJdbcProfile implements QuarkusTestProfile {
+
   @Override
   public Map<String, String> getConfigOverrides() {
     return Map.of("polaris.persistence.auto-bootstrap-types", "relational-jdbc");
   }
 
-  @Override
-  public List<TestResourceEntry> testResources() {
-    return List.of(
-        new QuarkusTestProfile.TestResourceEntry(
-            PostgresRelationalJdbcLifeCycleManagement.class, Map.of()));
+  public static class PostgreSQLProfile extends RelationalJdbcProfile {
+    @Override
+    public List<TestResourceEntry> testResources() {
+      return List.of(new TestResourceEntry(RelationalJdbcLifeCycleManagement.class, Map.of()));
+    }
+  }
+
+  public static class MySQLProfile extends RelationalJdbcProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.persistence.auto-bootstrap-types", "relational-jdbc",
+          "polaris.persistence.type", "relational-jdbc",
+          "quarkus.datasource.active", "true",
+          "quarkus.datasource.db-kind", "mysql");
+    }
+
+    @Override
+    public List<TestResourceEntry> testResources() {
+      return List.of(new TestResourceEntry(RelationalJdbcLifeCycleManagement.class, Map.of()));
+    }
   }
 }
