@@ -44,7 +44,7 @@ dependencies {
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
-  implementation("com.mysql:mysql-connector-j:8.0.33")
+  implementation(libs.mysql.connector.j)
   implementation("io.quarkus:quarkus-jdbc-mysql")
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
 

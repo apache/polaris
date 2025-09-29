@@ -35,7 +35,7 @@ dependencies {
 
   implementation(libs.smallrye.common.annotation) // @Identifier
   implementation(libs.postgresql)
-  implementation("com.mysql:mysql-connector-j:8.0.33") 
+  implementation(libs.mysql.connector.j) 
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))

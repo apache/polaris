@@ -90,6 +90,7 @@ opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.37.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
+mysql-connector-j = { module = "com.mysql:mysql-connector-j", version = "8.0.33" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.8" }
 prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.4.1" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
