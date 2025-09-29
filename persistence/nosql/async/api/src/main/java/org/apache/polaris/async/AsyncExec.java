@@ -25,13 +25,13 @@ import java.time.Duration;
 import java.util.concurrent.Callable;
 
 /**
- * Abstraction for platform/environment-specific scheduler implementations.
+ * Abstraction for platform/environment-specific scheduler implementations for delayed and
+ * optionally repeated executions.
  *
  * <p>Quarkus production systems use Vert.x, tests usually use Java executors.
  *
- * <p>Implementations, like Java executors or Vert.X, are {@link
- * ApplicationScoped @ApplicationScoped}. There's also a CDI decorator to propagate the thread
- * context.
+ * <p>Implementations, like Java executors or Vert.X, are usually {@link
+ * ApplicationScoped @ApplicationScoped} in CDI environments.
  */
 public interface AsyncExec {
 

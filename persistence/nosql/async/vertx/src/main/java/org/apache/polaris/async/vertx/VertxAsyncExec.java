@@ -65,8 +65,12 @@ class VertxAsyncExec implements AsyncExec, AutoCloseable {
   private final ThreadPoolExecutor executorService;
   private final Vertx vertx;
 
+  /** Pool-ID generator, useful for debugging when multiple pools are created for multiple tests. */
   private static final AtomicInteger POOL_ID = new AtomicInteger();
+
+  /** Pool-ID, useful for debugging when multiple pools are created for multiple tests. */
   private final int poolId = POOL_ID.incrementAndGet();
+
   private final AtomicInteger executorThreadId = new AtomicInteger();
   private volatile boolean shutdown;
   // Track live tasks for prompt cancellation on shutdown

@@ -20,6 +20,15 @@ package org.apache.polaris.async;
 
 import java.util.concurrent.CompletionStage;
 
+/**
+ * Implementation agnostic interface for asynchronous delayed and optionally repeated executions.
+ *
+ * <p>Implementations may use JVM-local backends, like Java executors or Vert.X. Vert.X's API is not
+ * based on Java's {@code (Completable)Future} or {@code CompletionStage}. The cancellation
+ * semantics/guarantees are different for Vert.X and Java.
+ *
+ * @param <R>
+ */
 public interface Cancelable<R> {
   /**
    * Attempt to cancel the delayed execution of a callable. Already running callables are not
@@ -31,5 +40,9 @@ public interface Cancelable<R> {
    */
   void cancel();
 
+  /**
+   * Retrieve the {@link CompletionStage} associated with this {@link Cancelable} for the submitted
+   * async and potentially periodic execution.
+   */
   CompletionStage<R> completionStage();
 }

@@ -21,6 +21,10 @@ package org.apache.polaris.async;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Async-API-specific tests check utility, only used to verify that invocations into CDI beans work,
+ * <em>not</em> for "general reuse".
+ */
 @ApplicationScoped
 class AppScopedChecker {
   static final AtomicInteger COUNTER = new AtomicInteger();
