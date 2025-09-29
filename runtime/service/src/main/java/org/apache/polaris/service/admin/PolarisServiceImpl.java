@@ -188,9 +188,9 @@ public class PolarisServiceImpl
 
         throw new IllegalArgumentException(
             String.format(
-                "Explicitly setting %s is not allowed.",
-                FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS
-                    .catalogConfig()));
+                "Explicitly setting %s is not allowed because %s is set to false.",
+                FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS.catalogConfig(),
+                FeatureConfiguration.ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS.key()));
       }
     }
   }

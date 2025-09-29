@@ -286,7 +286,7 @@ public class ManagementServiceTest {
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
-            "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed.");
+            "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
   }
 
   @Test
@@ -359,7 +359,7 @@ public class ManagementServiceTest {
                         catalogName, update, services.realmContext(), services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
-            "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed.");
+            "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
   }
 
   private PolarisAdminService setupPolarisAdminService(
