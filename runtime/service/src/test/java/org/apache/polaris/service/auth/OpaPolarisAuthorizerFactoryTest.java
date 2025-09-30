@@ -46,6 +46,9 @@ public class OpaPolarisAuthorizerFactoryTest {
         mock(AuthorizationConfiguration.BearerTokenConfig.class);
     when(bearerTokenConfig.staticValue()).thenReturn(Optional.of("static-token-value"));
     when(bearerTokenConfig.filePath()).thenReturn(Optional.empty());
+    when(bearerTokenConfig.refreshInterval()).thenReturn(300);
+    when(bearerTokenConfig.jwtExpirationRefresh()).thenReturn(true);
+    when(bearerTokenConfig.jwtExpirationBuffer()).thenReturn(60);
 
     AuthorizationConfiguration.OpaConfig opaConfig =
         mock(AuthorizationConfiguration.OpaConfig.class);
@@ -82,6 +85,8 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(bearerTokenConfig.staticValue()).thenReturn(Optional.empty()); // No static token
     when(bearerTokenConfig.filePath()).thenReturn(Optional.of(tokenFile.toString()));
     when(bearerTokenConfig.refreshInterval()).thenReturn(300);
+    when(bearerTokenConfig.jwtExpirationRefresh()).thenReturn(true);
+    when(bearerTokenConfig.jwtExpirationBuffer()).thenReturn(60);
 
     AuthorizationConfiguration.OpaConfig opaConfig =
         mock(AuthorizationConfiguration.OpaConfig.class);
@@ -136,6 +141,8 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(bearerTokenConfig.filePath())
         .thenReturn(Optional.of(tokenFile.toString())); // File token also present
     when(bearerTokenConfig.refreshInterval()).thenReturn(300);
+    when(bearerTokenConfig.jwtExpirationRefresh()).thenReturn(true);
+    when(bearerTokenConfig.jwtExpirationBuffer()).thenReturn(60);
 
     AuthorizationConfiguration.OpaConfig opaConfig =
         mock(AuthorizationConfiguration.OpaConfig.class);
@@ -168,6 +175,9 @@ public class OpaPolarisAuthorizerFactoryTest {
         mock(AuthorizationConfiguration.BearerTokenConfig.class);
     when(bearerTokenConfig.staticValue()).thenReturn(Optional.empty());
     when(bearerTokenConfig.filePath()).thenReturn(Optional.empty());
+    when(bearerTokenConfig.refreshInterval()).thenReturn(300);
+    when(bearerTokenConfig.jwtExpirationRefresh()).thenReturn(true);
+    when(bearerTokenConfig.jwtExpirationBuffer()).thenReturn(60);
 
     AuthorizationConfiguration.OpaConfig opaConfig =
         mock(AuthorizationConfiguration.OpaConfig.class);

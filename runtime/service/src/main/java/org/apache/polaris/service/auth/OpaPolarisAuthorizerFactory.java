@@ -84,7 +84,11 @@ public class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     // File-based token as fallback
     if (bearerToken.filePath().isPresent()) {
       Duration refreshInterval = Duration.ofSeconds(bearerToken.refreshInterval());
-      return new FileTokenProvider(bearerToken.filePath().get(), refreshInterval);
+      boolean jwtExpirationRefresh = bearerToken.jwtExpirationRefresh();
+      Duration jwtExpirationBuffer = Duration.ofSeconds(bearerToken.jwtExpirationBuffer());
+
+      return new FileTokenProvider(
+          bearerToken.filePath().get(), refreshInterval, jwtExpirationRefresh, jwtExpirationBuffer);
     }
 
     // No token configured

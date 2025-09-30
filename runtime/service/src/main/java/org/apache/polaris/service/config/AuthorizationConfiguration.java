@@ -56,5 +56,20 @@ public interface AuthorizationConfiguration {
     /** How often to refresh file-based bearer tokens (in seconds) */
     @WithDefault("300")
     int refreshInterval();
+
+    /**
+     * Whether to automatically detect JWT tokens and use their 'exp' field for refresh timing. If
+     * true and the token is a valid JWT with an 'exp' claim, the token will be refreshed based on
+     * the expiration time minus the buffer, rather than the fixed refresh interval.
+     */
+    @WithDefault("true")
+    boolean jwtExpirationRefresh();
+
+    /**
+     * Buffer time in seconds before JWT expiration to refresh the token. Only used when
+     * jwtExpirationRefresh is true and the token is a valid JWT. Default is 60 seconds.
+     */
+    @WithDefault("60")
+    int jwtExpirationBuffer();
   }
 }
