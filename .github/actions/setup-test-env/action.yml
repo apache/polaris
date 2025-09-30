@@ -15,7 +15,7 @@
 # CODE_COPIED_TO_POLARIS Copied from Project Nessie v. 0.104.2
 
 name: 'Setup test environment'
-description: 'Optionally adds swap space, prepares the runner machine'
+description: 'Disables testcontainers startup checks and sets up docker.io mirror'
 runs:
   using: "composite"
   steps:
