@@ -103,6 +103,8 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -135,6 +137,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final PolarisEventListener polarisEventListener;
+  private final AccessConfigProvider accessConfigProvider;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -158,7 +161,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories,
-      PolarisEventListener polarisEventListener) {
+      PolarisEventListener polarisEventListener,
+      AccessConfigProvider accessConfigProvider) {
     super(
         diagnostics,
         callContext,
@@ -173,6 +177,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.polarisEventListener = polarisEventListener;
+    this.accessConfigProvider = accessConfigProvider;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -793,16 +798,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Optional<String> refreshCredentialsEndpoint) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
+    PolarisResolvedPathWrapper resolvedStoragePath =
+        CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
 
-    if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-      LOGGER
-          .atDebug()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .addKeyValue("tableLocation", tableMetadata.location())
-          .log("Fetching client credentials for table");
+    if (baseCatalog instanceof IcebergCatalog && resolvedStoragePath != null) {
+
       AccessConfig accessConfig =
-          credentialDelegation.getAccessConfig(
-              tableIdentifier, tableMetadata, actions, refreshCredentialsEndpoint);
+          accessConfigProvider.getAccessConfig(
+              callContext,
+              tableIdentifier,
+              tableMetadata,
+              actions,
+              refreshCredentialsEndpoint,
+              resolvedStoragePath);
       Map<String, String> credentialConfig = accessConfig.credentials();
       if (!credentialConfig.isEmpty() && delegationModes.contains(VENDED_CREDENTIALS)) {
         responseBuilder.addAllConfig(credentialConfig);

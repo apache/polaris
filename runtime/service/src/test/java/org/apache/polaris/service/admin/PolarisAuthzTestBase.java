@@ -89,6 +89,7 @@ import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -202,6 +203,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisConfigurationStore configurationStore;
   @Inject protected StorageCredentialCache storageCredentialCache;
   @Inject protected ResolverFactory resolverFactory;
+  @Inject protected AccessConfigProvider accessConfigProvider;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -524,7 +526,6 @@ public abstract class PolarisAuthzTestBase {
     this.baseCatalog =
         new IcebergCatalog(
             diagServices,
-            storageCredentialCache,
             resolverFactory,
             metaStoreManager,
             callContext,
@@ -564,7 +565,6 @@ public abstract class PolarisAuthzTestBase {
         PolarisEventListener polarisEventListener) {
       super(
           diagnostics,
-          storageCredentialCache,
           resolverFactory,
           metaStoreManagerFactory,
           taskExecutor,

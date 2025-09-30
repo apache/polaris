@@ -236,7 +236,6 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     this.icebergCatalog =
         new IcebergCatalog(
             diagServices,
-            storageCredentialCache,
             resolverFactory,
             metaStoreManager,
             polarisContext,

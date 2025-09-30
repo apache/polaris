@@ -225,7 +225,6 @@ public class FileIOFactoryTest {
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
             services.polarisDiagnostics(),
-            services.storageCredentialCache(),
             services.resolverFactory(),
             services.metaStoreManager(),
             callContext,

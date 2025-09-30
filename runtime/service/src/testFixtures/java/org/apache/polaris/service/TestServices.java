@@ -67,6 +67,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -102,7 +103,8 @@ public record TestServices(
     PolarisMetaStoreManager metaStoreManager,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
-    PolarisEventListener polarisEventListener) {
+    PolarisEventListener polarisEventListener,
+    AccessConfigProvider accessConfigProvider) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -226,12 +228,14 @@ public record TestServices(
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               diagnostics,
-              storageCredentialCache,
               resolverFactory,
               metaStoreManagerFactory,
               taskExecutor,
               fileIOFactory,
               polarisEventListener);
+
+      AccessConfigProvider accessConfigProvider =
+          new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
@@ -257,7 +261,8 @@ public record TestServices(
               reservedProperties,
               catalogHandlerUtils,
               externalCatalogFactory,
-              polarisEventListener);
+              polarisEventListener,
+              accessConfigProvider);
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
       IcebergRestConfigurationApi restConfigurationApi =
@@ -329,7 +334,8 @@ public record TestServices(
           metaStoreManager,
           fileIOFactory,
           taskExecutor,
-          polarisEventListener);
+          polarisEventListener,
+          accessConfigProvider);
     }
   }
 
