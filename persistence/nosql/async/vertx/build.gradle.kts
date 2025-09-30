@@ -29,7 +29,9 @@ dependencies {
 
   implementation(libs.slf4j.api)
   implementation(libs.guava)
-  implementation(libs.vertx.core)
+
+  compileOnly(enforcedPlatform(libs.quarkus.bom))
+  compileOnly("io.vertx:vertx-core")
 
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-databind")
@@ -44,7 +46,8 @@ dependencies {
   testFixturesApi(libs.jakarta.inject.api)
   testFixturesApi(libs.jakarta.enterprise.cdi.api)
 
-  testFixturesApi(libs.vertx.core)
+  testFixturesApi(enforcedPlatform(libs.quarkus.bom))
+  testFixturesApi("io.vertx:vertx-core")
 
   testImplementation(testFixtures(project(":polaris-async-api")))
 }
