@@ -104,7 +104,7 @@ import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
-import org.apache.polaris.service.catalog.io.AccessConfigFactory;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -137,7 +137,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final PolarisEventListener polarisEventListener;
-  private final AccessConfigFactory accessConfigFactory;
+  private final AccessConfigProvider accessConfigProvider;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -162,7 +162,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener,
-      AccessConfigFactory accessConfigFactory) {
+      AccessConfigProvider accessConfigProvider) {
     super(
         diagnostics,
         callContext,
@@ -177,7 +177,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.polarisEventListener = polarisEventListener;
-    this.accessConfigFactory = accessConfigFactory;
+    this.accessConfigProvider = accessConfigProvider;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -804,7 +804,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (baseCatalog instanceof IcebergCatalog && resolvedStoragePath != null) {
 
       AccessConfig accessConfig =
-          accessConfigFactory.getAccessConfig(
+          accessConfigProvider.getAccessConfig(
               callContext,
               tableIdentifier,
               tableMetadata,

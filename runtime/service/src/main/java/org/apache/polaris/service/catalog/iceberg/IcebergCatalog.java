@@ -131,6 +131,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.LocationUtils;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -839,11 +840,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * Get access configuration for credential vending.
    *
    * @deprecated This method couples credential vending logic to the catalog implementation,
-   *     preventing reuse for federated catalogs. Use {@link
-   *     org.apache.polaris.service.catalog.io.AccessConfigFactory#getAccessConfig} instead, which
-   *     provides the same functionality as a standalone factory. This method will be removed in a
-   *     future release.
-   * @see org.apache.polaris.service.catalog.io.AccessConfigFactory
+   *     preventing reuse for federated catalogs. Use {@link AccessConfigProvider#getAccessConfig}
+   *     instead, which provides the same functionality as a standalone factory. This method will be
+   *     removed in a future release.
+   * @see AccessConfigProvider
    */
   @Override
   @Deprecated

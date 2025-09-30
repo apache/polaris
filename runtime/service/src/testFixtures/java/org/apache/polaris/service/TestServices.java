@@ -67,7 +67,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
-import org.apache.polaris.service.catalog.io.AccessConfigFactory;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -104,7 +104,7 @@ public record TestServices(
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
     PolarisEventListener polarisEventListener,
-    AccessConfigFactory accessConfigFactory) {
+    AccessConfigProvider accessConfigProvider) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -235,8 +235,8 @@ public record TestServices(
               fileIOFactory,
               polarisEventListener);
 
-      AccessConfigFactory accessConfigFactory =
-          new AccessConfigFactory(storageCredentialCache, metaStoreManager);
+      AccessConfigProvider accessConfigProvider =
+          new AccessConfigProvider(storageCredentialCache, metaStoreManager);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
@@ -263,7 +263,7 @@ public record TestServices(
               catalogHandlerUtils,
               externalCatalogFactory,
               polarisEventListener,
-              accessConfigFactory);
+              accessConfigProvider);
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
       IcebergRestConfigurationApi restConfigurationApi =
@@ -336,7 +336,7 @@ public record TestServices(
           fileIOFactory,
           taskExecutor,
           polarisEventListener,
-          accessConfigFactory);
+          accessConfigProvider);
     }
   }
 

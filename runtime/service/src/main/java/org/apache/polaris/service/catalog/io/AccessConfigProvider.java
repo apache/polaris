@@ -39,14 +39,14 @@ import org.slf4j.LoggerFactory;
 
 /** Factory to create {@link AccessConfig} for accessing table storage based on param */
 @ApplicationScoped
-public class AccessConfigFactory {
+public class AccessConfigProvider {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AccessConfigFactory.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AccessConfigProvider.class);
   private final StorageCredentialCache storageCredentialCache;
   private final PolarisMetaStoreManager metaStoreManager;
 
   @Inject
-  public AccessConfigFactory(
+  public AccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
       PolarisMetaStoreManager polarisMetaStoreManager) {
     this.storageCredentialCache = storageCredentialCache;

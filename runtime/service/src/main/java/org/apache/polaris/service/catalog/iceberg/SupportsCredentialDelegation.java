@@ -24,6 +24,7 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 
 /**
  * Adds support for credential vending for (typically) {@link org.apache.iceberg.TableOperations} to
@@ -34,10 +35,9 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
  *
  * @deprecated This interface tightly couples credential vending to catalog implementation via
  *     inheritance, making it difficult to support credential vending for federated catalogs or
- *     other non-Polaris catalog implementations. Use {@link
- *     org.apache.polaris.service.catalog.io.AccessConfigFactory} instead, which provides credential
- *     vending as a standalone factory that can work with any catalog implementation. This interface
- *     will be removed in a future release.
+ *     other non-Polaris catalog implementations. Use {@link AccessConfigProvider} instead, which
+ *     provides credential vending as a standalone factory that can work with any catalog
+ *     implementation. This interface will be removed in a future release.
  */
 @Deprecated
 public interface SupportsCredentialDelegation {
