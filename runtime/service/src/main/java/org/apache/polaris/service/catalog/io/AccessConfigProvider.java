@@ -37,7 +37,13 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Factory to create {@link AccessConfig} for accessing table storage based on param */
+/**
+ * Provides temporary, scoped credentials for accessing table data in object storage (S3, GCS, Azure
+ * Blob Storage).
+ *
+ * <p>This provider decouples credential vending from catalog implementations, and should be the
+ * primary entrypoint to get sub-scoped credentials for accessing table data.
+ */
 @ApplicationScoped
 public class AccessConfigProvider {
 
@@ -54,16 +60,17 @@ public class AccessConfigProvider {
   }
 
   /**
-   * Get access config for table storage
+   * Vends credentials for accessing table storage, extracting locations from table metadata.
    *
-   * @param callContext the call context
+   * @param callContext the call context containing realm, principal, and security context
    * @param tableIdentifier the table identifier
-   * @param tableMetadata the table metadata
-   * @param storageActions the storage actions
-   * @param refreshCredentialsEndpoint the refresh credentials endpoint
-   * @param resolvedPath the resolved path wrapper containing the hierarchical path to search for
-   *     storage info
-   * @return the access config
+   * @param tableMetadata the table metadata containing storage location URIs
+   * @param storageActions the storage operations (READ, WRITE, LIST, DELETE) to scope credentials
+   *     to
+   * @param refreshCredentialsEndpoint optional endpoint URL for clients to refresh credentials
+   * @param resolvedPath the entity hierarchy to search for storage configuration
+   * @return {@link AccessConfig} with scoped credentials and metadata; empty if no storage config
+   *     found
    */
   public AccessConfig getAccessConfig(
       @Nonnull CallContext callContext,
@@ -82,16 +89,17 @@ public class AccessConfigProvider {
   }
 
   /**
-   * Get access config for table storage
+   * Vends credentials for accessing table storage at explicit locations.
    *
-   * @param callContext the call context
-   * @param tableIdentifier the table identifier
-   * @param tableLocations the set of table locations
-   * @param storageActions the storage actions
-   * @param refreshCredentialsEndpoint the refresh credentials endpoint
-   * @param resolvedPath the resolved path wrapper containing the hierarchical path to search for
-   *     storage info
-   * @return the access config
+   * @param callContext the call context containing realm, principal, and security context
+   * @param tableIdentifier the table identifier, used for logging and refresh endpoint construction
+   * @param tableLocations set of storage location URIs to scope credentials to
+   * @param storageActions the storage operations (READ, WRITE, LIST, DELETE) to scope credentials
+   *     to
+   * @param refreshCredentialsEndpoint optional endpoint URL for clients to refresh credentials
+   * @param resolvedPath the entity hierarchy to search for storage configuration
+   * @return {@link AccessConfig} with scoped credentials and metadata; empty if no storage config
+   *     found
    */
   public AccessConfig getAccessConfig(
       @Nonnull CallContext callContext,
