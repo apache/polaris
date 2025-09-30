@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -45,7 +44,6 @@ public class CreatePrincipalResult extends BaseResult {
     super(errorCode, extraInformation);
     this.principal = null;
     this.principalSecrets = null;
-    validate();
   }
 
   /**
@@ -59,7 +57,6 @@ public class CreatePrincipalResult extends BaseResult {
     super(ReturnStatus.SUCCESS);
     this.principal = principal;
     this.principalSecrets = principalSecrets;
-    validate();
   }
 
   @JsonCreator
@@ -71,18 +68,6 @@ public class CreatePrincipalResult extends BaseResult {
     super(returnStatus, extraInformation);
     this.principal = principal;
     this.principalSecrets = principalSecrets;
-    validate();
-  }
-
-  private void validate() {
-    if (getReturnStatus() == ReturnStatus.SUCCESS) {
-      Preconditions.checkNotNull(principal);
-      Preconditions.checkNotNull(principalSecrets);
-      Preconditions.checkState(getPrincipal() != null, "Entity is not a Principal");
-    } else {
-      Preconditions.checkState(principal == null);
-      Preconditions.checkState(principalSecrets == null);
-    }
   }
 
   public PrincipalEntity getPrincipal() {
