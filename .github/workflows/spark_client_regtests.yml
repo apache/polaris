@@ -51,13 +51,6 @@ jobs:
       - name: Fix permissions
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
 
-      - name: Project build without testing
-        env:
-          # publishToMavenLocal causes a GH API requests, use the token for those requests
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-        run: ./gradlew assemble publishToMavenLocal
-
       - name: Image build
         env:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
