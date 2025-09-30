@@ -67,3 +67,12 @@ target/
 
 # OpenAPI spec
 spec/
+
+# IntelliJ
+/.idea
+*.iml
+*.ipr
+*.iws
+
+# vscode
+.vscode/
