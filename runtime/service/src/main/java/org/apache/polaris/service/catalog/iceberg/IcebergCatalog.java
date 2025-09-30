@@ -1566,6 +1566,32 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               "Generic table with same name already exists: %s", tableIdentifier);
         }
       }
+      Map<String, String> storedProperties = new HashMap<>();
+      storedProperties.put("location", metadata.location());
+      storedProperties.put("format-version", String.valueOf(metadata.formatVersion()));
+      storedProperties.put("table-uuid", metadata.uuid());
+      storedProperties.put("current-schema-id", String.valueOf(metadata.currentSchemaId()));
+      if (metadata.currentSnapshot() != null) {
+        storedProperties.put(
+            "current-snapshot-id", String.valueOf(metadata.currentSnapshot().snapshotId()));
+      }
+      storedProperties.put("last-column-id", String.valueOf(metadata.lastColumnId()));
+      storedProperties.put("next-row-id", String.valueOf(metadata.nextRowId()));
+      storedProperties.put("last-sequence-number", String.valueOf(metadata.lastSequenceNumber()));
+      storedProperties.put("last-updated-ms", String.valueOf(metadata.lastUpdatedMillis()));
+      if (metadata.sortOrder() != null) {
+        storedProperties.put(
+            "default-sort-order-id", String.valueOf(metadata.defaultSortOrderId()));
+      }
+      if (metadata.spec() != null) {
+        storedProperties.put("default-spec-id", String.valueOf(metadata.defaultSpecId()));
+        storedProperties.put(
+            "last-partition-id", String.valueOf(metadata.lastAssignedPartitionId()));
+      }
+      if (metadata.currentSnapshot() != null) {
+        storedProperties.put(
+            "current-snapshot-id", String.valueOf(metadata.currentSnapshot().snapshotId()));
+      }
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
       String existingLocation;
@@ -1573,7 +1599,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         existingLocation = null;
         entity =
             new IcebergTableLikeEntity.Builder(
-                    PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, newLocation)
+                    PolarisEntitySubType.ICEBERG_TABLE,
+                    tableIdentifier,
+                    Map.of(),
+                    storedProperties,
+                    newLocation)
                 .setCatalogId(getCatalogId())
                 .setBaseLocation(metadata.location())
                 .setId(
@@ -1583,6 +1613,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         existingLocation = entity.getMetadataLocation();
         entity =
             new IcebergTableLikeEntity.Builder(entity)
+                .setInternalProperties(storedProperties)
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation)
                 .build();

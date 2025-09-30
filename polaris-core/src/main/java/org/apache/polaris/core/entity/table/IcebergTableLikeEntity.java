@@ -20,8 +20,8 @@ package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
@@ -31,6 +31,10 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * An entity type for {@link TableLikeEntity} instances that conform to iceberg semantics around
@@ -83,6 +87,24 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<IcebergTableLikeEntity, Builder> {
+
+    public Builder(
+        PolarisEntitySubType subType,
+        TableIdentifier identifier,
+        Map<String, String> properties,
+        Map<String, String> internalProperties,
+        String metadataLocation) {
+      super();
+      setType(PolarisEntityType.TABLE_LIKE);
+      setSubType(subType);
+      setProperties(properties);
+      setInternalProperties(internalProperties);
+      // order here matters. properties and internal properties must be set prior to the following
+      // properties, which merely update the map, whereas the above calls replace the map entirely.
+      setTableIdentifier(identifier);
+      setMetadataLocation(metadataLocation);
+    }
+
     public Builder(
         PolarisEntitySubType subType, TableIdentifier identifier, String metadataLocation) {
       super();
@@ -119,6 +141,29 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
     public Builder setBaseLocation(String location) {
       properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
       return this;
+    }
+
+    @Override
+    public Builder setInternalProperties(@Nonnull Map<String, String> internalProperties) {
+      // ensure we carry forward the parent namespace and metadata location if already set.
+      // however, we allow for overriding them if explicitly specified in the provided map.
+      Map<String, String> newInternalProperties = new HashMap<>();
+      if (this.internalProperties.get(NamespaceEntity.PARENT_NAMESPACE_KEY) != null) {
+        newInternalProperties.put(
+            NamespaceEntity.PARENT_NAMESPACE_KEY,
+            this.internalProperties.get(NamespaceEntity.PARENT_NAMESPACE_KEY));
+      }
+      if (this.internalProperties.get(METADATA_LOCATION_KEY) != null) {
+        newInternalProperties.put(
+            METADATA_LOCATION_KEY, this.internalProperties.get(METADATA_LOCATION_KEY));
+      }
+      if (this.internalProperties.get(LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY) != null) {
+        newInternalProperties.put(
+            LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY,
+            this.internalProperties.get(LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY));
+      }
+      newInternalProperties.putAll(internalProperties);
+      return super.setInternalProperties(newInternalProperties);
     }
 
     public Builder setMetadataLocation(String location) {
