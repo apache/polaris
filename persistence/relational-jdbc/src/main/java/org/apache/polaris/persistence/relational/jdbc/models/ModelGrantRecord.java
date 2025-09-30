@@ -93,7 +93,7 @@ public class ModelGrantRecord implements Converter<PolarisGrantRecord> {
   }
 
   @Override
-  public Map<String, Object> toMap(DatabaseType databaseType) {
+  public Map<String, Object> toMap(DatabaseType databaseType, int schemaVersion) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("securable_catalog_id", this.securableCatalogId);
     map.put("securable_id", this.securableId);

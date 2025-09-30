@@ -34,16 +34,17 @@ import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.mockito.Mockito;
 
-public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
+public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     extends BasePolarisMetaStoreManagerTest {
 
   public static DataSource createH2DataSource() {
     return JdbcConnectionPool.create("jdbc:h2:file:./build/test_data/polaris/db", "sa", "");
   }
 
+  public abstract int schemaVersion();
+
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
-    int schemaVersion = 2;
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     DatasourceOperations datasourceOperations;
     try {
@@ -52,7 +53,8 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
       ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
       InputStream scriptStream =
           classLoader.getResourceAsStream(
-              String.format("%s/schema-v%s.sql", DatabaseType.H2.getDisplayName(), schemaVersion));
+              String.format(
+                  "%s/schema-v%s.sql", DatabaseType.H2.getDisplayName(), schemaVersion()));
       datasourceOperations.executeScript(scriptStream);
     } catch (SQLException e) {
       throw new RuntimeException(
@@ -69,7 +71,7 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
             RANDOM_SECRETS,
             Mockito.mock(),
             realmContext.getRealmIdentifier(),
-            schemaVersion);
+            schemaVersion());
     AtomicOperationMetaStoreManager metaStoreManager =
         new AtomicOperationMetaStoreManager(clock, diagServices);
     PolarisCallContext callCtx = new PolarisCallContext(realmContext, basePersistence);

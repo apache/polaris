@@ -35,7 +35,25 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
   public static final String ID_COLUMN = "id";
 
-  public static final List<String> ALL_COLUMNS =
+  private static final List<String> ALL_COLUMNS =
+      List.of(
+          "id",
+          "catalog_id",
+          "parent_id",
+          "type_code",
+          "name",
+          "entity_version",
+          "sub_type_code",
+          "create_timestamp",
+          "drop_timestamp",
+          "purge_timestamp",
+          "to_purge_timestamp",
+          "last_update_timestamp",
+          "properties",
+          "internal_properties",
+          "grant_records_version");
+
+  private static final List<String> ALL_COLUMNS_V2 =
       List.of(
           "id",
           "catalog_id",
@@ -53,6 +71,14 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
           "internal_properties",
           "grant_records_version",
           "location_without_scheme");
+
+  public static List<String> getAllColumnNames(int schemaVersion) {
+    if (schemaVersion < 2) {
+      return ALL_COLUMNS;
+    } else {
+      return ALL_COLUMNS_V2;
+    }
+  }
 
   public static final List<String> ENTITY_LOOKUP_COLUMNS =
       List.of("id", "catalog_id", "parent_id", "type_code", "name", "sub_type_code");
@@ -176,6 +202,14 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
 
   @Override
   public PolarisBaseEntity fromResultSet(ResultSet r) throws SQLException {
+    // location_without_scheme column was added in schema version 2
+    String locationWithoutScheme = null;
+    try {
+      locationWithoutScheme = r.getString("location_without_scheme");
+    } catch (SQLException e) {
+      // Column does not exist, handle gracefully
+    }
+
     var modelEntity =
         ModelEntity.builder()
             .catalogId(r.getObject("catalog_id", Long.class))
@@ -195,14 +229,14 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
             // JSONB: use getString(), not getObject().
             .internalProperties(r.getString("internal_properties"))
             .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
-            .locationWithoutScheme(r.getString("location_without_scheme"))
+            .locationWithoutScheme(locationWithoutScheme)
             .build();
 
     return toEntity(modelEntity);
   }
 
   @Override
-  public Map<String, Object> toMap(DatabaseType databaseType) {
+  public Map<String, Object> toMap(DatabaseType databaseType, int schemaVersion) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("id", this.getId());
     map.put("catalog_id", this.getCatalogId());
@@ -224,7 +258,9 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       map.put("internal_properties", this.getInternalProperties());
     }
     map.put("grant_records_version", this.getGrantRecordsVersion());
-    map.put("location_without_scheme", this.getLocationWithoutScheme());
+    if (schemaVersion >= 2) {
+      map.put("location_without_scheme", this.getLocationWithoutScheme());
+    }
     return map;
   }
 

@@ -92,7 +92,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   }
 
   @Override
-  default Map<String, Object> toMap(DatabaseType databaseType) {
+  default Map<String, Object> toMap(DatabaseType databaseType, int schemaVersion) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("catalog_id", getCatalogId());
     map.put("event_id", getEventId());

@@ -90,7 +90,7 @@ public class ModelPrincipalAuthenticationData implements Converter<PolarisPrinci
   }
 
   @Override
-  public Map<String, Object> toMap(DatabaseType databaseType) {
+  public Map<String, Object> toMap(DatabaseType databaseType, int schemaVersion) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("principal_id", this.principalId);
     map.put("principal_client_id", this.principalClientId);

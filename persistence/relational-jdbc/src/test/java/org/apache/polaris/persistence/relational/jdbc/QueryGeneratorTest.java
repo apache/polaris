@@ -49,7 +49,7 @@ public class QueryGeneratorTest {
     assertEquals(
         expectedQuery,
         QueryGenerator.generateSelectQuery(
-                ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, whereClause)
+                ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause)
             .sql());
   }
 
@@ -74,7 +74,8 @@ public class QueryGeneratorTest {
     String expectedQuery =
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM POLARIS_SCHEMA.ENTITIES WHERE (catalog_id, id) IN ((?, ?)) AND realm_id = ?";
     assertEquals(
-        expectedQuery, QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, entityIds).sql());
+        expectedQuery,
+        QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
   }
 
   @Test
@@ -84,7 +85,8 @@ public class QueryGeneratorTest {
     String expectedQuery =
         "SELECT id, catalog_id, parent_id, type_code, name, entity_version, sub_type_code, create_timestamp, drop_timestamp, purge_timestamp, to_purge_timestamp, last_update_timestamp, properties, internal_properties, grant_records_version, location_without_scheme FROM POLARIS_SCHEMA.ENTITIES WHERE (catalog_id, id) IN ((?, ?), (?, ?)) AND realm_id = ?";
     assertEquals(
-        expectedQuery, QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, entityIds).sql());
+        expectedQuery,
+        QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
   }
 
   @Test
@@ -92,7 +94,7 @@ public class QueryGeneratorTest {
     List<PolarisEntityId> entityIds = Collections.emptyList();
     assertThrows(
         IllegalArgumentException.class,
-        () -> QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, entityIds).sql());
+        () -> QueryGenerator.generateSelectQueryWithEntityIds(REALM_ID, 2, entityIds).sql());
   }
 
   @Test
@@ -103,9 +105,9 @@ public class QueryGeneratorTest {
     assertEquals(
         expectedQuery,
         QueryGenerator.generateInsertQuery(
-                ModelEntity.ALL_COLUMNS,
+                ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
-                entity.toMap(DatabaseType.H2).values().stream().toList(),
+                entity.toMap(DatabaseType.H2, 2).values().stream().toList(),
                 REALM_ID)
             .sql());
   }
@@ -120,9 +122,9 @@ public class QueryGeneratorTest {
     assertEquals(
         expectedQuery,
         QueryGenerator.generateUpdateQuery(
-                ModelEntity.ALL_COLUMNS,
+                ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
-                entity.toMap(DatabaseType.H2).values().stream().toList(),
+                entity.toMap(DatabaseType.H2, 2).values().stream().toList(),
                 whereClause)
             .sql());
   }
@@ -137,9 +139,9 @@ public class QueryGeneratorTest {
     assertEquals(
         expectedQuery,
         QueryGenerator.generateUpdateQuery(
-                ModelEntity.ALL_COLUMNS,
+                ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
-                entity.toMap(DatabaseType.H2).values().stream().toList(),
+                entity.toMap(DatabaseType.H2, 2).values().stream().toList(),
                 whereClause)
             .sql());
   }
@@ -152,7 +154,7 @@ public class QueryGeneratorTest {
     assertEquals(
         expectedQuery,
         QueryGenerator.generateDeleteQuery(
-                ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, whereClause)
+                ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, whereClause)
             .sql());
   }
 
@@ -162,20 +164,21 @@ public class QueryGeneratorTest {
     assertEquals(
         expectedQuery,
         QueryGenerator.generateDeleteQuery(
-                ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, Map.of("name", "oldName"))
+                ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, Map.of("name", "oldName"))
             .sql());
   }
 
   @Test
   void testGenerateDeleteQuery_byObject() {
     ModelEntity entityToDelete = ModelEntity.builder().name("test").entityVersion(1).build();
-    Map<String, Object> objMap = entityToDelete.toMap(DatabaseType.H2);
+    Map<String, Object> objMap = entityToDelete.toMap(DatabaseType.H2, 2);
     objMap.put("realm_id", REALM_ID);
     String expectedQuery =
         "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE id = ? AND catalog_id = ? AND parent_id = ? AND type_code = ? AND name = ? AND entity_version = ? AND sub_type_code = ? AND create_timestamp = ? AND drop_timestamp = ? AND purge_timestamp = ? AND to_purge_timestamp = ? AND last_update_timestamp = ? AND properties = ? AND internal_properties = ? AND grant_records_version = ? AND location_without_scheme = ? AND realm_id = ?";
     assertEquals(
         expectedQuery,
-        QueryGenerator.generateDeleteQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, objMap)
+        QueryGenerator.generateDeleteQuery(
+                ModelEntity.getAllColumnNames(2), ModelEntity.TABLE_NAME, objMap)
             .sql());
   }
 
@@ -225,9 +228,9 @@ public class QueryGeneratorTest {
             + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR"
             + " location_without_scheme = ? OR location_without_scheme LIKE ?)",
-        QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/").sql());
+        QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/").sql());
     Assertions.assertThatCollection(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://bucket/tmp/location/")
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://bucket/tmp/location/")
                 .parameters())
         .containsExactly(
             "realmId",
@@ -245,9 +248,9 @@ public class QueryGeneratorTest {
             + " properties, internal_properties, grant_records_version, location_without_scheme FROM"
             + " POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ? OR location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
-        QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/").sql());
+        QueryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").sql());
     Assertions.assertThatCollection(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "/tmp/location/").parameters())
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "/tmp/location/").parameters())
         .containsExactly(
             "realmId", -123L, "/", "//", "///", "///tmp/", "///tmp/location/", "///tmp/location/%");
 
@@ -257,9 +260,9 @@ public class QueryGeneratorTest {
             + " properties, internal_properties, grant_records_version, location_without_scheme"
             + " FROM POLARIS_SCHEMA.ENTITIES WHERE realm_id = ? AND catalog_id = ? AND (location_without_scheme = ?"
             + " OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme = ? OR location_without_scheme LIKE ?)",
-        QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/").sql());
+        QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/").sql());
     Assertions.assertThatCollection(
-            QueryGenerator.generateOverlapQuery("realmId", -123, "s3://バケツ/\"loc.ation\"/")
+            QueryGenerator.generateOverlapQuery("realmId", 2, -123, "s3://バケツ/\"loc.ation\"/")
                 .parameters())
         .containsExactly(
             "realmId", -123L, "/", "//", "//バケツ/", "//バケツ/\"loc.ation\"/", "//バケツ/\"loc.ation\"/%");

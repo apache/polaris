@@ -119,7 +119,7 @@ public class DatasourceOperationsTest {
               .additionalProperties("")
               .build();
       queryParams.add(
-          modelEvent.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
+          modelEvent.toMap(datasourceOperations.getDatabaseType(), 2).values().stream().toList());
     }
     when(mockConnection.prepareStatement(any())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeBatch()).thenReturn(new int[] {100});

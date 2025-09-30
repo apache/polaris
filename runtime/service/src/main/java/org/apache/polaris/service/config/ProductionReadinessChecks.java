@@ -302,4 +302,36 @@ public class ProductionReadinessChecks {
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
   }
+
+  @Produces
+  public ProductionReadinessCheck checkOverlappingSiblingCheckSettings(
+      FeaturesConfiguration featureConfiguration) {
+    var optimizedSiblingCheck = FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
+    var errors = new ArrayList<Error>();
+    if (Boolean.parseBoolean(featureConfiguration.defaults().get(optimizedSiblingCheck.key()))) {
+      errors.add(
+          Error.ofSevere(
+              "This setting is not recommended for production environments as it may lead to incorrect behavior, due to missing data for location_without_scheme column in case of migrating from older Polaris versions."
+                  + optimizedSiblingCheck.description(),
+              format("polaris.features.\"%s\"", optimizedSiblingCheck.key())));
+    }
+
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              if (Boolean.parseBoolean(overrides.overrides().get(optimizedSiblingCheck.key()))) {
+                errors.add(
+                    Error.ofSevere(
+                        "This setting is not recommended for production environments as it may lead to incorrect behavior, due to missing data for location_without_scheme column in case of migrating from older Polaris versions. "
+                            + optimizedSiblingCheck.description(),
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, optimizedSiblingCheck.key())));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
 }
