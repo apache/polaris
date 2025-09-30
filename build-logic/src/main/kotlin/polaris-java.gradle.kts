@@ -18,10 +18,12 @@
  */
 
 import java.util.Properties
+import kotlin.jvm.java
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+import org.gradle.kotlin.dsl.assign
 import org.gradle.kotlin.dsl.named
 import org.kordamp.gradle.plugin.jandex.JandexExtension
 import org.kordamp.gradle.plugin.jandex.JandexPlugin
@@ -270,4 +272,36 @@ if (plugins.hasPlugin("io.quarkus")) {
         }
     }
   }
+}
+
+gradle.sharedServices.registerIfAbsent(
+  "intTestParallelismConstraint",
+  TestingParallelismHelper::class.java,
+) {
+  val intTestParallelism =
+    Integer.getInteger(
+      "polaris.intTestParallelism",
+      (Runtime.getRuntime().availableProcessors() / 4).coerceAtLeast(1),
+    )
+  maxParallelUsages = intTestParallelism
+}
+
+gradle.sharedServices.registerIfAbsent(
+  "testParallelismConstraint",
+  TestingParallelismHelper::class.java,
+) {
+  val testParallelism =
+    Integer.getInteger(
+      "polaris.testParallelism",
+      (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1),
+    )
+  maxParallelUsages = testParallelism
+}
+
+abstract class TestingParallelismHelper : BuildService<BuildServiceParameters.None>
+
+tasks.withType<Test>().configureEach {
+  val constraintName =
+    if ("test" == name) "testParallelismConstraint" else "intTestParallelismConstraint"
+  usesService(gradle.sharedServices.registrations.named(constraintName).get().service)
 }
