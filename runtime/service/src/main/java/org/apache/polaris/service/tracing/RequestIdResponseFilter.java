@@ -16,41 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.logging;
 
-import static org.apache.polaris.service.context.RealmContextFilter.REALM_CONTEXT_KEY;
+package org.apache.polaris.service.tracing;
+
 import static org.apache.polaris.service.tracing.RequestIdFilter.REQUEST_ID_KEY;
 
-import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.container.PreMatching;
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.config.FilterPriorities;
-import org.slf4j.MDC;
+import org.apache.polaris.service.logging.LoggingConfiguration;
 
-@PreMatching
 @ApplicationScoped
-@Priority(FilterPriorities.MDC_FILTER)
 @Provider
-public class LoggingMDCFilter implements ContainerRequestFilter {
-
-  public static final String REALM_ID_KEY = "realmId";
+public class RequestIdResponseFilter implements ContainerResponseFilter {
 
   @Inject LoggingConfiguration loggingConfiguration;
 
   @Override
-  public void filter(ContainerRequestContext rc) {
-    // The request scope is active here, so any MDC values set here will be propagated to
-    // threads handling the request.
-    // Also put the MDC values in the request context for use by other filters and handlers
-    loggingConfiguration.mdc().forEach(MDC::put);
-    loggingConfiguration.mdc().forEach(rc::setProperty);
-    MDC.put(REQUEST_ID_KEY, (String) rc.getProperty(REQUEST_ID_KEY));
-    RealmContext realmContext = (RealmContext) rc.getProperty(REALM_CONTEXT_KEY);
-    MDC.put(REALM_ID_KEY, realmContext.getRealmIdentifier());
+  public void filter(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+    responseContext
+        .getHeaders()
+        .add(
+            loggingConfiguration.requestIdHeaderName(), requestContext.getProperty(REQUEST_ID_KEY));
   }
 }
