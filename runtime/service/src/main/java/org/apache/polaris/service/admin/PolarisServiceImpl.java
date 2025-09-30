@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.responses.ErrorResponse;
@@ -124,6 +125,7 @@ public class PolarisServiceImpl
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
     validateExternalCatalog(catalog);
+    validateCatalogProperties(catalog.getProperties());
     Catalog newCatalog = CatalogEntity.of(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).entity(newCatalog).build();
@@ -180,6 +182,23 @@ public class PolarisServiceImpl
     }
   }
 
+  private void validateCatalogProperties(Map<String, String> catalogProperties) {
+    if (catalogProperties != null) {
+      if (!realmConfig.getConfig(
+              FeatureConfiguration.ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS)
+          && catalogProperties.containsKey(
+              FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS
+                  .catalogConfig())) {
+
+        throw new IllegalArgumentException(
+            String.format(
+                "Explicitly setting %s is not allowed because %s is set to false.",
+                FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS.catalogConfig(),
+                FeatureConfiguration.ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS.key()));
+      }
+    }
+  }
+
   private void validateConnectionConfigInfo(ConnectionConfigInfo connectionConfigInfo) {
 
     String connectionType = connectionConfigInfo.getConnectionType().name();
@@ -231,6 +250,7 @@ public class PolarisServiceImpl
     if (updateRequest.getStorageConfigInfo() != null) {
       validateStorageConfig(updateRequest.getStorageConfigInfo());
     }
+    validateCatalogProperties(updateRequest.getProperties());
     return Response.ok(adminService.updateCatalog(catalogName, updateRequest).asCatalog()).build();
   }
 
