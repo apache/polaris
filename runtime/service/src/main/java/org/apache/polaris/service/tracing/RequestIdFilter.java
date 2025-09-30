@@ -18,33 +18,62 @@
  */
 package org.apache.polaris.service.tracing;
 
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
+import io.smallrye.common.vertx.ContextLocals;
+import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.container.PreMatching;
-import jakarta.ws.rs.ext.Provider;
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.logging.LoggingConfiguration;
+import org.jboss.resteasy.reactive.server.ServerRequestFilter;
+import org.jboss.resteasy.reactive.server.ServerResponseFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@PreMatching
-@ApplicationScoped
-@Priority(FilterPriorities.REQUEST_ID_FILTER)
-@Provider
-public class RequestIdFilter implements ContainerRequestFilter {
+public class RequestIdFilter {
 
   public static final String REQUEST_ID_KEY = "requestId";
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RequestIdFilter.class);
 
   @Inject LoggingConfiguration loggingConfiguration;
   @Inject RequestIdGenerator requestIdGenerator;
 
-  @Override
-  public void filter(ContainerRequestContext rc) {
+  @ServerRequestFilter(preMatching = true, priority = FilterPriorities.REQUEST_ID_FILTER)
+  public Uni<Response> assignRequestId(ContainerRequestContext rc) {
     var requestId = rc.getHeaderString(loggingConfiguration.requestIdHeaderName());
-    if (requestId == null) {
-      requestId = requestIdGenerator.generateRequestId();
+    return (requestId != null
+            ? Uni.createFrom().item(requestId)
+            : requestIdGenerator.generateRequestId(rc))
+        .onItem()
+        .invoke(id -> rc.setProperty(REQUEST_ID_KEY, id))
+        .invoke(id -> ContextLocals.put(REQUEST_ID_KEY, id))
+        .onItemOrFailure()
+        .transform((id, error) -> error == null ? null : errorResponse(error));
+  }
+
+  @ServerResponseFilter
+  public void addResponseHeader(
+      ContainerRequestContext request, ContainerResponseContext response) {
+    String requestId = (String) request.getProperty(REQUEST_ID_KEY);
+    if (requestId != null) { // can be null if request ID generation fails
+      response.getHeaders().add(loggingConfiguration.requestIdHeaderName(), requestId);
     }
-    rc.setProperty(REQUEST_ID_KEY, requestId);
+  }
+
+  private static Response errorResponse(Throwable error) {
+    LOGGER.error("Failed to generate request ID", error);
+    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .entity(
+            ErrorResponse.builder()
+                .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                .withMessage("Request ID generation failed")
+                .withType("RequestIdGenerationError")
+                .build())
+        .build();
   }
 }
