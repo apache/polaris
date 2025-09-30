@@ -31,6 +31,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade Notes
 
+- Amazon RDS plugin enabled, this allows polaris to connect to AWS Aurora PostgreSQL using IAM authentication.
 - The EclipseLink Persistence implementation has been deprecated since 1.0.0 and will be completely removed
   in 1.3.0 or in 2.0.0 (whichever happens earlier).
 
@@ -39,6 +40,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
+- The `ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` was added to support sub-catalog (initially namespace and table) RBAC for federated catalogs.
+  The setting can be configured on a per-catalog basis by setting the catalog property: `polaris.config.enable-sub-catalog-rbac-for-federated-catalogs`.
+  The realm-level feature flag `ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` (default: true) controls whether this functionality can be enabled or modified at the catalog level.
+
+- Added support for S3-compatible storage that does not have STS (use `stsUavailable: true` in catalog storage configuration)
 
 ### Changes
 
@@ -95,6 +101,22 @@ Apache Polaris 1.1.0-incubating was released on September 19th, 2025.
 - **Breaking changes**
   - Helm chart: the default value of the `authentication.tokenBroker.secret.symmetricKey.secretKey` property has changed
       from `symmetric.pem` to `symmetric.key`.
+  - For migrations from 1.0.x to 1.1.x, users using JDBC persistence and wanting to continue using v1 schema, must ensure that they,
+    run following SQL statement under `POLARIS_SCHEMA` to make sure version table exists:
+      ```sql
+    CREATE TABLE IF NOT EXISTS version (
+         version_key TEXT PRIMARY KEY,
+         version_value INTEGER NOT NULL
+      );
+      INSERT INTO version (version_key, version_value)
+        VALUES ('version', 1)
+      ON CONFLICT (version_key) DO UPDATE
+                              SET version_value = EXCLUDED.version_value;
+      COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
+    
+    ALTER TABLE polaris_schema.entities ADD COLUMN IF NOT EXISTS location_without_scheme TEXT;
+    ```
+    - Please don't enable [OPTIMIZED_SIBLING_CHECK](https://github.com/apache/polaris/blob/740993963cb41c2c1b4638be5e04dd00f1263c98/polaris-core/src/main/java/org/apache/polaris/core/config/FeatureConfiguration.java#L346) feature configuration, once the above SQL statements are run. As it may lead to incorrect behavior, due to missing data for location_without_scheme column.
 - **Deprecations**
   - The property `polaris.active-roles-provider.type` is deprecated for removal.
   - The `ActiveRolesProvider` interface is deprecated for removal.

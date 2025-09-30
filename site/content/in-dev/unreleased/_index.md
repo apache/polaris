@@ -31,10 +31,11 @@ cascade:
 # This file will NOT be copied into a new release's versioned docs folder.
 ---
 
-> [!WARNING]
-> These pages refer to the current state of the main branch, which is still under active development.
->
-> Functionalities can be changed, removed or added without prior notice.
+{{< alert warning >}}
+These pages refer to the current state of the main branch, which is still under active development.
+
+Functionalities can be changed, removed or added without prior notice.
+{{< /alert >}}
 
 Apache Polaris (Incubating) is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
 
@@ -64,7 +65,7 @@ query engine to manage and organize tables. The catalog forms the first architec
 - Performing atomic operations so that you can update the current metadata pointer for a table to the metadata pointer of a new version of
   the table.
 
-To learn more about Iceberg catalogs, see the [Apache Iceberg&trade; documentation](https://iceberg.apache.org/concepts/catalog/).
+To learn more about Iceberg REST catalogs, see the [Apache Iceberg&trade; REST catalog specification](https://iceberg.apache.org/rest-catalog-spec/).
 
 #### Catalog types
 
@@ -82,23 +83,24 @@ A catalog is configured with a storage configuration that can point to S3, Azure
 You create *namespaces* to logically group Iceberg tables within a catalog. A catalog can have multiple namespaces. You can also create
 nested namespaces. Iceberg tables belong to namespaces.
 
-> [!Important]
-> For the access privileges defined for a catalog to be enforced correctly, the following conditions must be met:
->
-> - The directory only contains the data files that belong to a single table.
-> - The directory hierarchy matches the namespace hierarchy for the catalog.
->
-> For example, if a catalog includes the following items:
->
-> - Top-level namespace namespace1
-> - Nested namespace namespace1a
-> - A customers table, which is grouped under nested namespace namespace1a
-> - An orders table, which is grouped under nested namespace namespace1a
->
-> The directory hierarchy for the catalog must follow this structure:
->
-> - /namespace1/namespace1a/customers/<files for the customers table *only*>
-> - /namespace1/namespace1a/orders/<files for the orders table *only*>
+{{< alert important >}}
+For the access privileges defined for a catalog to be enforced correctly, the following conditions must be met:
+
+- The directory only contains the data files that belong to a single table.
+- The directory hierarchy matches the namespace hierarchy for the catalog.
+
+For example, if a catalog includes the following items:
+
+- Top-level namespace namespace1
+- Nested namespace namespace1a
+- A customers table, which is grouped under nested namespace namespace1a
+- An orders table, which is grouped under nested namespace namespace1a
+
+The directory hierarchy for the catalog must follow this structure:
+
+- /namespace1/namespace1a/customers/<files for the customers table *only*>
+- /namespace1/namespace1a/orders/<files for the orders table *only*>
+{{< /alert >}}
 
 ### Storage configuration
 

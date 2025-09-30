@@ -91,9 +91,9 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
 
   @Override
   public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeListCatalog(new CatalogsServiceEvents.BeforeListCatalogEvent());
+    polarisEventListener.onBeforeListCatalogs(new CatalogsServiceEvents.BeforeListCatalogsEvent());
     Response resp = delegate.listCatalogs(realmContext, securityContext);
-    polarisEventListener.onAfterListCatalog(new CatalogsServiceEvents.AfterListCatalogEvent());
+    polarisEventListener.onAfterListCatalogs(new CatalogsServiceEvents.AfterListCatalogsEvent());
     return resp;
   }
 

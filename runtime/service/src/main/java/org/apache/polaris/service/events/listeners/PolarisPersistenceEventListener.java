@@ -25,47 +25,12 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.PolarisEvent;
-import org.apache.polaris.service.events.AfterAttemptTaskEvent;
-import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
-import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
 import org.apache.polaris.service.events.CatalogsServiceEvents;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 
-public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
+public abstract class PolarisPersistenceEventListener implements PolarisEventListener {
 
   // TODO: Ensure all events (except RateLimiter ones) call `processEvent`
-  @Override
-  public final void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {}
-
-  @Override
-  public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {}
-
-  @Override
-  public void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {}
-
-  @Override
-  public void onBeforeCommitView(IcebergRestCatalogEvents.BeforeCommitViewEvent event) {}
-
-  @Override
-  public void onAfterCommitView(IcebergRestCatalogEvents.AfterCommitViewEvent event) {}
-
-  @Override
-  public void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {}
-
-  @Override
-  public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {}
-
-  @Override
-  public void onBeforeRefreshView(IcebergRestCatalogEvents.BeforeRefreshViewEvent event) {}
-
-  @Override
-  public void onAfterRefreshView(IcebergRestCatalogEvents.AfterRefreshViewEvent event) {}
-
-  @Override
-  public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {}
-
-  @Override
-  public void onAfterAttemptTask(AfterAttemptTaskEvent event) {}
 
   @Override
   public void onAfterCreateTable(IcebergRestCatalogEvents.AfterCreateTableEvent event) {

@@ -99,6 +99,8 @@ class Command(ABC):
                 remove_properties=[]
                 if remove_properties is None
                 else remove_properties,
+                new_client_id=options_get(Arguments.NEW_CLIENT_ID),
+                new_client_secret=options_get(Arguments.NEW_CLIENT_SECRET),
             )
         elif options.command == Commands.PRINCIPAL_ROLES:
             from cli.command.principal_roles import PrincipalRolesCommand
@@ -186,7 +188,5 @@ class Command(ABC):
         """
         Used to validate a command. Should always be called before `execute`. The arg parser will catch many issues
         with options, but this is used to apply additional constraints that the arg parser can't currently handle.
-        One example is that a catalog cannot be created with the `s3` storage type without a `--role-arn` option, but
-        one can be created without this flag if it's using the `gcs` storage type.
         """
         raise Exception("`validate` called on abstract `Command`")

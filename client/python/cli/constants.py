@@ -109,6 +109,7 @@ class Subcommands:
     GRANT = "grant"
     REVOKE = "revoke"
     ACCESS = "access"
+    RESET = "reset"
 
 
 class Actions:
@@ -155,6 +156,8 @@ class Arguments:
     VIEW = "view"
     CASCADE = "cascade"
     CLIENT_SECRET = "client_secret"
+    NEW_CLIENT_ID = "new_client_id"
+    NEW_CLIENT_SECRET = "new_client_secret"
     ACCESS_TOKEN = "access_token"
     HOST = "host"
     PORT = "port"
@@ -224,7 +227,7 @@ class Hints:
                 "Multiple locations can be provided by specifying this option more than once."
             )
 
-            ROLE_ARN = "(Only for S3) A role ARN to use when connecting to S3"
+            ROLE_ARN = "(Only for AWS S3) A role ARN to use when connecting to S3"
             EXTERNAL_ID = "(Only for S3) The external ID to use when connecting to S3"
             REGION = "(Only for S3) The region to use when connecting to S3"
             USER_ARN = "(Only for S3) A user ARN to use when connecting to S3"
@@ -316,6 +319,10 @@ class Hints:
 
         class Revoke:
             PRINCIPAL_ROLE = "A principal role to revoke from this principal"
+
+        class Reset:
+            CLIENT_ID = "The new client ID for the principal"
+            CLIENT_SECRET = "The new client secret for the principal"
 
     class PrincipalRoles:
         PRINCIPAL_ROLE = "The name of a principal role"

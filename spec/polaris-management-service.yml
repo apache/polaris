@@ -1119,6 +1119,13 @@ components:
                 endpoint for STS requests made by the Polaris Server (optional). If not set, defaults to
                 'endpointInternal' (which in turn defaults to `endpoint`).
               example: "https://sts.example.com:1234"
+            stsUnavailable:
+              type: boolean
+              description: >-
+                if set to `true`, instructs Polaris Servers to avoid using the STS endpoints when obtaining credentials
+                for accessing data and metadata files within the related catalog. Setting this property to `true`
+                effectively disables vending storage credentials to clients. This setting is intended for configuring
+                catalogs with S3-compatible storage implementations that do not support STS.
             endpointInternal:
               type: string
               description: >-
