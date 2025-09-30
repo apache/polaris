@@ -106,7 +106,6 @@ swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.21.3" }
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "3.8.0" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
-vertx-core = { module = "io.vertx:vertx-core", version = "5.0.4" }
 weld-se-core = { module = "org.jboss.weld.se:weld-se-core", version = "6.0.3.Final" }
 weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.2.Final" }
 
