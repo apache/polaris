@@ -53,6 +53,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run unit tests
@@ -93,6 +95,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run Quarkus runtime tests
@@ -200,6 +204,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run integration tests
