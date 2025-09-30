@@ -65,6 +65,8 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
+import org.apache.polaris.service.catalog.credentials.CredentialVendorFactory;
+import org.apache.polaris.service.catalog.credentials.DefaultCredentialVendorFactory;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -102,7 +104,8 @@ public record TestServices(
     PolarisMetaStoreManager metaStoreManager,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
-    PolarisEventListener polarisEventListener) {
+    PolarisEventListener polarisEventListener,
+    CredentialVendorFactory credentialVendorFactory) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -233,6 +236,9 @@ public record TestServices(
               fileIOFactory,
               polarisEventListener);
 
+      CredentialVendorFactory credentialVendorFactory =
+          new DefaultCredentialVendorFactory(storageCredentialCache, metaStoreManager);
+
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
       CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(realmConfig);
@@ -257,7 +263,8 @@ public record TestServices(
               reservedProperties,
               catalogHandlerUtils,
               externalCatalogFactory,
-              polarisEventListener);
+              polarisEventListener,
+              credentialVendorFactory);
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
       IcebergRestConfigurationApi restConfigurationApi =
@@ -329,7 +336,8 @@ public record TestServices(
           metaStoreManager,
           fileIOFactory,
           taskExecutor,
-          polarisEventListener);
+          polarisEventListener,
+          credentialVendorFactory);
     }
   }
 
