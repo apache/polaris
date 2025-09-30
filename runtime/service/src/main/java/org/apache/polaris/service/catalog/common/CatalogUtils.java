@@ -17,30 +17,32 @@
  * under the License.
  */
 
-package org.apache.polaris.service.catalog.iceberg;
+package org.apache.polaris.service.catalog.common;
 
-import jakarta.annotation.Nonnull;
-import java.util.Optional;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
-import org.apache.polaris.service.catalog.io.FileIOUtil;
 
-public class IcebergStorageUtils {
-  public static @Nonnull Optional<PolarisEntity> findStorageInfo(
+/** Utility methods for working with Polaris catalog entities. */
+public class CatalogUtils {
+
+  /**
+   * Find the resolved entity path that may contain storage information
+   *
+   * @param resolvedEntityView The resolved entity view containing catalog entities.
+   * @param tableIdentifier The table identifier for which to find storage information.
+   * @return The resolved path wrapper that may contain storage information.
+   */
+  public static PolarisResolvedPathWrapper findResolvedStorageEntity(
       PolarisResolutionManifestCatalogView resolvedEntityView, TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedTableEntities =
         resolvedEntityView.getResolvedPath(
             tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
-
-    PolarisResolvedPathWrapper resolvedStorageEntity =
-        resolvedTableEntities == null
-            ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
-            : resolvedTableEntities;
-
-    return FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
+    if (resolvedTableEntities != null) {
+      return resolvedTableEntities;
+    }
+    return resolvedEntityView.getResolvedPath(tableIdentifier.namespace());
   }
 }

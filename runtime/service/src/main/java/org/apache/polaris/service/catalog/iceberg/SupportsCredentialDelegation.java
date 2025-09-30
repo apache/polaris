@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.polaris.service.catalog.credentials;
+package org.apache.polaris.service.catalog.iceberg;
 
 import java.util.Optional;
 import java.util.Set;
@@ -26,13 +25,17 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
-public class NoopCredentialVendor implements SupportsCredentialDelegation {
-  @Override
-  public AccessConfig getAccessConfig(
+/**
+ * Adds support for credential vending for (typically) {@link org.apache.iceberg.TableOperations} to
+ * fetch access credentials that are inserted into the {@link
+ * org.apache.iceberg.rest.responses.LoadTableResponse#config()} property. See the
+ * rest-catalog-open-api.yaml spec for details on the expected format of vended credential
+ * configuration.
+ */
+public interface SupportsCredentialDelegation {
+  AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions,
-      Optional<String> refreshCredentialsEndpoint) {
-    return AccessConfig.builder().build();
-  }
+      Optional<String> refreshCredentialsEndpoint);
 }

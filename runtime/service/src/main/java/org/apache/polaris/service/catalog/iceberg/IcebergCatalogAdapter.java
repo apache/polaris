@@ -82,7 +82,7 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
-import org.apache.polaris.service.catalog.credentials.CredentialVendorFactory;
+import org.apache.polaris.service.catalog.io.AccessConfigFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -155,7 +155,7 @@ public class IcebergCatalogAdapter
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
   private final PolarisEventListener polarisEventListener;
-  private final CredentialVendorFactory credentialVendorFactory;
+  private final AccessConfigFactory accessConfigFactory;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -173,7 +173,7 @@ public class IcebergCatalogAdapter
       CatalogHandlerUtils catalogHandlerUtils,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener,
-      CredentialVendorFactory credentialVendorFactory) {
+      AccessConfigFactory accessConfigFactory) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -189,7 +189,7 @@ public class IcebergCatalogAdapter
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.externalCatalogFactories = externalCatalogFactories;
     this.polarisEventListener = polarisEventListener;
-    this.credentialVendorFactory = credentialVendorFactory;
+    this.accessConfigFactory = accessConfigFactory;
   }
 
   /**
@@ -230,7 +230,7 @@ public class IcebergCatalogAdapter
         catalogHandlerUtils,
         externalCatalogFactories,
         polarisEventListener,
-        credentialVendorFactory);
+        accessConfigFactory);
   }
 
   @Override

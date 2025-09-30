@@ -129,8 +129,8 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.SupportsNotifications;
+import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.LocationUtils;
-import org.apache.polaris.service.catalog.credentials.SupportsCredentialDelegation;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -388,7 +388,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     Optional<PolarisEntity> storageInfoEntity =
-        IcebergStorageUtils.findStorageInfo(resolvedEntityView, tableIdentifier);
+        FileIOUtil.findStorageInfoFromHierarchy(
+            CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
 
     // The storageProperties we stash away in the Task should be the superset of the
     // internalProperties of the StorageInfoEntity to be able to use its StorageIntegration
@@ -842,7 +843,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Set<PolarisStorageActions> storageActions,
       Optional<String> refreshCredentialsEndpoint) {
     Optional<PolarisEntity> storageInfo =
-        IcebergStorageUtils.findStorageInfo(resolvedEntityView, tableIdentifier);
+        FileIOUtil.findStorageInfoFromHierarchy(
+            CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
     if (storageInfo.isEmpty()) {
       LOGGER
           .atWarn()

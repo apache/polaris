@@ -103,9 +103,8 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
-import org.apache.polaris.service.catalog.credentials.CredentialVendorFactory;
-import org.apache.polaris.service.catalog.credentials.NoopCredentialVendor;
-import org.apache.polaris.service.catalog.credentials.SupportsCredentialDelegation;
+import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.catalog.io.AccessConfigFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -138,14 +137,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final PolarisEventListener polarisEventListener;
-  private final CredentialVendorFactory credentialVendorFactory;
+  private final AccessConfigFactory accessConfigFactory;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
   protected Catalog baseCatalog = null;
   protected SupportsNamespaces namespaceCatalog = null;
   protected ViewCatalog viewCatalog = null;
-  protected SupportsCredentialDelegation credentialVendor = new NoopCredentialVendor();
 
   public static final String SNAPSHOTS_ALL = "all";
   public static final String SNAPSHOTS_REFS = "refs";
@@ -164,7 +162,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener,
-      CredentialVendorFactory credentialVendorFactory) {
+      AccessConfigFactory accessConfigFactory) {
     super(
         diagnostics,
         callContext,
@@ -179,7 +177,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.polarisEventListener = polarisEventListener;
-    this.credentialVendorFactory = credentialVendorFactory;
+    this.accessConfigFactory = accessConfigFactory;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -266,8 +264,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       this.baseCatalog =
           catalogFactory.createCallContextCatalog(
               callContext, polarisPrincipal, securityContext, resolutionManifest);
-      this.credentialVendor =
-          credentialVendorFactory.createCredentialVendor(callContext, resolutionManifest);
     }
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
@@ -802,20 +798,30 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Optional<String> refreshCredentialsEndpoint) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
+    PolarisResolvedPathWrapper resolvedStoragePath =
+        CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
 
-    AccessConfig accessConfig =
-        credentialVendor.getAccessConfig(
-            tableIdentifier, tableMetadata, actions, refreshCredentialsEndpoint);
-    Map<String, String> credentialConfig = accessConfig.credentials();
-    if (!credentialConfig.isEmpty() && delegationModes.contains(VENDED_CREDENTIALS)) {
-      responseBuilder.addAllConfig(credentialConfig);
-      responseBuilder.addCredential(
-          ImmutableCredential.builder()
-              .prefix(tableMetadata.location())
-              .config(credentialConfig)
-              .build());
+    if (baseCatalog instanceof IcebergCatalog && resolvedStoragePath != null) {
+
+      AccessConfig accessConfig =
+          accessConfigFactory.getAccessConfig(
+              callContext,
+              tableIdentifier,
+              tableMetadata,
+              actions,
+              refreshCredentialsEndpoint,
+              resolvedStoragePath);
+      Map<String, String> credentialConfig = accessConfig.credentials();
+      if (!credentialConfig.isEmpty() && delegationModes.contains(VENDED_CREDENTIALS)) {
+        responseBuilder.addAllConfig(credentialConfig);
+        responseBuilder.addCredential(
+            ImmutableCredential.builder()
+                .prefix(tableMetadata.location())
+                .config(credentialConfig)
+                .build());
+      }
+      responseBuilder.addAllConfig(accessConfig.extraProperties());
     }
-    responseBuilder.addAllConfig(accessConfig.extraProperties());
     return responseBuilder;
   }
 
