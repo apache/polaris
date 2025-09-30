@@ -835,6 +835,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         PolarisEntitySubType.ICEBERG_TABLE, identifier, notificationRequest);
   }
 
+  /**
+   * Get access configuration for credential vending.
+   *
+   * @deprecated This method couples credential vending logic to the catalog implementation,
+   *     preventing reuse for federated catalogs. Use {@link
+   *     org.apache.polaris.service.catalog.io.AccessConfigFactory#getAccessConfig} instead, which
+   *     provides the same functionality as a standalone factory. This method will be removed in a
+   *     future release.
+   * @see org.apache.polaris.service.catalog.io.AccessConfigFactory
+   */
   @Override
   @Deprecated
   public AccessConfig getAccessConfig(

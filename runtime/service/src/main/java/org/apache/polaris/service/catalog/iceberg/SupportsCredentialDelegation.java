@@ -31,7 +31,15 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
  * org.apache.iceberg.rest.responses.LoadTableResponse#config()} property. See the
  * rest-catalog-open-api.yaml spec for details on the expected format of vended credential
  * configuration.
+ *
+ * @deprecated This interface tightly couples credential vending to catalog implementation via
+ *     inheritance, making it difficult to support credential vending for federated catalogs or
+ *     other non-Polaris catalog implementations. Use {@link
+ *     org.apache.polaris.service.catalog.io.AccessConfigFactory} instead, which provides credential
+ *     vending as a standalone factory that can work with any catalog implementation. This interface
+ *     will be removed in a future release.
  */
+@Deprecated
 public interface SupportsCredentialDelegation {
   AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
