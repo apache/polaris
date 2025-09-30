@@ -372,6 +372,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
+    testPolarisEventListener.clear();
   }
 
   @AfterEach
