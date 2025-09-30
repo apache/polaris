@@ -35,5 +35,26 @@ public interface AuthorizationConfiguration {
     Optional<String> policyPath();
 
     Optional<Integer> timeoutMs();
+
+    BearerTokenConfig bearerToken();
+
+    @WithDefault("true")
+    boolean verifySsl();
+
+    Optional<String> trustStorePath();
+
+    Optional<String> trustStorePassword();
+  }
+
+  interface BearerTokenConfig {
+    /** Static bearer token value (takes precedence over file-based token) */
+    Optional<String> staticValue();
+
+    /** Path to file containing bearer token (used if staticValue is not set) */
+    Optional<String> filePath();
+
+    /** How often to refresh file-based bearer tokens (in seconds) */
+    @WithDefault("300")
+    int refreshInterval();
   }
 }

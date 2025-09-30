@@ -24,16 +24,25 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import javax.net.ssl.SSLContext;
+import org.apache.http.HttpHeaders;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -49,6 +58,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final String opaServerUrl;
   private final String opaPolicyPath;
+  private final TokenProvider tokenProvider;
   private final CloseableHttpClient httpClient;
   private final ObjectMapper objectMapper;
 
@@ -56,20 +66,26 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private OpaPolarisAuthorizer(
       String opaServerUrl,
       String opaPolicyPath,
+      TokenProvider tokenProvider,
       CloseableHttpClient httpClient,
       ObjectMapper objectMapper) {
     this.opaServerUrl = opaServerUrl;
     this.opaPolicyPath = opaPolicyPath;
+    this.tokenProvider = tokenProvider;
     this.httpClient = httpClient;
     this.objectMapper = objectMapper;
   }
 
   /**
-   * Static factory for runtime configuration and CDI producer compatibility.
+   * Static factory that accepts a TokenProvider for advanced token management.
    *
    * @param opaServerUrl OPA server URL
    * @param opaPolicyPath OPA policy path
+   * @param tokenProvider Token provider for authentication (optional)
    * @param timeoutMs HTTP call timeout in milliseconds
+   * @param verifySsl Whether to verify SSL certificates for HTTPS connections
+   * @param trustStorePath Custom SSL trust store path (optional)
+   * @param trustStorePassword Custom SSL trust store password (optional)
    * @param client Apache HttpClient (optional, can be null)
    * @param mapper ObjectMapper (optional, can be null)
    * @return OpaPolarisAuthorizer instance
@@ -77,26 +93,113 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   public static OpaPolarisAuthorizer create(
       String opaServerUrl,
       String opaPolicyPath,
+      TokenProvider tokenProvider,
       int timeoutMs,
+      boolean verifySsl,
+      String trustStorePath,
+      String trustStorePassword,
       Object client, // Accept any client type for compatibility
       ObjectMapper mapper) {
 
-    // Create Apache HttpClient with timeout configuration
-    RequestConfig requestConfig =
-        RequestConfig.custom()
-            .setConnectTimeout(timeoutMs)
-            .setSocketTimeout(timeoutMs)
-            .setConnectionRequestTimeout(timeoutMs)
-            .build();
+    try {
+      // Create request configuration with timeouts
+      RequestConfig requestConfig =
+          RequestConfig.custom()
+              .setConnectTimeout(timeoutMs)
+              .setSocketTimeout(timeoutMs)
+              .setConnectionRequestTimeout(timeoutMs)
+              .build();
 
-    CloseableHttpClient httpClient =
-        (client instanceof CloseableHttpClient)
-            ? (CloseableHttpClient) client
-            : HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
+      // Configure SSL context for HTTPS connections
+      SSLContext sslContext = null;
+      SSLConnectionSocketFactory sslSocketFactory = null;
 
-    ObjectMapper objectMapperWithDefaults = mapper != null ? mapper : new ObjectMapper();
-    return new OpaPolarisAuthorizer(
-        opaServerUrl, opaPolicyPath, httpClient, objectMapperWithDefaults);
+      if (opaServerUrl != null && opaServerUrl.toLowerCase(Locale.ROOT).startsWith("https")) {
+        SSLContextBuilder sslContextBuilder = SSLContextBuilder.create();
+
+        if (!verifySsl) {
+          // Disable SSL verification (for development/testing)
+          sslContextBuilder.loadTrustMaterial(TrustAllStrategy.INSTANCE);
+          sslContext = sslContextBuilder.build();
+          sslSocketFactory =
+              new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
+        } else if (trustStorePath != null && !trustStorePath.isEmpty()) {
+          // Load custom trust store for SSL verification
+          KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+          try (FileInputStream trustStoreStream = new FileInputStream(trustStorePath)) {
+            trustStore.load(
+                trustStoreStream,
+                trustStorePassword != null ? trustStorePassword.toCharArray() : null);
+          }
+          sslContextBuilder.loadTrustMaterial(trustStore, null);
+          sslContext = sslContextBuilder.build();
+          sslSocketFactory = new SSLConnectionSocketFactory(sslContext);
+        } else {
+          // Use default system trust store for SSL verification
+          sslContext = SSLContextBuilder.create().build();
+          sslSocketFactory = new SSLConnectionSocketFactory(sslContext);
+        }
+      }
+
+      // Create HTTP client with SSL configuration
+      CloseableHttpClient httpClient;
+      if (client instanceof CloseableHttpClient) {
+        httpClient = (CloseableHttpClient) client;
+      } else {
+        if (sslSocketFactory != null) {
+          httpClient =
+              HttpClients.custom()
+                  .setDefaultRequestConfig(requestConfig)
+                  .setSSLSocketFactory(sslSocketFactory)
+                  .build();
+        } else {
+          httpClient = HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
+        }
+      }
+
+      ObjectMapper objectMapperWithDefaults = mapper != null ? mapper : new ObjectMapper();
+      return new OpaPolarisAuthorizer(
+          opaServerUrl, opaPolicyPath, tokenProvider, httpClient, objectMapperWithDefaults);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to create OpaPolarisAuthorizer with SSL configuration", e);
+    }
+  }
+
+  /**
+   * Convenience factory method for backward compatibility with String bearer tokens.
+   *
+   * @param opaServerUrl OPA server URL
+   * @param opaPolicyPath OPA policy path
+   * @param bearerToken Bearer token for authentication (optional)
+   * @param timeoutMs HTTP call timeout in milliseconds
+   * @param verifySsl Whether to verify SSL certificates for HTTPS connections
+   * @param trustStorePath Custom SSL trust store path (optional)
+   * @param trustStorePassword Custom SSL trust store password (optional)
+   * @param client Apache HttpClient (optional, can be null)
+   * @param mapper ObjectMapper (optional, can be null)
+   * @return OpaPolarisAuthorizer instance
+   */
+  public static OpaPolarisAuthorizer create(
+      String opaServerUrl,
+      String opaPolicyPath,
+      String bearerToken,
+      int timeoutMs,
+      boolean verifySsl,
+      String trustStorePath,
+      String trustStorePassword,
+      Object client,
+      ObjectMapper mapper) {
+    TokenProvider tokenProvider = new StaticTokenProvider(bearerToken);
+    return create(
+        opaServerUrl,
+        opaPolicyPath,
+        tokenProvider,
+        timeoutMs,
+        verifySsl,
+        trustStorePath,
+        trustStorePassword,
+        client,
+        mapper);
   }
 
   /**
@@ -177,6 +280,15 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
       // Create HTTP POST request using Apache HttpComponents
       HttpPost httpPost = new HttpPost(opaServerUrl + opaPolicyPath);
       httpPost.setHeader("Content-Type", "application/json");
+
+      // Add bearer token authentication if provided
+      if (tokenProvider != null) {
+        String token = tokenProvider.getToken();
+        if (token != null && !token.isEmpty()) {
+          httpPost.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+      }
+
       httpPost.setEntity(new StringEntity(inputJson, StandardCharsets.UTF_8));
 
       // Execute request
