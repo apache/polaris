@@ -108,7 +108,7 @@ testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 vertx-core = { module = "io.vertx:vertx-core", version = "5.0.4" }
 weld-se-core = { module = "org.jboss.weld.se:weld-se-core", version = "6.0.3.Final" }
-weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.1.Final" }
+weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.2.Final" }
 
 [plugins]
 jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "0.8.15" }
