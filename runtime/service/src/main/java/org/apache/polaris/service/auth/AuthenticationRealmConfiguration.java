@@ -22,6 +22,8 @@ import io.smallrye.config.WithDefault;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
+import org.apache.polaris.service.auth.internal.broker.TokenBrokerFactory;
+import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 
 public interface AuthenticationRealmConfiguration {
 
@@ -38,10 +40,7 @@ public interface AuthenticationRealmConfiguration {
 
   interface AuthenticatorConfiguration {
 
-    /**
-     * The type of the identity provider. Must be a registered {@link
-     * org.apache.polaris.service.auth.Authenticator} identifier.
-     */
+    /** The type of the identity provider. Must be a registered {@link Authenticator} identifier. */
     @WithDefault("default")
     String type();
   }
@@ -54,8 +53,8 @@ public interface AuthenticationRealmConfiguration {
 
   interface TokenServiceConfiguration {
     /**
-     * The type of the OAuth2 service. Must be a registered {@link
-     * org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService} identifier.
+     * The type of the OAuth2 service. Must be a registered {@link IcebergRestOAuth2ApiService}
+     * identifier.
      */
     @WithDefault("default")
     String type();
@@ -75,8 +74,8 @@ public interface AuthenticationRealmConfiguration {
     Duration maxTokenGeneration();
 
     /**
-     * The type of the token broker factory. Must be a registered {@link
-     * org.apache.polaris.service.auth.TokenBrokerFactory} identifier.
+     * The type of the token broker factory. Must be a registered {@link TokenBrokerFactory}
+     * identifier.
      */
     @WithDefault("rsa-key-pair")
     String type();

@@ -53,6 +53,7 @@ public class DatasourceOperations {
   private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
+  private static final String RELATION_DOES_NOT_EXIST = "42P01";
 
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
@@ -392,6 +393,10 @@ public class DatasourceOperations {
 
   public boolean isConstraintViolation(SQLException e) {
     return CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
+  }
+
+  public boolean isRelationDoesNotExist(SQLException e) {
+    return RELATION_DOES_NOT_EXIST.equals(e.getSQLState());
   }
 
   private Connection borrowConnection() throws SQLException {

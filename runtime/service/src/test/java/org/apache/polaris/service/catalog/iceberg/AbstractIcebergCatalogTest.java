@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
@@ -105,6 +106,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
@@ -370,6 +372,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
+    testPolarisEventListener.clear();
   }
 
   @AfterEach
@@ -1047,6 +1050,72 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     fileIO.addFile(
         tableMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+
+    Assertions.assertThat(catalog.sendNotification(table, request))
+        .as("Notification should be sent successfully")
+        .isTrue();
+    Assertions.assertThat(catalog.namespaceExists(namespace))
+        .as("Intermediate namespaces should be created")
+        .isTrue();
+    Assertions.assertThat(catalog.tableExists(table))
+        .as("Table should be created on receiving notification")
+        .isTrue();
+  }
+
+  @Test
+  public void testUpdateNotificationWhenTableAndNamespacesDontExistNamespaceRaceCondition() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    final String tableLocation = "s3://externally-owned-bucket/table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+
+    // Use a spy so we can inject a concurrency error
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, spyMetaStore);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    fileIO.addFile(
+        tableMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+
+    // Always invoke the real underlying method, but if it's a namespace we'll return
+    // ENTITY_ALREADY_EXISTS after doing so to simulate a different concurrent caller having
+    // been the one to succeed creating the namespace first.
+    doAnswer(
+            invocation -> {
+              PolarisEntity entity = (PolarisEntity) invocation.getArgument(2);
+              EntityResult result = (EntityResult) invocation.callRealMethod();
+              if (entity.getType() == PolarisEntityType.NAMESPACE) {
+                return new EntityResult(
+                    BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
+                    PolarisEntitySubType.NULL_SUBTYPE.getCode());
+              } else {
+                return result;
+              }
+            })
+        .when(spyMetaStore)
+        .createEntityIfNotExists(any(), any(), any());
 
     Assertions.assertThat(catalog.sendNotification(table, request))
         .as("Notification should be sent successfully")

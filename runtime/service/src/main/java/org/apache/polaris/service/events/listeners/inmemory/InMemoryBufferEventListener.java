@@ -19,7 +19,7 @@
 
 package org.apache.polaris.service.events.listeners.inmemory;
 
-import static org.apache.polaris.service.logging.LoggingMDCFilter.REQUEST_ID_KEY;
+import static org.apache.polaris.service.tracing.RequestIdFilter.REQUEST_ID_KEY;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;

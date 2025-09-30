@@ -49,6 +49,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -253,12 +255,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // if it is a principal, we also need to drop the secrets
     if (entity.getType() == PolarisEntityType.PRINCIPAL) {
-      // get internal properties
-      Map<String, String> properties = entity.getInternalPropertiesAsMap();
-
-      // get client_id
-      String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
-
+      PrincipalEntity principalEntity = PrincipalEntity.of(entity);
+      String clientId = principalEntity.getClientId();
       // delete it from the secret slice
       ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, entity.getId());
     }
@@ -577,28 +575,22 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // role. The principal role will be granted to that root principal and the root catalog admin
     // of the root catalog will be granted to that principal role.
     long rootPrincipalId = ms.generateNewId(callCtx);
-    PolarisBaseEntity rootPrincipal =
-        new PolarisBaseEntity(
-            PolarisEntityConstants.getNullId(),
-            rootPrincipalId,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootEntityId(),
-            PolarisEntityConstants.getRootPrincipalName());
-
-    // create this principal
+    PrincipalEntity rootPrincipal =
+        new PrincipalEntity.Builder()
+            .setId(rootPrincipalId)
+            .setName(PolarisEntityConstants.getRootPrincipalName())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
     this.createPrincipal(callCtx, rootPrincipal);
 
     // now create the account admin principal role
     long serviceAdminPrincipalRoleId = ms.generateNewId(callCtx);
-    PolarisBaseEntity serviceAdminPrincipalRole =
-        new PolarisBaseEntity(
-            PolarisEntityConstants.getNullId(),
-            serviceAdminPrincipalRoleId,
-            PolarisEntityType.PRINCIPAL_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootEntityId(),
-            PolarisEntityConstants.getNameOfPrincipalServiceAdminRole());
+    PrincipalRoleEntity serviceAdminPrincipalRole =
+        new PrincipalRoleEntity.Builder()
+            .setId(serviceAdminPrincipalRoleId)
+            .setName(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
     this.persistNewEntity(callCtx, ms, serviceAdminPrincipalRole);
 
     // we also need to grant usage on the account-admin principal to the principal
@@ -748,7 +740,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public @Nonnull CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PrincipalEntity principal) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -756,43 +748,20 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     getDiagnostics().checkNotNull(principal, "unexpected_null_principal");
 
     // check if that catalog has already been created
-    PolarisBaseEntity refreshPrincipal =
-        ms.lookupEntity(
-            callCtx, principal.getCatalogId(), principal.getId(), principal.getTypeCode());
+    PrincipalEntity refreshPrincipal =
+        PrincipalEntity.of(
+            ms.lookupEntity(
+                callCtx, principal.getCatalogId(), principal.getId(), principal.getTypeCode()));
 
     // if found, probably a retry, simply return the previously created principal
     // This can be done safely as a separate atomic operation before trying to create the principal
     // because same-id idempotent-retry collisions of this sort are necessarily sequential, so
     // there is no concurrency conflict for something else creating a principal of this same id.
     if (refreshPrincipal != null) {
-      // if found, ensure it is indeed a principal
+      String clientId = refreshPrincipal.getClientId();
+      getDiagnostics().checkNotNull(clientId, "null_client_id", "principal={}", refreshPrincipal);
       getDiagnostics()
-          .check(
-              principal.getTypeCode() == PolarisEntityType.PRINCIPAL.getCode(),
-              "not_a_principal",
-              "principal={}",
-              principal);
-
-      // get internal properties
-      Map<String, String> properties = refreshPrincipal.getInternalPropertiesAsMap();
-
-      // get client_id
-      String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
-
-      // should not be null
-      getDiagnostics()
-          .checkNotNull(
-              clientId,
-              "null_client_id",
-              "properties={}",
-              refreshPrincipal.getInternalProperties());
-      // ensure non null and non empty
-      getDiagnostics()
-          .check(
-              !clientId.isEmpty(),
-              "empty_client_id",
-              "properties={}",
-              refreshPrincipal.getInternalProperties());
+          .check(!clientId.isEmpty(), "empty_client_id", "principal={}", refreshPrincipal);
 
       // get the main and secondary secrets for that client
       PolarisPrincipalSecrets principalSecrets =
@@ -816,15 +785,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         ((IntegrationPersistence) ms)
             .generateNewPrincipalSecrets(callCtx, principal.getName(), principal.getId());
 
-    // generate properties
-    Map<String, String> internalProperties = principal.getInternalPropertiesAsMap();
-    internalProperties.put(
-        PolarisEntityConstants.getClientIdPropertyName(), principalSecrets.getPrincipalClientId());
-
     // remember client id
-    PolarisBaseEntity updatedPrincipal =
-        new PolarisBaseEntity.Builder(principal)
-            .internalPropertiesAsMap(internalProperties)
+    PrincipalEntity updatedPrincipal =
+        new PrincipalEntity.Builder(principal)
+            .setClientId(principalSecrets.getPrincipalClientId())
             .build();
     // now create and persist new catalog entity
     EntityResult lowLevelResult = this.persistNewEntity(callCtx, ms, updatedPrincipal);

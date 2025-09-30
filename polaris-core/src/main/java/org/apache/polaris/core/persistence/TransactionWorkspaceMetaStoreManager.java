@@ -37,6 +37,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -150,7 +151,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PrincipalEntity principal) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "createPrincipal");
     return null;
   }

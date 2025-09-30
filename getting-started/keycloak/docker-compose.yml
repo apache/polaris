@@ -79,7 +79,7 @@ services:
         /polaris/create-catalog.sh realm-mixed $$token
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.3.4
+    image: quay.io/keycloak/keycloak:26.4.0
     ports:
       - "8080:8080"
     environment:
