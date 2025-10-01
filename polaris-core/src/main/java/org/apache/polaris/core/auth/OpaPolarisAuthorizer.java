@@ -110,36 +110,9 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
               .setConnectionRequestTimeout(timeoutMs)
               .build();
 
-      // Configure SSL context for HTTPS connections
-      SSLContext sslContext = null;
-      SSLConnectionSocketFactory sslSocketFactory = null;
-
-      if (opaServerUrl != null && opaServerUrl.toLowerCase(Locale.ROOT).startsWith("https")) {
-        SSLContextBuilder sslContextBuilder = SSLContextBuilder.create();
-
-        if (!verifySsl) {
-          // Disable SSL verification (for development/testing)
-          sslContextBuilder.loadTrustMaterial(TrustAllStrategy.INSTANCE);
-          sslContext = sslContextBuilder.build();
-          sslSocketFactory =
-              new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
-        } else if (trustStorePath != null && !trustStorePath.isEmpty()) {
-          // Load custom trust store for SSL verification
-          KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-          try (FileInputStream trustStoreStream = new FileInputStream(trustStorePath)) {
-            trustStore.load(
-                trustStoreStream,
-                trustStorePassword != null ? trustStorePassword.toCharArray() : null);
-          }
-          sslContextBuilder.loadTrustMaterial(trustStore, null);
-          sslContext = sslContextBuilder.build();
-          sslSocketFactory = new SSLConnectionSocketFactory(sslContext);
-        } else {
-          // Use default system trust store for SSL verification
-          sslContext = SSLContextBuilder.create().build();
-          sslSocketFactory = new SSLConnectionSocketFactory(sslContext);
-        }
-      }
+      // Configure SSL for HTTPS connections
+      SSLConnectionSocketFactory sslSocketFactory =
+          createSslSocketFactory(opaServerUrl, verifySsl, trustStorePath, trustStorePassword);
 
       // Create HTTP client with SSL configuration
       CloseableHttpClient httpClient;
@@ -163,43 +136,6 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
     } catch (Exception e) {
       throw new RuntimeException("Failed to create OpaPolarisAuthorizer with SSL configuration", e);
     }
-  }
-
-  /**
-   * Convenience factory method for backward compatibility with String bearer tokens.
-   *
-   * @param opaServerUrl OPA server URL
-   * @param opaPolicyPath OPA policy path
-   * @param bearerToken Bearer token for authentication (optional)
-   * @param timeoutMs HTTP call timeout in milliseconds
-   * @param verifySsl Whether to verify SSL certificates for HTTPS connections
-   * @param trustStorePath Custom SSL trust store path (optional)
-   * @param trustStorePassword Custom SSL trust store password (optional)
-   * @param client Apache HttpClient (optional, can be null)
-   * @param mapper ObjectMapper (optional, can be null)
-   * @return OpaPolarisAuthorizer instance
-   */
-  public static OpaPolarisAuthorizer create(
-      String opaServerUrl,
-      String opaPolicyPath,
-      String bearerToken,
-      int timeoutMs,
-      boolean verifySsl,
-      String trustStorePath,
-      String trustStorePassword,
-      Object client,
-      ObjectMapper mapper) {
-    TokenProvider tokenProvider = new StaticTokenProvider(bearerToken);
-    return create(
-        opaServerUrl,
-        opaPolicyPath,
-        tokenProvider,
-        timeoutMs,
-        verifySsl,
-        trustStorePath,
-        trustStorePassword,
-        client,
-        mapper);
   }
 
   /**
@@ -433,5 +369,49 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
     context.put("time", java.time.ZonedDateTime.now().toString());
     context.put("request_id", java.util.UUID.randomUUID().toString());
     return context;
+  }
+
+  /**
+   * Creates an SSL socket factory for HTTPS connections based on the configuration.
+   *
+   * @param opaServerUrl the OPA server URL
+   * @param verifySsl whether to verify SSL certificates
+   * @param trustStorePath custom trust store path (optional)
+   * @param trustStorePassword custom trust store password (optional)
+   * @return SSLConnectionSocketFactory for HTTPS connections, or null for HTTP
+   * @throws Exception if SSL configuration fails
+   */
+  private static SSLConnectionSocketFactory createSslSocketFactory(
+      String opaServerUrl, boolean verifySsl, String trustStorePath, String trustStorePassword)
+      throws Exception {
+
+    // Only configure SSL for HTTPS URLs
+    if (opaServerUrl == null || !opaServerUrl.toLowerCase(Locale.ROOT).startsWith("https")) {
+      return null;
+    }
+
+    SSLContextBuilder sslContextBuilder = SSLContextBuilder.create();
+    SSLContext sslContext;
+
+    if (!verifySsl) {
+      // Disable SSL verification (for development/testing)
+      sslContextBuilder.loadTrustMaterial(TrustAllStrategy.INSTANCE);
+      sslContext = sslContextBuilder.build();
+      return new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
+    } else if (trustStorePath != null && !trustStorePath.isEmpty()) {
+      // Load custom trust store for SSL verification
+      KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+      try (FileInputStream trustStoreStream = new FileInputStream(trustStorePath)) {
+        trustStore.load(
+            trustStoreStream, trustStorePassword != null ? trustStorePassword.toCharArray() : null);
+      }
+      sslContextBuilder.loadTrustMaterial(trustStore, null);
+      sslContext = sslContextBuilder.build();
+      return new SSLConnectionSocketFactory(sslContext);
+    } else {
+      // Use default system trust store for SSL verification
+      sslContext = SSLContextBuilder.create().build();
+      return new SSLConnectionSocketFactory(sslContext);
+    }
   }
 }

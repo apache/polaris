@@ -42,6 +42,11 @@ dependencies {
   implementation("org.testcontainers:testcontainers")
   implementation("org.testcontainers:postgresql")
 
+  // Netty for SSL certificate generation
+  implementation(libs.netty.handler)
+  implementation(libs.bouncycastle.provider)
+  implementation(libs.bouncycastle.pkix)
+
   implementation(libs.testcontainers.keycloak) {
     exclude(group = "org.keycloak", module = "keycloak-admin-client")
   }

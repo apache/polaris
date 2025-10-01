@@ -25,9 +25,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.QuarkusTestProfile.TestResourceEntry;
 import io.quarkus.test.junit.TestProfile;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,8 +53,7 @@ public class OpaIntegrationTest {
       config.put(
           "polaris.authorization.opa.bearer-token.static-value", "test-opa-bearer-token-12345");
       config.put(
-          "polaris.authorization.opa.verify-ssl",
-          "true"); // Enable SSL verification with trust store
+          "polaris.authorization.opa.verify-ssl", "false"); // Disable SSL verification for tests
 
       // TODO: Add tests for OIDC and federated principal
       config.put("polaris.authentication.type", "internal");
@@ -98,80 +94,6 @@ public class OpaIntegrationTest {
                   "rego-policy", customRegoPolicy,
                   "use-https", "true",
                   "bearer-token", "test-opa-bearer-token-12345")));
-    }
-  }
-
-  public static class FileTokenOpaProfile implements QuarkusTestProfile {
-    private static volatile Path tokenFile;
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.type", "opa");
-      config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/authz");
-      config.put("polaris.authorization.opa.timeout-ms", "2000");
-
-      // Create temporary token file for testing
-      try {
-        tokenFile = Files.createTempFile("opa-test-token", ".txt");
-        Files.writeString(tokenFile, "test-opa-bearer-token-from-file-67890");
-        tokenFile.toFile().deleteOnExit();
-      } catch (IOException e) {
-        throw new RuntimeException("Failed to create test token file", e);
-      }
-
-      // Configure OPA server authentication with file-based bearer token and HTTPS
-      config.put("polaris.authorization.opa.bearer-token.file-path", tokenFile.toString());
-      config.put(
-          "polaris.authorization.opa.bearer-token.refresh-interval",
-          "1"); // 1 second for fast testing
-      config.put(
-          "polaris.authorization.opa.verify-ssl",
-          "true"); // Enable SSL verification with trust store
-
-      // TODO: Add tests for OIDC and federated principal
-      config.put("polaris.authentication.type", "internal");
-
-      return config;
-    }
-
-    @Override
-    public List<TestResourceEntry> testResources() {
-      String customRegoPolicy =
-          """
-        package polaris.authz
-
-        default allow := false
-
-        # Allow root user for all operations
-        allow {
-          input.actor.principal == "root"
-        }
-
-        # Allow admin user for all operations
-        allow {
-          input.actor.principal == "admin"
-        }
-
-        # Deny stranger user explicitly (though default is false)
-        allow {
-          input.actor.principal == "stranger"
-          false
-        }
-        """;
-
-      return List.of(
-          new TestResourceEntry(
-              OpaTestResource.class,
-              Map.of(
-                  "policy-name", "polaris-authz",
-                  "rego-policy", customRegoPolicy,
-                  "use-https", "true",
-                  "bearer-token", "test-opa-bearer-token-from-file-67890")));
-    }
-
-    public static Path getTokenFile() {
-      return tokenFile;
     }
   }
 

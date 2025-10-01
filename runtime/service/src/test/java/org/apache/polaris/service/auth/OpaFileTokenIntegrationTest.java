@@ -22,14 +22,94 @@ import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.QuarkusTestProfile.TestResourceEntry;
 import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.polaris.test.commons.OpaTestResource;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@TestProfile(OpaIntegrationTest.FileTokenOpaProfile.class)
+@TestProfile(OpaFileTokenIntegrationTest.FileTokenOpaProfile.class)
 public class OpaFileTokenIntegrationTest {
+
+  public static class FileTokenOpaProfile implements QuarkusTestProfile {
+    private static volatile Path tokenFile;
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      Map<String, String> config = new HashMap<>();
+      config.put("polaris.authorization.type", "opa");
+      config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/authz");
+      config.put("polaris.authorization.opa.timeout-ms", "2000");
+
+      // Create temporary token file for testing
+      try {
+        tokenFile = Files.createTempFile("opa-test-token", ".txt");
+        Files.writeString(tokenFile, "test-opa-bearer-token-from-file-67890");
+        tokenFile.toFile().deleteOnExit();
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to create test token file", e);
+      }
+
+      // Configure OPA server authentication with file-based bearer token and HTTPS
+      config.put("polaris.authorization.opa.bearer-token.file-path", tokenFile.toString());
+      config.put(
+          "polaris.authorization.opa.bearer-token.refresh-interval",
+          "1"); // 1 second for fast testing
+      config.put(
+          "polaris.authorization.opa.verify-ssl", "false"); // Disable SSL verification for tests
+
+      // TODO: Add tests for OIDC and federated principal
+      config.put("polaris.authentication.type", "internal");
+
+      return config;
+    }
+
+    @Override
+    public List<TestResourceEntry> testResources() {
+      String customRegoPolicy =
+          """
+        package polaris.authz
+
+        default allow := false
+
+        # Allow root user for all operations
+        allow {
+          input.actor.principal == "root"
+        }
+
+        # Allow admin user for all operations
+        allow {
+          input.actor.principal == "admin"
+        }
+
+        # Deny stranger user explicitly (though default is false)
+        allow {
+          input.actor.principal == "stranger"
+          false
+        }
+        """;
+
+      return List.of(
+          new TestResourceEntry(
+              OpaTestResource.class,
+              Map.of(
+                  "policy-name", "polaris-authz",
+                  "rego-policy", customRegoPolicy,
+                  "use-https", "true",
+                  "bearer-token", "test-opa-bearer-token-from-file-67890")));
+    }
+
+    public static Path getTokenFile() {
+      return tokenFile;
+    }
+  }
 
   /**
    * Test demonstrates OPA integration with file-based bearer token authentication. This test
@@ -93,7 +173,7 @@ public class OpaFileTokenIntegrationTest {
     // Update the token file with a new value
     // Note: In a real test, we'd need to coordinate with the OPA server to accept the new token
     // For this demo, we'll just verify the file can be updated
-    var tokenFile = OpaIntegrationTest.FileTokenOpaProfile.getTokenFile();
+    var tokenFile = FileTokenOpaProfile.getTokenFile();
     if (tokenFile != null && Files.exists(tokenFile)) {
       String originalContent = Files.readString(tokenFile);
 

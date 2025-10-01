@@ -70,7 +70,7 @@ public class OpaPolarisAuthorizerTest {
     String url = "http://localhost:" + server.getAddress().getPort();
 
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
 
     PolarisPrincipal principal =
@@ -108,7 +108,7 @@ public class OpaPolarisAuthorizerTest {
     String url = "http://localhost:" + server.getAddress().getPort();
 
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
 
     // Set up a realistic principal
@@ -253,7 +253,7 @@ public class OpaPolarisAuthorizerTest {
     String url = "http://localhost:" + server.getAddress().getPort();
 
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
 
     // Set up a realistic principal
@@ -408,7 +408,7 @@ public class OpaPolarisAuthorizerTest {
     String url = "http://localhost:" + server.getAddress().getPort();
 
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
 
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
@@ -436,7 +436,7 @@ public class OpaPolarisAuthorizerTest {
     String url = "http://localhost:" + server.getAddress().getPort();
 
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
 
     PolarisPrincipal principal = PolarisPrincipal.of("bob", Map.of(), Set.of("user"));
@@ -460,7 +460,7 @@ public class OpaPolarisAuthorizerTest {
   @Test
   public void testCreateWithBearerTokenAndHttps() {
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             "https://opa.example.com:8181",
             "/v1/data/polaris/authz",
             "test-bearer-token",
@@ -477,7 +477,7 @@ public class OpaPolarisAuthorizerTest {
   @Test
   public void testCreateWithBearerTokenAndHttpsNoSslVerification() {
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             "https://opa.example.com:8181",
             "/v1/data/polaris/authz",
             "test-bearer-token",
@@ -494,7 +494,7 @@ public class OpaPolarisAuthorizerTest {
   @Test
   public void testCreateWithHttpsAndSslVerificationDisabled() {
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             "https://opa.example.com:8181",
             "/v1/data/polaris/authz",
             "test-bearer-token",
@@ -524,7 +524,7 @@ public class OpaPolarisAuthorizerTest {
                 "{\"result\":{\"allow\":true}}".getBytes(StandardCharsets.UTF_8)));
 
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             "http://opa.example.com:8181",
             "/v1/data/polaris/authz",
             "test-bearer-token",
@@ -564,7 +564,7 @@ public class OpaPolarisAuthorizerTest {
     when(mockStatusLine.getStatusCode()).thenReturn(401);
 
     OpaPolarisAuthorizer authorizer =
-        OpaPolarisAuthorizer.create(
+        createWithStringToken(
             "http://opa.example.com:8181",
             "/v1/data/polaris/authz",
             (String) null,
@@ -787,5 +787,32 @@ public class OpaPolarisAuthorizerTest {
           !capturedRequest.containsHeader("Authorization"),
           "Authorization header should not be present when token provider returns null");
     }
+  }
+
+  /**
+   * Convenience helper method for creating OpaPolarisAuthorizer with String bearer token. This
+   * provides the same API as the removed String-based create method for test convenience.
+   */
+  private static OpaPolarisAuthorizer createWithStringToken(
+      String opaServerUrl,
+      String opaPolicyPath,
+      String bearerToken,
+      int timeoutMs,
+      boolean verifySsl,
+      String trustStorePath,
+      String trustStorePassword,
+      Object client,
+      ObjectMapper mapper) {
+    TokenProvider tokenProvider = new StaticTokenProvider(bearerToken);
+    return OpaPolarisAuthorizer.create(
+        opaServerUrl,
+        opaPolicyPath,
+        tokenProvider,
+        timeoutMs,
+        verifySsl,
+        trustStorePath,
+        trustStorePassword,
+        client,
+        mapper);
   }
 }

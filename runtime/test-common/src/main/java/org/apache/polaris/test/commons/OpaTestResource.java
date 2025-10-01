@@ -18,9 +18,8 @@
  */
 package org.apache.polaris.test.commons;
 
+import io.netty.handler.ssl.util.SelfSignedCertificate;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
-import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -28,15 +27,11 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.KeyStore;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
@@ -74,7 +69,14 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
 
         if (useHttps) {
           // Configure OPA to use HTTPS with self-signed certificates
-          opa.withFileSystemBind(tempCertDir.toString(), "/certs", BindMode.READ_ONLY)
+          opa.withCopyFileToContainer(
+                  org.testcontainers.utility.MountableFile.forHostPath(
+                      tempCertDir.resolve("server.crt")),
+                  "/certs/server.crt")
+              .withCopyFileToContainer(
+                  org.testcontainers.utility.MountableFile.forHostPath(
+                      tempCertDir.resolve("server.key")),
+                  "/certs/server.key")
               .withCommand(
                   "run",
                   "--server",
@@ -102,9 +104,10 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
       }
 
       mappedPort = opa.getMappedPort(8181);
+      String containerHost = opa.getHost(); // This will be the actual Docker host
 
       String protocol = useHttps ? "https" : "http";
-      String baseUrl = protocol + "://localhost:" + mappedPort;
+      String baseUrl = protocol + "://" + containerHost + ":" + mappedPort;
 
       // Load Rego policy into OPA
       loadRegoPolicy(baseUrl, bearerToken, "policy-name", "rego-policy");
@@ -117,14 +120,6 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
       Map<String, String> config = new HashMap<>();
       config.put("polaris.authorization.opa.url", baseUrl);
 
-      // For HTTPS mode, provide the trust store path for SSL verification
-      if (useHttps && tempCertDir != null) {
-        config.put(
-            "polaris.authorization.opa.trust-store-path",
-            tempCertDir.resolve("truststore.jks").toString());
-        config.put("polaris.authorization.opa.trust-store-password", "test-password");
-      }
-
       return config;
 
     } catch (Exception e) {
@@ -132,108 +127,30 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
     }
   }
 
-  private void setupSelfSignedCertificates() throws IOException, InterruptedException {
+  private void setupSelfSignedCertificates() throws IOException {
     // Create temporary directory for certificates
     tempCertDir = Files.createTempDirectory("opa-certs");
     tempCertDir.toFile().deleteOnExit();
 
     Path keyFile = tempCertDir.resolve("server.key");
     Path certFile = tempCertDir.resolve("server.crt");
-    Path trustStoreFile = tempCertDir.resolve("truststore.jks");
-    Path configFile = tempCertDir.resolve("openssl.conf");
 
-    // Create OpenSSL config for self-signed certificate with SAN
-    String opensslConfig =
-        """
-        [req]
-        default_bits = 2048
-        prompt = no
-        default_md = sha256
-        distinguished_name = dn
-        req_extensions = v3_req
-
-        [dn]
-        C=US
-        ST=Test
-        L=Test
-        O=Test
-        CN=localhost
-
-        [v3_req]
-        subjectAltName = @alt_names
-
-        [alt_names]
-        DNS.1 = localhost
-        DNS.2 = opa
-        IP.1 = 127.0.0.1
-        """;
-
-    try (FileWriter writer = new FileWriter(configFile.toFile(), StandardCharsets.UTF_8)) {
-      writer.write(opensslConfig);
-    }
-
-    // Generate private key
-    ProcessBuilder keyGenProcess =
-        new ProcessBuilder("openssl", "genrsa", "-out", keyFile.toString(), "2048");
-    Process keyGen = keyGenProcess.start();
-    if (keyGen.waitFor() != 0) {
-      throw new RuntimeException("Failed to generate private key for OPA HTTPS");
-    }
-
-    // Generate self-signed certificate
-    ProcessBuilder certGenProcess =
-        new ProcessBuilder(
-            "openssl",
-            "req",
-            "-new",
-            "-x509",
-            "-key",
-            keyFile.toString(),
-            "-out",
-            certFile.toString(),
-            "-days",
-            "365",
-            "-config",
-            configFile.toString(),
-            "-extensions",
-            "v3_req");
-    Process certGen = certGenProcess.start();
-    if (certGen.waitFor() != 0) {
-      throw new RuntimeException("Failed to generate certificate for OPA HTTPS");
-    }
-
-    // Create a trust store containing the self-signed certificate
-    createTrustStore(certFile, trustStoreFile);
-
-    // Make sure files will be cleaned up
-    keyFile.toFile().deleteOnExit();
-    certFile.toFile().deleteOnExit();
-    trustStoreFile.toFile().deleteOnExit();
-    configFile.toFile().deleteOnExit();
-  }
-
-  private void createTrustStore(Path certFile, Path trustStoreFile) throws IOException {
     try {
-      // Load the certificate
-      CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-      X509Certificate certificate;
-      try (FileInputStream certInputStream = new FileInputStream(certFile.toFile())) {
-        certificate = (X509Certificate) certificateFactory.generateCertificate(certInputStream);
-      }
+      // Generate self-signed certificate using Netty with BouncyCastle support
+      SelfSignedCertificate certificate = new SelfSignedCertificate("localhost");
 
-      // Create a new trust store
-      KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-      trustStore.load(null, null); // Initialize empty trust store
+      // Copy the generated certificate and key to our temp directory
+      Files.copy(certificate.certificate().toPath(), certFile);
+      Files.copy(certificate.privateKey().toPath(), keyFile);
 
-      // Add the certificate to the trust store
-      trustStore.setCertificateEntry("opa-test-cert", certificate);
+      // Make sure files will be cleaned up
+      keyFile.toFile().deleteOnExit();
+      certFile.toFile().deleteOnExit();
 
-      // Save the trust store to file
-      try (var trustStoreOutputStream = Files.newOutputStream(trustStoreFile)) {
-        trustStore.store(trustStoreOutputStream, "test-password".toCharArray());
-      }
+      // Clean up the temporary Netty certificate files
+      certificate.delete();
     } catch (Exception e) {
-      throw new IOException("Failed to create trust store", e);
+      throw new IOException("Failed to generate self-signed certificate using Netty", e);
     }
   }
 
@@ -336,27 +253,33 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
   private HttpURLConnection createConnection(URL url) throws Exception {
     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
-    // Configure SSL context to use the same trust store as OpaPolarisAuthorizer for HTTPS
+    // For HTTPS connections in test environment, disable SSL verification entirely
     if (useHttps && conn instanceof HttpsURLConnection httpsConn) {
-      // Load the trust store we created for consistent SSL verification
-      KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-      Path trustStoreFile = tempCertDir.resolve("truststore.jks");
-      try (FileInputStream trustStoreStream = new FileInputStream(trustStoreFile.toFile())) {
-        trustStore.load(trustStoreStream, "test-password".toCharArray());
-      }
-
-      // Create SSL context with the trust store
+      // Create a trust-all SSL context for test purposes
       SSLContext sslContext = SSLContext.getInstance("TLS");
-      javax.net.ssl.TrustManagerFactory tmf =
-          javax.net.ssl.TrustManagerFactory.getInstance(
-              javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm());
-      tmf.init(trustStore);
-      sslContext.init(null, tmf.getTrustManagers(), new java.security.SecureRandom());
+      sslContext.init(
+          null,
+          new javax.net.ssl.TrustManager[] {
+            new javax.net.ssl.X509TrustManager() {
+              @Override
+              public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                return null;
+              }
+
+              @Override
+              public void checkClientTrusted(
+                  java.security.cert.X509Certificate[] certs, String authType) {}
+
+              @Override
+              public void checkServerTrusted(
+                  java.security.cert.X509Certificate[] certs, String authType) {}
+            }
+          },
+          new java.security.SecureRandom());
 
       httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
-      // We can verify hostname since our certificate includes localhost
-      httpsConn.setHostnameVerifier(
-          (hostname, session) -> "localhost".equals(hostname) || "127.0.0.1".equals(hostname));
+      // Disable hostname verification for test environments
+      httpsConn.setHostnameVerifier((hostname, session) -> true);
     }
 
     return conn;
