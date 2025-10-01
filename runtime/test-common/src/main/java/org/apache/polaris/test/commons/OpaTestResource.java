@@ -87,7 +87,7 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
                       .usingTls() // Use HTTPS for health check
                       .allowInsecure() // Allow self-signed certificates
                       .forStatusCode(200)
-                      .withStartupTimeout(Duration.ofSeconds(60)));
+                      .withStartupTimeout(Duration.ofSeconds(120)));
         } else {
           // Configure OPA for HTTP
           opa.withCommand("run", "--server", "--addr=0.0.0.0:8181")
@@ -95,7 +95,7 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
                   Wait.forHttp("/health")
                       .forPort(8181)
                       .forStatusCode(200)
-                      .withStartupTimeout(Duration.ofSeconds(30)));
+                      .withStartupTimeout(Duration.ofSeconds(120)));
         }
 
         opa.start();
