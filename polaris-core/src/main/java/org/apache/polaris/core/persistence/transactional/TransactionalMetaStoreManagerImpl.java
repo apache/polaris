@@ -2093,6 +2093,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
         ms.loadPolarisStorageIntegrationInCurrentTxn(callCtx, reloadedEntity.getEntity());
 
+    storageIntegration.config();
     // cannot be null
     getDiagnostics()
         .checkNotNull(

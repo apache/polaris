@@ -40,7 +40,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
     this.integrationIdentifierOrId = identifierOrId;
   }
 
-  protected T config() {
+  public T config() {
     return config;
   }
 
@@ -107,6 +107,14 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
           @Nonnull T storageConfig,
           @Nonnull Set<PolarisStorageActions> actions,
           @Nonnull Set<String> locations);
+
+  /**
+   * @param credentialsRequired if {@code true} indicates that the caller requires the returned
+   *     {@link AccessConfig} to have storage credentials; if {@code false} the returned {@link
+   *     AccessConfig} may or may not contain credentials.
+   */
+  public void validateCredentials(
+      @Nonnull AccessConfig accessConfig, boolean credentialsRequired) {}
 
   /**
    * Result of calling {@link #validateAccessToLocations(RealmConfig,

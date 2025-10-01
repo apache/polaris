@@ -804,13 +804,22 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           credentialDelegation.getAccessConfig(
               tableIdentifier, tableMetadata, actions, refreshCredentialsEndpoint);
       Map<String, String> credentialConfig = accessConfig.credentials();
-      if (!credentialConfig.isEmpty() && delegationModes.contains(VENDED_CREDENTIALS)) {
-        responseBuilder.addAllConfig(credentialConfig);
-        responseBuilder.addCredential(
-            ImmutableCredential.builder()
-                .prefix(tableMetadata.location())
-                .config(credentialConfig)
-                .build());
+      if (delegationModes.contains(VENDED_CREDENTIALS)) {
+        if (!credentialConfig.isEmpty()) {
+          responseBuilder.addAllConfig(credentialConfig);
+          responseBuilder.addCredential(
+              ImmutableCredential.builder()
+                  .prefix(tableMetadata.location())
+                  .config(credentialConfig)
+                  .build());
+        } else {
+          Boolean skipCredIndirection =
+              realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+          Preconditions.checkArgument(
+              !accessConfig.supportsCredentialVending() || skipCredIndirection,
+              "Credential vending was requested for table %s, but no credentials are available",
+              tableIdentifier);
+        }
       }
       responseBuilder.addAllConfig(accessConfig.extraProperties());
     }
