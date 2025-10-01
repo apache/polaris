@@ -26,6 +26,8 @@ plugins {
 
 description = "Polaris ID generation implementation"
 
+val jcstressRuntime by configurations.creating
+
 dependencies {
   implementation(project(":polaris-idgen-api"))
   implementation(project(":polaris-idgen-spi"))
@@ -58,6 +60,8 @@ dependencies {
 
   jmhImplementation(libs.jmh.core)
   jmhAnnotationProcessor(libs.jmh.generator.annprocess)
+
+  jcstressRuntime(libs.jcstress.core)
 }
 
 tasks.named("jcstressJar") { dependsOn("jandex") }
@@ -67,3 +71,18 @@ tasks.named("compileJcstressJava") { dependsOn("jandex") }
 tasks.named("check") { dependsOn("jcstress") }
 
 jcstress { jcstressDependency = libs.jcstress.core.get().toString() }
+
+tasks.named("jcstress") {
+  inputs.properties(
+    System.getProperties()
+      .mapKeys { it.key.toString() }
+      .filterKeys {
+        setOf("os.name", "os.arch", "os.version", "java.runtime.name", "java.runtime.version")
+          .contains(it)
+      }
+  )
+  inputs.property("availableProcessors", Runtime.getRuntime().availableProcessors())
+  inputs.files(jcstressRuntime)
+  inputs.files(configurations.runtimeClasspath)
+  outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
+}
