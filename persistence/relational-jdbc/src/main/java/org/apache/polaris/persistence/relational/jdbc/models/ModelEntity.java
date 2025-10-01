@@ -132,6 +132,16 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
   // location for the entity but without a scheme, when applicable
   private String locationWithoutScheme;
 
+  // schema version of the entity
+  // NOTE: this field is not stored in the database, but is used to handle schema changes
+  private int schemaVersion;
+
+  public ModelEntity(int schemaVersion) {
+    this.schemaVersion = schemaVersion;
+  }
+
+  public ModelEntity() {}
+
   public long getId() {
     return id;
   }
@@ -196,19 +206,16 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
     return locationWithoutScheme;
   }
 
+  public int getSchemaVersion() {
+    return schemaVersion;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
 
   @Override
   public PolarisBaseEntity fromResultSet(ResultSet r) throws SQLException {
-    // location_without_scheme column was added in schema version 2
-    String locationWithoutScheme = null;
-    try {
-      locationWithoutScheme = r.getString("location_without_scheme");
-    } catch (SQLException e) {
-      // Column does not exist, handle gracefully
-    }
 
     var modelEntity =
         ModelEntity.builder()
@@ -229,14 +236,14 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
             // JSONB: use getString(), not getObject().
             .internalProperties(r.getString("internal_properties"))
             .grantRecordsVersion(r.getObject("grant_records_version", Integer.class))
-            .locationWithoutScheme(locationWithoutScheme)
+            .locationWithoutScheme(this.schemaVersion >= 2 ? locationWithoutScheme : null)
             .build();
 
     return toEntity(modelEntity);
   }
 
   @Override
-  public Map<String, Object> toMap(DatabaseType databaseType, int schemaVersion) {
+  public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("id", this.getId());
     map.put("catalog_id", this.getCatalogId());
@@ -258,7 +265,7 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       map.put("internal_properties", this.getInternalProperties());
     }
     map.put("grant_records_version", this.getGrantRecordsVersion());
-    if (schemaVersion >= 2) {
+    if (this.getSchemaVersion() >= 2) {
       map.put("location_without_scheme", this.getLocationWithoutScheme());
     }
     return map;
@@ -351,12 +358,17 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
       return this;
     }
 
+    public Builder schemaVersion(int schemaVersion) {
+      entity.schemaVersion = schemaVersion;
+      return this;
+    }
+
     public ModelEntity build() {
       return entity;
     }
   }
 
-  public static ModelEntity fromEntity(PolarisBaseEntity entity) {
+  public static ModelEntity fromEntity(PolarisBaseEntity entity, int schemaVersion) {
     var builder =
         ModelEntity.builder()
             .catalogId(entity.getCatalogId())
@@ -390,6 +402,8 @@ public class ModelEntity implements Converter<PolarisBaseEntity> {
                   entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
               .withoutScheme());
     }
+
+    builder.schemaVersion(schemaVersion);
 
     return builder.build();
   }

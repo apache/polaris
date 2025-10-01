@@ -37,8 +37,8 @@ import org.mockito.Mockito;
 public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     extends BasePolarisMetaStoreManagerTest {
 
-  public static DataSource createH2DataSource() {
-    return JdbcConnectionPool.create("jdbc:h2:file:./build/test_data/polaris/db", "sa", "");
+  public DataSource createH2DataSource() {
+    return JdbcConnectionPool.create(String.format("jdbc:h2:file:./build/test_data/polaris/db_%s", schemaVersion()), "sa", "");
   }
 
   public abstract int schemaVersion();

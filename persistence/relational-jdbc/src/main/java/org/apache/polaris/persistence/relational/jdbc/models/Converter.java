@@ -38,7 +38,7 @@ public interface Converter<T> {
    * Convert a model into a Map with keys as snake case names, and values as values of member of
    * model obj.
    */
-  Map<String, Object> toMap(DatabaseType databaseType, int schemaVersion);
+  Map<String, Object> toMap(DatabaseType databaseType);
 
   default PGobject toJsonbPGobject(String props) {
     try {

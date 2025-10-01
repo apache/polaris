@@ -168,7 +168,7 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
   }
 
   @Override
-  public Map<String, Object> toMap(DatabaseType databaseType, int schemaVersion) {
+  public Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("target_catalog_id", targetCatalogId);
     map.put("target_id", targetId);

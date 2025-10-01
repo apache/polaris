@@ -50,7 +50,7 @@ public class SchemaVersion implements Converter<SchemaVersion> {
   }
 
   @Override
-  public Map<String, Object> toMap(DatabaseType databaseType, int schemaVersion) {
+  public Map<String, Object> toMap(DatabaseType databaseType) {
     return Map.of("version_value", this.value);
   }
 }

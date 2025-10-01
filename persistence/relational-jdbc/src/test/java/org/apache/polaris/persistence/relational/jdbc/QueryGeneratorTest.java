@@ -107,7 +107,7 @@ public class QueryGeneratorTest {
         QueryGenerator.generateInsertQuery(
                 ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
-                entity.toMap(DatabaseType.H2, 2).values().stream().toList(),
+                entity.toMap(DatabaseType.H2).values().stream().toList(),
                 REALM_ID)
             .sql());
   }
@@ -124,7 +124,7 @@ public class QueryGeneratorTest {
         QueryGenerator.generateUpdateQuery(
                 ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
-                entity.toMap(DatabaseType.H2, 2).values().stream().toList(),
+                entity.toMap(DatabaseType.H2).values().stream().toList(),
                 whereClause)
             .sql());
   }
@@ -141,7 +141,7 @@ public class QueryGeneratorTest {
         QueryGenerator.generateUpdateQuery(
                 ModelEntity.getAllColumnNames(2),
                 ModelEntity.TABLE_NAME,
-                entity.toMap(DatabaseType.H2, 2).values().stream().toList(),
+                entity.toMap(DatabaseType.H2).values().stream().toList(),
                 whereClause)
             .sql());
   }
@@ -170,8 +170,9 @@ public class QueryGeneratorTest {
 
   @Test
   void testGenerateDeleteQuery_byObject() {
-    ModelEntity entityToDelete = ModelEntity.builder().name("test").entityVersion(1).build();
-    Map<String, Object> objMap = entityToDelete.toMap(DatabaseType.H2, 2);
+    ModelEntity entityToDelete =
+        ModelEntity.builder().name("test").entityVersion(1).schemaVersion(2).build();
+    Map<String, Object> objMap = entityToDelete.toMap(DatabaseType.H2);
     objMap.put("realm_id", REALM_ID);
     String expectedQuery =
         "DELETE FROM POLARIS_SCHEMA.ENTITIES WHERE id = ? AND catalog_id = ? AND parent_id = ? AND type_code = ? AND name = ? AND entity_version = ? AND sub_type_code = ? AND create_timestamp = ? AND drop_timestamp = ? AND purge_timestamp = ? AND to_purge_timestamp = ? AND last_update_timestamp = ? AND properties = ? AND internal_properties = ? AND grant_records_version = ? AND location_without_scheme = ? AND realm_id = ?";

@@ -125,7 +125,7 @@ public class ModelEventTest {
             .build();
 
     // Act
-    Map<String, Object> resultMap = modelEvent.toMap(DatabaseType.H2, 2);
+    Map<String, Object> resultMap = modelEvent.toMap(DatabaseType.H2);
 
     // Assert
     assertEquals(TEST_CATALOG_ID, resultMap.get(CATALOG_ID));
@@ -156,7 +156,7 @@ public class ModelEventTest {
             .build();
 
     // Act
-    Map<String, Object> resultMap = modelEvent.toMap(DatabaseType.POSTGRES, 2);
+    Map<String, Object> resultMap = modelEvent.toMap(DatabaseType.POSTGRES);
 
     // Assert
     assertEquals(TEST_CATALOG_ID, resultMap.get(CATALOG_ID));

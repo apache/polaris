@@ -119,7 +119,7 @@ public class DatasourceOperationsTest {
               .additionalProperties("")
               .build();
       queryParams.add(
-          modelEvent.toMap(datasourceOperations.getDatabaseType(), 2).values().stream().toList());
+          modelEvent.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
     }
     when(mockConnection.prepareStatement(any())).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.executeBatch()).thenReturn(new int[] {100});
@@ -141,7 +141,7 @@ public class DatasourceOperationsTest {
     when(mockPreparedStatement.executeQuery()).thenThrow(new SQLException("demo", "42P07"));
 
     assertThrows(
-        SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity()));
+        SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity(1)));
   }
 
   @Test

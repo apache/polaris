@@ -39,7 +39,7 @@ public class EntityNameLookupRecordConverter implements Converter<EntityNameLook
   }
 
   @Override
-  public Map<String, Object> toMap(DatabaseType databaseType, int schemaVersion) {
+  public Map<String, Object> toMap(DatabaseType databaseType) {
     throw new UnsupportedOperationException(
         "EntityNameLookupRecordConverter is read-only and does not support toMap operation");
   }
