@@ -28,7 +28,7 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -48,15 +48,16 @@ import org.slf4j.LoggerFactory;
 public class AccessConfigProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AccessConfigProvider.class);
+
   private final StorageCredentialCache storageCredentialCache;
-  private final PolarisMetaStoreManager metaStoreManager;
+  private final MetaStoreManagerFactory metaStoreManagerFactory;
 
   @Inject
   public AccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
-      PolarisMetaStoreManager polarisMetaStoreManager) {
+      MetaStoreManagerFactory metaStoreManagerFactory) {
     this.storageCredentialCache = storageCredentialCache;
-    this.metaStoreManager = polarisMetaStoreManager;
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 
   /**
@@ -124,7 +125,7 @@ public class AccessConfigProvider {
     return FileIOUtil.refreshAccessConfig(
         callContext,
         storageCredentialCache,
-        metaStoreManager,
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext()),
         tableIdentifier,
         tableLocations,
         storageActions,

@@ -236,7 +236,7 @@ public record TestServices(
               polarisEventListener);
 
       AccessConfigProvider accessConfigProvider =
-          new AccessConfigProvider(storageCredentialCache, metaStoreManager);
+          new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
