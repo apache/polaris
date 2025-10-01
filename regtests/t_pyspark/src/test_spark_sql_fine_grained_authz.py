@@ -39,11 +39,85 @@ from conftest import create_catalog_role
 from test_spark_sql_s3_with_privileges import create_principal, create_principal_role
 
 
+@pytest.fixture
+def fine_grained_authz_test_catalog(root_client, catalog_client):
+    """
+    Catalog specifically for fine-grained authorization testing.
+    Does NOT assign catalog_admin to service_admin to avoid privilege inheritance issues.
+    """
+    from polaris.management import FileStorageConfigInfo, Catalog, CatalogProperties, CreateCatalogRequest
+    from conftest import create_catalog_role
+    
+    catalog_name = f'fine_grained_authz_test_catalog_{str(uuid.uuid4())[-10:]}'
+    storage_config = FileStorageConfigInfo(storage_type="FILE", allowed_locations=["file:///tmp"])
+    base_location = "file:///tmp/polaris"
+    
+    # Build properties dict with fine-grained authorization enabled
+    catalog_properties = {
+        "default-base-location": base_location,
+        "polaris.config.drop-with-purge.enabled": "true",
+        "polaris.config.enable-fine-grained-update-table-privileges": "true"
+    }
+    
+    catalog = Catalog(name=catalog_name, type='INTERNAL', 
+                      properties=CatalogProperties.from_dict(catalog_properties),
+                      storage_config_info=storage_config)
+    
+    try:
+        root_client.create_catalog(create_catalog_request=CreateCatalogRequest(catalog=catalog))
+        resp = root_client.get_catalog(catalog_name=catalog.name)
+        
+        # IMPORTANT: We do NOT assign catalog_admin to service_admin here!
+        # This ensures fine-grained tests have only the privileges explicitly granted
+        
+        # However, we need to grant cleanup privileges to service_admin for fixture teardown
+        cleanup_catalog_role = create_catalog_role(root_client, resp, 'cleanup_role')
+        cleanup_privileges = [
+            CatalogPrivilege.TABLE_DROP,
+            CatalogPrivilege.TABLE_WRITE_DATA,  # Needed for DROP_TABLE_WITH_PURGE
+            CatalogPrivilege.NAMESPACE_DROP
+        ]
+        
+        for privilege in cleanup_privileges:
+            root_client.add_grant_to_catalog_role(
+                catalog_name, cleanup_catalog_role.name,
+                AddGrantRequest(grant=CatalogGrant(
+                    catalog_name=catalog_name,
+                    type='catalog',
+                    privilege=privilege
+                ))
+            )
+        
+        root_client.assign_catalog_role_to_principal_role(
+            principal_role_name='service_admin',
+            catalog_name=catalog_name,
+            grant_catalog_role_request=GrantCatalogRoleRequest(catalog_role=cleanup_catalog_role)
+        )
+        
+        yield resp
+    finally:
+        # Cleanup
+        from conftest import clear_namespace
+        namespaces = catalog_client.list_namespaces(catalog_name)
+        for n in namespaces.namespaces:
+            clear_namespace(catalog_name, catalog_client, n)
+        catalog_roles = root_client.list_catalog_roles(catalog_name)
+        for r in catalog_roles.roles:
+            if r.name not in ['catalog_admin', 'cleanup_role']:
+                root_client.delete_catalog_role(catalog_name, r.name)
+        # Delete cleanup_role last
+        try:
+            root_client.delete_catalog_role(catalog_name, 'cleanup_role')
+        except:
+            pass
+        root_client.delete_catalog(catalog_name=catalog_name)
 
-def test_coarse_grained_table_write_properties(polaris_url, polaris_catalog_url, root_client, fine_grained_catalog):
+
+
+def test_coarse_grained_table_write_properties(polaris_url, polaris_catalog_url, root_client, fine_grained_authz_test_catalog):
     """Test that coarse-grained TABLE_WRITE_PROPERTIES privilege allows all metadata operations"""
     
-    catalog_name = fine_grained_catalog.name
+    catalog_name = fine_grained_authz_test_catalog.name
     
     # Create a single principal with TABLE_WRITE_PROPERTIES (coarse-grained privilege)
     principal_name = f"coarse_grained_user_{str(uuid.uuid4())[-10:]}"
@@ -54,7 +128,7 @@ def test_coarse_grained_table_write_properties(polaris_url, polaris_catalog_url,
         # Create principal with coarse-grained privileges
         principal = create_principal(polaris_url, polaris_catalog_url, root_client, principal_name)
         principal_role = create_principal_role(root_client, principal_role_name)
-        catalog_role = create_catalog_role(root_client, fine_grained_catalog, catalog_role_name)
+        catalog_role = create_catalog_role(root_client, fine_grained_authz_test_catalog, catalog_role_name)
         
         root_client.assign_catalog_role_to_principal_role(
             principal_role_name=principal_role.name,
@@ -114,10 +188,10 @@ def test_coarse_grained_table_write_properties(polaris_url, polaris_catalog_url,
             pass
 
 
-def test_fine_grained_table_set_properties(polaris_url, polaris_catalog_url, root_client, fine_grained_catalog):
+def test_fine_grained_table_set_properties(polaris_url, polaris_catalog_url, root_client, fine_grained_authz_test_catalog):
     """Test fine-grained TABLE_SET_PROPERTIES privilege allows SET operations but not UNSET"""
     
-    catalog_name = fine_grained_catalog.name
+    catalog_name = fine_grained_authz_test_catalog.name
     
     # Create setup principal (for table creation)
     setup_principal_name = f"setup_user_{str(uuid.uuid4())[-10:]}"
@@ -133,7 +207,7 @@ def test_fine_grained_table_set_properties(polaris_url, polaris_catalog_url, roo
         # Create setup principal with full privileges
         setup_principal = create_principal(polaris_url, polaris_catalog_url, root_client, setup_principal_name)
         setup_principal_role = create_principal_role(root_client, setup_principal_role_name)
-        setup_catalog_role = create_catalog_role(root_client, fine_grained_catalog, setup_catalog_role_name)
+        setup_catalog_role = create_catalog_role(root_client, fine_grained_authz_test_catalog, setup_catalog_role_name)
         
         root_client.assign_catalog_role_to_principal_role(
             principal_role_name=setup_principal_role.name,
@@ -170,7 +244,7 @@ def test_fine_grained_table_set_properties(polaris_url, polaris_catalog_url, roo
         # Create test principal with only fine-grained privileges
         test_principal = create_principal(polaris_url, polaris_catalog_url, root_client, test_principal_name)
         test_principal_role = create_principal_role(root_client, test_principal_role_name)
-        test_catalog_role = create_catalog_role(root_client, fine_grained_catalog, test_catalog_role_name)
+        test_catalog_role = create_catalog_role(root_client, fine_grained_authz_test_catalog, test_catalog_role_name)
         
         root_client.assign_catalog_role_to_principal_role(
             principal_role_name=test_principal_role.name,
@@ -242,10 +316,10 @@ def test_fine_grained_table_set_properties(polaris_url, polaris_catalog_url, roo
             pass
 
 
-def test_fine_grained_table_remove_properties(polaris_url, polaris_catalog_url, root_client, fine_grained_catalog):
+def test_fine_grained_table_remove_properties(polaris_url, polaris_catalog_url, root_client, fine_grained_authz_test_catalog):
     """Test that fine-grained TABLE_REMOVE_PROPERTIES privilege allows UNSET operations but not SET"""
     
-    catalog_name = fine_grained_catalog.name
+    catalog_name = fine_grained_authz_test_catalog.name
     
     # Create setup principal (for table creation)
     setup_principal_name = f"setup_user_{str(uuid.uuid4())[-10:]}"
@@ -261,7 +335,7 @@ def test_fine_grained_table_remove_properties(polaris_url, polaris_catalog_url, 
         # Create setup principal with full privileges
         setup_principal = create_principal(polaris_url, polaris_catalog_url, root_client, setup_principal_name)
         setup_principal_role = create_principal_role(root_client, setup_principal_role_name)
-        setup_catalog_role = create_catalog_role(root_client, fine_grained_catalog, setup_catalog_role_name)
+        setup_catalog_role = create_catalog_role(root_client, fine_grained_authz_test_catalog, setup_catalog_role_name)
         
         root_client.assign_catalog_role_to_principal_role(
             principal_role_name=setup_principal_role.name,
@@ -298,7 +372,7 @@ def test_fine_grained_table_remove_properties(polaris_url, polaris_catalog_url, 
         # Create test principal with only fine-grained privileges
         test_principal = create_principal(polaris_url, polaris_catalog_url, root_client, test_principal_name)
         test_principal_role = create_principal_role(root_client, test_principal_role_name)
-        test_catalog_role = create_catalog_role(root_client, fine_grained_catalog, test_catalog_role_name)
+        test_catalog_role = create_catalog_role(root_client, fine_grained_authz_test_catalog, test_catalog_role_name)
         
         root_client.assign_catalog_role_to_principal_role(
             principal_role_name=test_principal_role.name,
@@ -373,10 +447,10 @@ def test_fine_grained_table_remove_properties(polaris_url, polaris_catalog_url, 
             pass
 
 
-def test_multiple_fine_grained_privileges_together(polaris_url, polaris_catalog_url, root_client, fine_grained_catalog):
+def test_multiple_fine_grained_privileges_together(polaris_url, polaris_catalog_url, root_client, fine_grained_authz_test_catalog):
     """Test that multiple fine-grained privileges work together correctly"""
     
-    catalog_name = fine_grained_catalog.name
+    catalog_name = fine_grained_authz_test_catalog.name
     
     # Create setup principal (for table creation)
     setup_principal_name = f"setup_user_{str(uuid.uuid4())[-10:]}"
@@ -392,7 +466,7 @@ def test_multiple_fine_grained_privileges_together(polaris_url, polaris_catalog_
         # Create setup principal with full privileges
         setup_principal = create_principal(polaris_url, polaris_catalog_url, root_client, setup_principal_name)
         setup_principal_role = create_principal_role(root_client, setup_principal_role_name)
-        setup_catalog_role = create_catalog_role(root_client, fine_grained_catalog, setup_catalog_role_name)
+        setup_catalog_role = create_catalog_role(root_client, fine_grained_authz_test_catalog, setup_catalog_role_name)
         
         root_client.assign_catalog_role_to_principal_role(
             principal_role_name=setup_principal_role.name,
@@ -429,7 +503,7 @@ def test_multiple_fine_grained_privileges_together(polaris_url, polaris_catalog_
         # Create test principal with multiple fine-grained privileges
         test_principal = create_principal(polaris_url, polaris_catalog_url, root_client, test_principal_name)
         test_principal_role = create_principal_role(root_client, test_principal_role_name)
-        test_catalog_role = create_catalog_role(root_client, fine_grained_catalog, test_catalog_role_name)
+        test_catalog_role = create_catalog_role(root_client, fine_grained_authz_test_catalog, test_catalog_role_name)
         
         root_client.assign_catalog_role_to_principal_role(
             principal_role_name=test_principal_role.name,
@@ -498,10 +572,10 @@ def test_multiple_fine_grained_privileges_together(polaris_url, polaris_catalog_
             pass
 
 
-def test_fine_grained_insufficient_permissions(polaris_url, polaris_catalog_url, root_client, fine_grained_catalog):
+def test_fine_grained_insufficient_permissions(polaris_url, polaris_catalog_url, root_client, fine_grained_authz_test_catalog):
     """Test that having only one of the required privileges fails when both are needed"""
     
-    catalog_name = fine_grained_catalog.name
+    catalog_name = fine_grained_authz_test_catalog.name
     
     # Create setup principal (for table creation)
     setup_principal_name = f"setup_user_{str(uuid.uuid4())[-10:]}"
@@ -517,7 +591,7 @@ def test_fine_grained_insufficient_permissions(polaris_url, polaris_catalog_url,
         # Create setup principal with full privileges
         setup_principal = create_principal(polaris_url, polaris_catalog_url, root_client, setup_principal_name)
         setup_principal_role = create_principal_role(root_client, setup_principal_role_name)
-        setup_catalog_role = create_catalog_role(root_client, fine_grained_catalog, setup_catalog_role_name)
+        setup_catalog_role = create_catalog_role(root_client, fine_grained_authz_test_catalog, setup_catalog_role_name)
         
         root_client.assign_catalog_role_to_principal_role(
             principal_role_name=setup_principal_role.name,
@@ -554,7 +628,7 @@ def test_fine_grained_insufficient_permissions(polaris_url, polaris_catalog_url,
         # Create test principal with only fine-grained privileges
         test_principal = create_principal(polaris_url, polaris_catalog_url, root_client, test_principal_name)
         test_principal_role = create_principal_role(root_client, test_principal_role_name)
-        test_catalog_role = create_catalog_role(root_client, fine_grained_catalog, test_catalog_role_name)
+        test_catalog_role = create_catalog_role(root_client, fine_grained_authz_test_catalog, test_catalog_role_name)
         
         root_client.assign_catalog_role_to_principal_role(
             principal_role_name=test_principal_role.name,

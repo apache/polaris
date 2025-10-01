@@ -197,8 +197,7 @@ def _create_catalog_with_storage(root_client, catalog_client, catalog_name, stor
   # Build properties dict
   catalog_properties = {
     "default-base-location": base_location,
-    "polaris.config.drop-with-purge.enabled": "true",
-    "polaris.config.enable-fine-grained-update-table-privileges": "true"
+    "polaris.config.drop-with-purge.enabled": "true"
   }
   
   # Add AWS-specific properties if using S3 storage
@@ -287,81 +286,5 @@ def s3_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucke
     yield from _create_catalog_with_storage(
       root_client, catalog_client, catalog_name, storage_config, base_location
     )
-
-
-@pytest.fixture
-def fine_grained_catalog(root_client, catalog_client):
-    """
-    Catalog specifically for fine-grained authorization testing.
-    Does NOT assign catalog_admin to service_admin to avoid privilege inheritance issues.
-    """
-    from polaris.management import FileStorageConfigInfo, AwsStorageConfigInfo, Catalog, CatalogProperties, CreateCatalogRequest
-    
-    catalog_name = f'fine_grained_catalog_{str(uuid.uuid4())[-10:]}'
-    storage_config = FileStorageConfigInfo(storage_type="FILE", allowed_locations=["file:///tmp"])
-    base_location = "file:///tmp/polaris"
-    
-    # Build properties dict with fine-grained authorization enabled
-    catalog_properties = {
-        "default-base-location": base_location,
-        "polaris.config.drop-with-purge.enabled": "true",
-        "polaris.config.enable-fine-grained-update-table-privileges": "true"
-    }
-    
-    # Add AWS-specific properties if using S3 storage
-    if isinstance(storage_config, AwsStorageConfigInfo):
-        catalog_properties["client.credentials-provider"] = "software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider"
-    
-    catalog = Catalog(name=catalog_name, type='INTERNAL', 
-                      properties=CatalogProperties.from_dict(catalog_properties),
-                      storage_config_info=storage_config)
-    
-    try:
-        root_client.create_catalog(create_catalog_request=CreateCatalogRequest(catalog=catalog))
-        resp = root_client.get_catalog(catalog_name=catalog.name)
-        
-        # IMPORTANT: We do NOT assign catalog_admin to service_admin here!
-        # This ensures fine-grained tests have only the privileges explicitly granted
-        
-        # However, we need to grant cleanup privileges to service_admin for fixture teardown
-        cleanup_catalog_role = create_catalog_role(root_client, resp, 'cleanup_role')
-        cleanup_privileges = [
-            CatalogPrivilege.TABLE_DROP,
-            CatalogPrivilege.TABLE_WRITE_DATA,  # Needed for DROP_TABLE_WITH_PURGE
-            CatalogPrivilege.NAMESPACE_DROP
-        ]
-        
-        for privilege in cleanup_privileges:
-            root_client.add_grant_to_catalog_role(
-                catalog_name, cleanup_catalog_role.name,
-                AddGrantRequest(grant=CatalogGrant(
-                    catalog_name=catalog_name,
-                    type='catalog',
-                    privilege=privilege
-                ))
-            )
-        
-        root_client.assign_catalog_role_to_principal_role(
-            principal_role_name='service_admin',
-            catalog_name=catalog_name,
-            grant_catalog_role_request=GrantCatalogRoleRequest(catalog_role=cleanup_catalog_role)
-        )
-        
-        yield resp
-    finally:
-        # Cleanup
-        namespaces = catalog_client.list_namespaces(catalog_name)
-        for n in namespaces.namespaces:
-            clear_namespace(catalog_name, catalog_client, n)
-        catalog_roles = root_client.list_catalog_roles(catalog_name)
-        for r in catalog_roles.roles:
-            if r.name not in ['catalog_admin', 'cleanup_role']:
-                root_client.delete_catalog_role(catalog_name, r.name)
-        # Delete cleanup_role last
-        try:
-            root_client.delete_catalog_role(catalog_name, 'cleanup_role')
-        except:
-            pass
-        root_client.delete_catalog(catalog_name=catalog_name)
 
 
