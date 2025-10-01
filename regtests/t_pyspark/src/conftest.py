@@ -323,6 +323,30 @@ def fine_grained_catalog(root_client, catalog_client):
         # IMPORTANT: We do NOT assign catalog_admin to service_admin here!
         # This ensures fine-grained tests have only the privileges explicitly granted
         
+        # However, we need to grant cleanup privileges to service_admin for fixture teardown
+        cleanup_catalog_role = create_catalog_role(root_client, resp, 'cleanup_role')
+        cleanup_privileges = [
+            CatalogPrivilege.TABLE_DROP,
+            CatalogPrivilege.TABLE_WRITE_DATA,  # Needed for DROP_TABLE_WITH_PURGE
+            CatalogPrivilege.NAMESPACE_DROP
+        ]
+        
+        for privilege in cleanup_privileges:
+            root_client.add_grant_to_catalog_role(
+                catalog_name, cleanup_catalog_role.name,
+                AddGrantRequest(grant=CatalogGrant(
+                    catalog_name=catalog_name,
+                    type='catalog',
+                    privilege=privilege
+                ))
+            )
+        
+        root_client.assign_catalog_role_to_principal_role(
+            principal_role_name='service_admin',
+            catalog_name=catalog_name,
+            grant_catalog_role_request=GrantCatalogRoleRequest(catalog_role=cleanup_catalog_role)
+        )
+        
         yield resp
     finally:
         # Cleanup
@@ -331,8 +355,13 @@ def fine_grained_catalog(root_client, catalog_client):
             clear_namespace(catalog_name, catalog_client, n)
         catalog_roles = root_client.list_catalog_roles(catalog_name)
         for r in catalog_roles.roles:
-            if r.name != 'catalog_admin':
+            if r.name not in ['catalog_admin', 'cleanup_role']:
                 root_client.delete_catalog_role(catalog_name, r.name)
+        # Delete cleanup_role last
+        try:
+            root_client.delete_catalog_role(catalog_name, 'cleanup_role')
+        except:
+            pass
         root_client.delete_catalog(catalog_name=catalog_name)
 
 
