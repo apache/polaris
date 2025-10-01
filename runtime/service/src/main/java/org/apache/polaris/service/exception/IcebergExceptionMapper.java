@@ -181,7 +181,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case ForbiddenException e -> Status.FORBIDDEN.getStatusCode();
       case jakarta.ws.rs.ForbiddenException e -> Status.FORBIDDEN.getStatusCode();
       case NotAuthorizedException e -> Status.UNAUTHORIZED.getStatusCode();
-      case NamespaceNotEmptyException e -> Status.BAD_REQUEST.getStatusCode();
+      case NamespaceNotEmptyException e -> Status.CONFLICT.getStatusCode();
       case ValidationException e -> Status.BAD_REQUEST.getStatusCode();
       case ServiceUnavailableException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
       case RuntimeIOException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
