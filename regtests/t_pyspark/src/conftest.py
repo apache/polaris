@@ -197,7 +197,8 @@ def _create_catalog_with_storage(root_client, catalog_client, catalog_name, stor
   # Build properties dict
   catalog_properties = {
     "default-base-location": base_location,
-    "polaris.config.drop-with-purge.enabled": "true"
+    "polaris.config.drop-with-purge.enabled": "true",
+    "polaris.config.enable-fine-grained-update-table-privileges": "true"
   }
   
   # Add AWS-specific properties if using S3 storage
@@ -269,22 +270,69 @@ def file_catalog(root_client, catalog_client):
 
 @pytest.fixture  
 def s3_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucket_base_location_prefix):
-  """
-  Catalog that always uses S3 storage for AWS testing.
-  Tests using this fixture should include @pytest.mark.skipif for AWS_TEST_ENABLED.
-  """
-  from polaris.management import AwsStorageConfigInfo
-  
-  catalog_name = f's3_catalog_{str(uuid.uuid4())[-10:]}'
-  storage_config = AwsStorageConfigInfo(
-    storage_type="S3",
-    allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
-    role_arn=aws_role_arn
-  )
-  base_location = f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/s3_catalog"
-  
-  yield from _create_catalog_with_storage(
-    root_client, catalog_client, catalog_name, storage_config, base_location
-  )
+    """
+    Catalog that always uses S3 storage for AWS testing.
+    Tests using this fixture should include @pytest.mark.skipif for AWS_TEST_ENABLED.
+    """
+    from polaris.management import AwsStorageConfigInfo
+    
+    catalog_name = f's3_catalog_{str(uuid.uuid4())[-10:]}'
+    storage_config = AwsStorageConfigInfo(
+      storage_type="S3",
+      allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
+      role_arn=aws_role_arn
+    )
+    base_location = f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/s3_catalog"
+    
+    yield from _create_catalog_with_storage(
+      root_client, catalog_client, catalog_name, storage_config, base_location
+    )
+
+
+@pytest.fixture
+def fine_grained_catalog(root_client, catalog_client):
+    """
+    Catalog specifically for fine-grained authorization testing.
+    Does NOT assign catalog_admin to service_admin to avoid privilege inheritance issues.
+    """
+    from polaris.management import FileStorageConfigInfo, AwsStorageConfigInfo, Catalog, CatalogProperties, CreateCatalogRequest
+    
+    catalog_name = f'fine_grained_catalog_{str(uuid.uuid4())[-10:]}'
+    storage_config = FileStorageConfigInfo(storage_type="FILE", allowed_locations=["file:///tmp"])
+    base_location = "file:///tmp/polaris"
+    
+    # Build properties dict with fine-grained authorization enabled
+    catalog_properties = {
+        "default-base-location": base_location,
+        "polaris.config.drop-with-purge.enabled": "true",
+        "polaris.config.enable-fine-grained-update-table-privileges": "true"
+    }
+    
+    # Add AWS-specific properties if using S3 storage
+    if isinstance(storage_config, AwsStorageConfigInfo):
+        catalog_properties["client.credentials-provider"] = "software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider"
+    
+    catalog = Catalog(name=catalog_name, type='INTERNAL', 
+                      properties=CatalogProperties.from_dict(catalog_properties),
+                      storage_config_info=storage_config)
+    
+    try:
+        root_client.create_catalog(create_catalog_request=CreateCatalogRequest(catalog=catalog))
+        resp = root_client.get_catalog(catalog_name=catalog.name)
+        
+        # IMPORTANT: We do NOT assign catalog_admin to service_admin here!
+        # This ensures fine-grained tests have only the privileges explicitly granted
+        
+        yield resp
+    finally:
+        # Cleanup
+        namespaces = catalog_client.list_namespaces(catalog_name)
+        for n in namespaces.namespaces:
+            clear_namespace(catalog_name, catalog_client, n)
+        catalog_roles = root_client.list_catalog_roles(catalog_name)
+        for r in catalog_roles.roles:
+            if r.name != 'catalog_admin':
+                root_client.delete_catalog_role(catalog_name, r.name)
+        root_client.delete_catalog(catalog_name=catalog_name)
 
 

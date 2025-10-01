@@ -424,6 +424,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   public static final FeatureConfiguration<Boolean> ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES")
+          .catalogConfig("polaris.config.enable-fine-grained-update-table-privileges")
           .description(
               "When true, enables finer grained update table privileges which are passed to the authorizer for update table operations")
           .defaultValue(false)
