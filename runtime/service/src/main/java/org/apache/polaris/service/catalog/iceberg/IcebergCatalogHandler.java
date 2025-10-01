@@ -1128,7 +1128,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private EnumSet<PolarisAuthorizableOperation> getUpdateTableAuthorizableOperations(
       UpdateTableRequest request) {
     boolean useFineGrainedOperations =
-        realmConfig.getConfig(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES);
+        realmConfig.getConfig(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES, getResolvedCatalogEntity());
 
     if (useFineGrainedOperations) {
       EnumSet<PolarisAuthorizableOperation> actions =
