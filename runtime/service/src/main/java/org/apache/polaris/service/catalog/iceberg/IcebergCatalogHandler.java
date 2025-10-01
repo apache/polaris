@@ -853,6 +853,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   public LoadTableResponse updateTable(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
 
+    // Ensure resolution manifest is initialized so we can determine whether
+    // fine grained authz model is enabled at the catalog level
+    ensureResolutionManifestForTable(tableIdentifier);
+
     EnumSet<PolarisAuthorizableOperation> authorizableOperations =
         getUpdateTableAuthorizableOperations(request);
 
@@ -1128,7 +1132,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private EnumSet<PolarisAuthorizableOperation> getUpdateTableAuthorizableOperations(
       UpdateTableRequest request) {
     boolean useFineGrainedOperations =
-        realmConfig.getConfig(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES, getResolvedCatalogEntity());
+        realmConfig.getConfig(
+            FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES,
+            getResolvedCatalogEntity());
 
     if (useFineGrainedOperations) {
       EnumSet<PolarisAuthorizableOperation> actions =

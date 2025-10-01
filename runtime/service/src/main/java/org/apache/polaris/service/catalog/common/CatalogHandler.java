@@ -239,6 +239,26 @@ public abstract class CatalogHandler {
     initializeCatalog();
   }
 
+  /**
+   * Ensures resolution manifest is initialized for a table identifier. This allows checking
+   * catalog-level feature flags or other resolved entities before authorization. If already
+   * initialized, this is a no-op.
+   */
+  protected void ensureResolutionManifestForTable(TableIdentifier identifier) {
+    if (resolutionManifest == null) {
+      resolutionManifest = newResolutionManifest();
+
+      // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
+      resolutionManifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */),
+          identifier);
+      resolutionManifest.resolveAll();
+    }
+  }
+
   protected void authorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
     authorizeBasicTableLikeOperationsOrThrow(EnumSet.of(op), subType, identifier);
@@ -248,16 +268,7 @@ public abstract class CatalogHandler {
       EnumSet<PolarisAuthorizableOperation> ops,
       PolarisEntitySubType subType,
       TableIdentifier identifier) {
-    resolutionManifest = newResolutionManifest();
-
-    // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
-    resolutionManifest.addPassthroughPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
-            true /* optional */),
-        identifier);
-    resolutionManifest.resolveAll();
+    ensureResolutionManifestForTable(identifier);
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
