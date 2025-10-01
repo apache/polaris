@@ -38,7 +38,8 @@ public abstract class AtomicMetastoreManagerWithJdbcBasePersistenceImplTest
     extends BasePolarisMetaStoreManagerTest {
 
   public DataSource createH2DataSource() {
-    return JdbcConnectionPool.create(String.format("jdbc:h2:file:./build/test_data/polaris/db_%s", schemaVersion()), "sa", "");
+    return JdbcConnectionPool.create(
+        String.format("jdbc:h2:file:./build/test_data/polaris/db_%s", schemaVersion()), "sa", "");
   }
 
   public abstract int schemaVersion();
