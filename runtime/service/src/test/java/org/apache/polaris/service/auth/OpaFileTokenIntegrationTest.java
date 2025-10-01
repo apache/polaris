@@ -57,7 +57,7 @@ public class OpaFileTokenIntegrationTest {
         throw new RuntimeException("Failed to create test token file", e);
       }
 
-      // Configure OPA server authentication with file-based bearer token and HTTPS
+      // Configure OPA server authentication with file-based bearer token
       config.put("polaris.authorization.opa.bearer-token.file-path", tokenFile.toString());
       config.put(
           "polaris.authorization.opa.bearer-token.refresh-interval",
@@ -99,11 +99,7 @@ public class OpaFileTokenIntegrationTest {
       return List.of(
           new TestResourceEntry(
               OpaTestResource.class,
-              Map.of(
-                  "policy-name", "polaris-authz",
-                  "rego-policy", customRegoPolicy,
-                  "use-https", "true",
-                  "bearer-token", "test-opa-bearer-token-from-file-67890")));
+              Map.of("policy-name", "polaris-authz", "rego-policy", customRegoPolicy)));
     }
 
     public static Path getTokenFile() {
