@@ -30,8 +30,7 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 public interface RequestIdGenerator {
 
   /**
-   * Generates a new request ID. IDs must be fast to generate and unique. If the generation involves
-   * I/O (which is not recommended), it should be performed asynchronously.
+   * Generates a new request ID. IDs must be fast to generate and unique.
    *
    * @param requestContext The JAX-RS request context
    */
