@@ -147,8 +147,9 @@ INSERT INTO modern.knows VALUES
 Then you’ll need to deploy PuppyGraph. Luckily, this is easy and can currently be done through Docker (see [Docs](https://docs.puppygraph.com/getting-started)) or an [AWS AMI](https://aws.amazon.com/marketplace/pp/prodview-dgmn5jnwnfacu) through AWS Marketplace. The AMI approach requires a few clicks and will deploy your instance on the infrastructure of your choice. Below, we will focus on what it takes to launch a PuppyGraph instance on Docker.
 
 With Docker installed, you can run the following command in your terminal:
-
-**docker run \-p 8081:8081 \-p 8183:8182 \-p 7687:7687 \-v /tmp/polaris:/tmp/polaris \--name puppy \--rm \-itd puppygraph/puppygraph:stable**
+```shell
+docker run -p 8081:8081 -p 8183:8182 -p 7687:7687 -v /tmp/polaris:/tmp/polaris --name puppy --rm -itd puppygraph/puppygraph:stable
+```
 
 This will spin up a PuppyGraph instance on your local machine (or on a cloud or bare metal server if that's where you want to deploy it). Next, you can go to **localhost:8081** or the URL on which you launched the instance. This will show you the PuppyGraph login screen:
 
