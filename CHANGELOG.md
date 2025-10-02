@@ -32,11 +32,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade Notes
 
 - Amazon RDS plugin enabled, this allows polaris to connect to AWS Aurora PostgreSQL using IAM authentication.
-- The EclipseLink Persistence implementation has been deprecated since 1.0.0 and will be completely removed
-  in 1.3.0 or in 2.0.0 (whichever happens earlier).
-- The legacy management endpoints at `/metrics` and `/healthcheck` have been deprecated in 1.2.0 and will be
-  completely removed in 1.3.0 or in 2.0.0 (whichever happens earlier). Please use the standard management 
-  endpoints at `/q/metrics` and `/q/health` instead.
 
 ### Breaking Changes
 
@@ -56,6 +51,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Deprecations
 
 * The property `polaris.active-roles-provider.type` is deprecated and has no effect anymore.
+- The EclipseLink Persistence implementation has been deprecated since 1.0.0 and will be completely removed
+  in 1.3.0 or in 2.0.0 (whichever happens earlier).
+- The legacy management endpoints at `/metrics` and `/healthcheck` have been deprecated in 1.2.0 and will be
+  completely removed in 1.3.0 or in 2.0.0 (whichever happens earlier). Please use the standard management
+  endpoints at `/q/metrics` and `/q/health` instead.
 
 ### Fixes
 
