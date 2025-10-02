@@ -20,72 +20,89 @@
 package org.apache.polaris.service.context;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectSpy;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
-import io.smallrye.common.annotation.Identifier;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
+import jakarta.ws.rs.core.Response;
+import java.util.Map;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2Api;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 @QuarkusTest
 @TestHTTPEndpoint(IcebergRestOAuth2Api.class)
+@TestProfile(RealmContextFilterTest.Profile.class)
+@SuppressWarnings("UastIncorrectHttpHeaderInspection")
 class RealmContextFilterTest {
 
-  @InjectSpy
-  @Identifier("default")
-  RealmContextResolver realmContextResolver;
-
-  @BeforeEach
-  void resetMocks() {
-    Mockito.reset(realmContextResolver);
+  public static class Profile implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.realm-context.header-name",
+          REALM_HEADER,
+          "polaris.realm-context.realms",
+          "realm1,realm2",
+          "polaris.bootstrap.credentials",
+          "realm1,client1,secret1;realm2,client2,secret2");
+    }
   }
 
-  @Test
-  void testSuccess() {
-    givenTokenRequest().when().post().then().statusCode(200).body(containsString("access_token"));
-    verify(realmContextResolver, times(1)).resolveRealmContext(any(), any(), any(), anyFunction());
-  }
+  private static final String REALM_HEADER = "test-header-r123";
 
   @Test
-  void testError() {
-    doReturn(CompletableFuture.failedFuture(new RuntimeException("test error")))
-        .when(realmContextResolver)
-        .resolveRealmContext(any(), any(), any(), anyFunction());
-    givenTokenRequest()
+  public void testInvalidRealmHeaderValue() {
+    givenTokenRequest("client1", "secret1")
+        .header(REALM_HEADER, "INVALID")
         .when()
         .post()
         .then()
-        .statusCode(404)
+        .statusCode(Response.Status.NOT_FOUND.getStatusCode())
         .body("error.message", is("Missing or invalid realm"))
         .body("error.type", is("MissingOrInvalidRealm"))
-        .body("error.code", is(404));
-    verify(realmContextResolver, times(1)).resolveRealmContext(any(), any(), any(), anyFunction());
+        .body("error.code", is(Response.Status.NOT_FOUND.getStatusCode()));
   }
 
-  private static RequestSpecification givenTokenRequest() {
+  @Test
+  public void testNoRealmHeader() {
+    givenTokenRequest("client2", "secret2")
+        .header("irrelevant-header", "fake-realm")
+        .when()
+        .post()
+        .then()
+        .statusCode(Response.Status.UNAUTHORIZED.getStatusCode());
+  }
+
+  @Test
+  public void testDefaultRealm() {
+    givenTokenRequest("client1", "secret1")
+        .header("irrelevant-header", "fake-realm")
+        .when()
+        .post()
+        .then()
+        .statusCode(Response.Status.OK.getStatusCode());
+  }
+
+  @Test
+  public void testValidRealmHeaderDefaultRealm() {
+    givenTokenRequest("client2", "secret2")
+        .header(REALM_HEADER, "realm2")
+        .when()
+        .post()
+        .then()
+        .statusCode(Response.Status.OK.getStatusCode());
+  }
+
+  private static RequestSpecification givenTokenRequest(String clientId, String clientSecret) {
     return given()
         .contentType(ContentType.URLENC)
         .formParam("grant_type", "client_credentials")
         .formParam("scope", "PRINCIPAL_ROLE:ALL")
-        .formParam("client_id", "test-admin")
-        .formParam("client_secret", "test-secret");
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Function<String, String> anyFunction() {
-    return any(Function.class);
+        .formParam("client_id", clientId)
+        .formParam("client_secret", clientSecret);
   }
 }
