@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.context;
 
+import io.smallrye.common.vertx.ContextLocals;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -49,6 +50,8 @@ public class RealmContextFilter {
                     rc.getHeaders()::getFirst))
         .onItem()
         .invoke(realmContext -> rc.setProperty(REALM_CONTEXT_KEY, realmContext))
+        // ContextLocals is used by RealmIdTagContributor to add the realm id to metrics
+        .invoke(realmContext -> ContextLocals.put(REALM_CONTEXT_KEY, realmContext))
         .onItemOrFailure()
         .transform((realmContext, error) -> error == null ? null : errorResponse(error));
   }
