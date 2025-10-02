@@ -112,6 +112,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -2318,37 +2319,43 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
         .containsEntry(NamespaceEntity.PARENT_NAMESPACE_KEY, NS.toString())
         .containsEntry(
-            "current-snapshot-id", String.valueOf(afterAppend.currentSnapshot().snapshotId()))
-        .containsEntry("location", afterAppend.location())
-        .containsEntry("table-uuid", afterAppend.uuid().toString())
-        .containsEntry("current-schema-id", String.valueOf(afterAppend.schema().schemaId()))
+            IcebergTableLikeEntity.CURRENT_SNAPSHOT_ID,
+            String.valueOf(afterAppend.currentSnapshot().snapshotId()))
+        .containsEntry(IcebergTableLikeEntity.LOCATION, afterAppend.location())
+        .containsEntry(IcebergTableLikeEntity.TABLE_UUID, afterAppend.uuid().toString())
         .containsEntry(
-            "last-column-id",
+            IcebergTableLikeEntity.CURRENT_SCHEMA_ID,
+            String.valueOf(afterAppend.schema().schemaId()))
+        .containsEntry(
+            IcebergTableLikeEntity.LAST_COLUMN_ID,
             afterAppend.schema().columns().stream()
                 .max(Comparator.comparing(Types.NestedField::fieldId))
                 .map(Types.NestedField::fieldId)
                 .orElse(0)
                 .toString())
         .containsEntry(
-            "last-sequence-number", String.valueOf(afterAppend.currentSnapshot().sequenceNumber()));
+            IcebergTableLikeEntity.LAST_SEQUENCE_NUMBER,
+            String.valueOf(afterAppend.currentSnapshot().sequenceNumber()));
 
     catalog.loadTable(TABLE).refresh();
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_B).commit();
     validatePropertiesUpdated(
         schemaResult,
-        "current-snapshot-id",
+        IcebergTableLikeEntity.CURRENT_SNAPSHOT_ID,
         tbl -> String.valueOf(tbl.currentSnapshot().snapshotId()));
 
     catalog.loadTable(TABLE).refresh();
     catalog.loadTable(TABLE).updateSchema().addColumn("new_col", Types.LongType.get()).commit();
     validatePropertiesUpdated(
-        schemaResult, "current-schema-id", tbl -> String.valueOf(tbl.schema().schemaId()));
+        schemaResult,
+        IcebergTableLikeEntity.CURRENT_SCHEMA_ID,
+        tbl -> String.valueOf(tbl.schema().schemaId()));
 
     catalog.loadTable(TABLE).refresh();
     catalog.loadTable(TABLE).replaceSortOrder().desc("new_col", NullOrder.NULLS_FIRST).commit();
     validatePropertiesUpdated(
         schemaResult,
-        "default-sort-order-id",
+        IcebergTableLikeEntity.DEFAULT_SORT_ORDER_ID,
         table -> String.valueOf(table.sortOrder().orderId()));
   }
 

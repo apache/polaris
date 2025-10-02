@@ -22,6 +22,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
@@ -31,10 +34,6 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * An entity type for {@link TableLikeEntity} instances that conform to iceberg semantics around
@@ -50,6 +49,40 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
 
   public static final String LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY =
       "last-notification-timestamp";
+
+  /*
+   * The following constants are copied from the TableMetadataParser in Iceberg
+   * They represent the keys used in the table metadata JSON file.
+   */
+
+  public static final String FORMAT_VERSION = "format-version";
+  public static final String TABLE_UUID = "table-uuid";
+  public static final String LOCATION = "location";
+  public static final String LAST_SEQUENCE_NUMBER = "last-sequence-number";
+  public static final String LAST_UPDATED_MILLIS = "last-updated-ms";
+  public static final String LAST_COLUMN_ID = "last-column-id";
+  public static final String SCHEMA = "schema";
+  public static final String SCHEMAS = "schemas";
+  public static final String CURRENT_SCHEMA_ID = "current-schema-id";
+  public static final String PARTITION_SPEC = "partition-spec";
+  public static final String PARTITION_SPECS = "partition-specs";
+  public static final String DEFAULT_SPEC_ID = "default-spec-id";
+  public static final String LAST_PARTITION_ID = "last-partition-id";
+  public static final String DEFAULT_SORT_ORDER_ID = "default-sort-order-id";
+  public static final String SORT_ORDERS = "sort-orders";
+  public static final String PROPERTIES = "properties";
+  public static final String CURRENT_SNAPSHOT_ID = "current-snapshot-id";
+  public static final String REFS = "refs";
+  public static final String SNAPSHOTS = "snapshots";
+  public static final String SNAPSHOT_ID = "snapshot-id";
+  public static final String TIMESTAMP_MS = "timestamp-ms";
+  public static final String SNAPSHOT_LOG = "snapshot-log";
+  public static final String METADATA_FILE = "metadata-file";
+  public static final String METADATA_LOG = "metadata-log";
+  public static final String STATISTICS = "statistics";
+  public static final String PARTITION_STATISTICS = "partition-statistics";
+  public static final String ENCRYPTION_KEYS = "encryption-keys";
+  public static final String NEXT_ROW_ID = "next-row-id";
 
   public IcebergTableLikeEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
