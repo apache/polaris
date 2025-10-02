@@ -17,16 +17,16 @@
 # under the License.
 #
 import json
-import re
 from dataclasses import dataclass
 from typing import Dict, Optional, List
 
 from pydantic import StrictStr
 
 from cli.command import Command
+from cli.command.utils import get_catalog_api_client
 from cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from cli.options.option_tree import Argument
-from polaris.catalog import IcebergCatalogAPI, CreateNamespaceRequest, ApiClient, Configuration
+from polaris.catalog import IcebergCatalogAPI, CreateNamespaceRequest
 from polaris.management import PolarisDefaultApi
 
 
@@ -55,23 +55,9 @@ class NamespacesCommand(Command):
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
             )
 
-    def _get_catalog_api(self, api: PolarisDefaultApi):
-        """
-        Convert a management API to a catalog API
-        """
-        catalog_host = re.match(
-            r"(https?://.+)/api/management", api.api_client.configuration.host
-        ).group(1)
-        configuration = Configuration(
-            host=f"{catalog_host}/api/catalog",
-            username=api.api_client.configuration.username,
-            password=api.api_client.configuration.password,
-            access_token=api.api_client.configuration.access_token,
-        )
-        return IcebergCatalogAPI(ApiClient(configuration))
-
     def execute(self, api: PolarisDefaultApi) -> None:
-        catalog_api = self._get_catalog_api(api)
+        catalog_api_client = get_catalog_api_client(api)
+        catalog_api = IcebergCatalogAPI(catalog_api_client)
         if self.namespaces_subcommand == Subcommands.CREATE:
             req_properties = self.properties or {}
             if self.location:
