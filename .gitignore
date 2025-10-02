@@ -64,7 +64,7 @@ gradle/wrapper/gradle-wrapper-*.sha256
 .env
 
 # IntelliJ
-/.idea
+.idea/
 *.iml
 *.ipr
 *.iws
@@ -100,3 +100,9 @@ hs_err_pid*
 
 # macOS
 *.DS_Store
+
+# vscode
+.vscode/
+
+# Python Virtual Env
+.venv
