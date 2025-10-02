@@ -27,7 +27,7 @@ public interface NodeStore {
   Optional<NodeState> fetch(int nodeId);
 
   @Nonnull
-  NodeState[] fetchMany(@Nonnull Integer... nodeIds);
+  NodeState[] fetchMany(@Nonnull int... nodeIds);
 
   @Nullable
   NodeState persist(int nodeId, Optional<NodeState> expectedNodeState, @Nonnull NodeState newState);

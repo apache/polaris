@@ -23,6 +23,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.lang.Integer.bitCount;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Ints;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -35,7 +36,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.IntSupplier;
+import java.util.stream.IntStream;
 import org.apache.polaris.ids.api.IdGenerator;
 import org.apache.polaris.ids.api.IdGeneratorSpec;
 import org.apache.polaris.ids.api.ImmutableIdGeneratorSpec;
@@ -255,35 +255,10 @@ class NodeManagementImpl implements NodeManagement {
 
     var now = clock.currentInstant();
 
-    var checkedIds = new BitSet(numNodeIds); // 128 bytes for 1024 nodes - not too much
-    var rand = ThreadLocalRandom.current();
-
-    var generateNodeId =
-        (IntSupplier)
-            () -> {
-              if (checkedIds.cardinality() == numNodeIds) {
-                return -1;
-              }
-              while (true) {
-                // The implementation _could_ use BitSet.nextClearBit(), but this is intentionally
-                // _not_ done here to let two concurrently started nodes not generate the same set
-                // of "fallback" node IDs to use (after checking with a hash over the network
-                // interface).
-                var nodeId = rand.nextInt(numNodeIds);
-                if (!checkedIds.get(nodeId)) {
-                  checkedIds.set(nodeId);
-                  return nodeId;
-                }
-              }
-            };
-
-    var ids = new Integer[CHECK_BATCH_SIZE];
-
-    // First, try with a hash of the local network address...
+    // First, try with a hash of the local network address.
     // The node ID in this attempt is somewhat deterministic for the local machine.
-    // This is not really a necessity, but it can reduce the overall number of ever allocated node
-    // IDs. It is rather a cosmetic thing, so that a LIST NODES command in the Persistence-REPL
-    // doesn't flood users after a couple of restarts.
+    // This is not really necessary, but it can reduce the overall number of ever-allocated node
+    // IDs.
     try {
       var hashOverNetworkInterfaces =
           NetworkInterface.networkInterfaces()
@@ -309,7 +284,7 @@ class NodeManagementImpl implements NodeManagement {
 
       var nodeId = hashOverNetworkInterfaces & (numNodeIds - 1);
 
-      var leased = tryLeaseFromCandidates(new Integer[] {nodeId}, now);
+      var leased = tryLeaseFromCandidates(new int[] {nodeId}, now);
       if (leased != null) {
         return leased;
       }
@@ -317,31 +292,14 @@ class NodeManagementImpl implements NodeManagement {
       // ignore
     }
 
-    // Next, try with randomly picked node IDs and attempt to lease...
-    for (int i = 0; i < 3 * numNodeIds / CHECK_BATCH_SIZE; i++) {
-      Arrays.fill(ids, null);
-      for (int j = 0; j < ids.length; j++) {
-        var nodeId = generateNodeId.getAsInt();
-        if (nodeId == -1) {
-          break;
-        }
-        ids[j] = nodeId;
-      }
+    // If the lease-attempt using the hash over network-interfaced did not succeed, try with
+    // randomly picked node IDs.
 
-      var leased = tryLeaseFromCandidates(ids, now);
-      if (leased != null) {
-        return leased;
-      }
-    }
+    var nodeIdsToCheck = IntStream.range(0, numNodeIds).toArray();
+    Ints.rotate(nodeIdsToCheck, ThreadLocalRandom.current().nextInt(numNodeIds));
 
-    // Next, try again, but using sequential nodeIds starting at a random offset...
-    var offset = rand.nextInt(numNodeIds);
     for (int i = 0; i < numNodeIds; i += CHECK_BATCH_SIZE) {
-      Arrays.fill(ids, null);
-      for (int j = 0; j < ids.length; j++) {
-        var nodeId = (offset + i + j) % numNodeIds;
-        ids[j] = nodeId;
-      }
+      var ids = Arrays.copyOfRange(nodeIdsToCheck, i, i + CHECK_BATCH_SIZE);
       var leased = tryLeaseFromCandidates(ids, now);
       if (leased != null) {
         return leased;
@@ -376,19 +334,16 @@ class NodeManagementImpl implements NodeManagement {
     }
   }
 
-  private LeaseParams tryLeaseFromCandidates(Integer[] nodeIds, Instant now) {
+  private LeaseParams tryLeaseFromCandidates(int[] nodeIds, Instant now) {
     var nodesFetched = nodeStore.fetchMany(nodeIds);
     for (int i = 0; i < nodeIds.length; i++) {
       // NodeStore.fetchMany MUST return as many elements as the input array.
       var nodeId = nodeIds[i];
-      if (nodeId != null) {
-        var id = (int) nodeId;
-        var node = nodesFetched[i];
-        if (canLease(node, now)) {
-          var leased = tryLease(id, node);
-          if (leased != null) {
-            return leased;
-          }
+      var node = nodesFetched[i];
+      if (canLease(node, now)) {
+        var leased = tryLease(nodeId, node);
+        if (leased != null) {
+          return leased;
         }
       }
     }

@@ -154,6 +154,7 @@ public class TestNodeManagementImpl {
                     .build())
             .build();
     try (var mgmt = new NodeManagementImpl(config, clock, new MockNodeStoreFactory(), scheduler)) {
+      soft.assertThat(mgmt.maxNumberOfNodes()).isEqualTo(config.numNodes());
       var lease = mgmt.lease();
       soft.assertThat(lease).isNotNull();
       soft.assertThat(lease.nodeIdIfValid()).isNotEqualTo(-1);

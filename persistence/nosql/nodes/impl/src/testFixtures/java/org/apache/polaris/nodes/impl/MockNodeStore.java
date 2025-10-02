@@ -33,7 +33,7 @@ public class MockNodeStore implements NodeStore {
   @Override
   public NodeState persist(
       int nodeId, Optional<NodeState> expectedNodeState, @Nonnull NodeState newState) {
-    if (expectedNodeState.isPresent()) {
+    if (nodeId >= 0 && expectedNodeState.isPresent()) {
       var result =
           nodeStates.computeIfPresent(
               nodeId,
@@ -56,11 +56,11 @@ public class MockNodeStore implements NodeStore {
 
   @Nonnull
   @Override
-  public NodeState[] fetchMany(@Nonnull Integer... nodeIds) {
+  public NodeState[] fetchMany(@Nonnull int... nodeIds) {
     var r = new NodeState[nodeIds.length];
     for (int i = 0; i < nodeIds.length; i++) {
       var id = nodeIds[i];
-      if (id != null) {
+      if (id >= 0) {
         r[i] = nodeStates.get(id);
       }
     }
