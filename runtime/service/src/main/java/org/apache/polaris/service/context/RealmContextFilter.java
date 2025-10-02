@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.context;
 
-import io.smallrye.common.vertx.ContextLocals;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -27,10 +26,14 @@ import jakarta.ws.rs.core.Response;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.FilterPriorities;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RealmContextFilter {
 
   public static final String REALM_CONTEXT_KEY = "realmContext";
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RealmContextFilter.class);
 
   @Inject RealmContextResolver realmContextResolver;
 
@@ -46,19 +49,18 @@ public class RealmContextFilter {
                     rc.getHeaders()::getFirst))
         .onItem()
         .invoke(realmContext -> rc.setProperty(REALM_CONTEXT_KEY, realmContext))
-        .invoke(realmContext -> ContextLocals.put(REALM_CONTEXT_KEY, realmContext))
         .onItemOrFailure()
         .transform((realmContext, error) -> error == null ? null : errorResponse(error));
   }
 
   private static Response errorResponse(Throwable error) {
+    LOGGER.error("Error resolving realm context", error);
     return Response.status(Response.Status.NOT_FOUND)
         .type(MediaType.APPLICATION_JSON_TYPE)
         .entity(
             ErrorResponse.builder()
                 .responseCode(Response.Status.NOT_FOUND.getStatusCode())
-                .withMessage(
-                    error.getMessage() != null ? error.getMessage() : "Missing or invalid realm")
+                .withMessage("Missing or invalid realm")
                 .withType("MissingOrInvalidRealm")
                 .build())
         .build();
