@@ -200,7 +200,8 @@ class Arguments:
     PARAMETERS = "parameters"
     DETACH_ALL = "detach_all"
     APPLICABLE = "applicable"
-    ATTACH_TARGET = "attach_target"
+    ATTACHMENT_TYPE = "attachment_type"
+    ATTACHMENT_PATH = "attachment_path"
 
 
 class Hints:
@@ -392,7 +393,8 @@ class Hints:
         PARAMETERS = "Optional key-value pairs for the attachment/detachment, e.g., key=value. Can be specified multiple times."
         DETACH_ALL = "When set to true, the policy will be deleted along with all its attached mappings."
         APPLICABLE = "When set, lists policies applicable to the target entity (considering inheritance) instead of policies defined directly in the target."
-        ATTACH_TARGET = "The target to attach the policy to, e.g. 'namespace:ns1' or 'table:ns1.tb1'"
+        ATTACHMENT_TYPE = "The type of entity to attach the policy to, e.g., 'catalog', 'namespace', or table-like."
+        ATTACHMENT_PATH = "The path of the entity to attach the policy to, e.g., 'ns1.tb1'. Not required for catalog-level attachment."
 
 
 UNIT_SEPARATOR = chr(0x1F)

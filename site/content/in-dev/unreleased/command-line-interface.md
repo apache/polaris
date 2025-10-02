@@ -1246,7 +1246,8 @@ options:
     Named arguments:
       --catalog  The name of an existing catalog
       --namespace  A period-delimited namespace
-      --attach-target  The target to attach the policy to, e.g. 'namespace:ns1' or 'table:ns1.tb1'
+      --attachment-type  The type of entity to attach the policy to, e.g., 'catalog', 'namespace', or table-like.
+      --attachment-path  The path of the entity to attach the policy to, e.g., 'ns1.tb1'. Not required for catalog-level attachment.
       --parameters  Optional key-value pairs for the attachment/detachment, e.g., key=value. Can be specified multiple times.
     Positional arguments:
       policy
@@ -1255,9 +1256,9 @@ options:
 ##### Examples
 
 ```
-polaris policies attach --catalog some_catalog --namespace some.schema --attach-target "namespace:some.schema " some_policy
+polaris policies attach --catalog some_catalog --namespace some.schema --attachment-type namespace --attachment-path some.schema some_policy
 
-polaris policies attach --catalog some_catalog --namespace some.schema  --attach-target "table-like:some.schema.t" some_table_policy
+polaris policies attach --catalog some_catalog --namespace some.schema --attachment-type table-like --attachment-path some.schema.t some_table_policy
 ```
 
 #### create
@@ -1321,7 +1322,8 @@ options:
     Named arguments:
       --catalog  The name of an existing catalog
       --namespace  A period-delimited namespace
-      --attach-target  The target to attach the policy to, e.g. 'namespace:ns1' or 'table:ns1.tb1'
+      --attachment-type  The type of entity to attach the policy to, e.g., 'catalog', 'namespace', or table-like.
+      --attachment-path  The path of the entity to attach the policy to, e.g., 'ns1.tb1'. Not required for catalog-level attachment.
       --parameters  Optional key-value pairs for the attachment/detachment, e.g., key=value. Can be specified multiple times.
     Positional arguments:
       policy
@@ -1330,9 +1332,9 @@ options:
 ##### Examples
 
 ```
-polaris policies detach --catalog some_catalog --namespace some.schema --attach-target "namespace:some.schema" some_policy
+polaris policies detach --catalog some_catalog --namespace some.schema --attachment-type namespace --attachment-path some.schema some_policy
 
-polaris policies detach --catalog some_catalog --namespace some.schema --attach-target "catalog:some_catalog" some_policy
+polaris policies detach --catalog some_catalog --namespace some.schema --attachment-type catalog --attachment-path some_catalog some_policy
 ```
 
 #### get

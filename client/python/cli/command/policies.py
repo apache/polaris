@@ -51,7 +51,8 @@ class PoliciesCommand(Command):
     parameters: Optional[Dict[str, str]]
     detach_all: Optional[bool]
     applicable: Optional[bool]
-    attach_target: str
+    attachment_type: Optional[str]
+    attachment_path: Optional[str]
 
     def validate(self):
         if not self.catalog_name:
@@ -60,8 +61,10 @@ class PoliciesCommand(Command):
             if not self.policy_file:
                 raise Exception(f"Missing required argument: {Argument.to_flag_name(Arguments.POLICY_FILE)}")
         if self.policies_subcommand in [Subcommands.ATTACH, Subcommands.DETACH]:
-            if not self.attach_target:
-                raise Exception(f"Missing required argument: {Argument.to_flag_name(Arguments.ATTACH_TARGET)}")
+            if not self.attachment_type:
+                raise Exception(f"Missing required argument: {Argument.to_flag_name(Arguments.ATTACHMENT_TYPE)}")
+            if self.attachment_type != 'catalog' and not self.attachment_path:
+                raise Exception(f"'{Argument.to_flag_name(Arguments.ATTACHMENT_PATH)}' is required when attachment type is not 'catalog'")
         if self.policies_subcommand == Subcommands.LIST and self.applicable and self.target_name:
             if not self.namespace:
                 raise Exception(
@@ -166,11 +169,7 @@ class PoliciesCommand(Command):
                 )
             )
         elif self.policies_subcommand == Subcommands.ATTACH:
-            target_parts = self.attach_target.split(":")
-            if len(target_parts) != 2:
-                raise Exception("Invalid attach target format. Expected 'type:path'")
-            attachment_type, target_path = target_parts
-            attachment_path = [] if attachment_type == "catalog" else target_path.split(".")
+            attachment_path_list = [] if self.attachment_type == "catalog" else self.attachment_path.split('.')
 
             policy_api.attach_policy(
                 prefix=self.catalog_name,
@@ -178,18 +177,14 @@ class PoliciesCommand(Command):
                 policy_name=self.policy_name,
                 attach_policy_request=AttachPolicyRequest(
                     target=PolicyAttachmentTarget(
-                        type=attachment_type,
-                        path=attachment_path
+                        type=self.attachment_type,
+                        path=attachment_path_list
                     ),
                     parameters=self.parameters if isinstance(self.parameters, dict) else None
                 )
             )
         elif self.policies_subcommand == Subcommands.DETACH:
-            target_parts = self.attach_target.split(":")
-            if len(target_parts) != 2:
-                raise Exception("Invalid attach target format. Expected 'type:path'")
-            attachment_type, target_path = target_parts
-            attachment_path = [] if attachment_type == "catalog" else target_path.split(".")
+            attachment_path_list = [] if self.attachment_type == "catalog" else self.attachment_path.split('.')
 
             policy_api.detach_policy(
                 prefix=self.catalog_name,
@@ -197,8 +192,8 @@ class PoliciesCommand(Command):
                 policy_name=self.policy_name,
                 detach_policy_request=DetachPolicyRequest(
                     target=PolicyAttachmentTarget(
-                        type=attachment_type,
-                        path=attachment_path
+                        type=self.attachment_type,
+                        path=attachment_path_list
                     ),
                     parameters=self.parameters if isinstance(self.parameters, dict) else None
                 )

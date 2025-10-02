@@ -186,7 +186,8 @@ class Command(ABC):
                 parameters={} if parameters is None else parameters,
                 detach_all=options_get(Arguments.DETACH_ALL),
                 applicable=options_get(Arguments.APPLICABLE),
-                attach_target=options_get(Arguments.ATTACH_TARGET),
+                attachment_type=options_get(Arguments.ATTACHMENT_TYPE),
+                attachment_path=options_get(Arguments.ATTACHMENT_PATH),
             )
 
         if command is not None:

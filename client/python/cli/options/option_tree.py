@@ -311,13 +311,15 @@ class OptionTree:
                 Option(Subcommands.ATTACH, args=[
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
                     Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
-                    Argument(Arguments.ATTACH_TARGET, str, Hints.Policies.ATTACH_TARGET),
+                    Argument(Arguments.ATTACHMENT_TYPE, str, Hints.Policies.ATTACHMENT_TYPE),
+                    Argument(Arguments.ATTACHMENT_PATH, str, Hints.Policies.ATTACHMENT_PATH),
                     Argument(Arguments.PARAMETERS, str, Hints.Policies.PARAMETERS, allow_repeats=True),
                 ], input_name=Arguments.POLICY),
                 Option(Subcommands.DETACH, args=[
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
                     Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
-                    Argument(Arguments.ATTACH_TARGET, str, Hints.Policies.ATTACH_TARGET),
+                    Argument(Arguments.ATTACHMENT_TYPE, str, Hints.Policies.ATTACHMENT_TYPE),
+                    Argument(Arguments.ATTACHMENT_PATH, str, Hints.Policies.ATTACHMENT_PATH),
                     Argument(Arguments.PARAMETERS, str, Hints.Policies.PARAMETERS, allow_repeats=True),
                 ], input_name=Arguments.POLICY),
             ]),
