@@ -75,13 +75,13 @@ jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api",
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 jandex = { module = "io.smallrye.jandex:jandex", version ="3.5.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
-junit-bom = { module = "org.junit:junit-bom", version = "5.13.4" }
+junit-bom = { module = "org.junit:junit-bom", version = "5.14.0" }
 localstack = { module = "org.testcontainers:localstack", version = "1.21.3" }
-keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.6" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.7" }
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.19" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.4" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.20.0" }
@@ -99,12 +99,15 @@ s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", ve
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.13.9" }
 smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.14.0" }
+smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.0" }
 spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark35" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.21.3" }
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "3.8.0" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
+weld-se-core = { module = "org.jboss.weld.se:weld-se-core", version = "6.0.3.Final" }
+weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.2.Final" }
 
 [plugins]
 jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "0.8.15" }

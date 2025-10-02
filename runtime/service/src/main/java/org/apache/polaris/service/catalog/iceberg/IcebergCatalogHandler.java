@@ -553,7 +553,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     return buildLoadTableResponseWithDelegationCredentials(
             ident,
             metadata,
-            EnumSet.of(VENDED_CREDENTIALS),
+            delegationModes,
             Set.of(PolarisStorageActions.ALL),
             refreshCredentialsEndpoint)
         .build();

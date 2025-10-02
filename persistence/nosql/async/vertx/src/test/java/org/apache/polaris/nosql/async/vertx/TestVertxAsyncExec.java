@@ -16,16 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.cache;
+package org.apache.polaris.nosql.async.vertx;
 
-/** Cache mode, the default is ENABLE. */
-public enum EntityCacheMode {
-  // bypass the cache, always load
-  BYPASS,
-  // enable the cache, this is the default
-  ENABLE,
-  // enable but verify that the cache content is consistent. Used in QA mode to detect when
-  // versioning information is
-  // not properly maintained
-  ENABLE_BUT_VERIFY
+import org.apache.polaris.nosql.async.AsyncExecTestBase;
+
+public class TestVertxAsyncExec extends AsyncExecTestBase {
+  @Override
+  protected void threadAssertion() {
+    var t = Thread.currentThread();
+    soft.assertThat(t.getName()).startsWith(VertxAsyncExec.EXECUTOR_THREAD_NAME_PREFIX);
+  }
 }

@@ -155,6 +155,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
             .setPathStyleAccess(awsConfig.getPathStyleAccess())
+            .setStsUnavailable(awsConfig.getStsUnavailable())
             .setEndpointInternal(awsConfig.getEndpointInternal())
             .build();
       }
@@ -299,6 +300,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .endpoint(awsConfigModel.getEndpoint())
                     .stsEndpoint(awsConfigModel.getStsEndpoint())
                     .pathStyleAccess(awsConfigModel.getPathStyleAccess())
+                    .stsUnavailable(awsConfigModel.getStsUnavailable())
                     .endpointInternal(awsConfigModel.getEndpointInternal())
                     .build();
             config = awsConfig;

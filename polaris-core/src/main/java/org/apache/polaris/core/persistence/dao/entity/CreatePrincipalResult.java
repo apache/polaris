@@ -24,6 +24,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.entity.PrincipalEntity;
 
 /** the return the result of a create-principal method */
 public class CreatePrincipalResult extends BaseResult {
@@ -69,8 +70,8 @@ public class CreatePrincipalResult extends BaseResult {
     this.principalSecrets = principalSecrets;
   }
 
-  public PolarisBaseEntity getPrincipal() {
-    return principal;
+  public PrincipalEntity getPrincipal() {
+    return PrincipalEntity.of(principal);
   }
 
   public PolarisPrincipalSecrets getPrincipalSecrets() {

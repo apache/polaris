@@ -31,11 +31,16 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
@@ -66,8 +71,16 @@ public class ManagementServiceTest {
   public void setup() {
     services =
         TestServices.builder()
-            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
-            .config(Map.of("ALLOW_SETTING_S3_ENDPOINTS", Boolean.FALSE))
+            .config(
+                Map.of(
+                    "SUPPORTED_CATALOG_STORAGE_TYPES",
+                    List.of("S3", "GCS", "AZURE"),
+                    "ALLOW_SETTING_S3_ENDPOINTS",
+                    Boolean.FALSE,
+                    "ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS",
+                    Boolean.FALSE,
+                    "ENABLE_CATALOG_FEDERATION",
+                    Boolean.TRUE))
             .build();
   }
 
@@ -140,6 +153,12 @@ public class ManagementServiceTest {
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+
+    storageConfig.setEndpointInternal(null);
+    storageConfig.setStsUnavailable(false);
+    assertThatThrownBy(createCatalog::get)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly disabling STS is not allowed.");
   }
 
   @Test
@@ -224,6 +243,129 @@ public class ManagementServiceTest {
                         catalogName, update2, services.realmContext(), services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Explicitly setting S3 endpoints is not allowed.");
+  }
+
+  @Test
+  public void testCreateCatalogWithDisallowedConfigs() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    ConnectionConfigInfo connectionConfigInfo =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog")
+            .setRemoteCatalogName("my-remote-catalog")
+            .setAuthenticationParameters(
+                OAuthClientCredentialsParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
+                    .setClientId("my-client-id")
+                    .setClientSecret("my-client-secret")
+                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+    String catalogName = "mycatalog";
+    CatalogProperties catalogProperties =
+        CatalogProperties.builder("s3://bucket/path/to/data")
+            .addProperty("polaris.config.enable-sub-catalog-rbac-for-federated-catalogs", "true")
+            .build();
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName(catalogName)
+            .setProperties(catalogProperties)
+            .setStorageConfigInfo(awsConfigModel)
+            .setConnectionConfigInfo(connectionConfigInfo)
+            .build();
+    Supplier<Response> createCatalog =
+        () ->
+            services
+                .catalogsApi()
+                .createCatalog(
+                    new CreateCatalogRequest(catalog),
+                    services.realmContext(),
+                    services.securityContext());
+    assertThatThrownBy(createCatalog::get)
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
+  }
+
+  @Test
+  public void testUpdateCatalogWithDisallowedConfigs() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    ConnectionConfigInfo connectionConfigInfo =
+        IcebergRestConnectionConfigInfo.builder(
+                ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog")
+            .setRemoteCatalogName("my-remote-catalog")
+            .setAuthenticationParameters(
+                OAuthClientCredentialsParameters.builder(
+                        AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
+                    .setClientId("my-client-id")
+                    .setClientSecret("my-client-secret")
+                    .setScopes(List.of("PRINCIPAL_ROLE:ALL"))
+                    .build())
+            .build();
+    String catalogName = "mycatalog";
+    CatalogProperties catalogProperties =
+        CatalogProperties.builder("s3://bucket/path/to/data").build();
+    Catalog catalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName(catalogName)
+            .setProperties(catalogProperties)
+            .setStorageConfigInfo(awsConfigModel)
+            .setConnectionConfigInfo(connectionConfigInfo)
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = (Catalog) response.getEntity();
+
+      assertThat(fetchedCatalog.getName()).isEqualTo(catalogName);
+      assertThat(fetchedCatalog.getProperties().toMap())
+          .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data"));
+      assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
+    }
+
+    UpdateCatalogRequest update =
+        UpdateCatalogRequest.builder()
+            .setProperties(
+                Map.of("polaris.config.enable-sub-catalog-rbac-for-federated-catalogs", "true"))
+            .build();
+    assertThatThrownBy(
+            () ->
+                services
+                    .catalogsApi()
+                    .updateCatalog(
+                        catalogName, update, services.realmContext(), services.securityContext()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage(
+            "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
   }
 
   private PolarisAdminService setupPolarisAdminService(

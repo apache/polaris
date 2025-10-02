@@ -133,8 +133,12 @@ options:
       --type  The type of catalog to create in [INTERNAL, EXTERNAL]. INTERNAL by default.
       --storage-type  (Required) The type of storage to use for the catalog
       --default-base-location  (Required) Default base location of the catalog
+      --endpoint  (Only for S3) The S3 endpoint to use when connecting to S3
+      --endpoint-internal  (Only for S3) The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use
+      --sts-endpoint  (Only for S3) The STS endpoint to use when connecting to STS
+      --path-style-access  (Only for S3) Whether to use path-style-access for S3
       --allowed-location  An allowed location for files tracked by the catalog. Multiple locations can be provided by specifying this option more than once.
-      --role-arn  (Required for S3) A role ARN to use when connecting to S3
+      --role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
       --region  (Only for S3) The region to use when connecting to S3
       --external-id  (Only for S3) The external ID to use when connecting to S3
       --tenant-id  (Required for Azure) A tenant ID to use when connecting to Azure Storage
@@ -145,7 +149,7 @@ options:
       --catalog-connection-type  The type of external catalog in [ICEBERG, HADOOP].
       --iceberg-remote-catalog-name  The remote catalog name when federating to an Iceberg REST catalog
       --hadoop-warehouse  The warehouse to use when federating to a HADOOP catalog
-      --catalog-authentication-type  The type of authentication in [OAUTH, BEARER, SIGV4]
+      --catalog-authentication-type  The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]
       --catalog-service-identity-type  The type of service identity in [AWS_IAM]
       --catalog-service-identity-iam-arn  When using the AWS_IAM service identity type, this is the ARN of the IAM user or IAM role Polaris uses to assume roles and then access external resources.
       --catalog-uri  The URI of the external catalog
