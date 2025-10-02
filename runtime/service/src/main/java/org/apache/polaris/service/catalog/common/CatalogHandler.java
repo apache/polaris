@@ -102,6 +102,10 @@ public abstract class CatalogHandler {
     return userSecretsManager;
   }
 
+  protected PolarisResolutionManifest newResolutionManifest() {
+    return resolutionManifestFactory.createResolutionManifest(securityContext, catalogName);
+  }
+
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
   protected abstract void initializeCatalog();
 
@@ -116,9 +120,7 @@ public abstract class CatalogHandler {
       List<Namespace> extraPassthroughNamespaces,
       List<TableIdentifier> extraPassthroughTableLikes,
       List<PolicyIdentifier> extraPassThroughPolicies) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -170,9 +172,7 @@ public abstract class CatalogHandler {
 
   protected void authorizeCreateNamespaceUnderNamespaceOperationOrThrow(
       PolarisAuthorizableOperation op, Namespace namespace) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
 
     Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
     resolutionManifest.addPath(
@@ -206,9 +206,7 @@ public abstract class CatalogHandler {
       PolarisAuthorizableOperation op, TableIdentifier identifier) {
     Namespace namespace = identifier.namespace();
 
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -242,9 +240,7 @@ public abstract class CatalogHandler {
 
   protected void authorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
 
     // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
     resolutionManifest.addPassthroughPath(
@@ -273,9 +269,7 @@ public abstract class CatalogHandler {
       PolarisAuthorizableOperation op,
       final PolarisEntitySubType subType,
       List<TableIdentifier> ids) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     ids.forEach(
         identifier ->
             resolutionManifest.addPassthroughPath(
@@ -325,9 +319,7 @@ public abstract class CatalogHandler {
       PolarisEntitySubType subType,
       TableIdentifier src,
       TableIdentifier dst) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     // Add src, dstParent, and dst(optional)
     resolutionManifest.addPath(
         new ResolverPath(
