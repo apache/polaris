@@ -96,7 +96,6 @@ dependencies {
 }
 
 tasks.named<Test>("intTest").configure {
-  maxParallelForks = 1
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
