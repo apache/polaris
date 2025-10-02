@@ -29,7 +29,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
@@ -78,9 +77,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       PolarisPrincipal polarisPrincipal,
       SecurityContext securityContext,
       final PolarisResolutionManifest resolvedManifest) {
-    PolarisBaseEntity baseCatalogEntity =
-        resolvedManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
-    String catalogName = baseCatalogEntity.getName();
+    CatalogEntity catalog = resolvedManifest.getResolvedCatalogEntity();
+    String catalogName = catalog.getName();
 
     String realm = context.getRealmContext().getRealmIdentifier();
     String catalogKey = realm + "/" + catalogName;
@@ -99,7 +97,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             fileIOFactory,
             polarisEventListener);
 
-    CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getBaseLocation();
     LOGGER.debug(
