@@ -22,7 +22,8 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -75,7 +76,8 @@ public class FileIOUtil {
    * </ul>
    */
   public static AccessConfig refreshAccessConfig(
-      CallContext callContext,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
       StorageCredentialCache storageCredentialCache,
       PolarisCredentialVendor credentialVendor,
       TableIdentifier tableIdentifier,
@@ -85,9 +87,7 @@ public class FileIOUtil {
       Optional<String> refreshCredentialsEndpoint) {
 
     boolean skipCredentialSubscopingIndirection =
-        callContext
-            .getRealmConfig()
-            .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+        realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
     if (skipCredentialSubscopingIndirection) {
       LOGGER
           .atDebug()
@@ -108,7 +108,8 @@ public class FileIOUtil {
     AccessConfig accessConfig =
         storageCredentialCache.getOrGenerateSubScopeCreds(
             credentialVendor,
-            callContext.getPolarisCallContext(),
+            realmContext,
+            realmConfig,
             entity,
             allowList,
             tableLocations,

@@ -38,9 +38,10 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -66,14 +67,17 @@ public abstract class CatalogHandler {
   protected final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   protected final PolarisDiagnostics diagnostics;
-  protected final CallContext callContext;
+  protected final RealmContext realmContext;
   protected final RealmConfig realmConfig;
+  protected final PolarisMetaStoreManager metaStoreManager;
   protected final PolarisPrincipal polarisPrincipal;
   protected final SecurityContext securityContext;
 
   public CatalogHandler(
       PolarisDiagnostics diagnostics,
-      CallContext callContext,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
+      PolarisMetaStoreManager metaStoreManager,
       ResolutionManifestFactory resolutionManifestFactory,
       SecurityContext securityContext,
       String catalogName,
@@ -81,8 +85,9 @@ public abstract class CatalogHandler {
       UserSecretsManager userSecretsManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.diagnostics = diagnostics;
-    this.callContext = callContext;
-    this.realmConfig = callContext.getRealmConfig();
+    this.realmContext = realmContext;
+    this.realmConfig = realmConfig;
+    this.metaStoreManager = metaStoreManager;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.catalogName = catalogName;
     diagnostics.checkNotNull(securityContext, "null_security_context");
