@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.identity.registry;
+package org.apache.polaris.service.identity.provider;
 
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -42,8 +42,8 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 
 @QuarkusTest
-@TestProfile(DefaultServiceIdentityRegistryTest.Profile.class)
-public class DefaultServiceIdentityRegistryTest {
+@TestProfile(DefaultServiceIdentityProviderTest.Profile.class)
+public class DefaultServiceIdentityProviderTest {
   private static final String DEFAULT_REALM_KEY = ServiceIdentityConfiguration.DEFAULT_REALM_KEY;
   private static final String MY_REALM_KEY = "my-realm";
 
@@ -54,7 +54,7 @@ public class DefaultServiceIdentityRegistryTest {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "quarkus.identity-registry.type",
+          "quarkus.identity-provider.type",
           "default",
           "polaris.service-identity.aws-iam.iam-arn",
           "arn:aws:iam::123456789012:user/polaris-default-iam-user",
@@ -123,10 +123,10 @@ public class DefaultServiceIdentityRegistryTest {
   void testRealmServiceIdentityConfigToResolvedServiceIdentity() {
     // Check the default realm
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
-    DefaultServiceIdentityRegistry defaultRegistry =
-        new DefaultServiceIdentityRegistry(realmContext, serviceIdentityConfiguration);
+    DefaultServiceIdentityProvider defaultProvider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
     EnumMap<ServiceIdentityType, ResolvedServiceIdentity> resolvedIdentities =
-        defaultRegistry.getResolvedServiceIdentities();
+        defaultProvider.getResolvedServiceIdentities();
 
     Assertions.assertThat(resolvedIdentities)
         .containsKey(ServiceIdentityType.AWS_IAM)
@@ -139,7 +139,7 @@ public class DefaultServiceIdentityRegistryTest {
     Assertions.assertThat(resolvedAwsIamServiceIdentity.getIdentityInfoReference())
         .isEqualTo(
             new ServiceSecretReference(
-                "urn:polaris-secret:default-identity-registry:system:default:AWS_IAM", Map.of()));
+                "urn:polaris-secret:default-identity-provider:system:default:AWS_IAM", Map.of()));
     Assertions.assertThat(
             resolvedAwsIamServiceIdentity.getAwsCredentialsProvider()
                 instanceof DefaultCredentialsProvider)
@@ -147,9 +147,9 @@ public class DefaultServiceIdentityRegistryTest {
 
     // Check the my-realm
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(MY_REALM_KEY);
-    DefaultServiceIdentityRegistry myRealmRegistry =
-        new DefaultServiceIdentityRegistry(realmContext, serviceIdentityConfiguration);
-    resolvedIdentities = myRealmRegistry.getResolvedServiceIdentities();
+    DefaultServiceIdentityProvider myRealmProvider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+    resolvedIdentities = myRealmProvider.getResolvedServiceIdentities();
 
     Assertions.assertThat(resolvedIdentities)
         .containsKey(ServiceIdentityType.AWS_IAM)
@@ -162,7 +162,7 @@ public class DefaultServiceIdentityRegistryTest {
     Assertions.assertThat(resolvedAwsIamServiceIdentity.getIdentityInfoReference())
         .isEqualTo(
             new ServiceSecretReference(
-                "urn:polaris-secret:default-identity-registry:my-realm:AWS_IAM", Map.of()));
+                "urn:polaris-secret:default-identity-provider:my-realm:AWS_IAM", Map.of()));
     Assertions.assertThat(
             resolvedAwsIamServiceIdentity.getAwsCredentialsProvider()
                 instanceof StaticCredentialsProvider)
@@ -180,9 +180,9 @@ public class DefaultServiceIdentityRegistryTest {
 
     // Check the other realm which does not exist in the configuration, should fallback to default
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn("other-realm");
-    DefaultServiceIdentityRegistry otherRegistry =
-        new DefaultServiceIdentityRegistry(realmContext, serviceIdentityConfiguration);
-    resolvedIdentities = otherRegistry.getResolvedServiceIdentities();
+    DefaultServiceIdentityProvider otherProvider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+    resolvedIdentities = otherProvider.getResolvedServiceIdentities();
     Assertions.assertThat(resolvedIdentities)
         .containsKey(ServiceIdentityType.AWS_IAM)
         .size()
@@ -194,7 +194,7 @@ public class DefaultServiceIdentityRegistryTest {
     Assertions.assertThat(resolvedAwsIamServiceIdentity.getIdentityInfoReference())
         .isEqualTo(
             new ServiceSecretReference(
-                "urn:polaris-secret:default-identity-registry:system:default:AWS_IAM", Map.of()));
+                "urn:polaris-secret:default-identity-provider:system:default:AWS_IAM", Map.of()));
     Assertions.assertThat(
             resolvedAwsIamServiceIdentity.getAwsCredentialsProvider()
                 instanceof DefaultCredentialsProvider)

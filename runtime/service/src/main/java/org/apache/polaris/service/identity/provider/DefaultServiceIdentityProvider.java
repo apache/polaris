@@ -17,24 +17,28 @@
  * under the License.
  */
 
-package org.apache.polaris.service.identity.registry;
+package org.apache.polaris.service.identity.provider;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
 
 /**
- * Default implementation of {@link ServiceIdentityRegistry} that resolves service identities from
+ * Default implementation of {@link ServiceIdentityProvider} that resolves service identities from
  * statically configured values (typically defined via Quarkus server configuration).
  *
  * <p>This implementation supports both multi-tenant (e.g., SaaS) and self-managed (single-tenant)
@@ -48,11 +52,11 @@ import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
  *       defined and used system-wide.
  * </ul>
  */
-public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
+public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
   public static final String DEFAULT_REALM_KEY = ServiceIdentityConfiguration.DEFAULT_REALM_KEY;
   public static final String DEFAULT_REALM_NSS = "system:default";
   private static final String IDENTITY_INFO_REFERENCE_URN_FORMAT =
-      "urn:polaris-secret:default-identity-registry:%s:%s";
+      "urn:polaris-secret:default-identity-provider:%s:%s";
 
   /** Map of service identity types to their resolved identities. */
   private final EnumMap<ServiceIdentityType, ResolvedServiceIdentity> resolvedServiceIdentities;
@@ -60,11 +64,11 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
   /** Map of identity info references (URNs) to their resolved service identities. */
   private final Map<String, ResolvedServiceIdentity> referenceToResolvedServiceIdentity;
 
-  public DefaultServiceIdentityRegistry() {
+  public DefaultServiceIdentityProvider() {
     this(new EnumMap<>(ServiceIdentityType.class));
   }
 
-  public DefaultServiceIdentityRegistry(
+  public DefaultServiceIdentityProvider(
       EnumMap<ServiceIdentityType, ResolvedServiceIdentity> serviceIdentities) {
     this.resolvedServiceIdentities = serviceIdentities;
     this.referenceToResolvedServiceIdentity =
@@ -76,7 +80,7 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
   }
 
   @Inject
-  public DefaultServiceIdentityRegistry(
+  public DefaultServiceIdentityProvider(
       RealmContext realmContext, ServiceIdentityConfiguration serviceIdentityConfiguration) {
     this.resolvedServiceIdentities =
         serviceIdentityConfiguration.resolveServiceIdentities(realmContext).stream()
@@ -97,8 +101,26 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
   }
 
   @Override
-  public Optional<ServiceIdentityInfoDpo> discoverServiceIdentity(
-      ServiceIdentityType serviceIdentityType) {
+  public Optional<ServiceIdentityInfoDpo> allocateServiceIdentity(
+      @Nonnull ConnectionConfigInfo connectionConfig) {
+    // Determine the service identity type based on the authentication parameters
+    if (connectionConfig.getAuthenticationParameters() == null) {
+      return Optional.empty();
+    }
+
+    AuthenticationParameters.AuthenticationTypeEnum authenticationType =
+        connectionConfig.getAuthenticationParameters().getAuthenticationType();
+
+    ServiceIdentityType serviceIdentityType = null;
+    if (authenticationType == AuthenticationParameters.AuthenticationTypeEnum.SIGV4) {
+      serviceIdentityType = ServiceIdentityType.AWS_IAM;
+    }
+    // Add more authentication types and their corresponding service identity types as needed
+
+    if (serviceIdentityType == null) {
+      return Optional.empty();
+    }
+
     ResolvedServiceIdentity resolvedServiceIdentity =
         resolvedServiceIdentities.get(serviceIdentityType);
     if (resolvedServiceIdentity == null) {
@@ -108,8 +130,20 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
   }
 
   @Override
+  public Optional<ServiceIdentityInfo> getServiceIdentityInfo(
+      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
+    ResolvedServiceIdentity resolvedServiceIdentity =
+        referenceToResolvedServiceIdentity.get(
+            serviceIdentityInfo.getIdentityInfoReference().getUrn());
+    if (resolvedServiceIdentity == null) {
+      return Optional.empty();
+    }
+    return Optional.of(resolvedServiceIdentity.asServiceIdentityInfoModel());
+  }
+
+  @Override
   public Optional<ResolvedServiceIdentity> resolveServiceIdentity(
-      ServiceIdentityInfoDpo serviceIdentityInfo) {
+      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
     ResolvedServiceIdentity resolvedServiceIdentity =
         referenceToResolvedServiceIdentity.get(
             serviceIdentityInfo.getIdentityInfoReference().getUrn());
@@ -125,7 +159,7 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
    * Builds a {@link ServiceSecretReference} for the given realm and service identity type.
    *
    * <p>The URN format is:
-   * urn:polaris-service-secret:default-identity-registry:&lt;realm&gt;:&lt;type&gt;
+   * urn:polaris-service-secret:default-identity-provider:&lt;realm&gt;:&lt;type&gt;
    *
    * <p>If the realm is the default realm key, it is replaced with "system:default" in the URN.
    *
@@ -135,7 +169,7 @@ public class DefaultServiceIdentityRegistry implements ServiceIdentityRegistry {
    */
   public static ServiceSecretReference buildIdentityInfoReference(
       String realm, ServiceIdentityType type) {
-    // urn:polaris-service-secret:default-identity-registry:<realm>:<type>
+    // urn:polaris-service-secret:default-identity-provider:<realm>:<type>
     return new ServiceSecretReference(
         IDENTITY_INFO_REFERENCE_URN_FORMAT.formatted(
             realm.equals(DEFAULT_REALM_KEY) ? DEFAULT_REALM_NSS : realm, type.name()),

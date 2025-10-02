@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
-import org.apache.polaris.service.identity.registry.DefaultServiceIdentityRegistry;
+import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 
 /**
  * Represents the service identity configuration for one or more realms.
@@ -86,7 +86,7 @@ public interface ServiceIdentityConfiguration {
         .map(
             resolvableServiceIdentityConfiguration ->
                 resolvableServiceIdentityConfiguration.resolve(
-                    DefaultServiceIdentityRegistry.buildIdentityInfoReference(
+                    DefaultServiceIdentityProvider.buildIdentityInfoReference(
                         entry.realm(), resolvableServiceIdentityConfiguration.getType())))
         .flatMap(Optional::stream)
         .toList();

@@ -52,7 +52,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -99,7 +99,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
-  @Inject ServiceIdentityRegistry serviceIdentityRegistry;
+  @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -175,7 +175,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
-            serviceIdentityRegistry,
+            serviceIdentityProvider,
             securityContext,
             authorizer,
             reservedProperties);
@@ -205,7 +205,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
                     .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
-                    .asCatalog(serviceIdentityRegistry)));
+                    .asCatalog(serviceIdentityProvider)));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

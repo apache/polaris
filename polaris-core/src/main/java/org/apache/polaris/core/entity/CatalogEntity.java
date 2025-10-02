@@ -44,7 +44,7 @@ import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -113,7 +113,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return this.asCatalog(null);
   }
 
-  public Catalog asCatalog(ServiceIdentityRegistry serviceIdentityRegistry) {
+  public Catalog asCatalog(ServiceIdentityProvider serviceIdentityProvider) {
     Map<String, String> internalProperties = getInternalPropertiesAsMap();
     Catalog.TypeEnum catalogType =
         Optional.ofNullable(internalProperties.get(CATALOG_TYPE_PROPERTY))
@@ -125,10 +125,10 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .putAll(propertiesMap)
             .build();
 
-    // Right now, only external catalog may use ServiceIdentityRegistry to resolve identity
+    // Right now, only external catalog may use ServiceIdentityProvider to resolve identity
     Preconditions.checkState(
-        catalogType != Catalog.TypeEnum.EXTERNAL || serviceIdentityRegistry != null,
-        "%s catalog needs ServiceIdentityRegistry to resolve service identities",
+        catalogType != Catalog.TypeEnum.EXTERNAL || serviceIdentityProvider != null,
+        "%s catalog needs ServiceIdentityProvider to resolve service identities",
         Catalog.TypeEnum.EXTERNAL);
     return catalogType == Catalog.TypeEnum.EXTERNAL
         ? ExternalCatalog.builder()
@@ -139,7 +139,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
-            .setConnectionConfigInfo(getConnectionInfo(internalProperties, serviceIdentityRegistry))
+            .setConnectionConfigInfo(getConnectionInfo(internalProperties, serviceIdentityProvider))
             .build()
         : PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -199,11 +199,11 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   }
 
   private ConnectionConfigInfo getConnectionInfo(
-      Map<String, String> internalProperties, ServiceIdentityRegistry serviceIdentityRegistry) {
+      Map<String, String> internalProperties, ServiceIdentityProvider serviceIdentityProvider) {
     if (internalProperties.containsKey(
         PolarisEntityConstants.getConnectionConfigInfoPropertyName())) {
       ConnectionConfigInfoDpo configInfo = getConnectionConfigInfoDpo();
-      return configInfo.asConnectionConfigInfoModel(serviceIdentityRegistry);
+      return configInfo.asConnectionConfigInfoModel(serviceIdentityProvider);
     }
     return null;
   }

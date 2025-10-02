@@ -40,7 +40,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -59,7 +59,7 @@ public class PolarisServiceImplTest {
   private UserSecretsManagerFactory userSecretsManagerFactory;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
-  private ServiceIdentityRegistry serviceIdentityRegistry;
+  private ServiceIdentityProvider serviceIdentityProvider;
   private PolarisAuthorizer polarisAuthorizer;
   private CallContext callContext;
   private ReservedProperties reservedProperties;
@@ -74,7 +74,7 @@ public class PolarisServiceImplTest {
     resolutionManifestFactory = Mockito.mock(ResolutionManifestFactory.class);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     userSecretsManager = Mockito.mock(UserSecretsManager.class);
-    serviceIdentityRegistry = Mockito.mock(ServiceIdentityRegistry.class);
+    serviceIdentityProvider = Mockito.mock(ServiceIdentityProvider.class);
     polarisAuthorizer = Mockito.mock(PolarisAuthorizer.class);
     callContext = Mockito.mock(CallContext.class);
     reservedProperties = Mockito.mock(ReservedProperties.class);
@@ -98,13 +98,13 @@ public class PolarisServiceImplTest {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
-            serviceIdentityRegistry,
+            serviceIdentityProvider,
             securityContext,
             polarisAuthorizer,
             reservedProperties);
     polarisService =
         new PolarisServiceImpl(
-            realmConfig, reservedProperties, adminService, serviceIdentityRegistry);
+            realmConfig, reservedProperties, adminService, serviceIdentityProvider);
   }
 
   @Test

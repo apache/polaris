@@ -32,7 +32,7 @@ import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -91,7 +91,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
 
   @Override
   public ConnectionConfigInfo asConnectionConfigInfoModel(
-      ServiceIdentityRegistry serviceIdentityRegistry) {
+      ServiceIdentityProvider serviceIdentityProvider) {
     return HiveConnectionConfigInfo.builder()
         .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.HIVE)
         .setUri(getUri())
@@ -102,7 +102,7 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
             Optional.ofNullable(getServiceIdentity())
                 .map(
                     serviceIdentityInfoDpo ->
-                        serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityRegistry))
+                        serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
                 .orElse(null))
         .build();
   }

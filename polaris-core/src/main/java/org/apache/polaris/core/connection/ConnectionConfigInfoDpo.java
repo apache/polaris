@@ -41,7 +41,7 @@ import org.apache.polaris.core.connection.hive.HiveConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -231,5 +231,5 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
    * applicable/present in the persistence object, but not the API model object.
    */
   public abstract ConnectionConfigInfo asConnectionConfigInfoModel(
-      ServiceIdentityRegistry serviceIdentityRegistry);
+      ServiceIdentityProvider serviceIdentityProvider);
 }

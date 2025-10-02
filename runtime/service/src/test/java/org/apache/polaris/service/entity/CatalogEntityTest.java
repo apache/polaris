@@ -45,7 +45,7 @@ import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.identity.resolved.ResolvedAwsIamServiceIdentity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,14 +60,21 @@ public class CatalogEntityTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private RealmConfig realmConfig;
-  private ServiceIdentityRegistry serviceIdentityRegistry;
+  private ServiceIdentityProvider serviceIdentityProvider;
 
   @BeforeEach
   public void setup() {
     RealmContext realmContext = () -> "realm";
     this.realmConfig = new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
-    this.serviceIdentityRegistry = Mockito.mock(ServiceIdentityRegistry.class);
-    Mockito.when(serviceIdentityRegistry.resolveServiceIdentity(Mockito.any()))
+    this.serviceIdentityProvider = Mockito.mock(ServiceIdentityProvider.class);
+    Mockito.when(serviceIdentityProvider.getServiceIdentityInfo(Mockito.any()))
+        .thenReturn(
+            Optional.of(
+                AwsIamServiceIdentityInfo.builder()
+                    .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
+                    .setIamArn("arn:aws:iam::123456789012:user/test-user")
+                    .build()));
+    Mockito.when(serviceIdentityProvider.resolveServiceIdentity(Mockito.any()))
         .thenReturn(
             Optional.of(
                 new ResolvedAwsIamServiceIdentity("arn:aws:iam::123456789012:user/test-user")));
@@ -296,7 +303,7 @@ public class CatalogEntityTest {
             .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
             .build();
 
-    Catalog catalog = catalogEntity.asCatalog(serviceIdentityRegistry);
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
   }
 
@@ -319,7 +326,7 @@ public class CatalogEntityTest {
             .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
             .build();
 
-    Catalog catalog = catalogEntity.asCatalog(serviceIdentityRegistry);
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
   }
 
@@ -342,7 +349,7 @@ public class CatalogEntityTest {
             .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
             .build();
 
-    Catalog catalog = catalogEntity.asCatalog(serviceIdentityRegistry);
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
   }
 
@@ -380,7 +387,7 @@ public class CatalogEntityTest {
                 config.getAllowedLocations().getFirst())
             .build();
 
-    Catalog catalog = catalogEntity.asCatalog(serviceIdentityRegistry);
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getStorageConfigInfo()).isEqualTo(config);
     assertThat(MAPPER.writeValueAsString(catalog.getStorageConfigInfo())).isEqualTo(configStr);
   }
@@ -418,7 +425,7 @@ public class CatalogEntityTest {
                 icebergRestConnectionConfigInfoModel, null, new AwsIamServiceIdentityInfoDpo(null))
             .build();
 
-    Catalog catalog = catalogEntity.asCatalog(serviceIdentityRegistry);
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
     ExternalCatalog externalCatalog = (ExternalCatalog) catalog;
     assertThat(externalCatalog.getConnectionConfigInfo().getConnectionType())

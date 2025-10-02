@@ -26,8 +26,7 @@ import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
-import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 
 /**
@@ -76,18 +75,15 @@ public abstract class ServiceIdentityInfoDpo {
    * Converts this persistence object to the corresponding API model. During the conversion, some
    * fields will be dropped, e.g., the reference to the service identity's credential
    *
-   * @param serviceIdentityRegistry the service identity registry to resolve the identity
+   * @param serviceIdentityProvider the service identity provider to resolve the identity
    */
   public @Nullable ServiceIdentityInfo asServiceIdentityInfoModel(
-      ServiceIdentityRegistry serviceIdentityRegistry) {
-    if (serviceIdentityRegistry == null) {
+      ServiceIdentityProvider serviceIdentityProvider) {
+    if (serviceIdentityProvider == null) {
       return null;
     }
 
-    return serviceIdentityRegistry
-        .resolveServiceIdentity(this)
-        .map(ResolvedServiceIdentity::asServiceIdentityInfoModel)
-        .orElse(null);
+    return serviceIdentityProvider.getServiceIdentityInfo(this).orElse(null);
   }
 
   @Override

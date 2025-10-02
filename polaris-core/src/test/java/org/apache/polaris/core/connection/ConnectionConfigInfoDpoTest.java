@@ -23,8 +23,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
-import org.apache.polaris.core.identity.registry.ServiceIdentityRegistry;
+import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.identity.resolved.ResolvedAwsIamServiceIdentity;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,15 +40,22 @@ public class ConnectionConfigInfoDpoTest {
     objectMapper.enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
   }
 
-  private ServiceIdentityRegistry serviceIdentityRegistry;
+  private ServiceIdentityProvider serviceIdentityProvider;
 
   @BeforeEach
   void setUp() {
-    serviceIdentityRegistry = Mockito.mock(ServiceIdentityRegistry.class);
-    Mockito.when(serviceIdentityRegistry.resolveServiceIdentity(Mockito.any()))
+    serviceIdentityProvider = Mockito.mock(ServiceIdentityProvider.class);
+    Mockito.when(serviceIdentityProvider.getServiceIdentityInfo(Mockito.any()))
         .thenReturn(
             Optional.of(
-                new ResolvedAwsIamServiceIdentity("arn:aws:iam::123456789012:role/example-role")));
+                AwsIamServiceIdentityInfo.builder()
+                    .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
+                    .setIamArn("arn:aws:iam::123456789012:user/test-user")
+                    .build()));
+    Mockito.when(serviceIdentityProvider.resolveServiceIdentity(Mockito.any()))
+        .thenReturn(
+            Optional.of(
+                new ResolvedAwsIamServiceIdentity("arn:aws:iam::123456789012:user/test-user")));
   }
 
   @Test
@@ -80,7 +89,7 @@ public class ConnectionConfigInfoDpoTest {
 
     // Test conversion into API model JSON.
     ConnectionConfigInfo connectionConfigInfoApiModel =
-        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityRegistry);
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
     String expectedApiModelJson =
         ""
             + "{"
@@ -127,7 +136,7 @@ public class ConnectionConfigInfoDpoTest {
 
     // Test conversion into API model JSON.
     ConnectionConfigInfo connectionConfigInfoApiModel =
-        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityRegistry);
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
     String expectedApiModelJson =
         ""
             + "{"
@@ -164,7 +173,7 @@ public class ConnectionConfigInfoDpoTest {
 
     // Test conversion into API model JSON.
     ConnectionConfigInfo connectionConfigInfoApiModel =
-        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityRegistry);
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
     String expectedApiModelJson =
         ""
             + "{"
@@ -200,7 +209,7 @@ public class ConnectionConfigInfoDpoTest {
             + "  \"serviceIdentity\": {"
             + "    \"identityTypeCode\": 1,"
             + "    \"identityInfoReference\": {"
-            + "      \"urn\": \"urn:polaris-secret:default-identity-registry:my-realm:AWS_IAM\","
+            + "      \"urn\": \"urn:polaris-secret:default-identity-provider:my-realm:AWS_IAM\","
             + "      \"referencePayload\": {"
             + "        \"key\": \"value\""
             + "      }"
@@ -216,7 +225,7 @@ public class ConnectionConfigInfoDpoTest {
 
     // Test conversion into API model JSON.
     ConnectionConfigInfo connectionConfigInfoApiModel =
-        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityRegistry);
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
     String expectedApiModelJson =
         ""
             + "{"
@@ -233,7 +242,7 @@ public class ConnectionConfigInfoDpoTest {
             + "  },"
             + "  \"serviceIdentity\": {"
             + "    \"identityType\": \"AWS_IAM\","
-            + "    \"iamArn\": \"arn:aws:iam::123456789012:role/example-role\""
+            + "    \"iamArn\": \"arn:aws:iam::123456789012:user/test-user\""
             + "  }"
             + "}";
     Assertions.assertEquals(
