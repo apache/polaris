@@ -17,14 +17,17 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+linkTitle: 'Downloads'
+title: 'Downloads'
+type: docs
 weight: 200
-toc_hide: true
-hide_summary: true
-exclude_search: true
+params:
+  top_hidden: true
+  show_page_toc: true 
 cascade:
   type: docs
-params:
-  show_page_toc: true 
+  params:
+    show_page_toc: true
 ---
 
 ## Helm Chart
