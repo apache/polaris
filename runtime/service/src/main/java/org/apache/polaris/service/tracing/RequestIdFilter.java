@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.tracing;
 
-import io.smallrye.common.vertx.ContextLocals;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -50,7 +49,6 @@ public class RequestIdFilter {
             : requestIdGenerator.generateRequestId(rc))
         .onItem()
         .invoke(id -> rc.setProperty(REQUEST_ID_KEY, id))
-        .invoke(id -> ContextLocals.put(REQUEST_ID_KEY, id))
         .onItemOrFailure()
         .transform((id, error) -> error == null ? null : errorResponse(error));
   }
