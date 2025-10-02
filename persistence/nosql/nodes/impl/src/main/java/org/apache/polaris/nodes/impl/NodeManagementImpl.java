@@ -25,6 +25,7 @@ import static java.lang.Integer.bitCount;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Ints;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -74,16 +75,17 @@ class NodeManagementImpl implements NodeManagement {
   static final Duration RESCHEDULE_AFTER_FAILURE = Duration.ofSeconds(10);
   static final Duration RESCHEDULE_UNTIL_EXPIRATION = Duration.ofMinutes(1);
   static final Duration RENEWAL_MIN_LEFT_FOR_RENEWAL = Duration.ofSeconds(30);
-  private final NodeStore nodeStore;
   private final NodeManagementConfig config;
   private final MonotonicClock clock;
   private final int numNodeIds;
-  private final IdGeneratorFactory<?> idGenFactory;
-  private final IdGeneratorSpec idGenSpec;
-
   private final Set<NodeLeaseImpl> registeredLeases = ConcurrentHashMap.newKeySet();
-  private final IdGenerator systemIdGen;
   private final AsyncExec scheduler;
+  private final NodeStoreFactory nodeStoreFactory;
+
+  private NodeStore nodeStore;
+  private IdGeneratorFactory<?> idGenFactory;
+  private IdGeneratorSpec idGenSpec;
+  private IdGenerator systemIdGen;
 
   private volatile boolean closed;
 
@@ -95,6 +97,7 @@ class NodeManagementImpl implements NodeManagement {
       NodeStoreFactory nodeStoreFactory,
       AsyncExec scheduler) {
     var activePeriod = config.leaseDuration().minus(config.renewalPeriod());
+    this.nodeStoreFactory = nodeStoreFactory;
     this.numNodeIds = config.numNodes();
     checkArgs(
         () ->
@@ -117,7 +120,11 @@ class NodeManagementImpl implements NodeManagement {
     this.config = config;
     this.clock = clock;
     this.scheduler = scheduler;
+  }
 
+  @SuppressWarnings("BusyWait")
+  @PostConstruct
+  void init() {
     var idGenSpec =
         (IdGeneratorSpec) ImmutableIdGeneratorSpec.builder().from(config.idGeneratorSpec()).build();
     var validationIdGeneratorSource =
@@ -132,6 +139,9 @@ class NodeManagementImpl implements NodeManagement {
             return 0;
           }
         };
+
+    // If this loop doesn't complete within 10 minutes, we can only give up.
+    var timeout = clock.currentInstant().plus(Duration.ofMinutes(10));
     while (true) {
       var existingNodeManagementState = nodeStoreFactory.fetchManagementState();
       if (existingNodeManagementState.isPresent()) {
@@ -156,6 +166,19 @@ class NodeManagementImpl implements NodeManagement {
           idGenFactory = factory;
           break;
         }
+      }
+      if (timeout.isBefore(clock.currentInstant())) {
+        throw new IllegalStateException(
+            "Timed out to fetch and/or persist node management configuration. This is likely due to an overloaded backend database.");
+      }
+      try {
+        // random sleep
+        Thread.sleep(ThreadLocalRandom.current().nextInt(10, 500));
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException(
+            "Interrupted while waiting for node management configuration to be fetched/persisted",
+            e);
       }
     }
 

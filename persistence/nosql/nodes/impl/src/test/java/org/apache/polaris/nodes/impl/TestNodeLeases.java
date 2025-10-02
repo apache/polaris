@@ -60,6 +60,8 @@ public class TestNodeLeases {
             .build();
     var renewInterval = config.leaseDuration().minus(config.renewalPeriod());
     try (var mgmt = new NodeManagementImpl(config, clock, new MockNodeStoreFactory(), scheduler)) {
+      mgmt.init();
+
       soft.assertThat(scheduler.tasks()).isEmpty();
 
       var lease = mgmt.lease();
@@ -133,6 +135,8 @@ public class TestNodeLeases {
         };
     try (var mgmt =
         new NodeManagementImpl(config, clock, new MockNodeStoreFactory(mockStore), scheduler)) {
+      mgmt.init();
+
       soft.assertThat(scheduler.tasks()).isEmpty();
 
       var lease = mgmt.lease();
