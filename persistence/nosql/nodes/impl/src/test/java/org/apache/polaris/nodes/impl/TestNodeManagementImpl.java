@@ -126,6 +126,8 @@ public class TestNodeManagementImpl {
             super.warnOnIncompatibleIdGeneratorSpec(spec);
           }
         }) {
+      mgmt.init();
+
       soft.assertThat(incompatible).isTrue();
       var node = mgmt.lease();
       var idGen = mgmt.buildIdGenerator(node);
@@ -154,6 +156,8 @@ public class TestNodeManagementImpl {
                     .build())
             .build();
     try (var mgmt = new NodeManagementImpl(config, clock, new MockNodeStoreFactory(), scheduler)) {
+      mgmt.init();
+
       soft.assertThat(mgmt.maxNumberOfNodes()).isEqualTo(config.numNodes());
       var lease = mgmt.lease();
       soft.assertThat(lease).isNotNull();
@@ -175,6 +179,8 @@ public class TestNodeManagementImpl {
     try (var mutableClock = new MutableMonotonicClock();
         var mgmt =
             new NodeManagementImpl(config, mutableClock, new MockNodeStoreFactory(), scheduler)) {
+      mgmt.init();
+
       var numNodeIds = 1 << SnowflakeIdGenerator.DEFAULT_NODE_ID_BITS;
       var leases = new ArrayList<NodeLease>();
       for (int i = 0; i < numNodeIds; i++) {
