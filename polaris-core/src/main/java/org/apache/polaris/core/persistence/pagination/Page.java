@@ -91,7 +91,11 @@ public class Page<T> {
       }
     }
 
-    return new Page<>(request, tokenBuilder.apply(last), data);
+    return page(request, data, tokenBuilder.apply(last));
+  }
+
+  public static <R> Page<R> page(PageToken request, List<R> items, @Nullable Token nextToken) {
+    return new Page<>(request, nextToken, items);
   }
 
   public List<T> items() {

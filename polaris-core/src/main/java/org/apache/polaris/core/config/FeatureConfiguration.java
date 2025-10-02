@@ -386,4 +386,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "Defaults to enabled, but service providers may want to disable it.")
           .defaultValue(true)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean>
+      ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS =
+          PolarisConfiguration.<Boolean>builder()
+              .key("ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS")
+              .description(
+                  "If set to true (default), Polaris will allow setting or changing "
+                      + "catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs."
+                      + "If set to false, Polaris will disallow setting or changing the above catalog property")
+              .defaultValue(true)
+              .buildFeatureConfiguration();
 }

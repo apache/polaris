@@ -208,6 +208,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
         new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
+    testPolarisEventListener.clear();
     this.catalog =
         new IcebergCatalog(
             diagServices,

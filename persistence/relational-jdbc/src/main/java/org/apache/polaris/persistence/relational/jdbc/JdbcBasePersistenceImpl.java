@@ -725,7 +725,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
-  static int loadSchemaVersion(DatasourceOperations datasourceOperations) {
+  static int loadSchemaVersion(
+      DatasourceOperations datasourceOperations, boolean fallbackOnDoesNotExist) {
     PreparedQuery query = QueryGenerator.generateVersionQuery();
     try {
       List<SchemaVersion> schemaVersion =
@@ -736,6 +737,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       return schemaVersion.getFirst().getValue();
     } catch (SQLException e) {
       LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
+      if (fallbackOnDoesNotExist && datasourceOperations.isRelationDoesNotExist(e)) {
+        return SchemaVersion.MINIMUM.getValue();
+      }
       throw new IllegalStateException("Failed to retrieve schema version", e);
     }
   }
