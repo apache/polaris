@@ -353,6 +353,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_OPTIMIZED_SIBLING_CHECK =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_OPTIMIZED_SIBLING_CHECK")
+          .description(
+              "When set to true, Polaris will permit enabling the feature OPTIMIZED_SIBLING_CHECK "
+                  + "for catalogs, this is done to prevent accidental enabling the feature in cases such as schema migrations, without backfill and hence leading to potential data integrity issues.\n"
+                  + "This will be removed in 2.0.0 when polaris ships with the necessary migrations to backfill the index.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
       PolarisConfiguration.<Boolean>builder()
           .key("OPTIMIZED_SIBLING_CHECK")

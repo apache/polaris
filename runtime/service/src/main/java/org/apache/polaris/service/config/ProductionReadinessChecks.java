@@ -307,12 +307,13 @@ public class ProductionReadinessChecks {
   public ProductionReadinessCheck checkOverlappingSiblingCheckSettings(
       FeaturesConfiguration featureConfiguration) {
     var optimizedSiblingCheck = FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
+    var allowOverlap = FeatureConfiguration.ALLOW_OPTIMIZED_SIBLING_CHECK;
     var errors = new ArrayList<Error>();
-    if (Boolean.parseBoolean(featureConfiguration.defaults().get(optimizedSiblingCheck.key()))) {
+    if (Boolean.parseBoolean(featureConfiguration.defaults().get(optimizedSiblingCheck.key()))
+        && !Boolean.parseBoolean(featureConfiguration.defaults().get(allowOverlap.key()))) {
       errors.add(
           Error.ofSevere(
-              "This setting is not recommended for production environments as it may lead to incorrect behavior, due to missing data for location_without_scheme column in case of migrating from older Polaris versions."
-                  + optimizedSiblingCheck.description(),
+              "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",
               format("polaris.features.\"%s\"", optimizedSiblingCheck.key())));
     }
 
@@ -320,11 +321,11 @@ public class ProductionReadinessChecks {
         .realmOverrides()
         .forEach(
             (realmId, overrides) -> {
-              if (Boolean.parseBoolean(overrides.overrides().get(optimizedSiblingCheck.key()))) {
+              if (Boolean.parseBoolean(overrides.overrides().get(optimizedSiblingCheck.key()))
+                  && !Boolean.parseBoolean(overrides.overrides().get(allowOverlap.key()))) {
                 errors.add(
                     Error.ofSevere(
-                        "This setting is not recommended for production environments as it may lead to incorrect behavior, due to missing data for location_without_scheme column in case of migrating from older Polaris versions. "
-                            + optimizedSiblingCheck.description(),
+                        "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",
                         format(
                             "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
                             realmId, optimizedSiblingCheck.key())));
