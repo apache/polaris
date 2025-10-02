@@ -45,7 +45,7 @@ repository = "https://github.com/apache/polaris/"
 polaris = "cli.polaris_cli:main"
 
 [tool.poetry]
-requires-poetry = "==2.1.4"
+requires-poetry = "==2.2.0"
 include = [
     { path = "polaris/**", format = ["sdist", "wheel"] },
     { path = "cli/**", format = ["sdist", "wheel"] },
