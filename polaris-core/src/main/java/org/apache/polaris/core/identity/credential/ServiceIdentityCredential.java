@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.identity.resolved;
+package org.apache.polaris.core.identity.credential;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -27,21 +27,29 @@ import org.apache.polaris.core.secrets.ServiceSecretReference;
 import software.amazon.awssdk.annotations.NotNull;
 
 /**
- * Represents a resolved service identity.
+ * Represents a service identity credential used by Polaris to authenticate to external systems.
  *
- * <p>This class is used to represent the identity of a service after it has been resolved. It
- * contains the type of the identity and any additional information for the service identity. E.g.,
- * The credential of the service identity.
+ * <p>This class encapsulates both the service identity metadata (e.g., AWS IAM ARN) and the
+ * associated credentials (e.g., AWS access keys) needed to authenticate as the Polaris service when
+ * accessing external catalog services.
+ *
+ * <p>The credential contains:
+ *
+ * <ul>
+ *   <li>Identity type (e.g., AWS_IAM)
+ *   <li>A reference to where the credential is stored (for persistence)
+ *   <li>The actual authentication credentials (implementation-specific)
+ * </ul>
  */
-public abstract class ResolvedServiceIdentity {
+public abstract class ServiceIdentityCredential {
   private final ServiceIdentityType identityType;
   private ServiceSecretReference identityInfoReference;
 
-  public ResolvedServiceIdentity(@Nonnull ServiceIdentityType identityType) {
+  public ServiceIdentityCredential(@Nonnull ServiceIdentityType identityType) {
     this(identityType, null);
   }
 
-  public ResolvedServiceIdentity(
+  public ServiceIdentityCredential(
       @Nonnull ServiceIdentityType identityType,
       @Nullable ServiceSecretReference identityInfoReference) {
     this.identityType = identityType;
@@ -60,8 +68,23 @@ public abstract class ResolvedServiceIdentity {
     this.identityInfoReference = identityInfoReference;
   }
 
-  /** Converts this resolved identity into its corresponding persisted form (DPO). */
+  /**
+   * Converts this service identity credential into its corresponding persisted form (DPO).
+   *
+   * <p>The DPO contains only a reference to the credential, not the credential itself, as the
+   * actual secrets are managed externally.
+   *
+   * @return The persistence object representation
+   */
   public abstract @Nonnull ServiceIdentityInfoDpo asServiceIdentityInfoDpo();
 
+  /**
+   * Converts this service identity credential into its API model representation.
+   *
+   * <p>The model contains identity information (e.g., IAM ARN) but excludes sensitive credentials
+   * such as access keys or session tokens.
+   *
+   * @return The API model representation for client responses
+   */
   public abstract @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel();
 }

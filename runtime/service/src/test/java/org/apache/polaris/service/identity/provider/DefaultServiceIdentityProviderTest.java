@@ -29,8 +29,8 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.ServiceIdentityType;
-import org.apache.polaris.core.identity.resolved.ResolvedAwsIamServiceIdentity;
-import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
+import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
+import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
 import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
@@ -120,55 +120,53 @@ public class DefaultServiceIdentityProviderTest {
   }
 
   @Test
-  void testRealmServiceIdentityConfigToResolvedServiceIdentity() {
+  void testRealmServiceIdentityConfigToServiceIdentityCredential() {
     // Check the default realm
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
     DefaultServiceIdentityProvider defaultProvider =
         new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
-    EnumMap<ServiceIdentityType, ResolvedServiceIdentity> resolvedIdentities =
-        defaultProvider.getResolvedServiceIdentities();
+    EnumMap<ServiceIdentityType, ServiceIdentityCredential> identityCredentials =
+        defaultProvider.getServiceIdentityCredentials();
 
-    Assertions.assertThat(resolvedIdentities)
+    Assertions.assertThat(identityCredentials)
         .containsKey(ServiceIdentityType.AWS_IAM)
         .size()
         .isEqualTo(1);
-    ResolvedAwsIamServiceIdentity resolvedAwsIamServiceIdentity =
-        (ResolvedAwsIamServiceIdentity) resolvedIdentities.get(ServiceIdentityType.AWS_IAM);
-    Assertions.assertThat(resolvedAwsIamServiceIdentity.getIamArn())
+    AwsIamServiceIdentityCredential awsIamCredential =
+        (AwsIamServiceIdentityCredential) identityCredentials.get(ServiceIdentityType.AWS_IAM);
+    Assertions.assertThat(awsIamCredential.getIamArn())
         .isEqualTo("arn:aws:iam::123456789012:user/polaris-default-iam-user");
-    Assertions.assertThat(resolvedAwsIamServiceIdentity.getIdentityInfoReference())
+    Assertions.assertThat(awsIamCredential.getIdentityInfoReference())
         .isEqualTo(
             new ServiceSecretReference(
                 "urn:polaris-secret:default-identity-provider:system:default:AWS_IAM", Map.of()));
     Assertions.assertThat(
-            resolvedAwsIamServiceIdentity.getAwsCredentialsProvider()
-                instanceof DefaultCredentialsProvider)
+            awsIamCredential.getAwsCredentialsProvider() instanceof DefaultCredentialsProvider)
         .isTrue();
 
     // Check the my-realm
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(MY_REALM_KEY);
     DefaultServiceIdentityProvider myRealmProvider =
         new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
-    resolvedIdentities = myRealmProvider.getResolvedServiceIdentities();
+    identityCredentials = myRealmProvider.getServiceIdentityCredentials();
 
-    Assertions.assertThat(resolvedIdentities)
+    Assertions.assertThat(identityCredentials)
         .containsKey(ServiceIdentityType.AWS_IAM)
         .size()
         .isEqualTo(1);
-    resolvedAwsIamServiceIdentity =
-        (ResolvedAwsIamServiceIdentity) resolvedIdentities.get(ServiceIdentityType.AWS_IAM);
-    Assertions.assertThat(resolvedAwsIamServiceIdentity.getIamArn())
+    awsIamCredential =
+        (AwsIamServiceIdentityCredential) identityCredentials.get(ServiceIdentityType.AWS_IAM);
+    Assertions.assertThat(awsIamCredential.getIamArn())
         .isEqualTo("arn:aws:iam::123456789012:user/polaris-iam-user");
-    Assertions.assertThat(resolvedAwsIamServiceIdentity.getIdentityInfoReference())
+    Assertions.assertThat(awsIamCredential.getIdentityInfoReference())
         .isEqualTo(
             new ServiceSecretReference(
                 "urn:polaris-secret:default-identity-provider:my-realm:AWS_IAM", Map.of()));
     Assertions.assertThat(
-            resolvedAwsIamServiceIdentity.getAwsCredentialsProvider()
-                instanceof StaticCredentialsProvider)
+            awsIamCredential.getAwsCredentialsProvider() instanceof StaticCredentialsProvider)
         .isTrue();
     StaticCredentialsProvider staticCredentialsProvider =
-        (StaticCredentialsProvider) resolvedAwsIamServiceIdentity.getAwsCredentialsProvider();
+        (StaticCredentialsProvider) awsIamCredential.getAwsCredentialsProvider();
     Assertions.assertThat(
             staticCredentialsProvider.resolveCredentials() instanceof AwsSessionCredentials)
         .isTrue();
@@ -182,22 +180,21 @@ public class DefaultServiceIdentityProviderTest {
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn("other-realm");
     DefaultServiceIdentityProvider otherProvider =
         new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
-    resolvedIdentities = otherProvider.getResolvedServiceIdentities();
-    Assertions.assertThat(resolvedIdentities)
+    identityCredentials = otherProvider.getServiceIdentityCredentials();
+    Assertions.assertThat(identityCredentials)
         .containsKey(ServiceIdentityType.AWS_IAM)
         .size()
         .isEqualTo(1);
-    resolvedAwsIamServiceIdentity =
-        (ResolvedAwsIamServiceIdentity) resolvedIdentities.get(ServiceIdentityType.AWS_IAM);
-    Assertions.assertThat(resolvedAwsIamServiceIdentity.getIamArn())
+    awsIamCredential =
+        (AwsIamServiceIdentityCredential) identityCredentials.get(ServiceIdentityType.AWS_IAM);
+    Assertions.assertThat(awsIamCredential.getIamArn())
         .isEqualTo("arn:aws:iam::123456789012:user/polaris-default-iam-user");
-    Assertions.assertThat(resolvedAwsIamServiceIdentity.getIdentityInfoReference())
+    Assertions.assertThat(awsIamCredential.getIdentityInfoReference())
         .isEqualTo(
             new ServiceSecretReference(
                 "urn:polaris-secret:default-identity-provider:system:default:AWS_IAM", Map.of()));
     Assertions.assertThat(
-            resolvedAwsIamServiceIdentity.getAwsCredentialsProvider()
-                instanceof DefaultCredentialsProvider)
+            awsIamCredential.getAwsCredentialsProvider() instanceof DefaultCredentialsProvider)
         .isTrue();
   }
 }

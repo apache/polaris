@@ -44,9 +44,9 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.identity.resolved.ResolvedAwsIamServiceIdentity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,10 +74,10 @@ public class CatalogEntityTest {
                     .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
                     .setIamArn("arn:aws:iam::123456789012:user/test-user")
                     .build()));
-    Mockito.when(serviceIdentityProvider.resolveServiceIdentity(Mockito.any()))
+    Mockito.when(serviceIdentityProvider.getServiceIdentityCredential(Mockito.any()))
         .thenReturn(
             Optional.of(
-                new ResolvedAwsIamServiceIdentity("arn:aws:iam::123456789012:user/test-user")));
+                new AwsIamServiceIdentityCredential("arn:aws:iam::123456789012:user/test-user")));
   }
 
   @ParameterizedTest

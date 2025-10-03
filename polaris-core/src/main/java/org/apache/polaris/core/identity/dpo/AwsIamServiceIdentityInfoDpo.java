@@ -29,16 +29,17 @@ import org.apache.polaris.core.secrets.SecretReference;
 /**
  * Persistence-layer representation of an AWS IAM service identity used by Polaris.
  *
- * <p>This class models an AWS IAM identity (either a user or role) and extends {@link
- * ServiceIdentityInfoDpo}. It is typically used internally to store a reference to the actual
- * credential (e.g., via {@link SecretReference}).
+ * <p>This class stores only a {@link SecretReference} pointing to where the actual AWS credentials
+ * are managed (e.g., in a secret manager or configuration store). The credentials themselves are
+ * not persisted in this object.
  *
- * <p>During the runtime, it will be resolved to an actual ResolvedAwsIamServiceIdentityInfo object
- * which contains the actual service identity info (e.g., the IAM user arn) and the corresponding
- * credential.
+ * <p>At runtime, the reference can be used to retrieve the full {@link
+ * org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential} which contains both
+ * the identity metadata (e.g., IAM ARN) and the actual AWS credentials needed for authentication.
  *
- * <p>Instances of this class are convertible to the public API model {@link
- * AwsIamServiceIdentityInfo}.
+ * <p>Instances of this class can be converted to the public API model {@link
+ * AwsIamServiceIdentityInfo} via a {@link
+ * org.apache.polaris.core.identity.provider.ServiceIdentityProvider}.
  */
 public class AwsIamServiceIdentityInfoDpo extends ServiceIdentityInfoDpo {
 

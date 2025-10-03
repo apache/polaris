@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.identity.resolved;
+package org.apache.polaris.core.identity.credential;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -28,23 +28,30 @@ import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.services.sts.StsClient;
 
 /**
- * Represents a fully resolved AWS IAM service identity, including the associated IAM ARN and
- * credentials. Polaris uses this class internally to access AWS services on behalf of a configured
- * service identity.
+ * Represents an AWS IAM service identity credential used by Polaris to authenticate to AWS
+ * services.
  *
- * <p>It contains AWS credentials (access key, secret, and optional session token) and provides a
- * lazily initialized {@link StsClient} for performing role assumptions or identity verification.
+ * <p>This credential encapsulates:
  *
- * <p>The resolved identity can be converted back into its persisted DPO form using {@link
- * #asServiceIdentityInfoDpo()}.
+ * <ul>
+ *   <li>The IAM ARN (role or user) representing the Polaris service identity
+ *   <li>An {@link AwsCredentialsProvider} that supplies AWS credentials (access key, secret key,
+ *       and optional session token)
+ * </ul>
  *
- * <p>The resolved identity can also be converted into its API model representation using {@link
- * #asServiceIdentityInfoModel()}
+ * <p>Polaris uses this identity to assume customer-provided IAM roles when accessing remote
+ * catalogs with SigV4 authentication. The {@link AwsCredentialsProvider} can be configured to use
+ * either:
+ *
+ * <ul>
+ *   <li>Static credentials (for testing or single-tenant deployments)
+ *   <li>DefaultCredentialsProvider (which chains through various AWS credential sources)
+ *   <li>Custom credential providers (for vendor-specific secret management)
+ * </ul>
  */
-public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
+public class AwsIamServiceIdentityCredential extends ServiceIdentityCredential {
 
   /** IAM role or user ARN representing the Polaris service identity. */
   private final String iamArn;
@@ -52,16 +59,16 @@ public class ResolvedAwsIamServiceIdentity extends ResolvedServiceIdentity {
   /** AWS credentials provider for accessing AWS services. */
   private final AwsCredentialsProvider awsCredentialsProvider;
 
-  public ResolvedAwsIamServiceIdentity(@Nullable String iamArn) {
+  public AwsIamServiceIdentityCredential(@Nullable String iamArn) {
     this(null, iamArn, DefaultCredentialsProvider.builder().build());
   }
 
-  public ResolvedAwsIamServiceIdentity(
+  public AwsIamServiceIdentityCredential(
       @Nullable String iamArn, @Nonnull AwsCredentialsProvider awsCredentialsProvider) {
     this(null, iamArn, awsCredentialsProvider);
   }
 
-  public ResolvedAwsIamServiceIdentity(
+  public AwsIamServiceIdentityCredential(
       @Nullable ServiceSecretReference serviceSecretReference,
       @Nullable String iamArn,
       @Nonnull AwsCredentialsProvider awsCredentialsProvider) {

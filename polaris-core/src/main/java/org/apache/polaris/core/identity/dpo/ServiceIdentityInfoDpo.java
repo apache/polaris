@@ -33,8 +33,10 @@ import org.apache.polaris.core.secrets.SecretReference;
  * The internal persistence-object counterpart to ServiceIdentityInfo defined in the API model.
  * Important: JsonSubTypes must be kept in sync with {@link ServiceIdentityType}.
  *
- * <p>During the runtime, it will be resolved to an actual ResolvedServiceIdentityInfo object which
- * contains the actual service identity info and the corresponding credential.
+ * <p>This DPO stores only a reference to the service identity credential, not the actual secrets.
+ * The reference can be used at runtime to retrieve the full {@link
+ * org.apache.polaris.core.identity.credential.ServiceIdentityCredential} with credentials through a
+ * {@link org.apache.polaris.core.identity.provider.ServiceIdentityProvider}.
  */
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
@@ -72,10 +74,16 @@ public abstract class ServiceIdentityInfoDpo {
   }
 
   /**
-   * Converts this persistence object to the corresponding API model. During the conversion, some
-   * fields will be dropped, e.g., the reference to the service identity's credential
+   * Converts this persistence object to the corresponding API model.
    *
-   * @param serviceIdentityProvider the service identity provider to resolve the identity
+   * <p>The conversion uses the provided {@link ServiceIdentityProvider} to retrieve the user-facing
+   * identity information (e.g., AWS IAM ARN) without exposing sensitive credentials. The credential
+   * reference stored in this DPO is not included in the API model.
+   *
+   * @param serviceIdentityProvider the service identity provider used to retrieve display
+   *     information
+   * @return the API model representation, or null if the provider is null or cannot resolve the
+   *     identity
    */
   public @Nullable ServiceIdentityInfo asServiceIdentityInfoModel(
       ServiceIdentityProvider serviceIdentityProvider) {

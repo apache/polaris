@@ -27,15 +27,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
+import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 
 /**
- * Represents the service identity configuration for one or more realms.
+ * Configuration interface for managing service identities across multiple realms in Polaris.
  *
- * <p>This interface supports multi-tenant configurations where each realm can define its own {@link
- * RealmServiceIdentityConfiguration}. If a realm-specific configuration is not found, a fallback to
- * the default configuration is applied.
+ * <p>A service identity represents the Polaris service itself when it needs to authenticate to
+ * external systems (e.g., AWS services for SigV4 authentication). Each realm can configure its own
+ * set of service identities for different cloud providers.
+ *
+ * <p>This interface supports multi-tenant deployments where each realm (tenant) can have distinct
+ * service identities, as well as single-tenant deployments with a default configuration shared
+ * across all catalogs.
+ *
+ * <p>Configuration is loaded from {@code polaris.service-identity.*} properties at startup and
+ * includes credentials that Polaris uses to assume customer-provided roles when accessing federated
+ * catalogs.
  */
 @ConfigMapping(prefix = "polaris.service-identity")
 public interface ServiceIdentityConfiguration {
@@ -58,16 +66,24 @@ public interface ServiceIdentityConfiguration {
   Map<String, RealmServiceIdentityConfiguration> realms();
 
   /**
-   * Resolves the actual realm configuration entry (identifier + config) to use for the given
-   * context. Falls back to the default if the specified realm is not configured.
+   * Retrieves the configuration entry for the given realm context.
+   *
+   * <p>If the realm has no specific configuration, falls back to the default realm configuration.
+   *
+   * @param realmContext the realm context
+   * @return the configuration entry containing the realm identifier and its configuration
    */
   default RealmConfigEntry forRealm(RealmContext realmContext) {
     return forRealm(realmContext.getRealmIdentifier());
   }
 
   /**
-   * Resolves the actual realm configuration entry (identifier + config) for the given realm
-   * identifier. Falls back to the default if the specified realm is not configured.
+   * Retrieves the configuration entry for the given realm identifier.
+   *
+   * <p>If the realm has no specific configuration, falls back to the default realm configuration.
+   *
+   * @param realmIdentifier the realm identifier
+   * @return the configuration entry containing the realm identifier and its configuration
    */
   default RealmConfigEntry forRealm(String realmIdentifier) {
     String resolvedRealmIdentifier =
@@ -76,9 +92,17 @@ public interface ServiceIdentityConfiguration {
   }
 
   /**
-   * Resolves and returns the list of {@link ResolvedServiceIdentity} objects for the given realm.
+   * Loads and returns the list of {@link ServiceIdentityCredential} objects configured for the
+   * given realm.
+   *
+   * <p>This method retrieves the realm's configuration, builds credential references for each
+   * configured service identity, and constructs the corresponding {@link ServiceIdentityCredential}
+   * objects with their credentials.
+   *
+   * @param realmContext the realm context for which to load service identities
+   * @return a list of service identity credentials configured for the realm
    */
-  default List<? extends ResolvedServiceIdentity> resolveServiceIdentities(
+  default List<? extends ServiceIdentityCredential> resolveServiceIdentityCredentials(
       RealmContext realmContext) {
     RealmConfigEntry entry = forRealm(realmContext);
 
@@ -92,6 +116,12 @@ public interface ServiceIdentityConfiguration {
         .toList();
   }
 
-  /** A pairing of a resolved realm identifier and its associated configuration. */
+  /**
+   * A pairing of a realm identifier and its associated service identity configuration.
+   *
+   * @param realm the realm identifier (may be the default if the requested realm was not
+   *     configured)
+   * @param config the service identity configuration for this realm
+   */
   record RealmConfigEntry(String realm, RealmServiceIdentityConfiguration config) {}
 }

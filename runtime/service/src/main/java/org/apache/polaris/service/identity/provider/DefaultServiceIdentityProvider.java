@@ -31,26 +31,31 @@ import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
 
 /**
- * Default implementation of {@link ServiceIdentityProvider} that resolves service identities from
- * statically configured values (typically defined via Quarkus server configuration).
+ * Default implementation of {@link ServiceIdentityProvider} that provides service identity
+ * credentials from statically configured values.
  *
- * <p>This implementation supports both multi-tenant (e.g., SaaS) and self-managed (single-tenant)
- * Polaris deployments:
+ * <p>This implementation loads service identity configurations at startup from Quarkus application
+ * properties and maintains them in memory. It supports both multi-tenant and single-tenant
+ * deployments:
  *
  * <ul>
- *   <li>In multi-tenant mode, each tenant (realm) can have its own set of service identities
- *       defined in the configuration. The same identity will consistently be assigned for each
- *       {@link ServiceIdentityType} within a given tenant.
- *   <li>In single-tenant or self-managed deployments, a single set of service identities can be
- *       defined and used system-wide.
+ *   <li><b>Multi-tenant mode:</b> Each realm can define its own service identities. When allocating
+ *       an identity to a catalog, the provider selects the appropriate identity based on the
+ *       catalog's realm and authentication type.
+ *   <li><b>Single-tenant mode:</b> A single default set of service identities is used for all
+ *       catalogs.
  * </ul>
+ *
+ * <p>All service identities must be configured before server startup. This implementation does not
+ * support dynamic credential rotation or runtime identity registration. Vendors requiring such
+ * functionality should implement a custom {@link ServiceIdentityProvider}.
  */
 public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
   public static final String DEFAULT_REALM_KEY = ServiceIdentityConfiguration.DEFAULT_REALM_KEY;
@@ -58,20 +63,20 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
   private static final String IDENTITY_INFO_REFERENCE_URN_FORMAT =
       "urn:polaris-secret:default-identity-provider:%s:%s";
 
-  /** Map of service identity types to their resolved identities. */
-  private final EnumMap<ServiceIdentityType, ResolvedServiceIdentity> resolvedServiceIdentities;
+  /** Map of service identity types to their credentials. */
+  private final EnumMap<ServiceIdentityType, ServiceIdentityCredential> serviceIdentityCredentials;
 
-  /** Map of identity info references (URNs) to their resolved service identities. */
-  private final Map<String, ResolvedServiceIdentity> referenceToResolvedServiceIdentity;
+  /** Map of identity info references (URNs) to their service identity credentials. */
+  private final Map<String, ServiceIdentityCredential> referenceToServiceIdentityCredential;
 
   public DefaultServiceIdentityProvider() {
     this(new EnumMap<>(ServiceIdentityType.class));
   }
 
   public DefaultServiceIdentityProvider(
-      EnumMap<ServiceIdentityType, ResolvedServiceIdentity> serviceIdentities) {
-    this.resolvedServiceIdentities = serviceIdentities;
-    this.referenceToResolvedServiceIdentity =
+      EnumMap<ServiceIdentityType, ServiceIdentityCredential> serviceIdentities) {
+    this.serviceIdentityCredentials = serviceIdentities;
+    this.referenceToServiceIdentityCredential =
         serviceIdentities.values().stream()
             .collect(
                 Collectors.toMap(
@@ -82,18 +87,18 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
   @Inject
   public DefaultServiceIdentityProvider(
       RealmContext realmContext, ServiceIdentityConfiguration serviceIdentityConfiguration) {
-    this.resolvedServiceIdentities =
-        serviceIdentityConfiguration.resolveServiceIdentities(realmContext).stream()
+    this.serviceIdentityCredentials =
+        serviceIdentityConfiguration.resolveServiceIdentityCredentials(realmContext).stream()
             .collect(
                 // Collect to an EnumMap, grouping by ServiceIdentityType
                 Collectors.toMap(
-                    ResolvedServiceIdentity::getIdentityType,
+                    ServiceIdentityCredential::getIdentityType,
                     identity -> identity,
                     (a, b) -> b,
                     () -> new EnumMap<>(ServiceIdentityType.class)));
 
-    this.referenceToResolvedServiceIdentity =
-        resolvedServiceIdentities.values().stream()
+    this.referenceToServiceIdentityCredential =
+        serviceIdentityCredentials.values().stream()
             .collect(
                 Collectors.toMap(
                     identity -> identity.getIdentityInfoReference().getUrn(),
@@ -121,38 +126,38 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
       return Optional.empty();
     }
 
-    ResolvedServiceIdentity resolvedServiceIdentity =
-        resolvedServiceIdentities.get(serviceIdentityType);
-    if (resolvedServiceIdentity == null) {
+    ServiceIdentityCredential serviceIdentityCredential =
+        serviceIdentityCredentials.get(serviceIdentityType);
+    if (serviceIdentityCredential == null) {
       return Optional.empty();
     }
-    return Optional.of(resolvedServiceIdentity.asServiceIdentityInfoDpo());
+    return Optional.of(serviceIdentityCredential.asServiceIdentityInfoDpo());
   }
 
   @Override
   public Optional<ServiceIdentityInfo> getServiceIdentityInfo(
       @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
-    ResolvedServiceIdentity resolvedServiceIdentity =
-        referenceToResolvedServiceIdentity.get(
+    ServiceIdentityCredential serviceIdentityCredential =
+        referenceToServiceIdentityCredential.get(
             serviceIdentityInfo.getIdentityInfoReference().getUrn());
-    if (resolvedServiceIdentity == null) {
+    if (serviceIdentityCredential == null) {
       return Optional.empty();
     }
-    return Optional.of(resolvedServiceIdentity.asServiceIdentityInfoModel());
+    return Optional.of(serviceIdentityCredential.asServiceIdentityInfoModel());
   }
 
   @Override
-  public Optional<ResolvedServiceIdentity> resolveServiceIdentity(
+  public Optional<ServiceIdentityCredential> getServiceIdentityCredential(
       @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
-    ResolvedServiceIdentity resolvedServiceIdentity =
-        referenceToResolvedServiceIdentity.get(
+    ServiceIdentityCredential serviceIdentityCredential =
+        referenceToServiceIdentityCredential.get(
             serviceIdentityInfo.getIdentityInfoReference().getUrn());
-    return Optional.ofNullable(resolvedServiceIdentity);
+    return Optional.ofNullable(serviceIdentityCredential);
   }
 
   @VisibleForTesting
-  public EnumMap<ServiceIdentityType, ResolvedServiceIdentity> getResolvedServiceIdentities() {
-    return resolvedServiceIdentities;
+  public EnumMap<ServiceIdentityType, ServiceIdentityCredential> getServiceIdentityCredentials() {
+    return serviceIdentityCredentials;
   }
 
   /**

@@ -22,12 +22,12 @@ package org.apache.polaris.service.identity;
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.core.identity.ServiceIdentityType;
-import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
+import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
 
 /**
- * Represents a service identity configuration that can be resolved into a fully initialized {@link
- * ResolvedServiceIdentity}.
+ * Represents a service identity configuration that can be converted into a fully initialized {@link
+ * ServiceIdentityCredential}.
  *
  * <p>This interface allows identity configurations (e.g., AWS IAM) to encapsulate the logic
  * required to construct runtime credentials and metadata needed to authenticate as a
@@ -44,12 +44,16 @@ public interface ResolvableServiceIdentityConfiguration {
   }
 
   /**
-   * Attempts to resolve this configuration into a {@link ResolvedServiceIdentity}.
+   * Converts this configuration into a {@link ServiceIdentityCredential} with actual credentials.
    *
-   * @return an optional resolved service identity, or empty if resolution fails or is not
-   *     configured
+   * <p>Implementations should construct the appropriate credential object (e.g., {@link
+   * org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential}) using the
+   * configured values and the provided secret reference.
+   *
+   * @param serviceIdentityReference the reference to associate with this credential for persistence
+   * @return an optional service identity credential, or empty if required configuration is missing
    */
-  default Optional<? extends ResolvedServiceIdentity> resolve(
+  default Optional<? extends ServiceIdentityCredential> resolve(
       @Nonnull ServiceSecretReference serviceIdentityReference) {
     return Optional.empty();
   }

@@ -26,8 +26,8 @@ import java.util.Optional;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
+import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.identity.resolved.ResolvedAwsIamServiceIdentity;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,10 +52,10 @@ public class ConnectionConfigInfoDpoTest {
                     .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
                     .setIamArn("arn:aws:iam::123456789012:user/test-user")
                     .build()));
-    Mockito.when(serviceIdentityProvider.resolveServiceIdentity(Mockito.any()))
+    Mockito.when(serviceIdentityProvider.getServiceIdentityCredential(Mockito.any()))
         .thenReturn(
             Optional.of(
-                new ResolvedAwsIamServiceIdentity("arn:aws:iam::123456789012:user/test-user")));
+                new AwsIamServiceIdentityCredential("arn:aws:iam::123456789012:user/test-user")));
   }
 
   @Test

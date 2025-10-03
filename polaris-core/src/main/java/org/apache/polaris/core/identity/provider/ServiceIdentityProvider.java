@@ -19,13 +19,12 @@
 
 package org.apache.polaris.core.identity.provider;
 
-import java.util.Optional;
-
 import jakarta.annotation.Nonnull;
+import java.util.Optional;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
+import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.identity.resolved.ResolvedServiceIdentity;
 
 /**
  * A provider interface for managing and resolving service identities in Polaris.
@@ -70,7 +69,8 @@ public interface ServiceIdentityProvider {
    * @return An {@link Optional} containing the allocated {@link ServiceIdentityInfoDpo}, or empty
    *     if no service identity is available or applicable for this connection.
    */
-  Optional<ServiceIdentityInfoDpo> allocateServiceIdentity(@Nonnull ConnectionConfigInfo connectionConfig);
+  Optional<ServiceIdentityInfoDpo> allocateServiceIdentity(
+      @Nonnull ConnectionConfigInfo connectionConfig);
 
   /**
    * Retrieves the user-facing {@link ServiceIdentityInfo} model for the given service identity
@@ -83,19 +83,21 @@ public interface ServiceIdentityProvider {
    * @return An {@link Optional} containing the {@link ServiceIdentityInfo} model for API responses,
    *     or empty if the identity cannot be resolved.
    */
-  Optional<ServiceIdentityInfo> getServiceIdentityInfo(@Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
+  Optional<ServiceIdentityInfo> getServiceIdentityInfo(
+      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
 
   /**
-   * Resolves the given service identity by retrieving the actual credential or secret referenced by
-   * it, typically from a secret manager or internal credential store.
+   * Retrieves the service identity credential by resolving the actual credential or secret
+   * referenced by the given service identity info, typically from a secret manager or internal
+   * credential store.
    *
    * <p>This method is used when Polaris needs to authenticate to external systems using the service
    * identity, such as when signing requests with SigV4 authentication.
    *
    * @param serviceIdentityInfo The service identity metadata to resolve.
-   * @return An {@link Optional} containing a {@link ResolvedServiceIdentity} with credentials and
-   *     other resolved data, or empty if the identity cannot be resolved.
+   * @return An {@link Optional} containing a {@link ServiceIdentityCredential} with credentials, or
+   *     empty if the identity cannot be resolved.
    */
-  Optional<ResolvedServiceIdentity> resolveServiceIdentity(
+  Optional<ServiceIdentityCredential> getServiceIdentityCredential(
       @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
 }
