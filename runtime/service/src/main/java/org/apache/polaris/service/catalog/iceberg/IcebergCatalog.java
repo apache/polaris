@@ -843,7 +843,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           .atWarn()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Table entity has no storage configuration in its hierarchy");
-      return AccessConfig.builder().build();
+      return AccessConfig.builder().supportsCredentialVending(false).build();
     }
     return FileIOUtil.refreshAccessConfig(
         callContext,
