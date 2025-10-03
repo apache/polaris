@@ -16,14 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.logging;
 
-import io.smallrye.config.ConfigMapping;
-import java.util.Map;
+package org.apache.polaris.service.config;
 
-@ConfigMapping(prefix = "polaris.log")
-public interface LoggingConfiguration {
+import io.smallrye.config.RelocateConfigSourceInterceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-  /** Additional MDC values to include in the log context. */
-  Map<String, String> mdc();
+public class ConfigRelocationInterceptor extends RelocateConfigSourceInterceptor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRelocationInterceptor.class);
+
+  public ConfigRelocationInterceptor() {
+    super(ConfigRelocationInterceptor::applyRelocations);
+  }
+
+  private static String applyRelocations(String name) {
+    if (name.equals("polaris.log.request-id-header-name")) {
+      String replacement = "polaris.tracing.request-id-generator.header-name";
+      LOGGER.warn("Property '{}' is deprecated, use '{}' instead", name, replacement);
+      return replacement;
+    }
+    return name;
+  }
 }

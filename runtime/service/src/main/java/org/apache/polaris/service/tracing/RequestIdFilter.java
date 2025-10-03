@@ -26,7 +26,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.FilterPriorities;
-import org.apache.polaris.service.logging.LoggingConfiguration;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 import org.jboss.resteasy.reactive.server.ServerResponseFilter;
 import org.slf4j.Logger;
@@ -38,12 +37,12 @@ public class RequestIdFilter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RequestIdFilter.class);
 
-  @Inject LoggingConfiguration loggingConfiguration;
+  @Inject TracingConfiguration tracingConfiguration;
   @Inject RequestIdGenerator requestIdGenerator;
 
   @ServerRequestFilter(preMatching = true, priority = FilterPriorities.REQUEST_ID_FILTER)
   public Uni<Response> assignRequestId(ContainerRequestContext rc) {
-    var requestId = rc.getHeaderString(loggingConfiguration.requestIdHeaderName());
+    var requestId = rc.getHeaderString(tracingConfiguration.requestIdGenerator().headerName());
     return (requestId != null
             ? Uni.createFrom().item(requestId)
             : requestIdGenerator.generateRequestId(rc))
@@ -58,7 +57,7 @@ public class RequestIdFilter {
       ContainerRequestContext request, ContainerResponseContext response) {
     String requestId = (String) request.getProperty(REQUEST_ID_KEY);
     if (requestId != null) { // can be null if request ID generation fails
-      response.getHeaders().add(loggingConfiguration.requestIdHeaderName(), requestId);
+      response.getHeaders().add(tracingConfiguration.requestIdGenerator().headerName(), requestId);
     }
   }
 

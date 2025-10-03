@@ -16,14 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.logging;
+package org.apache.polaris.service.tracing;
 
 import io.smallrye.config.ConfigMapping;
-import java.util.Map;
 
-@ConfigMapping(prefix = "polaris.log")
-public interface LoggingConfiguration {
+@ConfigMapping(prefix = "polaris.tracing")
+public interface TracingConfiguration {
 
-  /** Additional MDC values to include in the log context. */
-  Map<String, String> mdc();
+  RequestIdGenerator requestIdGenerator();
+
+  interface RequestIdGenerator {
+
+    /**
+     * The type of the request ID generator. Must be a registered {@link RequestIdGenerator}
+     * identifier.
+     */
+    String type();
+
+    /**
+     * The name of the request header that contains the request ID. Used by the default request ID
+     * generator.
+     */
+    String headerName();
+  }
 }
