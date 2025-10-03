@@ -16,14 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.logging;
+package org.apache.polaris.service.correlation;
 
 import io.smallrye.config.ConfigMapping;
-import java.util.Map;
 
-@ConfigMapping(prefix = "polaris.log")
-public interface LoggingConfiguration {
+@ConfigMapping(prefix = "polaris.correlation-id")
+public interface CorrelationIdConfiguration {
 
-  /** Additional MDC values to include in the log context. */
-  Map<String, String> mdc();
+  /**
+   * The name of the header that contains the correlation ID.
+   *
+   * <p>If a request does not contain this header, it will be assigned a new correlation ID
+   * generated using the configured {@link #generator()}.
+   *
+   * <p>All responses will include the correlation ID in this header.
+   */
+  String headerName();
+
+  /**
+   * The correlation ID generator to use, when a request does not contain the {@link #headerName()}.
+   */
+  Generator generator();
+
+  interface Generator {
+
+    /**
+     * The type of the correlation ID generator. Must be a registered {@link CorrelationIdGenerator}
+     * identifier.
+     */
+    String type();
+  }
 }

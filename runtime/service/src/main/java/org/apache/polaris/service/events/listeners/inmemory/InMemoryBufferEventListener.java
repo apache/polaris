@@ -19,7 +19,7 @@
 
 package org.apache.polaris.service.events.listeners.inmemory;
 
-import static org.apache.polaris.service.tracing.RequestIdFilter.REQUEST_ID_KEY;
+import static org.apache.polaris.service.correlation.CorrelationIdFilter.CORRELATION_ID_KEY;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -94,7 +94,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
   @Nullable
   @Override
   protected String getRequestId() {
-    return (String) requestContext.getProperty(REQUEST_ID_KEY);
+    return (String) requestContext.getProperty(CORRELATION_ID_KEY);
   }
 
   @PreDestroy

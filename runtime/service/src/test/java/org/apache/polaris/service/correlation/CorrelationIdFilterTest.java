@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.tracing;
+package org.apache.polaris.service.correlation;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.anything;
@@ -43,13 +43,13 @@ import org.mockito.Mockito;
 @QuarkusTest
 @TestHTTPEndpoint(IcebergRestOAuth2Api.class)
 @SuppressWarnings("UastIncorrectHttpHeaderInspection")
-public class RequestIdFilterTest {
+public class CorrelationIdFilterTest {
 
-  @InjectSpy RequestIdGenerator requestIdGenerator;
+  @InjectSpy CorrelationIdGenerator correlationIdGenerator;
 
   @BeforeEach
   void resetMocks() {
-    Mockito.reset(requestIdGenerator);
+    Mockito.reset(correlationIdGenerator);
   }
 
   @Test
@@ -61,7 +61,7 @@ public class RequestIdFilterTest {
         .statusCode(200)
         .body(containsString("access_token"))
         .header("Polaris-Request-Id", anything());
-    verify(requestIdGenerator, times(1)).generateRequestId(any());
+    verify(correlationIdGenerator, times(1)).generateCorrelationId(any());
   }
 
   @Test
@@ -74,14 +74,14 @@ public class RequestIdFilterTest {
         .statusCode(200)
         .body(containsString("access_token"))
         .header("Polaris-Request-Id", "custom-request-id");
-    verify(requestIdGenerator, never()).generateRequestId(any());
+    verify(correlationIdGenerator, never()).generateCorrelationId(any());
   }
 
   @Test
   void testError() {
     doReturn(Uni.createFrom().failure(new RuntimeException("test error")))
-        .when(requestIdGenerator)
-        .generateRequestId(any());
+        .when(correlationIdGenerator)
+        .generateCorrelationId(any());
     givenTokenRequest()
         .when()
         .post()
@@ -90,7 +90,7 @@ public class RequestIdFilterTest {
         .body("error.message", is("Request ID generation failed"))
         .body("error.type", is("RequestIdGenerationError"))
         .body("error.code", is(500));
-    verify(requestIdGenerator, times(1)).generateRequestId(any());
+    verify(correlationIdGenerator, times(1)).generateCorrelationId(any());
   }
 
   private static RequestSpecification givenTokenRequest() {

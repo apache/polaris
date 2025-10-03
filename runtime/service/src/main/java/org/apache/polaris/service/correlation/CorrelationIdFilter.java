@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.tracing;
+package org.apache.polaris.service.correlation;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
@@ -26,29 +26,28 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.FilterPriorities;
-import org.apache.polaris.service.logging.LoggingConfiguration;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 import org.jboss.resteasy.reactive.server.ServerResponseFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RequestIdFilter {
+public class CorrelationIdFilter {
 
-  public static final String REQUEST_ID_KEY = "requestId";
+  public static final String CORRELATION_ID_KEY = "requestId";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RequestIdFilter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CorrelationIdFilter.class);
 
-  @Inject LoggingConfiguration loggingConfiguration;
-  @Inject RequestIdGenerator requestIdGenerator;
+  @Inject CorrelationIdConfiguration correlationIdConfiguration;
+  @Inject CorrelationIdGenerator correlationIdGenerator;
 
-  @ServerRequestFilter(preMatching = true, priority = FilterPriorities.REQUEST_ID_FILTER)
+  @ServerRequestFilter(preMatching = true, priority = FilterPriorities.CORRELATION_ID_FILTER)
   public Uni<Response> assignRequestId(ContainerRequestContext rc) {
-    var requestId = rc.getHeaderString(loggingConfiguration.requestIdHeaderName());
-    return (requestId != null
-            ? Uni.createFrom().item(requestId)
-            : requestIdGenerator.generateRequestId(rc))
+    var correlationId = rc.getHeaderString(correlationIdConfiguration.headerName());
+    return (correlationId != null
+            ? Uni.createFrom().item(correlationId)
+            : correlationIdGenerator.generateCorrelationId(rc))
         .onItem()
-        .invoke(id -> rc.setProperty(REQUEST_ID_KEY, id))
+        .invoke(id -> rc.setProperty(CORRELATION_ID_KEY, id))
         .onItemOrFailure()
         .transform((id, error) -> error == null ? null : errorResponse(error));
   }
@@ -56,9 +55,9 @@ public class RequestIdFilter {
   @ServerResponseFilter
   public void addResponseHeader(
       ContainerRequestContext request, ContainerResponseContext response) {
-    String requestId = (String) request.getProperty(REQUEST_ID_KEY);
-    if (requestId != null) { // can be null if request ID generation fails
-      response.getHeaders().add(loggingConfiguration.requestIdHeaderName(), requestId);
+    String correlationId = (String) request.getProperty(CORRELATION_ID_KEY);
+    if (correlationId != null) { // can be null if request ID generation fails
+      response.getHeaders().add(correlationIdConfiguration.headerName(), correlationId);
     }
   }
 

@@ -16,14 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.config;
 
-import jakarta.ws.rs.Priorities;
+import io.smallrye.config.RelocateConfigSourceInterceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public final class FilterPriorities {
-  public static final int CORRELATION_ID_FILTER = Priorities.AUTHENTICATION - 101;
-  public static final int REALM_CONTEXT_FILTER = CORRELATION_ID_FILTER + 1;
-  public static final int RATE_LIMITER_FILTER = Priorities.USER;
-  public static final int MDC_FILTER = REALM_CONTEXT_FILTER + 1;
-  public static final int TRACING_FILTER = REALM_CONTEXT_FILTER + 2;
+public class ConfigRelocationInterceptor extends RelocateConfigSourceInterceptor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRelocationInterceptor.class);
+
+  public ConfigRelocationInterceptor() {
+    super(ConfigRelocationInterceptor::applyRelocations);
+  }
+
+  private static String applyRelocations(String name) {
+    if (name.equals("polaris.log.request-id-header-name")) {
+      String replacement = "polaris.correlation-id.header-name";
+      LOGGER.warn("Property '{}' is deprecated, use '{}' instead", name, replacement);
+      return replacement;
+    }
+    return name;
+  }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.service.tracing;
+package org.apache.polaris.service.correlation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,17 +26,17 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import org.apache.polaris.service.tracing.DefaultRequestIdGenerator.RequestId;
+import org.apache.polaris.service.correlation.DefaultCorrelationIdGenerator.RequestId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class DefaultRequestIdGeneratorTest {
+public class DefaultCorrelationIdGeneratorTest {
 
-  private DefaultRequestIdGenerator requestIdGenerator;
+  private DefaultCorrelationIdGenerator requestIdGenerator;
 
   @BeforeEach
   void setUp() {
-    requestIdGenerator = new DefaultRequestIdGenerator();
+    requestIdGenerator = new DefaultCorrelationIdGenerator();
   }
 
   @Test

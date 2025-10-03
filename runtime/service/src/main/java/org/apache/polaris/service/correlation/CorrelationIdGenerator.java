@@ -17,22 +17,22 @@
  * under the License.
  */
 
-package org.apache.polaris.service.tracing;
+package org.apache.polaris.service.correlation;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.container.ContainerRequestContext;
 
 /**
- * A generator for request IDs.
+ * A generator for correlation IDs.
  *
- * @see RequestIdFilter
+ * @see CorrelationIdFilter
  */
-public interface RequestIdGenerator {
+public interface CorrelationIdGenerator {
 
   /**
-   * Generates a new request ID. IDs must be fast to generate and unique.
+   * Generates a new correlation ID. IDs must be fast to generate and unique.
    *
    * @param requestContext The JAX-RS request context
    */
-  Uni<String> generateRequestId(ContainerRequestContext requestContext);
+  Uni<String> generateCorrelationId(ContainerRequestContext requestContext);
 }

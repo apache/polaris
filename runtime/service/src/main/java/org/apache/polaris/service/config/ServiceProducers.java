@@ -71,6 +71,8 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.correlation.CorrelationIdConfiguration;
+import org.apache.polaris.service.correlation.CorrelationIdGenerator;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -400,6 +402,14 @@ public class ServiceProducers {
       PolarisCredentialManagerConfiguration config,
       @Any Instance<PolarisCredentialManager> credentialManagers) {
     return credentialManagers.select(Identifier.Literal.of(config.type())).get();
+  }
+
+  @Produces
+  @ApplicationScoped
+  public CorrelationIdGenerator correlationIdGenerator(
+      CorrelationIdConfiguration config,
+      @Any Instance<CorrelationIdGenerator> correlationIdGenerators) {
+    return correlationIdGenerators.select(Identifier.Literal.of(config.generator().type())).get();
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

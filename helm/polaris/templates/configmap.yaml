@@ -165,7 +165,6 @@ data:
     {{- range $k, $v := $categories -}}
     {{- $_ = set $map (printf "quarkus.log.category.\"%s\".level" $k) $v -}}
     {{- end -}}
-    {{- $_ = set $map "polaris.log.request-id-header-name" .Values.logging.requestIdHeaderName -}}
     {{- $mdc := dict -}}
     {{- list .Values.logging.mdc "" $mdc | include "polaris.mergeConfigTree" -}}
     {{- range $k, $v := $mdc -}}
@@ -207,6 +206,10 @@ data:
     {{- else -}}
     {{- $_ = set $map "quarkus.micrometer.enabled" "false" -}}
     {{- end -}}
+
+    {{- /* Correlation ID */ -}}
+    {{- $_ = set $map "polaris.correlation-id.header-name" .Values.correlationId.headerName -}}
+    {{- $_ = set $map "polaris.correlation-id.generator.type" .Values.correlationId.generator.type -}}
 
     {{- /* Advanced Configuration (must be done last since it can override any of the settings above) */ -}}
     {{- list .Values.advancedConfig "" $map | include "polaris.mergeConfigTree" -}}
