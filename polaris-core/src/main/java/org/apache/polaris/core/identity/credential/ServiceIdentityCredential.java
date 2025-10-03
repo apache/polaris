@@ -23,7 +23,7 @@ import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import software.amazon.awssdk.annotations.NotNull;
 
 /**
@@ -37,22 +37,21 @@ import software.amazon.awssdk.annotations.NotNull;
  *
  * <ul>
  *   <li>Identity type (e.g., AWS_IAM)
- *   <li>A reference to where the credential is stored (for persistence)
+ *   <li>A {@link SecretReference} pointing to where the credential configuration is stored
  *   <li>The actual authentication credentials (implementation-specific, e.g.,
  *       AwsCredentialsProvider)
  * </ul>
  */
 public abstract class ServiceIdentityCredential {
   private final ServiceIdentityType identityType;
-  private ServiceSecretReference identityInfoReference;
+  private SecretReference identityInfoReference;
 
   public ServiceIdentityCredential(@Nonnull ServiceIdentityType identityType) {
     this(identityType, null);
   }
 
   public ServiceIdentityCredential(
-      @Nonnull ServiceIdentityType identityType,
-      @Nullable ServiceSecretReference identityInfoReference) {
+      @Nonnull ServiceIdentityType identityType, @Nullable SecretReference identityInfoReference) {
     this.identityType = identityType;
     this.identityInfoReference = identityInfoReference;
   }
@@ -61,11 +60,11 @@ public abstract class ServiceIdentityCredential {
     return identityType;
   }
 
-  public @Nonnull ServiceSecretReference getIdentityInfoReference() {
+  public @Nonnull SecretReference getIdentityInfoReference() {
     return identityInfoReference;
   }
 
-  public void setIdentityInfoReference(@NotNull ServiceSecretReference identityInfoReference) {
+  public void setIdentityInfoReference(@NotNull SecretReference identityInfoReference) {
     this.identityInfoReference = identityInfoReference;
   }
 

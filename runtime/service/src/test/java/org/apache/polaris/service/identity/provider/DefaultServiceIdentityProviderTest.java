@@ -39,7 +39,7 @@ import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredenti
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.service.identity.AwsIamServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
@@ -245,7 +245,7 @@ public class DefaultServiceIdentityProviderTest {
 
     ServiceIdentityInfoDpo serviceIdentityDpo =
         new AwsIamServiceIdentityInfoDpo(
-            new ServiceSecretReference(
+            new SecretReference(
                 "urn:polaris-secret:default-identity-provider:system:default:AWS_IAM", Map.of()));
 
     Optional<ServiceIdentityInfo> result = provider.getServiceIdentityInfo(serviceIdentityDpo);
@@ -269,7 +269,7 @@ public class DefaultServiceIdentityProviderTest {
 
     ServiceIdentityInfoDpo serviceIdentityDpo =
         new AwsIamServiceIdentityInfoDpo(
-            new ServiceSecretReference(
+            new SecretReference(
                 "urn:polaris-secret:default-identity-provider:my-realm:AWS_IAM", Map.of()));
 
     Optional<ServiceIdentityCredential> result =
@@ -348,7 +348,7 @@ public class DefaultServiceIdentityProviderTest {
   @Test
   void testBuildIdentityInfoReferenceForDefaultRealm() {
     // Test URN generation for default realm
-    ServiceSecretReference ref =
+    SecretReference ref =
         DefaultServiceIdentityProvider.buildIdentityInfoReference(
             DEFAULT_REALM_KEY, ServiceIdentityType.AWS_IAM);
 
@@ -359,7 +359,7 @@ public class DefaultServiceIdentityProviderTest {
   @Test
   void testBuildIdentityInfoReferenceForCustomRealm() {
     // Test URN generation for custom realm
-    ServiceSecretReference ref =
+    SecretReference ref =
         DefaultServiceIdentityProvider.buildIdentityInfoReference(
             "custom-realm", ServiceIdentityType.AWS_IAM);
 

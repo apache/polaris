@@ -24,7 +24,7 @@ import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -62,8 +62,7 @@ public class AwsIamServiceIdentityCredentialTest {
 
   @Test
   void testConstructorWithAllParameters() {
-    ServiceSecretReference ref =
-        new ServiceSecretReference("urn:polaris-secret:test:ref", Map.of());
+    SecretReference ref = new SecretReference("urn:polaris-secret:test:ref", Map.of());
     StaticCredentialsProvider credProvider =
         StaticCredentialsProvider.create(
             AwsSessionCredentials.create("access-key", "secret-key", "session-token"));
@@ -80,11 +79,12 @@ public class AwsIamServiceIdentityCredentialTest {
 
   @Test
   void testConversionToDpo() {
-    ServiceSecretReference ref =
-        new ServiceSecretReference("urn:polaris-secret:test:reference", Map.of());
+    SecretReference ref = new SecretReference("urn:polaris-secret:test:reference", Map.of());
     AwsIamServiceIdentityCredential credential =
         new AwsIamServiceIdentityCredential(
-            ref, "arn:aws:iam::123456789012:user/test-user", DefaultCredentialsProvider.create());
+            ref,
+            "arn:aws:iam::123456789012:user/test-user",
+            DefaultCredentialsProvider.builder().build());
 
     ServiceIdentityInfoDpo dpo = credential.asServiceIdentityInfoDpo();
 

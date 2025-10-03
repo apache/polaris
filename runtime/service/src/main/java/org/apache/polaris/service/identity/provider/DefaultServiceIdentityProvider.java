@@ -33,7 +33,7 @@ import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ResolvableServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
@@ -99,8 +99,7 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
     }
 
     // Find the configuration matching the reference and return metadata only
-    ServiceSecretReference actualRef =
-        (ServiceSecretReference) serviceIdentityInfo.getIdentityInfoReference();
+    SecretReference actualRef = serviceIdentityInfo.getIdentityInfoReference();
 
     return config.serviceIdentityConfigurations().stream()
         .filter(
@@ -118,15 +117,14 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
     }
 
     // Find the configuration matching the reference and resolve credential lazily
-    ServiceSecretReference actualRef =
-        (ServiceSecretReference) serviceIdentityInfo.getIdentityInfoReference();
+    SecretReference ref = serviceIdentityInfo.getIdentityInfoReference();
 
     return config.serviceIdentityConfigurations().stream()
         .filter(
             identityConfig ->
-                buildIdentityInfoReference(realm, identityConfig.getType()).equals(actualRef))
+                buildIdentityInfoReference(realm, identityConfig.getType()).equals(ref))
         .findFirst()
-        .flatMap(identityConfig -> identityConfig.asServiceIdentityCredential(actualRef));
+        .flatMap(identityConfig -> identityConfig.asServiceIdentityCredential(ref));
   }
 
   @VisibleForTesting
@@ -135,21 +133,19 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
   }
 
   /**
-   * Builds a {@link ServiceSecretReference} for the given realm and service identity type.
+   * Builds a {@link SecretReference} for the given realm and service identity type.
    *
-   * <p>The URN format is:
-   * urn:polaris-service-secret:default-identity-provider:&lt;realm&gt;:&lt;type&gt;
+   * <p>The URN format is: urn:polaris-secret:default-identity-provider:&lt;realm&gt;:&lt;type&gt;
    *
    * <p>If the realm is the default realm key, it is replaced with "system:default" in the URN.
    *
    * @param realm the realm identifier
    * @param type the service identity type
-   * @return the constructed service secret reference
+   * @return the constructed secret reference for this service identity
    */
-  public static ServiceSecretReference buildIdentityInfoReference(
-      String realm, ServiceIdentityType type) {
-    // urn:polaris-service-secret:default-identity-provider:<realm>:<type>
-    return new ServiceSecretReference(
+  public static SecretReference buildIdentityInfoReference(String realm, ServiceIdentityType type) {
+    // urn:polaris-secret:default-identity-provider:<realm>:<type>
+    return new SecretReference(
         IDENTITY_INFO_REFERENCE_URN_FORMAT.formatted(
             realm.equals(DEFAULT_REALM_KEY) ? DEFAULT_REALM_NSS : realm, type.name()),
         Map.of());

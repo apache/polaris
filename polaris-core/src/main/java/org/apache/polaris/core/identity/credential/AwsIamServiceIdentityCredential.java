@@ -25,7 +25,7 @@ import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
@@ -69,10 +69,10 @@ public class AwsIamServiceIdentityCredential extends ServiceIdentityCredential {
   }
 
   public AwsIamServiceIdentityCredential(
-      @Nullable ServiceSecretReference serviceSecretReference,
+      @Nullable SecretReference secretReference,
       @Nullable String iamArn,
       @Nonnull AwsCredentialsProvider awsCredentialsProvider) {
-    super(ServiceIdentityType.AWS_IAM, serviceSecretReference);
+    super(ServiceIdentityType.AWS_IAM, secretReference);
     this.iamArn = iamArn;
     this.awsCredentialsProvider = awsCredentialsProvider;
   }

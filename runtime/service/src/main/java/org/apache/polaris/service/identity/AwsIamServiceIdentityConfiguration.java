@@ -25,7 +25,7 @@ import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
-import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
@@ -103,18 +103,17 @@ public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIde
    *
    * <p>This method should only be called when credentials are actually needed for authentication.
    *
-   * @param serviceIdentityReference the reference to associate with this credential
+   * @param secretReference the secret reference to associate with this credential
    * @return the service identity credential, or empty if the IAM ARN is not configured
    */
   @Override
   default Optional<AwsIamServiceIdentityCredential> asServiceIdentityCredential(
-      @Nonnull ServiceSecretReference serviceIdentityReference) {
+      @Nonnull SecretReference secretReference) {
     if (iamArn() == null) {
       return Optional.empty();
     }
     return Optional.of(
-        new AwsIamServiceIdentityCredential(
-            serviceIdentityReference, iamArn(), awsCredentialsProvider()));
+        new AwsIamServiceIdentityCredential(secretReference, iamArn(), awsCredentialsProvider()));
   }
 
   /**

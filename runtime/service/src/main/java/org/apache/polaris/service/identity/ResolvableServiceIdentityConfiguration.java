@@ -24,7 +24,7 @@ import java.util.Optional;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
-import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.core.secrets.SecretReference;
 
 /**
  * Represents a service identity configuration that can be converted into a fully initialized {@link
@@ -65,11 +65,11 @@ public interface ResolvableServiceIdentityConfiguration {
    * org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential}) using the
    * configured values and the provided secret reference.
    *
-   * @param serviceIdentityReference the reference to associate with this credential for persistence
+   * @param secretReference the secret reference to associate with this credential for persistence
    * @return an optional service identity credential, or empty if required configuration is missing
    */
   default Optional<? extends ServiceIdentityCredential> asServiceIdentityCredential(
-      @Nonnull ServiceSecretReference serviceIdentityReference) {
+      @Nonnull SecretReference secretReference) {
     return Optional.empty();
   }
 }
