@@ -32,10 +32,16 @@ public class CatalogFederationIT extends CatalogFederationIntegrationTest {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.features.\"ENABLE_CATALOG_FEDERATION\"", "true",
-          "polaris.features.\"SUPPORTED_CATALOG_CONNECTION_TYPES\"", "[\"ICEBERG_REST\"]",
-          "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true",
-          "polaris.features.\"ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS\"", "true");
+          "polaris.features.\"ENABLE_CATALOG_FEDERATION\"",
+          "true",
+          "polaris.features.\"SUPPORTED_CATALOG_CONNECTION_TYPES\"",
+          "[\"ICEBERG_REST\"]",
+          "polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
+          "true",
+          "polaris.features.\"ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS\"",
+          "true",
+          "polaris.features.\"ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG\"",
+          "true");
     }
   }
 }
