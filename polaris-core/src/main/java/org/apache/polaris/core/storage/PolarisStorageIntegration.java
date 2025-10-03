@@ -40,7 +40,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
     this.integrationIdentifierOrId = identifierOrId;
   }
 
-  public T config() {
+  protected T config() {
     return config;
   }
 
