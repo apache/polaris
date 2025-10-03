@@ -21,6 +21,8 @@ package org.apache.polaris.service.identity;
 
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
+import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
@@ -72,25 +74,47 @@ public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIde
   }
 
   /**
-   * Converts this configuration into a {@link AwsIamServiceIdentityCredential}.
+   * Returns the {@link AwsIamServiceIdentityInfo} model containing only the IAM ARN.
+   *
+   * <p>This method is lightweight and does not construct AWS credential providers. It should be
+   * used for API responses where only identity metadata is needed.
+   *
+   * @return the service identity info model, or empty if the IAM ARN is not configured
+   */
+  @Override
+  default Optional<AwsIamServiceIdentityInfo> asServiceIdentityInfoModel() {
+    if (iamArn() == null) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        AwsIamServiceIdentityInfo.builder()
+            .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
+            .setIamArn(iamArn())
+            .build());
+  }
+
+  /**
+   * Converts this configuration into a {@link AwsIamServiceIdentityCredential} with actual AWS
+   * credentials.
    *
    * <p>Creates a credential object containing the configured IAM ARN and AWS credentials provider.
    * The credentials provider is constructed based on whether static credentials (access key, secret
    * key, session token) are configured or whether to use the default AWS credential chain.
    *
+   * <p>This method should only be called when credentials are actually needed for authentication.
+   *
    * @param serviceIdentityReference the reference to associate with this credential
    * @return the service identity credential, or empty if the IAM ARN is not configured
    */
   @Override
-  default Optional<AwsIamServiceIdentityCredential> resolve(
+  default Optional<AwsIamServiceIdentityCredential> asServiceIdentityCredential(
       @Nonnull ServiceSecretReference serviceIdentityReference) {
     if (iamArn() == null) {
       return Optional.empty();
-    } else {
-      return Optional.of(
-          new AwsIamServiceIdentityCredential(
-              serviceIdentityReference, iamArn(), awsCredentialsProvider()));
     }
+    return Optional.of(
+        new AwsIamServiceIdentityCredential(
+            serviceIdentityReference, iamArn(), awsCredentialsProvider()));
   }
 
   /**

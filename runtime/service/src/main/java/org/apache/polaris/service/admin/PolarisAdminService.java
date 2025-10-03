@@ -100,7 +100,6 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 import org.apache.polaris.core.exceptions.CommitConflictException;
-import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -782,23 +781,10 @@ public class PolarisAdminService {
         }
 
         // Allocate service identity if needed for the authentication type.
-        Optional<ServiceIdentityInfoDpo> serviceIdentityInfoDpoOptional = Optional.empty();
-        if (connectionConfigInfo.getAuthenticationParameters().getAuthenticationType()
-            == AuthenticationParameters.AuthenticationTypeEnum.SIGV4) {
-          serviceIdentityInfoDpoOptional =
-              serviceIdentityProvider.allocateServiceIdentity(connectionConfigInfo);
-          if (serviceIdentityInfoDpoOptional.isEmpty()) {
-            throw new IllegalStateException(
-                String.format(
-                    "Cannot create Catalog %s. Failed to allocate %s service identity for %s authentication",
-                    entity.getName(),
-                    ServiceIdentityType.AWS_IAM.name(),
-                    connectionConfigInfo
-                        .getAuthenticationParameters()
-                        .getAuthenticationType()
-                        .name()));
-          }
-        }
+        // The provider will determine if a service identity is required based on the connection
+        // config.
+        Optional<ServiceIdentityInfoDpo> serviceIdentityInfoDpoOptional =
+            serviceIdentityProvider.allocateServiceIdentity(connectionConfigInfo);
 
         entity =
             new CatalogEntity.Builder(entity)

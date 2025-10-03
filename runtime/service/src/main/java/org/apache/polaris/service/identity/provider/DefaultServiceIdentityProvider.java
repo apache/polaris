@@ -22,40 +22,29 @@ package org.apache.polaris.service.identity.provider;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
+import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
+import org.apache.polaris.service.identity.ResolvableServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
 
 /**
  * Default implementation of {@link ServiceIdentityProvider} that provides service identity
  * credentials from statically configured values.
  *
- * <p>This implementation loads service identity configurations at startup from Quarkus application
- * properties and maintains them in memory. It supports both multi-tenant and single-tenant
- * deployments:
- *
- * <ul>
- *   <li><b>Multi-tenant mode:</b> Each realm can define its own service identities. When allocating
- *       an identity to a catalog, the provider selects the appropriate identity based on the
- *       catalog's realm and authentication type.
- *   <li><b>Single-tenant mode:</b> A single default set of service identities is used for all
- *       catalogs.
- * </ul>
- *
- * <p>All service identities must be configured before server startup. This implementation does not
- * support dynamic credential rotation or runtime identity registration. Vendors requiring such
- * functionality should implement a custom {@link ServiceIdentityProvider}.
+ * <p>This implementation loads service identity configurations at startup and uses them to provide
+ * identity information and credentials on demand. All resolution is done lazily - credentials are
+ * only created when actually needed for authentication.
  */
 public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
   public static final String DEFAULT_REALM_KEY = ServiceIdentityConfiguration.DEFAULT_REALM_KEY;
@@ -63,101 +52,86 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
   private static final String IDENTITY_INFO_REFERENCE_URN_FORMAT =
       "urn:polaris-secret:default-identity-provider:%s:%s";
 
-  /** Map of service identity types to their credentials. */
-  private final EnumMap<ServiceIdentityType, ServiceIdentityCredential> serviceIdentityCredentials;
-
-  /** Map of identity info references (URNs) to their service identity credentials. */
-  private final Map<String, ServiceIdentityCredential> referenceToServiceIdentityCredential;
+  private final String realm;
+  private final RealmServiceIdentityConfiguration config;
 
   public DefaultServiceIdentityProvider() {
-    this(new EnumMap<>(ServiceIdentityType.class));
-  }
-
-  public DefaultServiceIdentityProvider(
-      EnumMap<ServiceIdentityType, ServiceIdentityCredential> serviceIdentities) {
-    this.serviceIdentityCredentials = serviceIdentities;
-    this.referenceToServiceIdentityCredential =
-        serviceIdentities.values().stream()
-            .collect(
-                Collectors.toMap(
-                    identity -> identity.getIdentityInfoReference().getUrn(),
-                    identity -> identity));
+    this.realm = DEFAULT_REALM_KEY;
+    this.config = null;
   }
 
   @Inject
   public DefaultServiceIdentityProvider(
       RealmContext realmContext, ServiceIdentityConfiguration serviceIdentityConfiguration) {
-    this.serviceIdentityCredentials =
-        serviceIdentityConfiguration.resolveServiceIdentityCredentials(realmContext).stream()
-            .collect(
-                // Collect to an EnumMap, grouping by ServiceIdentityType
-                Collectors.toMap(
-                    ServiceIdentityCredential::getIdentityType,
-                    identity -> identity,
-                    (a, b) -> b,
-                    () -> new EnumMap<>(ServiceIdentityType.class)));
-
-    this.referenceToServiceIdentityCredential =
-        serviceIdentityCredentials.values().stream()
-            .collect(
-                Collectors.toMap(
-                    identity -> identity.getIdentityInfoReference().getUrn(),
-                    identity -> identity));
+    ServiceIdentityConfiguration.RealmConfigEntry entry =
+        serviceIdentityConfiguration.forRealm(realmContext);
+    this.realm = entry.realm();
+    this.config = entry.config();
   }
 
   @Override
   public Optional<ServiceIdentityInfoDpo> allocateServiceIdentity(
       @Nonnull ConnectionConfigInfo connectionConfig) {
-    // Determine the service identity type based on the authentication parameters
-    if (connectionConfig.getAuthenticationParameters() == null) {
+    if (config == null || connectionConfig.getAuthenticationParameters() == null) {
       return Optional.empty();
     }
 
-    AuthenticationParameters.AuthenticationTypeEnum authenticationType =
+    AuthenticationParameters.AuthenticationTypeEnum authType =
         connectionConfig.getAuthenticationParameters().getAuthenticationType();
 
-    ServiceIdentityType serviceIdentityType = null;
-    if (authenticationType == AuthenticationParameters.AuthenticationTypeEnum.SIGV4) {
-      serviceIdentityType = ServiceIdentityType.AWS_IAM;
-    }
-    // Add more authentication types and their corresponding service identity types as needed
-
-    if (serviceIdentityType == null) {
-      return Optional.empty();
-    }
-
-    ServiceIdentityCredential serviceIdentityCredential =
-        serviceIdentityCredentials.get(serviceIdentityType);
-    if (serviceIdentityCredential == null) {
-      return Optional.empty();
-    }
-    return Optional.of(serviceIdentityCredential.asServiceIdentityInfoDpo());
+    // Map authentication type to service identity type and check if configured
+    return switch (authType) {
+      case SIGV4 ->
+          config.awsIamServiceIdentity().isPresent()
+              ? Optional.of(
+                  new AwsIamServiceIdentityInfoDpo(
+                      buildIdentityInfoReference(realm, ServiceIdentityType.AWS_IAM)))
+              : Optional.empty();
+      default -> Optional.empty();
+    };
   }
 
   @Override
   public Optional<ServiceIdentityInfo> getServiceIdentityInfo(
       @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
-    ServiceIdentityCredential serviceIdentityCredential =
-        referenceToServiceIdentityCredential.get(
-            serviceIdentityInfo.getIdentityInfoReference().getUrn());
-    if (serviceIdentityCredential == null) {
+    if (config == null) {
       return Optional.empty();
     }
-    return Optional.of(serviceIdentityCredential.asServiceIdentityInfoModel());
+
+    // Find the configuration matching the reference and return metadata only
+    ServiceSecretReference actualRef =
+        (ServiceSecretReference) serviceIdentityInfo.getIdentityInfoReference();
+
+    return config.serviceIdentityConfigurations().stream()
+        .filter(
+            identityConfig ->
+                buildIdentityInfoReference(realm, identityConfig.getType()).equals(actualRef))
+        .findFirst()
+        .flatMap(ResolvableServiceIdentityConfiguration::asServiceIdentityInfoModel);
   }
 
   @Override
   public Optional<ServiceIdentityCredential> getServiceIdentityCredential(
       @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo) {
-    ServiceIdentityCredential serviceIdentityCredential =
-        referenceToServiceIdentityCredential.get(
-            serviceIdentityInfo.getIdentityInfoReference().getUrn());
-    return Optional.ofNullable(serviceIdentityCredential);
+    if (config == null) {
+      return Optional.empty();
+    }
+
+    // Find the configuration matching the reference and resolve credential lazily
+    ServiceSecretReference actualRef =
+        (ServiceSecretReference) serviceIdentityInfo.getIdentityInfoReference();
+
+    return config.serviceIdentityConfigurations().stream()
+        .filter(
+            identityConfig ->
+                buildIdentityInfoReference(realm, identityConfig.getType()).equals(actualRef))
+        .findFirst()
+        .flatMap(identityConfig -> identityConfig.asServiceIdentityCredential(actualRef));
   }
 
   @VisibleForTesting
-  public EnumMap<ServiceIdentityType, ServiceIdentityCredential> getServiceIdentityCredentials() {
-    return serviceIdentityCredentials;
+  public RealmServiceIdentityConfiguration getRealmConfig() {
+    return config;
   }
 
   /**

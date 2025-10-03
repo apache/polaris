@@ -24,21 +24,29 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
+import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
+import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
+import org.apache.polaris.service.identity.AwsIamServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 
 @QuarkusTest
@@ -120,81 +128,242 @@ public class DefaultServiceIdentityProviderTest {
   }
 
   @Test
-  void testRealmServiceIdentityConfigToServiceIdentityCredential() {
+  void testAwsIamConfigurationLoading() {
     // Check the default realm
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
     DefaultServiceIdentityProvider defaultProvider =
         new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
-    EnumMap<ServiceIdentityType, ServiceIdentityCredential> identityCredentials =
-        defaultProvider.getServiceIdentityCredentials();
 
-    Assertions.assertThat(identityCredentials)
-        .containsKey(ServiceIdentityType.AWS_IAM)
-        .size()
-        .isEqualTo(1);
-    AwsIamServiceIdentityCredential awsIamCredential =
-        (AwsIamServiceIdentityCredential) identityCredentials.get(ServiceIdentityType.AWS_IAM);
-    Assertions.assertThat(awsIamCredential.getIamArn())
+    Optional<AwsIamServiceIdentityConfiguration> awsConfig =
+        defaultProvider.getRealmConfig().awsIamServiceIdentity();
+    Assertions.assertThat(awsConfig).isPresent();
+    Assertions.assertThat(awsConfig.get().iamArn())
         .isEqualTo("arn:aws:iam::123456789012:user/polaris-default-iam-user");
-    Assertions.assertThat(awsIamCredential.getIdentityInfoReference())
-        .isEqualTo(
-            new ServiceSecretReference(
-                "urn:polaris-secret:default-identity-provider:system:default:AWS_IAM", Map.of()));
-    Assertions.assertThat(
-            awsIamCredential.getAwsCredentialsProvider() instanceof DefaultCredentialsProvider)
-        .isTrue();
+    Assertions.assertThat(awsConfig.get().accessKeyId()).isEmpty();
 
-    // Check the my-realm
+    // Check the my-realm with static credentials
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn(MY_REALM_KEY);
     DefaultServiceIdentityProvider myRealmProvider =
         new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
-    identityCredentials = myRealmProvider.getServiceIdentityCredentials();
 
-    Assertions.assertThat(identityCredentials)
-        .containsKey(ServiceIdentityType.AWS_IAM)
-        .size()
-        .isEqualTo(1);
-    awsIamCredential =
-        (AwsIamServiceIdentityCredential) identityCredentials.get(ServiceIdentityType.AWS_IAM);
-    Assertions.assertThat(awsIamCredential.getIamArn())
+    awsConfig = myRealmProvider.getRealmConfig().awsIamServiceIdentity();
+    Assertions.assertThat(awsConfig).isPresent();
+    Assertions.assertThat(awsConfig.get().iamArn())
         .isEqualTo("arn:aws:iam::123456789012:user/polaris-iam-user");
-    Assertions.assertThat(awsIamCredential.getIdentityInfoReference())
-        .isEqualTo(
-            new ServiceSecretReference(
-                "urn:polaris-secret:default-identity-provider:my-realm:AWS_IAM", Map.of()));
-    Assertions.assertThat(
-            awsIamCredential.getAwsCredentialsProvider() instanceof StaticCredentialsProvider)
-        .isTrue();
-    StaticCredentialsProvider staticCredentialsProvider =
-        (StaticCredentialsProvider) awsIamCredential.getAwsCredentialsProvider();
-    Assertions.assertThat(
-            staticCredentialsProvider.resolveCredentials() instanceof AwsSessionCredentials)
-        .isTrue();
-    AwsSessionCredentials awsSessionCredentials =
-        (AwsSessionCredentials) staticCredentialsProvider.resolveCredentials();
-    Assertions.assertThat(awsSessionCredentials.accessKeyId()).isEqualTo("access-key-id");
-    Assertions.assertThat(awsSessionCredentials.secretAccessKey()).isEqualTo("secret-access-key");
-    Assertions.assertThat(awsSessionCredentials.sessionToken()).isEqualTo("session-token");
+    Assertions.assertThat(awsConfig.get().accessKeyId()).isEqualTo(Optional.of("access-key-id"));
+    Assertions.assertThat(awsConfig.get().secretAccessKey())
+        .isEqualTo(Optional.of("secret-access-key"));
+    Assertions.assertThat(awsConfig.get().sessionToken()).isEqualTo(Optional.of("session-token"));
 
-    // Check the other realm which does not exist in the configuration, should fallback to default
+    // Check the other realm (should fallback to default)
     Mockito.when(realmContext.getRealmIdentifier()).thenReturn("other-realm");
     DefaultServiceIdentityProvider otherProvider =
         new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
-    identityCredentials = otherProvider.getServiceIdentityCredentials();
-    Assertions.assertThat(identityCredentials)
-        .containsKey(ServiceIdentityType.AWS_IAM)
-        .size()
-        .isEqualTo(1);
-    awsIamCredential =
-        (AwsIamServiceIdentityCredential) identityCredentials.get(ServiceIdentityType.AWS_IAM);
-    Assertions.assertThat(awsIamCredential.getIamArn())
+
+    awsConfig = otherProvider.getRealmConfig().awsIamServiceIdentity();
+    Assertions.assertThat(awsConfig).isPresent();
+    Assertions.assertThat(awsConfig.get().iamArn())
         .isEqualTo("arn:aws:iam::123456789012:user/polaris-default-iam-user");
-    Assertions.assertThat(awsIamCredential.getIdentityInfoReference())
-        .isEqualTo(
+  }
+
+  @Test
+  void testAllocateServiceIdentityWithSigV4Authentication() {
+    // Test allocateServiceIdentity with SigV4 authentication
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
+    DefaultServiceIdentityProvider provider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+
+    ConnectionConfigInfo connectionConfig =
+        IcebergRestConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/catalog")
+            .setAuthenticationParameters(
+                SigV4AuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
+                    .setRoleArn("arn:aws:iam::123456789012:role/customer-role")
+                    .build())
+            .build();
+
+    Optional<ServiceIdentityInfoDpo> result = provider.allocateServiceIdentity(connectionConfig);
+
+    Assertions.assertThat(result).isPresent();
+    ServiceIdentityInfoDpo serviceIdentityDpo = result.get();
+    Assertions.assertThat(serviceIdentityDpo).isInstanceOf(AwsIamServiceIdentityInfoDpo.class);
+    Assertions.assertThat(serviceIdentityDpo.getIdentityType())
+        .isEqualTo(ServiceIdentityType.AWS_IAM);
+    Assertions.assertThat(serviceIdentityDpo.getIdentityInfoReference().getUrn())
+        .contains("default-identity-provider");
+  }
+
+  @Test
+  void testAllocateServiceIdentityWithBearerAuthenticationReturnsEmpty() {
+    // Test allocateServiceIdentity with non-SigV4 authentication returns empty
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
+    DefaultServiceIdentityProvider provider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+
+    ConnectionConfigInfo connectionConfig =
+        IcebergRestConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/catalog")
+            .setAuthenticationParameters(
+                BearerAuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.BEARER)
+                    .setBearerToken("some-token")
+                    .build())
+            .build();
+
+    Optional<ServiceIdentityInfoDpo> result = provider.allocateServiceIdentity(connectionConfig);
+
+    Assertions.assertThat(result).isEmpty();
+  }
+
+  @Test
+  void testAllocateServiceIdentityWithNullAuthParametersReturnsEmpty() {
+    // Test allocateServiceIdentity with null authentication parameters
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
+    DefaultServiceIdentityProvider provider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+
+    ConnectionConfigInfo connectionConfig =
+        IcebergRestConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/catalog")
+            .build();
+
+    Optional<ServiceIdentityInfoDpo> result = provider.allocateServiceIdentity(connectionConfig);
+
+    Assertions.assertThat(result).isEmpty();
+  }
+
+  @Test
+  void testGetServiceIdentityInfoReturnsInfoWithoutCredentials() {
+    // Test getServiceIdentityInfo returns user-facing info without credentials
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
+    DefaultServiceIdentityProvider provider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+
+    ServiceIdentityInfoDpo serviceIdentityDpo =
+        new AwsIamServiceIdentityInfoDpo(
             new ServiceSecretReference(
                 "urn:polaris-secret:default-identity-provider:system:default:AWS_IAM", Map.of()));
+
+    Optional<ServiceIdentityInfo> result = provider.getServiceIdentityInfo(serviceIdentityDpo);
+
+    Assertions.assertThat(result).isPresent();
+    ServiceIdentityInfo info = result.get();
+    Assertions.assertThat(info.getIdentityType())
+        .isEqualTo(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM);
+    Assertions.assertThat(info).isInstanceOf(AwsIamServiceIdentityInfo.class);
+    AwsIamServiceIdentityInfo awsInfo = (AwsIamServiceIdentityInfo) info;
+    Assertions.assertThat(awsInfo.getIamArn())
+        .isEqualTo("arn:aws:iam::123456789012:user/polaris-default-iam-user");
+  }
+
+  @Test
+  void testGetServiceIdentityCredentialReturnsCredentialWithSecrets() {
+    // Test getServiceIdentityCredential returns full credential with secrets
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(MY_REALM_KEY);
+    DefaultServiceIdentityProvider provider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+
+    ServiceIdentityInfoDpo serviceIdentityDpo =
+        new AwsIamServiceIdentityInfoDpo(
+            new ServiceSecretReference(
+                "urn:polaris-secret:default-identity-provider:my-realm:AWS_IAM", Map.of()));
+
+    Optional<ServiceIdentityCredential> result =
+        provider.getServiceIdentityCredential(serviceIdentityDpo);
+
+    Assertions.assertThat(result).isPresent();
+    ServiceIdentityCredential credential = result.get();
+    Assertions.assertThat(credential).isInstanceOf(AwsIamServiceIdentityCredential.class);
+
+    AwsIamServiceIdentityCredential awsCredential = (AwsIamServiceIdentityCredential) credential;
+    Assertions.assertThat(awsCredential.getIamArn())
+        .isEqualTo("arn:aws:iam::123456789012:user/polaris-iam-user");
+    Assertions.assertThat(awsCredential.getAwsCredentialsProvider())
+        .isInstanceOf(StaticCredentialsProvider.class);
+
+    // Verify credentials are accessible
+    StaticCredentialsProvider credProvider =
+        (StaticCredentialsProvider) awsCredential.getAwsCredentialsProvider();
+    AwsSessionCredentials creds = (AwsSessionCredentials) credProvider.resolveCredentials();
+    Assertions.assertThat(creds.accessKeyId()).isEqualTo("access-key-id");
+    Assertions.assertThat(creds.secretAccessKey()).isEqualTo("secret-access-key");
+    Assertions.assertThat(creds.sessionToken()).isEqualTo("session-token");
+  }
+
+  @Test
+  void testEmptyProviderAllocateServiceIdentityReturnsEmpty() {
+    // Test that an empty provider returns empty when allocating
+    DefaultServiceIdentityProvider emptyProvider = new DefaultServiceIdentityProvider();
+
+    ConnectionConfigInfo connectionConfig =
+        IcebergRestConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://example.com/catalog")
+            .setAuthenticationParameters(
+                SigV4AuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
+                    .setRoleArn("arn:aws:iam::123456789012:role/customer-role")
+                    .build())
+            .build();
+
+    Optional<ServiceIdentityInfoDpo> result =
+        emptyProvider.allocateServiceIdentity(connectionConfig);
+
+    Assertions.assertThat(result).isEmpty();
+  }
+
+  @Test
+  void testMultiTenantScenarioDifferentRealmsGetDifferentIdentities() {
+    // Test that different realms have different configurations
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(DEFAULT_REALM_KEY);
+    DefaultServiceIdentityProvider defaultProvider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+
+    Mockito.when(realmContext.getRealmIdentifier()).thenReturn(MY_REALM_KEY);
+    DefaultServiceIdentityProvider myRealmProvider =
+        new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
+
+    // Verify different IAM ARNs from configuration
+    Assertions.assertThat(defaultProvider.getRealmConfig().awsIamServiceIdentity()).isPresent();
+    Assertions.assertThat(defaultProvider.getRealmConfig().awsIamServiceIdentity().get().iamArn())
+        .isEqualTo("arn:aws:iam::123456789012:user/polaris-default-iam-user");
+
+    Assertions.assertThat(myRealmProvider.getRealmConfig().awsIamServiceIdentity()).isPresent();
+    Assertions.assertThat(myRealmProvider.getRealmConfig().awsIamServiceIdentity().get().iamArn())
+        .isEqualTo("arn:aws:iam::123456789012:user/polaris-iam-user");
+
+    // Verify different credential configurations
     Assertions.assertThat(
-            awsIamCredential.getAwsCredentialsProvider() instanceof DefaultCredentialsProvider)
-        .isTrue();
+            defaultProvider.getRealmConfig().awsIamServiceIdentity().get().accessKeyId())
+        .isEmpty();
+    Assertions.assertThat(
+            myRealmProvider.getRealmConfig().awsIamServiceIdentity().get().accessKeyId())
+        .isEqualTo(Optional.of("access-key-id"));
+  }
+
+  @Test
+  void testBuildIdentityInfoReferenceForDefaultRealm() {
+    // Test URN generation for default realm
+    ServiceSecretReference ref =
+        DefaultServiceIdentityProvider.buildIdentityInfoReference(
+            DEFAULT_REALM_KEY, ServiceIdentityType.AWS_IAM);
+
+    Assertions.assertThat(ref.getUrn())
+        .isEqualTo("urn:polaris-secret:default-identity-provider:system:default:AWS_IAM");
+  }
+
+  @Test
+  void testBuildIdentityInfoReferenceForCustomRealm() {
+    // Test URN generation for custom realm
+    ServiceSecretReference ref =
+        DefaultServiceIdentityProvider.buildIdentityInfoReference(
+            "custom-realm", ServiceIdentityType.AWS_IAM);
+
+    Assertions.assertThat(ref.getUrn())
+        .isEqualTo("urn:polaris-secret:default-identity-provider:custom-realm:AWS_IAM");
   }
 }

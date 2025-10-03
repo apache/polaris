@@ -24,6 +24,7 @@ import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.secrets.SecretReference;
 
 /**
@@ -34,12 +35,11 @@ import org.apache.polaris.core.secrets.SecretReference;
  * not persisted in this object.
  *
  * <p>At runtime, the reference can be used to retrieve the full {@link
- * org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential} which contains both
- * the identity metadata (e.g., IAM ARN) and the actual AWS credentials needed for authentication.
+ * AwsIamServiceIdentityCredential} which contains both the identity metadata (e.g., IAM ARN) and
+ * the actual AWS credentials needed for authentication.
  *
  * <p>Instances of this class can be converted to the public API model {@link
- * AwsIamServiceIdentityInfo} via a {@link
- * org.apache.polaris.core.identity.provider.ServiceIdentityProvider}.
+ * AwsIamServiceIdentityInfo} via a ServiceIdentityProvider.
  */
 public class AwsIamServiceIdentityInfoDpo extends ServiceIdentityInfoDpo {
 

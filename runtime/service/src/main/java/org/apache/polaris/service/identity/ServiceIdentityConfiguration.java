@@ -23,12 +23,8 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefaults;
 import io.smallrye.config.WithParentName;
 import io.smallrye.config.WithUnnamedKey;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
-import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 
 /**
  * Configuration interface for managing service identities across multiple realms in Polaris.
@@ -89,31 +85,6 @@ public interface ServiceIdentityConfiguration {
     String resolvedRealmIdentifier =
         realms().containsKey(realmIdentifier) ? realmIdentifier : DEFAULT_REALM_KEY;
     return new RealmConfigEntry(resolvedRealmIdentifier, realms().get(resolvedRealmIdentifier));
-  }
-
-  /**
-   * Loads and returns the list of {@link ServiceIdentityCredential} objects configured for the
-   * given realm.
-   *
-   * <p>This method retrieves the realm's configuration, builds credential references for each
-   * configured service identity, and constructs the corresponding {@link ServiceIdentityCredential}
-   * objects with their credentials.
-   *
-   * @param realmContext the realm context for which to load service identities
-   * @return a list of service identity credentials configured for the realm
-   */
-  default List<? extends ServiceIdentityCredential> resolveServiceIdentityCredentials(
-      RealmContext realmContext) {
-    RealmConfigEntry entry = forRealm(realmContext);
-
-    return entry.config().serviceIdentityConfigurations().stream()
-        .map(
-            resolvableServiceIdentityConfiguration ->
-                resolvableServiceIdentityConfiguration.resolve(
-                    DefaultServiceIdentityProvider.buildIdentityInfoReference(
-                        entry.realm(), resolvableServiceIdentityConfiguration.getType())))
-        .flatMap(Optional::stream)
-        .toList();
   }
 
   /**

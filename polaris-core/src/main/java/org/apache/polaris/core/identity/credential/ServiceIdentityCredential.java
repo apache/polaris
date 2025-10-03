@@ -38,7 +38,8 @@ import software.amazon.awssdk.annotations.NotNull;
  * <ul>
  *   <li>Identity type (e.g., AWS_IAM)
  *   <li>A reference to where the credential is stored (for persistence)
- *   <li>The actual authentication credentials (implementation-specific)
+ *   <li>The actual authentication credentials (implementation-specific, e.g.,
+ *       AwsCredentialsProvider)
  * </ul>
  */
 public abstract class ServiceIdentityCredential {

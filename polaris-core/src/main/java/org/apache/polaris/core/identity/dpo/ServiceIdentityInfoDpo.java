@@ -26,6 +26,7 @@ import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 
@@ -34,9 +35,8 @@ import org.apache.polaris.core.secrets.SecretReference;
  * Important: JsonSubTypes must be kept in sync with {@link ServiceIdentityType}.
  *
  * <p>This DPO stores only a reference to the service identity credential, not the actual secrets.
- * The reference can be used at runtime to retrieve the full {@link
- * org.apache.polaris.core.identity.credential.ServiceIdentityCredential} with credentials through a
- * {@link org.apache.polaris.core.identity.provider.ServiceIdentityProvider}.
+ * The reference can be used at runtime to retrieve the full {@link ServiceIdentityCredential} with
+ * credentials through a {@link ServiceIdentityProvider}.
  */
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,

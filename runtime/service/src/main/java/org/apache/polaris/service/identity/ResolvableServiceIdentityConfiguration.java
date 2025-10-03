@@ -21,6 +21,7 @@ package org.apache.polaris.service.identity;
 
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.secrets.ServiceSecretReference;
@@ -44,16 +45,30 @@ public interface ResolvableServiceIdentityConfiguration {
   }
 
   /**
+   * Converts this configuration into a {@link ServiceIdentityInfo} model containing identity
+   * metadata without credentials.
+   *
+   * <p>This method is used when only identity information (e.g., IAM ARN) is needed for API
+   * responses, without exposing sensitive credentials.
+   *
+   * @return an optional service identity info model, or empty if required configuration is missing
+   */
+  default Optional<? extends ServiceIdentityInfo> asServiceIdentityInfoModel() {
+    return Optional.empty();
+  }
+
+  /**
    * Converts this configuration into a {@link ServiceIdentityCredential} with actual credentials.
    *
-   * <p>Implementations should construct the appropriate credential object (e.g., {@link
+   * <p>This method should only be called when credentials are actually needed for authentication.
+   * Implementations should construct the appropriate credential object (e.g., {@link
    * org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential}) using the
    * configured values and the provided secret reference.
    *
    * @param serviceIdentityReference the reference to associate with this credential for persistence
    * @return an optional service identity credential, or empty if required configuration is missing
    */
-  default Optional<? extends ServiceIdentityCredential> resolve(
+  default Optional<? extends ServiceIdentityCredential> asServiceIdentityCredential(
       @Nonnull ServiceSecretReference serviceIdentityReference) {
     return Optional.empty();
   }
