@@ -69,6 +69,8 @@ class RealmContextFilterTest {
 
   @Test
   public void testNoRealmHeader() {
+    // The default realm is "realm1" so the second pair of secrets is not valid without
+    // an explicit header
     givenTokenRequest("client2", "secret2")
         .header("irrelevant-header", "fake-realm")
         .when()
@@ -79,6 +81,7 @@ class RealmContextFilterTest {
 
   @Test
   public void testDefaultRealm() {
+    // The default realm is "realm1", now credentials match
     givenTokenRequest("client1", "secret1")
         .header("irrelevant-header", "fake-realm")
         .when()
