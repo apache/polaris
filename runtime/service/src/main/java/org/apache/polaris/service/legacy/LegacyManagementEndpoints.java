@@ -24,6 +24,7 @@ import jakarta.enterprise.event.Observes;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
+@Deprecated(forRemoval = true)
 public class LegacyManagementEndpoints {
 
   public void registerLegacyManagementRoutes(
