@@ -67,7 +67,7 @@ services:
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   spark-sql:
-    image: apache/spark:3.5.6-java17-python3
+    image: apache/spark:3.5.7-java17-python3
     depends_on:
       polaris-setup:
         condition: service_completed_successfully
