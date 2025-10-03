@@ -27,7 +27,6 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -91,14 +90,13 @@ public class RequestIdHeaderTest {
   @Test
   public void testRequestIdHeaderSpecified() {
     String requestId = "pre-requested-request-id";
-    HashMap<String, String> headers =
-        new HashMap<>(Map.of(REALM_HEADER, REALM, REQUEST_ID_HEADER, requestId));
-    assertThat(sendRequest(headers)).matches(s -> s.equals(requestId));
-    assertThat(sendRequest(headers)).matches(s -> s.equals(requestId));
+    Map<String, String> headers = Map.of(REALM_HEADER, REALM, REQUEST_ID_HEADER, requestId);
+    assertThat(sendRequest(headers)).isEqualTo(requestId);
+    assertThat(sendRequest(headers)).isEqualTo(requestId);
 
     String newRequestId = "new-pre-requested-request-id";
-    headers.put(REQUEST_ID_HEADER, newRequestId);
-    assertThat(sendRequest(headers)).matches(s -> s.equals(newRequestId));
+    headers = Map.of(REALM_HEADER, REALM, REQUEST_ID_HEADER, newRequestId);
+    assertThat(sendRequest(headers)).isEqualTo(newRequestId);
   }
 
   @Test
@@ -106,10 +104,9 @@ public class RequestIdHeaderTest {
     Map<String, String> headers = Map.of(REALM_HEADER, REALM);
     Set<String> requestIds = new HashSet<>();
     for (int i = 0; i < 10; i++) {
-      String requestId = sendRequest(headers);
-      assertThat(requestIds).doesNotContain(requestId);
-      requestIds.add(requestId);
+      requestIds.add(sendRequest(headers));
     }
+    assertThat(requestIds).hasSize(10);
   }
 
   private String sendRequest(Map<String, String> headers) {

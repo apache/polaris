@@ -19,38 +19,20 @@
 
 package org.apache.polaris.service.tracing;
 
-import com.google.common.annotations.VisibleForTesting;
-import jakarta.enterprise.context.ApplicationScoped;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
+import io.smallrye.mutiny.Uni;
+import jakarta.ws.rs.container.ContainerRequestContext;
 
-@ApplicationScoped
-public class RequestIdGenerator {
-  static final Long COUNTER_SOFT_MAX = Long.MAX_VALUE / 2;
+/**
+ * A generator for request IDs.
+ *
+ * @see RequestIdFilter
+ */
+public interface RequestIdGenerator {
 
-  record State(String uuid, long counter) {
-
-    State() {
-      this(UUID.randomUUID().toString(), 1);
-    }
-
-    String requestId() {
-      return String.format("%s_%019d", uuid, counter);
-    }
-
-    State increment() {
-      return counter >= COUNTER_SOFT_MAX ? new State() : new State(uuid, counter + 1);
-    }
-  }
-
-  final AtomicReference<State> state = new AtomicReference<>(new State());
-
-  public String generateRequestId() {
-    return state.getAndUpdate(State::increment).requestId();
-  }
-
-  @VisibleForTesting
-  public void setCounter(long counter) {
-    state.set(new State(state.get().uuid, counter));
-  }
+  /**
+   * Generates a new request ID. IDs must be fast to generate and unique.
+   *
+   * @param requestContext The JAX-RS request context
+   */
+  Uni<String> generateRequestId(ContainerRequestContext requestContext);
 }
