@@ -68,7 +68,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   private PolarisTestMetaStoreManager polarisTestMetaStoreManager;
 
   @BeforeEach
-  public void setupPolariMetaStoreManager() {
+  public void setupPolarisMetaStoreManager() {
     this.polarisTestMetaStoreManager = createPolarisTestMetaStoreManager();
   }
 
