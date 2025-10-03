@@ -176,9 +176,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
-    PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
-    diagnostics.checkNotNull(catalogPath, "No catalog available");
-    return CatalogEntity.of(catalogPath.getRawLeafEntity());
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    diagnostics.checkNotNull(catalogEntity, "No catalog available");
+    return catalogEntity;
   }
 
   /**

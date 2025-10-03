@@ -195,8 +195,7 @@ public class PolarisAdminService {
   }
 
   private Optional<CatalogEntity> currentCatalog() {
-    return Optional.ofNullable(resolutionManifest.getResolvedReferenceCatalogEntity())
-        .map(path -> CatalogEntity.of(path.getRawLeafEntity()));
+    return Optional.ofNullable(resolutionManifest.getResolvedCatalogEntity());
   }
 
   private Optional<PrincipalEntity> findPrincipalByName(String name) {
