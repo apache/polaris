@@ -81,6 +81,8 @@ import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
 import org.apache.polaris.service.storage.aws.StsClientsPool;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
+import org.apache.polaris.service.tracing.RequestIdGenerator;
+import org.apache.polaris.service.tracing.TracingConfiguration;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 import org.slf4j.Logger;
@@ -390,6 +392,15 @@ public class ServiceProducers {
       org.apache.polaris.service.auth.external.OidcConfiguration config,
       @Any Instance<OidcTenantResolver> resolvers) {
     return resolvers.select(Identifier.Literal.of(config.tenantResolver())).get();
+  }
+
+  @Produces
+  @ApplicationScoped
+  public RequestIdGenerator requestIdGenerator(
+      TracingConfiguration config, @Any Instance<RequestIdGenerator> requestIdGenerators) {
+    return requestIdGenerators
+        .select(Identifier.Literal.of(config.requestIdGenerator().type()))
+        .get();
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

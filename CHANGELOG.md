@@ -53,6 +53,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Deprecations
 
 * The property `polaris.active-roles-provider.type` is deprecated and has no effect anymore.
+* The property `polaris.log.request-id-header-name` has been renamed to
+  `polaris.tracing.request-id-generator.header-name`; the old name is still supported for backwards
+  compatibility, but will generate a warning.
 
 ### Fixes
 

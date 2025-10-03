@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.tracing;
 
+import io.smallrye.common.annotation.Identifier;
 import io.smallrye.mutiny.Uni;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -37,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * reset to 1.
  */
 @ApplicationScoped
+@Identifier("default")
 public class DefaultRequestIdGenerator implements RequestIdGenerator {
 
   record RequestId(UUID uuid, long counter) {
