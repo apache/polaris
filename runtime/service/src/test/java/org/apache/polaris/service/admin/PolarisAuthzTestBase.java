@@ -526,7 +526,6 @@ public abstract class PolarisAuthzTestBase {
     this.baseCatalog =
         new IcebergCatalog(
             diagServices,
-            storageCredentialCache,
             resolverFactory,
             metaStoreManager,
             callContext,
@@ -566,7 +565,6 @@ public abstract class PolarisAuthzTestBase {
         PolarisEventListener polarisEventListener) {
       super(
           diagnostics,
-          storageCredentialCache,
           resolverFactory,
           metaStoreManagerFactory,
           taskExecutor,

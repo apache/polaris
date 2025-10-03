@@ -253,7 +253,6 @@ public abstract class AbstractPolicyCatalogTest {
     this.icebergCatalog =
         new IcebergCatalog(
             diagServices,
-            storageCredentialCache,
             resolverFactory,
             metaStoreManager,
             polarisContext,

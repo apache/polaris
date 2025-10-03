@@ -228,7 +228,6 @@ public record TestServices(
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               diagnostics,
-              storageCredentialCache,
               resolverFactory,
               metaStoreManagerFactory,
               taskExecutor,

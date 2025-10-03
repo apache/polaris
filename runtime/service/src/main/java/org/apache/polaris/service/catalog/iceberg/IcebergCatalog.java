@@ -121,17 +121,13 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.LocationUtils;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -145,7 +141,7 @@ import org.slf4j.LoggerFactory;
 
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
 public class IcebergCatalog extends BaseMetastoreViewCatalog
-    implements SupportsNamespaces, SupportsNotifications, Closeable, SupportsCredentialDelegation {
+    implements SupportsNamespaces, SupportsNotifications, Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
@@ -165,7 +161,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       };
 
   private final PolarisDiagnostics diagnostics;
-  private final StorageCredentialCache storageCredentialCache;
   private final ResolverFactory resolverFactory;
   private final CallContext callContext;
   private final RealmConfig realmConfig;
@@ -196,7 +191,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    */
   public IcebergCatalog(
       PolarisDiagnostics diagnostics,
-      StorageCredentialCache storageCredentialCache,
       ResolverFactory resolverFactory,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
@@ -206,7 +200,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
     this.diagnostics = diagnostics;
-    this.storageCredentialCache = storageCredentialCache;
     this.resolverFactory = resolverFactory;
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
@@ -834,43 +827,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TableIdentifier identifier, NotificationRequest notificationRequest) {
     return sendNotificationForTableLike(
         PolarisEntitySubType.ICEBERG_TABLE, identifier, notificationRequest);
-  }
-
-  /**
-   * Get access configuration for credential vending.
-   *
-   * @deprecated This method couples credential vending logic to the catalog implementation,
-   *     preventing reuse for federated catalogs. Use {@link AccessConfigProvider#getAccessConfig}
-   *     instead, which provides the same functionality as a standalone factory. This method will be
-   *     removed in a future release.
-   * @see AccessConfigProvider
-   */
-  @Override
-  @Deprecated
-  public AccessConfig getAccessConfig(
-      TableIdentifier tableIdentifier,
-      TableMetadata tableMetadata,
-      Set<PolarisStorageActions> storageActions,
-      Optional<String> refreshCredentialsEndpoint) {
-    Optional<PolarisEntity> storageInfo =
-        FileIOUtil.findStorageInfoFromHierarchy(
-            CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
-    if (storageInfo.isEmpty()) {
-      LOGGER
-          .atWarn()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log("Table entity has no storage configuration in its hierarchy");
-      return AccessConfig.builder().build();
-    }
-    return FileIOUtil.refreshAccessConfig(
-        callContext,
-        storageCredentialCache,
-        getCredentialVendor(),
-        tableIdentifier,
-        StorageUtil.getLocationsUsedByTable(tableMetadata),
-        storageActions,
-        storageInfo.get(),
-        refreshCredentialsEndpoint);
   }
 
   private String buildPrefixedLocation(TableIdentifier tableIdentifier) {
@@ -2131,10 +2087,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   private PolarisMetaStoreManager getMetaStoreManager() {
-    return metaStoreManager;
-  }
-
-  private PolarisCredentialVendor getCredentialVendor() {
     return metaStoreManager;
   }
 

@@ -443,7 +443,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
     return new IcebergCatalog(
         diagServices,
-        storageCredentialCache,
         resolverFactory,
         metaStoreManager,
         polarisContext,
