@@ -129,7 +129,9 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.SupportsNotifications;
+import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.LocationUtils;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -385,7 +387,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       lastMetadata = null;
     }
 
-    Optional<PolarisEntity> storageInfoEntity = findStorageInfo(tableIdentifier);
+    Optional<PolarisEntity> storageInfoEntity =
+        FileIOUtil.findStorageInfoFromHierarchy(
+            CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
 
     // The storageProperties we stash away in the Task should be the superset of the
     // internalProperties of the StorageInfoEntity to be able to use its StorageIntegration
@@ -831,13 +835,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         PolarisEntitySubType.ICEBERG_TABLE, identifier, notificationRequest);
   }
 
+  /**
+   * Get access configuration for credential vending.
+   *
+   * @deprecated This method couples credential vending logic to the catalog implementation,
+   *     preventing reuse for federated catalogs. Use {@link AccessConfigProvider#getAccessConfig}
+   *     instead, which provides the same functionality as a standalone factory. This method will be
+   *     removed in a future release.
+   * @see AccessConfigProvider
+   */
   @Override
+  @Deprecated
   public AccessConfig getAccessConfig(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions,
       Optional<String> refreshCredentialsEndpoint) {
-    Optional<PolarisEntity> storageInfo = findStorageInfo(tableIdentifier);
+    Optional<PolarisEntity> storageInfo =
+        FileIOUtil.findStorageInfoFromHierarchy(
+            CatalogUtils.findResolvedStorageEntity(resolvedEntityView, tableIdentifier));
     if (storageInfo.isEmpty()) {
       LOGGER
           .atWarn()
@@ -959,19 +975,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   public String transformTableLikeLocation(TableIdentifier tableIdentifier, String location) {
     return applyDefaultLocationObjectStoragePrefix(
         tableIdentifier, applyReplaceNewLocationWithCatalogDefault(location));
-  }
-
-  private @Nonnull Optional<PolarisEntity> findStorageInfo(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper resolvedTableEntities =
-        resolvedEntityView.getResolvedPath(
-            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
-
-    PolarisResolvedPathWrapper resolvedStorageEntity =
-        resolvedTableEntities == null
-            ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
-            : resolvedTableEntities;
-
-    return FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
   }
 
   /**
