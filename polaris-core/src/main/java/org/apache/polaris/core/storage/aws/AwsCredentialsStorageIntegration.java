@@ -79,43 +79,46 @@ public class AwsCredentialsStorageIntegration
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
-    AssumeRoleRequest.Builder request =
-        AssumeRoleRequest.builder()
-            .externalId(storageConfig.getExternalId())
-            .roleArn(storageConfig.getRoleARN())
-            .roleSessionName("PolarisAwsCredentialsStorageIntegration")
-            .policy(
-                policyString(
-                        storageConfig.getAwsPartition(),
-                        allowListOperation,
-                        allowedReadLocations,
-                        allowedWriteLocations)
-                    .toJson())
-            .durationSeconds(storageCredentialDurationSeconds);
-    credentialsProvider.ifPresent(
-        cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
-
     String region = storageConfig.getRegion();
-    @SuppressWarnings("resource")
-    // Note: stsClientProvider returns "thin" clients that do not need closing
-    StsClient stsClient =
-        stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
-
-    AssumeRoleResponse response = stsClient.assumeRole(request.build());
     AccessConfig.Builder accessConfig = AccessConfig.builder();
-    accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
-    accessConfig.put(
-        StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
-    accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
-    Optional.ofNullable(response.credentials().expiration())
-        .ifPresent(
-            i -> {
-              accessConfig.put(
-                  StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
-              accessConfig.put(
-                  StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                  String.valueOf(i.toEpochMilli()));
-            });
+
+    if (shouldUseSts(storageConfig)) {
+      AssumeRoleRequest.Builder request =
+          AssumeRoleRequest.builder()
+              .externalId(storageConfig.getExternalId())
+              .roleArn(storageConfig.getRoleARN())
+              .roleSessionName("PolarisAwsCredentialsStorageIntegration")
+              .policy(
+                  policyString(
+                          storageConfig.getAwsPartition(),
+                          allowListOperation,
+                          allowedReadLocations,
+                          allowedWriteLocations)
+                      .toJson())
+              .durationSeconds(storageCredentialDurationSeconds);
+      credentialsProvider.ifPresent(
+          cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
+
+      @SuppressWarnings("resource")
+      // Note: stsClientProvider returns "thin" clients that do not need closing
+      StsClient stsClient =
+          stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
+
+      AssumeRoleResponse response = stsClient.assumeRole(request.build());
+      accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
+      accessConfig.put(
+          StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
+      accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
+      Optional.ofNullable(response.credentials().expiration())
+          .ifPresent(
+              i -> {
+                accessConfig.put(
+                    StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
+                accessConfig.put(
+                    StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                    String.valueOf(i.toEpochMilli()));
+              });
+    }
 
     if (region != null) {
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
@@ -147,6 +150,10 @@ public class AwsCredentialsStorageIntegration
     }
 
     return accessConfig.build();
+  }
+
+  private boolean shouldUseSts(AwsStorageConfigurationInfo storageConfig) {
+    return !Boolean.TRUE.equals(storageConfig.getStsUnavailable());
   }
 
   /**

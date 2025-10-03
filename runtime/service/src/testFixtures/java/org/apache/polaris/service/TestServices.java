@@ -205,17 +205,18 @@ public record TestServices(
       EntityCache entityCache =
           metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
       ResolverFactory resolverFactory =
-          (_callContext, securityContext, referenceCatalogName) ->
+          (securityContext, referenceCatalogName) ->
               new Resolver(
                   diagnostics,
-                  _callContext.getPolarisCallContext(),
+                  callContext.getPolarisCallContext(),
                   metaStoreManager,
                   securityContext,
                   entityCache,
                   referenceCatalogName);
 
       ResolutionManifestFactory resolutionManifestFactory =
-          new ResolutionManifestFactoryImpl(diagnostics, resolverFactory);
+          new ResolutionManifestFactoryImpl(diagnostics, realmContext, resolverFactory);
+
       UserSecretsManager userSecretsManager =
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
       ServiceIdentityProvider serviceIdentityProvider = new DefaultServiceIdentityProvider();
@@ -274,8 +275,7 @@ public record TestServices(
                   .setCreateTimestamp(Instant.now().toEpochMilli())
                   .setCredentialRotationRequiredState()
                   .build());
-      PolarisPrincipal principal =
-          PolarisPrincipal.of(PrincipalEntity.of(createdPrincipal.getPrincipal()), Set.of());
+      PolarisPrincipal principal = PolarisPrincipal.of(createdPrincipal.getPrincipal(), Set.of());
 
       SecurityContext securityContext =
           new SecurityContext() {

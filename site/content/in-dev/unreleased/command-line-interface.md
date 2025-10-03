@@ -36,6 +36,8 @@ options:
 --client-id
 --client-secret
 --access-token
+--realm
+--header
 --profile
 ```
 
@@ -80,6 +82,11 @@ Additionally, the `--profile` option can be used to specify a saved profile inst
 If the `--host` and `--port` options are not provided, the CLI will default to communicating with `localhost:8181`.
 
 Alternatively, the `--base-url` option can be used instead of `--host` and `--port`, but both options cannot be used simultaneously. This allows specifying arbitrary Polaris URLs, including HTTPS ones, that have additional base prefixes before the `/api/*/v1` subpaths.
+
+If your Polaris server is configured to use a realm other than the default, you can use the `--realm` option to specify a realm. If `--realm` is not provided, the CLI will check the `REALM` environment variable. If neither is provided, the CLI will not send the realm context header.
+Also, if your Polaris server uses a custom realm header name, you can use the `--header` option to specify it. If `--header` is not provided, the CLI will check the `HEADER` environment variable. If neither is provided, the CLI will use default header name `Polaris-Realm`.
+
+Read [here]({{% ref "./configuration.md" %}}) more about configuring polaris server to work with multiple realms. 
 
 ### PATH
 
@@ -133,8 +140,12 @@ options:
       --type  The type of catalog to create in [INTERNAL, EXTERNAL]. INTERNAL by default.
       --storage-type  (Required) The type of storage to use for the catalog
       --default-base-location  (Required) Default base location of the catalog
+      --endpoint  (Only for S3) The S3 endpoint to use when connecting to S3
+      --endpoint-internal  (Only for S3) The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use
+      --sts-endpoint  (Only for S3) The STS endpoint to use when connecting to STS
+      --path-style-access  (Only for S3) Whether to use path-style-access for S3
       --allowed-location  An allowed location for files tracked by the catalog. Multiple locations can be provided by specifying this option more than once.
-      --role-arn  (Required for S3) A role ARN to use when connecting to S3
+      --role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
       --region  (Only for S3) The region to use when connecting to S3
       --external-id  (Only for S3) The external ID to use when connecting to S3
       --tenant-id  (Required for Azure) A tenant ID to use when connecting to Azure Storage
@@ -145,7 +156,7 @@ options:
       --catalog-connection-type  The type of external catalog in [ICEBERG, HADOOP].
       --iceberg-remote-catalog-name  The remote catalog name when federating to an Iceberg REST catalog
       --hadoop-warehouse  The warehouse to use when federating to a HADOOP catalog
-      --catalog-authentication-type  The type of authentication in [OAUTH, BEARER, SIGV4]
+      --catalog-authentication-type  The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]
       --catalog-service-identity-type  The type of service identity in [AWS_IAM]
       --catalog-service-identity-iam-arn  When using the AWS_IAM service identity type, this is the ARN of the IAM user or IAM role Polaris uses to assume roles and then access external resources.
       --catalog-uri  The URI of the external catalog
@@ -283,6 +294,7 @@ The `principals` command is used to manage principals within Polaris.
 5. rotate-credentials
 6. update
 7. access
+8. reset
 
 #### create
 
@@ -416,6 +428,32 @@ options:
 
 ```
 polaris principals access quickstart_user
+```
+
+#### reset
+
+The `reset` subcommand is used to reset principal credentials.
+
+```
+input: polaris principals reset --help
+options:
+  reset
+    Named arguments:
+      --new-client-id  The new client ID for the principal
+      --new-client-secret  The new client secret for the principal
+    Positional arguments:
+      principal
+```
+
+##### Examples
+
+```
+polaris principals create some_user
+
+polaris principals reset some_user
+polaris principals reset --new-client-id ${NEW_CLIENT_ID} some_user
+polaris principals reset --new-client-secret ${NEW_CLIENT_SECRET} some_user
+polaris principals reset --new-client-id ${NEW_CLIENT_ID} --new-client-secret ${NEW_CLIENT_SECRET} some_user
 ```
 
 ### Principal Roles

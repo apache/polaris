@@ -237,9 +237,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     adminService.assignPrincipalRole(principalName, PRINCIPAL_ROLE2);
 
     PolarisPrincipal authenticatedPrincipal =
-        PolarisPrincipal.of(
-            PrincipalEntity.of(newPrincipal.getPrincipal()),
-            Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
+        PolarisPrincipal.of(newPrincipal.getPrincipal(), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     IcebergCatalogHandler wrapper =
         new IcebergCatalogHandler(
             diagServices,
@@ -276,8 +274,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         rotateAndRefreshPrincipal(
             metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
     PolarisPrincipal authenticatedPrincipal1 =
-        PolarisPrincipal.of(
-            PrincipalEntity.of(refreshPrincipal), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
+        PolarisPrincipal.of(refreshPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     IcebergCatalogHandler refreshedWrapper =
         new IcebergCatalogHandler(
             diagServices,

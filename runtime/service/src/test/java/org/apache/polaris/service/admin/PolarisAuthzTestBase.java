@@ -523,7 +523,7 @@ public abstract class PolarisAuthzTestBase {
     Mockito.when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
+            resolutionManifestFactory, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
             diagServices,

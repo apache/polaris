@@ -25,6 +25,8 @@ import java.util.Map;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 
 public class SchemaVersion implements Converter<SchemaVersion> {
+  public static final SchemaVersion MINIMUM = new SchemaVersion(0);
+
   private final Integer value;
 
   public SchemaVersion() {

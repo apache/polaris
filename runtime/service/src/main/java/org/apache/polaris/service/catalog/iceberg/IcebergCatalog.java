@@ -71,6 +71,7 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
@@ -508,16 +509,21 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION, catalogEntity)) {
       validateNamespaceLocation(entity, resolvedParent);
     }
-    PolarisEntity returnedEntity =
-        PolarisEntity.of(
-            getMetaStoreManager()
-                .createEntityIfNotExists(
-                    getCurrentPolarisContext(),
-                    PolarisEntity.toCoreList(resolvedParent.getRawFullPath()),
-                    entity));
-    if (returnedEntity == null) {
-      throw new AlreadyExistsException(
-          "Cannot create namespace %s. Namespace already exists", namespace);
+    EntityResult result =
+        getMetaStoreManager()
+            .createEntityIfNotExists(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(resolvedParent.getRawFullPath()),
+                entity);
+    if (!result.isSuccess()) {
+      if (result.alreadyExists()) {
+        throw new AlreadyExistsException(
+            "Cannot create namespace %s. Namespace already exists", namespace);
+      } else {
+        throw new ServiceFailureException(
+            "Unexpected error trying to create namespace %s. Status: %s ExtraInfo: %s",
+            namespace, result.getReturnStatus(), result.getExtraInformation());
+      }
     }
   }
 
@@ -1225,7 +1231,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
             diagnostics,
-            callContext,
+            callContext.getRealmContext(),
             resolverFactory,
             securityContext,
             parentPath.getFirst().getName());
@@ -2579,7 +2585,23 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(nsLevel);
         PolarisResolvedPathWrapper resolvedParent =
             resolvedEntityView.getPassthroughResolvedPath(parentNamespace);
-        createNamespaceInternal(nsLevel, Collections.emptyMap(), resolvedParent);
+        try {
+          createNamespaceInternal(nsLevel, Collections.emptyMap(), resolvedParent);
+        } catch (AlreadyExistsException aee) {
+          // Since we only attempted to create the namespace after checking that
+          // getPassthroughResolvedPath for this level is null, this should be a relatively
+          // infrequent case during high concurrency where another notification already
+          // conveniently created the namespace between the time we checked and the time
+          // we attempted to fill it in. It's working as intended in this case to simply
+          // continue with the existing namespace, but the fact that this collision occurred
+          // may be relevant to someone running the service in case of unexpected interactions,
+          // so we'll still log the fact that this happened.
+          LOGGER
+              .atInfo()
+              .setCause(aee)
+              .addKeyValue("namespace", namespace)
+              .log("Namespace already exists in createNonExistingNamespace");
+        }
       }
     }
   }

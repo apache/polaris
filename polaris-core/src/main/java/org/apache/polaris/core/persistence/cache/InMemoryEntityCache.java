@@ -42,7 +42,6 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 /** An in-memory entity cache with a limit of 100k entities and a 1h TTL. */
 public class InMemoryEntityCache implements EntityCache {
 
-  private EntityCacheMode cacheMode;
   private final PolarisDiagnostics diagnostics;
   private final PolarisMetaStoreManager polarisMetaStoreManager;
   private final Cache<Long, ResolvedPolarisEntity> byId;
@@ -93,9 +92,6 @@ public class InMemoryEntityCache implements EntityCache {
 
     // remember the meta store manager
     this.polarisMetaStoreManager = polarisMetaStoreManager;
-
-    // enabled by default
-    this.cacheMode = EntityCacheMode.ENABLE;
   }
 
   /**
@@ -208,24 +204,6 @@ public class InMemoryEntityCache implements EntityCache {
         || entity.getParentId() != otherEntity.getParentId()
         || !entity.getName().equals(otherEntity.getName())
         || entity.getTypeCode() != otherEntity.getTypeCode();
-  }
-
-  /**
-   * Get the current cache mode
-   *
-   * @return the cache mode
-   */
-  public EntityCacheMode getCacheMode() {
-    return cacheMode;
-  }
-
-  /**
-   * Allows to change the caching mode for testing
-   *
-   * @param cacheMode the cache mode
-   */
-  public void setCacheMode(EntityCacheMode cacheMode) {
-    this.cacheMode = cacheMode;
   }
 
   /**
