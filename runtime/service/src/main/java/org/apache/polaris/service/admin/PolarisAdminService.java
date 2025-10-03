@@ -683,7 +683,8 @@ public class PolarisAdminService {
             }
           case SIGV4:
             {
-              // SigV4 authentication is not secret-based
+              // SigV4 authentication is not based on users provided secrets but based on the
+              // service identity managed by Polaris. Nothing to do here.
               break;
             }
           default:

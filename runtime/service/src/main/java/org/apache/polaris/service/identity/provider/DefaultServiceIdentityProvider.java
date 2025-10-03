@@ -21,6 +21,7 @@ package org.apache.polaris.service.identity.provider;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +47,7 @@ import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
  * identity information and credentials on demand. All resolution is done lazily - credentials are
  * only created when actually needed for authentication.
  */
+@RequestScoped
 public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
   public static final String DEFAULT_REALM_KEY = ServiceIdentityConfiguration.DEFAULT_REALM_KEY;
   public static final String DEFAULT_REALM_NSS = "system:default";

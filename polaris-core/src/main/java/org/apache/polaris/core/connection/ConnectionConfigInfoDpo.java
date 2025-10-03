@@ -226,7 +226,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
       @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
 
   /**
-   * Produces the correponding API-model ConnectionConfigInfo for this persistence object; many
+   * Produces the corresponding API-model ConnectionConfigInfo for this persistence object; many
    * fields are one-to-one direct mappings, but some fields, such as secretReferences, might only be
    * applicable/present in the persistence object, but not the API model object.
    */

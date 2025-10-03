@@ -30,13 +30,14 @@ import org.apache.polaris.core.secrets.SecretReference;
 /**
  * Persistence-layer representation of an AWS IAM service identity used by Polaris.
  *
- * <p>This class stores only a {@link SecretReference} pointing to where the actual AWS credentials
- * are managed (e.g., in a secret manager or configuration store). The credentials themselves are
- * not persisted in this object.
+ * <p>This class stores only the identity type and a {@link SecretReference} that serves as a unique
+ * identifier for this service identity instance. The reference is used to look up the identity's
+ * configuration at runtime. The actual credentials (AWS access keys) and metadata (IAM ARN) are not
+ * persisted in this object.
  *
- * <p>At runtime, the reference can be used to retrieve the full {@link
- * AwsIamServiceIdentityCredential} which contains both the identity metadata (e.g., IAM ARN) and
- * the actual AWS credentials needed for authentication.
+ * <p>At runtime, a ServiceIdentityProvider uses the reference to look up the configuration and
+ * retrieve the full {@link AwsIamServiceIdentityCredential} which contains both the identity
+ * metadata (e.g., IAM ARN) and the actual AWS credentials needed for authentication.
  *
  * <p>Instances of this class can be converted to the public API model {@link
  * AwsIamServiceIdentityInfo} via a ServiceIdentityProvider.

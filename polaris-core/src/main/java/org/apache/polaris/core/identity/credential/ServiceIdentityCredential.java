@@ -37,7 +37,8 @@ import software.amazon.awssdk.annotations.NotNull;
  *
  * <ul>
  *   <li>Identity type (e.g., AWS_IAM)
- *   <li>A {@link SecretReference} pointing to where the credential configuration is stored
+ *   <li>A {@link SecretReference} that serves as a unique identifier for this service identity
+ *       instance (used for lookups and persistence)
  *   <li>The actual authentication credentials (implementation-specific, e.g.,
  *       AwsCredentialsProvider)
  * </ul>

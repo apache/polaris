@@ -40,6 +40,22 @@ import org.apache.polaris.core.context.RealmContext;
  * <p>Configuration is loaded from {@code polaris.service-identity.*} properties at startup and
  * includes credentials that Polaris uses to assume customer-provided roles when accessing federated
  * catalogs.
+ *
+ * <p><b>Example Configuration:</b>
+ *
+ * <pre>{@code
+ * # Default service identity (used when no realm-specific configuration exists)
+ * polaris.service-identity.aws-iam.iam-arn=arn:aws:iam::123456789012:user/polaris-default-user
+ * # Optional: provide static credentials, or omit to use AWS default credential chain
+ * polaris.service-identity.aws-iam.access-key-id=<access-key-id>
+ * polaris.service-identity.aws-iam.secret-access-key=<secret-access-key>
+ * polaris.service-identity.aws-iam.session-token=<optional-session-token>
+ *
+ * # Realm-specific service identity for multi-tenant deployments
+ * polaris.service-identity.my-realm.aws-iam.iam-arn=arn:aws:iam::123456789012:user/my-realm-user
+ * polaris.service-identity.my-realm.aws-iam.access-key-id=<access-key-id>
+ * polaris.service-identity.my-realm.aws-iam.secret-access-key=<secret-access-key>
+ * }</pre>
  */
 @ConfigMapping(prefix = "polaris.service-identity")
 public interface ServiceIdentityConfiguration {

@@ -43,7 +43,6 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -73,8 +72,6 @@ import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
-import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
-import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
@@ -393,13 +390,6 @@ public class ServiceProducers {
   public OidcTenantResolver oidcTenantResolver(
       OidcConfiguration config, @Any Instance<OidcTenantResolver> resolvers) {
     return resolvers.select(Identifier.Literal.of(config.tenantResolver())).get();
-  }
-
-  @Produces
-  @RequestScoped
-  public ServiceIdentityProvider serviceIdentityProvider(
-      RealmContext realmContext, ServiceIdentityConfiguration serviceIdentityConfiguration) {
-    return new DefaultServiceIdentityProvider(realmContext, serviceIdentityConfiguration);
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

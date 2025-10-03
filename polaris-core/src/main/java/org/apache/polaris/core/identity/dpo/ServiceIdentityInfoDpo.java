@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
@@ -34,9 +35,10 @@ import org.apache.polaris.core.secrets.SecretReference;
  * The internal persistence-object counterpart to ServiceIdentityInfo defined in the API model.
  * Important: JsonSubTypes must be kept in sync with {@link ServiceIdentityType}.
  *
- * <p>This DPO stores only a reference to the service identity credential, not the actual secrets.
- * The reference can be used at runtime to retrieve the full {@link ServiceIdentityCredential} with
- * credentials through a {@link ServiceIdentityProvider}.
+ * <p>This DPO stores only the identity type and a {@link SecretReference} that serves as a unique
+ * identifier for the service identity instance. The reference is used at runtime by a {@link
+ * ServiceIdentityProvider} to look up the configuration and retrieve the full {@link
+ * ServiceIdentityCredential} with credentials and metadata.
  */
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
@@ -87,10 +89,9 @@ public abstract class ServiceIdentityInfoDpo {
    */
   public @Nullable ServiceIdentityInfo asServiceIdentityInfoModel(
       ServiceIdentityProvider serviceIdentityProvider) {
-    if (serviceIdentityProvider == null) {
-      return null;
-    }
-
+    Preconditions.checkNotNull(
+        serviceIdentityProvider,
+        "Need ServiceIdentityProvider to inject service identity info, should not be null");
     return serviceIdentityProvider.getServiceIdentityInfo(this).orElse(null);
   }
 
