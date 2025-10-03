@@ -1569,6 +1569,7 @@ components:
         - TABLE_SET_STATISTICS
         - TABLE_REMOVE_STATISTICS
         - TABLE_REMOVE_PARTITION_SPECS
+        - TABLE_MANAGE_STRUCTURE
 
     AddGrantRequest:
       type: object

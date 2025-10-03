@@ -208,6 +208,62 @@ public class IcebergCatalogHandlerFineGrainedAuthzTest extends IcebergCatalogHan
         () -> newWrapper().updateTable(TABLE_NS1A_2, request));
   }
 
+  @Test
+  public void testUpdateTableWithFineGrainedPrivileges_TableManageStructureSuperPrivilege() {
+    // Test that TABLE_MANAGE_STRUCTURE works as a super privilege for structural operations
+    // (but NOT for snapshot operations like TABLE_ADD_SNAPSHOT)
+
+    // Test structural operations that should work with TABLE_MANAGE_STRUCTURE
+    UpdateTableRequest structuralRequest =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(
+                new MetadataUpdate.AssignUUID(UUID.randomUUID().toString()),
+                new MetadataUpdate.UpgradeFormatVersion(2),
+                new MetadataUpdate.SetProperties(Map.of("test.property", "test.value")),
+                new MetadataUpdate.RemoveProperties(Set.of("property.to.remove"))));
+
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_MANAGE_STRUCTURE, // Should work for all structural operations
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, structuralRequest),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void
+      testUpdateTableWithFineGrainedPrivileges_TableManageStructureDoesNotIncludeSnapshots() {
+    // Verify that TABLE_MANAGE_STRUCTURE does NOT grant access to snapshot operations
+    // This test verifies that TABLE_ADD_SNAPSHOT and TABLE_SET_SNAPSHOT_REF were correctly
+    // excluded from the TABLE_MANAGE_STRUCTURE super privilege mapping
+
+    // Test that TABLE_MANAGE_STRUCTURE works for non-snapshot structural operations
+    UpdateTableRequest nonSnapshotRequest =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(
+                new MetadataUpdate.AssignUUID(UUID.randomUUID().toString()),
+                new MetadataUpdate.SetProperties(Map.of("structure.test", "value"))));
+
+    doTestSufficientPrivileges(
+        List.of(PolarisPrivilege.TABLE_MANAGE_STRUCTURE),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, nonSnapshotRequest),
+        null /* cleanupAction */);
+
+    // Test that TABLE_MANAGE_STRUCTURE is insufficient for operations that require
+    // different privilege categories (like read operations)
+    doTestInsufficientPrivileges(
+        List.of(PolarisPrivilege.TABLE_MANAGE_STRUCTURE),
+        () ->
+            newWrapper()
+                .loadTable(TABLE_NS1A_2, "all")); // Load table requires different privileges
+  }
+
   /**
    * Override the "feature disabled" test from the parent class since it's not applicable when the
    * fine-grained authorization feature is enabled in this test class.

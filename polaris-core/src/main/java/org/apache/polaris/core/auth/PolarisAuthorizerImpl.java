@@ -96,6 +96,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_FULL_METADAT
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_STRUCTURE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
@@ -273,6 +274,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_ASSIGN_UUID));
     SUPER_PRIVILEGES.putAll(
         TABLE_UPGRADE_FORMAT_VERSION,
@@ -282,6 +284,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_UPGRADE_FORMAT_VERSION));
     SUPER_PRIVILEGES.putAll(
         TABLE_ADD_SCHEMA,
@@ -291,6 +294,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_ADD_SCHEMA));
     SUPER_PRIVILEGES.putAll(
         TABLE_SET_CURRENT_SCHEMA,
@@ -300,6 +304,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_SET_CURRENT_SCHEMA));
     SUPER_PRIVILEGES.putAll(
         TABLE_ADD_PARTITION_SPEC,
@@ -309,6 +314,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_ADD_PARTITION_SPEC));
     SUPER_PRIVILEGES.putAll(
         TABLE_ADD_SORT_ORDER,
@@ -318,6 +324,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_ADD_SORT_ORDER));
     SUPER_PRIVILEGES.putAll(
         TABLE_SET_DEFAULT_SORT_ORDER,
@@ -327,6 +334,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_SET_DEFAULT_SORT_ORDER));
     SUPER_PRIVILEGES.putAll(
         TABLE_ADD_SNAPSHOT,
@@ -354,6 +362,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_REMOVE_SNAPSHOTS));
     SUPER_PRIVILEGES.putAll(
         TABLE_REMOVE_SNAPSHOT_REF,
@@ -363,6 +372,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_REMOVE_SNAPSHOT_REF));
     SUPER_PRIVILEGES.putAll(
         TABLE_SET_LOCATION,
@@ -372,6 +382,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_SET_LOCATION));
     SUPER_PRIVILEGES.putAll(
         TABLE_SET_PROPERTIES,
@@ -381,6 +392,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_SET_PROPERTIES));
     SUPER_PRIVILEGES.putAll(
         TABLE_REMOVE_PROPERTIES,
@@ -390,6 +402,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_REMOVE_PROPERTIES));
     SUPER_PRIVILEGES.putAll(
         TABLE_SET_STATISTICS,
@@ -399,6 +412,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_SET_STATISTICS));
     SUPER_PRIVILEGES.putAll(
         TABLE_REMOVE_STATISTICS,
@@ -408,6 +422,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_REMOVE_STATISTICS));
     SUPER_PRIVILEGES.putAll(
         TABLE_REMOVE_PARTITION_SPECS,
@@ -417,7 +432,17 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
             TABLE_REMOVE_PARTITION_SPECS));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_MANAGE_STRUCTURE,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE));
     SUPER_PRIVILEGES.putAll(
         VIEW_WRITE_PROPERTIES,
         List.of(
