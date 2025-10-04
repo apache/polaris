@@ -100,6 +100,8 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.table.federated.FederatedEntities;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -149,6 +151,7 @@ public class PolarisAdminService {
   private final PolarisAuthorizer authorizer;
   private final PolarisMetaStoreManager metaStoreManager;
   private final UserSecretsManager userSecretsManager;
+  private final ServiceIdentityProvider serviceIdentityProvider;
   private final ReservedProperties reservedProperties;
 
   // Initialized in the authorize methods.
@@ -161,6 +164,7 @@ public class PolarisAdminService {
       @Nonnull ResolutionManifestFactory resolutionManifestFactory,
       @Nonnull PolarisMetaStoreManager metaStoreManager,
       @Nonnull UserSecretsManager userSecretsManager,
+      @Nonnull ServiceIdentityProvider serviceIdentityProvider,
       @Nonnull SecurityContext securityContext,
       @Nonnull PolarisAuthorizer authorizer,
       @Nonnull ReservedProperties reservedProperties) {
@@ -179,6 +183,7 @@ public class PolarisAdminService {
     this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
     this.userSecretsManager = userSecretsManager;
+    this.serviceIdentityProvider = serviceIdentityProvider;
     this.reservedProperties = reservedProperties;
   }
 
@@ -188,6 +193,10 @@ public class PolarisAdminService {
 
   private UserSecretsManager getUserSecretsManager() {
     return userSecretsManager;
+  }
+
+  private ServiceIdentityProvider getServiceIdentityProvider() {
+    return serviceIdentityProvider;
   }
 
   private PolarisResolutionManifest newResolutionManifest(@Nullable String catalogName) {
@@ -671,6 +680,12 @@ public class PolarisAdminService {
                   AuthenticationParametersDpo.INLINE_BEARER_TOKEN_REFERENCE_KEY, secretReference);
               break;
             }
+          case SIGV4:
+            {
+              // SigV4 authentication is not based on users provided secrets but based on the
+              // service identity managed by Polaris. Nothing to do here.
+              break;
+            }
           default:
             throw new IllegalStateException(
                 "Unsupported authentication type: "
@@ -750,10 +765,19 @@ public class PolarisAdminService {
                   AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT.name()),
               "Implicit authentication based catalog federation is not supported.");
         }
+
+        // Allocate service identity if needed for the authentication type.
+        // The provider will determine if a service identity is required based on the connection
+        // config.
+        Optional<ServiceIdentityInfoDpo> serviceIdentityInfoDpoOptional =
+            serviceIdentityProvider.allocateServiceIdentity(connectionConfigInfo);
+
         entity =
             new CatalogEntity.Builder(entity)
                 .setConnectionConfigInfoDpoWithSecrets(
-                    connectionConfigInfo, processedSecretReferences)
+                    connectionConfigInfo,
+                    processedSecretReferences,
+                    serviceIdentityInfoDpoOptional.orElse(null))
                 .build();
       }
     }
@@ -929,7 +953,9 @@ public class PolarisAdminService {
   /** List all catalogs after checking for permission. */
   public List<Catalog> listCatalogs() {
     authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
-    return listCatalogsUnsafe().map(CatalogEntity::asCatalog).toList();
+    return listCatalogsUnsafe()
+        .map(catalogEntity -> catalogEntity.asCatalog(getServiceIdentityProvider()))
+        .toList();
   }
 
   /** List all catalogs without checking for permission. */

@@ -23,19 +23,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
+import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,16 +54,30 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 
 public class CatalogEntityTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private RealmConfig realmConfig;
+  private ServiceIdentityProvider serviceIdentityProvider;
 
   @BeforeEach
   public void setup() {
     RealmContext realmContext = () -> "realm";
     this.realmConfig = new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
+    this.serviceIdentityProvider = Mockito.mock(ServiceIdentityProvider.class);
+    Mockito.when(serviceIdentityProvider.getServiceIdentityInfo(Mockito.any()))
+        .thenReturn(
+            Optional.of(
+                AwsIamServiceIdentityInfo.builder()
+                    .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
+                    .setIamArn("arn:aws:iam::123456789012:user/test-user")
+                    .build()));
+    Mockito.when(serviceIdentityProvider.getServiceIdentityCredential(Mockito.any()))
+        .thenReturn(
+            Optional.of(
+                new AwsIamServiceIdentityCredential("arn:aws:iam::123456789012:user/test-user")));
   }
 
   @ParameterizedTest
@@ -278,7 +303,7 @@ public class CatalogEntityTest {
             .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
             .build();
 
-    Catalog catalog = catalogEntity.asCatalog();
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
   }
 
@@ -301,7 +326,7 @@ public class CatalogEntityTest {
             .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
             .build();
 
-    Catalog catalog = catalogEntity.asCatalog();
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
   }
 
@@ -324,7 +349,7 @@ public class CatalogEntityTest {
             .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
             .build();
 
-    Catalog catalog = catalogEntity.asCatalog();
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
   }
 
@@ -362,9 +387,68 @@ public class CatalogEntityTest {
                 config.getAllowedLocations().getFirst())
             .build();
 
-    Catalog catalog = catalogEntity.asCatalog();
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getStorageConfigInfo()).isEqualTo(config);
     assertThat(MAPPER.writeValueAsString(catalog.getStorageConfigInfo())).isEqualTo(configStr);
+  }
+
+  @Test
+  public void testServiceIdentityInjection() {
+    String baseLocation = "s3://test-bucket/path";
+    AwsStorageConfigInfo storageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/test-role")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(baseLocation))
+            .build();
+    IcebergRestConnectionConfigInfo icebergRestConnectionConfigInfoModel =
+        IcebergRestConnectionConfigInfo.builder()
+            .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+            .setUri("https://glue.us-west-2.amazonaws.com")
+            .setAuthenticationParameters(
+                SigV4AuthenticationParameters.builder()
+                    .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
+                    .setRoleArn("arn:aws:iam::123456789012:role/test-role")
+                    .setSigningName("glue")
+                    .setSigningRegion("us-west-2")
+                    .build())
+            .build();
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setCatalogType(Catalog.TypeEnum.EXTERNAL.name())
+            .setDefaultBaseLocation(baseLocation)
+            .setStorageConfigurationInfo(realmConfig, storageConfigModel, baseLocation)
+            .setConnectionConfigInfoDpoWithSecrets(
+                icebergRestConnectionConfigInfoModel, null, new AwsIamServiceIdentityInfoDpo(null))
+            .build();
+
+    Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
+    assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
+    ExternalCatalog externalCatalog = (ExternalCatalog) catalog;
+    assertThat(externalCatalog.getConnectionConfigInfo().getConnectionType())
+        .isEqualTo(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST);
+    assertThat(externalCatalog.getConnectionConfigInfo().getUri())
+        .isEqualTo("https://glue.us-west-2.amazonaws.com");
+
+    AuthenticationParameters authParams =
+        externalCatalog.getConnectionConfigInfo().getAuthenticationParameters();
+    assertThat(authParams.getAuthenticationType())
+        .isEqualTo(AuthenticationParameters.AuthenticationTypeEnum.SIGV4);
+    SigV4AuthenticationParameters sigV4AuthParams = (SigV4AuthenticationParameters) authParams;
+    assertThat(sigV4AuthParams.getSigningName()).isEqualTo("glue");
+    assertThat(sigV4AuthParams.getSigningRegion()).isEqualTo("us-west-2");
+    assertThat(sigV4AuthParams.getRoleArn()).isEqualTo("arn:aws:iam::123456789012:role/test-role");
+
+    ServiceIdentityInfo serviceIdentity =
+        externalCatalog.getConnectionConfigInfo().getServiceIdentity();
+    assertThat(serviceIdentity.getIdentityType())
+        .isEqualTo(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM);
+    AwsIamServiceIdentityInfo awsIamServiceIdentity = (AwsIamServiceIdentityInfo) serviceIdentity;
+    assertThat(awsIamServiceIdentity.getIamArn())
+        .isEqualTo("arn:aws:iam::123456789012:user/test-user");
   }
 
   public static Stream<Arguments> testAwsConfigRoundTrip() {

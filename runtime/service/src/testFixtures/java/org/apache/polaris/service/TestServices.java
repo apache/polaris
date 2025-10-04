@@ -46,6 +46,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -74,6 +75,7 @@ import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -217,6 +219,7 @@ public record TestServices(
 
       UserSecretsManager userSecretsManager =
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
+      ServiceIdentityProvider serviceIdentityProvider = new DefaultServiceIdentityProvider();
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);
@@ -304,12 +307,14 @@ public record TestServices(
               resolutionManifestFactory,
               metaStoreManager,
               userSecretsManager,
+              serviceIdentityProvider,
               securityContext,
               authorizer,
               reservedProperties);
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(
-              new PolarisServiceImpl(realmConfig, reservedProperties, adminService));
+              new PolarisServiceImpl(
+                  realmConfig, reservedProperties, adminService, serviceIdentityProvider));
 
       return new TestServices(
           clock,

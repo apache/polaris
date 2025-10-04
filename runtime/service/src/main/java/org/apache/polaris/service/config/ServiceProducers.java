@@ -60,6 +60,7 @@ import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.Authenticator;
+import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
 import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 import org.apache.polaris.service.auth.internal.broker.TokenBrokerFactory;
@@ -387,8 +388,7 @@ public class ServiceProducers {
 
   @Produces
   public OidcTenantResolver oidcTenantResolver(
-      org.apache.polaris.service.auth.external.OidcConfiguration config,
-      @Any Instance<OidcTenantResolver> resolvers) {
+      OidcConfiguration config, @Any Instance<OidcTenantResolver> resolvers) {
     return resolvers.select(Identifier.Literal.of(config.tenantResolver())).get();
   }
 

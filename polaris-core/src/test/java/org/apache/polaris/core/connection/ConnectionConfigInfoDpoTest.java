@@ -22,15 +22,40 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Optional;
+import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
+import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 public class ConnectionConfigInfoDpoTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   static {
     objectMapper.enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+  }
+
+  private ServiceIdentityProvider serviceIdentityProvider;
+
+  @BeforeEach
+  void setUp() {
+    serviceIdentityProvider = Mockito.mock(ServiceIdentityProvider.class);
+    Mockito.when(serviceIdentityProvider.getServiceIdentityInfo(Mockito.any()))
+        .thenReturn(
+            Optional.of(
+                AwsIamServiceIdentityInfo.builder()
+                    .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
+                    .setIamArn("arn:aws:iam::123456789012:user/test-user")
+                    .build()));
+    Mockito.when(serviceIdentityProvider.getServiceIdentityCredential(Mockito.any()))
+        .thenReturn(
+            Optional.of(
+                new AwsIamServiceIdentityCredential("arn:aws:iam::123456789012:user/test-user")));
   }
 
   @Test
@@ -64,7 +89,7 @@ public class ConnectionConfigInfoDpoTest {
 
     // Test conversion into API model JSON.
     ConnectionConfigInfo connectionConfigInfoApiModel =
-        connectionConfigInfoDpo.asConnectionConfigInfoModel();
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
     String expectedApiModelJson =
         ""
             + "{"
@@ -111,7 +136,7 @@ public class ConnectionConfigInfoDpoTest {
 
     // Test conversion into API model JSON.
     ConnectionConfigInfo connectionConfigInfoApiModel =
-        connectionConfigInfoDpo.asConnectionConfigInfoModel();
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
     String expectedApiModelJson =
         ""
             + "{"
@@ -148,7 +173,7 @@ public class ConnectionConfigInfoDpoTest {
 
     // Test conversion into API model JSON.
     ConnectionConfigInfo connectionConfigInfoApiModel =
-        connectionConfigInfoDpo.asConnectionConfigInfoModel();
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
     String expectedApiModelJson =
         ""
             + "{"
@@ -184,7 +209,7 @@ public class ConnectionConfigInfoDpoTest {
             + "  \"serviceIdentity\": {"
             + "    \"identityTypeCode\": 1,"
             + "    \"identityInfoReference\": {"
-            + "      \"urn\": \"urn:polaris-secret:default-identity-registry:my-realm:AWS_IAM\","
+            + "      \"urn\": \"urn:polaris-secret:default-identity-provider:my-realm:AWS_IAM\","
             + "      \"referencePayload\": {"
             + "        \"key\": \"value\""
             + "      }"
@@ -200,7 +225,7 @@ public class ConnectionConfigInfoDpoTest {
 
     // Test conversion into API model JSON.
     ConnectionConfigInfo connectionConfigInfoApiModel =
-        connectionConfigInfoDpo.asConnectionConfigInfoModel();
+        connectionConfigInfoDpo.asConnectionConfigInfoModel(serviceIdentityProvider);
     String expectedApiModelJson =
         ""
             + "{"
@@ -217,7 +242,7 @@ public class ConnectionConfigInfoDpoTest {
             + "  },"
             + "  \"serviceIdentity\": {"
             + "    \"identityType\": \"AWS_IAM\","
-            + "    \"iamArn\": \"\""
+            + "    \"iamArn\": \"arn:aws:iam::123456789012:user/test-user\""
             + "  }"
             + "}";
     Assertions.assertEquals(
