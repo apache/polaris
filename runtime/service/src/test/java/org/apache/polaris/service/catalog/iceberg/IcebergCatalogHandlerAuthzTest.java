@@ -216,7 +216,6 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             adminService.revokePrivilegeOnCatalogFromRole(catalogName, CATALOG_ROLE1, privilege));
   }
 
-
   @Test
   public void testListNamespacesAllSufficientPrivileges() {
     doTestSufficientPrivileges(
@@ -1110,7 +1109,6 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () -> newWrapper().updateTable(TABLE_NS1A_2, request),
         null /* cleanupAction */);
   }
-
 
   @Test
   public void testDropTableWithoutPurgeAllSufficientPrivileges() {
@@ -2125,8 +2123,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   }
 
   @Test
-  public void
-      testUpdateTableWith_TableManageStructureDoesNotIncludeSnapshots() {
+  public void testUpdateTableWith_TableManageStructureDoesNotIncludeSnapshots() {
     // Verify that TABLE_MANAGE_STRUCTURE does NOT grant access to snapshot operations
     // This test verifies that TABLE_ADD_SNAPSHOT and TABLE_SET_SNAPSHOT_REF were correctly
     // excluded from the TABLE_MANAGE_STRUCTURE super privilege mapping

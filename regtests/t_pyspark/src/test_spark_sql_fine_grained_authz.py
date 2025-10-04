@@ -255,7 +255,6 @@ def test_fine_grained_table_set_properties(polaris_url, polaris_catalog_url, roo
         # Grant only basic privileges to test role
         test_basic_privileges = [
             CatalogPrivilege.TABLE_READ_PROPERTIES,
-            CatalogPrivilege.TABLE_READ_DATA,  # Needed to load table for operations
             CatalogPrivilege.TABLE_SET_PROPERTIES  # The specific privilege we're testing
         ]
         
@@ -289,7 +288,8 @@ def test_fine_grained_table_set_properties(polaris_url, polaris_catalog_url, roo
         with IcebergSparkSession(
             credentials=f'{test_principal.principal.client_id}:{test_principal.credentials.client_secret.get_secret_value()}',
             catalog_name=catalog_name,
-            polaris_url=polaris_catalog_url
+            polaris_url=polaris_catalog_url,
+            use_vended_credentials=False  # Not needed for file storage type
         ) as spark:
             spark.sql(f'USE {catalog_name}')
             
@@ -383,7 +383,6 @@ def test_fine_grained_table_remove_properties(polaris_url, polaris_catalog_url, 
         # Grant only TABLE_REMOVE_PROPERTIES (not SET_PROPERTIES)
         test_basic_privileges = [
             CatalogPrivilege.TABLE_READ_PROPERTIES,
-            CatalogPrivilege.TABLE_READ_DATA,  # Needed to load table for operations
             CatalogPrivilege.TABLE_REMOVE_PROPERTIES  # The specific privilege we're testing
         ]
         
@@ -419,7 +418,8 @@ def test_fine_grained_table_remove_properties(polaris_url, polaris_catalog_url, 
         with IcebergSparkSession(
             credentials=f'{test_principal.principal.client_id}:{test_principal.credentials.client_secret.get_secret_value()}',
             catalog_name=catalog_name,
-            polaris_url=polaris_catalog_url
+            polaris_url=polaris_catalog_url,
+            use_vended_credentials=False  # Not needed for file storage type
         ) as spark:
             spark.sql(f'USE {catalog_name}')
             
@@ -514,7 +514,6 @@ def test_multiple_fine_grained_privileges_together(polaris_url, polaris_catalog_
         # Grant both SET and REMOVE properties privileges
         test_privileges = [
             CatalogPrivilege.TABLE_READ_PROPERTIES,
-            CatalogPrivilege.TABLE_READ_DATA,  # Needed to load table for operations
             CatalogPrivilege.TABLE_SET_PROPERTIES,  # For SET operations
             CatalogPrivilege.TABLE_REMOVE_PROPERTIES  # For UNSET operations
         ]
@@ -549,7 +548,8 @@ def test_multiple_fine_grained_privileges_together(polaris_url, polaris_catalog_
         with IcebergSparkSession(
             credentials=f'{test_principal.principal.client_id}:{test_principal.credentials.client_secret.get_secret_value()}',
             catalog_name=catalog_name,
-            polaris_url=polaris_catalog_url
+            polaris_url=polaris_catalog_url,
+            use_vended_credentials=False  # Not needed for file storage type
         ) as spark:
             spark.sql(f'USE {catalog_name}')
             

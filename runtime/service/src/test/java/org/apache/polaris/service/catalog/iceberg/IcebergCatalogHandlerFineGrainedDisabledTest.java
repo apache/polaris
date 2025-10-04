@@ -36,9 +36,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /**
- * Test class specifically for testing fine-grained authorization when the feature is DISABLED.
- * This ensures that fine-grained privileges are properly ignored when the feature flag is off.
- *
+ * Test class specifically for testing fine-grained authorization when the feature is DISABLED. This
+ * ensures that fine-grained privileges are properly ignored when the feature flag is off.
  */
 @QuarkusTest
 @TestProfile(IcebergCatalogHandlerFineGrainedDisabledTest.Profile.class)
@@ -47,8 +46,10 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
   @jakarta.inject.Inject CallContextCatalogFactory callContextCatalogFactory;
 
   @SuppressWarnings("unchecked")
-  private static Instance<org.apache.polaris.core.catalog.ExternalCatalogFactory> emptyExternalCatalogFactory() {
-    Instance<org.apache.polaris.core.catalog.ExternalCatalogFactory> mock = Mockito.mock(Instance.class);
+  private static Instance<org.apache.polaris.core.catalog.ExternalCatalogFactory>
+      emptyExternalCatalogFactory() {
+    Instance<org.apache.polaris.core.catalog.ExternalCatalogFactory> mock =
+        Mockito.mock(Instance.class);
     Mockito.when(mock.select(Mockito.any())).thenReturn(mock);
     Mockito.when(mock.isUnsatisfied()).thenReturn(true);
     return mock;
@@ -84,8 +85,10 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
 
   @Test
   public void testUpdateTableFineGrainedPrivilegesIgnoredWhenFeatureDisabled() {
-    // Test that when fine-grained authorization is disabled, fine-grained privileges alone are insufficient
-    // This ensures the feature flag properly controls behavior and fine-grained privileges don't "leak through"
+    // Test that when fine-grained authorization is disabled, fine-grained privileges alone are
+    // insufficient
+    // This ensures the feature flag properly controls behavior and fine-grained privileges don't
+    // "leak through"
     UpdateTableRequest request =
         UpdateTableRequest.create(
             TABLE_NS1A_2,
@@ -96,7 +99,8 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
     // should be insufficient - the system should require the broader privileges
     doTestInsufficientPrivileges(
         List.of(
-            PolarisPrivilege.TABLE_ASSIGN_UUID, // This alone should be insufficient when feature disabled
+            PolarisPrivilege
+                .TABLE_ASSIGN_UUID, // This alone should be insufficient when feature disabled
             PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION,
             PolarisPrivilege.TABLE_SET_PROPERTIES,
             PolarisPrivilege.TABLE_REMOVE_PROPERTIES,
@@ -109,7 +113,9 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
             PolarisPrivilege.TABLE_DROP),
         PRINCIPAL_NAME,
         () -> newWrapper().updateTable(TABLE_NS1A_2, request),
-        (privilege) -> adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
-        (privilege) -> adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
   }
 }
