@@ -23,6 +23,7 @@ import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
@@ -238,29 +239,50 @@ public abstract class CatalogHandler {
     initializeCatalog();
   }
 
+  /**
+   * Ensures resolution manifest is initialized for a table identifier. This allows checking
+   * catalog-level feature flags or other resolved entities before authorization. If already
+   * initialized, this is a no-op.
+   */
+  protected void ensureResolutionManifestForTable(TableIdentifier identifier) {
+    if (resolutionManifest == null) {
+      resolutionManifest = newResolutionManifest();
+
+      // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
+      resolutionManifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */),
+          identifier);
+      resolutionManifest.resolveAll();
+    }
+  }
+
   protected void authorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
-    resolutionManifest = newResolutionManifest();
+    authorizeBasicTableLikeOperationsOrThrow(EnumSet.of(op), subType, identifier);
+  }
 
-    // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
-    resolutionManifest.addPassthroughPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
-            true /* optional */),
-        identifier);
-    resolutionManifest.resolveAll();
+  protected void authorizeBasicTableLikeOperationsOrThrow(
+      EnumSet<PolarisAuthorizableOperation> ops,
+      PolarisEntitySubType subType,
+      TableIdentifier identifier) {
+    ensureResolutionManifestForTable(identifier);
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
       throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
     }
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+
+    for (PolarisAuthorizableOperation op : ops) {
+      authorizer.authorizeOrThrow(
+          polarisPrincipal,
+          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+          op,
+          target,
+          null /* secondary */);
+    }
 
     initializeCatalog();
   }
