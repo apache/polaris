@@ -36,8 +36,8 @@ public interface ExternalCatalogFactory {
    *
    * @param connectionConfig the connection configuration
    * @param userSecretsManager the user secrets manager for handling user-provided credentials
-   * @param polarisCredentialManager the credential manager for generating temporary credentials that
-   *     Polaris uses to access external systems
+   * @param polarisCredentialManager the credential manager for generating temporary credentials
+   *     that Polaris uses to access external systems
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
    */

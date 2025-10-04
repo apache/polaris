@@ -16,141 +16,158 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.credentials;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import java.util.EnumMap;
 import java.util.Map;
-import org.apache.polaris.core.admin.model.AuthenticationParameters;
-import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
-import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
+import java.util.Set;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.AuthenticationType;
+import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
+import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.credentials.DefaultPolarisCredentialManager;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
-import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
+import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.secrets.SecretReference;
+import org.apache.polaris.service.credentials.connection.SupportsAuthType;
 import org.assertj.core.api.Assertions;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
-import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
-import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
-import software.amazon.awssdk.services.sts.model.Credentials;
 
+/** Tests that {@link DefaultPolarisCredentialManager} correctly delegates to CDI providers. */
 @QuarkusTest
 @TestProfile(DefaultPolarisCredentialManagerTest.Profile.class)
 public class DefaultPolarisCredentialManagerTest {
 
   @InjectMock RealmContext realmContext;
 
-  @Inject PolarisCredentialManagerConfiguration configuration;
-  @Inject ServiceIdentityProvider serviceIdentityProvider;
+  @Inject PolarisCredentialManager credentialManager;
 
-  DefaultPolarisCredentialManager credentialManager;
+  private ServiceIdentityInfoDpo testServiceIdentity;
+
+  /** Test vendor for SIGV4 authentication */
+  @Alternative
+  @ApplicationScoped
+  @SupportsAuthType(AuthenticationType.SIGV4)
+  public static class TestSigV4Vendor implements ConnectionCredentialVendor {
+    @Override
+    public @NotNull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+        ServiceIdentityInfoDpo serviceIdentity,
+        AuthenticationParametersDpo authenticationParameters) {
+
+      // Return test credentials
+      EnumMap<ConnectionCredentialProperty, String> credentialMap =
+          new EnumMap<>(ConnectionCredentialProperty.class);
+      credentialMap.put(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "sigv4-access-key");
+      credentialMap.put(ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY, "sigv4-secret-key");
+      credentialMap.put(ConnectionCredentialProperty.AWS_SESSION_TOKEN, "sigv4-session-token");
+      return credentialMap;
+    }
+  }
+
+  /** Test vendor for OAuth authentication */
+  @Alternative
+  @ApplicationScoped
+  @SupportsAuthType(AuthenticationType.OAUTH)
+  public static class TestOAuthVendor implements ConnectionCredentialVendor {
+    @Override
+    public @NotNull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+        ServiceIdentityInfoDpo serviceIdentity,
+        AuthenticationParametersDpo authenticationParameters) {
+
+      EnumMap<ConnectionCredentialProperty, String> credentialMap =
+          new EnumMap<>(ConnectionCredentialProperty.class);
+      credentialMap.put(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "oauth-access-key");
+      return credentialMap;
+    }
+  }
 
   public static class Profile implements QuarkusTestProfile {
     @Override
+    public Set<Class<?>> getEnabledAlternatives() {
+      return Set.of(TestSigV4Vendor.class, TestOAuthVendor.class);
+    }
+
+    @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.service-identity.my-realm.aws-iam.iam-arn",
-          "arn:aws:iam::123456789012:user/polaris-iam-user",
-          "polaris.service-identity.my-realm.aws-iam.access-key-id",
-          "access-key-id",
-          "polaris.service-identity.my-realm.aws-iam.secret-access-key",
-          "secret-access-key",
-          "polaris.credential-manager.type",
-          "default");
+      return Map.of("polaris.credential-manager.type", "default");
     }
   }
 
   @BeforeEach
   void setup() {
-    // Mock the realm context to return a specific realm
-    when(realmContext.getRealmIdentifier()).thenReturn("my-realm");
+    when(realmContext.getRealmIdentifier()).thenReturn("test-realm");
 
-    credentialManager = Mockito.spy(new DefaultPolarisCredentialManager(serviceIdentityProvider));
-    doAnswer(
-            invocation -> {
-              // Capture the identity here
-              AwsIamServiceIdentityCredential credential = invocation.getArgument(0);
-
-              StsClient mockStsClient = mock(StsClient.class);
-              when(mockStsClient.assumeRole(Mockito.any(AssumeRoleRequest.class)))
-                  .thenAnswer(
-                      stsInvocation -> {
-                        // Validate identity at the time assumeRole is called
-                        AwsCredentials credentials =
-                            credential.getAwsCredentialsProvider().resolveCredentials();
-                        if (!"access-key-id".equals(credentials.accessKeyId())
-                            || !"secret-access-key".equals(credentials.secretAccessKey())) {
-                          throw new IllegalArgumentException("Invalid credentials on assumeRole");
-                        }
-
-                        // Return mocked credentials
-                        Credentials tmpSessionCredentials =
-                            Credentials.builder()
-                                .accessKeyId("tmp-access-key-id")
-                                .secretAccessKey("tmp-secret-access-key")
-                                .sessionToken("tmp-session-token")
-                                .expiration(Instant.now().plusSeconds(3600))
-                                .build();
-
-                        return AssumeRoleResponse.builder()
-                            .credentials(tmpSessionCredentials)
-                            .build();
-                      });
-              return mockStsClient;
-            })
-        .when(credentialManager)
-        .getStsClient(any());
+    // Create a test service identity
+    testServiceIdentity =
+        new AwsIamServiceIdentityInfoDpo(
+            new SecretReference("urn:polaris-secret:test:my-realm:AWS_IAM", Map.of()));
   }
 
   @Test
-  public void testGetConnectionCredentialsForSigV4() {
-    // Create a connection config with SigV4 auth to allocate a service identity
-    ConnectionConfigInfo connectionConfig =
-        ConnectionConfigInfo.builder()
-            .setAuthenticationParameters(
-                SigV4AuthenticationParameters.builder(
-                        AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
-                    .setRoleArn("arn:aws:iam::123456789012:role/polaris-users-iam-role")
-                    .setSigningRegion("us-west-2")
-                    .build())
-            .build();
+  public void testDelegatesToSigV4Vendor() {
+    // Create SIGV4 auth parameters
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/test-role", null, null, "us-west-2", "glue");
 
-    ServiceIdentityInfoDpo serviceIdentityInfo =
-        serviceIdentityProvider.allocateServiceIdentity(connectionConfig).get();
-
+    // Should delegate to TestSigV4Vendor
     EnumMap<ConnectionCredentialProperty, String> credentials =
-        credentialManager.getConnectionCredentials(
-            serviceIdentityInfo,
-            new SigV4AuthenticationParametersDpo(
-                "arn:aws:iam::123456789012:role/polaris-users-iam-role",
-                null,
-                null,
-                "us-west-2",
-                "glue"));
+        credentialManager.getConnectionCredentials(testServiceIdentity, authParams);
+
     Assertions.assertThat(credentials)
-        .containsEntry(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "tmp-access-key-id")
-        .containsEntry(ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY, "tmp-secret-access-key")
-        .containsEntry(ConnectionCredentialProperty.AWS_SESSION_TOKEN, "tmp-session-token")
-        .containsKey(ConnectionCredentialProperty.EXPIRATION_TIME)
-        .size()
-        .isEqualTo(4);
+        .containsEntry(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "sigv4-access-key")
+        .containsEntry(ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY, "sigv4-secret-key")
+        .containsEntry(ConnectionCredentialProperty.AWS_SESSION_TOKEN, "sigv4-session-token");
+  }
+
+  @Test
+  public void testDelegatesToOAuthVendor() {
+    // Create OAuth auth parameters
+    OAuthClientCredentialsParametersDpo authParams =
+        new OAuthClientCredentialsParametersDpo(
+            "https://auth.example.com/token",
+            "client-id",
+            new SecretReference("urn:polaris-secret:test-manager:client-secret", Map.of()),
+            null);
+
+    // Should delegate to TestOAuthVendor
+    EnumMap<ConnectionCredentialProperty, String> credentials =
+        credentialManager.getConnectionCredentials(testServiceIdentity, authParams);
+
+    Assertions.assertThat(credentials)
+        .containsEntry(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "oauth-access-key");
+  }
+
+  @Test
+  public void testUnsupportedAuthTypeReturnsEmpty() {
+    // Create BEARER auth parameters (no vendor registered for this)
+    BearerAuthenticationParametersDpo authParams =
+        new BearerAuthenticationParametersDpo(
+            new SecretReference("urn:polaris-secret:test-manager:bearer-token", Map.of()));
+
+    // Should return empty credentials since no vendor supports BEARER
+    EnumMap<ConnectionCredentialProperty, String> credentials =
+        credentialManager.getConnectionCredentials(testServiceIdentity, authParams);
+
+    Assertions.assertThat(credentials).isEmpty();
   }
 }
+
+
+

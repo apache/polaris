@@ -25,8 +25,8 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 /**
  * Factory for creating {@link PolarisCredentialManager} instances.
  *
- * <p>Each {@link PolarisCredentialManager} instance is associated with a {@link RealmContext} and
- * a {@link ServiceIdentityProvider}, and is responsible for generating temporary credentials that
+ * <p>Each {@link PolarisCredentialManager} instance is associated with a {@link RealmContext} and a
+ * {@link ServiceIdentityProvider}, and is responsible for generating temporary credentials that
  * Polaris uses to access external systems (e.g., remote catalogs) in that realm.
  */
 public interface PolarisCredentialManagerFactory {

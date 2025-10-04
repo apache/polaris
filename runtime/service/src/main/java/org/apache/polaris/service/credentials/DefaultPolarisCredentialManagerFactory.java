@@ -21,13 +21,15 @@ package org.apache.polaris.service.credentials;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.credentials.DefaultPolarisCredentialManager;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.PolarisCredentialManagerFactory;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 
 @ApplicationScoped
@@ -36,14 +38,19 @@ public class DefaultPolarisCredentialManagerFactory implements PolarisCredential
   private final Map<String, PolarisCredentialManager> cachedCredentialManagers =
       new ConcurrentHashMap<>();
 
+  private final Instance<ConnectionCredentialVendor> credentialVendors;
+
   @Inject
-  public DefaultPolarisCredentialManagerFactory() {}
+  public DefaultPolarisCredentialManagerFactory(
+      @Any Instance<ConnectionCredentialVendor> credentialVendors) {
+    this.credentialVendors = credentialVendors;
+  }
 
   @Override
   public PolarisCredentialManager getOrCreatePolarisCredentialManager(
       RealmContext realmContext, ServiceIdentityProvider serviceIdentityProvider) {
     return cachedCredentialManagers.computeIfAbsent(
         realmContext.getRealmIdentifier(),
-        key -> new DefaultPolarisCredentialManager(serviceIdentityProvider));
+        key -> new DefaultPolarisCredentialManager(serviceIdentityProvider, credentialVendors));
   }
 }
