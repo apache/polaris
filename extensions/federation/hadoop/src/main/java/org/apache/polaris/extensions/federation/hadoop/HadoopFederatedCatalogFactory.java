@@ -30,6 +30,7 @@ import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +43,9 @@ public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
 
   @Override
   public Catalog createCatalog(
-      ConnectionConfigInfoDpo connectionConfigInfoDpo, UserSecretsManager userSecretsManager) {
+      ConnectionConfigInfoDpo connectionConfigInfoDpo,
+      UserSecretsManager userSecretsManager,
+      PolarisCredentialManager polarisCredentialManager) {
     // Currently, Polaris supports Hadoop federation only via IMPLICIT authentication.
     // Hence, prior to initializing the configuration, ensure that the catalog uses
     // IMPLICIT authentication.
@@ -56,7 +59,9 @@ public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
     String warehouse = ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
     HadoopCatalog hadoopCatalog = new HadoopCatalog(conf, warehouse);
     hadoopCatalog.initialize(
-        warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
+        warehouse,
+        connectionConfigInfoDpo.asIcebergCatalogProperties(
+            userSecretsManager, polarisCredentialManager));
     return hadoopCatalog;
   }
 

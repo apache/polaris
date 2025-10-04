@@ -19,9 +19,11 @@
 package org.apache.polaris.core.connection;
 
 import com.google.common.base.MoreObjects;
+import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.ImplicitAuthenticationParameters;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -35,12 +37,13 @@ public class ImplicitAuthenticationParametersDpo extends AuthenticationParameter
   }
 
   @Override
-  public Map<String, String> asIcebergCatalogProperties(UserSecretsManager secretsManager) {
+  public @Nonnull Map<String, String> asIcebergCatalogProperties(
+      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager) {
     return Map.of();
   }
 
   @Override
-  public AuthenticationParameters asAuthenticationParametersModel() {
+  public @Nonnull AuthenticationParameters asAuthenticationParametersModel() {
     return ImplicitAuthenticationParameters.builder()
         .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT)
         .build();

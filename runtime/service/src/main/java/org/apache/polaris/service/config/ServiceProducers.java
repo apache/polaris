@@ -43,6 +43,9 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.credentials.PolarisCredentialManagerFactory;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -70,6 +73,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
@@ -242,6 +246,13 @@ public class ServiceProducers {
     return new StsClientsPool(config.effectiveClientsCacheMaxSize(), httpClient, meterRegistry);
   }
 
+  @Produces
+  public PolarisCredentialManagerFactory credentialManagerFactory(
+      PolarisCredentialManagerConfiguration config,
+      @Any Instance<PolarisCredentialManagerFactory> credentialManagerFactories) {
+    return credentialManagerFactories.select(Identifier.Literal.of(config.type())).get();
+  }
+
   /**
    * Eagerly initialize the in-memory default realm on startup, so that users can check the
    * credentials printed to stdout immediately.
@@ -390,6 +401,16 @@ public class ServiceProducers {
   public OidcTenantResolver oidcTenantResolver(
       OidcConfiguration config, @Any Instance<OidcTenantResolver> resolvers) {
     return resolvers.select(Identifier.Literal.of(config.tenantResolver())).get();
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisCredentialManager polarisCredentialManager(
+      PolarisCredentialManagerFactory polarisCredentialManagerFactory,
+      RealmContext realmContext,
+      ServiceIdentityProvider serviceIdentityProvider) {
+    return polarisCredentialManagerFactory.getOrCreatePolarisCredentialManager(
+        realmContext, serviceIdentityProvider);
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

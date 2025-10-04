@@ -1,0 +1,56 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.polaris.core.credentials.connection;
+
+import jakarta.annotation.Nonnull;
+import java.util.EnumMap;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+
+/**
+ * Vendor for generating connection credentials for remote catalog or storage access.
+ *
+ * <p>Implementations combine Polaris-managed service identity credentials with user-provided
+ * authentication parameters to produce the final credentials needed to connect to external systems.
+ *
+ * <p>For CDI-based implementations (e.g., auth-type-specific vendors), use the {@code
+ * SupportsAuthType} annotation to indicate which authentication type(s) they support. The
+ * credential manager uses CDI to automatically select the appropriate vendor at runtime.
+ */
+public interface ConnectionCredentialVendor {
+
+  /**
+   * Generate connection credentials by combining service identity with authentication parameters.
+   *
+   * <p>The service identity metadata provides a reference to Polaris's identity (e.g., an IAM
+   * user), and the authentication parameters provide user-configured settings (e.g., which role to
+   * assume, signing region).
+   *
+   * @param serviceIdentity The Polaris-managed service identity metadata containing a reference to
+   *     the backing credential
+   * @param authenticationParameters User-provided authentication configuration specifying how to
+   *     authenticate to the external service
+   * @return Map of connection credential properties that can be used to authenticate to the
+   *     external system
+   */
+  @Nonnull
+  EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+      @Nonnull ServiceIdentityInfoDpo serviceIdentity,
+      @Nonnull AuthenticationParametersDpo authenticationParameters);
+}
