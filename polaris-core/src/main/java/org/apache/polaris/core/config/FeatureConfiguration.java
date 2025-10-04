@@ -407,4 +407,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                       + "If set to false, Polaris will disallow setting or changing the above catalog property")
               .defaultValue(true)
               .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean>
+      ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG =
+          PolarisConfiguration.<Boolean>builder()
+              .key("ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG")
+              .description(
+                  "If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. "
+                      + "passthrough-facade catalogs may contain leftover entities when syncing with source catalog."
+                      + "In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.")
+              .catalogConfig("polaris.config.allow-dropping-non-empty-passthrough-facade-catalog")
+              .defaultValue(false)
+              .buildFeatureConfiguration();
 }
