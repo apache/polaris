@@ -27,7 +27,6 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.connection.AuthenticationType;
@@ -40,6 +39,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.SecretReference;
@@ -66,16 +66,20 @@ public class DefaultPolarisCredentialManagerTest {
   @SupportsAuthType(AuthenticationType.SIGV4)
   public static class TestSigV4Vendor implements ConnectionCredentialVendor {
     @Override
-    public @NotNull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+    public @NotNull ConnectionCredentials getConnectionCredentials(
         @NotNull ConnectionConfigInfoDpo connectionConfig) {
 
       // Return test credentials
-      EnumMap<ConnectionCredentialProperty, String> credentialMap =
-          new EnumMap<>(ConnectionCredentialProperty.class);
-      credentialMap.put(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "sigv4-access-key");
-      credentialMap.put(ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY, "sigv4-secret-key");
-      credentialMap.put(ConnectionCredentialProperty.AWS_SESSION_TOKEN, "sigv4-session-token");
-      return credentialMap;
+      return ConnectionCredentials.builder()
+          .putCredential(
+              ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "sigv4-access-key")
+          .putCredential(
+              ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
+              "sigv4-secret-key")
+          .putCredential(
+              ConnectionCredentialProperty.AWS_SESSION_TOKEN.getPropertyName(),
+              "sigv4-session-token")
+          .build();
     }
   }
 
@@ -85,13 +89,13 @@ public class DefaultPolarisCredentialManagerTest {
   @SupportsAuthType(AuthenticationType.OAUTH)
   public static class TestOAuthVendor implements ConnectionCredentialVendor {
     @Override
-    public @NotNull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+    public @NotNull ConnectionCredentials getConnectionCredentials(
         @NotNull ConnectionConfigInfoDpo connectionConfig) {
 
-      EnumMap<ConnectionCredentialProperty, String> credentialMap =
-          new EnumMap<>(ConnectionCredentialProperty.class);
-      credentialMap.put(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "oauth-access-key");
-      return credentialMap;
+      return ConnectionCredentials.builder()
+          .putCredential(
+              ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "oauth-access-key")
+          .build();
     }
   }
 
@@ -130,13 +134,18 @@ public class DefaultPolarisCredentialManagerTest {
             "https://test-catalog.example.com", authParams, testServiceIdentity, "test-catalog");
 
     // Should delegate to TestSigV4Vendor
-    EnumMap<ConnectionCredentialProperty, String> credentials =
+    ConnectionCredentials credentials =
         credentialManager.getConnectionCredentials(connectionConfig);
 
-    Assertions.assertThat(credentials)
-        .containsEntry(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "sigv4-access-key")
-        .containsEntry(ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY, "sigv4-secret-key")
-        .containsEntry(ConnectionCredentialProperty.AWS_SESSION_TOKEN, "sigv4-session-token");
+    Assertions.assertThat(credentials.credentials())
+        .containsEntry(
+            ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "sigv4-access-key")
+        .containsEntry(
+            ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
+            "sigv4-secret-key")
+        .containsEntry(
+            ConnectionCredentialProperty.AWS_SESSION_TOKEN.getPropertyName(),
+            "sigv4-session-token");
   }
 
   @Test
@@ -155,11 +164,12 @@ public class DefaultPolarisCredentialManagerTest {
             "https://test-catalog.example.com", authParams, testServiceIdentity, "test-catalog");
 
     // Should delegate to TestOAuthVendor
-    EnumMap<ConnectionCredentialProperty, String> credentials =
+    ConnectionCredentials credentials =
         credentialManager.getConnectionCredentials(connectionConfig);
 
-    Assertions.assertThat(credentials)
-        .containsEntry(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "oauth-access-key");
+    Assertions.assertThat(credentials.credentials())
+        .containsEntry(
+            ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "oauth-access-key");
   }
 
   @Test
@@ -175,9 +185,9 @@ public class DefaultPolarisCredentialManagerTest {
             "https://test-catalog.example.com", authParams, testServiceIdentity, "test-catalog");
 
     // Should return empty credentials since no vendor supports BEARER
-    EnumMap<ConnectionCredentialProperty, String> credentials =
+    ConnectionCredentials credentials =
         credentialManager.getConnectionCredentials(connectionConfig);
 
-    Assertions.assertThat(credentials).isEmpty();
+    Assertions.assertThat(credentials.credentials()).isEmpty();
   }
 }

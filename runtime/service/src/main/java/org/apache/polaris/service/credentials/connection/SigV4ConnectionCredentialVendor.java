@@ -22,13 +22,13 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.util.EnumMap;
 import java.util.Optional;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
@@ -68,17 +68,14 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
   }
 
   @Override
-  public @Nonnull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+  public @Nonnull ConnectionCredentials getConnectionCredentials(
       @Nonnull ConnectionConfigInfoDpo connectionConfig) {
-
-    EnumMap<ConnectionCredentialProperty, String> credentialMap =
-        new EnumMap<>(ConnectionCredentialProperty.class);
 
     // Resolve the service identity credential
     Optional<ServiceIdentityCredential> serviceCredentialOpt =
         serviceIdentityProvider.getServiceIdentityCredential(connectionConfig.getServiceIdentity());
     if (serviceCredentialOpt.isEmpty()) {
-      return credentialMap;
+      return ConnectionCredentials.builder().build();
     }
 
     // Cast to expected types for SigV4
@@ -104,23 +101,21 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
 
     AssumeRoleResponse response = stsClient.assumeRole(requestBuilder.build());
 
-    // Map AWS temporary credentials to connection properties
-    credentialMap.put(
-        ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, response.credentials().accessKeyId());
-    credentialMap.put(
-        ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY,
+    // Build connection credentials from AWS temporary credentials
+    ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
+    builder.putCredential(
+        ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(),
+        response.credentials().accessKeyId());
+    builder.putCredential(
+        ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
         response.credentials().secretAccessKey());
-    credentialMap.put(
-        ConnectionCredentialProperty.AWS_SESSION_TOKEN, response.credentials().sessionToken());
+    builder.putCredential(
+        ConnectionCredentialProperty.AWS_SESSION_TOKEN.getPropertyName(),
+        response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
-        .ifPresent(
-            expiration -> {
-              credentialMap.put(
-                  ConnectionCredentialProperty.EXPIRATION_TIME,
-                  String.valueOf(expiration.toEpochMilli()));
-            });
+        .ifPresent(expiration -> builder.expiresAt(expiration));
 
-    return credentialMap;
+    return builder.build();
   }
 
   @VisibleForTesting

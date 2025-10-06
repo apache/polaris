@@ -23,12 +23,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
@@ -109,17 +109,21 @@ public class SigV4ConnectionCredentialVendorTest {
             "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
 
     // Get credentials
-    EnumMap<ConnectionCredentialProperty, String> credentials =
-        vendor.getConnectionCredentials(connectionConfig);
+    ConnectionCredentials credentials = vendor.getConnectionCredentials(connectionConfig);
 
     // Verify the returned credentials are from STS AssumeRole
-    Assertions.assertThat(credentials)
-        .containsEntry(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "assumed-access-key-id")
+    Assertions.assertThat(credentials.credentials())
         .containsEntry(
-            ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY, "assumed-secret-access-key")
-        .containsEntry(ConnectionCredentialProperty.AWS_SESSION_TOKEN, "assumed-session-token")
-        .containsKey(ConnectionCredentialProperty.EXPIRATION_TIME)
-        .hasSize(4);
+            ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(),
+            "assumed-access-key-id")
+        .containsEntry(
+            ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
+            "assumed-secret-access-key")
+        .containsEntry(
+            ConnectionCredentialProperty.AWS_SESSION_TOKEN.getPropertyName(),
+            "assumed-session-token")
+        .hasSize(3);
+    Assertions.assertThat(credentials.expiresAt()).isPresent();
 
     // Verify STS was called with correct role, session name, and external ID
     ArgumentCaptor<AssumeRoleRequest> requestCaptor =
@@ -150,13 +154,14 @@ public class SigV4ConnectionCredentialVendorTest {
         new IcebergRestConnectionConfigInfoDpo(
             "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
 
-    EnumMap<ConnectionCredentialProperty, String> credentials =
-        vendor.getConnectionCredentials(connectionConfig);
+    ConnectionCredentials credentials = vendor.getConnectionCredentials(connectionConfig);
 
     // Should still get credentials
-    Assertions.assertThat(credentials)
-        .containsEntry(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "assumed-access-key-id")
-        .hasSize(4);
+    Assertions.assertThat(credentials.credentials())
+        .containsEntry(
+            ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(),
+            "assumed-access-key-id")
+        .hasSize(3);
 
     // Verify default session name "polaris" was used
     ArgumentCaptor<AssumeRoleRequest> requestCaptor =

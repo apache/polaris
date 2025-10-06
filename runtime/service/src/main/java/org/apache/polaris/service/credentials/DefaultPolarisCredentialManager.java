@@ -22,12 +22,11 @@ package org.apache.polaris.service.credentials;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
-import java.util.EnumMap;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.service.credentials.connection.SupportsAuthType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +59,7 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
   }
 
   @Override
-  public @Nonnull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
+  public @Nonnull ConnectionCredentials getConnectionCredentials(
       @Nonnull ConnectionConfigInfoDpo connectionConfig) {
 
     // Select the appropriate vendor based on authentication type
@@ -71,7 +70,7 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
 
     if (selectedVendor.isUnsatisfied()) {
       LOGGER.warn("No credential vendor found for authentication type: {}", authType);
-      return new EnumMap<>(ConnectionCredentialProperty.class);
+      return ConnectionCredentials.builder().build();
     }
 
     // Delegate to the vendor to generate credentials

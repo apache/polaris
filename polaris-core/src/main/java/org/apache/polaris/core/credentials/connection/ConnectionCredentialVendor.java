@@ -19,7 +19,6 @@
 package org.apache.polaris.core.credentials.connection;
 
 import jakarta.annotation.Nonnull;
-import java.util.EnumMap;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 
 /**
@@ -43,10 +42,9 @@ public interface ConnectionCredentialVendor {
    *
    * @param connectionConfig The connection configuration containing service identity and
    *     authentication parameters
-   * @return Map of connection credential properties that can be used to authenticate to the
-   *     external system
+   * @return Connection credentials object containing credentials, properties, and optional
+   *     expiration
    */
   @Nonnull
-  EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
-      @Nonnull ConnectionConfigInfoDpo connectionConfig);
+  ConnectionCredentials getConnectionCredentials(@Nonnull ConnectionConfigInfoDpo connectionConfig);
 }

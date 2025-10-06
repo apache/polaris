@@ -28,21 +28,21 @@ import org.apache.iceberg.aws.AwsProperties;
  * Catalog service.
  */
 public enum ConnectionCredentialProperty {
-  AWS_ACCESS_KEY_ID(String.class, AwsProperties.REST_ACCESS_KEY_ID, "the aws access key id"),
+  AWS_ACCESS_KEY_ID(String.class, AwsProperties.REST_ACCESS_KEY_ID, "the aws access key id", true),
   AWS_SECRET_ACCESS_KEY(
-      String.class, AwsProperties.REST_SECRET_ACCESS_KEY, "the aws access key secret"),
-  AWS_SESSION_TOKEN(String.class, AwsProperties.REST_SESSION_TOKEN, "the aws scoped access token"),
+      String.class, AwsProperties.REST_SECRET_ACCESS_KEY, "the aws access key secret", true),
+  AWS_SESSION_TOKEN(
+      String.class, AwsProperties.REST_SESSION_TOKEN, "the aws scoped access token", true),
   EXPIRATION_TIME(
-      Long.class, "expiration-time", "the expiration time for the access token, in milliseconds");
+      Long.class,
+      "expiration-time",
+      "the expiration time for the access token, in milliseconds",
+      false);
 
   private final Class valueType;
   private final String propertyName;
   private final String description;
   private final boolean isCredential;
-
-  ConnectionCredentialProperty(Class valueType, String propertyName, String description) {
-    this(valueType, propertyName, description, true);
-  }
 
   ConnectionCredentialProperty(
       Class valueType, String propertyName, String description, boolean isCredential) {
@@ -58,5 +58,9 @@ public enum ConnectionCredentialProperty {
 
   public boolean isCredential() {
     return isCredential;
+  }
+
+  public boolean isExpirationTimestamp() {
+    return this == EXPIRATION_TIME;
   }
 }
