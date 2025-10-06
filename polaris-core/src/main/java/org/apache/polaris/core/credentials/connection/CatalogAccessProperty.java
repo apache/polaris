@@ -27,7 +27,7 @@ import org.apache.iceberg.aws.AwsProperties;
  * <p>Most of these properties are meant to initialize Catalog objects for accessing the remote
  * Catalog service.
  */
-public enum ConnectionCredentialProperty {
+public enum CatalogAccessProperty {
   AWS_ACCESS_KEY_ID(String.class, AwsProperties.REST_ACCESS_KEY_ID, "the aws access key id", true),
   AWS_SECRET_ACCESS_KEY(
       String.class, AwsProperties.REST_SECRET_ACCESS_KEY, "the aws access key secret", true),
@@ -44,7 +44,7 @@ public enum ConnectionCredentialProperty {
   private final String description;
   private final boolean isCredential;
 
-  ConnectionCredentialProperty(
+  CatalogAccessProperty(
       Class valueType, String propertyName, String description, boolean isCredential) {
     this.valueType = valueType;
     this.propertyName = propertyName;

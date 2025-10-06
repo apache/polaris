@@ -53,7 +53,7 @@ public interface ConnectionCredentials {
    * @param key the credential property to retrieve
    * @return the credential value, or null if not present
    */
-  default String get(ConnectionCredentialProperty key) {
+  default String get(CatalogAccessProperty key) {
     return credentials().get(key.getPropertyName());
   }
 
@@ -68,7 +68,7 @@ public interface ConnectionCredentials {
     @CanIgnoreReturnValue
     Builder expiresAt(Instant expiresAt);
 
-    default Builder put(ConnectionCredentialProperty key, String value) {
+    default Builder put(CatalogAccessProperty key, String value) {
       if (key.isExpirationTimestamp()) {
         expiresAt(Instant.ofEpochMilli(Long.parseLong(value)));
       } else if (key.isCredential()) {

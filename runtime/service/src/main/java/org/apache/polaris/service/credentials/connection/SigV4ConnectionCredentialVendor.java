@@ -27,7 +27,7 @@ import java.util.Optional;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
-import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
+import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
@@ -109,13 +109,13 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
     // Build connection credentials from AWS temporary credentials
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
     builder.putCredential(
-        ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(),
+        CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(),
         response.credentials().accessKeyId());
     builder.putCredential(
-        ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
+        CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
         response.credentials().secretAccessKey());
     builder.putCredential(
-        ConnectionCredentialProperty.AWS_SESSION_TOKEN.getPropertyName(),
+        CatalogAccessProperty.AWS_SESSION_TOKEN.getPropertyName(),
         response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
         .ifPresent(expiration -> builder.expiresAt(expiration));

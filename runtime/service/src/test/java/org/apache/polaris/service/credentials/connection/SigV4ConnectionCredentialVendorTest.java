@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
-import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
+import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
@@ -114,14 +114,12 @@ public class SigV4ConnectionCredentialVendorTest {
     // Verify the returned credentials are from STS AssumeRole
     Assertions.assertThat(credentials.credentials())
         .containsEntry(
-            ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(),
-            "assumed-access-key-id")
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "assumed-access-key-id")
         .containsEntry(
-            ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
+            CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
             "assumed-secret-access-key")
         .containsEntry(
-            ConnectionCredentialProperty.AWS_SESSION_TOKEN.getPropertyName(),
-            "assumed-session-token")
+            CatalogAccessProperty.AWS_SESSION_TOKEN.getPropertyName(), "assumed-session-token")
         .hasSize(3);
     Assertions.assertThat(credentials.expiresAt()).isPresent();
 
@@ -159,8 +157,7 @@ public class SigV4ConnectionCredentialVendorTest {
     // Should still get credentials
     Assertions.assertThat(credentials.credentials())
         .containsEntry(
-            ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(),
-            "assumed-access-key-id")
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "assumed-access-key-id")
         .hasSize(3);
 
     // Verify default session name "polaris" was used

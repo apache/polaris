@@ -37,7 +37,7 @@ import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
+import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
@@ -72,13 +72,11 @@ public class DefaultPolarisCredentialManagerTest {
       // Return test credentials
       return ConnectionCredentials.builder()
           .putCredential(
-              ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "sigv4-access-key")
+              CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "sigv4-access-key")
           .putCredential(
-              ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
-              "sigv4-secret-key")
+              CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(), "sigv4-secret-key")
           .putCredential(
-              ConnectionCredentialProperty.AWS_SESSION_TOKEN.getPropertyName(),
-              "sigv4-session-token")
+              CatalogAccessProperty.AWS_SESSION_TOKEN.getPropertyName(), "sigv4-session-token")
           .build();
     }
   }
@@ -94,7 +92,7 @@ public class DefaultPolarisCredentialManagerTest {
 
       return ConnectionCredentials.builder()
           .putCredential(
-              ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "oauth-access-key")
+              CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "oauth-access-key")
           .build();
     }
   }
@@ -139,13 +137,11 @@ public class DefaultPolarisCredentialManagerTest {
 
     Assertions.assertThat(credentials.credentials())
         .containsEntry(
-            ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "sigv4-access-key")
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "sigv4-access-key")
         .containsEntry(
-            ConnectionCredentialProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
-            "sigv4-secret-key")
+            CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(), "sigv4-secret-key")
         .containsEntry(
-            ConnectionCredentialProperty.AWS_SESSION_TOKEN.getPropertyName(),
-            "sigv4-session-token");
+            CatalogAccessProperty.AWS_SESSION_TOKEN.getPropertyName(), "sigv4-session-token");
   }
 
   @Test
@@ -169,7 +165,7 @@ public class DefaultPolarisCredentialManagerTest {
 
     Assertions.assertThat(credentials.credentials())
         .containsEntry(
-            ConnectionCredentialProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "oauth-access-key");
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "oauth-access-key");
   }
 
   @Test
