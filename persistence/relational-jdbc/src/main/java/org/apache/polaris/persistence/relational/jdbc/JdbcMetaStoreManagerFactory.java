@@ -164,9 +164,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
                 datasourceOperations,
                 configurationStore.getConfiguration(
                     realmContext, BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
+        // skip validation if no schema is specified.
         int requestedSchemaVersion = getSchemaVersion(bootstrapOptions);
         Preconditions.checkState(
-            (requestedSchemaVersion == schemaVersion) || (schemaVersion == 0),
+            (requestedSchemaVersion == schemaVersion)
+                || (schemaVersion == 0 || requestedSchemaVersion == -1),
             "Cannot bootstrap due to schema version mismatch. Current: %s, Requested: %s",
             schemaVersion, // "Current" version
             requestedSchemaVersion);
@@ -314,6 +316,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         }
       }
     }
-    return 0;
+    return -1;
   }
 }

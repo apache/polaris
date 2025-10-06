@@ -83,7 +83,6 @@ public class BootstrapCommand extends BaseCommand {
       @CommandLine.Option(
           names = {"-f", "--credentials-file"},
           paramLabel = "<file>",
-          required = true,
           description = "A file containing root principal credentials to bootstrap.")
       Path file;
     }
