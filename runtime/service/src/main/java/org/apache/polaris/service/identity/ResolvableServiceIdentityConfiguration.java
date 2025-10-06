@@ -72,4 +72,20 @@ public interface ResolvableServiceIdentityConfiguration {
       @Nonnull SecretReference secretReference) {
     return Optional.empty();
   }
+
+  /**
+   * Returns the default resolvable service identity configuration.
+   *
+   * <p>This configuration is used only when the default realm ({@code DEFAULT_REALM_KEY}) has no
+   * explicit configuration. It serves as a fallback for development scenarios where credentials are
+   * obtained from the environment without requiring explicit configuration.
+   *
+   * @return the default resolvable service identity configuration
+   */
+  static ResolvableServiceIdentityConfiguration defaultConfiguration() {
+    return new ResolvableServiceIdentityConfiguration() {
+      // Returns empty for all methods - no explicit configuration available
+      // Subclasses like AwsIamServiceIdentityConfiguration handle environment credentials
+    };
+  }
 }

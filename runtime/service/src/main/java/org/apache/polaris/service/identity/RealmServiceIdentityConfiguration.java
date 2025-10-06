@@ -48,4 +48,23 @@ public interface RealmServiceIdentityConfiguration {
   default List<? extends ResolvableServiceIdentityConfiguration> serviceIdentityConfigurations() {
     return Stream.of(awsIamServiceIdentity()).flatMap(Optional::stream).toList();
   }
+
+  /**
+   * Returns the default realm service identity configuration.
+   *
+   * <p>This configuration is used only when the default realm ({@code DEFAULT_REALM_KEY}) has no
+   * explicit configuration. It serves as a fallback for development scenarios where credentials are
+   * obtained from the environment without requiring explicit configuration.
+   *
+   * @return the default realm service identity configuration
+   */
+  static RealmServiceIdentityConfiguration defaultConfiguration() {
+    return new RealmServiceIdentityConfiguration() {
+      @Override
+      public Optional<AwsIamServiceIdentityConfiguration> awsIamServiceIdentity() {
+        // Return the AWS-specific default configuration that uses environment credentials
+        return Optional.of(AwsIamServiceIdentityConfiguration.defaultConfiguration());
+      }
+    };
+  }
 }

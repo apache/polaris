@@ -41,7 +41,10 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
  */
 public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIdentityConfiguration {
 
-  /** The IAM role or user ARN representing the service identity. */
+  /**
+   * The IAM role or user ARN representing the service identity. If not provided, Polaris won't
+   * surface it in the catalog identity.
+   */
   String iamArn();
 
   /**
@@ -104,14 +107,11 @@ public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIde
    * <p>This method should only be called when credentials are actually needed for authentication.
    *
    * @param secretReference the secret reference to associate with this credential
-   * @return the service identity credential, or empty if the IAM ARN is not configured
+   * @return the service identity credential
    */
   @Override
   default Optional<AwsIamServiceIdentityCredential> asServiceIdentityCredential(
       @Nonnull SecretReference secretReference) {
-    if (iamArn() == null) {
-      return Optional.empty();
-    }
     return Optional.of(
         new AwsIamServiceIdentityCredential(secretReference, iamArn(), awsCredentialsProvider()));
   }
@@ -137,5 +137,39 @@ public interface AwsIamServiceIdentityConfiguration extends ResolvableServiceIde
     } else {
       return DefaultCredentialsProvider.builder().build();
     }
+  }
+
+  /**
+   * Returns the default AWS IAM service identity configuration.
+   *
+   * <p>This configuration is used only when the default realm ({@code DEFAULT_REALM_KEY}) has no
+   * explicit service identity configuration. It uses the AWS default credential provider chain to
+   * obtain credentials from the environment (e.g., environment variables, EC2 instance metadata,
+   * ECS task metadata, etc.) without requiring an explicit IAM ARN.
+   *
+   * @return the default AWS IAM service identity configuration
+   */
+  static AwsIamServiceIdentityConfiguration defaultConfiguration() {
+    return new AwsIamServiceIdentityConfiguration() {
+      @Override
+      public String iamArn() {
+        return null; // No ARN - will use environment credentials
+      }
+
+      @Override
+      public Optional<String> accessKeyId() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<String> secretAccessKey() {
+        return Optional.empty();
+      }
+
+      @Override
+      public Optional<String> sessionToken() {
+        return Optional.empty();
+      }
+    };
   }
 }
