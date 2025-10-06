@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
+import java.util.Objects;
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 
 public enum DatabaseType {
@@ -53,9 +54,10 @@ public enum DatabaseType {
    * caller.
    */
   public InputStream openInitScriptResource(@Nonnull SchemaOptions schemaOptions) {
-    if (schemaOptions.schemaFile() != null) {
+    if (schemaOptions.schemaFile() != null
+        && !Objects.requireNonNull(schemaOptions.schemaFile()).isEmpty()) {
       try {
-        return new FileInputStream(schemaOptions.schemaFile());
+        return new FileInputStream(Objects.requireNonNull(schemaOptions.schemaFile()));
       } catch (IOException e) {
         throw new IllegalArgumentException("Unable to load file " + schemaOptions.schemaFile(), e);
       }

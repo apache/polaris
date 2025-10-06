@@ -20,6 +20,7 @@
 package org.apache.polaris.core.persistence.bootstrap;
 
 import jakarta.annotation.Nullable;
+import java.util.Objects;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
@@ -33,7 +34,8 @@ public interface SchemaOptions {
 
   @Value.Check
   default void validate() {
-    if (schemaVersion() != null && schemaFile() != null) {
+    if (schemaVersion() != null
+        && (schemaFile() != null && !Objects.requireNonNull(schemaFile()).isEmpty())) {
       throw new IllegalStateException("Only one of schemaVersion or schemaFile can be set.");
     }
   }

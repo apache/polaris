@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
+import com.google.common.base.Preconditions;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -29,6 +30,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -69,6 +72,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, Supplier<BasePersistence>> sessionSupplierMap = new HashMap<>();
+  // Define a pattern to find 'v' followed by one or more digits (\d+)
+  final Pattern pattern = Pattern.compile("(v\\d+)");
 
   @Inject Clock clock;
   @Inject PolarisDiagnostics diagnostics;
@@ -154,6 +159,17 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
         DatasourceOperations datasourceOperations = getDatasourceOperations();
+        int schemaVersion =
+            JdbcBasePersistenceImpl.loadSchemaVersion(
+                datasourceOperations,
+                configurationStore.getConfiguration(
+                    realmContext, BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
+        int requestedSchemaVersion = getSchemaVersion(bootstrapOptions);
+        Preconditions.checkState(
+            (requestedSchemaVersion == schemaVersion) || (schemaVersion == 0),
+            "Cannot bootstrap due to schema version mismatch. Current: %s, Requested: %s",
+            schemaVersion, // "Current" version
+            requestedSchemaVersion);
         try {
           // Run the set-up script to create the tables.
           datasourceOperations.executeScript(
@@ -280,5 +296,24 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       throw new IllegalStateException(
           "Realm is not bootstrapped, please run server in bootstrap mode.");
     }
+  }
+
+  private int getSchemaVersion(BootstrapOptions bootstrapOptions) {
+    SchemaOptions schemaOptions = bootstrapOptions.schemaOptions();
+    if (schemaOptions != null) {
+      Integer version = schemaOptions.schemaVersion();
+      if (version != null) {
+        return version;
+      }
+      String schemaFile = schemaOptions.schemaFile();
+      if (schemaFile != null) {
+        Matcher matcher = pattern.matcher(schemaFile);
+        if (matcher.find()) {
+          String versionStr = matcher.group(1); // "v3"
+          return Integer.parseInt(versionStr.substring(1)); // 3
+        }
+      }
+    }
+    return 0;
   }
 }

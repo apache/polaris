@@ -35,20 +35,28 @@ import picocli.CommandLine;
     description = "Bootstraps realms and root principal credentials.")
 public class BootstrapCommand extends BaseCommand {
 
-  @CommandLine.ArgGroup(multiplicity = "1")
-  InputOptions inputOptions;
+  @CommandLine.Mixin InputOptions inputOptions;
 
   static class InputOptions {
 
-    @CommandLine.ArgGroup(multiplicity = "1", exclusive = false)
-    StandardInputOptions stdinOptions;
-
+    // This ArgGroup enforces the mandatory, exclusive choice.
     @CommandLine.ArgGroup(multiplicity = "1")
-    FileInputOptions fileOptions;
+    ExclusiveOptions exclusiveOptions;
 
-    @CommandLine.ArgGroup(multiplicity = "1")
-    SchemaInputOptions schemaInputOptions;
+    // This @Mixin provides independent, optional schema flags.
+    @CommandLine.Mixin SchemaInputOptions schemaInputOptions = new SchemaInputOptions();
 
+    // This static inner class encapsulates the mutually exclusive choices.
+    static class ExclusiveOptions {
+
+      @CommandLine.ArgGroup(exclusive = false, heading = "Standard Input Options:%n")
+      StandardInputOptions stdinOptions;
+
+      @CommandLine.ArgGroup(exclusive = false, heading = "File Input Options:%n")
+      FileInputOptions fileOptions;
+    }
+
+    // Option container classes
     static class StandardInputOptions {
 
       @CommandLine.Option(
@@ -75,6 +83,7 @@ public class BootstrapCommand extends BaseCommand {
       @CommandLine.Option(
           names = {"-f", "--credentials-file"},
           paramLabel = "<file>",
+          required = true,
           description = "A file containing root principal credentials to bootstrap.")
       Path file;
     }
@@ -102,19 +111,21 @@ public class BootstrapCommand extends BaseCommand {
       RootCredentialsSet rootCredentialsSet;
       List<String> realms; // TODO Iterable
 
-      if (inputOptions.fileOptions != null) {
-        rootCredentialsSet = RootCredentialsSet.fromUri(inputOptions.fileOptions.file.toUri());
+      if (inputOptions.exclusiveOptions.fileOptions != null) {
+        rootCredentialsSet =
+            RootCredentialsSet.fromUri(inputOptions.exclusiveOptions.fileOptions.file.toUri());
         realms = rootCredentialsSet.credentials().keySet().stream().toList();
       } else {
-        realms = inputOptions.stdinOptions.realms;
+        realms = inputOptions.exclusiveOptions.stdinOptions.realms;
         rootCredentialsSet =
-            inputOptions.stdinOptions.credentials == null
-                    || inputOptions.stdinOptions.credentials.isEmpty()
+            inputOptions.exclusiveOptions.stdinOptions.credentials == null
+                    || inputOptions.exclusiveOptions.stdinOptions.credentials.isEmpty()
                 ? RootCredentialsSet.EMPTY
-                : RootCredentialsSet.fromList(inputOptions.stdinOptions.credentials);
-        if (inputOptions.stdinOptions.credentials == null
-            || inputOptions.stdinOptions.credentials.isEmpty()) {
-          if (!inputOptions.stdinOptions.printCredentials) {
+                : RootCredentialsSet.fromList(
+                    inputOptions.exclusiveOptions.stdinOptions.credentials);
+        if (inputOptions.exclusiveOptions.stdinOptions.credentials == null
+            || inputOptions.exclusiveOptions.stdinOptions.credentials.isEmpty()) {
+          if (!inputOptions.exclusiveOptions.stdinOptions.printCredentials) {
             spec.commandLine()
                 .getErr()
                 .println(
@@ -153,7 +164,8 @@ public class BootstrapCommand extends BaseCommand {
         if (result.getValue().isSuccess()) {
           String realm = result.getKey();
           spec.commandLine().getOut().printf("Realm '%s' successfully bootstrapped.%n", realm);
-          if (inputOptions.stdinOptions != null && inputOptions.stdinOptions.printCredentials) {
+          if (inputOptions.exclusiveOptions.stdinOptions != null
+              && inputOptions.exclusiveOptions.stdinOptions.printCredentials) {
             String msg =
                 String.format(
                     "realm: %1s root principal credentials: %2s:%3s",
