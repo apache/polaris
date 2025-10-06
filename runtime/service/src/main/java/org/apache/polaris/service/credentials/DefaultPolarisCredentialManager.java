@@ -23,12 +23,11 @@ import jakarta.annotation.Nonnull;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import java.util.EnumMap;
-import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
-import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.service.credentials.connection.SupportsAuthType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,11 +61,11 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
 
   @Override
   public @Nonnull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentity,
-      @Nonnull AuthenticationParametersDpo authenticationParameters) {
+      @Nonnull ConnectionConfigInfoDpo connectionConfig) {
 
     // Select the appropriate vendor based on authentication type
-    AuthenticationType authType = authenticationParameters.getAuthenticationType();
+    AuthenticationType authType =
+        connectionConfig.getAuthenticationParameters().getAuthenticationType();
     Instance<ConnectionCredentialVendor> selectedVendor =
         credentialVendors.select(SupportsAuthType.Literal.of(authType));
 
@@ -76,6 +75,6 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
     }
 
     // Delegate to the vendor to generate credentials
-    return selectedVendor.get().getConnectionCredentials(serviceIdentity, authenticationParameters);
+    return selectedVendor.get().getConnectionCredentials(connectionConfig);
   }
 }

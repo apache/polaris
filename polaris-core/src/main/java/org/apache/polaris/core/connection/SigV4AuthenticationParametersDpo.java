@@ -23,14 +23,12 @@ import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.EnumMap;
 import java.util.Map;
 import org.apache.iceberg.aws.AwsProperties;
 import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -104,11 +102,7 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
     if (getSigningName() != null) {
       builder.put(AwsProperties.REST_SIGNING_NAME, getSigningName());
     }
-
-    EnumMap<ConnectionCredentialProperty, String> connectionCredentialProperties =
-        credentialManager.getConnectionCredentials(null, this);
-    connectionCredentialProperties.forEach(
-        (key, value) -> builder.put(key.getPropertyName(), value));
+    // Connection credentials are handled by ConnectionConfigInfoDpo
     return builder.build();
   }
 

@@ -30,11 +30,12 @@ import jakarta.inject.Inject;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
@@ -66,8 +67,7 @@ public class DefaultPolarisCredentialManagerTest {
   public static class TestSigV4Vendor implements ConnectionCredentialVendor {
     @Override
     public @NotNull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
-        @NotNull ServiceIdentityInfoDpo serviceIdentity,
-        @NotNull AuthenticationParametersDpo authenticationParameters) {
+        @NotNull ConnectionConfigInfoDpo connectionConfig) {
 
       // Return test credentials
       EnumMap<ConnectionCredentialProperty, String> credentialMap =
@@ -86,8 +86,7 @@ public class DefaultPolarisCredentialManagerTest {
   public static class TestOAuthVendor implements ConnectionCredentialVendor {
     @Override
     public @NotNull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
-        @NotNull ServiceIdentityInfoDpo serviceIdentity,
-        @NotNull AuthenticationParametersDpo authenticationParameters) {
+        @NotNull ConnectionConfigInfoDpo connectionConfig) {
 
       EnumMap<ConnectionCredentialProperty, String> credentialMap =
           new EnumMap<>(ConnectionCredentialProperty.class);
@@ -125,9 +124,14 @@ public class DefaultPolarisCredentialManagerTest {
         new SigV4AuthenticationParametersDpo(
             "arn:aws:iam::123456789012:role/test-role", null, null, "us-west-2", "glue");
 
+    // Create connection config
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        new IcebergRestConnectionConfigInfoDpo(
+            "https://test-catalog.example.com", authParams, testServiceIdentity, "test-catalog");
+
     // Should delegate to TestSigV4Vendor
     EnumMap<ConnectionCredentialProperty, String> credentials =
-        credentialManager.getConnectionCredentials(testServiceIdentity, authParams);
+        credentialManager.getConnectionCredentials(connectionConfig);
 
     Assertions.assertThat(credentials)
         .containsEntry(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "sigv4-access-key")
@@ -145,9 +149,14 @@ public class DefaultPolarisCredentialManagerTest {
             new SecretReference("urn:polaris-secret:test-manager:client-secret", Map.of()),
             null);
 
+    // Create connection config
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        new IcebergRestConnectionConfigInfoDpo(
+            "https://test-catalog.example.com", authParams, testServiceIdentity, "test-catalog");
+
     // Should delegate to TestOAuthVendor
     EnumMap<ConnectionCredentialProperty, String> credentials =
-        credentialManager.getConnectionCredentials(testServiceIdentity, authParams);
+        credentialManager.getConnectionCredentials(connectionConfig);
 
     Assertions.assertThat(credentials)
         .containsEntry(ConnectionCredentialProperty.AWS_ACCESS_KEY_ID, "oauth-access-key");
@@ -160,9 +169,14 @@ public class DefaultPolarisCredentialManagerTest {
         new BearerAuthenticationParametersDpo(
             new SecretReference("urn:polaris-secret:test-manager:bearer-token", Map.of()));
 
+    // Create connection config
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        new IcebergRestConnectionConfigInfoDpo(
+            "https://test-catalog.example.com", authParams, testServiceIdentity, "test-catalog");
+
     // Should return empty credentials since no vendor supports BEARER
     EnumMap<ConnectionCredentialProperty, String> credentials =
-        credentialManager.getConnectionCredentials(testServiceIdentity, authParams);
+        credentialManager.getConnectionCredentials(connectionConfig);
 
     Assertions.assertThat(credentials).isEmpty();
   }

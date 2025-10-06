@@ -27,6 +27,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
@@ -102,9 +103,14 @@ public class SigV4ConnectionCredentialVendorTest {
             "us-west-2",
             "glue");
 
+    // Create connection config with service identity and auth params
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        new IcebergRestConnectionConfigInfoDpo(
+            "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
+
     // Get credentials
     EnumMap<ConnectionCredentialProperty, String> credentials =
-        vendor.getConnectionCredentials(serviceIdentity, authParams);
+        vendor.getConnectionCredentials(connectionConfig);
 
     // Verify the returned credentials are from STS AssumeRole
     Assertions.assertThat(credentials)
@@ -139,8 +145,13 @@ public class SigV4ConnectionCredentialVendorTest {
         new SigV4AuthenticationParametersDpo(
             "arn:aws:iam::123456789012:role/customer-role", null, null, "us-west-2", "glue");
 
+    // Create connection config with service identity and auth params
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        new IcebergRestConnectionConfigInfoDpo(
+            "https://test-catalog.example.com", authParams, serviceIdentity, "test-catalog");
+
     EnumMap<ConnectionCredentialProperty, String> credentials =
-        vendor.getConnectionCredentials(serviceIdentity, authParams);
+        vendor.getConnectionCredentials(connectionConfig);
 
     // Should still get credentials
     Assertions.assertThat(credentials)

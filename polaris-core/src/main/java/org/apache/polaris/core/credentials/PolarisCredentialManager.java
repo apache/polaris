@@ -19,13 +19,9 @@
 
 package org.apache.polaris.core.credentials;
 
-import jakarta.annotation.Nonnull;
-import java.util.EnumMap;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
-import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
-import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 
 /**

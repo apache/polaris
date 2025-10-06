@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +33,7 @@ import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.UserSecretsManager;
@@ -78,9 +80,14 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getWarehouse());
     }
     if (getAuthenticationParameters() != null) {
+      // Add authentication-specific properties
       properties.putAll(
           getAuthenticationParameters()
               .asIcebergCatalogProperties(secretsManager, polarisCredentialManager));
+      // Add connection credentials from Polaris credential manager
+      EnumMap<ConnectionCredentialProperty, String> connectionCredentials =
+          polarisCredentialManager.getConnectionCredentials(this);
+      connectionCredentials.forEach((key, value) -> properties.put(key.getPropertyName(), value));
     }
     return properties;
   }

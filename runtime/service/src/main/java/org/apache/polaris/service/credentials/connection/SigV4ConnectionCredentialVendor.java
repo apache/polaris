@@ -24,14 +24,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.EnumMap;
 import java.util.Optional;
-import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
-import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -70,15 +69,14 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
 
   @Override
   public @Nonnull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentity,
-      @Nonnull AuthenticationParametersDpo authenticationParameters) {
+      @Nonnull ConnectionConfigInfoDpo connectionConfig) {
 
     EnumMap<ConnectionCredentialProperty, String> credentialMap =
         new EnumMap<>(ConnectionCredentialProperty.class);
 
     // Resolve the service identity credential
     Optional<ServiceIdentityCredential> serviceCredentialOpt =
-        serviceIdentityProvider.getServiceIdentityCredential(serviceIdentity);
+        serviceIdentityProvider.getServiceIdentityCredential(connectionConfig.getServiceIdentity());
     if (serviceCredentialOpt.isEmpty()) {
       return credentialMap;
     }
@@ -87,7 +85,7 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
     AwsIamServiceIdentityCredential awsCredential =
         (AwsIamServiceIdentityCredential) serviceCredentialOpt.get();
     SigV4AuthenticationParametersDpo sigv4Params =
-        (SigV4AuthenticationParametersDpo) authenticationParameters;
+        (SigV4AuthenticationParametersDpo) connectionConfig.getAuthenticationParameters();
 
     // Use Polaris's IAM identity to assume the customer's role
     StsClient stsClient = getStsClient(sigv4Params);

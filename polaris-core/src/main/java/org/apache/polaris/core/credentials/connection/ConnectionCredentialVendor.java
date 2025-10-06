@@ -20,8 +20,7 @@ package org.apache.polaris.core.credentials.connection;
 
 import jakarta.annotation.Nonnull;
 import java.util.EnumMap;
-import org.apache.polaris.core.connection.AuthenticationParametersDpo;
-import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 
 /**
  * Vendor for generating connection credentials for remote catalog or storage access.
@@ -38,19 +37,16 @@ public interface ConnectionCredentialVendor {
   /**
    * Generate connection credentials by combining service identity with authentication parameters.
    *
-   * <p>The service identity metadata provides a reference to Polaris's identity (e.g., an IAM
-   * user), and the authentication parameters provide user-configured settings (e.g., which role to
-   * assume, signing region).
+   * <p>The connection configuration contains both the Polaris-managed service identity (e.g., an
+   * IAM user) and user-configured authentication settings (e.g., which role to assume, signing
+   * region).
    *
-   * @param serviceIdentity The Polaris-managed service identity metadata containing a reference to
-   *     the backing credential
-   * @param authenticationParameters User-provided authentication configuration specifying how to
-   *     authenticate to the external service
+   * @param connectionConfig The connection configuration containing service identity and
+   *     authentication parameters
    * @return Map of connection credential properties that can be used to authenticate to the
    *     external system
    */
   @Nonnull
   EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
-      @Nonnull ServiceIdentityInfoDpo serviceIdentity,
-      @Nonnull AuthenticationParametersDpo authenticationParameters);
+      @Nonnull ConnectionConfigInfoDpo connectionConfig);
 }
