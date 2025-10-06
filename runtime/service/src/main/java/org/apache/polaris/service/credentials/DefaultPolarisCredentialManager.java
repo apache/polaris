@@ -19,11 +19,15 @@
 
 package org.apache.polaris.service.credentials;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
@@ -39,6 +43,9 @@ import org.slf4j.LoggerFactory;
  * via CDI based on the authentication type. Each vendor handles the credential transformation logic
  * for a specific authentication mechanism (e.g., SigV4, OAuth).
  *
+ * <p>This bean is request-scoped and realm-aware, delegating all credential generation to
+ * CDI-managed vendors.
+ *
  * <p>Flow:
  *
  * <ol>
@@ -47,15 +54,24 @@ import org.slf4j.LoggerFactory;
  *       resolve the service identity internally)
  * </ol>
  */
+@RequestScoped
+@Identifier("default")
 public class DefaultPolarisCredentialManager implements PolarisCredentialManager {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DefaultPolarisCredentialManager.class);
 
+  private final RealmContext realmContext;
   private final Instance<ConnectionCredentialVendor> credentialVendors;
 
+  @Inject
   public DefaultPolarisCredentialManager(
-      @Any Instance<ConnectionCredentialVendor> credentialVendors) {
+      RealmContext realmContext, @Any Instance<ConnectionCredentialVendor> credentialVendors) {
+    this.realmContext = realmContext;
     this.credentialVendors = credentialVendors;
+  }
+
+  public RealmContext getRealmContext() {
+    return realmContext;
   }
 
   @Override

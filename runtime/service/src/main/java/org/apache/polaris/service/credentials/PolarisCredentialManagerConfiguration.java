@@ -21,21 +21,21 @@ package org.apache.polaris.service.credentials;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 
 /**
  * Quarkus configuration mapping for Polaris Credential Manager.
  *
- * <p>Defines which {@link org.apache.polaris.core.credentials.PolarisCredentialManagerFactory}
- * implementation should be used at runtime. This allows switching between different credential
- * management strategies via configuration.
+ * <p>Defines which {@link PolarisCredentialManager} implementation should be used at runtime. This
+ * allows switching between different credential management strategies via configuration.
  */
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.credential-manager")
 public interface PolarisCredentialManagerConfiguration {
 
   /**
-   * The type of the PolarisCredentialManagerFactory to use. This is the {@link
-   * org.apache.polaris.core.credentials.PolarisCredentialManagerFactory} identifier.
+   * The type identifier of the PolarisCredentialManager implementation to use. This corresponds to
+   * the {@code @Identifier} annotation value on the implementation (e.g., "default").
    */
   String type();
 }

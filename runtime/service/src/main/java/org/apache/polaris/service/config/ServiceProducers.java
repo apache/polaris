@@ -44,7 +44,6 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.credentials.PolarisCredentialManagerFactory;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -245,13 +244,6 @@ public class ServiceProducers {
     return new StsClientsPool(config.effectiveClientsCacheMaxSize(), httpClient, meterRegistry);
   }
 
-  @Produces
-  public PolarisCredentialManagerFactory credentialManagerFactory(
-      PolarisCredentialManagerConfiguration config,
-      @Any Instance<PolarisCredentialManagerFactory> credentialManagerFactories) {
-    return credentialManagerFactories.select(Identifier.Literal.of(config.type())).get();
-  }
-
   /**
    * Eagerly initialize the in-memory default realm on startup, so that users can check the
    * credentials printed to stdout immediately.
@@ -405,8 +397,9 @@ public class ServiceProducers {
   @Produces
   @RequestScoped
   public PolarisCredentialManager polarisCredentialManager(
-      PolarisCredentialManagerFactory polarisCredentialManagerFactory, RealmContext realmContext) {
-    return polarisCredentialManagerFactory.getOrCreatePolarisCredentialManager(realmContext);
+      PolarisCredentialManagerConfiguration config,
+      @Any Instance<PolarisCredentialManager> credentialManagers) {
+    return credentialManagers.select(Identifier.Literal.of(config.type())).get();
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

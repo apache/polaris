@@ -240,7 +240,7 @@ public record TestServices(
       Mockito.when(mockCredentialVendors.get()).thenReturn(sigV4Vendor);
 
       PolarisCredentialManager credentialManager =
-          new DefaultPolarisCredentialManager(mockCredentialVendors);
+          new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);
