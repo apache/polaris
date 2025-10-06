@@ -39,10 +39,10 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 
 /**
- * Connection credential provider for AWS SigV4 authentication.
+ * Connection credential vendor for AWS SigV4 authentication.
  *
- * <p>This provider uses Polaris's AWS IAM service identity to assume a customer-provided IAM role
- * via AWS STS, generating temporary credentials that Polaris uses to access external AWS services
+ * <p>This vendor uses Polaris's AWS IAM service identity to assume a customer-provided IAM role via
+ * AWS STS, generating temporary credentials that Polaris uses to access external AWS services
  * (e.g., AWS Glue catalog) with SigV4 request signing.
  *
  * <p>Flow:
@@ -56,13 +56,13 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
  */
 @ApplicationScoped
 @SupportsAuthType(AuthenticationType.SIGV4)
-public class SigV4ConnectionCredentialProvider implements ConnectionCredentialVendor {
+public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVendor {
 
   private final StsClientProvider stsClientProvider;
   private final ServiceIdentityProvider serviceIdentityProvider;
 
   @Inject
-  public SigV4ConnectionCredentialProvider(
+  public SigV4ConnectionCredentialVendor(
       StsClientProvider stsClientProvider, ServiceIdentityProvider serviceIdentityProvider) {
     this.stsClientProvider = stsClientProvider;
     this.serviceIdentityProvider = serviceIdentityProvider;

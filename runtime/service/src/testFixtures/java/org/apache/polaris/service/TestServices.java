@@ -76,7 +76,7 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
-import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialProvider;
+import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
@@ -228,9 +228,8 @@ public record TestServices(
       // Create credential vendors for testing
       @SuppressWarnings("unchecked")
       Instance<ConnectionCredentialVendor> mockCredentialVendors = Mockito.mock(Instance.class);
-      SigV4ConnectionCredentialProvider sigV4Vendor =
-          new SigV4ConnectionCredentialProvider(
-              (destination) -> stsClient, serviceIdentityProvider);
+      SigV4ConnectionCredentialVendor sigV4Vendor =
+          new SigV4ConnectionCredentialVendor((destination) -> stsClient, serviceIdentityProvider);
       Mockito.when(
               mockCredentialVendors.select(
                   any(
@@ -241,7 +240,7 @@ public record TestServices(
       Mockito.when(mockCredentialVendors.get()).thenReturn(sigV4Vendor);
 
       PolarisCredentialManager credentialManager =
-          new DefaultPolarisCredentialManager(serviceIdentityProvider, mockCredentialVendors);
+          new DefaultPolarisCredentialManager(mockCredentialVendors);
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);

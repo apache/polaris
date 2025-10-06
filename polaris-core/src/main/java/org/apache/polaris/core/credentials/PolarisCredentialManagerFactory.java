@@ -20,16 +20,14 @@
 package org.apache.polaris.core.credentials;
 
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 
 /**
  * Factory for creating {@link PolarisCredentialManager} instances.
  *
- * <p>Each {@link PolarisCredentialManager} instance is associated with a {@link RealmContext} and a
- * {@link ServiceIdentityProvider}, and is responsible for generating temporary credentials that
- * Polaris uses to access external systems (e.g., remote catalogs) in that realm.
+ * <p>Each {@link PolarisCredentialManager} instance is associated with a {@link RealmContext}, and
+ * is responsible for generating temporary credentials that Polaris uses to access external systems
+ * (e.g., remote catalogs) in that realm.
  */
 public interface PolarisCredentialManagerFactory {
-  PolarisCredentialManager getOrCreatePolarisCredentialManager(
-      RealmContext realmContext, ServiceIdentityProvider serviceIdentityProvider);
+  PolarisCredentialManager getOrCreatePolarisCredentialManager(RealmContext realmContext);
 }

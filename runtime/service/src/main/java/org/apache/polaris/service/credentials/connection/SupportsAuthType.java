@@ -26,9 +26,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.apache.polaris.core.connection.AuthenticationType;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 
 /**
- * CDI qualifier to indicate which authentication type(s) a {@link ConnectionCredentialProvider}
+ * CDI qualifier to indicate which authentication type(s) a {@link ConnectionCredentialVendor}
  * supports.
  *
  * <p>This annotation allows the credential manager to automatically select the appropriate provider

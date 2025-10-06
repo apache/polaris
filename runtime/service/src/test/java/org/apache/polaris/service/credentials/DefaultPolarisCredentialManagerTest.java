@@ -27,7 +27,6 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
-import java.time.Instant;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
@@ -67,8 +66,8 @@ public class DefaultPolarisCredentialManagerTest {
   public static class TestSigV4Vendor implements ConnectionCredentialVendor {
     @Override
     public @NotNull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
-        ServiceIdentityInfoDpo serviceIdentity,
-        AuthenticationParametersDpo authenticationParameters) {
+        @NotNull ServiceIdentityInfoDpo serviceIdentity,
+        @NotNull AuthenticationParametersDpo authenticationParameters) {
 
       // Return test credentials
       EnumMap<ConnectionCredentialProperty, String> credentialMap =
@@ -87,8 +86,8 @@ public class DefaultPolarisCredentialManagerTest {
   public static class TestOAuthVendor implements ConnectionCredentialVendor {
     @Override
     public @NotNull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
-        ServiceIdentityInfoDpo serviceIdentity,
-        AuthenticationParametersDpo authenticationParameters) {
+        @NotNull ServiceIdentityInfoDpo serviceIdentity,
+        @NotNull AuthenticationParametersDpo authenticationParameters) {
 
       EnumMap<ConnectionCredentialProperty, String> credentialMap =
           new EnumMap<>(ConnectionCredentialProperty.class);
@@ -168,6 +167,3 @@ public class DefaultPolarisCredentialManagerTest {
     Assertions.assertThat(credentials).isEmpty();
   }
 }
-
-
-

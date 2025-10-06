@@ -45,7 +45,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.PolarisCredentialManagerFactory;
-import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -406,11 +405,8 @@ public class ServiceProducers {
   @Produces
   @RequestScoped
   public PolarisCredentialManager polarisCredentialManager(
-      PolarisCredentialManagerFactory polarisCredentialManagerFactory,
-      RealmContext realmContext,
-      ServiceIdentityProvider serviceIdentityProvider) {
-    return polarisCredentialManagerFactory.getOrCreatePolarisCredentialManager(
-        realmContext, serviceIdentityProvider);
+      PolarisCredentialManagerFactory polarisCredentialManagerFactory, RealmContext realmContext) {
+    return polarisCredentialManagerFactory.getOrCreatePolarisCredentialManager(realmContext);
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

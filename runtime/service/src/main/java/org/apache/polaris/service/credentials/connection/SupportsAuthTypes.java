@@ -24,11 +24,12 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 
 /**
  * Container annotation for multiple {@link SupportsAuthType} annotations.
  *
- * <p>This annotation allows a single {@link ConnectionCredentialProvider} implementation to support
+ * <p>This annotation allows a single {@link ConnectionCredentialVendor} implementation to support
  * multiple authentication types.
  *
  * <p>Example usage:

@@ -30,7 +30,6 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.PolarisCredentialManagerFactory;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
-import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 
 @ApplicationScoped
 @Identifier("default")
@@ -47,10 +46,9 @@ public class DefaultPolarisCredentialManagerFactory implements PolarisCredential
   }
 
   @Override
-  public PolarisCredentialManager getOrCreatePolarisCredentialManager(
-      RealmContext realmContext, ServiceIdentityProvider serviceIdentityProvider) {
+  public PolarisCredentialManager getOrCreatePolarisCredentialManager(RealmContext realmContext) {
     return cachedCredentialManagers.computeIfAbsent(
         realmContext.getRealmIdentifier(),
-        key -> new DefaultPolarisCredentialManager(serviceIdentityProvider, credentialVendors));
+        key -> new DefaultPolarisCredentialManager(credentialVendors));
   }
 }

@@ -45,10 +45,10 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
-/** Tests for {@link SigV4ConnectionCredentialProvider}. */
-public class SigV4ConnectionCredentialProviderTest {
+/** Tests for {@link SigV4ConnectionCredentialVendor}. */
+public class SigV4ConnectionCredentialVendorTest {
 
-  private SigV4ConnectionCredentialProvider vendor;
+  private SigV4ConnectionCredentialVendor vendor;
   private StsClient mockStsClient;
   private ServiceIdentityProvider mockServiceIdentityProvider;
 
@@ -82,7 +82,7 @@ public class SigV4ConnectionCredentialProviderTest {
 
     // Create vendor with mocked dependencies
     vendor =
-        new SigV4ConnectionCredentialProvider(
+        new SigV4ConnectionCredentialVendor(
             (destination) -> mockStsClient, mockServiceIdentityProvider);
   }
 

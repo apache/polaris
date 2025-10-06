@@ -248,9 +248,7 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(containerRequestContext, ContainerRequestContext.class);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    credentialManager =
-        credentialManagerFactory.getOrCreatePolarisCredentialManager(
-            realmContext, serviceIdentityProvider);
+    credentialManager = credentialManagerFactory.getOrCreatePolarisCredentialManager(realmContext);
 
     polarisContext =
         new PolarisCallContext(

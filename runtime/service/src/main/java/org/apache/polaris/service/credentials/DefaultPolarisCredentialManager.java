@@ -29,7 +29,6 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.service.credentials.connection.SupportsAuthType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,20 +53,17 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DefaultPolarisCredentialManager.class);
 
-  private final ServiceIdentityProvider serviceIdentityProvider;
   private final Instance<ConnectionCredentialVendor> credentialVendors;
 
   public DefaultPolarisCredentialManager(
-      ServiceIdentityProvider serviceIdentityProvider,
       @Any Instance<ConnectionCredentialVendor> credentialVendors) {
-    this.serviceIdentityProvider = serviceIdentityProvider;
     this.credentialVendors = credentialVendors;
   }
 
   @Override
   public @Nonnull EnumMap<ConnectionCredentialProperty, String> getConnectionCredentials(
-      ServiceIdentityInfoDpo serviceIdentity,
-      AuthenticationParametersDpo authenticationParameters) {
+      @Nonnull ServiceIdentityInfoDpo serviceIdentity,
+      @Nonnull AuthenticationParametersDpo authenticationParameters) {
 
     // Select the appropriate vendor based on authentication type
     AuthenticationType authType = authenticationParameters.getAuthenticationType();
