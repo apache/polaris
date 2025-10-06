@@ -59,6 +59,9 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -1106,8 +1109,87 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.TABLE_FULL_METADATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
+        () -> newWrapperWithFineGrainedAuthzDisabled().updateTable(TABLE_NS1A_2, request),
         null /* cleanupAction */);
+  }
+
+  /**
+   * Creates a wrapper with fine-grained authorization explicitly disabled for testing the fallback
+   * behavior to coarse-grained authorization.
+   */
+  private IcebergCatalogHandler newWrapperWithFineGrainedAuthzDisabled() {
+    // Create a custom CallContextCatalogFactory that mocks the configuration
+    CallContextCatalogFactory mockFactory = Mockito.mock(CallContextCatalogFactory.class);
+
+    // Mock the catalog factory to return our regular catalog but with mocked config
+    Mockito.when(
+            mockFactory.createCallContextCatalog(
+                Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
+        .thenReturn(baseCatalog);
+
+    return newWrapperWithFineLevelAuthDisabled(Set.of(), CATALOG_NAME, mockFactory, false);
+  }
+
+  private IcebergCatalogHandler newWrapperWithFineLevelAuthDisabled(
+      Set<String> activatedPrincipalRoles,
+      String catalogName,
+      CallContextCatalogFactory factory,
+      boolean fineGrainedAuthzEnabled) {
+
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
+
+    // Create a custom CallContext that returns a custom RealmConfig
+    CallContext mockCallContext = Mockito.mock(CallContext.class);
+
+    // Create a simple RealmConfig implementation that overrides just what we need
+    RealmConfig customRealmConfig =
+        new RealmConfig() {
+          @Override
+          public <T> T getConfig(String configName) {
+            return realmConfig.getConfig(configName);
+          }
+
+          @Override
+          public <T> T getConfig(String configName, T defaultValue) {
+            return realmConfig.getConfig(configName, defaultValue);
+          }
+
+          @Override
+          public <T> T getConfig(PolarisConfiguration<T> config) {
+            return realmConfig.getConfig(config);
+          }
+
+          @Override
+          @SuppressWarnings("unchecked")
+          public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
+            // Override the specific configuration we want to test
+            if (config.equals(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES)) {
+              return (T) Boolean.valueOf(fineGrainedAuthzEnabled);
+            }
+            return realmConfig.getConfig(config, catalogEntity);
+          }
+        };
+
+    // Mock the regular CallContext calls
+    Mockito.when(mockCallContext.getRealmConfig()).thenReturn(customRealmConfig);
+    Mockito.when(mockCallContext.getPolarisCallContext())
+        .thenReturn(callContext.getPolarisCallContext());
+
+    return new IcebergCatalogHandler(
+        diagServices,
+        mockCallContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        securityContext(authenticatedPrincipal),
+        factory,
+        catalogName,
+        polarisAuthorizer,
+        reservedProperties,
+        catalogHandlerUtils,
+        emptyExternalCatalogFactory(),
+        polarisEventListener);
   }
 
   @Test
