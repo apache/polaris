@@ -34,7 +34,7 @@ Apache Polaris is an open-source, interoperable catalog for Apache Iceberg. It o
 
 ![](/img/blog/2025/10/02/fig1-what-is-apache-polaris.png)
 
-A significant component of the Apache Polaris is its commitment to open accessibility and regulatory compliance. By supporting major data protection and privacy frameworks like GDPR, CCPA, and HIPAA, Apache Polaris helps organizations meet critical regulatory standards. This focus on compliance and secure data governance reduces risk while fostering greater confidence in how data is stored, accessed, and analyzed.
+A significant component of Apache Polaris is its commitment to open accessibility and regulatory compliance. By supporting major data protection and privacy frameworks like GDPR, CCPA, and HIPAA, Apache Polaris helps organizations meet critical regulatory standards. This focus on compliance and secure data governance reduces risk while fostering greater confidence in how data is stored, accessed, and analyzed.
 
 ### **Key Features & Benefits**
 
@@ -42,7 +42,7 @@ Apache Polaris offers several key features and benefits that users should know. 
 
 #### Cross-Engine Read and Write
 
-Apache Polaris leverages Apache Iceberg's open-source REST protocol, enabling multiple engines to read and write data seamlessly. This interoperability extends to popular engines like PuppyGraph, Apache Flink, [Apache Spark](https://spark.apache.org/), [Trino](https://trino.io/), and many others, ensuring flexibility and choice for users. 
+Apache Polaris leverages Apache Iceberg's open-source REST protocol, enabling multiple engines to read and write data seamlessly. This interoperability extends to popular engines like PuppyGraph, [Apache Flink](https://flink.apache.org/), [Apache Spark](https://spark.apache.org/), [Trino](https://trino.io/), and many others, ensuring flexibility and choice for users. 
 
 ![](/img/blog/2025/10/02/fig2-cross-engine-rw.png)
 
@@ -66,7 +66,7 @@ While SQL querying is a mainstay for most developers dealing with data and tradi
 * **Recommendation Engines:** Suggesting products, services, or content based on user preferences and relationships.  
 * **Network and IT Infrastructure Analysis:** Modeling and analyzing network topologies, dependencies, and performance. 
 
-Enhancing Apache Polaris with a graph query engine introduces advanced graph analytics, making it easier and more intuitive to handle complex, relationship-based queries like the ones mentioned. Here's why integrating graph capabilities benefits querying in Apache Polaris:
+Enhancing Apache Polaris with a graph query engine introduces advanced graph analytics, making it easier and more intuitive to handle complex, relationship-based queries like the ones mentioned above. Here's why integrating graph capabilities benefits querying in Apache Polaris:
 
 * **Enhanced Data Relationships**: Graph queries are designed to uncover complex patterns within data, making them particularly useful for exploring multi-level relationships or hierarchies that can be cumbersome to analyze with SQL.  
 * **Performance**: When traversing extensive relationships, graph queries are often faster than SQL, especially for deep link analysis, as graph databases are optimized for this type of network traversal.  
@@ -382,8 +382,8 @@ Click on Query in the left sidebar to bring the Interactive Query UI: For exampl
 
 As you can see, graph capabilities can be achieved with PuppyGraph in minutes without the heavy lift usually associated with graph databases. Whether you’re a seasoned graph professional looking to expand the data you have to query as a graph or a budding graph enthusiast testing out a use case, PuppyGraph offers a performant and straightforward way to add graph querying and analytics to the data you have sitting within Apache Polaris.
 
-## Get Started For Free
+## Summary
 
-In this blog, we looked at how to enable real-time graph querying with PuppyGraph’s zero-ETL graph query engine and how to pair it with Apache Polaris. In a matter of minutes, we explored how PuppyGraph can be deployed and connected to your Apache Polaris instance, enabling graph queries without the overhead of traditional graph technologies. 
+In this blog, we looked at how to enable real-time graph querying with PuppyGraph’s zero-ETL graph query engine and how to pair it with Apache Polaris. In a matter of minutes, we explored how PuppyGraph can be deployed and connected to your Apache Polaris instance, enabling graph queries without the overhead of traditional graph technologies.
 
-Want to try PuppyGraph with Apache Polaris for yourself? Download PuppyGraph’s [forever-free Developer Edition](https://www.puppygraph.com/dev-download) and start running graph queries on your Apache Polaris instance with fine-grained governance & lineage in 10 minutes. You can also check the [instructions for connecting to an Apache Polaris Catalog](https://docs.puppygraph.com/getting-started/querying-polaris-catalog-data-as-a-graph/) in PuppyGraph Documentation.
+Everything in this guide is free to try. You can download PuppyGraph's [forever-free Developer Edition](https://www.puppygraph.com/dev-download) and start running graph queries on your Apache Polaris instance with fine-grained governance & lineage in 10 minutes. You can also check the [instructions for connecting to an Apache Polaris Catalog](https://docs.puppygraph.com/getting-started/querying-polaris-catalog-data-as-a-graph/) in PuppyGraph Documentation.
