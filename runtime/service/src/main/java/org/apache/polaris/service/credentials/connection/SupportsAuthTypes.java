@@ -30,16 +30,16 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor
  * Container annotation for multiple {@link SupportsAuthType} annotations.
  *
  * <p>This annotation allows a single {@link ConnectionCredentialVendor} implementation to support
- * multiple authentication types.
+ * multiple authentication types by applying multiple {@link SupportsAuthType} annotations.
  *
  * <p>Example usage:
  *
  * <pre>{@code
  * @ApplicationScoped
  * @SupportsAuthType(AuthenticationType.IMPLICIT)
- * @SupportsAuthType(AuthenticationType.NONE)
- * public class NoOpConnectionCredentialProvider implements ConnectionCredentialProvider {
- *   // Handles both IMPLICIT and NONE authentication (no credential transformation)
+ * @SupportsAuthType(AuthenticationType.BEARER)
+ * public class NoOpConnectionCredentialVendor implements ConnectionCredentialVendor {
+ *   // Handles both IMPLICIT and BEARER authentication (no credential transformation)
  * }
  * }</pre>
  */

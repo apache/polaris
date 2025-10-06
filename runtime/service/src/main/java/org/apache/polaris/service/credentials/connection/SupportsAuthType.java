@@ -29,19 +29,36 @@ import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 
 /**
- * CDI qualifier to indicate which authentication type(s) a {@link ConnectionCredentialVendor}
+ * CDI qualifier to indicate which authentication type a {@link ConnectionCredentialVendor}
  * supports.
  *
- * <p>This annotation allows the credential manager to automatically select the appropriate provider
+ * <p>This annotation allows the credential manager to automatically select the appropriate vendor
  * based on the authentication type specified in the connection configuration.
  *
- * <p>Example usage:
+ * <p>This annotation is repeatable, allowing a single vendor to support multiple authentication
+ * types. When multiple {@link SupportsAuthType} annotations are applied, the vendor will be
+ * selected for any of the specified authentication types.
+ *
+ * <p>Example usage for single auth type:
  *
  * <pre>{@code
  * @ApplicationScoped
  * @SupportsAuthType(AuthenticationType.SIGV4)
- * public class SigV4ConnectionCredentialProvider implements ConnectionCredentialProvider {
+ * @Priority(100)
+ * public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVendor {
  *   // AWS STS AssumeRole logic for SigV4 authentication
+ * }
+ * }</pre>
+ *
+ * <p>Example usage for multiple auth types:
+ *
+ * <pre>{@code
+ * @ApplicationScoped
+ * @SupportsAuthType(AuthenticationType.IMPLICIT)
+ * @SupportsAuthType(AuthenticationType.BEARER)
+ * @Priority(100)
+ * public class PassThroughCredentialVendor implements ConnectionCredentialVendor {
+ *   // No transformation needed for these auth types
  * }
  * }</pre>
  */
@@ -51,7 +68,7 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor
 @Repeatable(SupportsAuthTypes.class)
 public @interface SupportsAuthType {
 
-  /** The authentication type this provider supports. */
+  /** The authentication type this vendor supports. */
   AuthenticationType value();
 
   /** Helper for creating {@link SupportsAuthType} qualifiers programmatically. */

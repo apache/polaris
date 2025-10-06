@@ -20,6 +20,7 @@ package org.apache.polaris.service.credentials.connection;
 
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
@@ -52,9 +53,13 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
  *   <li>Calls AWS STS AssumeRole to get temporary credentials
  *   <li>Returns temporary access key, secret key, and session token
  * </ol>
+ *
+ * <p>This is the default implementation with {@code @Priority(100)}. Custom implementations can
+ * override this by providing a higher priority value.
  */
 @ApplicationScoped
 @SupportsAuthType(AuthenticationType.SIGV4)
+@Priority(100)
 public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVendor {
 
   private final StsClientProvider stsClientProvider;

@@ -73,6 +73,19 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
       return ConnectionCredentials.builder().build();
     }
 
+    if (selectedVendor.isAmbiguous()) {
+      LOGGER.error(
+          "Multiple credential vendors found for authentication type: {}. "
+              + "Use @Priority to specify which vendor should be used. "
+              + "Higher priority values take precedence.",
+          authType);
+      throw new IllegalStateException(
+          String.format(
+              "Ambiguous credential vendor for authentication type: %s. "
+                  + "Multiple implementations found without @Priority annotation.",
+              authType));
+    }
+
     // Delegate to the vendor to generate credentials
     return selectedVendor.get().getConnectionCredentials(connectionConfig);
   }

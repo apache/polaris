@@ -30,6 +30,19 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
  * <p>For CDI-based implementations (e.g., auth-type-specific vendors), use the {@code
  * SupportsAuthType} annotation to indicate which authentication type(s) they support. The
  * credential manager uses CDI to automatically select the appropriate vendor at runtime.
+ *
+ * <p><b>Multiple Implementations:</b> If multiple vendors support the same authentication type, use
+ * {@code @Priority} to specify precedence. Higher priority values take precedence. Without
+ * {@code @Priority}, multiple vendors will cause an {@code IllegalStateException} at runtime.
+ *
+ * <p>Example:
+ *
+ * <pre>
+ * &#64;ApplicationScoped
+ * &#64;SupportsAuthType(AuthenticationType.SIGV4)
+ * &#64;Priority(200)  // Overrides default implementation
+ * public class CustomSigV4Vendor implements ConnectionCredentialVendor { ... }
+ * </pre>
  */
 public interface ConnectionCredentialVendor {
 
