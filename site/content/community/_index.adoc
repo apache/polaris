@@ -80,7 +80,7 @@ cascade:
 | Bertrand Delacretaz | Mentor |
 | https://github.com/dennishuo[Dennis Huo] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/dimas-b[Dmitri Bourlatchkov] | PPMC Member | link:https://www.dremio.com/[Dremio]
-| https://github.com/eric-maynard[Eric Maynard] | Committer | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/eric-maynard[Eric Maynard] | Committer |
 | Holden Karau | Mentor |
 | https://github.com/jackye1995[Jack Ye] | PPMC Member | link:https://lancedb.com/[LanceDB]
 | https://github.com/jbonofre[JB Onofre] | PPMC Member & Mentor | link:https://www.dremio.com/[Dremio]
