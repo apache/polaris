@@ -18,8 +18,30 @@
  */
 package org.apache.polaris.admintool.relational.jdbc;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.junit.main.LaunchResult;
+import io.quarkus.test.junit.main.QuarkusMainLauncher;
 import org.apache.polaris.admintool.BootstrapCommandTestBase;
+import org.junit.jupiter.api.Test;
 
 @TestProfile(RelationalJdbcAdminProfile.class)
-public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase {}
+public class RelationalJdbcBootstrapCommandTest extends BootstrapCommandTestBase {
+
+  @Test
+  public void testBootstrapFailsWhenAddingRealmWithDifferentSchemaVersion(
+      QuarkusMainLauncher launcher) {
+    // First, bootstrap the schema to version 1
+    LaunchResult result1 =
+        launcher.launch("bootstrap", "-v", "1", "-r", "realm1", "-c", "realm1,root,s3cr3t");
+    assertThat(result1.exitCode()).isEqualTo(0);
+    assertThat(result1.getOutput()).contains("Bootstrap completed successfully.");
+
+    // TODO: enable this once we enable postgres container reuse in the same test.
+    // LaunchResult result2 = launcher.launch("bootstrap", "-v", "2", "-r", "realm2", "-c",
+    // "realm2,root,s3cr3t");
+    // assertThat(result2.exitCode()).isEqualTo(EXIT_CODE_BOOTSTRAP_ERROR);
+    // assertThat(result2.getOutput()).contains("Cannot bootstrap due to schema version mismatch.");
+  }
+}
