@@ -101,7 +101,7 @@ git clone https://github.com/apache/polaris.git
 Build and run an Apache Polaris server. Note that JDK 21 is required to build and run the Apache Polaris.
 ```shell   
 cd polaris  
-./gradlew runApp
+./gradlew run
 ```
 
 The Apache Polaris server will start. Please note the credentials for the Apache Polaris server's output. The credentials are required to connect to the Apache Polaris server later. The line contains the credentials will look like this: 
