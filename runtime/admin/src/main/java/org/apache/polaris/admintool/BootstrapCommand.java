@@ -41,13 +41,13 @@ public class BootstrapCommand extends BaseCommand {
 
     // This ArgGroup enforces the mandatory, exclusive choice.
     @CommandLine.ArgGroup(multiplicity = "1")
-    ExclusiveOptions exclusiveOptions;
+    RootCredentialsOptions rootCredentialsOptions;
 
     // This @Mixin provides independent, optional schema flags.
     @CommandLine.Mixin SchemaInputOptions schemaInputOptions = new SchemaInputOptions();
 
     // This static inner class encapsulates the mutually exclusive choices.
-    static class ExclusiveOptions {
+    static class RootCredentialsOptions {
 
       @CommandLine.ArgGroup(exclusive = false, heading = "Standard Input Options:%n")
       StandardInputOptions stdinOptions;
@@ -110,21 +110,22 @@ public class BootstrapCommand extends BaseCommand {
       RootCredentialsSet rootCredentialsSet;
       List<String> realms; // TODO Iterable
 
-      if (inputOptions.exclusiveOptions.fileOptions != null) {
+      if (inputOptions.rootCredentialsOptions.fileOptions != null) {
         rootCredentialsSet =
-            RootCredentialsSet.fromUri(inputOptions.exclusiveOptions.fileOptions.file.toUri());
+            RootCredentialsSet.fromUri(
+                inputOptions.rootCredentialsOptions.fileOptions.file.toUri());
         realms = rootCredentialsSet.credentials().keySet().stream().toList();
       } else {
-        realms = inputOptions.exclusiveOptions.stdinOptions.realms;
+        realms = inputOptions.rootCredentialsOptions.stdinOptions.realms;
         rootCredentialsSet =
-            inputOptions.exclusiveOptions.stdinOptions.credentials == null
-                    || inputOptions.exclusiveOptions.stdinOptions.credentials.isEmpty()
+            inputOptions.rootCredentialsOptions.stdinOptions.credentials == null
+                    || inputOptions.rootCredentialsOptions.stdinOptions.credentials.isEmpty()
                 ? RootCredentialsSet.EMPTY
                 : RootCredentialsSet.fromList(
-                    inputOptions.exclusiveOptions.stdinOptions.credentials);
-        if (inputOptions.exclusiveOptions.stdinOptions.credentials == null
-            || inputOptions.exclusiveOptions.stdinOptions.credentials.isEmpty()) {
-          if (!inputOptions.exclusiveOptions.stdinOptions.printCredentials) {
+                    inputOptions.rootCredentialsOptions.stdinOptions.credentials);
+        if (inputOptions.rootCredentialsOptions.stdinOptions.credentials == null
+            || inputOptions.rootCredentialsOptions.stdinOptions.credentials.isEmpty()) {
+          if (!inputOptions.rootCredentialsOptions.stdinOptions.printCredentials) {
             spec.commandLine()
                 .getErr()
                 .println(
@@ -137,11 +138,17 @@ public class BootstrapCommand extends BaseCommand {
 
       final SchemaOptions schemaOptions;
       if (inputOptions.schemaInputOptions != null) {
-        schemaOptions =
-            ImmutableSchemaOptions.builder()
-                .schemaFile(inputOptions.schemaInputOptions.schemaFile)
-                .schemaVersion(inputOptions.schemaInputOptions.schemaVersion)
-                .build();
+        ImmutableSchemaOptions.Builder builder = ImmutableSchemaOptions.builder();
+
+        if (inputOptions.schemaInputOptions.schemaVersion != null) {
+          builder.schemaVersion(inputOptions.schemaInputOptions.schemaVersion);
+        }
+
+        if (!inputOptions.schemaInputOptions.schemaFile.isEmpty()) {
+          builder.schemaFile(inputOptions.schemaInputOptions.schemaFile);
+        }
+
+        schemaOptions = builder.build();
       } else {
         schemaOptions = ImmutableSchemaOptions.builder().build();
       }
@@ -163,8 +170,8 @@ public class BootstrapCommand extends BaseCommand {
         if (result.getValue().isSuccess()) {
           String realm = result.getKey();
           spec.commandLine().getOut().printf("Realm '%s' successfully bootstrapped.%n", realm);
-          if (inputOptions.exclusiveOptions.stdinOptions != null
-              && inputOptions.exclusiveOptions.stdinOptions.printCredentials) {
+          if (inputOptions.rootCredentialsOptions.stdinOptions != null
+              && inputOptions.rootCredentialsOptions.stdinOptions.printCredentials) {
             String msg =
                 String.format(
                     "realm: %1s root principal credentials: %2s:%3s",

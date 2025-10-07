@@ -18,13 +18,8 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
-import jakarta.annotation.Nonnull;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
-import java.util.Objects;
-import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 
 public enum DatabaseType {
   POSTGRES("postgres"),
@@ -53,27 +48,15 @@ public enum DatabaseType {
    * Open an InputStream that contains data from an init script. This stream should be closed by the
    * caller.
    */
-  public InputStream openInitScriptResource(@Nonnull SchemaOptions schemaOptions) {
-    if (schemaOptions.schemaFile() != null
-        && !Objects.requireNonNull(schemaOptions.schemaFile()).isEmpty()) {
-      try {
-        return new FileInputStream(Objects.requireNonNull(schemaOptions.schemaFile()));
-      } catch (IOException e) {
-        throw new IllegalArgumentException("Unable to load file " + schemaOptions.schemaFile(), e);
-      }
-    } else {
-      final String schemaSuffix;
-      switch (schemaOptions.schemaVersion()) {
-        case null -> schemaSuffix = "schema-v3.sql";
-        case 1 -> schemaSuffix = "schema-v1.sql";
-        case 2 -> schemaSuffix = "schema-v2.sql";
-        case 3 -> schemaSuffix = "schema-v3.sql";
-        default ->
-            throw new IllegalArgumentException(
-                "Unknown schema version " + schemaOptions.schemaVersion());
-      }
-      ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-      return classLoader.getResourceAsStream(this.getDisplayName() + "/" + schemaSuffix);
+  public InputStream openInitScriptResource(int schemaVersion) {
+    final String schemaSuffix;
+    switch (schemaVersion) {
+      case 1 -> schemaSuffix = "schema-v1.sql";
+      case 2 -> schemaSuffix = "schema-v2.sql";
+      case 3 -> schemaSuffix = "schema-v3.sql";
+      default -> throw new IllegalArgumentException("Unknown schema version " + schemaVersion);
     }
+    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
+    return classLoader.getResourceAsStream(this.getDisplayName() + "/" + schemaSuffix);
   }
 }

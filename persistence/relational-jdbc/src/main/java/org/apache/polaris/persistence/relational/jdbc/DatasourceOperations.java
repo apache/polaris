@@ -400,8 +400,9 @@ public class DatasourceOperations {
   }
 
   public boolean isRelationDoesNotExist(SQLException e) {
-    return RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
-        || H2_RELATION_DOES_NOT_EXIST.equals(e.getSQLState());
+    return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
+            && databaseType == DatabaseType.POSTGRES)
+        || (H2_RELATION_DOES_NOT_EXIST.equals(e.getSQLState()) && databaseType == DatabaseType.H2);
   }
 
   private Connection borrowConnection() throws SQLException {

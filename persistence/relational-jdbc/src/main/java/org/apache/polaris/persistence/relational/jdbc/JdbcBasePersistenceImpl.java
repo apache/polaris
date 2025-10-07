@@ -756,6 +756,23 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     }
   }
 
+  static boolean entityTableExists(DatasourceOperations datasourceOperations) {
+    PreparedQuery query = QueryGenerator.generateEntityTableExistQuery();
+    try {
+      List<PolarisBaseEntity> entities =
+          datasourceOperations.executeSelect(query, new ModelEntity());
+      if (entities == null || entities.isEmpty()) {
+        throw new IllegalStateException("Failed to check if Entities table exist");
+      }
+      return true;
+    } catch (SQLException e) {
+      if (datasourceOperations.isRelationDoesNotExist(e)) {
+        return false;
+      }
+      throw new IllegalStateException("Failed to check if Entities table exists", e);
+    }
+  }
+
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisEntity & LocationBasedEntity>
