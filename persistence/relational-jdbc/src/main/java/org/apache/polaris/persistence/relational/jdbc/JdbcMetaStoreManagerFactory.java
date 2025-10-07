@@ -165,6 +165,10 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
                 currentSchemaVersion,
                 requestedSchemaVersion,
                 JdbcBasePersistenceImpl.entityTableExists(datasourceOperations));
+        LOGGER.info(
+            "Effective schema version: {} for bootstrapping realm: {}",
+            effectiveSchemaVersion,
+            realm);
         try {
           // Run the set-up script to create the tables.
           datasourceOperations.executeScript(
