@@ -49,14 +49,15 @@ public enum DatabaseType {
    * caller.
    */
   public InputStream openInitScriptResource(int schemaVersion) {
-    final String schemaSuffix;
-    switch (schemaVersion) {
-      case 1 -> schemaSuffix = "schema-v1.sql";
-      case 2 -> schemaSuffix = "schema-v2.sql";
-      case 3 -> schemaSuffix = "schema-v3.sql";
-      default -> throw new IllegalArgumentException("Unknown schema version " + schemaVersion);
+    // Preconditions check is simpler and more direct than a switch default
+    if (schemaVersion <= 0 || schemaVersion > 3) {
+      throw new IllegalArgumentException("Unknown or invalid schema version " + schemaVersion);
     }
+
+    final String resourceName =
+        String.format("%s/schema-v%d.sql", this.getDisplayName(), schemaVersion);
+
     ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-    return classLoader.getResourceAsStream(this.getDisplayName() + "/" + schemaSuffix);
+    return classLoader.getResourceAsStream(resourceName);
   }
 }

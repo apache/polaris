@@ -20,15 +20,10 @@
 package org.apache.polaris.persistence.relational.jdbc;
 
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.polaris.core.persistence.bootstrap.BootstrapOptions;
 import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 
 public class JdbcBootstrapUtils {
-
-  // Define a pattern to find 'v' followed by one or more digits (\d+)
-  private static final Pattern pattern = Pattern.compile("(v\\d+)");
 
   private JdbcBootstrapUtils() {}
 
@@ -89,14 +84,6 @@ public class JdbcBootstrapUtils {
       Optional<Integer> version = schemaOptions.schemaVersion();
       if (version.isPresent()) {
         return version.get();
-      }
-      Optional<String> schemaFile = schemaOptions.schemaFile();
-      if (schemaFile.isPresent()) {
-        Matcher matcher = pattern.matcher(schemaFile.get());
-        if (matcher.find()) {
-          String versionStr = matcher.group(1); // "v3"
-          return Integer.parseInt(versionStr.substring(1)); // 3
-        }
       }
     }
     return -1;

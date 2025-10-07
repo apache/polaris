@@ -32,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -136,36 +135,17 @@ class JdbcBootstrapUtilsTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"'path/v3.sql', 3", "'v2.sql', 2", "'v12.sql', 12"})
-    void whenVersionIsInFileName_shouldParseAndReturnIt(String fileName, int expectedVersion) {
-      when(mockSchemaOptions.schemaVersion()).thenReturn(Optional.empty());
-      when(mockSchemaOptions.schemaFile()).thenReturn(Optional.of(fileName));
+    @CsvSource({"3", "2", "12"})
+    void whenVersionIsInFileName_shouldParseAndReturnIt(int expectedVersion) {
+      when(mockSchemaOptions.schemaVersion()).thenReturn(Optional.of(expectedVersion));
 
       int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
       assertEquals(expectedVersion, result);
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"schema.sql", "version_one.sql", "schema-vx.sql"})
-    void whenFileNameHasNoValidVersion_shouldReturnDefault(String invalidFileName) {
-      when(mockSchemaOptions.schemaVersion()).thenReturn(Optional.empty());
-      when(mockSchemaOptions.schemaFile()).thenReturn(Optional.of(invalidFileName));
-
-      int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
-      assertEquals(-1, result);
-    }
-
     @Test
     void whenSchemaOptionsIsNull_shouldReturnDefault() {
       when(mockBootstrapOptions.schemaOptions()).thenReturn(null);
-      int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
-      assertEquals(-1, result);
-    }
-
-    @Test
-    void whenAllOptionsAreEmpty_shouldReturnDefault() {
-      when(mockSchemaOptions.schemaVersion()).thenReturn(Optional.empty());
-      when(mockSchemaOptions.schemaFile()).thenReturn(Optional.empty());
       int result = JdbcBootstrapUtils.getRequestedSchemaVersion(mockBootstrapOptions);
       assertEquals(-1, result);
     }

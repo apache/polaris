@@ -21,18 +21,8 @@ package org.apache.polaris.core.persistence.bootstrap;
 
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
 
 @PolarisImmutable
 public interface SchemaOptions {
   Optional<Integer> schemaVersion();
-
-  Optional<String> schemaFile();
-
-  @Value.Check
-  default void validate() {
-    if (schemaVersion().isPresent() && schemaFile().isPresent()) {
-      throw new IllegalStateException("Only one of schemaVersion or schemaFile can be set.");
-    }
-  }
 }

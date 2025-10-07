@@ -93,14 +93,6 @@ public class BootstrapCommand extends BaseCommand {
           paramLabel = "<schema version>",
           description = "The version of the schema to load in [1, 2, 3, LATEST].")
       Integer schemaVersion;
-
-      @CommandLine.Option(
-          names = {"--schema-file"},
-          paramLabel = "<schema file>",
-          description =
-              "A schema file to bootstrap from. If unset, the bundled files will be used.",
-          defaultValue = "")
-      String schemaFile;
     }
   }
 
@@ -142,10 +134,6 @@ public class BootstrapCommand extends BaseCommand {
 
         if (inputOptions.schemaInputOptions.schemaVersion != null) {
           builder.schemaVersion(inputOptions.schemaInputOptions.schemaVersion);
-        }
-
-        if (!inputOptions.schemaInputOptions.schemaFile.isEmpty()) {
-          builder.schemaFile(inputOptions.schemaInputOptions.schemaFile);
         }
 
         schemaOptions = builder.build();
