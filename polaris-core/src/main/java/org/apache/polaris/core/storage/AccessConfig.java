@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 @PolarisImmutable
 public interface AccessConfig {
@@ -37,6 +38,15 @@ public interface AccessConfig {
   Map<String, String> internalProperties();
 
   Optional<Instant> expiresAt();
+
+  /**
+   * Indicates whether the storage integration subsystem that produced this object is capable of
+   * credential vending in principle.
+   */
+  @Value.Default
+  default boolean supportsCredentialVending() {
+    return true;
+  }
 
   default String get(StorageAccessProperty key) {
     if (key.isCredential()) {
@@ -63,6 +73,9 @@ public interface AccessConfig {
 
     @CanIgnoreReturnValue
     Builder expiresAt(Instant expiresAt);
+
+    @CanIgnoreReturnValue
+    Builder supportsCredentialVending(boolean supportsCredentialVending);
 
     default Builder put(StorageAccessProperty key, String value) {
       if (key.isExpirationTimestamp()) {

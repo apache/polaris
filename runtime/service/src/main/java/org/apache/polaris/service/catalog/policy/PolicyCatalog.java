@@ -84,8 +84,7 @@ public class PolicyCatalog {
       PolarisResolutionManifestCatalogView resolvedEntityView) {
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
-    this.catalogEntity =
-        CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+    this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.catalogId = catalogEntity.getId();
     this.metaStoreManager = metaStoreManager;
   }

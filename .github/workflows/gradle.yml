@@ -39,6 +39,8 @@ env:
 
 jobs:
 
+  # Durations (approximates from GH CI):
+  # (all):test 16m
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -51,6 +53,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run unit tests
@@ -77,6 +81,8 @@ jobs:
             **/build/test-results/**
             **/build/reports/tests/**
 
+  # Durations (approximates from GH CI):
+  # - :polaris-runtime-service:test 22m
   quarkus-tests:
     name: Quarkus Tests
     runs-on: ubuntu-latest
@@ -89,32 +95,33 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
-      - name: Run Quarkus tests
+      - name: Run Quarkus runtime tests
         env:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
-          ./gradlew \
-            :polaris-runtime-service:test \
-            :polaris-admin:test \
-            --continue
+          ./gradlew :polaris-runtime-service:test --continue
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          job-name: 'quarkus-tests'
+          job-name: 'quarkus-runtime-tests'
       - name: Archive test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: upload-quarkus-test-artifacts
+          name: upload-quarkus-runtime-test-artifacts
           path: |
             **/build/test-results/**
             **/build/reports/tests/**
 
-  integration-tests:
-    name: Integration Tests
+  # Durations (approximates from GH CI):
+  # - :polaris-runtime-service:intTest 15m
+  quarkus-int-tests:
+    name: Quarkus Integration Tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -127,8 +134,86 @@ jobs:
           distribution: 'temurin'
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run Quarkus runtime tests
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+        run: |
+          ./gradlew :polaris-runtime-service:intTest --continue
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          job-name: 'quarkus-runtime-inttests'
+      - name: Archive test results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: upload-quarkus-runtime-inttest-artifacts
+          path: |
+            **/build/test-results/**
+            **/build/reports/tests/**
+
+  # Durations (approximates from GH CI):
+  # - :polaris-admin:test 6m
+  quarkus-admin-tests:
+    name: Quarkus Admin Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - name: Set up JDK 21
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
+      - name: Run Quarkus admin tests
+        env:
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+        run: |
+          ./gradlew :polaris-admin:test --continue
+      - name: Save partial Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-save
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          job-name: 'quarkus-admin-tests'
+      - name: Archive test results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: upload-quarkus-admin-test-artifacts
+          path: |
+            **/build/test-results/**
+            **/build/reports/tests/**
+
+  # Durations (approximates from GH CI):
+  # - :polaris-spark-integration-*:intTest 6m (2x)
+  # - :polaris-runtime-spark-tests:intTest 4m
+  # - :polaris-persistence-nosql-mongodb:intTest 1m
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - name: Set up JDK 21
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Run integration tests
-        run: ./gradlew intTest --continue
+        run: |
+          ./gradlew \
+            intTest \
+            -x :polaris-runtime-service:intTest \
+            --continue
         env:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       - name: Save partial Gradle build cache
@@ -153,6 +238,8 @@ jobs:
     needs:
       - unit-tests
       - quarkus-tests
+      - quarkus-admin-tests
+      - quarkus-int-tests
       - integration-tests
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5

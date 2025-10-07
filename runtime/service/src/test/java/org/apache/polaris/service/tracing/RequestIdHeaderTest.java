@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.admin;
+package org.apache.polaris.service.tracing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,30 +27,35 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.iceberg.rest.responses.ErrorResponse;
+import java.util.Set;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@TestProfile(RealmHeaderTest.Profile.class)
-public class RealmHeaderTest {
+@TestProfile(RequestIdHeaderTest.Profile.class)
+public class RequestIdHeaderTest {
   public static class Profile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
+          "polaris.log.request-id-header-name",
+          REQUEST_ID_HEADER,
           "polaris.realm-context.header-name",
           REALM_HEADER,
           "polaris.realm-context.realms",
-          "realm1,realm2",
-          "polaris.bootstrap.credentials",
-          "realm1,client1,secret1;realm2,client2,secret2");
+          REALM);
     }
   }
 
-  private static final String REALM_HEADER = "test-header-r123";
+  private static final String REQUEST_ID_HEADER = "x-test-request-id-random";
+  private static final String REALM_HEADER = "realm";
+  private static final String REALM = "realm1";
+  private static final String CLIENT_ID = "client1";
+  private static final String CLIENT_SECRET = "secret1";
 
   private static final URI baseUri =
       URI.create(
@@ -59,9 +64,9 @@ public class RealmHeaderTest {
                   Integer.getInteger("quarkus.http.test-port"),
                   "System property not set correctly: quarkus.http.test-port"));
 
-  private Response request(String realm, String header, String clientId, String secret) {
+  private Response request(Map<String, String> headers) {
     try (PolarisClient client =
-        PolarisClient.polarisClient(new PolarisApiEndpoints(baseUri, realm, header))) {
+        PolarisClient.polarisClient(new PolarisApiEndpoints(baseUri, REALM, headers))) {
       return client
           .catalogApiPlain()
           .request("v1/oauth/tokens")
@@ -74,48 +79,41 @@ public class RealmHeaderTest {
                           "scope",
                           "PRINCIPAL_ROLE:ALL",
                           "client_id",
-                          clientId,
+                          CLIENT_ID,
                           "client_secret",
-                          secret))));
+                          CLIENT_SECRET))));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
   @Test
-  public void testInvalidRealmHeaderValue() {
-    try (Response response = request("INVALID", REALM_HEADER, "dummy", "dummy")) {
-      assertThat(response.getStatus()).isEqualTo(Response.Status.NOT_FOUND.getStatusCode());
-      assertThat(response.readEntity(ErrorResponse.class))
-          .extracting(ErrorResponse::code, ErrorResponse::type, ErrorResponse::message)
-          .containsExactly(
-              Response.Status.NOT_FOUND.getStatusCode(),
-              "MissingOrInvalidRealm",
-              "Unknown realm: INVALID");
-    }
+  public void testRequestIdHeaderSpecified() {
+    String requestId = "pre-requested-request-id";
+    Map<String, String> headers = Map.of(REALM_HEADER, REALM, REQUEST_ID_HEADER, requestId);
+    assertThat(sendRequest(headers)).isEqualTo(requestId);
+    assertThat(sendRequest(headers)).isEqualTo(requestId);
+
+    String newRequestId = "new-pre-requested-request-id";
+    headers = Map.of(REALM_HEADER, REALM, REQUEST_ID_HEADER, newRequestId);
+    assertThat(sendRequest(headers)).isEqualTo(newRequestId);
   }
 
   @Test
-  public void testNoRealmHeader() {
-    try (Response response = request("fake-realm", "irrelevant-header", "client2", "secret2")) {
-      // The default realm is "realm2" so the second pair of secrets is not valid without
-      // an explicit header
-      assertThat(response.getStatus()).isEqualTo(Response.Status.UNAUTHORIZED.getStatusCode());
+  public void testRequestIdHeaderNotSpecified() {
+    Map<String, String> headers = Map.of(REALM_HEADER, REALM);
+    Set<String> requestIds = new HashSet<>();
+    for (int i = 0; i < 10; i++) {
+      requestIds.add(sendRequest(headers));
     }
+    assertThat(requestIds).hasSize(10);
   }
 
-  @Test
-  public void testDefaultRealm() {
-    try (Response response = request("fake-realm", "irrelevant-header", "client1", "secret1")) {
-      // The default realm is "realm1", now credentials match
-      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
-    }
-  }
-
-  @Test
-  public void testValidRealmHeaderDefaultRealm() {
-    try (Response response = request("realm2", REALM_HEADER, "client2", "secret2")) {
-      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+  private String sendRequest(Map<String, String> headers) {
+    try (Response response = request(headers)) {
+      assertThat(response.getHeaders()).containsKey(REQUEST_ID_HEADER);
+      assertThat(response.getHeaders().get(REQUEST_ID_HEADER)).hasSize(1);
+      return response.getHeaders().get(REQUEST_ID_HEADER).getFirst().toString();
     }
   }
 }

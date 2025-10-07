@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.core.persistence.resolver;
 
+import jakarta.annotation.Nullable;
+import java.util.Optional;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -28,6 +31,13 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
  */
 public interface PolarisResolutionManifestCatalogView {
   PolarisResolvedPathWrapper getResolvedReferenceCatalogEntity();
+
+  default @Nullable CatalogEntity getResolvedCatalogEntity() {
+    return Optional.ofNullable(getResolvedReferenceCatalogEntity())
+        .map(PolarisResolvedPathWrapper::getRawLeafEntity)
+        .map(CatalogEntity::of)
+        .orElse(null);
+  }
 
   PolarisResolvedPathWrapper getResolvedPath(Object key);
 

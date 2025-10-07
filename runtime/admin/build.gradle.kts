@@ -86,16 +86,3 @@ val distributionElements by
 artifacts {
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
 }
-
-tasks.withType(Test::class.java).configureEach {
-  maxParallelForks = 4
-  forkEvery = 1
-}
-
-tasks.named<Test>("test").configure {
-  // enlarge the max heap size to avoid out of memory error
-  maxHeapSize = "4g"
-  // Silence the 'OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader
-  // classes because bootstrap classpath has been appended' warning from OpenJDK.
-  jvmArgs("-Xshare:off")
-}

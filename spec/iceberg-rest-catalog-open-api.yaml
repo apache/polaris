@@ -19,7 +19,7 @@
 
 # CODE_COPIED_TO_POLARIS
 
-# Apache Iceberg Version: 1.8.1
+# Apache Iceberg Version: 1.10.0
 
 ---
 openapi: 3.1.1
@@ -260,7 +260,6 @@ paths:
       parameters:
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
-        - $ref: '#/components/parameters/prefix'
         - name: parent
           in: query
           description:
@@ -429,6 +428,15 @@ paths:
               examples:
                 NoSuchNamespaceExample:
                   $ref: '#/components/examples/NoSuchNamespaceError'
+        409:
+          description: Not Empty - Namespace to delete is not empty.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotEmptyExample:
+                  $ref: '#/components/examples/NamespaceNotEmptyError'
         419:
           $ref: '#/components/responses/AuthenticationTimeoutResponse'
         503:
@@ -511,8 +519,6 @@ paths:
       description: Return all table identifiers under this namespace
       operationId: listTables
       parameters:
-        - $ref: '#/components/parameters/prefix'
-        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
       responses:
@@ -559,8 +565,6 @@ paths:
         table state.
       operationId: createTable
       parameters:
-        - $ref: '#/components/parameters/prefix'
-        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/data-access'
       requestBody:
         required: true
@@ -938,9 +942,6 @@ paths:
         for table requests. Otherwise, a token may be passed using a RFC 8693 token type as a configuration
         key. For example, "urn:ietf:params:oauth:token-type:jwt=<JWT-token>".
       parameters:
-        - $ref: '#/components/parameters/prefix'
-        - $ref: '#/components/parameters/namespace'
-        - $ref: '#/components/parameters/table'
         - $ref: '#/components/parameters/data-access'
         - name: If-None-Match
           in: header
@@ -1455,8 +1456,6 @@ paths:
       description: Return all view identifiers under this namespace
       operationId: listViews
       parameters:
-        - $ref: '#/components/parameters/prefix'
-        - $ref: '#/components/parameters/namespace'
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
       responses:
@@ -2393,6 +2392,25 @@ components:
           items:
             $ref: '#/components/schemas/SortField'
 
+    EncryptedKey:
+      type: object
+      required:
+        - key-id
+        - encrypted-key-metadata
+      properties:
+        key-id:
+          type: string
+        encrypted-key-metadata:
+          type: string
+          format: byte # for compatibility
+          contentEncoding: base64
+        encrypted-by-id:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+
     Snapshot:
       type: object
       required:
@@ -2416,6 +2434,10 @@ components:
         manifest-list:
           type: string
           description: Location of the snapshot's manifest list file
+        first-row-id:
+          type: integer
+          format: int64
+          description: The first _row_id assigned to the first row in the first data file in the first manifest
         summary:
           type: object
           required:
@@ -2493,7 +2515,7 @@ components:
         format-version:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 3
         table-uuid:
           type: string
         location:
@@ -2501,6 +2523,10 @@ components:
         last-updated-ms:
           type: integer
           format: int64
+        next-row-id:
+          type: integer
+          format: int64
+          description: A long higher than all assigned row IDs; the next snapshot's first-row-id.
         properties:
           type: object
           additionalProperties:
@@ -2530,6 +2556,11 @@ components:
             $ref: '#/components/schemas/SortOrder'
         default-sort-order-id:
           type: integer
+        # encryption
+        encryption-keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/EncryptedKey'
         # snapshot tracking
         snapshots:
           type: array
@@ -2683,7 +2714,9 @@ components:
           set-partition-statistics: '#/components/schemas/SetPartitionStatisticsUpdate'
           remove-partition-statistics: '#/components/schemas/RemovePartitionStatisticsUpdate'
           remove-partition-specs: '#/components/schemas/RemovePartitionSpecsUpdate'
-          enable-row-lineage: '#/components/schemas/EnableRowLineageUpdate'
+          remove-schemas: '#/components/schemas/RemoveSchemasUpdate'
+          add-encryption-key: '#/components/schemas/AddEncryptionKeyUpdate'
+          remove-encryption-key: '#/components/schemas/RemoveEncryptionKeyUpdate'
       type: object
       required:
         - action
@@ -2988,14 +3021,43 @@ components:
           items:
             type: integer
 
-    # Disabling Row Lineage is Forbidden
-    EnableRowLineageUpdate:
+    RemoveSchemasUpdate:
       allOf:
         - $ref: '#/components/schemas/BaseUpdate'
+      required:
+        - schema-ids
       properties:
         action:
           type: string
-          const: "enable-row-lineage"
+          const: "remove-schemas"
+        schema-ids:
+          type: array
+          items:
+            type: integer
+
+    AddEncryptionKeyUpdate:
+      allOf:
+        - $ref: '#/components/schemas/BaseUpdate'
+      required:
+        - encryption-key
+      properties:
+        action:
+          type: string
+          const: "add-encryption-key"
+        encryption-key:
+          $ref: '#/components/schemas/EncryptedKey'
+
+    RemoveEncryptionKeyUpdate:
+      allOf:
+        - $ref: '#/components/schemas/BaseUpdate'
+      required:
+        - key-id
+      properties:
+        action:
+          type: string
+          const: "remove-encryption-key"
+        key-id:
+          type: string
 
     TableUpdate:
       anyOf:
@@ -3017,7 +3079,9 @@ components:
         - $ref: '#/components/schemas/SetStatisticsUpdate'
         - $ref: '#/components/schemas/RemoveStatisticsUpdate'
         - $ref: '#/components/schemas/RemovePartitionSpecsUpdate'
-        - $ref: '#/components/schemas/EnableRowLineageUpdate'
+        - $ref: '#/components/schemas/RemoveSchemasUpdate'
+        - $ref: '#/components/schemas/AddEncryptionKeyUpdate'
+        - $ref: '#/components/schemas/RemoveEncryptionKeyUpdate'
 
     ViewUpdate:
       anyOf:
@@ -3076,9 +3140,10 @@ components:
           type: string
 
     AssertRefSnapshotId:
-      description:
-        The table branch or tag identified by the requirement's `ref` must reference the requirement's `snapshot-id`;
-        if `snapshot-id` is `null` or missing, the ref must not already exist
+      description: |
+        The table branch or tag identified by the requirement's `ref` must reference the requirement's `snapshot-id`.
+        The `snapshot-id` field is required in this object, but in the case of a `null`
+        the ref must not already exist.
       allOf:
         - $ref: '#/components/schemas/TableRequirement'
       required:
@@ -3093,6 +3158,7 @@ components:
         snapshot-id:
           type: integer
           format: int64
+          nullable: true
 
     AssertLastAssignedFieldId:
       description:
@@ -3249,6 +3315,7 @@ components:
         metadata-location:
           type: string
           description: May be null if the table is staged as part of a transaction
+          nullable: true
         metadata:
           $ref: '#/components/schemas/TableMetadata'
         config:
@@ -3473,6 +3540,10 @@ components:
           type: string
         metadata-location:
           type: string
+        overwrite:
+          description: Whether to overwrite table metadata if the table already exists
+          type: boolean
+          default: false
 
     CreateViewRequest:
       type: object
@@ -4243,6 +4314,10 @@ components:
         content:
           type: string
           const: "data"
+        first-row-id:
+          type: integer
+          format: int64
+          description: "The first row ID assigned to the first row in the data file"
         column-sizes:
           allOf:
             - $ref: '#/components/schemas/CountMap'
@@ -4452,7 +4527,9 @@ components:
     #  The fields `message` and `type` as indicated here are not presently prescriptive.
     UnauthorizedResponse:
       description:
-        Unauthorized. Authentication is required and has failed or has not yet been provided.
+        Unauthorized. The REST Catalog SHOULD respond with the 401 UnauthorizedResponse when
+        the access token provided is expired, revoked, malformed, or invalid for other reasons.
+        The client MAY request a new access token and retry the request.
       content:
         application/json:
           schema:
@@ -4560,7 +4637,9 @@ components:
 
     AuthenticationTimeoutResponse:
       description:
-        Credentials have timed out. If possible, the client should refresh credentials and retry.
+        This is an optional status response type that the REST Catalog can issue when the
+        token has expired. The client MAY request a new access token and retry the request.
+        401 UnauthorizedResponse SHOULD be preferred over this response type on token expiry.
       content:
         application/json:
           schema:
@@ -4575,10 +4654,10 @@ components:
 
     ServiceUnavailableResponse:
       description:
-        The service is not ready to handle the request. The client should wait and retry.
+        The service is not ready to handle the request, request could have been partially processed.
 
-
-        The service may additionally send a Retry-After header to indicate when to retry.
+        The service may additionally send a Retry-After header to indicate when to retry, a non idempotent
+        request should only be retried by the client when the Retry-After header is present.
       content:
         application/json:
           schema:
@@ -4725,7 +4804,7 @@ components:
       value: "accounting%1Ftax"
 
     NamespaceAsPathVariable:
-      summary: A single part namespace, as represented in a path paremeter
+      summary: A single part namespace, as represented in a path parameter
       value: "accounting"
 
     NamespaceAlreadyExistsError:
@@ -4785,6 +4864,16 @@ components:
           "message": "The given namespace does not exist",
           "type": "NoSuchNamespaceException",
           "code": 404
+        }
+      }
+
+    NamespaceNotEmptyError:
+      summary: The requested namespace is not empty
+      value: {
+        "error": {
+          "message": "The given namespace is not empty",
+          "type": "NamespaceNotEmptyException",
+          "code": 409
         }
       }
 

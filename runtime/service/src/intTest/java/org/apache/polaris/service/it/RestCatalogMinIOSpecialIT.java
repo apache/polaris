@@ -31,6 +31,7 @@ import static org.apache.polaris.core.storage.StorageAccessProperty.AWS_SECRET_K
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
@@ -298,6 +299,62 @@ public class RestCatalogMinIOSpecialIT {
           .containsExactly("http://s3.example.com", endpoint, endpoint, false);
       LoadTableResponse loadTableResponse = doTestCreateTable(restCatalog, Optional.empty());
       assertThat(loadTableResponse.config()).containsEntry(ENDPOINT, "http://s3.example.com");
+    }
+  }
+
+  @Test
+  public void testCreateTableFailureWithCredentialVendingWithoutSts() throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of("http://sts.example.com"), // not called
+            false,
+            Optional.of(VENDED_CREDENTIALS),
+            false)) {
+      StorageConfigInfo storageConfig =
+          managementApi.getCatalog(catalogName).getStorageConfigInfo();
+      assertThat((AwsStorageConfigInfo) storageConfig)
+          .extracting(
+              AwsStorageConfigInfo::getEndpoint,
+              AwsStorageConfigInfo::getStsEndpoint,
+              AwsStorageConfigInfo::getEndpointInternal,
+              AwsStorageConfigInfo::getPathStyleAccess,
+              AwsStorageConfigInfo::getStsUnavailable)
+          .containsExactly(endpoint, "http://sts.example.com", null, false, true);
+
+      catalogApi.createNamespace(catalogName, "test-ns");
+      TableIdentifier id = TableIdentifier.of("test-ns", "t2");
+      // Credential vending is not supported without STS
+      assertThatThrownBy(() -> restCatalog.createTable(id, SCHEMA))
+          .hasMessageContaining("but no credentials are available")
+          .hasMessageContaining(id.toString());
+    }
+  }
+
+  @Test
+  public void testLoadTableFailureWithCredentialVendingWithoutSts() throws IOException {
+    try (RESTCatalog restCatalog =
+        createCatalog(
+            Optional.of(endpoint),
+            Optional.of("http://sts.example.com"), // not called
+            false,
+            Optional.empty(),
+            false)) {
+
+      catalogApi.createNamespace(catalogName, "test-ns");
+      TableIdentifier id = TableIdentifier.of("test-ns", "t3");
+      restCatalog.createTable(id, SCHEMA);
+
+      // Credential vending is not supported without STS
+      assertThatThrownBy(
+              () ->
+                  catalogApi.loadTable(
+                      catalogName,
+                      id,
+                      "ALL",
+                      Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
+          .hasMessageContaining("but no credentials are available")
+          .hasMessageContaining(id.toString());
     }
   }
 

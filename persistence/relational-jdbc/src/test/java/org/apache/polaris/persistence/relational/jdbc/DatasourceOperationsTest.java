@@ -141,7 +141,7 @@ public class DatasourceOperationsTest {
     when(mockPreparedStatement.executeQuery()).thenThrow(new SQLException("demo", "42P07"));
 
     assertThrows(
-        SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity()));
+        SQLException.class, () -> datasourceOperations.executeSelect(query, new ModelEntity(1)));
   }
 
   @Test

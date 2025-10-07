@@ -72,6 +72,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -196,6 +197,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected ResolutionManifestFactory resolutionManifestFactory;
   @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected UserSecretsManagerFactory userSecretsManagerFactory;
+  @Inject protected ServiceIdentityProvider serviceIdentityProvider;
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected FileIOFactory fileIOFactory;
   @Inject protected PolarisEventListener polarisEventListener;
@@ -265,6 +267,7 @@ public abstract class PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            serviceIdentityProvider,
             securityContext(authenticatedRoot),
             polarisAuthorizer,
             reservedProperties);
@@ -331,7 +334,7 @@ public abstract class PolarisAuthzTestBase {
                     .setDefaultBaseLocation(storageLocation)
                     .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
-                    .asCatalog()));
+                    .asCatalog(serviceIdentityProvider)));
     federatedCatalogEntity = adminService.createCatalog(new CreateCatalogRequest(externalCatalog));
 
     initBaseCatalog();
@@ -522,7 +525,7 @@ public abstract class PolarisAuthzTestBase {
     Mockito.when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
+            resolutionManifestFactory, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
             diagServices,

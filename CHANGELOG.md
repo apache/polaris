@@ -32,14 +32,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Upgrade Notes
 
 - Amazon RDS plugin enabled, this allows polaris to connect to AWS Aurora PostgreSQL using IAM authentication.
-- The EclipseLink Persistence implementation has been deprecated since 1.0.0 and will be completely removed
-  in 1.3.0 or in 2.0.0 (whichever happens earlier).
 
 ### Breaking Changes
 
 ### New Features
 
+- Added a finer grained authorization model for UpdateTable requests. Existing privileges continue to work for granting UpdateTable, such as `TABLE_WRITE_PROPERTIES`.
+  However, you can now instead grant privileges just for specific operations, such as `TABLE_ADD_SNAPSHOT`
 - Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
+- The `ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` was added to support sub-catalog (initially namespace and table) RBAC for federated catalogs.
+  The setting can be configured on a per-catalog basis by setting the catalog property: `polaris.config.enable-sub-catalog-rbac-for-federated-catalogs`.
+  The realm-level feature flag `ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` (default: true) controls whether this functionality can be enabled or modified at the catalog level.
 
 - Added support for S3-compatible storage that does not have STS (use `stsUavailable: true` in catalog storage configuration)
 
@@ -50,6 +53,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Deprecations
 
 * The property `polaris.active-roles-provider.type` is deprecated and has no effect anymore.
+- The EclipseLink Persistence implementation has been deprecated since 1.0.0 and will be completely removed
+  in 1.3.0 or in 2.0.0 (whichever happens earlier).
+- The legacy management endpoints at `/metrics` and `/healthcheck` have been deprecated in 1.2.0 and will be
+  completely removed in 1.3.0 or in 2.0.0 (whichever happens earlier). Please use the standard management
+  endpoints at `/q/metrics` and `/q/health` instead.
 
 ### Fixes
 

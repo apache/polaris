@@ -204,8 +204,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolvedEntityView = resolvedEntityView;
-    this.catalogEntity =
-        CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+    this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.securityContext = securityContext;
     this.taskExecutor = taskExecutor;
     this.catalogId = catalogEntity.getId();
@@ -531,7 +530,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> parentPath =
           namespace.length() > 1
               ? getResolvedParentNamespace(namespace).getRawFullPath()
-              : List.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+              : List.of(resolvedEntityView.getResolvedCatalogEntity());
 
       String parentLocation = resolveLocationForPath(diagnostics, parentPath);
 
@@ -1190,7 +1189,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
             diagnostics,
-            callContext,
+            callContext.getRealmContext(),
             resolverFactory,
             securityContext,
             parentPath.getFirst().getName());

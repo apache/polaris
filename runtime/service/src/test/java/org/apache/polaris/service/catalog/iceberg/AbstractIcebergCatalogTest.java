@@ -110,6 +110,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -229,6 +230,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
+  @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
 
@@ -287,17 +289,18 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =
-        (callContext, securityContext, referenceCatalogName) ->
+        (securityContext, referenceCatalogName) ->
             new Resolver(
                 diagServices,
-                callContext.getPolarisCallContext(),
+                polarisContext,
                 metaStoreManager,
                 securityContext,
                 entityCache,
                 referenceCatalogName);
     QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
 
-    resolutionManifestFactory = new ResolutionManifestFactoryImpl(diagServices, resolverFactory);
+    resolutionManifestFactory =
+        new ResolutionManifestFactoryImpl(diagServices, realmContext, resolverFactory);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -317,6 +320,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            serviceIdentityProvider,
             securityContext,
             authorizer,
             reservedProperties);
@@ -346,7 +350,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
                     .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
-                    .asCatalog()));
+                    .asCatalog(serviceIdentityProvider)));
 
     this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 
@@ -372,6 +376,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
+    testPolarisEventListener.clear();
   }
 
   @AfterEach
@@ -439,7 +444,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
       String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, resolutionManifestFactory, securityContext, catalogName);
+            resolutionManifestFactory, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
     return new IcebergCatalog(
         diagServices,
@@ -1375,7 +1380,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     .setDefaultBaseLocation("file://")
                     .setName(catalogWithoutStorage)
                     .build()
-                    .asCatalog()));
+                    .asCatalog(serviceIdentityProvider)));
 
     IcebergCatalog catalog = newIcebergCatalog(catalogWithoutStorage);
     catalog.initialize(
@@ -1425,7 +1430,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 .setDefaultBaseLocation("http://maliciousdomain.com")
                 .setName(catalogName)
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityProvider)));
 
     IcebergCatalog catalog = newIcebergCatalog(catalogName);
     catalog.initialize(
@@ -1943,7 +1948,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 .setStorageConfigurationInfo(
                     realmConfig, noPurgeStorageConfigModel, storageLocation)
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityProvider)));
     IcebergCatalog noPurgeCatalog =
         newIcebergCatalog(noPurgeCatalogName, metaStoreManager, fileIOFactory);
     noPurgeCatalog.initialize(
@@ -2201,7 +2206,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                           .setName("createCatalogWithReservedProperty")
                           .setProperties(ImmutableMap.of("polaris.reserved", "true"))
                           .build()
-                          .asCatalog()));
+                          .asCatalog(serviceIdentityProvider)));
             })
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("reserved prefix");
@@ -2216,7 +2221,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 .setName("updateCatalogWithReservedProperty")
                 .setProperties(ImmutableMap.of("a", "b"))
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityProvider)));
     Assertions.assertThatCode(
             () -> {
               adminService.updateCatalog(
