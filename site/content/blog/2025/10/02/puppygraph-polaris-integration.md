@@ -104,11 +104,6 @@ cd polaris
 ./gradlew run
 ```
 
-The Apache Polaris server will start. Please note the credentials for the Apache Polaris server's output. The credentials are required to connect to the Apache Polaris server later. The line contains the credentials will look like this: 
-```shell 
-realm: default-realm root principal credentials: f6973789e5270e5d:dce8e8e53d8f770eb9804f22de923645
-```
-
 Then use the provided spark shell to create a data catalog and prepare data. Start a different shell and run the following command in the polaris directory: 
 ```shell 
 ./regtests/run_spark_sql.sh
@@ -170,7 +165,7 @@ Next, we must connect to our data source to run graph queries against it. Users 
         "type": "rest",
         "uri": "http://172.17.0.1:8181/api/catalog",
         "warehouse": "manual_spark",
-        "credential": "<CHANGE_IT_TO_REAL_CREDENTIAL>f6973789e5270e5d:dce8e8e53d8f770eb9804f22de923645",
+        "credential": "root:s3cr3t",
         "scope": "PRINCIPAL_ROLE:ALL"
       }
     }
