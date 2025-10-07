@@ -19,6 +19,7 @@
 package org.apache.polaris.service.credentials.connection;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -62,6 +63,8 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 @Priority(100)
 public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVendor {
 
+  private static final String DEFAULT_ROLE_SESSION_NAME = "polaris";
+
   private final StsClientProvider stsClientProvider;
   private final ServiceIdentityProvider serviceIdentityProvider;
 
@@ -76,6 +79,14 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
   public @Nonnull ConnectionCredentials getConnectionCredentials(
       @Nonnull ConnectionConfigInfoDpo connectionConfig) {
 
+    // Validate and extract authentication parameters
+    Preconditions.checkArgument(
+        connectionConfig.getAuthenticationParameters() instanceof SigV4AuthenticationParametersDpo,
+        "Expected SigV4AuthenticationParametersDpo, got: %s",
+        connectionConfig.getAuthenticationParameters().getClass().getName());
+    SigV4AuthenticationParametersDpo sigv4Params =
+        (SigV4AuthenticationParametersDpo) connectionConfig.getAuthenticationParameters();
+
     // Resolve the service identity credential
     Optional<ServiceIdentityCredential> serviceCredentialOpt =
         serviceIdentityProvider.getServiceIdentityCredential(connectionConfig.getServiceIdentity());
@@ -83,21 +94,26 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
       return ConnectionCredentials.builder().build();
     }
 
-    // Cast to expected types for SigV4
+    // Validate and cast service identity credential
+    ServiceIdentityCredential serviceCredential = serviceCredentialOpt.get();
+    Preconditions.checkArgument(
+        serviceCredential instanceof AwsIamServiceIdentityCredential,
+        "Expected AwsIamServiceIdentityCredential, got: %s",
+        serviceCredential.getClass().getName());
     AwsIamServiceIdentityCredential awsCredential =
-        (AwsIamServiceIdentityCredential) serviceCredentialOpt.get();
-    SigV4AuthenticationParametersDpo sigv4Params =
-        (SigV4AuthenticationParametersDpo) connectionConfig.getAuthenticationParameters();
+        (AwsIamServiceIdentityCredential) serviceCredential;
 
     // Use Polaris's IAM identity to assume the customer's role
     StsClient stsClient = getStsClient(sigv4Params);
 
     // Build the AssumeRole request with Polaris's credentials
+    // TODO: Generate service-level scoping policy to restrict permissions
     AssumeRoleRequest.Builder requestBuilder =
         AssumeRoleRequest.builder()
             .roleArn(sigv4Params.getRoleArn())
             .roleSessionName(
-                Optional.ofNullable(sigv4Params.getRoleSessionName()).orElse("polaris"))
+                Optional.ofNullable(sigv4Params.getRoleSessionName())
+                    .orElse(DEFAULT_ROLE_SESSION_NAME))
             .externalId(sigv4Params.getExternalId());
 
     // Configure the request to use Polaris's service identity credentials

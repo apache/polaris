@@ -53,6 +53,9 @@ public interface ConnectionCredentialVendor {
    * IAM user) and user-configured authentication settings (e.g., which role to assume, signing
    * region).
    *
+   * <p>Implementations should validate that the service identity and authentication parameters are
+   * of the expected types using preconditions.
+   *
    * @param connectionConfig The connection configuration containing service identity and
    *     authentication parameters
    * @return Connection credentials object containing credentials, properties, and optional
