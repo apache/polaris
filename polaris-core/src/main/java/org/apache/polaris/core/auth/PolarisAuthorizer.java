@@ -41,4 +41,18 @@ public interface PolarisAuthorizer {
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries);
+
+  void authorizeOrThrow(
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull Set<PolarisAuthorizableOperation> authzOps,
+      @Nullable PolarisResolvedPathWrapper target,
+      @Nullable PolarisResolvedPathWrapper secondary);
+
+  void authorizeOrThrow(
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull Set<PolarisAuthorizableOperation> authzOps,
+      @Nullable List<PolarisResolvedPathWrapper> targets,
+      @Nullable List<PolarisResolvedPathWrapper> secondaries);
 }
