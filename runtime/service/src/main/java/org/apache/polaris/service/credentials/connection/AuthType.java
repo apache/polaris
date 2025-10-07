@@ -21,7 +21,6 @@ package org.apache.polaris.service.credentials.connection;
 import jakarta.enterprise.util.AnnotationLiteral;
 import jakarta.inject.Qualifier;
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -35,11 +34,7 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor
  * <p>This annotation allows the credential manager to automatically select the appropriate vendor
  * based on the authentication type specified in the connection configuration.
  *
- * <p>This annotation is repeatable, allowing a single vendor to support multiple authentication
- * types. When multiple {@link AuthType} annotations are applied, the vendor will be selected for
- * any of the specified authentication types.
- *
- * <p>Example usage for single auth type:
+ * <p>Example usage:
  *
  * <pre>{@code
  * @ApplicationScoped
@@ -49,23 +44,10 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor
  *   // AWS STS AssumeRole logic for SigV4 authentication
  * }
  * }</pre>
- *
- * <p>Example usage for multiple auth types:
- *
- * <pre>{@code
- * @ApplicationScoped
- * @AuthType(AuthenticationType.IMPLICIT)
- * @AuthType(AuthenticationType.BEARER)
- * @Priority(100)
- * public class PassThroughCredentialVendor implements ConnectionCredentialVendor {
- *   // No transformation needed for these auth types
- * }
- * }</pre>
  */
 @Qualifier
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@Repeatable(AuthTypes.class)
 public @interface AuthType {
 
   /** The authentication type this vendor supports. */

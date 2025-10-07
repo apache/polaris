@@ -29,8 +29,8 @@ import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.AuthenticationType;
-import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
@@ -48,6 +48,7 @@ import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /** Tests that {@link DefaultPolarisCredentialManager} correctly delegates to CDI providers. */
 @QuarkusTest
@@ -170,19 +171,15 @@ public class DefaultPolarisCredentialManagerTest {
 
   @Test
   public void testUnsupportedAuthTypeReturnsEmpty() {
-    // Create BEARER auth parameters (no vendor registered for this)
-    BearerAuthenticationParametersDpo authParams =
-        new BearerAuthenticationParametersDpo(
-            new SecretReference("urn:polaris-secret:test-manager:bearer-token", Map.of()));
+    // Use a mock connection config with an unsupported authentication type
+    ConnectionConfigInfoDpo mockConfig = Mockito.mock(ConnectionConfigInfoDpo.class);
+    AuthenticationParametersDpo mockAuthParams = Mockito.mock(AuthenticationParametersDpo.class);
 
-    // Create connection config
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://test-catalog.example.com", authParams, testServiceIdentity, "test-catalog");
+    when(mockConfig.getAuthenticationParameters()).thenReturn(mockAuthParams);
+    when(mockAuthParams.getAuthenticationType()).thenReturn(AuthenticationType.NULL_TYPE);
 
-    // Should return empty credentials since no vendor supports BEARER
-    ConnectionCredentials credentials =
-        credentialManager.getConnectionCredentials(connectionConfig);
+    // Should return empty credentials since no vendor supports NULL_TYPE
+    ConnectionCredentials credentials = credentialManager.getConnectionCredentials(mockConfig);
 
     Assertions.assertThat(credentials.credentials()).isEmpty();
   }
