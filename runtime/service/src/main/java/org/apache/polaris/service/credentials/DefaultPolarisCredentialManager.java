@@ -31,7 +31,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
-import org.apache.polaris.service.credentials.connection.SupportsAuthType;
+import org.apache.polaris.service.credentials.connection.AuthType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,22 +82,23 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
     AuthenticationType authType =
         connectionConfig.getAuthenticationParameters().getAuthenticationType();
     Instance<ConnectionCredentialVendor> selectedVendor =
-        credentialVendors.select(SupportsAuthType.Literal.of(authType));
+        credentialVendors.select(AuthType.Literal.of(authType));
 
     if (selectedVendor.isUnsatisfied()) {
-      LOGGER.warn("No credential vendor found for authentication type: {}", authType);
+      // TODO: Add credential vendors for other authentication types
+      LOGGER.warn("No connection credential vendor found for authentication type: {}", authType);
       return ConnectionCredentials.builder().build();
     }
 
     if (selectedVendor.isAmbiguous()) {
       LOGGER.error(
-          "Multiple credential vendors found for authentication type: {}. "
+          "Multiple connection credential vendors found for authentication type: {}. "
               + "Use @Priority to specify which vendor should be used. "
               + "Higher priority values take precedence.",
           authType);
       throw new IllegalStateException(
           String.format(
-              "Ambiguous credential vendor for authentication type: %s. "
+              "Ambiguous connection credential vendor for authentication type: %s. "
                   + "Multiple implementations found without @Priority annotation.",
               authType));
     }

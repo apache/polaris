@@ -27,17 +27,17 @@ import java.lang.annotation.Target;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 
 /**
- * Container annotation for multiple {@link SupportsAuthType} annotations.
+ * Container annotation for multiple {@link AuthType} annotations.
  *
  * <p>This annotation allows a single {@link ConnectionCredentialVendor} implementation to support
- * multiple authentication types by applying multiple {@link SupportsAuthType} annotations.
+ * multiple authentication types by applying multiple {@link AuthType} annotations.
  *
  * <p>Example usage:
  *
  * <pre>{@code
  * @ApplicationScoped
- * @SupportsAuthType(AuthenticationType.IMPLICIT)
- * @SupportsAuthType(AuthenticationType.BEARER)
+ * @AuthType(AuthenticationType.IMPLICIT)
+ * @AuthType(AuthenticationType.BEARER)
  * public class NoOpConnectionCredentialVendor implements ConnectionCredentialVendor {
  *   // Handles both IMPLICIT and BEARER authentication (no credential transformation)
  * }
@@ -46,7 +46,7 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor
 @Qualifier
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface SupportsAuthTypes {
+public @interface AuthTypes {
   @Nonbinding
-  SupportsAuthType[] value();
+  AuthType[] value();
 }

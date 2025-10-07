@@ -43,7 +43,7 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.secrets.SecretReference;
-import org.apache.polaris.service.credentials.connection.SupportsAuthType;
+import org.apache.polaris.service.credentials.connection.AuthType;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,7 +63,7 @@ public class DefaultPolarisCredentialManagerTest {
   /** Test vendor for SIGV4 authentication */
   @Alternative
   @ApplicationScoped
-  @SupportsAuthType(AuthenticationType.SIGV4)
+  @AuthType(AuthenticationType.SIGV4)
   public static class TestSigV4Vendor implements ConnectionCredentialVendor {
     @Override
     public @NotNull ConnectionCredentials getConnectionCredentials(
@@ -84,7 +84,7 @@ public class DefaultPolarisCredentialManagerTest {
   /** Test vendor for OAuth authentication */
   @Alternative
   @ApplicationScoped
-  @SupportsAuthType(AuthenticationType.OAUTH)
+  @AuthType(AuthenticationType.OAUTH)
   public static class TestOAuthVendor implements ConnectionCredentialVendor {
     @Override
     public @NotNull ConnectionCredentials getConnectionCredentials(

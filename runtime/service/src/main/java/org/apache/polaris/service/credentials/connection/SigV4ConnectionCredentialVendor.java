@@ -58,7 +58,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
  * override this by providing a higher priority value.
  */
 @ApplicationScoped
-@SupportsAuthType(AuthenticationType.SIGV4)
+@AuthType(AuthenticationType.SIGV4)
 @Priority(100)
 public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVendor {
 

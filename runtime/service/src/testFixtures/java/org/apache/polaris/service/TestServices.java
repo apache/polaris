@@ -232,9 +232,7 @@ public record TestServices(
           new SigV4ConnectionCredentialVendor((destination) -> stsClient, serviceIdentityProvider);
       Mockito.when(
               mockCredentialVendors.select(
-                  any(
-                      org.apache.polaris.service.credentials.connection.SupportsAuthType.Literal
-                          .class)))
+                  any(org.apache.polaris.service.credentials.connection.AuthType.Literal.class)))
           .thenReturn(mockCredentialVendors);
       Mockito.when(mockCredentialVendors.isUnsatisfied()).thenReturn(false);
       Mockito.when(mockCredentialVendors.get()).thenReturn(sigV4Vendor);

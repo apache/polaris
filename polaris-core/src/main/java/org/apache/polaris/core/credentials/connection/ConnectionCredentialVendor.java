@@ -27,9 +27,9 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
  * <p>Implementations combine Polaris-managed service identity credentials with user-provided
  * authentication parameters to produce the final credentials needed to connect to external systems.
  *
- * <p>For CDI-based implementations (e.g., auth-type-specific vendors), use the {@code
- * SupportsAuthType} annotation to indicate which authentication type(s) they support. The
- * credential manager uses CDI to automatically select the appropriate vendor at runtime.
+ * <p>For CDI-based implementations (e.g., auth-type-specific vendors), use the {@code AuthType}
+ * annotation to indicate which authentication type(s) they support. The credential manager uses CDI
+ * to automatically select the appropriate vendor at runtime.
  *
  * <p><b>Multiple Implementations:</b> If multiple vendors support the same authentication type, use
  * {@code @Priority} to specify precedence. Higher priority values take precedence. Without
@@ -39,7 +39,7 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
  *
  * <pre>
  * &#64;ApplicationScoped
- * &#64;SupportsAuthType(AuthenticationType.SIGV4)
+ * &#64;AuthType(AuthenticationType.SIGV4)
  * &#64;Priority(200)  // Overrides default implementation
  * public class CustomSigV4Vendor implements ConnectionCredentialVendor { ... }
  * </pre>
