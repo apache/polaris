@@ -22,3 +22,42 @@
    https://www.docsy.dev/docs/adding-content/lookandfeel/#fonts
  */
 $td-enable-google-fonts: false;
+
+// Apache Polaris Official Brand Colors
+$polaris-dark-teal: #005A61;     // Primary dark teal
+$polaris-navy: #003545;          // Deep navy blue
+$polaris-blue-gray: #78909c;     // Muted blue-gray
+$polaris-light-mint: #e1f7f9;    // Very light cyan
+$polaris-bright-cyan: #67dfe0;   // Bright cyan accent
+
+// Bootstrap color overrides using brand palette
+$primary: $polaris-dark-teal;    // Dark teal as primary
+$secondary: $polaris-blue-gray;   // Blue-gray as secondary
+$success: #059669;               // Keep green for success
+$info: $polaris-bright-cyan;     // Bright cyan for info
+$warning: #d97706;               // Keep orange for warning
+$danger: #dc2626;                // Keep red for danger
+$light: $polaris-light-mint;     // Light mint for light theme
+$dark: $polaris-navy;            // Navy for dark elements
+
+// Typography - Clean and professional like DevLake
+$font-family-sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+$font-family-monospace: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+// Enhanced spacing and sizing - DevLake inspired clean design
+$spacer: 1rem;
+$border-radius: 0.375rem;
+$border-radius-lg: 0.75rem;
+$box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+$box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+// Clean section spacing
+$section-padding-y: 5rem;
+$container-max-width: 1200px;
+
+// Professional typography scale
+$h1-font-size: 3.5rem;
+$h2-font-size: 2.5rem;
+$h3-font-size: 1.5rem;
+$lead-font-size: 1.5rem;
+$font-size-base: 1rem;

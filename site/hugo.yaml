@@ -20,7 +20,6 @@
 baseURL: 'https://polaris.apache.org/'
 languageCode: 'en-us'
 title: 'Apache Polaris'
-sectionPagesMenu: 'main'
 enableRobotsTXT: true
 
 permalinks:
@@ -161,10 +160,9 @@ menu:
       parent: "community"
       url: "/community/release-guide"
       weight: 80
-    - name: "Blogs"
-      parent: "community"
+    - name: "Blog"
       url: "/blog"
-      weight: 00
+      weight: 350
 
     - name: "GitHub"
       url: "https://github.com/apache/polaris"

@@ -4,9 +4,14 @@
 -}}
 {{ $baseURL := urls.Parse $.Site.Params.Baseurl -}}
 
-<nav class="td-navbar js-navbar-scroll
+<nav class="td-navbar js-navbar-scroll navbar navbar-expand-md
             {{- if $cover }} td-navbar-cover {{- end }}" data-bs-theme="dark">
-<div class="container-fluid flex-column flex-md-row">
+<div class="container-fluid">
+  <!-- Hamburger button for mobile - moved to left -->
+  <button class="navbar-toggler" type="button" data-toggle="sidebar-menu" aria-controls="sidebar_menu" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  
   <a class="navbar-brand" href="{{ .Site.Home.RelPermalink }}">
     <span class="navbar-brand__logo navbar-logo">
       {{- if ne .Site.Params.ui.navbar_logo false -}}
@@ -16,8 +21,9 @@
       {{ end -}}
     </span>
   </a>
-  <div class="td-navbar-nav-scroll ms-md-auto" id="main_navbar">
-    <ul class="navbar-nav">
+  
+  <div class="collapse navbar-collapse td-navbar-nav-scroll" id="main_navbar">
+    <ul class="navbar-nav ms-auto">
       {{ $p := . -}}
       {{ $s := .Site -}}
       {{ range .Site.Menus.main -}}
@@ -74,6 +80,7 @@
 				{{ end -}}
 			</li>
       {{ end -}}
+      
       <!-- Other navbar items -->
       {{ if .Site.Params.versions -}}
       <li class="nav-item dropdown d-none d-lg-block">
@@ -91,9 +98,107 @@
       </li>
       {{ end -}}
     </ul>
+    
+    <!-- Search for mobile - inside collapsible area -->
+    <div class="d-lg-none mt-3">
+      {{ partial "search-input.html" . }}
+    </div>
   </div>
-  <div class="d-none d-lg-block">
-    {{ partial "search-input.html" . }}
+  
+  <!-- Search for desktop - outside collapsible area -->
+  <div class="d-none d-lg-block navbar-search">
+    <div class="search-expandable">
+      <button class="search-toggle-btn d-none" type="button" aria-label="Search">
+        <i class="fas fa-search"></i>
+      </button>
+      <div class="search-input-wrapper">
+        {{ partial "search-input.html" . }}
+      </div>
+    </div>
   </div>
 </div>
 </nav>
+
+<!-- Mobile sidebar menu (DevLake-style slide-out) -->
+<div class="mobile-sidebar-overlay" id="mobile_overlay"></div>
+<div class="mobile-sidebar-menu" id="sidebar_menu">
+  <div class="mobile-sidebar-header">
+    <a class="mobile-sidebar-brand" href="{{ .Site.Home.RelPermalink }}">
+      <span class="navbar-brand__logo navbar-logo">
+        {{- if ne .Site.Params.ui.navbar_logo false -}}
+          {{ with resources.Get "icons/logo.svg" -}}
+            {{ ( . | minify).Content | safeHTML -}}
+          {{ end -}}
+        {{ end -}}
+      </span>
+    </a>
+    <button class="mobile-sidebar-close" type="button" aria-label="Close navigation">
+      <span>&times;</span>
+    </button>
+  </div>
+  
+  <div class="mobile-sidebar-content">
+    <ul class="mobile-nav-list">
+      {{ $p := . -}}
+      {{ $s := .Site -}}
+      {{ range .Site.Menus.main -}}
+        <li class="mobile-nav-item">
+          {{ if .HasChildren }}
+            <div class="mobile-nav-dropdown">
+              <button class="mobile-nav-link mobile-nav-toggle" type="button">
+                {{- .Pre -}}
+                <span>{{ .Name }}</span>
+                <span class="mobile-dropdown-arrow">▼</span>
+              </button>
+              <ul class="mobile-dropdown-menu">
+                {{ $children := .Children.ByWeight -}}
+                {{ if eq .Identifier "releases" -}}
+                  {{ with (partial "releasePages.html" (dict "site" $s)).active -}}
+                    {{ range . -}}
+                      <li><a class="mobile-dropdown-item" href="{{ .RelPermalink }}">{{ .Params.LinkTitle | default .Params.Title }}</a></li>
+                    {{- end -}}
+                  {{ else -}}
+                    {{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" -}}
+                  {{ end -}}
+                {{ end -}}
+                {{ range $children -}}
+                  <li><a class="mobile-dropdown-item" href="{{ .URL }}">{{ .Name }}</a></li>
+                {{- end -}}
+              </ul>
+            </div>
+          {{ else -}}
+            {{ $topHidden := false }}
+            {{ if .Page }}
+            {{ $topHidden = .Page.Params.top_hidden | default false }}
+            {{ else }}
+            {{ $topHidden = .Params.top_hidden | default false }}
+            {{ end }}
+            {{ if not $topHidden }}
+              {{ $active := or ($p.IsMenuCurrent "main" .) ($p.HasMenuCurrent "main" .) -}}
+              {{ $href := "" -}}
+              {{ with .Page -}}
+                {{ $active = or $active ( $.IsDescendant .) -}}
+                {{ $href = .RelPermalink -}}
+              {{ else -}}
+                {{ $href = .URL | relLangURL -}}
+              {{ end -}}
+              {{ $isExternal := ne $baseURL.Host (urls.Parse .URL).Host -}}
+              <a class="mobile-nav-link {{- if $active }} active {{- end }}" 
+                 href="{{ $href }}"
+                 {{- if $isExternal }} target="_blank" rel="noopener" {{- end -}}>
+                {{- .Pre -}}
+                <span>{{ .Name }}</span>
+                {{- .Post -}}
+              </a>
+            {{ end -}}
+          {{ end -}}
+        </li>
+      {{ end -}}
+    </ul>
+    
+    <!-- Mobile search -->
+    <div class="mobile-search-wrapper">
+      {{ partial "search-input.html" . }}
+    </div>
+  </div>
+</div>
