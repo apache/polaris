@@ -45,6 +45,8 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.BasePersistence;
@@ -73,6 +75,8 @@ import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
+import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
@@ -221,6 +225,21 @@ public record TestServices(
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
       ServiceIdentityProvider serviceIdentityProvider = new DefaultServiceIdentityProvider();
 
+      // Create credential vendors for testing
+      @SuppressWarnings("unchecked")
+      Instance<ConnectionCredentialVendor> mockCredentialVendors = Mockito.mock(Instance.class);
+      SigV4ConnectionCredentialVendor sigV4Vendor =
+          new SigV4ConnectionCredentialVendor((destination) -> stsClient, serviceIdentityProvider);
+      Mockito.when(
+              mockCredentialVendors.select(
+                  any(org.apache.polaris.service.credentials.connection.AuthType.Literal.class)))
+          .thenReturn(mockCredentialVendors);
+      Mockito.when(mockCredentialVendors.isUnsatisfied()).thenReturn(false);
+      Mockito.when(mockCredentialVendors.get()).thenReturn(sigV4Vendor);
+
+      PolarisCredentialManager credentialManager =
+          new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
+
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);
 
@@ -256,6 +275,7 @@ public record TestServices(
               resolutionManifestFactory,
               metaStoreManager,
               userSecretsManager,
+              credentialManager,
               authorizer,
               new DefaultCatalogPrefixParser(),
               reservedProperties,

@@ -92,7 +92,9 @@ public interface ServiceIdentityConfiguration {
   /**
    * Retrieves the configuration entry for the given realm identifier.
    *
-   * <p>If the realm has no specific configuration, falls back to the default realm configuration.
+   * <p>If the realm has no specific configuration, falls back to the default realm configuration
+   * ({@code DEFAULT_REALM_KEY}). If the default realm configuration is also not set, returns a
+   * default configuration that uses environment-based credentials.
    *
    * @param realmIdentifier the realm identifier
    * @return the configuration entry containing the realm identifier and its configuration
@@ -100,7 +102,16 @@ public interface ServiceIdentityConfiguration {
   default RealmConfigEntry forRealm(String realmIdentifier) {
     String resolvedRealmIdentifier =
         realms().containsKey(realmIdentifier) ? realmIdentifier : DEFAULT_REALM_KEY;
-    return new RealmConfigEntry(resolvedRealmIdentifier, realms().get(resolvedRealmIdentifier));
+    RealmServiceIdentityConfiguration config;
+    if (realms().containsKey(resolvedRealmIdentifier)) {
+      config = realms().get(resolvedRealmIdentifier);
+    } else {
+      // If no configuration exists for the DEFAULT_REALM_KEY, use the default configuration
+      // This allows using environment-based AWS credentials without explicit configuration
+      config = RealmServiceIdentityConfiguration.defaultConfiguration();
+    }
+
+    return new RealmConfigEntry(resolvedRealmIdentifier, config);
   }
 
   /**

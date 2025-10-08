@@ -65,6 +65,7 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -197,6 +198,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject protected ServiceIdentityProvider serviceIdentityProvider;
+  @Inject protected PolarisCredentialManager credentialManager;
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected FileIOFactory fileIOFactory;
   @Inject protected PolarisEventListener polarisEventListener;
