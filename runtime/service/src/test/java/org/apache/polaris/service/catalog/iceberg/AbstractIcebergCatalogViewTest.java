@@ -49,6 +49,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -107,6 +108,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
+  @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
@@ -180,6 +182,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            serviceIdentityProvider,
             securityContext,
             authorizer,
             reservedProperties);
@@ -199,11 +202,11 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
                         StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
                     "file://tmp")
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityProvider)));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
+            resolutionManifestFactory, securityContext, CATALOG_NAME);
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
 

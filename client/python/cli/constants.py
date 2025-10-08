@@ -202,6 +202,8 @@ class Arguments:
     APPLICABLE = "applicable"
     ATTACHMENT_TYPE = "attachment_type"
     ATTACHMENT_PATH = "attachment_path"
+    REALM = "realm"
+    HEADER = "header"
 
 
 class Hints:
@@ -401,6 +403,9 @@ UNIT_SEPARATOR = chr(0x1F)
 CLIENT_ID_ENV = "CLIENT_ID"
 CLIENT_SECRET_ENV = "CLIENT_SECRET"
 CLIENT_PROFILE_ENV = "CLIENT_PROFILE"
+REALM_ENV = "REALM"
+HEADER_ENV = "HEADER"
+DEFAULT_HEADER = "Polaris-Realm"
 DEFAULT_HOSTNAME = "localhost"
 DEFAULT_PORT = 8181
 CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduser("~/.polaris")

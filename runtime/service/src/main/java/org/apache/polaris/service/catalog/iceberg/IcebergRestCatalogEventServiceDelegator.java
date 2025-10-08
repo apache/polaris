@@ -275,7 +275,8 @@ public class IcebergRestCatalogEventServiceDelegator
             realmContext,
             securityContext);
     polarisEventListener.onAfterLoadTable(
-        new AfterLoadTableEvent(catalogName, namespaceObj, (LoadTableResponse) resp.getEntity()));
+        new AfterLoadTableEvent(
+            catalogName, namespaceObj, table, (LoadTableResponse) resp.getEntity()));
     return resp;
   }
 
@@ -331,7 +332,10 @@ public class IcebergRestCatalogEventServiceDelegator
             prefix, namespace, registerTableRequest, realmContext, securityContext);
     polarisEventListener.onAfterRegisterTable(
         new AfterRegisterTableEvent(
-            catalogName, namespaceObj, (LoadTableResponse) resp.getEntity()));
+            catalogName,
+            namespaceObj,
+            registerTableRequest.name(),
+            (LoadTableResponse) resp.getEntity()));
     return resp;
   }
 
@@ -367,7 +371,11 @@ public class IcebergRestCatalogEventServiceDelegator
             prefix, namespace, table, commitTableRequest, realmContext, securityContext);
     polarisEventListener.onAfterUpdateTable(
         new AfterUpdateTableEvent(
-            catalogName, namespaceObj, table, (LoadTableResponse) resp.getEntity()));
+            catalogName,
+            namespaceObj,
+            table,
+            commitTableRequest,
+            (LoadTableResponse) resp.getEntity()));
     return resp;
   }
 
@@ -385,7 +393,11 @@ public class IcebergRestCatalogEventServiceDelegator
     Response resp =
         delegate.createView(prefix, namespace, createViewRequest, realmContext, securityContext);
     polarisEventListener.onAfterCreateView(
-        new AfterCreateViewEvent(catalogName, namespaceObj, (LoadViewResponse) resp.getEntity()));
+        new AfterCreateViewEvent(
+            catalogName,
+            namespaceObj,
+            createViewRequest.name(),
+            (LoadViewResponse) resp.getEntity()));
     return resp;
   }
 
@@ -436,7 +448,8 @@ public class IcebergRestCatalogEventServiceDelegator
     polarisEventListener.onBeforeLoadView(new BeforeLoadViewEvent(catalogName, namespaceObj, view));
     Response resp = delegate.loadView(prefix, namespace, view, realmContext, securityContext);
     polarisEventListener.onAfterLoadView(
-        new AfterLoadViewEvent(catalogName, namespaceObj, (LoadViewResponse) resp.getEntity()));
+        new AfterLoadViewEvent(
+            catalogName, namespaceObj, view, (LoadViewResponse) resp.getEntity()));
     return resp;
   }
 
@@ -504,7 +517,11 @@ public class IcebergRestCatalogEventServiceDelegator
             prefix, namespace, view, commitViewRequest, realmContext, securityContext);
     polarisEventListener.onAfterReplaceView(
         new AfterReplaceViewEvent(
-            catalogName, namespaceObj, view, (LoadViewResponse) resp.getEntity()));
+            catalogName,
+            namespaceObj,
+            view,
+            commitViewRequest,
+            (LoadViewResponse) resp.getEntity()));
     return resp;
   }
 

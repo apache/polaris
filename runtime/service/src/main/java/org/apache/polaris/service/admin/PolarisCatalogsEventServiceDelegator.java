@@ -27,13 +27,20 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogRole;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
+import org.apache.polaris.core.admin.model.GrantResource;
+import org.apache.polaris.core.admin.model.NamespaceGrant;
+import org.apache.polaris.core.admin.model.PolicyGrant;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
+import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
+import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.events.CatalogsServiceEvents;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -48,8 +55,12 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   @Override
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
-    // TODO: After changing the API response, we should change this to emit the corresponding event.
-    return delegate.createCatalog(request, realmContext, securityContext);
+    polarisEventListener.onBeforeCreateCatalog(
+        new CatalogsServiceEvents.BeforeCreateCatalogEvent(request.getCatalog().getName()));
+    Response resp = delegate.createCatalog(request, realmContext, securityContext);
+    polarisEventListener.onAfterCreateCatalog(
+        new CatalogsServiceEvents.AfterCreateCatalogEvent((Catalog) resp.getEntity()));
+    return resp;
   }
 
   @Override
@@ -103,8 +114,14 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       CreateCatalogRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    // TODO: After changing the API response, we should change this to emit the corresponding event.
-    return delegate.createCatalogRole(catalogName, request, realmContext, securityContext);
+    polarisEventListener.onBeforeCreateCatalogRole(
+        new CatalogsServiceEvents.BeforeCreateCatalogRoleEvent(
+            catalogName, request.getCatalogRole().getName()));
+    Response resp = delegate.createCatalogRole(catalogName, request, realmContext, securityContext);
+    polarisEventListener.onAfterCreateCatalogRole(
+        new CatalogsServiceEvents.AfterCreateCatalogRoleEvent(
+            catalogName, (CatalogRole) resp.getEntity()));
+    return resp;
   }
 
   @Override
@@ -175,9 +192,20 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       AddGrantRequest grantRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    // TODO: After changing the API response, we should change this to emit the corresponding event.
-    return delegate.addGrantToCatalogRole(
-        catalogName, catalogRoleName, grantRequest, realmContext, securityContext);
+    polarisEventListener.onBeforeAddGrantToCatalogRole(
+        new CatalogsServiceEvents.BeforeAddGrantToCatalogRoleEvent(
+            catalogName, catalogRoleName, grantRequest));
+    Response resp =
+        delegate.addGrantToCatalogRole(
+            catalogName, catalogRoleName, grantRequest, realmContext, securityContext);
+    GrantResource grantResource = grantRequest.getGrant();
+    polarisEventListener.onAfterAddGrantToCatalogRole(
+        new CatalogsServiceEvents.AfterAddGrantToCatalogRoleEvent(
+            catalogName,
+            catalogRoleName,
+            getPrivilegeFromGrantResource(grantResource),
+            grantResource));
+    return resp;
   }
 
   @Override
@@ -188,9 +216,21 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RevokeGrantRequest grantRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    // TODO: After changing the API response, we should change this to emit the corresponding event.
-    return delegate.revokeGrantFromCatalogRole(
-        catalogName, catalogRoleName, cascade, grantRequest, realmContext, securityContext);
+    polarisEventListener.onBeforeRevokeGrantFromCatalogRole(
+        new CatalogsServiceEvents.BeforeRevokeGrantFromCatalogRoleEvent(
+            catalogName, catalogRoleName, grantRequest, cascade));
+    Response resp =
+        delegate.revokeGrantFromCatalogRole(
+            catalogName, catalogRoleName, cascade, grantRequest, realmContext, securityContext);
+    GrantResource grantResource = grantRequest.getGrant();
+    polarisEventListener.onAfterRevokeGrantFromCatalogRole(
+        new CatalogsServiceEvents.AfterRevokeGrantFromCatalogRoleEvent(
+            catalogName,
+            catalogRoleName,
+            getPrivilegeFromGrantResource(grantResource),
+            grantResource,
+            cascade));
+    return resp;
   }
 
   @Override
@@ -226,5 +266,19 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
     polarisEventListener.onAfterListGrantsForCatalogRole(
         new CatalogsServiceEvents.AfterListGrantsForCatalogRoleEvent(catalogName, catalogRoleName));
     return resp;
+  }
+
+  private PolarisPrivilege getPrivilegeFromGrantResource(GrantResource grantResource) {
+    return switch (grantResource) {
+      case ViewGrant viewGrant -> PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
+      case TableGrant tableGrant -> PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
+      case NamespaceGrant namespaceGrant ->
+          PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
+      case CatalogGrant catalogGrant ->
+          PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
+      case PolicyGrant policyGrant ->
+          PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+      default -> null;
+    };
   }
 }

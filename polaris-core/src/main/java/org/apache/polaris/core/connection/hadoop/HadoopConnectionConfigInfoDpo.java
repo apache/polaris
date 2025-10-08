@@ -32,6 +32,7 @@ import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -88,7 +89,8 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   }
 
   @Override
-  public ConnectionConfigInfo asConnectionConfigInfoModel() {
+  public ConnectionConfigInfo asConnectionConfigInfoModel(
+      ServiceIdentityProvider serviceIdentityProvider) {
     return HadoopConnectionConfigInfo.builder()
         .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.HADOOP)
         .setUri(getUri())
@@ -97,7 +99,9 @@ public class HadoopConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
             getAuthenticationParameters().asAuthenticationParametersModel())
         .setServiceIdentity(
             Optional.ofNullable(getServiceIdentity())
-                .map(ServiceIdentityInfoDpo::asServiceIdentityInfoModel)
+                .map(
+                    serviceIdentityInfoDpo ->
+                        serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
                 .orElse(null))
         .build();
   }

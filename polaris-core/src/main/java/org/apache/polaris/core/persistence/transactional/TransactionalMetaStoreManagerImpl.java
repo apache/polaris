@@ -33,7 +33,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -1416,10 +1418,30 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     if (refreshEntityToDrop.getType() == PolarisEntityType.CATALOG) {
       // the id of the catalog
       long catalogId = refreshEntityToDrop.getId();
+      CatalogEntity catalogEntityToDrop = CatalogEntity.of(refreshEntityToDrop);
 
-      // if not all namespaces are dropped, we cannot drop this catalog
-      if (ms.hasChildrenInCurrentTxn(callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
-        return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
+      // For passthrough facade catalogs, all catalog level entities, except catalog roles, are
+      // passthrough entities that are not source-of-truth
+      // TODO: Temporarily allow dropping a catalog with passthrough entities remaining, in the long
+      // term we need to cleanup them up to avoid accumulation in the metastore
+      if (!catalogEntityToDrop.isPassthroughFacade()
+          || !callCtx
+              .getRealmConfig()
+              .getConfig(
+                  FeatureConfiguration.ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG,
+                  catalogEntityToDrop)) {
+        // if not all namespaces are dropped, we cannot drop this catalog
+        if (ms.hasChildrenInCurrentTxn(
+            callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
+          return new DropEntityResult(
+              BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY,
+              catalogEntityToDrop.isPassthroughFacade()
+                  ? String.format(
+                      "Set %s to true to drop non-empty passthrough facade catalogs",
+                      FeatureConfiguration.ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG
+                          .key())
+                  : null);
+        }
       }
 
       // get the list of catalog roles, at most 2

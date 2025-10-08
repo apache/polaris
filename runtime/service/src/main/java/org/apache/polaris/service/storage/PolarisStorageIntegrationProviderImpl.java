@@ -115,7 +115,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                   @Nonnull Set<String> allowedReadLocations,
                   @Nonnull Set<String> allowedWriteLocations,
                   Optional<String> refreshCredentialsEndpoint) {
-                return AccessConfig.builder().build();
+                return AccessConfig.builder().supportsCredentialVending(false).build();
               }
 
               @Override

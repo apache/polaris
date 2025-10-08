@@ -47,12 +47,6 @@ public interface PolarisCredential extends Credential {
   @Nullable
   String getPrincipalName();
 
-  /**
-   * The principal roles present in the token.
-   *
-   * <p>When using the default authenticator, the special {@link
-   * DefaultAuthenticator#PRINCIPAL_ROLE_ALL} can be used to denote a request for all principal
-   * roles that the principal has access to.
-   */
+  /** The principal roles, or empty if the principal has no roles. */
   Set<String> getPrincipalRoles();
 }

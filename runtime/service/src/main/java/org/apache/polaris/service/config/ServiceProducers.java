@@ -60,6 +60,7 @@ import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
 import org.apache.polaris.service.auth.Authenticator;
+import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
 import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 import org.apache.polaris.service.auth.internal.broker.TokenBrokerFactory;
@@ -107,33 +108,6 @@ public class ServiceProducers {
   }
 
   @Produces
-  @ApplicationScoped
-  public ResolverFactory resolverFactory(
-      PolarisDiagnostics diagnostics,
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisMetaStoreManager polarisMetaStoreManager) {
-    return (callContext, securityContext, referenceCatalogName) -> {
-      EntityCache entityCache =
-          metaStoreManagerFactory.getOrCreateEntityCache(
-              callContext.getRealmContext(), callContext.getRealmConfig());
-      return new Resolver(
-          diagnostics,
-          callContext.getPolarisCallContext(),
-          polarisMetaStoreManager,
-          securityContext,
-          entityCache,
-          referenceCatalogName);
-    };
-  }
-
-  @Produces
-  @ApplicationScoped
-  public ResolutionManifestFactory resolutionManifestFactory(
-      PolarisDiagnostics diagnostics, ResolverFactory resolverFactory) {
-    return new ResolutionManifestFactoryImpl(diagnostics, resolverFactory);
-  }
-
-  @Produces
   @Singleton
   public PolarisDiagnostics polarisDiagnostics() {
     return new PolarisDefaultDiagServiceImpl();
@@ -167,6 +141,34 @@ public class ServiceProducers {
   @RequestScoped
   public PolarisAuthorizer polarisAuthorizer(RealmConfig realmConfig) {
     return new PolarisAuthorizerImpl(realmConfig);
+  }
+
+  @Produces
+  @RequestScoped
+  public ResolverFactory resolverFactory(
+      PolarisDiagnostics diagnostics,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      CallContext callContext,
+      PolarisMetaStoreManager polarisMetaStoreManager) {
+    EntityCache entityCache =
+        metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
+    return (securityContext, referenceCatalogName) ->
+        new Resolver(
+            diagnostics,
+            callContext.getPolarisCallContext(),
+            polarisMetaStoreManager,
+            securityContext,
+            entityCache,
+            referenceCatalogName);
+  }
+
+  @Produces
+  @RequestScoped
+  public ResolutionManifestFactory resolutionManifestFactory(
+      PolarisDiagnostics diagnostics, RealmContext realmContext, ResolverFactory resolverFactory) {
+    return new ResolutionManifestFactoryImpl(diagnostics, realmContext, resolverFactory);
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans
@@ -386,8 +388,7 @@ public class ServiceProducers {
 
   @Produces
   public OidcTenantResolver oidcTenantResolver(
-      org.apache.polaris.service.auth.external.OidcConfiguration config,
-      @Any Instance<OidcTenantResolver> resolvers) {
+      OidcConfiguration config, @Any Instance<OidcTenantResolver> resolvers) {
     return resolvers.select(Identifier.Literal.of(config.tenantResolver())).get();
   }
 

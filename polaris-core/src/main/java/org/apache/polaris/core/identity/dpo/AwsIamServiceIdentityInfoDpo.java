@@ -21,26 +21,26 @@ package org.apache.polaris.core.identity.dpo;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
-import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.secrets.SecretReference;
 
 /**
  * Persistence-layer representation of an AWS IAM service identity used by Polaris.
  *
- * <p>This class models an AWS IAM identity (either a user or role) and extends {@link
- * ServiceIdentityInfoDpo}. It is typically used internally to store a reference to the actual
- * credential (e.g., via {@link SecretReference}).
+ * <p>This class stores only the identity type and a {@link SecretReference} that serves as a unique
+ * identifier for this service identity instance. The reference is used to look up the identity's
+ * configuration at runtime. The actual credentials (AWS access keys) and metadata (IAM ARN) are not
+ * persisted in this object.
  *
- * <p>During the runtime, it will be resolved to an actual ResolvedAwsIamServiceIdentityInfo object
- * which contains the actual service identity info (e.g., the IAM user arn) and the corresponding
- * credential.
+ * <p>At runtime, a ServiceIdentityProvider uses the reference to look up the configuration and
+ * retrieve the full {@link AwsIamServiceIdentityCredential} which contains both the identity
+ * metadata (e.g., IAM ARN) and the actual AWS credentials needed for authentication.
  *
- * <p>Instances of this class are convertible to the public API model {@link
- * AwsIamServiceIdentityInfo}.
+ * <p>Instances of this class can be converted to the public API model {@link
+ * AwsIamServiceIdentityInfo} via a ServiceIdentityProvider.
  */
 public class AwsIamServiceIdentityInfoDpo extends ServiceIdentityInfoDpo {
 
@@ -49,15 +49,6 @@ public class AwsIamServiceIdentityInfoDpo extends ServiceIdentityInfoDpo {
       @JsonProperty(value = "identityInfoReference", required = false) @Nullable
           SecretReference identityInfoReference) {
     super(ServiceIdentityType.AWS_IAM.getCode(), identityInfoReference);
-  }
-
-  @Override
-  public @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel() {
-    return AwsIamServiceIdentityInfo.builder()
-        .setIdentityType(ServiceIdentityInfo.IdentityTypeEnum.AWS_IAM)
-        // TODO: inject service identity info
-        .setIamArn("")
-        .build();
   }
 
   @Override
