@@ -136,7 +136,7 @@ public class ManagementApi extends PolarisRestApi {
                 "v1/catalogs/{cat}/catalog-roles/{role}/grants",
                 Map.of("cat", catalogName, "role", catalogRoleName))
             .post(Entity.json(grant))) {
-      assertThat(response).returns(CREATED.getStatusCode(), Response::getStatus);
+      assertThat(response).returns(NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
