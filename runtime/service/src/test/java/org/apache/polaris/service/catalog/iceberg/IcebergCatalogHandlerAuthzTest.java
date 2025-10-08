@@ -1192,7 +1192,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         reservedProperties,
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
-        polarisEventListener);
+        polarisEventListener,
+        accessConfigProvider);
   }
 
   @Test
