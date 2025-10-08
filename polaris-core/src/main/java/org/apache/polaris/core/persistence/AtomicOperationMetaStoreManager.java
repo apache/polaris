@@ -1766,21 +1766,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   @Override
   public ResolvedEntitiesResult loadResolvedEntities(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
-    BasePersistence ms = callCtx.getMetaStore();
-    List<PolarisEntityId> entityIds =
-        entityLookupRecords.stream()
-            .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
-            .collect(Collectors.toList());
-    Function<Integer, PolarisEntityType> entityTypeForIndex =
-        i -> entityLookupRecords.get(i).getType();
-    return getResolvedEntitiesResult(callCtx, ms, entityIds, entityTypeForIndex);
-  }
-
-  @Nonnull
-  @Override
-  public ResolvedEntitiesResult loadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityType entityType,
       @Nonnull List<PolarisEntityId> entityIds) {
     BasePersistence ms = callCtx.getMetaStore();

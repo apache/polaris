@@ -28,7 +28,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntityId;
@@ -499,55 +498,6 @@ public class InMemoryEntityCache implements EntityCache {
         .map(
             id -> {
               ResolvedPolarisEntity entity = resolvedEntities.get(id);
-              return entity == null ? null : new EntityCacheLookupResult(entity, true);
-            })
-        .collect(Collectors.toList());
-  }
-
-  @Override
-  public List<EntityCacheLookupResult> getOrLoadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityNameLookupRecord> lookupRecords) {
-    Map<PolarisEntityId, EntityNameLookupRecord> entityIdMap =
-        lookupRecords.stream()
-            .collect(
-                Collectors.toMap(
-                    e -> new PolarisEntityId(e.getCatalogId(), e.getId()),
-                    Function.identity(),
-                    (a, b) -> a));
-    Function<List<PolarisEntityId>, ResolvedEntitiesResult> loaderFunc =
-        idsToLoad ->
-            polarisMetaStoreManager.loadResolvedEntities(
-                callCtx, idsToLoad.stream().map(entityIdMap::get).collect(Collectors.toList()));
-
-    // use a map to collect cached entries to avoid concurrency problems in case a second thread is
-    // trying to populate
-    // the cache from a different snapshot
-    Map<PolarisEntityId, ResolvedPolarisEntity> resolvedEntities = new HashMap<>();
-    List<PolarisEntityId> entityIds =
-        lookupRecords.stream()
-            .map(e -> new PolarisEntityId(e.getCatalogId(), e.getId()))
-            .collect(Collectors.toList());
-    boolean stateResolved = false;
-    for (int i = 0; i < MAX_CACHE_REFRESH_ATTEMPTS; i++) {
-      if (isCacheStateValid(callCtx, resolvedEntities, entityIds, loaderFunc)) {
-        stateResolved = true;
-        break;
-      }
-    }
-    if (!stateResolved) {
-      LOGGER.warn(
-          "Unable to resolve entities in cache after multiple attempts {} - resolved: {}",
-          entityIds,
-          resolvedEntities);
-      diagnostics.fail("cannot_resolve_all_entities", "Unable to resolve entities in cache");
-    }
-
-    return lookupRecords.stream()
-        .map(
-            lookupRecord -> {
-              ResolvedPolarisEntity entity =
-                  resolvedEntities.get(
-                      new PolarisEntityId(lookupRecord.getCatalogId(), lookupRecord.getId()));
               return entity == null ? null : new EntityCacheLookupResult(entity, true);
             })
         .collect(Collectors.toList());

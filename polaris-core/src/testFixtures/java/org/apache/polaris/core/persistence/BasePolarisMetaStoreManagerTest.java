@@ -240,12 +240,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   /** test batch entity load */
   @Test
-  protected void testLoadResolvedEntities() {
-    polarisTestMetaStoreManager.testLoadResolvedEntities();
-  }
-
-  /** test batch entity load */
-  @Test
   protected void testLoadResolvedEntitiesById() {
     polarisTestMetaStoreManager.testLoadResolvedEntitiesById();
   }

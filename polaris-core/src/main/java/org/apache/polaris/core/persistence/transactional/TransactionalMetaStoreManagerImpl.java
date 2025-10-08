@@ -2340,22 +2340,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   @Override
   public ResolvedEntitiesResult loadResolvedEntities(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
-    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
-    List<PolarisEntityId> entityIds =
-        entityLookupRecords.stream()
-            .map(r -> new PolarisEntityId(r.getCatalogId(), r.getId()))
-            .collect(Collectors.toList());
-    Function<Integer, PolarisEntityType> entityTypeForIndex =
-        i -> entityLookupRecords.get(i).getType();
-    return ms.runInReadTransaction(
-        callCtx, () -> getResolvedEntitiesResult(callCtx, ms, entityIds, entityTypeForIndex));
-  }
-
-  @Nonnull
-  @Override
-  public ResolvedEntitiesResult loadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityType entityType,
       @Nonnull List<PolarisEntityId> entityIds) {
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
