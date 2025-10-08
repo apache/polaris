@@ -187,9 +187,6 @@ public class OpaPolarisAuthorizerTest {
     assertTrue(actor.has("roles"), "Actor should have 'roles' field");
     assertTrue(actor.get("roles").isArray(), "Roles should be an array");
     assertEquals(2, actor.get("roles").size());
-    assertTrue(actor.has("properties"), "Actor should have 'properties' field");
-    assertEquals("analytics", actor.get("properties").get("department").asText());
-    assertEquals("senior", actor.get("properties").get("level").asText());
 
     // Verify action
     var action = input.get("action");
@@ -231,10 +228,6 @@ public class OpaPolarisAuthorizerTest {
         "NAMESPACE", namespaceParent.get("type").asText(), "Second parent should be namespace");
     assertEquals(
         "sales_data", namespaceParent.get("name").asText(), "Namespace name should be sales_data");
-
-    // Verify properties field exists
-    assertTrue(target.has("properties"), "Target should have 'properties' field");
-    assertTrue(target.get("properties").isObject(), "Properties should be an object");
 
     var secondaries = resource.get("secondaries");
     assertTrue(secondaries.isArray(), "Secondaries should be an array");
@@ -341,8 +334,6 @@ public class OpaPolarisAuthorizerTest {
     var actor = input.get("actor");
     assertEquals("bob", actor.get("principal").asText());
     assertEquals(2, actor.get("roles").size());
-    assertEquals("ml", actor.get("properties").get("team").asText());
-    assertEquals("forecasting", actor.get("properties").get("project").asText());
 
     // Verify action
     var action = input.get("action");
@@ -389,10 +380,6 @@ public class OpaPolarisAuthorizerTest {
         "machine_learning",
         teamParent.get("name").asText(),
         "Team name should be machine_learning");
-
-    // Verify properties field exists
-    assertTrue(target.has("properties"), "Target should have 'properties' field");
-    assertTrue(target.get("properties").isObject(), "Properties should be an object");
 
     var secondaries = resource.get("secondaries");
     assertTrue(secondaries.isArray(), "Secondaries should be an array");

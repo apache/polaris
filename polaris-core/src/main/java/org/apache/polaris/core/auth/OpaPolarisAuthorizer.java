@@ -278,7 +278,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   /**
    * Builds the actor section of the OPA input JSON.
    *
-   * <p>Includes principal name, roles, and all properties as a generic field.
+   * <p>Includes principal name, and roles as a generic field.
    *
    * @param principal the principal requesting authorization
    * @return the actor node for OPA input
@@ -289,11 +289,6 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
     ArrayNode roles = objectMapper.createArrayNode();
     for (String role : principal.getRoles()) roles.add(role);
     actor.set("roles", roles);
-    ObjectNode propertiesNode = objectMapper.createObjectNode();
-    for (var entry : principal.getProperties().entrySet()) {
-      propertiesNode.put(entry.getKey(), entry.getValue());
-    }
-    actor.set("properties", propertiesNode);
     return actor;
   }
 
@@ -348,11 +343,6 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
         }
         node.set("parents", parentsArray);
       }
-      ObjectNode props = objectMapper.createObjectNode();
-      for (var entry : entity.getPropertiesAsMap().entrySet()) {
-        props.put(entry.getKey(), entry.getValue());
-      }
-      node.set("properties", props);
     }
     return node;
   }
