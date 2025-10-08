@@ -28,7 +28,6 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -378,15 +377,6 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull PolarisEntityType entityType,
       @Nonnull String entityName) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "loadResolvedEntityByName");
-    return null;
-  }
-
-  @Nonnull
-  @Override
-  public ResolvedEntitiesResult loadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords) {
-    diagnostics.fail("illegal_method_in_transaction_workspace", "loadEntities");
     return null;
   }
 

@@ -22,7 +22,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -111,24 +110,4 @@ public interface EntityCache {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityType entityType,
       @Nonnull List<PolarisEntityId> entityIds);
-
-  /**
-   * Load multiple entities by {@link EntityNameLookupRecord}, returning those found in the cache
-   * and loading those not found.
-   *
-   * <p>see note in {@link #getOrLoadResolvedEntities(PolarisCallContext, PolarisEntityType, List)}
-   * re: the need to validate cache contents against the {@link
-   * org.apache.polaris.core.persistence.PolarisMetaStoreManager#loadEntitiesChangeTracking(PolarisCallContext,
-   * List)} to avoid invalid authorization or conflict detection decisions based on stale entries.
-   *
-   * @param callCtx the Polaris call context
-   * @param lookupRecords the list of entity name to load
-   * @return the list of resolved entities, in the same order as the requested entity records. As in
-   *     {@link
-   *     org.apache.polaris.core.persistence.PolarisMetaStoreManager#loadResolvedEntities(PolarisCallContext,
-   *     PolarisEntityType, List)}, elements in the returned list may be null if the corresponding
-   *     entity id does not exist.
-   */
-  List<EntityCacheLookupResult> getOrLoadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityNameLookupRecord> lookupRecords);
 }

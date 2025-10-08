@@ -34,7 +34,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -55,8 +54,6 @@ import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
@@ -582,63 +579,7 @@ public class InMemoryEntityCacheTest {
   }
 
   @Test
-  public void testBatchLoadByNameLookupRecords() {
-    // get a new cache
-    InMemoryEntityCache cache = this.allocateNewCache();
-
-    // Load catalog into cache
-    EntityCacheLookupResult lookup =
-        cache.getOrLoadEntityByName(
-            this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
-    assertThat(lookup).isNotNull();
-    PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
-
-    // Get some entities that exist in the test setup
-    PolarisBaseEntity N1 =
-        this.tm.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
-    PolarisBaseEntity N2 =
-        this.tm.ensureExistsByName(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
-    PolarisBaseEntity R1 =
-        this.tm.ensureExistsByName(List.of(catalog), PolarisEntityType.CATALOG_ROLE, "R1");
-
-    // Pre-load N1 into cache by name
-    cache.getOrLoadEntityByName(
-        this.callCtx,
-        new EntityCacheByNameKey(
-            catalog.getId(), catalog.getId(), PolarisEntityType.NAMESPACE, "N1"));
-
-    // Create list of EntityNameLookupRecords
-    List<EntityNameLookupRecord> lookupRecords =
-        List.of(
-            new EntityNameLookupRecord(N1), // already cached
-            new EntityNameLookupRecord(N2), // not cached
-            new EntityNameLookupRecord(R1) // not cached
-            );
-
-    // Test batch loading by name lookup records
-    List<EntityCacheLookupResult> results =
-        cache.getOrLoadResolvedEntities(this.callCtx, lookupRecords);
-
-    // Verify all entities were found
-    assertThat(results).hasSize(3);
-    assertThat(results.get(0)).isNotNull(); // N1 - was cached
-    assertThat(results.get(1)).isNotNull(); // N2 - was loaded
-    assertThat(results.get(2)).isNotNull(); // R1 - was loaded
-
-    // Verify the entities are correct
-    assertThat(results.get(0).getCacheEntry().getEntity().getId()).isEqualTo(N1.getId());
-    assertThat(results.get(1).getCacheEntry().getEntity().getId()).isEqualTo(N2.getId());
-    assertThat(results.get(2).getCacheEntry().getEntity().getId()).isEqualTo(R1.getId());
-
-    // All should be cache hits now
-    assertThat(results.get(0).isCacheHit()).isTrue();
-    assertThat(results.get(1).isCacheHit()).isTrue();
-    assertThat(results.get(2).isCacheHit()).isTrue();
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"id", "name"})
-  public void testBatchLoadWithStaleVersions(String loadType) {
+  public void testBatchLoadWithStaleVersions() {
     // get a new cache
     InMemoryEntityCache cache = this.allocateNewCache();
 
@@ -680,17 +621,12 @@ public class InMemoryEntityCacheTest {
     assertThat(T6v2.getEntityVersion()).isGreaterThan(T6v1.getEntityVersion());
 
     List<EntityCacheLookupResult> results;
-    if (loadType.equals("id")) {
-      // Create entity ID list with the updated entity
-      List<PolarisEntityId> entityIds = List.of(getPolarisEntityId(T6v2));
+    // Create entity ID list with the updated entity
+    List<PolarisEntityId> entityIds = List.of(getPolarisEntityId(T6v2));
 
-      // Call batch load - this should detect the stale version and reload
-      results =
-          cache.getOrLoadResolvedEntities(this.callCtx, PolarisEntityType.TABLE_LIKE, entityIds);
-    } else {
-      results =
-          cache.getOrLoadResolvedEntities(this.callCtx, List.of(new EntityNameLookupRecord(T6v2)));
-    }
+    // Call batch load - this should detect the stale version and reload
+    results =
+        cache.getOrLoadResolvedEntities(this.callCtx, PolarisEntityType.TABLE_LIKE, entityIds);
 
     // Verify the entity was reloaded with the new version
     assertThat(results).hasSize(1);
@@ -706,9 +642,8 @@ public class InMemoryEntityCacheTest {
     assertThat(cachedT6.getEntity().getEntityVersion()).isEqualTo(T6v2.getEntityVersion());
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"id", "name"})
-  public void testBatchLoadWithStaleGrantVersions(String loadType) {
+  @Test
+  public void testBatchLoadWithStaleGrantVersions() {
     // get a new cache
     InMemoryEntityCache cache = this.allocateNewCache();
 
@@ -745,19 +680,12 @@ public class InMemoryEntityCacheTest {
         this.tm.ensureExistsByName(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
     assertThat(N2Updated.getGrantRecordsVersion()).isGreaterThan(originalGrantVersion);
 
-    List<EntityCacheLookupResult> results;
-    if (loadType.equals("id")) {
-      // Create entity ID list
-      List<PolarisEntityId> entityIds = List.of(getPolarisEntityId(N2Updated));
+    // Create entity ID list
+    List<PolarisEntityId> entityIds = List.of(getPolarisEntityId(N2Updated));
 
-      // Call batch load - this should detect the stale grant version and reload
-      results =
-          cache.getOrLoadResolvedEntities(this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
-    } else {
-      results =
-          cache.getOrLoadResolvedEntities(
-              this.callCtx, List.of(new EntityNameLookupRecord(N2Updated)));
-    }
+    // Call batch load - this should detect the stale grant version and reload
+    List<EntityCacheLookupResult> results =
+        cache.getOrLoadResolvedEntities(this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
 
     // Verify the entity was reloaded with the new grant version
     assertThat(results).hasSize(1);
@@ -778,9 +706,8 @@ public class InMemoryEntityCacheTest {
         .isEqualTo(N2Updated.getGrantRecordsVersion());
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"id", "name"})
-  public void testBatchLoadVersionRetryLogic(String loadType) {
+  @Test
+  public void testBatchLoadVersionRetryLogic() {
     // get a new cache
     PolarisMetaStoreManager metaStoreManager = Mockito.spy(this.metaStoreManager);
     InMemoryEntityCache cache =
@@ -833,24 +760,13 @@ public class InMemoryEntityCacheTest {
     assertThat(N2v2.getEntityVersion()).isGreaterThan(originalEntityVersion);
     assertThat(N2v3.getEntityVersion()).isGreaterThan(N2v2.getEntityVersion());
 
-    List<EntityCacheLookupResult> results;
-    if (loadType.equals("id")) {
-      // Create entity ID list
-      List<PolarisEntityId> entityIds =
-          List.of(getPolarisEntityId(catalog), getPolarisEntityId(N1), getPolarisEntityId(N2));
+    // Create entity ID list
+    List<PolarisEntityId> entityIds =
+        List.of(getPolarisEntityId(catalog), getPolarisEntityId(N1), getPolarisEntityId(N2));
 
-      // Call batch load - this should detect the stale versions and reload until consistent
-      results =
-          cache.getOrLoadResolvedEntities(this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
-    } else {
-      results =
-          cache.getOrLoadResolvedEntities(
-              this.callCtx,
-              List.of(
-                  new EntityNameLookupRecord(catalog),
-                  new EntityNameLookupRecord(N1),
-                  new EntityNameLookupRecord(N2)));
-    }
+    // Call batch load - this should detect the stale versions and reload until consistent
+    List<EntityCacheLookupResult> results =
+        cache.getOrLoadResolvedEntities(this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
 
     // Verify the entity was reloaded with the latest version
     assertThat(results).hasSize(3);
@@ -871,9 +787,8 @@ public class InMemoryEntityCacheTest {
     assertThat(cachedN2.getEntity().getEntityVersion()).isEqualTo(N2v3.getEntityVersion());
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"id", "name"})
-  public void testBatchLoadVersionRetryFailsAfterMaxAttempts(String loadType) {
+  @Test
+  public void testBatchLoadVersionRetryFailsAfterMaxAttempts() {
     // get a new cache
     PolarisMetaStoreManager metaStoreManager = Mockito.spy(this.metaStoreManager);
     InMemoryEntityCache cache =
@@ -922,35 +837,22 @@ public class InMemoryEntityCacheTest {
     assertThat(N2v2.getEntityVersion()).isGreaterThan(originalEntityVersion);
     assertThat(N2v3.getEntityVersion()).isGreaterThan(N2v2.getEntityVersion());
 
-    if (loadType.equals("id")) {
-      // Create entity ID list
-      List<PolarisEntityId> entityIds =
-          List.of(getPolarisEntityId(catalog), getPolarisEntityId(N1), getPolarisEntityId(N2));
-      Assertions.assertThatThrownBy(
-              () ->
-                  cache.getOrLoadResolvedEntities(
-                      this.callCtx, PolarisEntityType.NAMESPACE, entityIds))
-          .isInstanceOf(RuntimeException.class);
-    } else {
-      Assertions.assertThatThrownBy(
-              () ->
-                  cache.getOrLoadResolvedEntities(
-                      this.callCtx,
-                      List.of(
-                          new EntityNameLookupRecord(catalog),
-                          new EntityNameLookupRecord(N1),
-                          new EntityNameLookupRecord(N2))))
-          .isInstanceOf(RuntimeException.class);
-    }
+    // Create entity ID list
+    List<PolarisEntityId> entityIds =
+        List.of(getPolarisEntityId(catalog), getPolarisEntityId(N1), getPolarisEntityId(N2));
+    Assertions.assertThatThrownBy(
+            () ->
+                cache.getOrLoadResolvedEntities(
+                    this.callCtx, PolarisEntityType.NAMESPACE, entityIds))
+        .isInstanceOf(RuntimeException.class);
   }
 
   private static PolarisEntityId getPolarisEntityId(PolarisBaseEntity catalog) {
     return new PolarisEntityId(catalog.getCatalogId(), catalog.getId());
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"id", "name"})
-  public void testConcurrentClientLoadingBehavior(String loadType) throws Exception {
+  @Test
+  public void testConcurrentClientLoadingBehavior() throws Exception {
     // Load catalog into cache
     EntityCacheLookupResult lookup =
         allocateNewCache()
@@ -1080,17 +982,10 @@ public class InMemoryEntityCacheTest {
             throw e;
           }
         };
-    if (loadType.equals("id")) {
-      Mockito.doAnswer(client1Answer)
-          .doAnswer(client2Answer)
-          .when(mockedMetaStoreManager)
-          .loadResolvedEntities(Mockito.any(), Mockito.any(), Mockito.any());
-    } else {
-      Mockito.doAnswer(client1Answer)
-          .doAnswer(client2Answer)
-          .when(mockedMetaStoreManager)
-          .loadResolvedEntities(Mockito.any(), Mockito.any());
-    }
+    Mockito.doAnswer(client1Answer)
+        .doAnswer(client2Answer)
+        .when(mockedMetaStoreManager)
+        .loadResolvedEntities(Mockito.any(), Mockito.any(), Mockito.any());
 
     // ExecutorService isn't AutoCloseable in JDK 11 :(
     ExecutorService executorService = Executors.newFixedThreadPool(2);
@@ -1103,19 +998,8 @@ public class InMemoryEntityCacheTest {
                   // Client1 calls getOrLoadResolvedEntities
                   // - loadEntitiesChangeTracking returns older version for N2
                   // - loadResolvedEntities will block until client2 completes
-                  if (loadType.equals("id")) {
-                    return cache.getOrLoadResolvedEntities(
-                        this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
-                  } else {
-                    return cache.getOrLoadResolvedEntities(
-                        this.callCtx,
-                        List.of(
-                            new EntityNameLookupRecord(N1),
-                            new EntityNameLookupRecord(N2),
-                            new EntityNameLookupRecord(N3),
-                            new EntityNameLookupRecord(N5),
-                            new EntityNameLookupRecord(N5_N6)));
-                  }
+                  return cache.getOrLoadResolvedEntities(
+                      this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
                 } catch (Exception e) {
                   client1Exception.set(e);
                   return null;
@@ -1131,19 +1015,8 @@ public class InMemoryEntityCacheTest {
                   // - loadEntitiesChangeTracking returns newer version for N2
                   // - loadResolvedEntities executes normally and signals client1 when done
                   client1ChangeTrackingResult.await();
-                  if (loadType.equals("id")) {
-                    return cache.getOrLoadResolvedEntities(
-                        this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
-                  } else {
-                    return cache.getOrLoadResolvedEntities(
-                        this.callCtx,
-                        List.of(
-                            new EntityNameLookupRecord(N1),
-                            new EntityNameLookupRecord(N2),
-                            new EntityNameLookupRecord(N3),
-                            new EntityNameLookupRecord(N5),
-                            new EntityNameLookupRecord(N5_N6)));
-                  }
+                  return cache.getOrLoadResolvedEntities(
+                      this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
                 } catch (Exception e) {
                   client2Exception.set(e);
                   client1ResolvedEntitiesBlocker.release(); // Release in case of error

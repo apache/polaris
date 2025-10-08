@@ -26,7 +26,6 @@ import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
-import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -418,21 +417,6 @@ public interface PolarisMetaStoreManager
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull String entityName);
-
-  /**
-   * Load a batch of resolved entities given their {@link EntityNameLookupRecord}. Will return an
-   * empty list if the input list is empty. Order in that returned list is the same as the input
-   * list. Some elements might be NULL if the entity has been dropped.
-   *
-   * @param callCtx call context
-   * @param entityLookupRecords the list of entity lookup records to load
-   * @return a non-null list of entities corresponding to the lookup keys. Some elements might be
-   *     NULL if the entity has been dropped.
-   */
-  @Nonnull
-  ResolvedEntitiesResult loadResolvedEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<EntityNameLookupRecord> entityLookupRecords);
 
   /**
    * Load a batch of resolved entities of a specified entity type given their {@link
