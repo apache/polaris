@@ -215,7 +215,6 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     this.catalog =
         new IcebergCatalog(
             diagServices,
-            storageCredentialCache,
             resolverFactory,
             metaStoreManager,
             polarisContext,

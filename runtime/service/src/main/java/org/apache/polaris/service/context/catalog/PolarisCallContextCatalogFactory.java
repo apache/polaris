@@ -32,7 +32,6 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -48,7 +47,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
-  private final StorageCredentialCache storageCredentialCache;
   private final ResolverFactory resolverFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final PolarisEventListener polarisEventListener;
@@ -56,14 +54,12 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   @Inject
   public PolarisCallContextCatalogFactory(
       PolarisDiagnostics diagnostics,
-      StorageCredentialCache storageCredentialCache,
       ResolverFactory resolverFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
     this.diagnostics = diagnostics;
-    this.storageCredentialCache = storageCredentialCache;
     this.resolverFactory = resolverFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.taskExecutor = taskExecutor;
@@ -87,7 +83,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     IcebergCatalog catalogInstance =
         new IcebergCatalog(
             diagnostics,
-            storageCredentialCache,
             resolverFactory,
             metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
             context,
