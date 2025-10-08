@@ -154,12 +154,27 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
         DatasourceOperations datasourceOperations = getDatasourceOperations();
+        int currentSchemaVersion =
+            JdbcBasePersistenceImpl.loadSchemaVersion(
+                datasourceOperations,
+                configurationStore.getConfiguration(
+                    realmContext, BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
+        int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
+        int effectiveSchemaVersion =
+            JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+                currentSchemaVersion,
+                requestedSchemaVersion,
+                JdbcBasePersistenceImpl.entityTableExists(datasourceOperations));
+        LOGGER.info(
+            "Effective schema version: {} for bootstrapping realm: {}",
+            effectiveSchemaVersion,
+            realm);
         try {
           // Run the set-up script to create the tables.
           datasourceOperations.executeScript(
               datasourceOperations
                   .getDatabaseType()
-                  .openInitScriptResource(bootstrapOptions.schemaOptions()));
+                  .openInitScriptResource(effectiveSchemaVersion));
         } catch (SQLException e) {
           throw new RuntimeException(
               String.format("Error executing sql script: %s", e.getMessage()), e);

@@ -256,6 +256,14 @@ public class QueryGenerator {
     return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
   }
 
+  @VisibleForTesting
+  static PreparedQuery generateEntityTableExistQuery() {
+    return new PreparedQuery(
+        String.format(
+            "SELECT * FROM %s LIMIT 1", getFullyQualifiedTableName(ModelEntity.TABLE_NAME)),
+        List.of());
+  }
+
   /**
    * Generate a SELECT query to find any entities that have a given realm &amp; parent and that may
    * overlap with a given location. The check is performed without consideration for the scheme, so

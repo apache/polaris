@@ -748,11 +748,25 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       }
       return schemaVersion.getFirst().getValue();
     } catch (SQLException e) {
-      LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
       if (fallbackOnDoesNotExist && datasourceOperations.isRelationDoesNotExist(e)) {
         return SchemaVersion.MINIMUM.getValue();
       }
+      LOGGER.error("Failed to load schema version due to {}", e.getMessage(), e);
       throw new IllegalStateException("Failed to retrieve schema version", e);
+    }
+  }
+
+  static boolean entityTableExists(DatasourceOperations datasourceOperations) {
+    PreparedQuery query = QueryGenerator.generateEntityTableExistQuery();
+    try {
+      List<PolarisBaseEntity> entities =
+          datasourceOperations.executeSelect(query, new ModelEntity());
+      return entities != null && !entities.isEmpty();
+    } catch (SQLException e) {
+      if (datasourceOperations.isRelationDoesNotExist(e)) {
+        return false;
+      }
+      throw new IllegalStateException("Failed to check if Entities table exists", e);
     }
   }
 

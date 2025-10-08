@@ -52,8 +52,12 @@ public class DatasourceOperations {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
+  // PG STATUS CODES
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
   private static final String RELATION_DOES_NOT_EXIST = "42P01";
+
+  // H2 STATUS CODES
+  private static final String H2_RELATION_DOES_NOT_EXIST = "90079";
 
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
@@ -396,7 +400,9 @@ public class DatasourceOperations {
   }
 
   public boolean isRelationDoesNotExist(SQLException e) {
-    return RELATION_DOES_NOT_EXIST.equals(e.getSQLState());
+    return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
+            && databaseType == DatabaseType.POSTGRES)
+        || (H2_RELATION_DOES_NOT_EXIST.equals(e.getSQLState()) && databaseType == DatabaseType.H2);
   }
 
   private Connection borrowConnection() throws SQLException {
