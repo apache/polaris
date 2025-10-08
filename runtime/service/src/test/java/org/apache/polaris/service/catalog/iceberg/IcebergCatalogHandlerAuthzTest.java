@@ -1185,6 +1185,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
+        credentialManager,
         securityContext(authenticatedPrincipal),
         factory,
         catalogName,

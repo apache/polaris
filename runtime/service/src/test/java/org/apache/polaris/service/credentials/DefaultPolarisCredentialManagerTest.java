@@ -170,7 +170,7 @@ public class DefaultPolarisCredentialManagerTest {
   }
 
   @Test
-  public void testUnsupportedAuthTypeThrowsException() {
+  public void testUnsupportedAuthTypeReturnsEmpty() {
     // Use a mock connection config with an unsupported authentication type
     ConnectionConfigInfoDpo mockConfig = Mockito.mock(ConnectionConfigInfoDpo.class);
     AuthenticationParametersDpo mockAuthParams = Mockito.mock(AuthenticationParametersDpo.class);
@@ -178,11 +178,11 @@ public class DefaultPolarisCredentialManagerTest {
     when(mockConfig.getAuthenticationParameters()).thenReturn(mockAuthParams);
     when(mockAuthParams.getAuthenticationType()).thenReturn(AuthenticationType.NULL_TYPE);
 
-    // Should throw IllegalStateException since no vendor supports NULL_TYPE
-    Assertions.assertThatThrownBy(() -> credentialManager.getConnectionCredentials(mockConfig))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining(
-            "No connection credential vendor available for authentication type: NULL_TYPE")
-        .hasCauseInstanceOf(jakarta.enterprise.inject.UnsatisfiedResolutionException.class);
+    // Should return empty credentials since no vendor supports NULL_TYPE
+    ConnectionCredentials credentials = credentialManager.getConnectionCredentials(mockConfig);
+
+    Assertions.assertThat(credentials).isNotNull();
+    Assertions.assertThat(credentials.credentials()).isEmpty();
+    Assertions.assertThat(credentials.expiresAt()).isEmpty();
   }
 }
