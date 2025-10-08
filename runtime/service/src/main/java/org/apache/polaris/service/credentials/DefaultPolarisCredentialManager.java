@@ -78,32 +78,24 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
   public @Nonnull ConnectionCredentials getConnectionCredentials(
       @Nonnull ConnectionConfigInfoDpo connectionConfig) {
 
-    // Select the appropriate vendor based on authentication type
     AuthenticationType authType =
         connectionConfig.getAuthenticationParameters().getAuthenticationType();
-    Instance<ConnectionCredentialVendor> selectedVendor =
-        credentialVendors.select(AuthType.Literal.of(authType));
 
-    if (selectedVendor.isUnsatisfied()) {
-      // TODO: Add credential vendors for other authentication types
-      LOGGER.warn("No connection credential vendor found for authentication type: {}", authType);
-      return ConnectionCredentials.builder().build();
-    }
-
-    if (selectedVendor.isAmbiguous()) {
-      LOGGER.error(
-          "Multiple connection credential vendors found for authentication type: {}. "
-              + "Use @Priority to specify which vendor should be used. "
-              + "Higher priority values take precedence.",
-          authType);
+    // Use CDI to select the appropriate vendor based on the authentication type
+    ConnectionCredentialVendor selectedVendor;
+    try {
+      selectedVendor = credentialVendors.select(AuthType.Literal.of(authType)).get();
+    } catch (jakarta.enterprise.inject.UnsatisfiedResolutionException e) {
+      // No vendor registered for this authentication type
       throw new IllegalStateException(
-          String.format(
-              "Ambiguous connection credential vendor for authentication type: %s. "
-                  + "Multiple implementations found without @Priority annotation.",
-              authType));
+          "No credential vendor available for authentication type: " + authType, e);
+    } catch (jakarta.enterprise.inject.AmbiguousResolutionException e) {
+      // Multiple vendors found - need @Priority to disambiguate
+      throw new IllegalStateException(
+          "Ambiguous connection credential vendor for authentication type: " + authType, e);
     }
 
-    // Delegate to the vendor to generate credentials
-    return selectedVendor.get().getConnectionCredentials(connectionConfig);
+    // Delegate credential generation to the selected vendor
+    return selectedVendor.getConnectionCredentials(connectionConfig);
   }
 }
