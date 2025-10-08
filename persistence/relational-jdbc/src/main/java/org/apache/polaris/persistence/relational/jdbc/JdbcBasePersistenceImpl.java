@@ -18,9 +18,25 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
+import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
+
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
@@ -61,23 +77,6 @@ import org.apache.polaris.persistence.relational.jdbc.models.ModelPrincipalAuthe
 import org.apache.polaris.persistence.relational.jdbc.models.SchemaVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
-import static org.apache.polaris.persistence.relational.jdbc.QueryGenerator.PreparedQuery;
 
 public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPersistence {
 
