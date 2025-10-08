@@ -121,7 +121,10 @@ public class IcebergRestCatalogEvents {
       implements PolarisEvent {}
 
   public record AfterLoadTableEvent(
-      String catalogName, Namespace namespace, LoadTableResponse loadTableResponse)
+      String catalogName,
+      Namespace namespace,
+      String tableName,
+      LoadTableResponse loadTableResponse)
       implements PolarisEvent {}
 
   public record BeforeCheckExistsTableEvent(String catalogName, Namespace namespace, String table)
@@ -143,7 +146,10 @@ public class IcebergRestCatalogEvents {
       implements PolarisEvent {}
 
   public record AfterRegisterTableEvent(
-      String catalogName, Namespace namespace, LoadTableResponse loadTableResponse)
+      String catalogName,
+      Namespace namespace,
+      String tableName,
+      LoadTableResponse loadTableResponse)
       implements PolarisEvent {}
 
   public record BeforeRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest)
@@ -163,6 +169,7 @@ public class IcebergRestCatalogEvents {
       String catalogName,
       Namespace namespace,
       String sourceTable,
+      CommitTableRequest commitTableRequest,
       LoadTableResponse loadTableResponse)
       implements PolarisEvent {}
 
@@ -172,7 +179,7 @@ public class IcebergRestCatalogEvents {
       implements PolarisEvent {}
 
   public record AfterCreateViewEvent(
-      String catalogName, Namespace namespace, LoadViewResponse loadViewResponse)
+      String catalogName, Namespace namespace, String viewName, LoadViewResponse loadViewResponse)
       implements PolarisEvent {}
 
   public record BeforeListViewsEvent(String catalogName, Namespace namespace)
@@ -185,7 +192,7 @@ public class IcebergRestCatalogEvents {
       implements PolarisEvent {}
 
   public record AfterLoadViewEvent(
-      String catalogName, Namespace namespace, LoadViewResponse loadViewResponse)
+      String catalogName, Namespace namespace, String viewName, LoadViewResponse loadViewResponse)
       implements PolarisEvent {}
 
   public record BeforeCheckExistsViewEvent(String catalogName, Namespace namespace, String view)
@@ -214,7 +221,11 @@ public class IcebergRestCatalogEvents {
       implements PolarisEvent {}
 
   public record AfterReplaceViewEvent(
-      String catalogName, Namespace namespace, String sourceView, LoadViewResponse loadViewResponse)
+      String catalogName,
+      Namespace namespace,
+      String sourceView,
+      CommitViewRequest commitViewRequest,
+      LoadViewResponse loadViewResponse)
       implements PolarisEvent {}
 
   // Credential Events
