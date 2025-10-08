@@ -100,6 +100,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
@@ -807,7 +808,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           accessConfigProvider.getAccessConfig(
               callContext,
               tableIdentifier,
-              tableMetadata,
+              StorageUtil.getLocationsUsedByTable(tableMetadata),
               actions,
               refreshCredentialsEndpoint,
               resolvedStoragePath);

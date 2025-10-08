@@ -24,7 +24,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -32,7 +31,6 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,35 +56,6 @@ public class AccessConfigProvider {
       MetaStoreManagerFactory metaStoreManagerFactory) {
     this.storageCredentialCache = storageCredentialCache;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
-  }
-
-  /**
-   * Vends credentials for accessing table storage, extracting locations from table metadata.
-   *
-   * @param callContext the call context containing realm, principal, and security context
-   * @param tableIdentifier the table identifier
-   * @param tableMetadata the table metadata containing storage location URIs
-   * @param storageActions the storage operations (READ, WRITE, LIST, DELETE) to scope credentials
-   *     to
-   * @param refreshCredentialsEndpoint optional endpoint URL for clients to refresh credentials
-   * @param resolvedPath the entity hierarchy to search for storage configuration
-   * @return {@link AccessConfig} with scoped credentials and metadata; empty if no storage config
-   *     found
-   */
-  public AccessConfig getAccessConfig(
-      @Nonnull CallContext callContext,
-      @Nonnull TableIdentifier tableIdentifier,
-      @Nonnull TableMetadata tableMetadata,
-      @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull Optional<String> refreshCredentialsEndpoint,
-      @Nonnull PolarisResolvedPathWrapper resolvedPath) {
-    return getAccessConfig(
-        callContext,
-        tableIdentifier,
-        StorageUtil.getLocationsUsedByTable(tableMetadata),
-        storageActions,
-        refreshCredentialsEndpoint,
-        resolvedPath);
   }
 
   /**
