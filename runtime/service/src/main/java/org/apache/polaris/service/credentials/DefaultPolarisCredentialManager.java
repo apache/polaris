@@ -22,8 +22,10 @@ package org.apache.polaris.service.credentials;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.inject.AmbiguousResolutionException;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
+import jakarta.enterprise.inject.UnsatisfiedResolutionException;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -85,11 +87,11 @@ public class DefaultPolarisCredentialManager implements PolarisCredentialManager
     ConnectionCredentialVendor selectedVendor;
     try {
       selectedVendor = credentialVendors.select(AuthType.Literal.of(authType)).get();
-    } catch (jakarta.enterprise.inject.UnsatisfiedResolutionException e) {
+    } catch (UnsatisfiedResolutionException e) {
       // No vendor registered for this authentication type
       throw new IllegalStateException(
-          "No credential vendor available for authentication type: " + authType, e);
-    } catch (jakarta.enterprise.inject.AmbiguousResolutionException e) {
+          "No connection credential vendor available for authentication type: " + authType, e);
+    } catch (AmbiguousResolutionException e) {
       // Multiple vendors found - need @Priority to disambiguate
       throw new IllegalStateException(
           "Ambiguous connection credential vendor for authentication type: " + authType, e);

@@ -181,7 +181,8 @@ public class DefaultPolarisCredentialManagerTest {
     // Should throw IllegalStateException since no vendor supports NULL_TYPE
     Assertions.assertThatThrownBy(() -> credentialManager.getConnectionCredentials(mockConfig))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("No credential vendor available for authentication type: NULL_TYPE")
+        .hasMessageContaining(
+            "No connection credential vendor available for authentication type: NULL_TYPE")
         .hasCauseInstanceOf(jakarta.enterprise.inject.UnsatisfiedResolutionException.class);
   }
 }
