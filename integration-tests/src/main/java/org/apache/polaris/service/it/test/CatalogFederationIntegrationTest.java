@@ -321,10 +321,6 @@ public class CatalogFederationIntegrationTest {
             .sql("SELECT * FROM " + localCatalogName + ".ns2.test_table ORDER BY id")
             .collectAsList();
     assertThat(localNs2Data).hasSize(2);
-
-    // Restore the grant
-    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, namespaceGrant);
-    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
   }
 
   @Test
@@ -360,10 +356,6 @@ public class CatalogFederationIntegrationTest {
             .sql("SELECT * FROM " + localCatalogName + ".ns2.test_table ORDER BY id")
             .collectAsList();
     assertThat(localNs2Data).hasSize(2);
-
-    // Restore the grant
-    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableGrant);
-    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
   }
 
   @Test
@@ -371,14 +363,14 @@ public class CatalogFederationIntegrationTest {
     managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
 
     // Case 1: Only have TABLE_READ_PROPERTIES privilege, should not be able to read data
-    TableGrant tableGrant =
+    TableGrant tablePropertiesGrant =
         TableGrant.builder()
             .setType(GrantResource.TypeEnum.TABLE)
             .setPrivilege(TablePrivilege.TABLE_READ_PROPERTIES)
             .setNamespace(List.of("ns1"))
             .setTableName("test_table")
             .build();
-    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableGrant);
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tablePropertiesGrant);
     spark.sql("USE " + federatedCatalogName);
 
     // Read table data should fail since TABLE_READ_PROPERTIES does not allow reading data
@@ -386,15 +378,15 @@ public class CatalogFederationIntegrationTest {
         .isInstanceOf(ForbiddenException.class);
 
     // Case 2: Only have TABLE_READ_DATA privilege, should be able to read data but not write
-    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableGrant);
-    tableGrant =
+    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tablePropertiesGrant);
+    TableGrant tableReadDataGrant =
         TableGrant.builder()
             .setType(GrantResource.TypeEnum.TABLE)
             .setPrivilege(TablePrivilege.TABLE_READ_DATA)
             .setNamespace(List.of("ns1"))
             .setTableName("test_table")
             .build();
-    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableGrant);
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
 
     // Verify that the vended credential allows reading the data
     List<Row> ns1Data = spark.sql("SELECT * FROM ns1.test_table ORDER BY id").collectAsList();
@@ -404,18 +396,19 @@ public class CatalogFederationIntegrationTest {
 
     // Verify that write is blocked since the vended credential should only have read permission
     assertThatThrownBy(() -> spark.sql("INSERT INTO ns1.test_table VALUES (3, 'Charlie')"))
-        .hasMessageContaining("Access Denied. (Service: S3, Status Code: 403");
+        .hasMessageContaining(
+            "software.amazon.awssdk.services.s3.model.S3Exception: Access Denied. (Service: S3, Status Code: 403,");
 
     // Case 3: TABLE_WRITE_DATA should
-    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableGrant);
-    tableGrant =
+    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
+    TableGrant tableWriteDataGrant =
         TableGrant.builder()
             .setType(GrantResource.TypeEnum.TABLE)
             .setPrivilege(TablePrivilege.TABLE_WRITE_DATA)
             .setNamespace(List.of("ns1"))
             .setTableName("test_table")
             .build();
-    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableGrant);
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableWriteDataGrant);
 
     spark.sql("INSERT INTO ns1.test_table VALUES (3, 'Charlie')");
 
@@ -434,7 +427,5 @@ public class CatalogFederationIntegrationTest {
     assertThat(localData).hasSize(3);
     assertThat(localData.get(2).getInt(0)).isEqualTo(3);
     assertThat(localData.get(2).getString(1)).isEqualTo("Charlie");
-    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableGrant);
-    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
   }
 }

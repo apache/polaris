@@ -813,11 +813,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     PolarisResolvedPathWrapper resolvedStoragePath =
         CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
 
-    if ((baseCatalog instanceof IcebergCatalog
-            || realmConfig.getConfig(
-                ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, getResolvedCatalogEntity()))
-        && resolvedStoragePath != null) {
+    if (resolvedStoragePath == null) {
+        LOGGER.debug("Unable to find storage configuration information for table {}", tableIdentifier);
+      return responseBuilder;
+    }
 
+    if (baseCatalog instanceof IcebergCatalog
+        || realmConfig.getConfig(
+            ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, getResolvedCatalogEntity())) {
       AccessConfig accessConfig =
           accessConfigProvider.getAccessConfig(
               callContext,
@@ -846,6 +849,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       }
       responseBuilder.addAllConfig(accessConfig.extraProperties());
     }
+
     return responseBuilder;
   }
 
