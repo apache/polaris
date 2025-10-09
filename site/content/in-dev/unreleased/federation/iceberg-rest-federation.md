@@ -43,30 +43,20 @@ client credentials. `remoteCatalogName` is optional; supply it when the remote s
 multiple logical catalogs under one URI.
 
 ```bash
-curl -X POST https://<polaris-host>/management/v1/catalogs \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "type": "EXTERNAL",
-        "name": "analytics_rest",
-        "storageConfigInfo": {
-          "storageType": "S3",
-          "roleArn": "arn:aws:iam::123456789012:role/polaris-warehouse-access"
-        },
-        "properties": { "default-base-location": "s3://analytics-bucket/warehouse/" },
-        "connectionConfigInfo": {
-          "connectionType": "ICEBERG_REST",
-          "uri": "https://remote-polaris.example.com/catalog/v1",
-          "remoteCatalogName": "analytics",
-          "authenticationParameters": {
-            "authenticationType": "OAUTH",
-            "tokenUri": "https://remote-polaris.example.com/catalog/v1/oauth/tokens",
-            "clientId": "federation-client",
-            "clientSecret": "<remote-secret>",
-            "scopes": ["PRINCIPAL_ROLE:ALL"]
-          }
-        }
-      }'
+polaris catalogs create \
+  --name analytics_rest \
+  --type EXTERNAL \
+  --storage-type S3 \
+  --role-arn "arn:aws:iam::123456789012:role/polaris-warehouse-access" \
+  --default-base-location "s3://analytics-bucket/warehouse/" \
+  --catalog-connection-type ICEBERG \
+  --catalog-uri "https://remote-polaris.example.com/catalog/v1" \
+  --remote-catalog-name analytics \
+  --catalog-authentication-type OAUTH \
+  --catalog-token-uri "https://remote-polaris.example.com/catalog/v1/oauth/tokens" \
+  --catalog-client-id federation-client \
+  --catalog-client-secret "<remote-secret>" \
+  --catalog-client-scopes "PRINCIPAL_ROLE:ALL"
 ```
 
 For bearer-token authentication, replace the `authenticationParameters` block with
