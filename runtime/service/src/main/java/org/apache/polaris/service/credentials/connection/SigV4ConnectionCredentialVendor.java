@@ -22,7 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
 import org.apache.polaris.core.connection.AuthenticationType;
@@ -58,7 +58,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
  * <p>This is the default implementation with {@code @Priority(100)}. Custom implementations can
  * override this by providing a higher priority value.
  */
-@ApplicationScoped
+@RequestScoped
 @AuthType(AuthenticationType.SIGV4)
 @Priority(100)
 public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVendor {

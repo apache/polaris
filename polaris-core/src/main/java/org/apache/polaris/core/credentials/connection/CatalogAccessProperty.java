@@ -20,6 +20,7 @@
 package org.apache.polaris.core.credentials.connection;
 
 import org.apache.iceberg.aws.AwsProperties;
+import org.apache.iceberg.rest.auth.OAuth2Properties;
 
 /**
  * A subset of Iceberg catalog properties recognized by Polaris.
@@ -28,15 +29,23 @@ import org.apache.iceberg.aws.AwsProperties;
  * Catalog service.
  */
 public enum CatalogAccessProperty {
+  // OAuth
+  OAUTH2_CREDENTIAL(String.class, OAuth2Properties.CREDENTIAL, "the OAuth2 credential", true),
+
+  // Bearer
+  BEARER_TOKEN(String.class, OAuth2Properties.TOKEN, "the bearer token", true),
+
+  // SigV4
   AWS_ACCESS_KEY_ID(String.class, AwsProperties.REST_ACCESS_KEY_ID, "the aws access key id", true),
   AWS_SECRET_ACCESS_KEY(
-      String.class, AwsProperties.REST_SECRET_ACCESS_KEY, "the aws access key secret", true),
-  AWS_SESSION_TOKEN(
-      String.class, AwsProperties.REST_SESSION_TOKEN, "the aws scoped access token", true),
+      String.class, AwsProperties.REST_SECRET_ACCESS_KEY, "the aws secret access key", true),
+  AWS_SESSION_TOKEN(String.class, AwsProperties.REST_SESSION_TOKEN, "the aws session token", true),
+
+  // Metadata
   EXPIRATION_TIME(
       Long.class,
-      "expiration-time",
-      "the expiration time for the access token, in milliseconds",
+      "rest.session-token-expires-at-ms",
+      "the expiration time for the access token or the credential, in milliseconds",
       false);
 
   private final Class valueType;
