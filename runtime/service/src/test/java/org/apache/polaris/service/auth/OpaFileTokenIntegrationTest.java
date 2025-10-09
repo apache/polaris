@@ -109,7 +109,7 @@ public class OpaFileTokenIntegrationTest {
 
   /**
    * Test demonstrates OPA integration with file-based bearer token authentication. This test
-   * verifies that the FileTokenProvider correctly reads tokens from a file and that the full
+   * verifies that the FileBearerTokenProvider correctly reads tokens from a file and that the full
    * integration works with file-based configuration.
    */
   @Test
@@ -117,7 +117,7 @@ public class OpaFileTokenIntegrationTest {
     // Test demonstrates the complete integration flow with file-based tokens:
     // 1. OAuth token acquisition with internal authentication
     // 2. OPA policy allowing root users
-    // 3. Bearer token read from file by FileTokenProvider
+    // 3. Bearer token read from file by FileBearerTokenProvider
 
     // Get a token using the catalog service OAuth endpoint
     String response =
@@ -154,7 +154,7 @@ public class OpaFileTokenIntegrationTest {
 
   @Test
   void testFileTokenRefresh() throws IOException, InterruptedException {
-    // This test verifies that the FileTokenProvider refreshes tokens from the file
+    // This test verifies that the FileBearerTokenProvider refreshes tokens from the file
 
     // First verify the system works with the initial token
     String rootToken = getRootToken();

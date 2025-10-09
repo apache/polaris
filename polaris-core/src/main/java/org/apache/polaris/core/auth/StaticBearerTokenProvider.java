@@ -18,35 +18,17 @@
  */
 package org.apache.polaris.core.auth;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+/** A simple token provider that returns a static string value. */
+public class StaticBearerTokenProvider implements BearerTokenProvider {
 
-import org.junit.jupiter.api.Test;
+  private final String token;
 
-public class StaticTokenProviderTest {
-
-  @Test
-  public void testStaticTokenProvider() {
-    String expectedToken = "static-bearer-token";
-    StaticTokenProvider provider = new StaticTokenProvider(expectedToken);
-
-    String actualToken = provider.getToken();
-    assertEquals(expectedToken, actualToken);
+  public StaticBearerTokenProvider(String token) {
+    this.token = token;
   }
 
-  @Test
-  public void testStaticTokenProviderWithNull() {
-    StaticTokenProvider provider = new StaticTokenProvider(null);
-
-    String token = provider.getToken();
-    assertNull(token);
-  }
-
-  @Test
-  public void testStaticTokenProviderWithEmptyString() {
-    StaticTokenProvider provider = new StaticTokenProvider("");
-
-    String token = provider.getToken();
-    assertEquals("", token);
+  @Override
+  public String getToken() {
+    return token;
   }
 }

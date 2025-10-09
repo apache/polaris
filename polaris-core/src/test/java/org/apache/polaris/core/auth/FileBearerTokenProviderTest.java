@@ -34,7 +34,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-public class FileTokenProviderTest {
+public class FileBearerTokenProviderTest {
 
   @TempDir Path tempDir;
 
@@ -46,7 +46,8 @@ public class FileTokenProviderTest {
     Files.writeString(tokenFile, expectedToken);
 
     // Create file token provider
-    FileTokenProvider provider = new FileTokenProvider(tokenFile.toString(), Duration.ofMinutes(5));
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(tokenFile.toString(), Duration.ofMinutes(5));
 
     // Test token retrieval
     String actualToken = provider.getToken();
@@ -64,7 +65,8 @@ public class FileTokenProviderTest {
     Files.writeString(tokenFile, tokenWithWhitespace);
 
     // Create file token provider
-    FileTokenProvider provider = new FileTokenProvider(tokenFile.toString(), Duration.ofMinutes(5));
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(tokenFile.toString(), Duration.ofMinutes(5));
 
     // Test token retrieval (should trim whitespace)
     String actualToken = provider.getToken();
@@ -81,8 +83,8 @@ public class FileTokenProviderTest {
     Files.writeString(tokenFile, initialToken);
 
     // Create file token provider with short refresh interval
-    FileTokenProvider provider =
-        new FileTokenProvider(tokenFile.toString(), Duration.ofMillis(100));
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(tokenFile.toString(), Duration.ofMillis(100));
 
     // Test initial token
     String token1 = provider.getToken();
@@ -105,8 +107,8 @@ public class FileTokenProviderTest {
   @Test
   public void testNonExistentFile() {
     // Create file token provider for non-existent file
-    FileTokenProvider provider =
-        new FileTokenProvider("/non/existent/file.txt", Duration.ofMinutes(5));
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider("/non/existent/file.txt", Duration.ofMinutes(5));
 
     // Test token retrieval (should return null)
     String token = provider.getToken();
@@ -122,7 +124,8 @@ public class FileTokenProviderTest {
     Files.writeString(tokenFile, "");
 
     // Create file token provider
-    FileTokenProvider provider = new FileTokenProvider(tokenFile.toString(), Duration.ofMinutes(5));
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(tokenFile.toString(), Duration.ofMinutes(5));
 
     // Test token retrieval (should return null for empty file)
     String token = provider.getToken();
@@ -138,7 +141,8 @@ public class FileTokenProviderTest {
     Files.writeString(tokenFile, "test-token");
 
     // Create and close file token provider
-    FileTokenProvider provider = new FileTokenProvider(tokenFile.toString(), Duration.ofMinutes(5));
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(tokenFile.toString(), Duration.ofMinutes(5));
     provider.close();
 
     // Test token retrieval after closing (should return null)
@@ -155,8 +159,8 @@ public class FileTokenProviderTest {
 
     // Create file token provider with JWT expiration refresh enabled
     // Buffer of 3 seconds means it should refresh 3 seconds before expiration (at 7 seconds)
-    FileTokenProvider provider =
-        new FileTokenProvider(
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(
             tokenFile.toString(), Duration.ofMinutes(10), true, Duration.ofSeconds(3));
 
     // Test initial token
@@ -185,8 +189,8 @@ public class FileTokenProviderTest {
     Files.writeString(tokenFile, jwtToken);
 
     // Create file token provider with JWT expiration refresh disabled
-    FileTokenProvider provider =
-        new FileTokenProvider(
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(
             tokenFile.toString(), Duration.ofMillis(100), false, Duration.ofSeconds(1));
 
     // Test initial token
@@ -215,8 +219,8 @@ public class FileTokenProviderTest {
     Files.writeString(tokenFile, nonJwtToken);
 
     // Create file token provider with JWT expiration refresh enabled
-    FileTokenProvider provider =
-        new FileTokenProvider(
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(
             tokenFile.toString(), Duration.ofMillis(100), true, Duration.ofSeconds(1));
 
     // Test initial token
@@ -245,8 +249,8 @@ public class FileTokenProviderTest {
     Files.writeString(tokenFile, expiredJwtToken);
 
     // Create file token provider with JWT expiration refresh enabled
-    FileTokenProvider provider =
-        new FileTokenProvider(
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(
             tokenFile.toString(), Duration.ofMinutes(5), true, Duration.ofSeconds(60));
 
     // Should fall back to fixed interval when JWT expires too soon
@@ -264,8 +268,8 @@ public class FileTokenProviderTest {
     Files.writeString(tokenFile, jwtWithoutExp);
 
     // Create file token provider with JWT expiration refresh enabled
-    FileTokenProvider provider =
-        new FileTokenProvider(
+    FileBearerTokenProvider provider =
+        new FileBearerTokenProvider(
             tokenFile.toString(), Duration.ofMillis(100), true, Duration.ofSeconds(1));
 
     // Should fall back to fixed interval when JWT has no expiration

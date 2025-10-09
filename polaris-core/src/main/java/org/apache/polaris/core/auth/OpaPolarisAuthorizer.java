@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.core.auth;
 
-// Removed Quarkus/MicroProfile annotations for portability
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Strings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.FileInputStream;
@@ -58,7 +58,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final String opaServerUrl;
   private final String opaPolicyPath;
-  private final TokenProvider tokenProvider;
+  private final BearerTokenProvider tokenProvider;
   private final CloseableHttpClient httpClient;
   private final ObjectMapper objectMapper;
 
@@ -66,7 +66,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private OpaPolarisAuthorizer(
       String opaServerUrl,
       String opaPolicyPath,
-      TokenProvider tokenProvider,
+      BearerTokenProvider tokenProvider,
       CloseableHttpClient httpClient,
       ObjectMapper objectMapper) {
     this.opaServerUrl = opaServerUrl;
@@ -77,7 +77,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   }
 
   /**
-   * Static factory that accepts a TokenProvider for advanced token management.
+   * Static factory that accepts a BearerTokenProvider for advanced token management.
    *
    * @param opaServerUrl OPA server URL
    * @param opaPolicyPath OPA policy path
@@ -87,19 +87,24 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param trustStorePath Custom SSL trust store path (optional)
    * @param trustStorePassword Custom SSL trust store password (optional)
    * @param client Apache HttpClient (optional, can be null)
-   * @param mapper ObjectMapper (optional, can be null)
    * @return OpaPolarisAuthorizer instance
    */
   public static OpaPolarisAuthorizer create(
       String opaServerUrl,
       String opaPolicyPath,
-      TokenProvider tokenProvider,
+      BearerTokenProvider tokenProvider,
       int timeoutMs,
       boolean verifySsl,
       String trustStorePath,
       String trustStorePassword,
-      Object client, // Accept any client type for compatibility
-      ObjectMapper mapper) {
+      Object client) {
+
+    if (Strings.isNullOrEmpty(opaServerUrl)) {
+      throw new IllegalArgumentException("opaServerUrl cannot be null or empty");
+    }
+    if (Strings.isNullOrEmpty(opaPolicyPath)) {
+      throw new IllegalArgumentException("opaPolicyPath cannot be null or empty");
+    }
 
     try {
       // Create request configuration with timeouts
@@ -130,7 +135,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
         }
       }
 
-      ObjectMapper objectMapperWithDefaults = mapper != null ? mapper : new ObjectMapper();
+      ObjectMapper objectMapperWithDefaults = new ObjectMapper();
       return new OpaPolarisAuthorizer(
           opaServerUrl, opaPolicyPath, tokenProvider, httpClient, objectMapperWithDefaults);
     } catch (Exception e) {
@@ -194,7 +199,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * Sends an authorization query to the OPA server and parses the response.
    *
    * <p>Builds the OPA input JSON, sends it via HTTP POST, and checks the 'allow' field in the
-   * response.
+   * response. The request format follows the OPA REST API specification for data queries.
    *
    * @param principal the principal requesting authorization
    * @param entities the set of activated entities
@@ -203,6 +208,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param secondaries the list of secondary entities (if any)
    * @return true if OPA allows the operation, false otherwise
    * @throws RuntimeException if the OPA query fails
+   * @see <a href="https://www.openpolicyagent.org/docs/rest-api">OPA REST API Documentation</a>
    */
   private boolean queryOpa(
       PolarisPrincipal principal,
@@ -249,6 +255,12 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *
    * <p>Assembles the actor, action, resource, and context sections into the expected OPA input
    * format.
+   *
+   * <p><strong>Note:</strong> OpaPolarisAuthorizer bypasses Polaris's built-in role-based
+   * authorization system. This includes both principal roles and catalog roles that would normally
+   * be processed by Polaris. Instead, authorization decisions are delegated entirely to the
+   * configured OPA policies, which receive the raw principal information and must implement their
+   * own role/permission logic.
    *
    * @param principal the principal requesting authorization
    * @param entities the set of activated entities
@@ -388,7 +400,7 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
       sslContextBuilder.loadTrustMaterial(TrustAllStrategy.INSTANCE);
       sslContext = sslContextBuilder.build();
       return new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
-    } else if (trustStorePath != null && !trustStorePath.isEmpty()) {
+    } else if (!Strings.isNullOrEmpty(trustStorePath)) {
       // Load custom trust store for SSL verification
       KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
       try (FileInputStream trustStoreStream = new FileInputStream(trustStorePath)) {

@@ -18,34 +18,26 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nullable;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/**
- * Interface for providing bearer tokens for authentication.
- *
- * <p>Implementations can provide tokens from various sources such as:
- *
- * <ul>
- *   <li>Static string values
- *   <li>Files (with automatic reloading)
- *   <li>External token services
- * </ul>
- */
-public interface TokenProvider {
+import org.junit.jupiter.api.Test;
 
-  /**
-   * Get the current bearer token.
-   *
-   * @return the bearer token, or null if no token is available
-   */
-  @Nullable
-  String getToken();
+public class StaticBearerTokenProviderTest {
 
-  /**
-   * Clean up any resources used by this token provider. Should be called when the provider is no
-   * longer needed.
-   */
-  default void close() {
-    // Default implementation does nothing
+  @Test
+  public void testStaticBearerTokenProvider() {
+    String expectedToken = "static-bearer-token";
+    StaticBearerTokenProvider provider = new StaticBearerTokenProvider(expectedToken);
+
+    String actualToken = provider.getToken();
+    assertEquals(expectedToken, actualToken);
+  }
+
+  @Test
+  public void testStaticBearerTokenProviderWithEmptyString() {
+    StaticBearerTokenProvider provider = new StaticBearerTokenProvider("");
+
+    String token = provider.getToken();
+    assertEquals("", token);
   }
 }

@@ -71,7 +71,7 @@ public class OpaPolarisAuthorizerTest {
 
     OpaPolarisAuthorizer authorizer =
         createWithStringToken(
-            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
+            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null);
 
     PolarisPrincipal principal =
         PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
@@ -109,7 +109,7 @@ public class OpaPolarisAuthorizerTest {
 
     OpaPolarisAuthorizer authorizer =
         createWithStringToken(
-            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
+            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null);
 
     // Set up a realistic principal
     PolarisPrincipal principal =
@@ -247,7 +247,7 @@ public class OpaPolarisAuthorizerTest {
 
     OpaPolarisAuthorizer authorizer =
         createWithStringToken(
-            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
+            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null);
 
     // Set up a realistic principal
     PolarisPrincipal principal =
@@ -396,7 +396,7 @@ public class OpaPolarisAuthorizerTest {
 
     OpaPolarisAuthorizer authorizer =
         createWithStringToken(
-            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
+            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null);
 
     PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
 
@@ -424,7 +424,7 @@ public class OpaPolarisAuthorizerTest {
 
     OpaPolarisAuthorizer authorizer =
         createWithStringToken(
-            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null, null);
+            url, "/v1/data/polaris/authz/allow", (String) null, 2000, true, null, null, null);
 
     PolarisPrincipal principal = PolarisPrincipal.of("bob", Map.of(), Set.of("user"));
 
@@ -455,7 +455,6 @@ public class OpaPolarisAuthorizerTest {
             true,
             null,
             null,
-            null,
             null);
 
     assertTrue(authorizer != null);
@@ -472,7 +471,6 @@ public class OpaPolarisAuthorizerTest {
             false,
             null,
             null,
-            null,
             null);
 
     assertTrue(authorizer != null);
@@ -487,7 +485,6 @@ public class OpaPolarisAuthorizerTest {
             "test-bearer-token",
             2000,
             false,
-            null,
             null,
             null,
             null);
@@ -519,8 +516,7 @@ public class OpaPolarisAuthorizerTest {
             true,
             null,
             null,
-            mockHttpClient,
-            new ObjectMapper());
+            mockHttpClient);
 
     PolarisPrincipal mockPrincipal =
         PolarisPrincipal.of("test-user", Map.of(), Collections.emptySet());
@@ -559,8 +555,7 @@ public class OpaPolarisAuthorizerTest {
             true,
             null,
             null,
-            mockHttpClient,
-            new ObjectMapper());
+            mockHttpClient);
 
     PolarisPrincipal mockPrincipal =
         PolarisPrincipal.of("test-user", Map.of(), Collections.emptySet());
@@ -579,7 +574,7 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  public void testBearerTokenFromTokenProvider() throws IOException {
+  public void testBearerTokenFromBearerTokenProvider() throws IOException {
     // Mock HTTP client and response
     CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
     CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
@@ -596,7 +591,7 @@ public class OpaPolarisAuthorizerTest {
                 "{\"result\":{\"allow\":true}}".getBytes(StandardCharsets.UTF_8)));
 
     // Create token provider that returns a dynamic token
-    TokenProvider tokenProvider = () -> "dynamic-token-12345";
+    BearerTokenProvider tokenProvider = () -> "dynamic-token-12345";
 
     // Create authorizer with the token provider instead of static token
     OpaPolarisAuthorizer authorizer =
@@ -608,8 +603,7 @@ public class OpaPolarisAuthorizerTest {
             true,
             null,
             null,
-            mockHttpClient,
-            new ObjectMapper());
+            mockHttpClient);
 
     // Create mock principal and entities
     PolarisPrincipal mockPrincipal =
@@ -633,7 +627,7 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  public void testNullTokenFromTokenProvider() throws IOException {
+  public void testNullTokenFromBearerTokenProvider() throws IOException {
     // Mock HTTP client and response
     CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
     CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
@@ -650,7 +644,7 @@ public class OpaPolarisAuthorizerTest {
                 "{\"result\":{\"allow\":true}}".getBytes(StandardCharsets.UTF_8)));
 
     // Create a token provider that returns null
-    TokenProvider tokenProvider = new StaticTokenProvider(null);
+    BearerTokenProvider tokenProvider = new StaticBearerTokenProvider(null);
 
     OpaPolarisAuthorizer authorizer =
         OpaPolarisAuthorizer.create(
@@ -661,8 +655,7 @@ public class OpaPolarisAuthorizerTest {
             true,
             null,
             null,
-            mockHttpClient,
-            new ObjectMapper());
+            mockHttpClient);
 
     // Create mock principal and entities
     PolarisPrincipal mockPrincipal =
@@ -686,7 +679,7 @@ public class OpaPolarisAuthorizerTest {
   }
 
   private ResolvedPolarisEntity createResolvedEntity(PolarisEntity entity) {
-    return new ResolvedPolarisEntity(entity, null, null);
+    return new ResolvedPolarisEntity(entity, List.of(), List.of());
   }
 
   /**
@@ -788,9 +781,8 @@ public class OpaPolarisAuthorizerTest {
       boolean verifySsl,
       String trustStorePath,
       String trustStorePassword,
-      Object client,
-      ObjectMapper mapper) {
-    TokenProvider tokenProvider = new StaticTokenProvider(bearerToken);
+      Object client) {
+    BearerTokenProvider tokenProvider = new StaticBearerTokenProvider(bearerToken);
     return OpaPolarisAuthorizer.create(
         opaServerUrl,
         opaPolicyPath,
@@ -799,7 +791,6 @@ public class OpaPolarisAuthorizerTest {
         verifySsl,
         trustStorePath,
         trustStorePassword,
-        client,
-        mapper);
+        client);
   }
 }

@@ -46,9 +46,9 @@ import org.slf4j.LoggerFactory;
  * provider will automatically refresh the token based on the expiration time minus a configurable
  * buffer, rather than using the fixed refresh interval.
  */
-public class FileTokenProvider implements TokenProvider {
+public class FileBearerTokenProvider implements BearerTokenProvider {
 
-  private static final Logger logger = LoggerFactory.getLogger(FileTokenProvider.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileBearerTokenProvider.class);
 
   private final Path tokenFilePath;
   private final Duration refreshInterval;
@@ -67,7 +67,7 @@ public class FileTokenProvider implements TokenProvider {
    * @param tokenFilePath path to the file containing the bearer token
    * @param refreshInterval how often to check for token file changes
    */
-  public FileTokenProvider(String tokenFilePath, Duration refreshInterval) {
+  public FileBearerTokenProvider(String tokenFilePath, Duration refreshInterval) {
     this(tokenFilePath, refreshInterval, true, Duration.ofSeconds(60));
   }
 
@@ -79,7 +79,7 @@ public class FileTokenProvider implements TokenProvider {
    * @param jwtExpirationRefresh whether to use JWT expiration for refresh timing
    * @param jwtExpirationBuffer buffer time before JWT expiration to refresh the token
    */
-  public FileTokenProvider(
+  public FileBearerTokenProvider(
       String tokenFilePath,
       Duration refreshInterval,
       boolean jwtExpirationRefresh,
@@ -151,13 +151,11 @@ public class FileTokenProvider implements TokenProvider {
       // Calculate next refresh time based on JWT expiration or fixed interval
       nextRefresh = calculateNextRefresh(newToken);
 
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "Token refreshed from file: {} (token present: {}), next refresh: {}",
-            tokenFilePath,
-            newToken != null && !newToken.isEmpty(),
-            nextRefresh);
-      }
+      logger.debug(
+          "Token refreshed from file: {} (token present: {}), next refresh: {}",
+          tokenFilePath,
+          newToken != null && !newToken.isEmpty(),
+          nextRefresh);
 
     } finally {
       lock.writeLock().unlock();

@@ -20,18 +20,32 @@ package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nullable;
 
-/** A simple token provider that returns a static string value. */
-public class StaticTokenProvider implements TokenProvider {
+/**
+ * Interface for providing bearer tokens for authentication.
+ *
+ * <p>Implementations can provide tokens from various sources such as:
+ *
+ * <ul>
+ *   <li>Static string values
+ *   <li>Files (with automatic reloading)
+ *   <li>External token services
+ * </ul>
+ */
+public interface BearerTokenProvider {
 
-  private final String token;
-
-  public StaticTokenProvider(@Nullable String token) {
-    this.token = token;
-  }
-
-  @Override
+  /**
+   * Get the current bearer token.
+   *
+   * @return the bearer token, or null if no token is available
+   */
   @Nullable
-  public String getToken() {
-    return token;
+  String getToken();
+
+  /**
+   * Clean up any resources used by this token provider. Should be called when the provider is no
+   * longer needed.
+   */
+  default void close() {
+    // Default implementation does nothing
   }
 }
