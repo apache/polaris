@@ -21,14 +21,7 @@ package org.apache.polaris.core.entity;
 
 import jakarta.annotation.Nonnull;
 import java.util.List;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.persistence.BasePersistence;
 
 public interface PolarisEventManager {
-  @Nonnull
-  default void writeEvents(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
-    BasePersistence ms = callCtx.getMetaStore();
-    ms.writeEvents(polarisEvents);
-  }
+  void writeEvents(@Nonnull List<PolarisEvent> polarisEvents);
 }

@@ -27,7 +27,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -88,7 +87,6 @@ public abstract class JWTBroker implements TokenBroker {
       String subjectToken,
       String grantType,
       String scope,
-      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType) {
     if (requestedTokenType != null && !TokenType.ACCESS_TOKEN.equals(requestedTokenType)) {
       return TokenResponse.of(OAuthError.invalid_request);
@@ -107,8 +105,7 @@ public abstract class JWTBroker implements TokenBroker {
       return TokenResponse.of(OAuthError.invalid_client);
     }
     EntityResult principalLookup =
-        metaStoreManager.loadEntity(
-            polarisCallContext, 0L, decodedToken.getPrincipalId(), PolarisEntityType.PRINCIPAL);
+        metaStoreManager.loadEntity(0L, decodedToken.getPrincipalId(), PolarisEntityType.PRINCIPAL);
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return TokenResponse.of(OAuthError.unauthorized_client);
@@ -129,7 +126,6 @@ public abstract class JWTBroker implements TokenBroker {
       String clientSecret,
       String grantType,
       String scope,
-      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType) {
     // Initial sanity checks
     TokenRequestValidator validator = new TokenRequestValidator();
@@ -139,8 +135,7 @@ public abstract class JWTBroker implements TokenBroker {
       return TokenResponse.of(initialValidationResponse.get());
     }
 
-    Optional<PrincipalEntity> principal =
-        findPrincipalEntity(clientId, clientSecret, polarisCallContext);
+    Optional<PrincipalEntity> principal = findPrincipalEntity(clientId, clientSecret);
     if (principal.isEmpty()) {
       return TokenResponse.of(OAuthError.unauthorized_client);
     }
@@ -180,11 +175,9 @@ public abstract class JWTBroker implements TokenBroker {
     return scope == null || scope.isBlank() ? DefaultAuthenticator.PRINCIPAL_ROLE_ALL : scope;
   }
 
-  private Optional<PrincipalEntity> findPrincipalEntity(
-      String clientId, String clientSecret, PolarisCallContext polarisCallContext) {
+  private Optional<PrincipalEntity> findPrincipalEntity(String clientId, String clientSecret) {
     // Validate the principal is present and secrets match
-    PrincipalSecretsResult principalSecrets =
-        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
+    PrincipalSecretsResult principalSecrets = metaStoreManager.loadPrincipalSecrets(clientId);
     if (!principalSecrets.isSuccess()) {
       return Optional.empty();
     }
@@ -193,7 +186,6 @@ public abstract class JWTBroker implements TokenBroker {
     }
     EntityResult result =
         metaStoreManager.loadEntity(
-            polarisCallContext,
             0L,
             principalSecrets.getPrincipalSecrets().getPrincipalId(),
             PolarisEntityType.PRINCIPAL);

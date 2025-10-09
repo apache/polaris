@@ -81,9 +81,10 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -134,7 +135,6 @@ import org.slf4j.LoggerFactory;
 public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
-  private final PolarisMetaStoreManager metaStoreManager;
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
@@ -152,7 +152,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public IcebergCatalogHandler(
       PolarisDiagnostics diagnostics,
-      CallContext callContext,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       UserSecretsManager userSecretsManager,
@@ -168,7 +169,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       AccessConfigProvider accessConfigProvider) {
     super(
         diagnostics,
-        callContext,
+        realmContext,
+        realmConfig,
+        metaStoreManager,
         resolutionManifestFactory,
         securityContext,
         catalogName,
@@ -176,7 +179,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         userSecretsManager,
         credentialManager,
         externalCatalogFactories);
-    this.metaStoreManager = metaStoreManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
@@ -270,7 +272,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.baseCatalog =
           catalogFactory.createCallContextCatalog(
-              callContext, polarisPrincipal, securityContext, resolutionManifest);
+              realmContext, realmConfig, polarisPrincipal, securityContext, resolutionManifest);
     }
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
@@ -812,7 +814,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
       AccessConfig accessConfig =
           accessConfigProvider.getAccessConfig(
-              callContext,
+              realmContext,
+              realmConfig,
+              metaStoreManager,
               tableIdentifier,
               StorageUtil.getLocationsUsedByTable(tableMetadata),
               actions,
@@ -1024,9 +1028,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     // Commit the collected updates in a single atomic operation
     List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
-    EntitiesResult result =
-        metaStoreManager.updateEntitiesPropertiesIfNotChanged(
-            callContext.getPolarisCallContext(), pendingUpdates);
+    EntitiesResult result = metaStoreManager.updateEntitiesPropertiesIfNotChanged(pendingUpdates);
     if (!result.isSuccess()) {
       // TODO: Retries and server-side cleanup on failure, review possible exceptions
       throw new CommitFailedException(

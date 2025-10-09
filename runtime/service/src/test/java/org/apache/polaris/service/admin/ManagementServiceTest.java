@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.iceberg.exceptions.ValidationException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -369,11 +368,11 @@ public class ManagementServiceTest {
             "Explicitly setting polaris.config.enable-sub-catalog-rbac-for-federated-catalogs is not allowed because ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS is set to false.");
   }
 
-  private PolarisAdminService setupPolarisAdminService(
-      PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
+  private PolarisAdminService setupPolarisAdminService(PolarisMetaStoreManager metaStoreManager) {
     return new PolarisAdminService(
         services.polarisDiagnostics(),
-        callContext,
+        services.realmContext(),
+        services.realmConfig(),
         services.resolutionManifestFactory(),
         metaStoreManager,
         new UnsafeInMemorySecretsManager(),
@@ -407,22 +406,18 @@ public class ManagementServiceTest {
         ReservedProperties.NONE);
   }
 
-  private PrincipalEntity createPrincipal(
-      PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext, String name) {
+  private PrincipalEntity createPrincipal(PolarisMetaStoreManager metaStoreManager, String name) {
     return new PrincipalEntity.Builder()
         .setName(name)
         .setCreateTimestamp(Instant.now().toEpochMilli())
-        .setId(metaStoreManager.generateNewEntityId(callContext).getId())
+        .setId(metaStoreManager.generateNewEntityId().getId())
         .build();
   }
 
   private PrincipalRoleEntity createRole(
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext callContext,
-      String name,
-      boolean isFederated) {
+      PolarisMetaStoreManager metaStoreManager, String name, boolean isFederated) {
     return new PrincipalRoleEntity.Builder()
-        .setId(metaStoreManager.generateNewEntityId(callContext).getId())
+        .setId(metaStoreManager.generateNewEntityId().getId())
         .setName(name)
         .setFederated(isFederated)
         .setProperties(Map.of())
@@ -434,15 +429,13 @@ public class ManagementServiceTest {
   @Test
   public void testCannotAssignFederatedEntities() {
     PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
-    PolarisCallContext callContext = services.newCallContext();
-    PolarisAdminService polarisAdminService =
-        setupPolarisAdminService(metaStoreManager, callContext);
+    PolarisAdminService polarisAdminService = setupPolarisAdminService(metaStoreManager);
 
-    PrincipalEntity principal = createPrincipal(metaStoreManager, callContext, "principal_id");
-    metaStoreManager.createPrincipal(callContext, principal);
+    PrincipalEntity principal = createPrincipal(metaStoreManager, "principal_id");
+    metaStoreManager.createPrincipal(principal);
 
-    PrincipalRoleEntity role = createRole(metaStoreManager, callContext, "federated_role_id", true);
-    EntityResult result = metaStoreManager.createEntityIfNotExists(callContext, null, role);
+    PrincipalRoleEntity role = createRole(metaStoreManager, "federated_role_id", true);
+    EntityResult result = metaStoreManager.createEntityIfNotExists(null, role);
     assertThat(result.isSuccess()).isTrue();
 
     assertThatThrownBy(
@@ -453,16 +446,13 @@ public class ManagementServiceTest {
   @Test
   public void testCanListCatalogs() {
     PolarisMetaStoreManager metaStoreManager = services.metaStoreManager();
-    PolarisCallContext callContext = services.newCallContext();
-    PolarisAdminService polarisAdminService =
-        setupPolarisAdminService(metaStoreManager, callContext);
+    PolarisAdminService polarisAdminService = setupPolarisAdminService(metaStoreManager);
 
     CreateCatalogResult catalog1 =
         metaStoreManager.createCatalog(
-            callContext,
             new PolarisBaseEntity(
                 PolarisEntityConstants.getNullId(),
-                metaStoreManager.generateNewEntityId(callContext).getId(),
+                metaStoreManager.generateNewEntityId().getId(),
                 PolarisEntityType.CATALOG,
                 PolarisEntitySubType.NULL_SUBTYPE,
                 PolarisEntityConstants.getRootEntityId(),
@@ -472,10 +462,9 @@ public class ManagementServiceTest {
 
     CreateCatalogResult catalog2 =
         metaStoreManager.createCatalog(
-            callContext,
             new PolarisBaseEntity(
                 PolarisEntityConstants.getNullId(),
-                metaStoreManager.generateNewEntityId(callContext).getId(),
+                metaStoreManager.generateNewEntityId().getId(),
                 PolarisEntityType.CATALOG,
                 PolarisEntitySubType.NULL_SUBTYPE,
                 PolarisEntityConstants.getRootEntityId(),
@@ -493,9 +482,7 @@ public class ManagementServiceTest {
   @Test
   public void testCreateCatalogReturnErrorOnFailure() {
     PolarisMetaStoreManager metaStoreManager = Mockito.spy(services.metaStoreManager());
-    PolarisCallContext callContext = services.newCallContext();
-    PolarisAdminService polarisAdminService =
-        setupPolarisAdminService(metaStoreManager, callContext);
+    PolarisAdminService polarisAdminService = setupPolarisAdminService(metaStoreManager);
 
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
@@ -518,7 +505,7 @@ public class ManagementServiceTest {
             BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unexpected Error Occurred");
     Mockito.doAnswer(invocation -> resultWithError)
         .when(metaStoreManager)
-        .createCatalog(Mockito.any(), Mockito.any(), Mockito.any());
+        .createCatalog(Mockito.any(), Mockito.any());
     Assertions.assertThatThrownBy(
             () -> polarisAdminService.createCatalog(new CreateCatalogRequest(catalog)))
         .isInstanceOf(IllegalStateException.class)
