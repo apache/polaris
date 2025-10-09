@@ -21,7 +21,7 @@ package org.apache.polaris.core.auth;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -195,19 +195,17 @@ public class JwtDecoderTest {
     Instant expiration = Instant.now().plusSeconds(3600);
     String jwt = createJwtWithExpiration(expiration);
 
-    Optional<JsonNode> result = JwtDecoder.decodePayload(jwt);
+    Optional<DecodedJWT> result = JwtDecoder.decodePayload(jwt);
 
     assertTrue(result.isPresent());
-    JsonNode payload = result.get();
-    assertTrue(payload.has("exp"));
-    assertTrue(payload.has("iss"));
-    assertEquals("test", payload.get("iss").asText());
-    assertEquals(expiration.getEpochSecond(), payload.get("exp").asLong());
+    DecodedJWT decodedJWT = result.get();
+    assertEquals(expiration.toEpochMilli() / 1000, decodedJWT.getExpiresAt().getTime() / 1000);
+    assertEquals("test", decodedJWT.getIssuer());
   }
 
   @Test
   public void testDecodePayloadInvalidToken() {
-    Optional<JsonNode> result = JwtDecoder.decodePayload("not-a-jwt");
+    Optional<DecodedJWT> result = JwtDecoder.decodePayload("not-a-jwt");
     assertTrue(result.isEmpty());
   }
 
@@ -216,7 +214,7 @@ public class JwtDecoderTest {
     Instant expiration = Instant.now().plusSeconds(7200);
     String jwt = createJwtWithExpiration(expiration);
 
-    Optional<JsonNode> payload = JwtDecoder.decodePayload(jwt);
+    Optional<DecodedJWT> payload = JwtDecoder.decodePayload(jwt);
     assertTrue(payload.isPresent());
 
     Optional<Instant> result = JwtDecoder.getExpirationTime(payload.get());
@@ -229,7 +227,7 @@ public class JwtDecoderTest {
   public void testGetExpirationTimeFromPayloadWithoutExp() throws Exception {
     String jwt = createJwtWithoutExpiration();
 
-    Optional<JsonNode> payload = JwtDecoder.decodePayload(jwt);
+    Optional<DecodedJWT> payload = JwtDecoder.decodePayload(jwt);
     assertTrue(payload.isPresent());
 
     Optional<Instant> result = JwtDecoder.getExpirationTime(payload.get());

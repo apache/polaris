@@ -20,7 +20,6 @@ package org.apache.polaris.service.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +29,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.polaris.core.auth.BearerTokenProvider;
 import org.apache.polaris.core.auth.FileBearerTokenProvider;
 import org.apache.polaris.core.auth.OpaPolarisAuthorizer;
 import org.apache.polaris.core.config.RealmConfig;
@@ -66,7 +66,8 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(authConfig.opa()).thenReturn(opaConfig);
 
     OpaPolarisAuthorizerFactory factory =
-        new OpaPolarisAuthorizerFactory(authConfig, mock(CloseableHttpClient.class));
+        new OpaPolarisAuthorizerFactory(
+            authConfig, mock(CloseableHttpClient.class), mock(BearerTokenProvider.class));
 
     // Create authorizer
     RealmConfig realmConfig = mock(RealmConfig.class);
@@ -105,7 +106,8 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(authConfig.opa()).thenReturn(opaConfig);
 
     OpaPolarisAuthorizerFactory factory =
-        new OpaPolarisAuthorizerFactory(authConfig, mock(CloseableHttpClient.class));
+        new OpaPolarisAuthorizerFactory(
+            authConfig, mock(CloseableHttpClient.class), mock(BearerTokenProvider.class));
 
     // Create authorizer
     RealmConfig realmConfig = mock(RealmConfig.class);
@@ -163,7 +165,8 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(authConfig.opa()).thenReturn(opaConfig);
 
     OpaPolarisAuthorizerFactory factory =
-        new OpaPolarisAuthorizerFactory(authConfig, mock(CloseableHttpClient.class));
+        new OpaPolarisAuthorizerFactory(
+            authConfig, mock(CloseableHttpClient.class), mock(BearerTokenProvider.class));
 
     // Create authorizer
     RealmConfig realmConfig = mock(RealmConfig.class);
@@ -199,7 +202,8 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(authConfig.opa()).thenReturn(opaConfig);
 
     OpaPolarisAuthorizerFactory factory =
-        new OpaPolarisAuthorizerFactory(authConfig, mock(CloseableHttpClient.class));
+        new OpaPolarisAuthorizerFactory(
+            authConfig, mock(CloseableHttpClient.class), mock(BearerTokenProvider.class));
 
     // Create authorizer
     RealmConfig realmConfig = mock(RealmConfig.class);
@@ -210,9 +214,19 @@ public class OpaPolarisAuthorizerFactoryTest {
 
   @Test
   public void testFactoryValidatesConfiguration() {
+    // Create a mock BearerTokenProvider that throws an exception
+    BearerTokenProvider mockTokenProvider = mock(BearerTokenProvider.class);
+    when(mockTokenProvider.getToken())
+        .thenThrow(new IllegalArgumentException("refreshInterval must be greater than 0"));
+
     // Create a real implementation of BearerTokenConfig that will have invalid values
     AuthorizationConfiguration.BearerTokenConfig bearerTokenConfig =
         new AuthorizationConfiguration.BearerTokenConfig() {
+          @Override
+          public boolean enabled() {
+            return true;
+          }
+
           @Override
           public Optional<String> staticValue() {
             return Optional.empty();
@@ -254,17 +268,17 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
     OpaPolarisAuthorizerFactory factory =
-        new OpaPolarisAuthorizerFactory(authConfig, mockHttpClient);
+        new OpaPolarisAuthorizerFactory(authConfig, mockHttpClient, mockTokenProvider);
 
-    // Should throw IllegalArgumentException due to invalid refresh interval
+    // Create authorizer instance - this should succeed since validation happens at token provider
+    // level
     RealmConfig realmConfig = mock(RealmConfig.class);
+    OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> factory.create(realmConfig),
-            "Expected IllegalArgumentException for invalid refresh interval");
+    // The authorizer should be created successfully
+    assertNotNull(authorizer);
 
-    assertEquals("refreshInterval must be greater than 0", exception.getMessage());
+    // Note: Validation of bearer token configuration now happens when the BearerTokenProvider
+    // is created by the CDI system, not when the factory creates the authorizer.
   }
 }

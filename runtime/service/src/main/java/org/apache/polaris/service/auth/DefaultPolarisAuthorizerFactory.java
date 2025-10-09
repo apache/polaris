@@ -19,14 +19,14 @@
 package org.apache.polaris.service.auth;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.RealmConfig;
 
 /** Factory for creating the default Polaris authorizer implementation. */
-@RequestScoped
+@ApplicationScoped
 @Identifier("default")
 public class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 

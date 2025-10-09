@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.core.auth;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -26,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -170,7 +174,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     }
 
     // Attempt to parse as JWT and extract expiration
-    Optional<Instant> expiration = JwtDecoder.getExpirationTime(token);
+    Optional<Instant> expiration = getJwtExpirationTime(token);
 
     if (expiration.isPresent()) {
       // Refresh before expiration minus buffer
@@ -222,6 +226,23 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     } catch (IOException e) {
       logger.error("Failed to read token from file: {}", tokenFilePath, e);
       return null;
+    }
+  }
+
+  /**
+   * Extract the expiration time from a JWT token without signature verification.
+   *
+   * @param token the JWT token string
+   * @return the expiration time as an Instant, or empty if not present or invalid
+   */
+  private Optional<Instant> getJwtExpirationTime(String token) {
+    try {
+      DecodedJWT decodedJWT = JWT.decode(token);
+      Date expiresAt = decodedJWT.getExpiresAt();
+      return expiresAt != null ? Optional.of(expiresAt.toInstant()) : Optional.empty();
+    } catch (JWTDecodeException e) {
+      logger.debug("Failed to decode JWT token: {}", e.getMessage());
+      return Optional.empty();
     }
   }
 }

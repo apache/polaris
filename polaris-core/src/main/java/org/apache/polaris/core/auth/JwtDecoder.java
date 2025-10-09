@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.core.auth;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.charset.StandardCharsets;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import java.time.Instant;
-import java.util.Base64;
+import java.util.Date;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,10 +30,12 @@ import org.slf4j.LoggerFactory;
 /**
  * Simple JWT decoder that extracts claims without signature verification. This is used solely for
  * reading the expiration time from JWT tokens to determine refresh timing.
+ *
+ * <p>Uses the java-jwt library for reliable JWT parsing while maintaining the same functionality
+ * as the previous manual implementation.
  */
 public class JwtDecoder {
   private static final Logger LOG = LoggerFactory.getLogger(JwtDecoder.class);
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   /**
    * Decode a JWT token and extract the expiration time if present.
@@ -42,53 +44,40 @@ public class JwtDecoder {
    * @return the expiration time as an Instant, or empty if not present or invalid
    */
   public static Optional<Instant> getExpirationTime(String token) {
-    return decodePayload(token).flatMap(JwtDecoder::getExpirationTime);
-  }
-
-  /**
-   * Decode the payload of a JWT token without signature verification.
-   *
-   * @param token the JWT token string
-   * @return the decoded payload as a JsonNode, or empty if invalid
-   */
-  public static Optional<JsonNode> decodePayload(String token) {
     try {
-      String[] parts = token.split("\\.");
-      if (parts.length != 3) {
-        LOG.debug("Invalid JWT format: expected 3 parts separated by dots");
-        return Optional.empty();
-      }
-
-      // Decode the payload (second part)
-      String payload = parts[1];
-      byte[] decodedBytes = Base64.getUrlDecoder().decode(payload);
-      String payloadJson = new String(decodedBytes, StandardCharsets.UTF_8);
-
-      // Parse JSON
-      JsonNode payloadNode = OBJECT_MAPPER.readTree(payloadJson);
-      return Optional.of(payloadNode);
-
-    } catch (Exception e) {
+      DecodedJWT decodedJWT = JWT.decode(token);
+      Date expiresAt = decodedJWT.getExpiresAt();
+      return expiresAt != null ? Optional.of(expiresAt.toInstant()) : Optional.empty();
+    } catch (JWTDecodeException e) {
       LOG.debug("Failed to decode JWT token: {}", e.getMessage());
       return Optional.empty();
     }
   }
 
   /**
-   * Extract the expiration time from a decoded JWT payload.
+   * Decode the payload of a JWT token without signature verification.
    *
-   * @param payloadNode the decoded JWT payload
-   * @return the expiration time as an Instant, or empty if not present or invalid
+   * @param token the JWT token string
+   * @return the decoded JWT, or empty if invalid
    */
-  public static Optional<Instant> getExpirationTime(JsonNode payloadNode) {
-    JsonNode expNode = payloadNode.get("exp");
-
-    if (expNode == null || !expNode.isNumber()) {
-      LOG.debug("JWT does not contain a valid 'exp' claim");
+  public static Optional<DecodedJWT> decodePayload(String token) {
+    try {
+      DecodedJWT decodedJWT = JWT.decode(token);
+      return Optional.of(decodedJWT);
+    } catch (JWTDecodeException e) {
+      LOG.debug("Failed to decode JWT token: {}", e.getMessage());
       return Optional.empty();
     }
+  }
 
-    long expSeconds = expNode.asLong();
-    return Optional.of(Instant.ofEpochSecond(expSeconds));
+  /**
+   * Extract the expiration time from a decoded JWT.
+   *
+   * @param decodedJWT the decoded JWT
+   * @return the expiration time as an Instant, or empty if not present
+   */
+  public static Optional<Instant> getExpirationTime(DecodedJWT decodedJWT) {
+    Date expiresAt = decodedJWT.getExpiresAt();
+    return expiresAt != null ? Optional.of(expiresAt.toInstant()) : Optional.empty();
   }
 }

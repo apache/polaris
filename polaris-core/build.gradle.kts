@@ -45,6 +45,7 @@ dependencies {
   implementation(libs.caffeine)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
+  implementation(libs.auth0.jwt)
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
