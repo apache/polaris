@@ -43,7 +43,6 @@ dependencies {
     exclude(group = "org.scala-lang", module = "scala-reflect")
   }
 
-  implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-service"))
 
   testImplementation(
