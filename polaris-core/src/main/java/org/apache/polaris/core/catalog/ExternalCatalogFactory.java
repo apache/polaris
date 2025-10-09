@@ -46,8 +46,11 @@ public interface ExternalCatalogFactory {
    * Creates a generic table catalog for the given connection configuration.
    *
    * @param connectionConfig the connection configuration
+   * @param polarisCredentialManager the credential manager for generating connection credentials
+   *     that Polaris uses to access external systems
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
    */
-  GenericTableCatalog createGenericCatalog(ConnectionConfigInfoDpo connectionConfig);
+  GenericTableCatalog createGenericCatalog(
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager);
 }

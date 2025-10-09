@@ -99,7 +99,9 @@ public class GenericTableCatalogHandler extends CatalogHandler {
               Identifier.Literal.of(connectionType.getFactoryIdentifier()));
       if (externalCatalogFactory.isResolvable()) {
         federatedCatalog =
-            externalCatalogFactory.get().createGenericCatalog(connectionConfigInfoDpo);
+            externalCatalogFactory
+                .get()
+                .createGenericCatalog(connectionConfigInfoDpo, getPolarisCredentialManager());
       } else {
         throw new UnsupportedOperationException(
             "External catalog factory for type '" + connectionType + "' is unavailable.");
