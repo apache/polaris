@@ -35,9 +35,6 @@ control and multi-engine routing through the Polaris API surface.
   SigV4 are supported; choose the scheme the remote service expects.
 - **Service identity (SigV4 only):** When using SigV4, set `polaris.service-identity.<realm>.aws-iam.*`
   so Polaris can assume the IAM role referenced by the connection’s `serviceIdentity` block.
-- **Object storage access:** Polaris still writes Iceberg metadata locally when brokering commits, so
-  ensure the catalog’s `storageConfigInfo` grants access to the table locations, just as you would for
-  internal catalogs.
 
 ## Creating a federated REST catalog
 
