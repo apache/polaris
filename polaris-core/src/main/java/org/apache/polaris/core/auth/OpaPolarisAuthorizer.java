@@ -54,6 +54,10 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
  * <p>This authorizer delegates authorization decisions to an Open Policy Agent (OPA) server using a
  * configurable REST API endpoint and policy path. The input to OPA is constructed from the
  * principal, entities, operation, and resource context.
+ *
+ * <p><strong>Beta Feature:</strong> This implementation is currently in Beta and is not a stable
+ * release. It may undergo breaking changes in future versions. Use with caution in production
+ * environments.
  */
 public class OpaPolarisAuthorizer implements PolarisAuthorizer {
   private final String opaServerUrl;
