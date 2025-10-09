@@ -105,6 +105,7 @@ This step can be useful to gather ongoing patches that the community thinks shou
 The communication can be started via a `[DISCUSS]` mail on the dev@polaris.apache.org mailing list and the desired tickets can be added to the github milestone of the next release.
 
 Note, creating a milestone in github requires a committer. However, a non-committer can assign tasks to a milestone if added to the list of collaborators in [.asf.yaml](https://github.com/apache/polaris/blob/main/.asf.yaml).
+Also note since polaris is an incubating project, make sure what ever branch / tags you are creating are suffixed with `-incubating`.
 
 ### Create release branch
 
@@ -252,6 +253,8 @@ svn commit -m "Stage Apache Polaris x.y.z RCx"
 You can now build and publish the Maven artifacts on a Nexus staging repository:
 
 ```
+export GITHUB_TOKEN = <YOUR_GITHUB_TOKEN>
+Then run:
 ./gradlew publishToApache -Prelease -PuseGpgAgent -Dorg.gradle.parallel=false
 ```
 
