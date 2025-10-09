@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING;
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
@@ -426,6 +426,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
           TableIdentifier.of(namespace, request.name()));
     }
+
+    CatalogEntity catalog = getResolvedCatalogEntity();
+    if (catalog.isStaticFacade()) {
+      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
+    }
+    checkAllowExternalCatalogCredentialVending(delegationModes);
   }
 
   public LoadTableResponse createTableDirect(
@@ -436,10 +442,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     authorizeCreateTableDirect(namespace, request, delegationModes);
 
-    CatalogEntity catalog = getResolvedCatalogEntity();
-    if (catalog.isStaticFacade()) {
-      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
-    }
     request.validate();
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
@@ -550,6 +552,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION,
           TableIdentifier.of(namespace, request.name()));
     }
+
+    CatalogEntity catalog = getResolvedCatalogEntity();
+    if (catalog.isStaticFacade()) {
+      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
+    }
+    checkAllowExternalCatalogCredentialVending(delegationModes);
   }
 
   public LoadTableResponse createTableStaged(
@@ -560,10 +568,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     authorizeCreateTableStaged(namespace, request, delegationModes);
 
-    CatalogEntity catalog = getResolvedCatalogEntity();
-    if (catalog.isStaticFacade()) {
-      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
-    }
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
@@ -728,23 +732,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
-    CatalogEntity catalogEntity = getResolvedCatalogEntity();
-
-    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
-    LOGGER.info(
-        "allow external catalog credential vending: {}",
-        realmConfig.getConfig(
-            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
-    if (catalogEntity
-            .getCatalogType()
-            .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
-        && !realmConfig.getConfig(
-            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
-      throw new ForbiddenException(
-          "Access Delegation is not enabled for this catalog. Please consult applicable "
-              + "documentation for the catalog config property '%s' to enable this feature",
-          FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
-    }
+    checkAllowExternalCatalogCredentialVending(delegationModes);
 
     return actionsRequested;
   }
@@ -814,13 +802,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
 
     if (resolvedStoragePath == null) {
-        LOGGER.debug("Unable to find storage configuration information for table {}", tableIdentifier);
+      LOGGER.debug(
+          "Unable to find storage configuration information for table {}", tableIdentifier);
       return responseBuilder;
     }
 
     if (baseCatalog instanceof IcebergCatalog
         || realmConfig.getConfig(
-            ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, getResolvedCatalogEntity())) {
+            ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, getResolvedCatalogEntity())) {
       AccessConfig accessConfig =
           accessConfigProvider.getAccessConfig(
               callContext,
@@ -1220,6 +1209,31 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       return actions;
     } else {
       return EnumSet.of(PolarisAuthorizableOperation.UPDATE_TABLE);
+    }
+  }
+
+  private void checkAllowExternalCatalogCredentialVending(
+      EnumSet<AccessDelegationMode> delegationModes) {
+
+    if (delegationModes.isEmpty()) {
+      return;
+    }
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+
+    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
+    LOGGER.info(
+        "allow external catalog credential vending: {}",
+        realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
+    if (catalogEntity
+            .getCatalogType()
+            .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
+        && !realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
+      throw new ForbiddenException(
+          "Access Delegation is not enabled for this catalog. Please consult applicable "
+              + "documentation for the catalog config property '%s' to enable this feature",
+          FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
   }
 
