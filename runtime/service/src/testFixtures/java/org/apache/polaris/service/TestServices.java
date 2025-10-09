@@ -278,7 +278,6 @@ public record TestServices(
               resolverFactory,
               resolutionManifestFactory,
               metaStoreManager,
-              userSecretsManager,
               credentialManager,
               authorizer,
               new DefaultCatalogPrefixParser(),

@@ -98,7 +98,6 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -155,7 +154,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
-      UserSecretsManager userSecretsManager,
       PolarisCredentialManager credentialManager,
       SecurityContext securityContext,
       CallContextCatalogFactory catalogFactory,
@@ -173,7 +171,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         securityContext,
         catalogName,
         authorizer,
-        userSecretsManager,
         credentialManager,
         externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
@@ -257,10 +254,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         federatedCatalog =
             externalCatalogFactory
                 .get()
-                .createCatalog(
-                    connectionConfigInfoDpo,
-                    getUserSecretsManager(),
-                    getPolarisCredentialManager());
+                .createCatalog(connectionConfigInfoDpo, getPolarisCredentialManager());
       } else {
         throw new UnsupportedOperationException(
             "External catalog factory for type '" + connectionType + "' is unavailable.");
