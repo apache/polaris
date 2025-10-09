@@ -28,7 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
-import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.polaris.core.auth.BearerTokenProvider;
 import org.apache.polaris.core.auth.FileBearerTokenProvider;
 import org.apache.polaris.core.auth.OpaPolarisAuthorizer;

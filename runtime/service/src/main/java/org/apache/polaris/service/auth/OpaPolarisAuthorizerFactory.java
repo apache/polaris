@@ -21,7 +21,7 @@ package org.apache.polaris.service.auth;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.polaris.core.auth.BearerTokenProvider;
 import org.apache.polaris.core.auth.OpaPolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizer;

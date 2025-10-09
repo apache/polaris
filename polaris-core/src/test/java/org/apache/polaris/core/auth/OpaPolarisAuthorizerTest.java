@@ -41,11 +41,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.http.HttpEntity;
-import org.apache.http.StatusLine;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.core5.http.HttpEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -495,12 +494,10 @@ public class OpaPolarisAuthorizerTest {
   public void testBearerTokenIsAddedToHttpRequest() throws IOException {
     CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
     CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
-    StatusLine mockStatusLine = mock(StatusLine.class);
     HttpEntity mockEntity = mock(HttpEntity.class);
 
     when(mockHttpClient.execute(any(HttpPost.class))).thenReturn(mockResponse);
-    when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
-    when(mockStatusLine.getStatusCode()).thenReturn(200);
+    when(mockResponse.getCode()).thenReturn(200);
     when(mockResponse.getEntity()).thenReturn(mockEntity);
     when(mockEntity.getContent())
         .thenReturn(
@@ -540,11 +537,9 @@ public class OpaPolarisAuthorizerTest {
   public void testAuthorizationFailsWithoutBearerToken() throws IOException {
     CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
     CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
-    StatusLine mockStatusLine = mock(StatusLine.class);
 
     when(mockHttpClient.execute(any(HttpPost.class))).thenReturn(mockResponse);
-    when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
-    when(mockStatusLine.getStatusCode()).thenReturn(401);
+    when(mockResponse.getCode()).thenReturn(401);
 
     OpaPolarisAuthorizer authorizer =
         createWithStringToken(
@@ -578,12 +573,10 @@ public class OpaPolarisAuthorizerTest {
     // Mock HTTP client and response
     CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
     CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
-    StatusLine mockStatusLine = mock(StatusLine.class);
     HttpEntity mockEntity = mock(HttpEntity.class);
 
     when(mockHttpClient.execute(any(HttpPost.class))).thenReturn(mockResponse);
-    when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
-    when(mockStatusLine.getStatusCode()).thenReturn(200);
+    when(mockResponse.getCode()).thenReturn(200);
     when(mockResponse.getEntity()).thenReturn(mockEntity);
     when(mockEntity.getContent())
         .thenReturn(
@@ -631,12 +624,10 @@ public class OpaPolarisAuthorizerTest {
     // Mock HTTP client and response
     CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
     CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
-    StatusLine mockStatusLine = mock(StatusLine.class);
     HttpEntity mockEntity = mock(HttpEntity.class);
 
     when(mockHttpClient.execute(any(HttpPost.class))).thenReturn(mockResponse);
-    when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
-    when(mockStatusLine.getStatusCode()).thenReturn(200);
+    when(mockResponse.getCode()).thenReturn(200);
     when(mockResponse.getEntity()).thenReturn(mockEntity);
     when(mockEntity.getContent())
         .thenReturn(

@@ -26,24 +26,27 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import javax.net.ssl.SSLContext;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustAllStrategy;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.TrustAllStrategy;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
+import org.apache.hc.core5.util.Timeout;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -114,9 +117,9 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
       // Create request configuration with timeouts
       RequestConfig requestConfig =
           RequestConfig.custom()
-              .setConnectTimeout(timeoutMs)
-              .setSocketTimeout(timeoutMs)
-              .setConnectionRequestTimeout(timeoutMs)
+              .setConnectTimeout(Timeout.ofMilliseconds(timeoutMs))
+              .setResponseTimeout(Timeout.ofMilliseconds(timeoutMs))
+              .setConnectionRequestTimeout(Timeout.ofMilliseconds(timeoutMs))
               .build();
 
       // Configure SSL for HTTPS connections
@@ -132,7 +135,10 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
           httpClient =
               HttpClients.custom()
                   .setDefaultRequestConfig(requestConfig)
-                  .setSSLSocketFactory(sslSocketFactory)
+                  .setConnectionManager(
+                      PoolingHttpClientConnectionManagerBuilder.create()
+                          .setSSLSocketFactory(sslSocketFactory)
+                          .build())
                   .build();
         } else {
           httpClient = HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
@@ -235,17 +241,22 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
         }
       }
 
-      httpPost.setEntity(new StringEntity(inputJson, StandardCharsets.UTF_8));
+      httpPost.setEntity(new StringEntity(inputJson, ContentType.APPLICATION_JSON));
 
       // Execute request
       try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-        int statusCode = response.getStatusLine().getStatusCode();
+        int statusCode = response.getCode();
         if (statusCode != 200) {
           return false;
         }
 
         // Read and parse response
-        String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+        String responseBody;
+        try {
+          responseBody = EntityUtils.toString(response.getEntity());
+        } catch (ParseException e) {
+          throw new RuntimeException("Failed to parse OPA response", e);
+        }
         ObjectNode respNode = (ObjectNode) objectMapper.readTree(responseBody);
         return respNode.path("result").path("allow").asBoolean(false);
       }
