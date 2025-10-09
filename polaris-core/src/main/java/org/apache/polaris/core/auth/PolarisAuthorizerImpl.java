@@ -83,6 +83,11 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROLE_WRI
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_ROTATE_CREDENTIALS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.SERVICE_MANAGE_ACCESS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_PARTITION_SPEC;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SCHEMA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SNAPSHOT;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ADD_SORT_ORDER;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ASSIGN_UUID;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_ATTACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
@@ -91,8 +96,21 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_FULL_METADAT
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_STRUCTURE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOTS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOT_REF;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_STATISTICS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_CURRENT_SCHEMA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_DEFAULT_SORT_ORDER;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_LOCATION;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_SNAPSHOT_REF;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_SET_STATISTICS;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
@@ -247,6 +265,183 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_FULL_METADATA,
             TABLE_WRITE_DATA,
             TABLE_WRITE_PROPERTIES));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_ASSIGN_UUID,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_ASSIGN_UUID));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_UPGRADE_FORMAT_VERSION,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_UPGRADE_FORMAT_VERSION));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_ADD_SCHEMA,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_ADD_SCHEMA));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_SET_CURRENT_SCHEMA,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_SET_CURRENT_SCHEMA));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_ADD_PARTITION_SPEC,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_ADD_PARTITION_SPEC));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_ADD_SORT_ORDER,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_ADD_SORT_ORDER));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_SET_DEFAULT_SORT_ORDER,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_SET_DEFAULT_SORT_ORDER));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_ADD_SNAPSHOT,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_ADD_SNAPSHOT));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_SET_SNAPSHOT_REF,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_SET_SNAPSHOT_REF));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_REMOVE_SNAPSHOTS,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_REMOVE_SNAPSHOTS));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_REMOVE_SNAPSHOT_REF,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_REMOVE_SNAPSHOT_REF));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_SET_LOCATION,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_SET_LOCATION));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_SET_PROPERTIES,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_SET_PROPERTIES));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_REMOVE_PROPERTIES,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_REMOVE_PROPERTIES));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_SET_STATISTICS,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_SET_STATISTICS));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_REMOVE_STATISTICS,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_REMOVE_STATISTICS));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_REMOVE_PARTITION_SPECS,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_REMOVE_PARTITION_SPECS));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_MANAGE_STRUCTURE,
+        List.of(
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            TABLE_FULL_METADATA,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE));
     SUPER_PRIVILEGES.putAll(
         VIEW_WRITE_PROPERTIES,
         List.of(

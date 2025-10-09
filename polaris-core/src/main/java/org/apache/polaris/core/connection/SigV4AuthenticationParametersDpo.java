@@ -28,6 +28,7 @@ import org.apache.iceberg.aws.AwsProperties;
 import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
@@ -93,15 +94,15 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
 
   @Nonnull
   @Override
-  public Map<String, String> asIcebergCatalogProperties(UserSecretsManager secretsManager) {
+  public Map<String, String> asIcebergCatalogProperties(
+      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager) {
     ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
     builder.put(AuthProperties.AUTH_TYPE, AuthProperties.AUTH_TYPE_SIGV4);
     builder.put(AwsProperties.REST_SIGNER_REGION, getSigningRegion());
     if (getSigningName() != null) {
       builder.put(AwsProperties.REST_SIGNING_NAME, getSigningName());
     }
-
-    // TODO: Add a credential manager to assume the role and get the aws session credentials
+    // Connection credentials are handled by ConnectionConfigInfoDpo
     return builder.build();
   }
 

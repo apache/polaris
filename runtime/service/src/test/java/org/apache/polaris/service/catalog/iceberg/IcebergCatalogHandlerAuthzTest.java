@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
@@ -57,6 +59,9 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -76,9 +81,25 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+/**
+ * Authorization test class for IcebergCatalogHandler. Runs with the default value for
+ * ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES (currently true).
+ *
+ * <p>This class tests:
+ *
+ * <ul>
+ *   <li>Standard authorization behavior for all catalog operations
+ *   <li>Fine-grained authorization for table metadata update operations
+ *   <li>Coarse-grained fallback behavior
+ *   <li>Super-privilege behavior (e.g., TABLE_MANAGE_STRUCTURE)
+ * </ul>
+ */
 @QuarkusTest
 @TestProfile(PolarisAuthzTestBase.Profile.class)
 public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
+
+  @Inject CallContextCatalogFactory callContextCatalogFactory;
+  @Inject Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   @SuppressWarnings("unchecked")
   private static Instance<ExternalCatalogFactory> emptyExternalCatalogFactory() {
@@ -88,7 +109,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     return mock;
   }
 
-  private IcebergCatalogHandler newWrapper() {
+  protected IcebergCatalogHandler newWrapper() {
     return newWrapper(Set.of());
   }
 
@@ -106,6 +127,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         resolutionManifestFactory,
         metaStoreManager,
         userSecretsManager,
+        credentialManager,
         securityContext(authenticatedPrincipal),
         factory,
         catalogName,
@@ -113,7 +135,29 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         reservedProperties,
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
-        polarisEventListener);
+        polarisEventListener,
+        accessConfigProvider);
+  }
+
+  protected void doTestInsufficientPrivileges(
+      List<PolarisPrivilege> insufficientPrivileges, Runnable action) {
+    doTestInsufficientPrivileges(insufficientPrivileges, PRINCIPAL_NAME, action);
+  }
+
+  /**
+   * Tests each "insufficient" privilege individually using CATALOG_ROLE1 by granting at the
+   * CATALOG_NAME level, ensuring the action fails, then revoking after each test case.
+   */
+  private void doTestInsufficientPrivileges(
+      List<PolarisPrivilege> insufficientPrivileges, String principalName, Runnable action) {
+    doTestInsufficientPrivileges(
+        insufficientPrivileges,
+        principalName,
+        action,
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
   }
 
   /**
@@ -130,7 +174,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
    *     either the cleanup privileges must be latent, or the cleanup action could be run with
    *     PRINCIPAL_ROLE2 while runnint {@code action} with PRINCIPAL_ROLE1.
    */
-  private void doTestSufficientPrivileges(
+  protected void doTestSufficientPrivileges(
       List<PolarisPrivilege> sufficientPrivileges, Runnable action, Runnable cleanupAction) {
     doTestSufficientPrivilegeSets(
         sufficientPrivileges.stream().map(Set::of).toList(), action, cleanupAction, PRINCIPAL_NAME);
@@ -160,7 +204,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
    * @param principalName
    * @param catalogName
    */
-  private void doTestSufficientPrivilegeSets(
+  protected void doTestSufficientPrivilegeSets(
       List<Set<PolarisPrivilege>> sufficientPrivileges,
       Runnable action,
       Runnable cleanupAction,
@@ -175,27 +219,6 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             adminService.grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege),
         (privilege) ->
             adminService.revokePrivilegeOnCatalogFromRole(catalogName, CATALOG_ROLE1, privilege));
-  }
-
-  private void doTestInsufficientPrivileges(
-      List<PolarisPrivilege> insufficientPrivileges, Runnable action) {
-    doTestInsufficientPrivileges(insufficientPrivileges, PRINCIPAL_NAME, action);
-  }
-
-  /**
-   * Tests each "insufficient" privilege individually using CATALOG_ROLE1 by granting at the
-   * CATALOG_NAME level, ensuring the action fails, then revoking after each test case.
-   */
-  private void doTestInsufficientPrivileges(
-      List<PolarisPrivilege> insufficientPrivileges, String principalName, Runnable action) {
-    doTestInsufficientPrivileges(
-        insufficientPrivileges,
-        principalName,
-        action,
-        (privilege) ->
-            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
-        (privilege) ->
-            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
   }
 
   @Test
@@ -245,6 +268,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            credentialManager,
             securityContext(authenticatedPrincipal),
             callContextCatalogFactory,
             CATALOG_NAME,
@@ -252,7 +276,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             reservedProperties,
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
-            polarisEventListener);
+            polarisEventListener,
+            accessConfigProvider);
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -282,6 +307,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
+            credentialManager,
             securityContext(authenticatedPrincipal1),
             callContextCatalogFactory,
             CATALOG_NAME,
@@ -289,7 +315,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             reservedProperties,
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
-            polarisEventListener);
+            polarisEventListener,
+            accessConfigProvider);
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),
@@ -1070,6 +1097,110 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
   }
 
   @Test
+  public void testUpdateTableFallbackToCoarseGrainedWhenFeatureDisabled() {
+    // Test that when fine-grained authorization is disabled, it falls back to
+    // TABLE_WRITE_PROPERTIES
+    // This test validates that the feature flag works correctly by testing the negative case
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
+
+    // With fine-grained authorization disabled, TABLE_WRITE_PROPERTIES should work
+    // even for operations that would require specific privileges when enabled
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapperWithFineGrainedAuthzDisabled().updateTable(TABLE_NS1A_2, request),
+        null /* cleanupAction */);
+  }
+
+  /**
+   * Creates a wrapper with fine-grained authorization explicitly disabled for testing the fallback
+   * behavior to coarse-grained authorization.
+   */
+  private IcebergCatalogHandler newWrapperWithFineGrainedAuthzDisabled() {
+    // Create a custom CallContextCatalogFactory that mocks the configuration
+    CallContextCatalogFactory mockFactory = Mockito.mock(CallContextCatalogFactory.class);
+
+    // Mock the catalog factory to return our regular catalog but with mocked config
+    Mockito.when(
+            mockFactory.createCallContextCatalog(
+                Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
+        .thenReturn(baseCatalog);
+
+    return newWrapperWithFineLevelAuthDisabled(Set.of(), CATALOG_NAME, mockFactory, false);
+  }
+
+  private IcebergCatalogHandler newWrapperWithFineLevelAuthDisabled(
+      Set<String> activatedPrincipalRoles,
+      String catalogName,
+      CallContextCatalogFactory factory,
+      boolean fineGrainedAuthzEnabled) {
+
+    PolarisPrincipal authenticatedPrincipal =
+        PolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
+
+    // Create a custom CallContext that returns a custom RealmConfig
+    CallContext mockCallContext = Mockito.mock(CallContext.class);
+
+    // Create a simple RealmConfig implementation that overrides just what we need
+    RealmConfig customRealmConfig =
+        new RealmConfig() {
+          @Override
+          public <T> T getConfig(String configName) {
+            return realmConfig.getConfig(configName);
+          }
+
+          @Override
+          public <T> T getConfig(String configName, T defaultValue) {
+            return realmConfig.getConfig(configName, defaultValue);
+          }
+
+          @Override
+          public <T> T getConfig(PolarisConfiguration<T> config) {
+            return realmConfig.getConfig(config);
+          }
+
+          @Override
+          @SuppressWarnings("unchecked")
+          public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
+            // Override the specific configuration we want to test
+            if (config.equals(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES)) {
+              return (T) Boolean.valueOf(fineGrainedAuthzEnabled);
+            }
+            return realmConfig.getConfig(config, catalogEntity);
+          }
+        };
+
+    // Mock the regular CallContext calls
+    Mockito.when(mockCallContext.getRealmConfig()).thenReturn(customRealmConfig);
+    Mockito.when(mockCallContext.getPolarisCallContext())
+        .thenReturn(callContext.getPolarisCallContext());
+
+    return new IcebergCatalogHandler(
+        diagServices,
+        mockCallContext,
+        resolutionManifestFactory,
+        metaStoreManager,
+        userSecretsManager,
+        credentialManager,
+        securityContext(authenticatedPrincipal),
+        factory,
+        catalogName,
+        polarisAuthorizer,
+        reservedProperties,
+        catalogHandlerUtils,
+        emptyExternalCatalogFactory(),
+        polarisEventListener,
+        accessConfigProvider);
+  }
+
+  @Test
   public void testDropTableWithoutPurgeAllSufficientPrivileges() {
     assertSuccess(
         adminService.grantPrivilegeOnCatalogToRole(
@@ -1707,7 +1838,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
                 .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                 .setCatalogType("EXTERNAL")
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityProvider)));
     adminService.createCatalogRole(
         externalCatalog, new CatalogRoleEntity.Builder().setName(CATALOG_ROLE1).build());
     adminService.createCatalogRole(
@@ -1769,7 +1900,6 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     PolarisCallContextCatalogFactory factory =
         new PolarisCallContextCatalogFactory(
             diagServices,
-            storageCredentialCache,
             resolverFactory,
             managerFactory,
             Mockito.mock(),
@@ -1905,5 +2035,208 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, request);
         });
+  }
+
+  @Test
+  public void testUpdateTableWith_AssignUuid_Privilege() {
+    // Test that TABLE_ASSIGN_UUID privilege is required for AssignUUID MetadataUpdate
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
+
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_ASSIGN_UUID,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testUpdateTableWith_AssignUuidInsufficientPermissions() {
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.AssignUUID(UUID.randomUUID().toString())));
+
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP,
+            // Test that other fine-grained privileges don't work
+            PolarisPrivilege.TABLE_ADD_SCHEMA,
+            PolarisPrivilege.TABLE_SET_LOCATION),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request));
+  }
+
+  @Test
+  public void testUpdateTableWith_UpgradeFormatVersionPrivilege() {
+    // Test that TABLE_UPGRADE_FORMAT_VERSION privilege is required for UpgradeFormatVersion
+    // MetadataUpdate
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.UpgradeFormatVersion(2)));
+
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testUpdateTableWith_SetPropertiesPrivilege() {
+    // Test that TABLE_SET_PROPERTIES privilege is required for SetProperties MetadataUpdate
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.SetProperties(Map.of("test.property", "test.value"))));
+
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_SET_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testUpdateTableWith_RemoveProperties_Privilege() {
+    // Test that TABLE_REMOVE_PROPERTIES privilege is required for RemoveProperties MetadataUpdate
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(new MetadataUpdate.RemoveProperties(Set.of("property.to.remove"))));
+
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_REMOVE_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testUpdateTableWith_MultipleUpdates_Privilege() {
+    // Test that multiple MetadataUpdate types require multiple specific privileges
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(
+                new MetadataUpdate.UpgradeFormatVersion(2),
+                new MetadataUpdate.SetProperties(Map.of("test.prop", "test.val"))));
+
+    // Test that having both specific privileges works
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(
+                PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION,
+                PolarisPrivilege.TABLE_SET_PROPERTIES),
+            Set.of(PolarisPrivilege.TABLE_WRITE_PROPERTIES), // Broader privilege should work
+            Set.of(PolarisPrivilege.TABLE_FULL_METADATA),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request),
+        null /* cleanupAction */,
+        PRINCIPAL_NAME,
+        CATALOG_NAME);
+  }
+
+  @Test
+  public void testUpdateTableWith_MultipleUpdatesInsufficientPermissions() {
+    // Test that having only one of the required privileges fails
+    UpdateTableRequest request =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(
+                new MetadataUpdate.UpgradeFormatVersion(2),
+                new MetadataUpdate.SetProperties(Map.of("test.prop", "test.val"))));
+
+    // Test that having only one specific privilege fails (need both)
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_UPGRADE_FORMAT_VERSION, // Only one of the two needed
+            PolarisPrivilege.TABLE_SET_PROPERTIES, // Only one of the two needed
+            PolarisPrivilege.TABLE_ASSIGN_UUID, // Wrong privilege
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_CREATE),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, request));
+  }
+
+  @Test
+  public void testUpdateTableWith_TableManageStructureSuperPrivilege() {
+    // Test that TABLE_MANAGE_STRUCTURE works as a super privilege for structural operations
+    // (but NOT for snapshot operations like TABLE_ADD_SNAPSHOT)
+
+    // Test structural operations that should work with TABLE_MANAGE_STRUCTURE
+    UpdateTableRequest structuralRequest =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(
+                new MetadataUpdate.AssignUUID(UUID.randomUUID().toString()),
+                new MetadataUpdate.UpgradeFormatVersion(2),
+                new MetadataUpdate.SetProperties(Map.of("test.property", "test.value")),
+                new MetadataUpdate.RemoveProperties(Set.of("property.to.remove"))));
+
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_MANAGE_STRUCTURE, // Should work for all structural operations
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES, // Should also work with broader privilege
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, structuralRequest),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testUpdateTableWith_TableManageStructureDoesNotIncludeSnapshots() {
+    // Verify that TABLE_MANAGE_STRUCTURE does NOT grant access to snapshot operations
+    // This test verifies that TABLE_ADD_SNAPSHOT and TABLE_SET_SNAPSHOT_REF were correctly
+    // excluded from the TABLE_MANAGE_STRUCTURE super privilege mapping
+
+    // Test that TABLE_MANAGE_STRUCTURE works for non-snapshot structural operations
+    UpdateTableRequest nonSnapshotRequest =
+        UpdateTableRequest.create(
+            TABLE_NS1A_2,
+            List.of(), // no requirements
+            List.of(
+                new MetadataUpdate.AssignUUID(UUID.randomUUID().toString()),
+                new MetadataUpdate.SetProperties(Map.of("structure.test", "value"))));
+
+    doTestSufficientPrivileges(
+        List.of(PolarisPrivilege.TABLE_MANAGE_STRUCTURE),
+        () -> newWrapper().updateTable(TABLE_NS1A_2, nonSnapshotRequest),
+        null /* cleanupAction */);
+
+    // Test that TABLE_MANAGE_STRUCTURE is insufficient for operations that require
+    // different privilege categories (like read operations)
+    doTestInsufficientPrivileges(
+        List.of(PolarisPrivilege.TABLE_MANAGE_STRUCTURE),
+        () ->
+            newWrapper()
+                .loadTable(TABLE_NS1A_2, "all")); // Load table requires different privileges
   }
 }

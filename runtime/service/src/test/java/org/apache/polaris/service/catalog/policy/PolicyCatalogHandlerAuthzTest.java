@@ -59,6 +59,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         catalogName,
         polarisAuthorizer,
         null,
+        null,
         null);
   }
 

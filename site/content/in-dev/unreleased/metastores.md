@@ -29,7 +29,11 @@ deprecated EclipseLink persistence backends.
 This implementation leverages Quarkus for datasource management and supports configuration through
 environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
 
+We have 2 options for configuring the persistence backend:
 
+### 1. Relational JDBC metastore with username and password
+
+using environment variables:
 ```
 POLARIS_PERSISTENCE_TYPE=relational-jdbc
 
@@ -37,6 +41,33 @@ QUARKUS_DATASOURCE_USERNAME=<your-username>
 QUARKUS_DATASOURCE_PASSWORD=<your-password>
 QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
 ```
+using properties file:
+
+```
+polaris.persistence.type=relational-jdbc
+quarkus.datasource.jdbc.username=<your-username>
+quarkus.datasource.jdbc.password=<your-password>
+quarkus.datasource.jdbc.jdbc-url=<jdbc-url-of-postgres>
+```
+
+### 2. AWS Aurora PostgreSQL metastore using IAM AWS authentication
+
+```
+polaris.persistence.type=relational-jdbc
+quarkus.datasource.jdbc.url=jdbc:postgresql://polaris-cluster.cluster-xyz.us-east-1.rds.amazonaws.com:6160/polaris
+quarkus.datasource.jdbc.additional-jdbc-properties.wrapperPlugins=iam
+quarkus.datasource.username=dbusername
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.jdbc.additional-jdbc-properties.ssl=true
+quarkus.datasource.jdbc.additional-jdbc-properties.sslmode=require
+quarkus.datasource.credentials-provider=aws
+
+quarkus.rds.credentials-provider.aws.use-quarkus-client=true
+quarkus.rds.credentials-provider.aws.username=dbusername
+quarkus.rds.credentials-provider.aws.hostname=polaris-cluster.cluster-xyz.us-east-1.rds.amazonaws.com
+quarkus.rds.credentials-provider.aws.port=6160
+```
+This is the basic configuration. For more details, please refer to the [Quarkus plugin documentation](https://docs.quarkiverse.io/quarkus-amazon-services/dev/amazon-rds.html#_configuration_reference)
 
 The Relational JDBC metastore currently relies on a Quarkus-managed datasource and supports only PostgresSQL and H2 databases. This limitation is similar to that of EclipseLink, primarily due to underlying schema differences. At this time, official documentation is provided exclusively for usage with PostgreSQL.
 Please refer to the documentation here:

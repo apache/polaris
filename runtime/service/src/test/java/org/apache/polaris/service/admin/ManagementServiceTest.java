@@ -59,6 +59,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.secrets.UnsafeInMemorySecretsManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -376,6 +377,7 @@ public class ManagementServiceTest {
         services.resolutionManifestFactory(),
         metaStoreManager,
         new UnsafeInMemorySecretsManager(),
+        new DefaultServiceIdentityProvider(),
         new SecurityContext() {
           @Override
           public Principal getUserPrincipal() {

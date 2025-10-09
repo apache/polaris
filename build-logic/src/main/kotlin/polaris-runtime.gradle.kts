@@ -95,3 +95,26 @@ tasks.named("javadoc") { dependsOn("jandex") }
 tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
 
 tasks.named("imageBuild") { dependsOn("jandex") }
+
+tasks.withType(Test::class.java).configureEach {
+  // Gradle's Jacoco plugin doesn't work well with Quarkus's test coverage
+  extensions.configure(JacocoTaskExtension::class) { isEnabled = false }
+
+  // Quarkus tests run "in isolated class loaders", which means that class-statically active
+  // resources pile up used JVM, as those classes cannot be GC'd.
+  // Examples of those statically held active resources are:
+  // - Iceberg's worker pools (thread pools, executors, etc.)
+  // - Hadoop's stats-cleaner (org.apache.hadoop.fs.FileSystem.Statistics.STATS_DATA_CLEANER)
+  // - Guava's 'MoreExecutors' (via Iceberg `ThreadPools`)`
+  // Forcing a new JVM after each test class works around this issue.
+  forkEvery = 1
+
+  maxParallelForks = 1
+
+  // enlarge the max heap size to avoid out of memory error
+  maxHeapSize = "4g"
+
+  // Silence the 'OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader
+  // classes because bootstrap classpath has been appended' warning from OpenJDK.
+  jvmArgs("-Xshare:off")
+}

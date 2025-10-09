@@ -34,6 +34,7 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
@@ -63,6 +64,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
       String catalogName,
       PolarisAuthorizer authorizer,
       UserSecretsManager userSecretsManager,
+      PolarisCredentialManager polarisCredentialManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(
         diagnostics,
@@ -72,14 +74,14 @@ public class GenericTableCatalogHandler extends CatalogHandler {
         catalogName,
         authorizer,
         userSecretsManager,
+        polarisCredentialManager,
         externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
   }
 
   @Override
   protected void initializeCatalog() {
-    CatalogEntity resolvedCatalogEntity =
-        CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+    CatalogEntity resolvedCatalogEntity = resolutionManifest.getResolvedCatalogEntity();
     ConnectionConfigInfoDpo connectionConfigInfoDpo =
         resolvedCatalogEntity.getConnectionConfigInfoDpo();
     if (connectionConfigInfoDpo != null) {

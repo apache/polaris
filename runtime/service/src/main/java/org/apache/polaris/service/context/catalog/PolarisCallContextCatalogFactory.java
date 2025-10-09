@@ -29,11 +29,9 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -49,7 +47,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
-  private final StorageCredentialCache storageCredentialCache;
   private final ResolverFactory resolverFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final PolarisEventListener polarisEventListener;
@@ -57,14 +54,12 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   @Inject
   public PolarisCallContextCatalogFactory(
       PolarisDiagnostics diagnostics,
-      StorageCredentialCache storageCredentialCache,
       ResolverFactory resolverFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
     this.diagnostics = diagnostics;
-    this.storageCredentialCache = storageCredentialCache;
     this.resolverFactory = resolverFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.taskExecutor = taskExecutor;
@@ -78,9 +73,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       PolarisPrincipal polarisPrincipal,
       SecurityContext securityContext,
       final PolarisResolutionManifest resolvedManifest) {
-    PolarisBaseEntity baseCatalogEntity =
-        resolvedManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
-    String catalogName = baseCatalogEntity.getName();
+    CatalogEntity catalog = resolvedManifest.getResolvedCatalogEntity();
+    String catalogName = catalog.getName();
 
     String realm = context.getRealmContext().getRealmIdentifier();
     String catalogKey = realm + "/" + catalogName;
@@ -89,7 +83,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     IcebergCatalog catalogInstance =
         new IcebergCatalog(
             diagnostics,
-            storageCredentialCache,
             resolverFactory,
             metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
             context,
@@ -99,7 +92,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             fileIOFactory,
             polarisEventListener);
 
-    CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getBaseLocation();
     LOGGER.debug(

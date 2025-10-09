@@ -23,6 +23,7 @@ import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
@@ -39,6 +40,7 @@ import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -63,6 +65,7 @@ public abstract class CatalogHandler {
   protected final String catalogName;
   protected final PolarisAuthorizer authorizer;
   protected final UserSecretsManager userSecretsManager;
+  protected final PolarisCredentialManager credentialManager;
   protected final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   protected final PolarisDiagnostics diagnostics;
@@ -79,6 +82,7 @@ public abstract class CatalogHandler {
       String catalogName,
       PolarisAuthorizer authorizer,
       UserSecretsManager userSecretsManager,
+      PolarisCredentialManager credentialManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.diagnostics = diagnostics;
     this.callContext = callContext;
@@ -95,11 +99,20 @@ public abstract class CatalogHandler {
     this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
     this.userSecretsManager = userSecretsManager;
+    this.credentialManager = credentialManager;
     this.externalCatalogFactories = externalCatalogFactories;
   }
 
   protected UserSecretsManager getUserSecretsManager() {
     return userSecretsManager;
+  }
+
+  protected PolarisCredentialManager getPolarisCredentialManager() {
+    return credentialManager;
+  }
+
+  protected PolarisResolutionManifest newResolutionManifest() {
+    return resolutionManifestFactory.createResolutionManifest(securityContext, catalogName);
   }
 
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
@@ -116,9 +129,7 @@ public abstract class CatalogHandler {
       List<Namespace> extraPassthroughNamespaces,
       List<TableIdentifier> extraPassthroughTableLikes,
       List<PolicyIdentifier> extraPassThroughPolicies) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -170,9 +181,7 @@ public abstract class CatalogHandler {
 
   protected void authorizeCreateNamespaceUnderNamespaceOperationOrThrow(
       PolarisAuthorizableOperation op, Namespace namespace) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
 
     Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
     resolutionManifest.addPath(
@@ -206,9 +215,7 @@ public abstract class CatalogHandler {
       PolarisAuthorizableOperation op, TableIdentifier identifier) {
     Namespace namespace = identifier.namespace();
 
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -240,31 +247,50 @@ public abstract class CatalogHandler {
     initializeCatalog();
   }
 
+  /**
+   * Ensures resolution manifest is initialized for a table identifier. This allows checking
+   * catalog-level feature flags or other resolved entities before authorization. If already
+   * initialized, this is a no-op.
+   */
+  protected void ensureResolutionManifestForTable(TableIdentifier identifier) {
+    if (resolutionManifest == null) {
+      resolutionManifest = newResolutionManifest();
+
+      // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
+      resolutionManifest.addPassthroughPath(
+          new ResolverPath(
+              PolarisCatalogHelpers.tableIdentifierToList(identifier),
+              PolarisEntityType.TABLE_LIKE,
+              true /* optional */),
+          identifier);
+      resolutionManifest.resolveAll();
+    }
+  }
+
   protected void authorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    authorizeBasicTableLikeOperationsOrThrow(EnumSet.of(op), subType, identifier);
+  }
 
-    // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
-    resolutionManifest.addPassthroughPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
-            true /* optional */),
-        identifier);
-    resolutionManifest.resolveAll();
+  protected void authorizeBasicTableLikeOperationsOrThrow(
+      EnumSet<PolarisAuthorizableOperation> ops,
+      PolarisEntitySubType subType,
+      TableIdentifier identifier) {
+    ensureResolutionManifestForTable(identifier);
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
       throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
     }
-    authorizer.authorizeOrThrow(
-        polarisPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+
+    for (PolarisAuthorizableOperation op : ops) {
+      authorizer.authorizeOrThrow(
+          polarisPrincipal,
+          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+          op,
+          target,
+          null /* secondary */);
+    }
 
     initializeCatalog();
   }
@@ -273,9 +299,7 @@ public abstract class CatalogHandler {
       PolarisAuthorizableOperation op,
       final PolarisEntitySubType subType,
       List<TableIdentifier> ids) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     ids.forEach(
         identifier ->
             resolutionManifest.addPassthroughPath(
@@ -325,9 +349,7 @@ public abstract class CatalogHandler {
       PolarisEntitySubType subType,
       TableIdentifier src,
       TableIdentifier dst) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     // Add src, dstParent, and dst(optional)
     resolutionManifest.addPath(
         new ResolverPath(

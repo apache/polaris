@@ -206,7 +206,7 @@ This binary artifact bundles the following projects:
 
 --------------------------------------------------------------------------------
 
-Group: io.github.crac Name: org-crac Version: 0.1.3
+Group: org.crac Name: crac Version: 1.5.0
 Project URL: https://github.com/crac/org.crac
 License: BSD 2-Clause
 | Copyright 2017-2022 Azul Systems, Inc.
@@ -235,46 +235,46 @@ License: BSD 2-Clause
 
 --------------------------------------------------------------------------------
 
-Group: io.quarkus Name: quarkus-bootstrap-runner Version: 3.23.3
-Group: io.quarkus Name: quarkus-classloader-commons Version: 3.23.3
-Group: io.quarkus Name: quarkus-development-mode-spi Version: 3.23.3
-Group: io.quarkus.arc Name: arc Version: 3.23.3
-Group: io.quarkus Name: quarkus-agroal Version: 3.23.3
-Group: io.quarkus Name: quarkus-arc Version: 3.23.3
-Group: io.quarkus Name: quarkus-container-image Version: 3.23.3
-Group: io.quarkus Name: quarkus-container-image-docker Version: 3.23.3
-Group: io.quarkus Name: quarkus-container-image-docker-common Version: 3.23.3
-Group: io.quarkus Name: quarkus-core Version: 3.23.3
-Group: io.quarkus Name: quarkus-credentials Version: 3.23.3
-Group: io.quarkus Name: quarkus-datasource Version: 3.23.3
-Group: io.quarkus Name: quarkus-datasource-common Version: 3.23.3
+Group: io.quarkus Name: quarkus-bootstrap-runner Version: 3.28.2
+Group: io.quarkus Name: quarkus-classloader-commons Version: 3.28.2
+Group: io.quarkus Name: quarkus-development-mode-spi Version: 3.28.2
+Group: io.quarkus.arc Name: arc Version: 3.28.2
+Group: io.quarkus Name: quarkus-agroal Version: 3.28.2
+Group: io.quarkus Name: quarkus-arc Version: 3.28.2
+Group: io.quarkus Name: quarkus-container-image Version: 3.28.2
+Group: io.quarkus Name: quarkus-container-image-docker Version: 3.28.2
+Group: io.quarkus Name: quarkus-container-image-docker-common Version: 3.28.2
+Group: io.quarkus Name: quarkus-core Version: 3.28.2
+Group: io.quarkus Name: quarkus-credentials Version: 3.28.2
+Group: io.quarkus Name: quarkus-datasource Version: 3.28.2
+Group: io.quarkus Name: quarkus-datasource-common Version: 3.28.2
 Group: io.quarkus Name: quarkus-fs-util Version: 1.0.0
-Group: io.quarkus Name: quarkus-jdbc-postgresql Version: 3.23.3
-Group: io.quarkus Name: quarkus-mutiny Version: 3.23.3
-Group: io.quarkus Name: quarkus-narayana-jta Version: 3.23.3
-Group: io.quarkus Name: quarkus-picocli Version: 3.23.3
-Group: io.quarkus Name: quarkus-smallrye-context-propagation Version: 3.23.3
-Group: io.quarkus Name: quarkus-transaction-annotations Version: 3.23.3
+Group: io.quarkus Name: quarkus-jdbc-postgresql Version: 3.28.2
+Group: io.quarkus Name: quarkus-mutiny Version: 3.28.2
+Group: io.quarkus Name: quarkus-narayana-jta Version: 3.28.2
+Group: io.quarkus Name: quarkus-picocli Version: 3.28.2
+Group: io.quarkus Name: quarkus-smallrye-context-propagation Version: 3.28.2
+Group: io.quarkus Name: quarkus-transaction-annotations Version: 3.28.2
 Project URL: https://quarkus.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.common Name: smallrye-common-constraint Version: 2.12.0
-Group: io.smallrye.common Name: smallrye-common-cpu Version: 2.12.0
-Group: io.smallrye.common Name: smallrye-common-expression Version: 2.12.0
-Group: io.smallrye.common Name: smallrye-common-function Version: 2.12.0
-Group: io.smallrye.common Name: smallrye-common-io Version: 2.12.0
-Group: io.smallrye.common Name: smallrye-common-net Version: 2.12.0
-Group: io.smallrye.common Name: smallrye-common-os Version: 2.12.0
-Group: io.smallrye.common Name: smallrye-common-ref Version: 2.12.0
-Group: io.smallrye.common Name: smallrye-common-annotation Version: 2.12.0
-Group: io.smallrye.common Name: smallrye-common-classloader Version: 2.12.0
-Group: io.smallrye.config Name: smallrye-config Version: 3.13.1
-Group: io.smallrye.config Name: smallrye-config-common Version: 3.13.1
-Group: io.smallrye.config Name: smallrye-config-core Version: 3.13.1
-Group: io.smallrye.reactive Name: mutiny Version: 2.9.0
-Group: io.smallrye.reactive Name: mutiny-smallrye-context-propagation Version: 2.9.0
+Group: io.smallrye.common Name: smallrye-common-constraint Version: 2.13.9
+Group: io.smallrye.common Name: smallrye-common-cpu Version: 2.13.9
+Group: io.smallrye.common Name: smallrye-common-expression Version: 2.13.9
+Group: io.smallrye.common Name: smallrye-common-function Version: 2.13.9
+Group: io.smallrye.common Name: smallrye-common-io Version: 2.13.9
+Group: io.smallrye.common Name: smallrye-common-net Version: 2.13.9
+Group: io.smallrye.common Name: smallrye-common-os Version: 2.13.9
+Group: io.smallrye.common Name: smallrye-common-ref Version: 2.13.9
+Group: io.smallrye.common Name: smallrye-common-annotation Version: 2.13.9
+Group: io.smallrye.common Name: smallrye-common-classloader Version: 2.13.9
+Group: io.smallrye.config Name: smallrye-config Version: 3.13.4
+Group: io.smallrye.config Name: smallrye-config-common Version: 3.13.4
+Group: io.smallrye.config Name: smallrye-config-core Version: 3.13.4
+Group: io.smallrye.reactive Name: mutiny Version: 2.9.4
+Group: io.smallrye.reactive Name: mutiny-smallrye-context-propagation Version: 2.9.4
 Group: io.smallrye.reactive Name: mutiny-zero-flow-adapters Version: 1.1.1
 Group: io.smallrye.reactive Name: smallrye-reactive-converter-api Version: 3.0.3
 Group: io.smallrye.reactive Name: smallrye-reactive-converter-mutiny Version: 3.0.3
@@ -294,14 +294,14 @@ License: Apache License 2.0 - https://repository.jboss.org/licenses/apache-2.0.t
 
 --------------------------------------------------------------------------------
 
-Group: com.azure Name: azure-core Version: 1.55.3
-Group: com.azure Name: azure-core-http-netty Version: 1.15.11
-Group: com.azure Name: azure-identity Version: 1.16.1
+Group: com.azure Name: azure-core Version: 1.56.0
+Group: com.azure Name: azure-core-http-netty Version: 1.16.0
+Group: com.azure Name: azure-identity Version: 1.17.0
 Group: com.azure Name: azure-json Version: 1.5.0
-Group: com.azure Name: azure-storage-blob Version: 12.30.0
-Group: com.azure Name: azure-storage-common Version: 12.29.0
-Group: com.azure Name: azure-storage-file-datalake Version: 12.23.0
-Group: com.azure Name: azure-storage-internal-avro Version: 12.15.0
+Group: com.azure Name: azure-storage-blob Version: 12.31.2
+Group: com.azure Name: azure-storage-common Version: 12.30.2
+Group: com.azure Name: azure-storage-file-datalake Version: 12.24.2
+Group: com.azure Name: azure-storage-internal-avro Version: 12.16.2
 Group: com.azure Name: azure-xml Version: 1.2.0
 Project URL: https://github.com/Azure/azure-sdk-for-java
 License: MIT License
@@ -329,17 +329,17 @@ License: MIT License
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.18.3
-Group: com.fasterxml.jackson.core Name: jackson-core Version: 2.18.3
-Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.18.3
-Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-yaml Version: 2.18.3
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jsr310 Version: 2.18.3
+Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.20
+Group: com.fasterxml.jackson.core Name: jackson-core Version: 2.20.0
+Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.20.0
+Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-yaml Version: 2.20.0
+Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jsr310 Version: 2.20.0
 Project URL: https://github.com/FasterXML/jackson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.github.ben-manes.caffeine Name: caffeine Version: 3.2.0
+Group: com.github.ben-manes.caffeine Name: caffeine Version: 3.2.2
 Project URL: https://github.com/ben-manes/caffeine
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -363,7 +363,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api Name: api-common Version: 2.50.0
+Group: com.google.api Name: api-common Version: 2.53.3
 Project URL: https://github.com/googleapis/api-common-java
 License: BSD 3-Clause
 | Copyright 2016, Google Inc.
@@ -395,9 +395,9 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api Name: gax Version: 2.67.0
-Group: com.google.api Name: gax-grpc Version: 2.67.0
-Group: com.google.api Name: gax-httpjson Version: 2.67.0
+Group: com.google.api Name: gax Version: 2.70.3
+Group: com.google.api Name: gax-grpc Version: 2.70.3
+Group: com.google.api Name: gax-httpjson Version: 2.70.3
 Project URL: https://github.com/googleapis/gax-java
 License: BSD 3-Clause
 | Copyright 2016, Google Inc. All rights reserved.
@@ -430,30 +430,30 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api.grpc Name: gapic-google-cloud-storage-v2 Version: 2.53.0
-Group: com.google.api.grpc Name: grpc-google-cloud-storage-v2 Version: 2.53.0
+Group: com.google.api.grpc Name: gapic-google-cloud-storage-v2 Version: 2.58.1
+Group: com.google.api.grpc Name: grpc-google-cloud-storage-v2 Version: 2.58.1
 Group: com.google.api.grpc Name: proto-google-cloud-monitoring-v3 Version: 3.52.0
-Group: com.google.api.grpc Name: proto-google-cloud-storage-v2 Version: 2.53.0
+Group: com.google.api.grpc Name: proto-google-cloud-storage-v2 Version: 2.58.1
 Project URL: https://github.com/googleapis/java-storage
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.api.grpc Name: proto-google-common-protos Version: 2.53.0
-Group: com.google.api.grpc Name: proto-google-iam-v1 Version: 1.53.0
+Group: com.google.api.grpc Name: proto-google-common-protos Version: 2.60.0
+Group: com.google.api.grpc Name: proto-google-iam-v1 Version: 1.56.3
 Project URL: https://github.com/googleapis/sdk-platform-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.apis Name: google-api-services-storage Version: v1-rev20250524-2.0.0
+Group: com.google.apis Name: google-api-services-storage Version: v1-rev20250925-2.0.0
 Project URL: http://www.google.com
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.auth Name: google-auth-library-credentials Version: 1.36.0
-Group: com.google.auth Name: google-auth-library-oauth2-http Version: 1.36.0
+Group: com.google.auth Name: google-auth-library-credentials Version: 1.39.1
+Group: com.google.auth Name: google-auth-library-oauth2-http Version: 1.39.1
 Project URL: https://github.com/googleapis/google-auth-library-java
 License: BSD 3-Clause
 | Copyright 2014, Google Inc. All rights reserved.
@@ -493,11 +493,11 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.cloud Name: google-cloud-core Version: 2.57.0
-Group: com.google.cloud Name: google-cloud-core-grpc Version: 2.57.0
-Group: com.google.cloud Name: google-cloud-core-http Version: 2.57.0
+Group: com.google.cloud Name: google-cloud-core Version: 2.60.3
+Group: com.google.cloud Name: google-cloud-core-grpc Version: 2.60.3
+Group: com.google.cloud Name: google-cloud-core-http Version: 2.60.3
 Group: com.google.cloud Name: google-cloud-monitoring Version: 3.52.0
-Group: com.google.cloud Name: google-cloud-storage Version: 2.53.0
+Group: com.google.cloud Name: google-cloud-storage Version: 2.58.1
 Project URL: https://github.com/googleapis/google-cloud-java
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -511,13 +511,13 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.code.gson Name: gson Version: 2.13.1
+Group: com.google.code.gson Name: gson Version: 2.13.2
 Project URL: https://github.com/google/gson
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.errorprone Name: error_prone_annotations Version: 2.37.0
+Group: com.google.errorprone Name: error_prone_annotations Version: 2.41.0
 Project URL: https://errorprone.info
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -531,11 +531,11 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.google.http-client Name: google-http-client Version: 1.46.3
-Group: com.google.http-client Name: google-http-client-apache-v2 Version: 1.46.3
-Group: com.google.http-client Name: google-http-client-appengine Version: 1.46.3
-Group: com.google.http-client Name: google-http-client-gson Version: 1.46.3
-Group: com.google.http-client Name: google-http-client-jackson2 Version: 1.46.3
+Group: com.google.http-client Name: google-http-client Version: 1.47.1
+Group: com.google.http-client Name: google-http-client-apache-v2 Version: 1.47.1
+Group: com.google.http-client Name: google-http-client-appengine Version: 1.47.1
+Group: com.google.http-client Name: google-http-client-gson Version: 1.47.1
+Group: com.google.http-client Name: google-http-client-jackson2 Version: 1.47.1
 Project URL: https://github.com/googleapis/google-http-java-client
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -630,7 +630,7 @@ License: Go License
 
 --------------------------------------------------------------------------------
 
-Group: com.microsoft.azure Name: msal4j Version: 1.20.1
+Group: com.microsoft.azure Name: msal4j Version: 1.22.0
 Group: com.microsoft.azure Name: msal4j-persistence-extension Version: 1.3.0
 Project URL: https://github.com/AzureAD/microsoft-authentication-library-for-java
 License: MIT License
@@ -670,32 +670,32 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.nimbusds Name: nimbus-jose-jwt Version: 10.3
+Group: com.nimbusds Name: nimbus-jose-jwt Version: 10.4.2
 Project URL: https://bitbucket.org/connect2id/nimbus-jose-jwt
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.nimbusds Name: oauth2-oidc-sdk Version: 11.23
+Group: com.nimbusds Name: oauth2-oidc-sdk Version: 11.23.1
 Project URL: https://bitbucket.org/connect2id/oauth-2.0-sdk-with-openid-connect-extensions
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: com.sun.xml.bind Name: jaxb-core Version: 4.0.5
-Group: com.sun.xml.bind Name: jaxb-xjc Version: 4.0.5
+Group: com.sun.xml.bind Name: jaxb-core Version: 4.0.6
+Group: com.sun.xml.bind Name: jaxb-xjc Version: 4.0.6
 Project URL: https://github.com/eclipse-ee4j/jaxb-ri
 License: EDL 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
 --------------------------------------------------------------------------------
 
-Group: commons-codec Name: commons-codec Version: 1.18.0
+Group: commons-codec Name: commons-codec Version: 1.19.0
 Project URL: https://commons.apache.org/proper/commons-codec/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: commons-io Name: commons-io Version: 2.19.0
+Group: commons-io Name: commons-io Version: 2.20.0
 Project URL: https://commons.apache.org/proper/commons-io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -713,9 +713,9 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------`
 
-Group: io.agroal Name: agroal-api Version: 2.7.1
-Group: io.agroal Name: agroal-narayana Version: 2.7.1
-Group: io.agroal Name: agroal-pool Version: 2.7.1
+Group: io.agroal Name: agroal-api Version: 2.8
+Group: io.agroal Name: agroal-narayana Version: 2.8
+Group: io.agroal Name: agroal-pool Version: 2.8
 Project URL: https://agroal.github.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -757,27 +757,28 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-buffer Version: 4.1.121.Final
-Group: io.netty Name: netty-codec Version: 4.1.121.Final
-Group: io.netty Name: netty-codec-dns Version: 4.1.121.Final
-Group: io.netty Name: netty-codec-http Version: 4.1.121.Final
-Group: io.netty Name: netty-codec-http2 Version: 4.1.121.Final
-Group: io.netty Name: netty-codec-socks Version: 4.1.121.Final
-Group: io.netty Name: netty-common Version: 4.1.121.Final
-Group: io.netty Name: netty-handler Version: 4.1.121.Final
-Group: io.netty Name: netty-handler-proxy Version: 4.1.121.Final
-Group: io.netty Name: netty-resolver Version: 4.1.121.Final
-Group: io.netty Name: netty-resolver-dns Version: 4.1.121.Final
-Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.121.Final
-Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.121.Final
-Group: io.netty Name: netty-tcnative-boringssl-static Version: 2.0.70.Final
-Group: io.netty Name: netty-tcnative-classes Version: 2.0.70.Final
-Group: io.netty Name: netty-transport Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-native-epoll Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.121.Final
+Group: io.netty Name: netty-buffer Version: 4.1.127.Final
+Group: io.netty Name: netty-codec Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-dns Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-haproxy Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-http Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-http2 Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-socks Version: 4.1.127.Final
+Group: io.netty Name: netty-common Version: 4.1.127.Final
+Group: io.netty Name: netty-handler Version: 4.1.127.Final
+Group: io.netty Name: netty-handler-proxy Version: 4.1.127.Final
+Group: io.netty Name: netty-resolver Version: 4.1.127.Final
+Group: io.netty Name: netty-resolver-dns Version: 4.1.127.Final
+Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.127.Final
+Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.127.Final
+Group: io.netty Name: netty-tcnative-boringssl-static Version: 2.0.73.Final
+Group: io.netty Name: netty-tcnative-classes Version: 2.0.73.Final
+Group: io.netty Name: netty-transport Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-native-epoll Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.127.Final
 Project URL: https://netty.io/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -822,14 +823,14 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.7
-Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.7
+Group: io.projectreactor.netty Name: reactor-netty-core Version: 1.2.10
+Group: io.projectreactor.netty Name: reactor-netty-http Version: 1.2.10
 Project URL: https://github.com/reactor/reactor-netty
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: io.projectreactor Name: reactor-core Version: 3.7.7
+Group: io.projectreactor Name: reactor-core Version: 3.7.11
 Project URL: https://github.com/reactor/reactor-core
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -966,19 +967,19 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.commons Name: commons-compress Version: 1.27.1
+Group: org.apache.commons Name: commons-compress Version: 1.28.0
 Project URL: https://commons.apache.org/proper/commons-compress/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.commons Name: commons-lang3 Version: 3.17.0
+Group: org.apache.commons Name: commons-lang3 Version: 3.18.0
 Project URL: https://commons.apache.org/proper/commons-lang/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.httpcomponents.client5 Name: httpclient5 Version: 5.4.3
+Group: org.apache.httpcomponents.client5 Name: httpclient5 Version: 5.5
 Project URL: https://hc.apache.org/httpcomponents-client-5.4.x/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1003,19 +1004,19 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.apache.iceberg Name: iceberg-api Version: 1.9.1
-Group: org.apache.iceberg Name: iceberg-aws Version: 1.9.1
-Group: org.apache.iceberg Name: iceberg-azure Version: 1.9.1
-Group: org.apache.iceberg Name: iceberg-bundled-guava Version: 1.9.1
-Group: org.apache.iceberg Name: iceberg-common Version: 1.9.1
-Group: org.apache.iceberg Name: iceberg-core Version: 1.9.1
-Group: org.apache.iceberg Name: iceberg-gcp Version: 1.9.1
+Group: org.apache.iceberg Name: iceberg-api Version: 1.10.0
+Group: org.apache.iceberg Name: iceberg-aws Version: 1.10.0
+Group: org.apache.iceberg Name: iceberg-azure Version: 1.10.0
+Group: org.apache.iceberg Name: iceberg-bundled-guava Version: 1.10.0
+Group: org.apache.iceberg Name: iceberg-common Version: 1.10.0
+Group: org.apache.iceberg Name: iceberg-core Version: 1.10.0
+Group: org.apache.iceberg Name: iceberg-gcp Version: 1.10.0
 Project URL: https://iceberg.apache.org/
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.checkerframework Name: checker-qual Version: 3.49.3
+Group: org.checkerframework Name: checker-qual Version: 3.50.0
 Project URL: https://checkerframework.org/
 License: MIT License
 | The annotations are licensed under the MIT License.  (The text of this
@@ -1081,7 +1082,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.eclipse.angus Name: angus-activation Version: 2.0.2
+Group: org.eclipse.angus Name: angus-activation Version: 2.0.3
 Project URL: https://github.com/eclipse-ee4j/angus-activation
 License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
 
@@ -1100,7 +1101,7 @@ License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2
 
 --------------------------------------------------------------------------------
 
-Group: org.eclipse.persistence Name: eclipselink Version: 4.0.6
+Group: org.eclipse.persistence Name: eclipselink Version: 4.0.8
 Project URL: https://eclipse.dev/eclipselink/
 License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
 
@@ -1261,7 +1262,7 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: org.postgresql Name: postgresql Version: 42.7.6
+Group: org.postgresql Name: postgresql Version: 42.7.8
 Project URL: https://jdbc.postgresql.org/
 License: BSD 2-Clause
 | Copyright (c) 1997, PostgreSQL Global Development Group All rights reserved.
@@ -1306,7 +1307,7 @@ License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: org.slf4j Name: slf4j-api Version: 2.0.6
+Group: org.slf4j Name: slf4j-api Version: 2.0.17
 Project URL: http://www.slf4j.org
 License: MIT License
 | Copyright (c) 2004-2022 QOS.ch Sarl (Switzerland)
@@ -1368,43 +1369,47 @@ License: BSD 3-Clause
 
 --------------------------------------------------------------------------------
 
-Group: org.yaml Name: snakeyaml Version: 2.4
+Group: org.yaml Name: snakeyaml Version: 2.5
 Project URL: https://bitbucket.org/snakeyaml/snakeyaml
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: annotations Version: 2.31.59
-Group: software.amazon.awssdk Name: apache-client Version: 2.31.59
-Group: software.amazon.awssdk Name: arns Version: 2.31.59
-Group: software.amazon.awssdk Name: auth Version: 2.31.59
-Group: software.amazon.awssdk Name: aws-core Version: 2.31.59
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.59
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.59
-Group: software.amazon.awssdk Name: checksums Version: 2.31.59
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: crt-core Version: 2.31.59
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: http-auth Version: 2.31.59
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.59
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.59
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.59
-Group: software.amazon.awssdk Name: identity-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: json-utils Version: 2.31.59
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.59
-Group: software.amazon.awssdk Name: profiles Version: 2.31.59
-Group: software.amazon.awssdk Name: protocol-core Version: 2.31.59
-Group: software.amazon.awssdk Name: regions Version: 2.31.59
-Group: software.amazon.awssdk Name: retries Version: 2.31.59
-Group: software.amazon.awssdk Name: retries-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: s3 Version: 2.31.59
-Group: software.amazon.awssdk Name: sdk-core Version: 2.31.59
-Group: software.amazon.awssdk Name: sts Version: 2.31.59
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.59
-Group: software.amazon.awssdk Name: utils Version: 2.31.59
+Group: software.amazon.awssdk Name: annotations Version: 2.35.0
+Group: software.amazon.awssdk Name: apache-client Version: 2.35.0
+Group: software.amazon.awssdk Name: arns Version: 2.35.0
+Group: software.amazon.awssdk Name: auth Version: 2.35.0
+Group: software.amazon.awssdk Name: aws-core Version: 2.35.0
+Group: software.amazon.awssdk Name: aws-json-protocol Version: 2.35.0
+Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.35.0
+Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.35.0
+Group: software.amazon.awssdk Name: checksums Version: 2.35.0
+Group: software.amazon.awssdk Name: checksums-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: crt-core Version: 2.35.0
+Group: software.amazon.awssdk Name: endpoints-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: http-auth Version: 2.35.0
+Group: software.amazon.awssdk Name: http-auth-aws Version: 2.35.0
+Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.35.0
+Group: software.amazon.awssdk Name: http-auth-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: http-client-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.35.0
+Group: software.amazon.awssdk Name: identity-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: json-utils Version: 2.35.0
+Group: software.amazon.awssdk Name: kms Version: 2.35.0
+Group: software.amazon.awssdk Name: metrics-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: netty-nio-client Version: 2.35.0
+Group: software.amazon.awssdk Name: profiles Version: 2.35.0
+Group: software.amazon.awssdk Name: protocol-core Version: 2.35.0
+Group: software.amazon.awssdk Name: rds Version: 2.35.0
+Group: software.amazon.awssdk Name: regions Version: 2.35.0
+Group: software.amazon.awssdk Name: retries Version: 2.35.0
+Group: software.amazon.awssdk Name: retries-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: s3 Version: 2.35.0
+Group: software.amazon.awssdk Name: sdk-core Version: 2.35.0
+Group: software.amazon.awssdk Name: sts Version: 2.35.0
+Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.35.0
+Group: software.amazon.awssdk Name: utils Version: 2.35.0
+Group: software.amazon.awssdk Name: utils-lite Version: 2.35.0
 Project URL: https://aws.amazon.com/sdkforjava
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 

@@ -29,6 +29,7 @@ import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hive.HiveConnectionConfigInfoDpo;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,9 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
 
   @Override
   public Catalog createCatalog(
-      ConnectionConfigInfoDpo connectionConfigInfoDpo, UserSecretsManager userSecretsManager) {
+      ConnectionConfigInfoDpo connectionConfigInfoDpo,
+      UserSecretsManager userSecretsManager,
+      PolarisCredentialManager polarisCredentialManager) {
     // Currently, Polaris supports Hive federation only via IMPLICIT authentication.
     // Hence, prior to initializing the configuration, ensure that the catalog uses
     // IMPLICIT authentication.
@@ -69,7 +72,9 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
     // Kerberos instances are not suitable because Kerberos ties a single identity to the server.
     HiveCatalog hiveCatalog = new HiveCatalog();
     hiveCatalog.initialize(
-        warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
+        warehouse,
+        connectionConfigInfoDpo.asIcebergCatalogProperties(
+            userSecretsManager, polarisCredentialManager));
     return hiveCatalog;
   }
 

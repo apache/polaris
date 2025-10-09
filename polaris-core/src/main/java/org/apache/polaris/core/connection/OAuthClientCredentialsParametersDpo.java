@@ -35,6 +35,7 @@ import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 
@@ -104,7 +105,7 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
 
   @Override
   public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager) {
+      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     if (getTokenUri() != null) {
       properties.put(OAuth2Properties.OAUTH2_SERVER_URI, getTokenUri());

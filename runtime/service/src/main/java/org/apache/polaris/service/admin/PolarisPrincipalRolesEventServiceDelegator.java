@@ -46,8 +46,13 @@ public class PolarisPrincipalRolesEventServiceDelegator implements PolarisPrinci
       CreatePrincipalRoleRequest request,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    // TODO: After changing the API response, we should change this to emit the corresponding event.
-    return delegate.createPrincipalRole(request, realmContext, securityContext);
+    polarisEventListener.onBeforeCreatePrincipalRole(
+        new PrincipalRolesServiceEvents.BeforeCreatePrincipalRoleEvent(request));
+    Response resp = delegate.createPrincipalRole(request, realmContext, securityContext);
+    polarisEventListener.onAfterCreatePrincipalRole(
+        new PrincipalRolesServiceEvents.AfterCreatePrincipalRoleEvent(
+            (PrincipalRole) resp.getEntity()));
+    return resp;
   }
 
   @Override

@@ -218,14 +218,10 @@ public class FileIOFactoryTest {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext,
-            services.resolutionManifestFactory(),
-            services.securityContext(),
-            CATALOG_NAME);
+            services.resolutionManifestFactory(), services.securityContext(), CATALOG_NAME);
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
             services.polarisDiagnostics(),
-            services.storageCredentialCache(),
             services.resolverFactory(),
             services.metaStoreManager(),
             callContext,

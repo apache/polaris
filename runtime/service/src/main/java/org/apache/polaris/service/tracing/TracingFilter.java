@@ -47,9 +47,7 @@ public class TracingFilter implements ContainerRequestFilter {
     if (!sdkDisabled) {
       Span span = Span.current();
       String requestId = (String) rc.getProperty(RequestIdFilter.REQUEST_ID_KEY);
-      if (requestId != null) {
-        span.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
-      }
+      span.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
       RealmContext realmContext =
           (RealmContext) rc.getProperty(RealmContextFilter.REALM_CONTEXT_KEY);
       span.setAttribute(REALM_ID_ATTRIBUTE, realmContext.getRealmIdentifier());

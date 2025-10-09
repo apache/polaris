@@ -35,8 +35,8 @@ public interface Converter<T> {
   T fromResultSet(ResultSet rs) throws SQLException;
 
   /**
-   * Convert a model into a Map with keys as snake case names, where as values as values of member
-   * of model obj.
+   * Convert a model into a Map with keys as snake case names, and values as values of member of
+   * model obj.
    */
   Map<String, Object> toMap(DatabaseType databaseType);
 
