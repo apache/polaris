@@ -266,6 +266,10 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         throw new UnsupportedOperationException(
             "External catalog factory for type '" + connectionType + "' is unavailable.");
       }
+      // TODO: if the remote catalog is not RestCatalog, the corresponding table operation will use
+      // environment to load the table metadata, the env may not contain credentials to access the
+      // storage. In the future, we could leverage PolarisCredentialManager to inject storage
+      // credentials for non-rest remote catalog
       this.baseCatalog = federatedCatalog;
     } else {
       LOGGER.atInfo().log("Initializing non-federated catalog");
