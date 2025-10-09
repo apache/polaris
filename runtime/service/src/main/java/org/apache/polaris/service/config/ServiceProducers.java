@@ -33,6 +33,7 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.stream.Collectors;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -257,8 +258,15 @@ public class ServiceProducers {
   @Produces
   @Singleton
   @Identifier("opa-http-client")
-  public CloseableHttpClient opaHttpClient() {
-    return HttpClients.custom().build();
+  public CloseableHttpClient opaHttpClient(AuthorizationConfiguration authorizationConfig) {
+    AuthorizationConfiguration.OpaConfig opa = authorizationConfig.opa();
+    
+    try {
+      return OpaHttpClientFactory.createHttpClient(opa.http());
+    } catch (Exception e) {
+      LOGGER.warn("Failed to create OPA HTTP client with SSL configuration, falling back to simple client", e);
+      return HttpClients.custom().build();
+    }
   }
 
   public void closeOpaHttpClient(
@@ -293,11 +301,9 @@ public class ServiceProducers {
 
     // File-based token as fallback
     if (bearerToken.filePath().isPresent()) {
-      java.time.Duration refreshInterval =
-          java.time.Duration.ofSeconds(bearerToken.refreshInterval());
+      Duration refreshInterval = Duration.ofSeconds(bearerToken.refreshInterval());
       boolean jwtExpirationRefresh = bearerToken.jwtExpirationRefresh();
-      java.time.Duration jwtExpirationBuffer =
-          java.time.Duration.ofSeconds(bearerToken.jwtExpirationBuffer());
+      Duration jwtExpirationBuffer = Duration.ofSeconds(bearerToken.jwtExpirationBuffer());
 
       return new FileBearerTokenProvider(
           bearerToken.filePath().get(), refreshInterval, jwtExpirationRefresh, jwtExpirationBuffer);

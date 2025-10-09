@@ -57,10 +57,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(opaConfig.url()).thenReturn(Optional.of("http://localhost:8181"));
     when(opaConfig.policyPath()).thenReturn(Optional.of("/v1/data/polaris/authz/allow"));
     when(opaConfig.bearerToken()).thenReturn(bearerTokenConfig);
-    when(opaConfig.timeoutMs()).thenReturn(2000);
-    when(opaConfig.verifySsl()).thenReturn(true);
-    when(opaConfig.trustStorePath()).thenReturn(Optional.empty());
-    when(opaConfig.trustStorePassword()).thenReturn(Optional.empty());
+    when(opaConfig.http()).thenReturn(createMockHttpConfig());
 
     AuthorizationConfiguration authConfig = mock(AuthorizationConfiguration.class);
     when(authConfig.opa()).thenReturn(opaConfig);
@@ -97,10 +94,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(opaConfig.url()).thenReturn(Optional.of("http://localhost:8181"));
     when(opaConfig.policyPath()).thenReturn(Optional.of("/v1/data/polaris/authz/allow"));
     when(opaConfig.bearerToken()).thenReturn(bearerTokenConfig);
-    when(opaConfig.timeoutMs()).thenReturn(2000);
-    when(opaConfig.verifySsl()).thenReturn(true);
-    when(opaConfig.trustStorePath()).thenReturn(Optional.empty());
-    when(opaConfig.trustStorePassword()).thenReturn(Optional.empty());
+    when(opaConfig.http()).thenReturn(createMockHttpConfig());
 
     AuthorizationConfiguration authConfig = mock(AuthorizationConfiguration.class);
     when(authConfig.opa()).thenReturn(opaConfig);
@@ -156,10 +150,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(opaConfig.url()).thenReturn(Optional.of("http://localhost:8181"));
     when(opaConfig.policyPath()).thenReturn(Optional.of("/v1/data/polaris/authz/allow"));
     when(opaConfig.bearerToken()).thenReturn(bearerTokenConfig);
-    when(opaConfig.timeoutMs()).thenReturn(2000);
-    when(opaConfig.verifySsl()).thenReturn(true);
-    when(opaConfig.trustStorePath()).thenReturn(Optional.empty());
-    when(opaConfig.trustStorePassword()).thenReturn(Optional.empty());
+    when(opaConfig.http()).thenReturn(createMockHttpConfig());
 
     AuthorizationConfiguration authConfig = mock(AuthorizationConfiguration.class);
     when(authConfig.opa()).thenReturn(opaConfig);
@@ -193,10 +184,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(opaConfig.url()).thenReturn(Optional.of("http://localhost:8181"));
     when(opaConfig.policyPath()).thenReturn(Optional.of("/v1/data/polaris/authz/allow"));
     when(opaConfig.bearerToken()).thenReturn(bearerTokenConfig);
-    when(opaConfig.timeoutMs()).thenReturn(2000);
-    when(opaConfig.verifySsl()).thenReturn(true);
-    when(opaConfig.trustStorePath()).thenReturn(Optional.empty());
-    when(opaConfig.trustStorePassword()).thenReturn(Optional.empty());
+    when(opaConfig.http()).thenReturn(createMockHttpConfig());
 
     AuthorizationConfiguration authConfig = mock(AuthorizationConfiguration.class);
     when(authConfig.opa()).thenReturn(opaConfig);
@@ -258,10 +246,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(opaConfig.url()).thenReturn(Optional.of("http://localhost:8181"));
     when(opaConfig.policyPath()).thenReturn(Optional.of("/v1/data/polaris/authz/allow"));
     when(opaConfig.bearerToken()).thenReturn(bearerTokenConfig);
-    when(opaConfig.timeoutMs()).thenReturn(2000);
-    when(opaConfig.verifySsl()).thenReturn(true);
-    when(opaConfig.trustStorePath()).thenReturn(Optional.empty());
-    when(opaConfig.trustStorePassword()).thenReturn(Optional.empty());
+    when(opaConfig.http()).thenReturn(createMockHttpConfig());
 
     AuthorizationConfiguration authConfig = mock(AuthorizationConfiguration.class);
     when(authConfig.opa()).thenReturn(opaConfig);
@@ -280,5 +265,15 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     // Note: Validation of bearer token configuration now happens when the BearerTokenProvider
     // is created by the CDI system, not when the factory creates the authorizer.
+  }
+
+  private AuthorizationConfiguration.OpaConfig.HttpConfig createMockHttpConfig() {
+    AuthorizationConfiguration.OpaConfig.HttpConfig httpConfig = 
+        mock(AuthorizationConfiguration.OpaConfig.HttpConfig.class);
+    when(httpConfig.timeoutMs()).thenReturn(2000);
+    when(httpConfig.verifySsl()).thenReturn(true);
+    when(httpConfig.trustStorePath()).thenReturn(Optional.empty());
+    when(httpConfig.trustStorePassword()).thenReturn(Optional.empty());
+    return httpConfig;
   }
 }

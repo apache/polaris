@@ -42,17 +42,24 @@ public interface AuthorizationConfiguration {
 
     Optional<String> policyPath();
 
-    @WithDefault("2000")
-    int timeoutMs();
-
     BearerTokenConfig bearerToken();
 
-    @WithDefault("true")
-    boolean verifySsl();
+    HttpConfig http();
 
-    Optional<String> trustStorePath();
+    /**
+     * HTTP client configuration for OPA communication.
+     */
+    interface HttpConfig {
+      @WithDefault("2000")
+      int timeoutMs();
 
-    Optional<String> trustStorePassword();
+      @WithDefault("true")
+      boolean verifySsl();
+
+      Optional<String> trustStorePath();
+
+      Optional<String> trustStorePassword();
+    }
   }
 
   interface BearerTokenConfig {

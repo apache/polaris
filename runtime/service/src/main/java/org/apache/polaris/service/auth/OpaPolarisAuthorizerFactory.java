@@ -56,10 +56,6 @@ public class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
         opa.url().orElse(null),
         opa.policyPath().orElse(null),
         tokenProvider,
-        opa.timeoutMs(),
-        opa.verifySsl(),
-        opa.trustStorePath().orElse(null),
-        opa.trustStorePassword().orElse(null),
         httpClient);
   }
 }
