@@ -69,7 +69,7 @@ public class BearerConnectionCredentialVendorTest {
         .hasSize(1)
         .containsEntry(
             CatalogAccessProperty.BEARER_TOKEN.getPropertyName(), "my-bearer-token-value");
-    Assertions.assertThat(credentials.expiresAt()).contains(Instant.MAX);
+    Assertions.assertThat(credentials.expiresAt()).contains(Instant.ofEpochMilli(Long.MAX_VALUE));
   }
 
   @Test

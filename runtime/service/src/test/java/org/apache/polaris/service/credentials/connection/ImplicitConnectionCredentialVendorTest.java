@@ -55,7 +55,7 @@ public class ImplicitConnectionCredentialVendorTest {
 
     // Verify - no credentials are provided, but expiration is set to infinite
     Assertions.assertThat(credentials.credentials()).isEmpty();
-    Assertions.assertThat(credentials.expiresAt()).contains(Instant.MAX);
+    Assertions.assertThat(credentials.expiresAt()).contains(Instant.ofEpochMilli(Long.MAX_VALUE));
   }
 
   @Test

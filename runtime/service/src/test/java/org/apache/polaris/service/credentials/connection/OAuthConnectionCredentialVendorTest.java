@@ -75,7 +75,7 @@ public class OAuthConnectionCredentialVendorTest {
         .containsEntry(
             CatalogAccessProperty.OAUTH2_CREDENTIAL.getPropertyName(),
             "my-client-id:my-client-secret");
-    Assertions.assertThat(credentials.expiresAt()).contains(Instant.MAX);
+    Assertions.assertThat(credentials.expiresAt()).contains(Instant.ofEpochMilli(Long.MAX_VALUE));
   }
 
   @Test

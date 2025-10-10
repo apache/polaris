@@ -22,10 +22,10 @@ import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
-import java.time.Instant;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ImplicitAuthenticationParametersDpo;
+import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 
@@ -58,8 +58,10 @@ public class ImplicitConnectionCredentialVendor implements ConnectionCredentialV
         "Expected ImplicitAuthenticationParametersDpo, got: %s",
         connectionConfig.getAuthenticationParameters().getClass().getName());
 
-    // Return empty credentials for implicit (no authentication) type
-    // Set expiration to Instant.MAX to indicate infinite validity
-    return ConnectionCredentials.builder().expiresAt(Instant.MAX).build();
+    // Return empty credentials for implicit (no authentication) type with expiration
+    // Set expiration to Long.MAX_VALUE to indicate infinite validity
+    return ConnectionCredentials.builder()
+        .put(CatalogAccessProperty.EXPIRES_AT_MS, String.valueOf(Long.MAX_VALUE))
+        .build();
   }
 }

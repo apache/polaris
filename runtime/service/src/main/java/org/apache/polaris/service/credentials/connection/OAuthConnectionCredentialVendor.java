@@ -24,7 +24,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import java.time.Instant;
 import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.OAuthClientCredentialsParametersDpo;
@@ -80,12 +79,13 @@ public class OAuthConnectionCredentialVendor implements ConnectionCredentialVend
     // Format credential as "clientId:clientSecret"
     String credential = COLON_JOINER.join(oauthParams.getClientId(), clientSecret);
 
-    // Return the OAuth credential
-    // OAuth credentials don't expire - set expiration to Instant.MAX to indicate infinite validity
-    // If the credential expires, users need to update the catalog entity to rotate the credential.
+    // Return the OAuth credential with expiration
+    // OAuth credentials don't expire from Polaris's perspective - set expiration to Long.MAX_VALUE
+    // to indicate infinite validity. If the credential expires, users need to update the catalog
+    // entity to rotate the credential.
     return ConnectionCredentials.builder()
-        .putCredential(CatalogAccessProperty.OAUTH2_CREDENTIAL.getPropertyName(), credential)
-        .expiresAt(Instant.MAX)
+        .put(CatalogAccessProperty.OAUTH2_CREDENTIAL, credential)
+        .put(CatalogAccessProperty.EXPIRES_AT_MS, String.valueOf(Long.MAX_VALUE))
         .build();
   }
 }

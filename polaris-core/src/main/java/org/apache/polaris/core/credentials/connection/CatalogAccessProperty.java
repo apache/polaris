@@ -40,25 +40,43 @@ public enum CatalogAccessProperty {
   AWS_SECRET_ACCESS_KEY(
       String.class, AwsProperties.REST_SECRET_ACCESS_KEY, "the aws secret access key", true),
   AWS_SESSION_TOKEN(String.class, AwsProperties.REST_SESSION_TOKEN, "the aws session token", true),
-
-  // Metadata
-  EXPIRATION_TIME(
+  AWS_SESSION_TOKEN_EXPIRES_AT_MS(
       Long.class,
       "rest.session-token-expires-at-ms",
+      "the time the aws session token expires, in milliseconds",
+      false,
+      true),
+
+  // Metadata
+  EXPIRES_AT_MS(
+      Long.class,
+      "rest.expires-at-ms",
       "the expiration time for the access token or the credential, in milliseconds",
-      false);
+      false,
+      true);
 
   private final Class valueType;
   private final String propertyName;
   private final String description;
   private final boolean isCredential;
+  private final boolean isExpirationTimestamp;
 
   CatalogAccessProperty(
       Class valueType, String propertyName, String description, boolean isCredential) {
+    this(valueType, propertyName, description, isCredential, false);
+  }
+
+  CatalogAccessProperty(
+      Class valueType,
+      String propertyName,
+      String description,
+      boolean isCredential,
+      boolean isExpirationTimestamp) {
     this.valueType = valueType;
     this.propertyName = propertyName;
     this.description = description;
     this.isCredential = isCredential;
+    this.isExpirationTimestamp = isExpirationTimestamp;
   }
 
   public String getPropertyName() {
@@ -70,6 +88,6 @@ public enum CatalogAccessProperty {
   }
 
   public boolean isExpirationTimestamp() {
-    return this == EXPIRATION_TIME;
+    return isExpirationTimestamp;
   }
 }

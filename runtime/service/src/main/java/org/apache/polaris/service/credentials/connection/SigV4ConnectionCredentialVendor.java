@@ -124,17 +124,16 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
 
     // Build connection credentials from AWS temporary credentials
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
-    builder.putCredential(
-        CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(),
-        response.credentials().accessKeyId());
-    builder.putCredential(
-        CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
-        response.credentials().secretAccessKey());
-    builder.putCredential(
-        CatalogAccessProperty.AWS_SESSION_TOKEN.getPropertyName(),
-        response.credentials().sessionToken());
+    builder.put(CatalogAccessProperty.AWS_ACCESS_KEY_ID, response.credentials().accessKeyId());
+    builder.put(
+        CatalogAccessProperty.AWS_SECRET_ACCESS_KEY, response.credentials().secretAccessKey());
+    builder.put(CatalogAccessProperty.AWS_SESSION_TOKEN, response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
-        .ifPresent(expiration -> builder.expiresAt(expiration));
+        .ifPresent(
+            expiration ->
+                builder.put(
+                    CatalogAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                    String.valueOf(expiration.toEpochMilli())));
 
     return builder.build();
   }
