@@ -46,7 +46,7 @@ public class OpaFileTokenIntegrationTest {
       Map<String, String> config = new HashMap<>();
       config.put("polaris.authorization.type", "opa");
       config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/authz");
-      config.put("polaris.authorization.opa.timeout-ms", "2000");
+      config.put("polaris.authorization.opa.http.timeout-ms", "2000");
 
       // Create temporary token file for testing
       try {
@@ -58,12 +58,14 @@ public class OpaFileTokenIntegrationTest {
       }
 
       // Configure OPA server authentication with file-based bearer token
-      config.put("polaris.authorization.opa.bearer-token.file-path", tokenFile.toString());
+      config.put("polaris.authorization.opa.auth.type", "bearer");
+      config.put("polaris.authorization.opa.auth.bearer.type", "file-based");
+      config.put("polaris.authorization.opa.auth.bearer.file-based.path", tokenFile.toString());
       config.put(
-          "polaris.authorization.opa.bearer-token.refresh-interval",
+          "polaris.authorization.opa.auth.bearer.file-based.refresh-interval",
           "1"); // 1 second for fast testing
       config.put(
-          "polaris.authorization.opa.verify-ssl", "false"); // Disable SSL verification for tests
+          "polaris.authorization.opa.http.verify-ssl", "false"); // Disable SSL verification for tests
 
       // TODO: Add tests for OIDC and federated principal
       config.put("polaris.authentication.type", "internal");
