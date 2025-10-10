@@ -44,19 +44,19 @@ multiple logical catalogs under one URI.
 
 ```bash
 polaris catalogs create \
-  --name analytics_rest \
-  --type EXTERNAL \
-  --storage-type S3 \
-  --role-arn "arn:aws:iam::123456789012:role/polaris-warehouse-access" \
-  --default-base-location "s3://analytics-bucket/warehouse/" \
-  --catalog-connection-type ICEBERG \
-  --catalog-uri "https://remote-polaris.example.com/catalog/v1" \
-  --remote-catalog-name analytics \
-  --catalog-authentication-type OAUTH \
-  --catalog-token-uri "https://remote-polaris.example.com/catalog/v1/oauth/tokens" \
-  --catalog-client-id federation-client \
-  --catalog-client-secret "<remote-secret>" \
-  --catalog-client-scopes "PRINCIPAL_ROLE:ALL"
+    --type EXTERNAL \
+    --storage-type s3 \
+    --role-arn "arn:aws:iam::123456789012:role/polaris-warehouse-access" \
+    --default-base-location "s3://analytics-bucket/warehouse/" \
+    --catalog-connection-type iceberg-rest \
+    --iceberg-remote-catalog-name analytics \
+    --catalog-uri "https://remote-polaris.example.com/catalog/v1" \
+    --catalog-authentication-type OAUTH \
+    --catalog-token-uri "https://remote-polaris.example.com/catalog/v1/oauth/tokens" \
+    --catalog-client-id federation-client \
+    --catalog-client-secret "<remote-secret>" \
+    --catalog-client-scopes "PRINCIPAL_ROLE:ALL" \
+    analytics_rest
 ```
 
 For bearer-token authentication, replace the `authenticationParameters` block with
