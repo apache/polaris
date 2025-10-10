@@ -65,7 +65,8 @@ public class OpaFileTokenIntegrationTest {
           "polaris.authorization.opa.auth.bearer.file-based.refresh-interval",
           "1"); // 1 second for fast testing
       config.put(
-          "polaris.authorization.opa.http.verify-ssl", "false"); // Disable SSL verification for tests
+          "polaris.authorization.opa.http.verify-ssl",
+          "false"); // Disable SSL verification for tests
 
       // TODO: Add tests for OIDC and federated principal
       config.put("polaris.authentication.type", "internal");

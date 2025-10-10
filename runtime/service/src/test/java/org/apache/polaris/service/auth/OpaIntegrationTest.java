@@ -52,9 +52,11 @@ public class OpaIntegrationTest {
       config.put("polaris.authorization.opa.auth.type", "bearer");
       config.put("polaris.authorization.opa.auth.bearer.type", "static-token");
       config.put(
-          "polaris.authorization.opa.auth.bearer.static-token.value", "test-opa-bearer-token-12345");
+          "polaris.authorization.opa.auth.bearer.static-token.value",
+          "test-opa-bearer-token-12345");
       config.put(
-          "polaris.authorization.opa.http.verify-ssl", "false"); // Disable SSL verification for tests
+          "polaris.authorization.opa.http.verify-ssl",
+          "false"); // Disable SSL verification for tests
 
       // TODO: Add tests for OIDC and federated principal
       config.put("polaris.authentication.type", "internal");
