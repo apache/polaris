@@ -412,7 +412,7 @@ public class ManagementServiceTest {
     return new PrincipalEntity.Builder()
         .setName(name)
         .setCreateTimestamp(Instant.now().toEpochMilli())
-        .setId(metaStoreManager.generateNewEntityId(callContext).getId())
+        .setId(metaStoreManager.generateNewEntityId().getId())
         .build();
   }
 
@@ -422,7 +422,7 @@ public class ManagementServiceTest {
       String name,
       boolean isFederated) {
     return new PrincipalRoleEntity.Builder()
-        .setId(metaStoreManager.generateNewEntityId(callContext).getId())
+        .setId(metaStoreManager.generateNewEntityId().getId())
         .setName(name)
         .setFederated(isFederated)
         .setProperties(Map.of())
@@ -439,10 +439,10 @@ public class ManagementServiceTest {
         setupPolarisAdminService(metaStoreManager, callContext);
 
     PrincipalEntity principal = createPrincipal(metaStoreManager, callContext, "principal_id");
-    metaStoreManager.createPrincipal(callContext, principal);
+    metaStoreManager.createPrincipal(principal);
 
     PrincipalRoleEntity role = createRole(metaStoreManager, callContext, "federated_role_id", true);
-    EntityResult result = metaStoreManager.createEntityIfNotExists(callContext, null, role);
+    EntityResult result = metaStoreManager.createEntityIfNotExists(null, role);
     assertThat(result.isSuccess()).isTrue();
 
     assertThatThrownBy(
@@ -459,10 +459,9 @@ public class ManagementServiceTest {
 
     CreateCatalogResult catalog1 =
         metaStoreManager.createCatalog(
-            callContext,
             new PolarisBaseEntity(
                 PolarisEntityConstants.getNullId(),
-                metaStoreManager.generateNewEntityId(callContext).getId(),
+                metaStoreManager.generateNewEntityId().getId(),
                 PolarisEntityType.CATALOG,
                 PolarisEntitySubType.NULL_SUBTYPE,
                 PolarisEntityConstants.getRootEntityId(),
@@ -472,10 +471,9 @@ public class ManagementServiceTest {
 
     CreateCatalogResult catalog2 =
         metaStoreManager.createCatalog(
-            callContext,
             new PolarisBaseEntity(
                 PolarisEntityConstants.getNullId(),
-                metaStoreManager.generateNewEntityId(callContext).getId(),
+                metaStoreManager.generateNewEntityId().getId(),
                 PolarisEntityType.CATALOG,
                 PolarisEntitySubType.NULL_SUBTYPE,
                 PolarisEntityConstants.getRootEntityId(),
@@ -518,7 +516,7 @@ public class ManagementServiceTest {
             BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unexpected Error Occurred");
     Mockito.doAnswer(invocation -> resultWithError)
         .when(metaStoreManager)
-        .createCatalog(Mockito.any(), Mockito.any(), Mockito.any());
+        .createCatalog(Mockito.any(), Mockito.any());
     Assertions.assertThatThrownBy(
             () -> polarisAdminService.createCatalog(new CreateCatalogRequest(catalog)))
         .isInstanceOf(IllegalStateException.class)
