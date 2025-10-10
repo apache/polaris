@@ -23,7 +23,7 @@ weight: 704
 ---
 
 Polaris can front an external Iceberg REST catalog so that existing metadata services (another
-Polaris deployment, Nessie, or a custom Iceberg REST implementation) gain OAuth-protected access
+Polaris deployment, AWS Glue, or any custom Iceberg REST implementation) gain OAuth-protected access
 control and multi-engine routing through the Polaris API surface.
 
 ## Runtime requirements
@@ -31,7 +31,7 @@ control and multi-engine routing through the Polaris API surface.
 - **REST endpoint:** The remote service must expose the Iceberg REST specification. Configure
   firewalls so Polaris can reach the base URI you provide in the connection config.
 - **Authentication:** Polaris forwards requests using the credentials defined in
-  `connectionConfigInfo.authenticationParameters`. OAuth2 client credentials, bearer tokens, and AWS
+  `ConnectionConfigInfo.AuthenticationParameters`. OAuth2 client credentials, bearer tokens, and AWS
   SigV4 are supported; choose the scheme the remote service expects.
 - **Service identity (SigV4 only):** When using SigV4, set `polaris.service-identity.<realm>.aws-iam.*`
   so Polaris can assume the IAM role referenced by the connection’s `serviceIdentity` block.
@@ -39,7 +39,7 @@ control and multi-engine routing through the Polaris API surface.
 ## Creating a federated REST catalog
 
 The snippet below registers an external catalog that forwards to a remote Polaris server using OAuth2
-client credentials. `remoteCatalogName` is optional; supply it when the remote server multiplexes
+client credentials. `iceberg-remote-catalog-name` is optional; supply it when the remote server multiplexes
 multiple logical catalogs under one URI.
 
 ```bash
