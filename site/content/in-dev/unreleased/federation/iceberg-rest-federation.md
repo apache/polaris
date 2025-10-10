@@ -51,8 +51,8 @@ polaris catalogs create \
     --catalog-uri "https://remote-polaris.example.com/catalog/v1" \
     --catalog-authentication-type OAUTH \
     --catalog-token-uri "https://remote-polaris.example.com/catalog/v1/oauth/tokens" \
-    --catalog-client-id federation-client \
-    --catalog-client-secret "<remote-secret>" \
+    --catalog-client-id "<remote-client-id>" \
+    --catalog-client-secret "<remote-client-secret>" \
     --catalog-client-scopes "PRINCIPAL_ROLE:ALL" \
     analytics_rest
 ```
