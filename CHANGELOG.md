@@ -23,17 +23,31 @@ This changelog is used to give users and contributors condensed information abou
 Entries are grouped in sections like _Highlights_ or _Upgrade notes_, the provided sections can be adjusted
 as necessary. Empty sections will not end up in the release notes. Contributors are encouraged to incorporate
 CHANGELOG updates into their PRs when appropriate. Reviewers should be mindful of the impact of PRs and
-request adding CHANGELOG notes for breaking (!) changes and possibly other sections as appropriate.   
+request adding CHANGELOG notes for breaking (!) changes and possibly other sections as appropriate.
 
 ## [Unreleased]
 
 ### Highlights
 
+### Upgrade notes
+
+### Breaking changes
+
+### New Features
+
+### Changes
+
+### Deprecations
+
+### Fixes
+
+### Commits
+
+## [1.2.0-incubating]
+
 ### Upgrade Notes
 
 - Amazon RDS plugin enabled, this allows polaris to connect to AWS Aurora PostgreSQL using IAM authentication.
-
-### Breaking Changes
 
 ### New Features
 
@@ -43,16 +57,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The `ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` was added to support sub-catalog (initially namespace and table) RBAC for federated catalogs.
   The setting can be configured on a per-catalog basis by setting the catalog property: `polaris.config.enable-sub-catalog-rbac-for-federated-catalogs`.
   The realm-level feature flag `ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` (default: true) controls whether this functionality can be enabled or modified at the catalog level.
-
 - Added support for S3-compatible storage that does not have STS (use `stsUavailable: true` in catalog storage configuration)
 
 ### Changes
 
-* The following APIs will now return the newly-created objects as part of the successful 201 response: createCatalog, createPrincipalRole, createCatalogRole. 
+- The following APIs will now return the newly-created objects as part of the successful 201 response: createCatalog, createPrincipalRole, createCatalogRole. 
 
 ### Deprecations
 
-* The property `polaris.active-roles-provider.type` is deprecated and has no effect anymore.
+- The property `polaris.active-roles-provider.type` is deprecated and has no effect anymore.
 - The EclipseLink Persistence implementation has been deprecated since 1.0.0 and will be completely removed
   in 1.3.0 or in 2.0.0 (whichever happens earlier).
 - The legacy management endpoints at `/metrics` and `/healthcheck` have been deprecated in 1.2.0 and will be
@@ -61,12 +74,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
-* Fixed incorrect Azure expires at field for the credentials refresh response, leading to client failure via #2633
-
-### Commits
+- Fixed incorrect Azure expires at field for the credentials refresh response, leading to client failure via #2633
 
 ## [1.1.0-incubating]
+
 Apache Polaris 1.1.0-incubating was released on September 19th, 2025.
+
 - **Highlights**
   - **HMS Federation Support**: Added support for Hive Metastore (HMS) federation, enabling integration with existing Hive metastores.
   - **Modularized Federation**: Introduced modularized federation architecture to support multiple catalog types and improve extensibility.
@@ -127,12 +140,14 @@ Apache Polaris 1.1.0-incubating was released on September 19th, 2025.
   - The `ActiveRolesProvider` interface is deprecated for removal.
 
 ## [1.0.1-incubating]
+
 Apache Polaris 1.0.1-incubating was released on August 16th, 2025. It’s a maintenance release on the 1.0.0 release fixing a couple of issues on the Helm Chart:
+
 - remove db-kind in Helm Chart
 - add relational-jdbc to helm
 
-
 ## [1.0.0-incubating]
+
 Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 - **Highlights**
@@ -160,11 +175,13 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
   - **Server Configuration** – The format used to configure the Polaris service in 0.9 has changed with the migration to Quarkus and changes to configurations 
   - **Bootstrap Flow** – The bootstrap flow used in 0.9 has changed with the migration to Quarkus and the new admin tool
 
-
 ## [0.9.0-incubating]
+
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
-[Unreleased]: https://github.com/apache/polaris/commits
-[1.0.1-incubating]: https://github.com/apache/polaris/releases/tag/apache-polaris-1.0.1-incubating
-[1.0.0-incubating]: https://github.com/apache/polaris/releases/tag/apache-polaris-1.0.0-incubating-rc2
-[0.9.0-incubating]: https://github.com/apache/polaris/releases/tag/apache-polaris-0.9.0-incubating
+[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.2.0-incubating...HEAD
+[1.2.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.1.0-incubating...apache-polaris-1.2.0-incubating
+[1.1.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.0.1-incubating...apache-polaris-1.1.0-incubating
+[1.0.1-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.0.0-incubating...apache-polaris-1.0.1-incubating
+[1.0.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-0.9.0-incubating...apache-polaris-1.0.0-incubating
+[0.9.0-incubating]: https://github.com/apache/polaris/commits/apache-polaris-0.9.0-incubating
