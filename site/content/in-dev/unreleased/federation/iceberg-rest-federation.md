@@ -33,8 +33,6 @@ control and multi-engine routing through the Polaris API surface.
 - **Authentication:** Polaris forwards requests using the credentials defined in
   `ConnectionConfigInfo.AuthenticationParameters`. OAuth2 client credentials, bearer tokens, and AWS
   SigV4 are supported; choose the scheme the remote service expects.
-- **Service identity (SigV4 only):** When using SigV4, set `polaris.service-identity.<realm>.aws-iam.*`
-  so Polaris can assume the IAM role referenced by the connection’s `serviceIdentity` block.
 
 ## Creating a federated REST catalog
 
@@ -59,10 +57,7 @@ polaris catalogs create \
     analytics_rest
 ```
 
-For bearer-token authentication, replace the `authenticationParameters` block with
-`{"authenticationType": "BEARER", "bearerToken": "<token>"}`. For SigV4, supply
-`{"authenticationType": "SIGV4", ...}` along with an `awsIam` `serviceIdentity` that contains the
-role ARN Polaris should assume when signing requests.
+Refer to the [CLI documentation](../command-line-interface.md#catalogs) for details on alternative authentication types such as BEARER or SIGV4.
 
 Grant catalog roles to principal roles the same way you do for internal catalogs so compute engines
 receive tokens with access to the federated namespace.
