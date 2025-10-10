@@ -22,9 +22,8 @@ type: docs
 weight: 704
 ---
 
-Polaris can front an external Iceberg REST catalog so that existing metadata services (another
-Polaris deployment, AWS Glue, or any custom Iceberg REST implementation) gain OAuth-protected access
-control and multi-engine routing through the Polaris API surface.
+Polaris can federate an external Iceberg REST catalog (e.g., another Polaris deployment, AWS Glue, or a custom Iceberg
+REST implementation), enabling a Polaris service to access table and view entities managed by remote Iceberg REST Catalogs.
 
 ## Runtime requirements
 
