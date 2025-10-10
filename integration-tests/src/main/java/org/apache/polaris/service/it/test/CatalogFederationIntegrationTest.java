@@ -86,7 +86,9 @@ public class CatalogFederationIntegrationTest {
   private static String federatedCatalogName;
   private static String localCatalogRoleName;
   private static String federatedCatalogRoleName;
-  private static URI storageBase;
+  private static URI localStorageBase;
+  private static URI remoteStorageBase;
+  private static URI remoteStorageExtraAllowedLocation;
   private static String endpoint;
 
   private static final String PRINCIPAL_NAME = "test-catalog-federation-user";
@@ -99,7 +101,6 @@ public class CatalogFederationIntegrationTest {
 
   @TempDir static java.nio.file.Path warehouseDir;
 
-  private URI baseLocation;
   private PrincipalWithCredentials newUserCredentials;
 
   @BeforeAll
@@ -112,8 +113,13 @@ public class CatalogFederationIntegrationTest {
     String adminToken = client.obtainToken(credentials);
     managementApi = client.managementApi(adminToken);
     catalogApi = client.catalogApi(adminToken);
-    storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
     endpoint = minioAccess.s3endpoint();
+
+    localStorageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog");
+    remoteStorageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/federated_catalog");
+    // Allow credential vending for tables located under ns1
+    remoteStorageExtraAllowedLocation =
+        minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog/ns1");
   }
 
   @AfterAll
@@ -144,7 +150,6 @@ public class CatalogFederationIntegrationTest {
   }
 
   private void setupCatalogs() {
-    baseLocation = storageBase;
     newUserCredentials = managementApi.createPrincipalWithRole(PRINCIPAL_NAME, PRINCIPAL_ROLE_NAME);
 
     AwsStorageConfigInfo storageConfig =
@@ -152,10 +157,10 @@ public class CatalogFederationIntegrationTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(true)
             .setEndpoint(endpoint)
-            .setAllowedLocations(List.of(baseLocation.toString()))
+            .setAllowedLocations(List.of(localStorageBase.toString()))
             .build();
 
-    CatalogProperties catalogProperties = new CatalogProperties(baseLocation.toString());
+    CatalogProperties catalogProperties = new CatalogProperties(localStorageBase.toString());
 
     localCatalogName = "test_catalog_local_" + UUID.randomUUID().toString().replace("-", "");
     localCatalogRoleName = "test-catalog-role_" + UUID.randomUUID().toString().replace("-", "");
@@ -193,13 +198,23 @@ public class CatalogFederationIntegrationTest {
             .setRemoteCatalogName(localCatalogName)
             .setAuthenticationParameters(authParams)
             .build();
+    CatalogProperties externalCatalogProperties =
+        new CatalogProperties(remoteStorageBase.toString());
+    AwsStorageConfigInfo externalStorageConfig =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setPathStyleAccess(true)
+            .setEndpoint(endpoint)
+            .setAllowedLocations(
+                List.of(remoteStorageBase.toString(), remoteStorageExtraAllowedLocation.toString()))
+            .build();
     ExternalCatalog externalCatalog =
         ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
             .setName(federatedCatalogName)
             .setConnectionConfigInfo(connectionConfig)
-            .setProperties(catalogProperties)
-            .setStorageConfigInfo(storageConfig)
+            .setProperties(externalCatalogProperties)
+            .setStorageConfigInfo(externalStorageConfig)
             .build();
     managementApi.createCatalog(externalCatalog);
     managementApi.createCatalogRole(federatedCatalogName, federatedCatalogRoleName);
@@ -427,5 +442,46 @@ public class CatalogFederationIntegrationTest {
     assertThat(localData).hasSize(3);
     assertThat(localData.get(2).getInt(0)).isEqualTo(3);
     assertThat(localData.get(2).getString(1)).isEqualTo("Charlie");
+  }
+
+  @Test
+  void testFederatedCatalogNotVendCredentialForTablesOutsideAllowedLocations() {
+    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
+
+    spark.sql("USE " + federatedCatalogName);
+
+    // Case 1: Only have TABLE_READ_DATA privilege
+    TableGrant tableReadDataGrant =
+        TableGrant.builder()
+            .setType(GrantResource.TypeEnum.TABLE)
+            .setPrivilege(TablePrivilege.TABLE_READ_DATA)
+            .setNamespace(List.of("ns2"))
+            .setTableName("test_table")
+            .build();
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
+
+    // Verify that credential vending is blocked for table under ns2, even with enough privilege
+    assertThatThrownBy(() -> spark.sql("SELECT * FROM ns2.test_table ORDER BY id").collectAsList())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining(
+            "Table 'ns2.test_table' in remote catalog has locations outside catalog's allowed locations:");
+
+    // Case 3: TABLE_WRITE_DATA
+    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
+    TableGrant tableWriteDataGrant =
+        TableGrant.builder()
+            .setType(GrantResource.TypeEnum.TABLE)
+            .setPrivilege(TablePrivilege.TABLE_WRITE_DATA)
+            .setNamespace(List.of("ns2"))
+            .setTableName("test_table")
+            .build();
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableWriteDataGrant);
+
+    // Verify that credential vending is blocked for table under ns2, even with enough privilege
+    assertThatThrownBy(
+            () -> spark.sql("INSERT INTO ns2.test_table VALUES (3, 'Charlie')").collectAsList())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining(
+            "Table 'ns2.test_table' in remote catalog has locations outside catalog's allowed locations:");
   }
 }
