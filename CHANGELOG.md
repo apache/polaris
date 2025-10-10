@@ -49,6 +49,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Amazon RDS plugin enabled, this allows polaris to connect to AWS Aurora PostgreSQL using IAM authentication.
 
+### Breaking changes
+
+- Creating or altering a namespace with a custom location outside its parent location is now prohibited by default. To restore the old behavior, set the `ALLOW_NAMESPACE_CUSTOM_LOCATION` flag to true.
+
 ### New Features
 
 - Added a finer grained authorization model for UpdateTable requests. Existing privileges continue to work for granting UpdateTable, such as `TABLE_WRITE_PROPERTIES`.
@@ -58,6 +62,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   The setting can be configured on a per-catalog basis by setting the catalog property: `polaris.config.enable-sub-catalog-rbac-for-federated-catalogs`.
   The realm-level feature flag `ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` (default: true) controls whether this functionality can be enabled or modified at the catalog level.
 - Added support for S3-compatible storage that does not have STS (use `stsUavailable: true` in catalog storage configuration)
+- Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
+- Added AWS CloudWatch Event Sink Implementation
+- Generate Request IDs (if not specified) for all incoming requests to Polaris.
 
 ### Changes
 
@@ -112,7 +119,6 @@ Apache Polaris 1.1.0-incubating was released on September 19th, 2025.
     automatic storage credential refresh per table on the client side. Java client version >= 1.8.0 is required.
     The endpoint path is always returned when using vended credentials, but clients must enable the
     refresh-credentials flag for the desired storage provider.
-  - Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
 - **Changes**
   - Polaris Management API clients must be prepared to deal with new attributes in `AwsStorageConfigInfo` objects.
   - S3 configuration property role-ARN is no longer mandatory.
