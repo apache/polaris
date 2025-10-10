@@ -33,18 +33,12 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
-import java.time.Duration;
 import java.util.stream.Collectors;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.BearerTokenProvider;
-import org.apache.polaris.core.auth.FileBearerTokenProvider;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.auth.StaticBearerTokenProvider;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -253,64 +247,6 @@ public class ServiceProducers {
       StorageConfiguration config,
       MeterRegistry meterRegistry) {
     return new StsClientsPool(config.effectiveClientsCacheMaxSize(), httpClient, meterRegistry);
-  }
-
-  @Produces
-  @Singleton
-  @Identifier("opa-http-client")
-  public CloseableHttpClient opaHttpClient(AuthorizationConfiguration authorizationConfig) {
-    AuthorizationConfiguration.OpaConfig opa = authorizationConfig.opa();
-    
-    try {
-      return OpaHttpClientFactory.createHttpClient(opa.http());
-    } catch (Exception e) {
-      LOGGER.warn("Failed to create OPA HTTP client with SSL configuration, falling back to simple client", e);
-      return HttpClients.custom().build();
-    }
-  }
-
-  public void closeOpaHttpClient(
-      @Disposes @Identifier("opa-http-client") CloseableHttpClient client) {
-    try {
-      client.close();
-    } catch (Exception e) {
-      LOGGER.warn("Error closing OPA HTTP client", e);
-    }
-  }
-
-  @Produces
-  @Singleton
-  @Identifier("opa-bearer-token-provider")
-  public BearerTokenProvider opaBearerTokenProvider(
-      AuthorizationConfiguration authorizationConfig) {
-    AuthorizationConfiguration.OpaConfig opa = authorizationConfig.opa();
-    AuthorizationConfiguration.BearerTokenConfig bearerToken = opa.bearerToken();
-
-    // Validate configuration before using it
-    bearerToken.validate();
-
-    // Check if bearer token authentication is enabled
-    if (!bearerToken.enabled()) {
-      return new StaticBearerTokenProvider("");
-    }
-
-    // Static token takes precedence
-    if (bearerToken.staticValue().isPresent()) {
-      return new StaticBearerTokenProvider(bearerToken.staticValue().get());
-    }
-
-    // File-based token as fallback
-    if (bearerToken.filePath().isPresent()) {
-      Duration refreshInterval = Duration.ofSeconds(bearerToken.refreshInterval());
-      boolean jwtExpirationRefresh = bearerToken.jwtExpirationRefresh();
-      Duration jwtExpirationBuffer = Duration.ofSeconds(bearerToken.jwtExpirationBuffer());
-
-      return new FileBearerTokenProvider(
-          bearerToken.filePath().get(), refreshInterval, jwtExpirationRefresh, jwtExpirationBuffer);
-    }
-
-    // No token configured (this shouldn't happen due to validation, but it's here as fallback)
-    return new StaticBearerTokenProvider("");
   }
 
   /**

@@ -28,28 +28,54 @@ import java.util.Map;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.junit.jupiter.api.Test;
 
-@QuarkusTest
-@io.quarkus.test.junit.TestProfile(ServiceProducersIT.InlineConfig.class)
 public class ServiceProducersIT {
 
-  public static class InlineConfig implements QuarkusTestProfile {
+  public static class InternalAuthorizationConfig implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.type", "default");
-      config.put("polaris.authorization.opa.url", "http://localhost:8181");
-      config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/allow");
-      config.put("polaris.authorization.opa.timeout-ms", "2000");
+      config.put("polaris.authorization.type", "internal");
       return config;
     }
   }
 
-  @Inject PolarisAuthorizer polarisAuthorizer;
+  public static class OpaAuthorizationConfig implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      Map<String, String> config = new HashMap<>();
+      config.put("polaris.authorization.type", "opa");
+      config.put("polaris.authorization.opa.url", "http://localhost:8181");
+      config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/authz");
+      config.put("polaris.authorization.opa.auth.type", "none");
+      return config;
+    }
+  }
 
-  @Test
-  void testPolarisAuthorizerProduced() {
-    assertNotNull(polarisAuthorizer, "PolarisAuthorizer should be produced");
-    // Verify it's the correct implementation for default config
-    assertNotNull(polarisAuthorizer, "PolarisAuthorizer should not be null");
+  @QuarkusTest
+  @io.quarkus.test.junit.TestProfile(ServiceProducersIT.InternalAuthorizationConfig.class)
+  public static class InternalAuthorizationTest {
+
+    @Inject PolarisAuthorizer polarisAuthorizer;
+
+    @Test
+    void testInternalPolarisAuthorizerProduced() {
+      assertNotNull(polarisAuthorizer, "PolarisAuthorizer should be produced");
+      // Verify it's the correct implementation for internal config
+      assertNotNull(polarisAuthorizer, "Internal PolarisAuthorizer should not be null");
+    }
+  }
+
+  @QuarkusTest
+  @io.quarkus.test.junit.TestProfile(ServiceProducersIT.OpaAuthorizationConfig.class)
+  public static class OpaAuthorizationTest {
+
+    @Inject PolarisAuthorizer polarisAuthorizer;
+
+    @Test
+    void testOpaPolarisAuthorizerProduced() {
+      assertNotNull(polarisAuthorizer, "PolarisAuthorizer should be produced");
+      // Verify it's the correct implementation for OPA config
+      assertNotNull(polarisAuthorizer, "OPA PolarisAuthorizer should not be null");
+    }
   }
 }

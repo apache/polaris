@@ -27,7 +27,7 @@ import org.apache.polaris.core.config.RealmConfig;
 
 /** Factory for creating the default Polaris authorizer implementation. */
 @ApplicationScoped
-@Identifier("default")
+@Identifier("internal")
 public class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
   @Override

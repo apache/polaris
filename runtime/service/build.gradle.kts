@@ -139,6 +139,9 @@ dependencies {
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
 
+  // OPA Authorization Extension for testing
+  testImplementation(project(":polaris-extensions-auth-opa"))
+
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 

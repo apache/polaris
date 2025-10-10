@@ -16,17 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.config;
+package org.apache.polaris.extension.auth.opa;
 
 import com.google.common.base.Strings;
 import java.io.FileInputStream;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLContext;
 import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.config.TlsConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
@@ -39,10 +36,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Factory for creating HTTP clients configured for OPA communication with SSL support.
- * 
+ *
  * <p>This factory handles the creation of Apache HttpClient instances with proper SSL
- * configuration, timeout settings, and connection pooling for communicating with
- * Open Policy Agent (OPA) servers.
+ * configuration, timeout settings, and connection pooling for communicating with Open Policy Agent
+ * (OPA) servers.
  */
 public class OpaHttpClientFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpaHttpClientFactory.class);
@@ -53,22 +50,24 @@ public class OpaHttpClientFactory {
    * @param config HTTP configuration for timeouts and SSL settings
    * @return configured CloseableHttpClient
    */
-  public static CloseableHttpClient createHttpClient(AuthorizationConfiguration.OpaConfig.HttpConfig config) {
-    RequestConfig requestConfig = RequestConfig.custom()
-        .setResponseTimeout(Timeout.ofMilliseconds(config.timeoutMs()))
-        .build();
-    
+  public static CloseableHttpClient createHttpClient(OpaAuthorizationConfig.HttpConfig config) {
+    RequestConfig requestConfig =
+        RequestConfig.custom()
+            .setResponseTimeout(Timeout.ofMilliseconds(config.timeoutMs()))
+            .build();
+
     if (!config.verifySsl()) {
       // Create connection manager with custom TLS strategy (for development/testing)
       try {
         SSLContext sslContext = createSslContext(config);
-        DefaultClientTlsStrategy tlsStrategy = new DefaultClientTlsStrategy(
-            sslContext, NoopHostnameVerifier.INSTANCE);
-        
-        var connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
-            .setTlsSocketStrategy(tlsStrategy)
-            .build();
-        
+        DefaultClientTlsStrategy tlsStrategy =
+            new DefaultClientTlsStrategy(sslContext, NoopHostnameVerifier.INSTANCE);
+
+        var connectionManager =
+            PoolingHttpClientConnectionManagerBuilder.create()
+                .setTlsSocketStrategy(tlsStrategy)
+                .build();
+
         return HttpClients.custom()
             .setConnectionManager(connectionManager)
             .setDefaultRequestConfig(requestConfig)
@@ -77,11 +76,9 @@ public class OpaHttpClientFactory {
         throw new RuntimeException("Failed to create SSL context for OPA client", e);
       }
     }
-    
+
     // For SSL verification enabled, use default configuration
-    return HttpClients.custom()
-        .setDefaultRequestConfig(requestConfig)
-        .build();
+    return HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
   }
 
   /**
@@ -90,15 +87,18 @@ public class OpaHttpClientFactory {
    * @param config HTTP configuration containing SSL settings
    * @return SSLContext for HTTPS connections
    */
-  private static SSLContext createSslContext(AuthorizationConfiguration.OpaConfig.HttpConfig config) 
+  private static SSLContext createSslContext(OpaAuthorizationConfig.HttpConfig config)
       throws Exception {
     if (!config.verifySsl()) {
       // Disable SSL verification (for development/testing)
-      LOGGER.warn("SSL verification is disabled for OPA server. This should only be used in development/testing environments.");
+      LOGGER.warn(
+          "SSL verification is disabled for OPA server. This should only be used in development/testing environments.");
       return SSLContexts.custom()
-          .loadTrustMaterial(null, (X509Certificate[] chain, String authType) -> true) // trust all certificates
+          .loadTrustMaterial(
+              null, (X509Certificate[] chain, String authType) -> true) // trust all certificates
           .build();
-    } else if (config.trustStorePath().isPresent() && !Strings.isNullOrEmpty(config.trustStorePath().get())) {
+    } else if (config.trustStorePath().isPresent()
+        && !Strings.isNullOrEmpty(config.trustStorePath().get())) {
       // Load custom trust store for SSL verification
       String trustStorePath = config.trustStorePath().get();
       LOGGER.info("Loading custom trust store for OPA SSL verification: {}", trustStorePath);
@@ -108,14 +108,11 @@ public class OpaHttpClientFactory {
         trustStore.load(
             trustStoreStream, trustStorePassword != null ? trustStorePassword.toCharArray() : null);
       }
-      return SSLContexts.custom()
-          .loadTrustMaterial(trustStore, null)
-          .build();
+      return SSLContexts.custom().loadTrustMaterial(trustStore, null).build();
     } else {
       // Use default system trust store for SSL verification
       LOGGER.debug("Using default system trust store for OPA SSL verification");
       return SSLContexts.createDefault();
     }
   }
-
 }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.extension.auth.opa;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -37,6 +37,10 @@ import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.auth.BearerTokenProvider;
+import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 
@@ -78,7 +82,8 @@ public class OpaPolarisAuthorizer implements PolarisAuthorizer {
    * @param opaServerUrl OPA server URL
    * @param opaPolicyPath OPA policy path
    * @param tokenProvider Token provider for authentication (optional)
-   * @param client Apache HttpClient (required, injected by CDI). SSL configuration should be handled by the CDI producer.
+   * @param client Apache HttpClient (required, injected by CDI). SSL configuration should be
+   *     handled by the CDI producer.
    * @return OpaPolarisAuthorizer instance
    */
   public static OpaPolarisAuthorizer create(

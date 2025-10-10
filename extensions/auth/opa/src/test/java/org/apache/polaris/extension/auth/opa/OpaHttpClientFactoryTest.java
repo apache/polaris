@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.config;
+package org.apache.polaris.extension.auth.opa;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
@@ -26,44 +26,42 @@ import java.util.Optional;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
 
-/**
- * Unit tests for OpaHttpClientFactory.
- */
+/** Unit tests for OpaHttpClientFactory. */
 public class OpaHttpClientFactoryTest {
 
   @Test
   void testCreateHttpClientWithHttpUrl() throws Exception {
-    AuthorizationConfiguration.OpaConfig.HttpConfig httpConfig = createMockHttpConfig(5000, true, null, null);
-    
+    OpaAuthorizationConfig.HttpConfig httpConfig = createMockHttpConfig(5000, true, null, null);
+
     CloseableHttpClient client = OpaHttpClientFactory.createHttpClient(httpConfig);
-    
+
     assertNotNull(client);
     client.close();
   }
 
   @Test
   void testCreateHttpClientWithHttpsUrl() throws Exception {
-    AuthorizationConfiguration.OpaConfig.HttpConfig httpConfig = createMockHttpConfig(5000, false, null, null);
-    
+    OpaAuthorizationConfig.HttpConfig httpConfig = createMockHttpConfig(5000, false, null, null);
+
     CloseableHttpClient client = OpaHttpClientFactory.createHttpClient(httpConfig);
-    
+
     assertNotNull(client);
     client.close();
   }
 
   @Test
   void testCreateHttpClientWithCustomTimeout() throws Exception {
-    AuthorizationConfiguration.OpaConfig.HttpConfig httpConfig = createMockHttpConfig(10000, true, null, null);
-    
+    OpaAuthorizationConfig.HttpConfig httpConfig = createMockHttpConfig(10000, true, null, null);
+
     CloseableHttpClient client = OpaHttpClientFactory.createHttpClient(httpConfig);
-    
+
     assertNotNull(client);
     client.close();
   }
 
-  private AuthorizationConfiguration.OpaConfig.HttpConfig createMockHttpConfig(
+  private OpaAuthorizationConfig.HttpConfig createMockHttpConfig(
       int timeoutMs, boolean verifySsl, String trustStorePath, String trustStorePassword) {
-    AuthorizationConfiguration.OpaConfig.HttpConfig httpConfig = mock(AuthorizationConfiguration.OpaConfig.HttpConfig.class);
+    OpaAuthorizationConfig.HttpConfig httpConfig = mock(OpaAuthorizationConfig.HttpConfig.class);
     when(httpConfig.timeoutMs()).thenReturn(timeoutMs);
     when(httpConfig.verifySsl()).thenReturn(verifySsl);
     when(httpConfig.trustStorePath()).thenReturn(Optional.ofNullable(trustStorePath));
