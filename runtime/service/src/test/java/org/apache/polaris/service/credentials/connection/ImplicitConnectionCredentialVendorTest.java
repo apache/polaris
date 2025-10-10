@@ -22,6 +22,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ImplicitAuthenticationParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
@@ -59,10 +61,8 @@ public class ImplicitConnectionCredentialVendorTest {
   @Test
   public void testGetConnectionCredentialsWithWrongAuthType() {
     // Setup - use a mock with wrong authentication type
-    org.apache.polaris.core.connection.ConnectionConfigInfoDpo mockConfig =
-        mock(org.apache.polaris.core.connection.ConnectionConfigInfoDpo.class);
-    org.apache.polaris.core.connection.AuthenticationParametersDpo mockAuthParams =
-        mock(org.apache.polaris.core.connection.AuthenticationParametersDpo.class);
+    ConnectionConfigInfoDpo mockConfig = mock(ConnectionConfigInfoDpo.class);
+    AuthenticationParametersDpo mockAuthParams = mock(AuthenticationParametersDpo.class);
 
     when(mockConfig.getAuthenticationParameters()).thenReturn(mockAuthParams);
 

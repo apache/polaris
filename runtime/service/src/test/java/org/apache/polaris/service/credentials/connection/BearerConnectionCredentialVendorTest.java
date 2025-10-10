@@ -22,7 +22,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Map;
+import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.BearerAuthenticationParametersDpo;
+import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
@@ -48,7 +51,7 @@ public class BearerConnectionCredentialVendorTest {
   public void testGetConnectionCredentials() {
     // Setup
     SecretReference bearerTokenRef =
-        new SecretReference("urn:polaris-secret:test:bearer-token", java.util.Map.of());
+        new SecretReference("urn:polaris-secret:test:bearer-token", Map.of());
     when(mockSecretsManager.readSecret(bearerTokenRef)).thenReturn("my-bearer-token-value");
 
     BearerAuthenticationParametersDpo authParams =
@@ -72,10 +75,8 @@ public class BearerConnectionCredentialVendorTest {
   @Test
   public void testGetConnectionCredentialsWithWrongAuthType() {
     // Setup - use a mock with wrong authentication type
-    org.apache.polaris.core.connection.ConnectionConfigInfoDpo mockConfig =
-        mock(org.apache.polaris.core.connection.ConnectionConfigInfoDpo.class);
-    org.apache.polaris.core.connection.AuthenticationParametersDpo mockAuthParams =
-        mock(org.apache.polaris.core.connection.AuthenticationParametersDpo.class);
+    ConnectionConfigInfoDpo mockConfig = mock(ConnectionConfigInfoDpo.class);
+    AuthenticationParametersDpo mockAuthParams = mock(AuthenticationParametersDpo.class);
 
     when(mockConfig.getAuthenticationParameters()).thenReturn(mockAuthParams);
 
@@ -89,7 +90,7 @@ public class BearerConnectionCredentialVendorTest {
   public void testGetConnectionCredentialsWithInvalidSecretReference() {
     // Setup - secret reference that doesn't exist
     SecretReference invalidSecretRef =
-        new SecretReference("urn:polaris-secret:test:non-existent", java.util.Map.of());
+        new SecretReference("urn:polaris-secret:test:non-existent", Map.of());
     when(mockSecretsManager.readSecret(invalidSecretRef))
         .thenThrow(new RuntimeException("Secret not found"));
 
