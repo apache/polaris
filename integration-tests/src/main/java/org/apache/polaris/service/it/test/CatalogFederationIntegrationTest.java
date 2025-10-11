@@ -88,7 +88,8 @@ public class CatalogFederationIntegrationTest {
   private static String federatedCatalogRoleName;
   private static URI localStorageBase;
   private static URI remoteStorageBase;
-  private static URI remoteStorageExtraAllowedLocation;
+  private static URI remoteStorageExtraAllowedLocationNs1;
+  private static URI remoteStorageExtraAllowedLocationNs2;
   private static String endpoint;
 
   private static final String PRINCIPAL_NAME = "test-catalog-federation-user";
@@ -118,8 +119,10 @@ public class CatalogFederationIntegrationTest {
     localStorageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog");
     remoteStorageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/federated_catalog");
     // Allow credential vending for tables located under ns1
-    remoteStorageExtraAllowedLocation =
+    remoteStorageExtraAllowedLocationNs1 =
         minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog/ns1");
+    remoteStorageExtraAllowedLocationNs2 =
+        minioAccess.s3BucketUri(BUCKET_URI_PREFIX + "/local_catalog/ns2");
   }
 
   @AfterAll
@@ -206,7 +209,10 @@ public class CatalogFederationIntegrationTest {
             .setPathStyleAccess(true)
             .setEndpoint(endpoint)
             .setAllowedLocations(
-                List.of(remoteStorageBase.toString(), remoteStorageExtraAllowedLocation.toString()))
+                List.of(
+                    remoteStorageBase.toString(),
+                    remoteStorageExtraAllowedLocationNs1.toString(),
+                    remoteStorageExtraAllowedLocationNs2.toString()))
             .build();
     ExternalCatalog externalCatalog =
         ExternalCatalog.builder()
@@ -259,6 +265,11 @@ public class CatalogFederationIntegrationTest {
     spark.sql("INSERT INTO ns2.test_table VALUES (1, 'Apache Spark')");
     spark.sql("INSERT INTO ns2.test_table VALUES (2, 'Apache Iceberg')");
 
+    spark.sql("CREATE NAMESPACE IF NOT EXISTS ns3");
+    spark.sql("CREATE TABLE IF NOT EXISTS ns3.test_table (id int, name string)");
+    spark.sql("INSERT INTO ns3.test_table VALUES (1, 'Apache Spark')");
+    spark.sql("INSERT INTO ns3.test_table VALUES (2, 'Apache Iceberg')");
+
     spark.sql("CREATE NAMESPACE IF NOT EXISTS ns1.ns1a");
     spark.sql("CREATE TABLE IF NOT EXISTS ns1.ns1a.test_table (id int, name string)");
     spark.sql("INSERT INTO ns1.ns1a.test_table VALUES (1, 'Alice')");
@@ -271,7 +282,7 @@ public class CatalogFederationIntegrationTest {
   void testFederatedCatalogBasicReadWriteOperations() {
     spark.sql("USE " + federatedCatalogName);
     List<Row> namespaces = spark.sql("SHOW NAMESPACES").collectAsList();
-    assertThat(namespaces).hasSize(2);
+    assertThat(namespaces).hasSize(3);
     List<Row> ns1Data = spark.sql("SELECT * FROM ns1.test_table ORDER BY id").collectAsList();
     List<Row> refNs1Data =
         spark
@@ -455,16 +466,16 @@ public class CatalogFederationIntegrationTest {
         TableGrant.builder()
             .setType(GrantResource.TypeEnum.TABLE)
             .setPrivilege(TablePrivilege.TABLE_READ_DATA)
-            .setNamespace(List.of("ns2"))
+            .setNamespace(List.of("ns3"))
             .setTableName("test_table")
             .build();
     managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
 
-    // Verify that credential vending is blocked for table under ns2, even with enough privilege
-    assertThatThrownBy(() -> spark.sql("SELECT * FROM ns2.test_table ORDER BY id").collectAsList())
+    // Verify that credential vending is blocked for table under ns3, even with enough privilege
+    assertThatThrownBy(() -> spark.sql("SELECT * FROM ns3.test_table ORDER BY id").collectAsList())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining(
-            "Table 'ns2.test_table' in remote catalog has locations outside catalog's allowed locations:");
+            "Table 'ns3.test_table' in remote catalog has locations outside catalog's allowed locations:");
 
     // Case 3: TABLE_WRITE_DATA
     managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
@@ -472,16 +483,16 @@ public class CatalogFederationIntegrationTest {
         TableGrant.builder()
             .setType(GrantResource.TypeEnum.TABLE)
             .setPrivilege(TablePrivilege.TABLE_WRITE_DATA)
-            .setNamespace(List.of("ns2"))
+            .setNamespace(List.of("ns3"))
             .setTableName("test_table")
             .build();
     managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableWriteDataGrant);
 
-    // Verify that credential vending is blocked for table under ns2, even with enough privilege
+    // Verify that credential vending is blocked for table under ns3, even with enough privilege
     assertThatThrownBy(
-            () -> spark.sql("INSERT INTO ns2.test_table VALUES (3, 'Charlie')").collectAsList())
+            () -> spark.sql("INSERT INTO ns3.test_table VALUES (3, 'Charlie')").collectAsList())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining(
-            "Table 'ns2.test_table' in remote catalog has locations outside catalog's allowed locations:");
+            "Table 'ns3.test_table' in remote catalog has locations outside catalog's allowed locations:");
   }
 }
