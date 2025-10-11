@@ -56,29 +56,42 @@ public class OpaHttpClientFactory {
             .setResponseTimeout(Timeout.ofMilliseconds(config.timeoutMs()))
             .build();
 
-    if (!config.verifySsl()) {
-      // Create connection manager with custom TLS strategy (for development/testing)
-      try {
-        SSLContext sslContext = createSslContext(config);
-        DefaultClientTlsStrategy tlsStrategy =
-            new DefaultClientTlsStrategy(sslContext, NoopHostnameVerifier.INSTANCE);
+    try {
+      // Create TLS strategy based on configuration
+      DefaultClientTlsStrategy tlsStrategy = createTlsStrategy(config);
 
-        var connectionManager =
-            PoolingHttpClientConnectionManagerBuilder.create()
-                .setTlsSocketStrategy(tlsStrategy)
-                .build();
+      // Create connection manager with the TLS strategy
+      var connectionManager =
+          PoolingHttpClientConnectionManagerBuilder.create()
+              .setTlsSocketStrategy(tlsStrategy)
+              .build();
 
-        return HttpClients.custom()
-            .setConnectionManager(connectionManager)
-            .setDefaultRequestConfig(requestConfig)
-            .build();
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to create SSL context for OPA client", e);
-      }
+      return HttpClients.custom()
+          .setConnectionManager(connectionManager)
+          .setDefaultRequestConfig(requestConfig)
+          .build();
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to create HTTP client for OPA communication", e);
     }
+  }
 
-    // For SSL verification enabled, use default configuration
-    return HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
+  /**
+   * Creates a TLS strategy based on the configuration.
+   *
+   * @param config HTTP configuration containing SSL settings
+   * @return DefaultClientTlsStrategy for HTTPS connections
+   */
+  private static DefaultClientTlsStrategy createTlsStrategy(
+      OpaAuthorizationConfig.HttpConfig config) throws Exception {
+    SSLContext sslContext = createSslContext(config);
+
+    if (!config.verifySsl()) {
+      // Disable hostname verification when SSL verification is disabled
+      return new DefaultClientTlsStrategy(sslContext, NoopHostnameVerifier.INSTANCE);
+    } else {
+      // Use default hostname verification when SSL verification is enabled
+      return new DefaultClientTlsStrategy(sslContext);
+    }
   }
 
   /**

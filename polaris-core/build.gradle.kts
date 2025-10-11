@@ -24,7 +24,6 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-api-management-model"))
-  implementation(libs.apache.httpclient5)
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
@@ -45,7 +44,6 @@ dependencies {
   implementation(libs.caffeine)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
-  implementation(libs.auth0.jwt)
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))

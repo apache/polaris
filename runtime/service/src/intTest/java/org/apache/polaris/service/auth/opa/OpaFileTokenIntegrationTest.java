@@ -32,14 +32,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.test.commons.OpaTestResource;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 @TestProfile(OpaFileTokenIntegrationTest.FileTokenOpaProfile.class)
 public class OpaFileTokenIntegrationTest {
 
+  @ConfigProperty(name = "polaris.authorization.opa.auth.bearer.file-based.path")
+  String tokenFilePath;
+
   public static class FileTokenOpaProfile implements QuarkusTestProfile {
-    private static volatile Path tokenFile;
 
     @Override
     public Map<String, String> getConfigOverrides() {
@@ -48,22 +51,10 @@ public class OpaFileTokenIntegrationTest {
       config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/authz");
       config.put("polaris.authorization.opa.http.timeout-ms", "2000");
 
-      // Create temporary token file for testing
-      try {
-        tokenFile = Files.createTempFile("opa-test-token", ".txt");
-        Files.writeString(tokenFile, "test-opa-bearer-token-from-file-67890");
-        tokenFile.toFile().deleteOnExit();
-      } catch (IOException e) {
-        throw new RuntimeException("Failed to create test token file", e);
-      }
-
       // Configure OPA server authentication with file-based bearer token
       config.put("polaris.authorization.opa.auth.type", "bearer");
       config.put("polaris.authorization.opa.auth.bearer.type", "file-based");
-      config.put("polaris.authorization.opa.auth.bearer.file-based.path", tokenFile.toString());
-      config.put(
-          "polaris.authorization.opa.auth.bearer.file-based.refresh-interval",
-          "300"); // 300 seconds for testing
+      // Token file path will be provided by OpaFileTokenTestResource
       config.put(
           "polaris.authorization.opa.http.verify-ssl",
           "false"); // Disable SSL verification for tests
@@ -102,11 +93,8 @@ public class OpaFileTokenIntegrationTest {
       return List.of(
           new TestResourceEntry(
               OpaTestResource.class,
-              Map.of("policy-name", "polaris-authz", "rego-policy", customRegoPolicy)));
-    }
-
-    public static Path getTokenFile() {
-      return tokenFile;
+              Map.of("policy-name", "polaris-authz", "rego-policy", customRegoPolicy)),
+          new TestResourceEntry(OpaFileTokenTestResource.class));
     }
   }
 
@@ -169,27 +157,22 @@ public class OpaFileTokenIntegrationTest {
         .then()
         .statusCode(200);
 
-    // Update the token file with a new value
-    // Note: In a real test, we'd need to coordinate with the OPA server to accept the new token
-    // For this demo, we'll just verify the file can be updated
-    var tokenFile = FileTokenOpaProfile.getTokenFile();
-    if (tokenFile != null && Files.exists(tokenFile)) {
+    // Get the token file path from injected configuration
+    Path tokenFile = Path.of(tokenFilePath);
+    if (Files.exists(tokenFile)) {
       String originalContent = Files.readString(tokenFile);
 
       // Update the file content
       Files.writeString(tokenFile, "test-opa-bearer-token-updated-12345");
 
-      // Wait for refresh interval (1 second as configured)
-      Thread.sleep(1500);
+      // Wait for refresh interval (1 second as configured) plus some buffer
+      Thread.sleep(1500); // 1.5 seconds to ensure refresh happens
 
       // Verify the file was updated
       String updatedContent = Files.readString(tokenFile);
       if (updatedContent.equals(originalContent)) {
         fail("Token file was not updated as expected");
       }
-
-      // Note: We can't test that OPA actually receives the new token without
-      // coordinating with the OPA test container, but we've verified the file mechanism works
     }
   }
 

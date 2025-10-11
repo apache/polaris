@@ -47,15 +47,15 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.auth.BearerTokenProvider;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.auth.StaticBearerTokenProvider;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
+import org.apache.polaris.extension.auth.opa.token.StaticBearerTokenProvider;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 

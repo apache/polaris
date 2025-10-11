@@ -16,19 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.extension.auth.opa.token;
 
-/** A simple token provider that returns a static string value. */
-public class StaticBearerTokenProvider implements BearerTokenProvider {
+import jakarta.annotation.Nullable;
 
-  private final String token;
+/**
+ * Interface for providing bearer tokens for authentication.
+ *
+ * <p>Implementations can provide tokens from various sources such as:
+ *
+ * <ul>
+ *   <li>Static string values
+ *   <li>Files (with automatic reloading)
+ *   <li>External token services
+ * </ul>
+ */
+public interface BearerTokenProvider {
 
-  public StaticBearerTokenProvider(String token) {
-    this.token = token;
-  }
+  /**
+   * Get the current bearer token.
+   *
+   * @return the bearer token, or null if no token is available
+   */
+  @Nullable
+  String getToken();
 
-  @Override
-  public String getToken() {
-    return token;
+  /**
+   * Clean up any resources used by this token provider. Should be called when the provider is no
+   * longer needed.
+   */
+  default void close() {
+    // Default implementation does nothing
   }
 }

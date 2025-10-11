@@ -19,17 +19,18 @@
 package org.apache.polaris.extension.auth.opa;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Duration;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.polaris.core.auth.BearerTokenProvider;
-import org.apache.polaris.core.auth.FileBearerTokenProvider;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.auth.StaticBearerTokenProvider;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
+import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
+import org.apache.polaris.extension.auth.opa.token.StaticBearerTokenProvider;
 
 /** Factory for creating OPA-based Polaris authorizer implementations. */
 @ApplicationScoped
@@ -37,41 +38,43 @@ import org.apache.polaris.core.config.RealmConfig;
 public class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
   private final OpaAuthorizationConfig opaConfig;
+  private CloseableHttpClient httpClient;
+  private BearerTokenProvider bearerTokenProvider;
 
   @Inject
   public OpaPolarisAuthorizerFactory(OpaAuthorizationConfig opaConfig) {
     this.opaConfig = opaConfig;
   }
 
-  @Override
-  public PolarisAuthorizer create(RealmConfig realmConfig) {
-    // Validate configuration before creating authorizer
+  @PostConstruct
+  public void initialize() {
+    // Validate configuration once during startup
     opaConfig.validate();
 
-    // Create HTTP client directly
-    CloseableHttpClient httpClient;
+    // Create HTTP client once during startup
+    httpClient = createHttpClient();
+
+    // Create bearer token provider once during startup
+    bearerTokenProvider = createBearerTokenProvider(opaConfig.auth().get());
+  }
+
+  @Override
+  public PolarisAuthorizer create(RealmConfig realmConfig) {
+    // All components are now pre-initialized, just create the authorizer
+    return OpaPolarisAuthorizer.create(
+        opaConfig.url().get(), opaConfig.policyPath().get(), bearerTokenProvider, httpClient);
+  }
+
+  private CloseableHttpClient createHttpClient() {
     try {
       if (opaConfig.http().isEmpty()) {
         throw new IllegalStateException("HTTP configuration is required");
       }
-      httpClient = OpaHttpClientFactory.createHttpClient(opaConfig.http().get());
+      return OpaHttpClientFactory.createHttpClient(opaConfig.http().get());
     } catch (Exception e) {
       // Fallback to simple client
-      httpClient = HttpClients.custom().build();
+      return HttpClients.custom().build();
     }
-
-    // Create bearer token provider directly
-    if (opaConfig.auth().isEmpty()) {
-      throw new IllegalStateException("Authentication configuration is required");
-    }
-    BearerTokenProvider tokenProvider = createBearerTokenProvider(opaConfig.auth().get());
-
-    if (opaConfig.url().isEmpty() || opaConfig.policyPath().isEmpty()) {
-      throw new IllegalStateException("URL and policy path are required");
-    }
-
-    return OpaPolarisAuthorizer.create(
-        opaConfig.url().get(), opaConfig.policyPath().get(), tokenProvider, httpClient);
   }
 
   private BearerTokenProvider createBearerTokenProvider(

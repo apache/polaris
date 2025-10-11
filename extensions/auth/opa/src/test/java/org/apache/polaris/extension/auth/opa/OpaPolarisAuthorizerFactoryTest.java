@@ -28,8 +28,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
-import org.apache.polaris.core.auth.FileBearerTokenProvider;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

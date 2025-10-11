@@ -37,12 +37,12 @@ import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
-import org.apache.polaris.core.auth.BearerTokenProvider;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
 
 /**
  * OPA-based implementation of {@link PolarisAuthorizer}.

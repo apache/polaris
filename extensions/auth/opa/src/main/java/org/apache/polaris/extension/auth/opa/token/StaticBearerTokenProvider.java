@@ -16,28 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.extension.auth.opa.token;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+/** A simple token provider that returns a static string value. */
+public class StaticBearerTokenProvider implements BearerTokenProvider {
 
-import org.junit.jupiter.api.Test;
+  private final String token;
 
-public class StaticBearerTokenProviderTest {
-
-  @Test
-  public void testStaticBearerTokenProvider() {
-    String expectedToken = "static-bearer-token";
-    StaticBearerTokenProvider provider = new StaticBearerTokenProvider(expectedToken);
-
-    String actualToken = provider.getToken();
-    assertEquals(expectedToken, actualToken);
+  public StaticBearerTokenProvider(String token) {
+    this.token = token;
   }
 
-  @Test
-  public void testStaticBearerTokenProviderWithEmptyString() {
-    StaticBearerTokenProvider provider = new StaticBearerTokenProvider("");
-
-    String token = provider.getToken();
-    assertEquals("", token);
+  @Override
+  public String getToken() {
+    return token;
   }
 }

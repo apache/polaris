@@ -24,13 +24,13 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
-  implementation(project(":polaris-runtime-service"))
   implementation(libs.apache.httpclient5)
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
   implementation(libs.guava)
   implementation(libs.slf4j.api)
+  implementation(libs.auth0.jwt)
 
   // Iceberg dependency for ForbiddenException
   implementation(platform(libs.iceberg.bom))

@@ -140,13 +140,17 @@ public class ServiceProducers {
   }
 
   @Produces
+  @ApplicationScoped
+  public PolarisAuthorizerFactory polarisAuthorizerFactory(
+      AuthorizationConfiguration authorizationConfig,
+      @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
+    return authorizerFactories.select(Identifier.Literal.of(authorizationConfig.type())).get();
+  }
+
+  @Produces
   @RequestScoped
   public PolarisAuthorizer polarisAuthorizer(
-      AuthorizationConfiguration authorizationConfig,
-      RealmConfig realmConfig,
-      @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
-    PolarisAuthorizerFactory factory =
-        authorizerFactories.select(Identifier.Literal.of(authorizationConfig.type())).get();
+      PolarisAuthorizerFactory factory, RealmConfig realmConfig) {
     return factory.create(realmConfig);
   }
 
