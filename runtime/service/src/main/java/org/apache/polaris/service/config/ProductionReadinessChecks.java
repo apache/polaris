@@ -33,6 +33,7 @@ import java.util.List;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
@@ -42,6 +43,7 @@ import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
+import org.apache.polaris.service.credentials.connection.AuthType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.metrics.MetricsConfiguration;
@@ -331,6 +333,66 @@ public class ProductionReadinessChecks {
                             realmId, optimizedSiblingCheck.key())));
               }
             });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
+  @SuppressWarnings("unchecked")
+  public ProductionReadinessCheck checkConnectionCredentialVendors(
+      Instance<ConnectionCredentialVendor> credentialVendors,
+      FeaturesConfiguration featureConfiguration) {
+    var mapper = new ObjectMapper();
+    var defaults = featureConfiguration.parseDefaults(mapper);
+    var realmOverrides = featureConfiguration.parseRealmOverrides(mapper);
+
+    var federationKey = FeatureConfiguration.ENABLE_CATALOG_FEDERATION.key();
+    var authTypesKey = FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES.key();
+    var federationEnabled =
+        Boolean.parseBoolean(defaults.getOrDefault(federationKey, false).toString());
+    var defaultAuthTypes = (List<String>) defaults.getOrDefault(authTypesKey, List.of());
+
+    var allAuthTypes = new java.util.HashSet<String>();
+    if (federationEnabled) allAuthTypes.addAll(defaultAuthTypes);
+
+    realmOverrides.forEach(
+        (id, overrides) -> {
+          if (Boolean.parseBoolean(
+              overrides.getOrDefault(federationKey, federationEnabled).toString())) {
+            allAuthTypes.addAll(
+                (List<String>)
+                    (overrides.containsKey(authTypesKey)
+                        ? overrides.get(authTypesKey)
+                        : defaultAuthTypes));
+          }
+        });
+
+    var errors = new ArrayList<Error>();
+    for (var name : allAuthTypes) {
+      try {
+        var type = org.apache.polaris.core.connection.AuthenticationType.valueOf(name);
+        if (credentialVendors.select(AuthType.Literal.of(type)).isUnsatisfied()) {
+          errors.add(
+              Error.of(
+                  format(
+                      "Catalog federation is enabled but no ConnectionCredentialVendor found for "
+                          + "authentication type '%s'. External catalog connections using this "
+                          + "authentication type will fail.",
+                      type),
+                  format("polaris.features.\"%s\"", authTypesKey)));
+        }
+      } catch (IllegalArgumentException e) {
+        errors.add(
+            Error.of(
+                format(
+                    "Invalid authentication type '%s' in SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES "
+                        + "configuration.",
+                    name),
+                format("polaris.features.\"%s\"", authTypesKey)));
+      }
+    }
+
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));

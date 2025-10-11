@@ -29,7 +29,6 @@ import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
  * The internal persistence-object counterpart to SigV4AuthenticationParameters defined in the API
@@ -95,14 +94,14 @@ public class SigV4AuthenticationParametersDpo extends AuthenticationParametersDp
   @Nonnull
   @Override
   public Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager) {
+      PolarisCredentialManager credentialManager) {
+    // Return only metadata properties - credentials are handled by ConnectionCredentialVendor
     ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
     builder.put(AuthProperties.AUTH_TYPE, AuthProperties.AUTH_TYPE_SIGV4);
     builder.put(AwsProperties.REST_SIGNER_REGION, getSigningRegion());
     if (getSigningName() != null) {
       builder.put(AwsProperties.REST_SIGNING_NAME, getSigningName());
     }
-    // Connection credentials are handled by ConnectionConfigInfoDpo
     return builder.build();
   }
 

@@ -35,7 +35,6 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
  * The internal persistence-object counterpart to IcebergRestConnectionConfigInfo defined in the API
@@ -65,16 +64,14 @@ public class IcebergRestConnectionConfigInfoDpo extends ConnectionConfigInfoDpo
 
   @Override
   public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager, PolarisCredentialManager credentialManager) {
+      PolarisCredentialManager credentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     properties.put(CatalogProperties.URI, getUri());
     if (getRemoteCatalogName() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getRemoteCatalogName());
     }
-    // Add authentication-specific properties
-    properties.putAll(
-        getAuthenticationParameters()
-            .asIcebergCatalogProperties(secretsManager, credentialManager));
+    // Add authentication-specific metadata (non-credential properties)
+    properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(credentialManager));
     // Add connection credentials from Polaris credential manager
     ConnectionCredentials connectionCredentials = credentialManager.getConnectionCredentials(this);
     properties.putAll(connectionCredentials.credentials());

@@ -30,7 +30,6 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /** Factory class for creating an Iceberg REST catalog handle based on connection configuration. */
 @ApplicationScoped
@@ -39,9 +38,7 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
 
   @Override
   public Catalog createCatalog(
-      ConnectionConfigInfoDpo connectionConfig,
-      UserSecretsManager userSecretsManager,
-      PolarisCredentialManager polarisCredentialManager) {
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
     if (!(connectionConfig instanceof IcebergRestConnectionConfigInfoDpo icebergConfig)) {
       throw new IllegalArgumentException(
           "Expected IcebergRestConnectionConfigInfoDpo but got: "
@@ -59,14 +56,14 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
 
     federatedCatalog.initialize(
         icebergConfig.getRemoteCatalogName(),
-        connectionConfig.asIcebergCatalogProperties(userSecretsManager, polarisCredentialManager));
+        connectionConfig.asIcebergCatalogProperties(polarisCredentialManager));
 
     return federatedCatalog;
   }
 
   @Override
   public GenericTableCatalog createGenericCatalog(
-      ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager) {
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
     // TODO implement
     throw new UnsupportedOperationException(
         "Generic table federation to this catalog is not supported.");

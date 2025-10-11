@@ -62,7 +62,6 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
-        userSecretsManager,
         credentialManager,
         securityContext(authenticatedPrincipal),
         callContextCatalogFactory,

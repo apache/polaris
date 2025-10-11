@@ -35,7 +35,6 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
  * The internal persistence-object counterpart to {@link
@@ -72,17 +71,16 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
 
   @Override
   public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager, PolarisCredentialManager polarisCredentialManager) {
+      PolarisCredentialManager polarisCredentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     properties.put(CatalogProperties.URI, getUri());
     if (getWarehouse() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getWarehouse());
     }
     if (getAuthenticationParameters() != null) {
-      // Add authentication-specific properties
+      // Add authentication-specific metadata (non-credential properties)
       properties.putAll(
-          getAuthenticationParameters()
-              .asIcebergCatalogProperties(secretsManager, polarisCredentialManager));
+          getAuthenticationParameters().asIcebergCatalogProperties(polarisCredentialManager));
       // Add connection credentials from Polaris credential manager
       ConnectionCredentials connectionCredentials =
           polarisCredentialManager.getConnectionCredentials(this);

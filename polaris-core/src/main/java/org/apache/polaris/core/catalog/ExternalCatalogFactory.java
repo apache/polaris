@@ -21,7 +21,6 @@ package org.apache.polaris.core.catalog;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
  * Factory interface for creating external catalog handles based on connection configuration.
@@ -35,25 +34,23 @@ public interface ExternalCatalogFactory {
    * Creates a catalog handle for the given connection configuration.
    *
    * @param connectionConfig the connection configuration
-   * @param userSecretsManager the user secrets manager for handling user-provided credentials
-   * @param polarisCredentialManager the credential manager for generating temporary credentials
+   * @param polarisCredentialManager the credential manager for generating connection credentials
    *     that Polaris uses to access external systems
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
    */
   Catalog createCatalog(
-      ConnectionConfigInfoDpo connectionConfig,
-      UserSecretsManager userSecretsManager,
-      PolarisCredentialManager polarisCredentialManager);
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager);
 
   /**
    * Creates a generic table catalog for the given connection configuration.
    *
    * @param connectionConfig the connection configuration
-   * @param userSecretsManager the user secrets manager for handling credentials
+   * @param polarisCredentialManager the credential manager for generating connection credentials
+   *     that Polaris uses to access external systems
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
    */
   GenericTableCatalog createGenericCatalog(
-      ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager);
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager);
 }

@@ -71,8 +71,10 @@ public interface ConnectionCredentials {
     default Builder put(CatalogAccessProperty key, String value) {
       if (key.isExpirationTimestamp()) {
         expiresAt(Instant.ofEpochMilli(Long.parseLong(value)));
-      } else if (key.isCredential()) {
-        putCredential(key.getPropertyName(), value);
+      }
+
+      if (key.isCredential()) {
+        return putCredential(key.getPropertyName(), value);
       }
       return this;
     }

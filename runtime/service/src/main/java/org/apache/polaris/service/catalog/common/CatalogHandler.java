@@ -48,7 +48,6 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.types.PolicyIdentifier;
 
 /**
@@ -64,7 +63,6 @@ public abstract class CatalogHandler {
   protected final ResolutionManifestFactory resolutionManifestFactory;
   protected final String catalogName;
   protected final PolarisAuthorizer authorizer;
-  protected final UserSecretsManager userSecretsManager;
   protected final PolarisCredentialManager credentialManager;
   protected final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
@@ -81,7 +79,6 @@ public abstract class CatalogHandler {
       SecurityContext securityContext,
       String catalogName,
       PolarisAuthorizer authorizer,
-      UserSecretsManager userSecretsManager,
       PolarisCredentialManager credentialManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.diagnostics = diagnostics;
@@ -98,13 +95,8 @@ public abstract class CatalogHandler {
     this.securityContext = securityContext;
     this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
-    this.userSecretsManager = userSecretsManager;
     this.credentialManager = credentialManager;
     this.externalCatalogFactories = externalCatalogFactories;
-  }
-
-  protected UserSecretsManager getUserSecretsManager() {
-    return userSecretsManager;
   }
 
   protected PolarisCredentialManager getPolarisCredentialManager() {
