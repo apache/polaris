@@ -66,7 +66,7 @@ pip-licenses-cli = "==v2.0.0"
 # pin virtualenv version to prevent poetry from upgrading to an incompatible version
 # see https://github.com/python-poetry/poetry/issues/10504#issuecomment-3176923981
 # 20.33.0 is the oldest version supported by poetry 2.2.0
-virtualenv = ">=20.33.0,<20.35.0"
+virtualenv = ">=20.35.3,<20.36.0"
 
 [tool.pip-licenses]
 partial-match = true
