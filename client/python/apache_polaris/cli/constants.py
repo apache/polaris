@@ -55,6 +55,7 @@ class CatalogConnectionType(Enum):
 
     HADOOP = "hadoop"
     ICEBERG = "iceberg-rest"
+    HIVE = "hive"
 
 
 class AuthenticationType(Enum):
@@ -172,6 +173,7 @@ class Arguments:
     PROXY = "proxy"
     DEBUG = "debug"
     HADOOP_WAREHOUSE = "hadoop_warehouse"
+    HIVE_WAREHOUSE = "hive_warehouse"
     ICEBERG_REMOTE_CATALOG_NAME = "iceberg_remote_catalog_name"
     ENDPOINT = "endpoint"
     ENDPOINT_INTERNAL = "endpoint_internal"
