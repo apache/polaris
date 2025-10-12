@@ -51,6 +51,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Amazon RDS plugin enabled, this allows polaris to connect to AWS Aurora PostgreSQL using IAM authentication.
 
+### Breaking changes
+
+- Python3.9 support will be dropped due to EOL
+
 ### New Features
 
 - Added a finer grained authorization model for UpdateTable requests. Existing privileges continue to work for granting UpdateTable, such as `TABLE_WRITE_PROPERTIES`.
