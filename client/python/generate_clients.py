@@ -47,7 +47,7 @@ PACKAGE_NAME_POLARIS_MANAGEMENT = (
     "--additional-properties=packageName=polaris.management"
 )
 PACKAGE_NAME_POLARIS_CATALOG = "--additional-properties=packageName=polaris.catalog"
-PYTHON_VERSION = "--additional-properties=pythonVersion=3.9"
+PYTHON_VERSION = "--additional-properties=pythonVersion=3.10"
 
 # Cleanup
 KEEP_TEST_FILES = [
