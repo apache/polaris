@@ -1,0 +1,48 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+[project]
+name = "polaris-mcp"
+version = "1.2.0"
+description = "Apache Polaris Model Context Protocol server"
+authors = [
+    {name = "Apache Software Foundation", email = "dev@polaris.apache.org"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+license = "Apache-2.0"
+keywords = ["Apache Polaris", "Polaris", "Model Context Protocol"]
+dependencies = [
+    "fastmcp>=2.13.0.2",
+    "urllib3>=1.25.3,<3.0.0",
+]
+
+[project.scripts]
+polaris-mcp = "polaris_mcp.server:main"
+
+[project.urls]
+homepage = "https://polaris.apache.org/"
+repository = "https://github.com/apache/polaris/"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["polaris_mcp"]

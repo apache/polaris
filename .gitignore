@@ -34,6 +34,9 @@ client/python/polaris/
 client/python/test/
 !client/python/test/test_cli_parsing.py
 
+# Python packaging metadata
+*.egg-info/
+
 # Polaris CLI profile
 .polaris.json
 
