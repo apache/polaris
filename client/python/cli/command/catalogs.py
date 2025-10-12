@@ -29,7 +29,7 @@ from polaris.management import PolarisDefaultApi, CreateCatalogRequest, UpdateCa
     StorageConfigInfo, ExternalCatalog, AwsStorageConfigInfo, AzureStorageConfigInfo, GcpStorageConfigInfo, \
     PolarisCatalog, CatalogProperties, BearerAuthenticationParameters, ImplicitAuthenticationParameters, \
     OAuthClientCredentialsParameters, SigV4AuthenticationParameters, HadoopConnectionConfigInfo, \
-    IcebergRestConnectionConfigInfo, AwsIamServiceIdentityInfo
+    IcebergRestConnectionConfigInfo, HiveConnectionConfigInfo, AwsIamServiceIdentityInfo
 
 
 @dataclass
@@ -114,6 +114,11 @@ class CatalogsCommand(Command):
                 if self.catalog_connection_type == CatalogConnectionType.HADOOP.value:
                     if not self.hadoop_warehouse or not self.catalog_uri:
                         raise Exception(f"Missing required argument for connection type 'HADOOP':"
+                                f" {Argument.to_flag_name(Arguments.HADOOP_WAREHOUSE)}"
+                                f" and {Argument.to_flag_name(Arguments.CATALOG_URI)}")
+                elif self.catalog_connection_type == CatalogConnectionType.HIVE.value:
+                    if not self.hadoop_warehouse or not self.catalog_uri:
+                        raise Exception(f"Missing required argument for connection type 'HIVE':"
                                 f" {Argument.to_flag_name(Arguments.HADOOP_WAREHOUSE)}"
                                 f" and {Argument.to_flag_name(Arguments.CATALOG_URI)}") 
         if self.catalog_service_identity_type == ServiceIdentityType.AWS_IAM.value:
@@ -267,6 +272,14 @@ class CatalogsCommand(Command):
                 authentication_parameters=auth_params,
                 service_identity=service_identity,
                 remote_catalog_name=self.iceberg_remote_catalog_name
+            )
+        elif self.catalog_connection_type == CatalogConnectionType.HIVE.value:
+            config = HiveConnectionConfigInfo(
+                connection_type=self.catalog_connection_type.upper(),
+                uri=self.catalog_uri,
+                authentication_parameters=auth_params,
+                service_identity=service_identity,
+                warehouse=self.hadoop_warehouse
             )
         elif self.catalog_connection_type is not None:
             raise Exception("Unknown catalog connection type:", self.catalog_connection_type)
