@@ -187,19 +187,25 @@ Python tests are based on `pytest`. They rely on a python Polaris client, which 
 The client can be generated using two commands:
 
 ```shell
-# generate the management api client
+# Management client
 docker run --rm \
-  -v ${PWD}:/local openapitools/openapi-generator-cli generate \
+  -v ${PWD}:/local openapitools/openapi-generator-cli:v7.9.0 generate \
   -i /local/spec/polaris-management-service.yml \
   -g python \
-  -o /local/client/python --additional-properties=packageName=polaris.management --additional-properties=apiNamePrefix=polaris
+  -o /local/client/python \
+  --additional-properties=packageName=polaris.management \
+  --additional-properties=apiNamePrefix=polaris
 
-# generate the iceberg rest client
+# IRC client
 docker run --rm \
-  -v ${PWD}:/local openapitools/openapi-generator-cli generate \
+  -v ${PWD}:/local openapitools/openapi-generator-cli:v7.9.0 generate \
   -i /local/spec/polaris-catalog-service.yaml \
   -g python \
-  -o /local/client/python --additional-properties=packageName=polaris.catalog --additional-properties=apiNameSuffix="" --additional-properties=apiNamePrefix=Iceberg
+  -o /local/client/python \
+  --additional-properties=packageName=polaris.catalog \
+  --additional-properties=apiNameSuffix="" \
+  --additional-properties=apiNamePrefix=Iceberg
+
 ```
 
 Tests rely on Python 3.9 or higher. `pyenv` can be used to install a current version and mapped to the local directory
