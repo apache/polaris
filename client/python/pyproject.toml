@@ -45,7 +45,7 @@ repository = "https://github.com/apache/polaris/"
 polaris = "cli.polaris_cli:main"
 
 [tool.poetry]
-requires-poetry = "==2.1.4"
+requires-poetry = ">=2.1.4"
 include = [
     { path = "polaris/**", format = ["sdist", "wheel"] },
     { path = "cli/**", format = ["sdist", "wheel"] },
@@ -61,19 +61,16 @@ types-python-dateutil = ">= 2.8.19.14"
 mypy = ">=1.18, <=1.18.2"
 pyiceberg = "==0.10.0"
 pre-commit = "==4.3.0"
-openapi-generator-cli = "==7.15.0"
+openapi-generator-cli = ">=7.15.0"
 pip-licenses-cli = "==v2.0.0"
-# pin virtualenv version to prevent poetry from upgrading to an incompatible version
-# see https://github.com/python-poetry/poetry/issues/10504#issuecomment-3176923981
-# 20.33.0 is the oldest version supported by poetry 2.2.0
-virtualenv = ">=20.33.0,<20.35.0"
+virtualenv = ">=20.33.0"
 
 [tool.pip-licenses]
 partial-match = true
 allow-only = "Apache;BSD License;BSD-3-Clause;ISC;MIT;Mozilla Public License;PSF-2.0;Python Software Foundation License;The Unlicense"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0", "openapi-generator-cli==7.11.0.post0"]
+requires = ["poetry-core>=2.0.0,<3.0.0", "openapi-generator-cli>=7.15.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]
