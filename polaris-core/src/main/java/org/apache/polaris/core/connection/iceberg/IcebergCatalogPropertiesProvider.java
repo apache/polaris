@@ -30,5 +30,8 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
  */
 public interface IcebergCatalogPropertiesProvider {
   @Nonnull
-  Map<String, String> asIcebergCatalogProperties(PolarisCredentialManager credentialManager);
+  default Map<String, String> asIcebergCatalogProperties(
+      PolarisCredentialManager credentialManager) {
+    return Map.of();
+  }
 }

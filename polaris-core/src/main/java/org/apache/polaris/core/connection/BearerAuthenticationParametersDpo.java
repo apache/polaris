@@ -21,10 +21,8 @@ package org.apache.polaris.core.connection;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
-import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
-import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.SecretReference;
 
 /**
@@ -45,14 +43,6 @@ public class BearerAuthenticationParametersDpo extends AuthenticationParametersD
 
   public @Nonnull SecretReference getBearerTokenReference() {
     return bearerTokenReference;
-  }
-
-  @Override
-  public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      PolarisCredentialManager credentialManager) {
-    // Return only metadata properties - credentials are handled by ConnectionCredentialVendor
-    // Bearer auth has no metadata properties
-    return Map.of();
   }
 
   @Override
