@@ -80,7 +80,7 @@ final class McpDispatcher {
     try {
       switch (method) {
         case "initialize":
-          return handleInitialize(idNode, isNotification);
+          return handleInitialize(idNode, isNotification, request.get("params"));
         case "shutdown":
           return handleShutdown(idNode, isNotification);
         case "ping":
@@ -117,17 +117,21 @@ final class McpDispatcher {
     }
   }
 
-  private DispatchResult handleInitialize(JsonNode idNode, boolean isNotification) {
+  private DispatchResult handleInitialize(
+      JsonNode idNode, boolean isNotification, JsonNode params) {
+    String negotiatedProtocol = "0.1";
+    if (params != null && params.hasNonNull("protocolVersion")) {
+      negotiatedProtocol = params.get("protocolVersion").asText("0.1");
+    }
     ObjectNode result = mapper.createObjectNode();
-    result.put("protocolVersion", "0.1");
+    result.put("protocolVersion", negotiatedProtocol);
     ObjectNode serverInfo = result.putObject("serverInfo");
     serverInfo.put("name", serverName);
     serverInfo.put("version", serverVersion);
 
     ObjectNode capabilities = result.putObject("capabilities");
-    if (!tools.isEmpty()) {
-      capabilities.set("tools", mapper.createObjectNode());
-    }
+    ObjectNode toolsCaps = capabilities.putObject("tools");
+    toolsCaps.put("listChanged", false);
 
     ObjectNode response = isNotification ? null : successResponse(idNode, result);
     return new DispatchResult(response, false);
