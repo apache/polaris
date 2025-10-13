@@ -206,7 +206,8 @@ final class PolarisPolicyTool implements McpTool {
         throw new IllegalArgumentException("Unsupported operation: " + operation);
     }
 
-    return delegate.call(mapper, delegateArgs);
+    ToolExecutionResult rawResult = delegate.call(mapper, delegateArgs);
+    return maybeAugmentError(rawResult, normalized, mapper);
   }
 
   private void handleList(ObjectNode delegateArgs, String catalog, String namespace) {
@@ -295,6 +296,56 @@ final class PolarisPolicyTool implements McpTool {
     String path = catalog + "/applicable-policies";
     delegateArgs.put("method", "GET");
     delegateArgs.put("path", path);
+  }
+
+  private ToolExecutionResult maybeAugmentError(
+      ToolExecutionResult result, String operation, ObjectMapper mapper) {
+    if (!result.isError()) {
+      return result;
+    }
+    ObjectNode metadata = result.metadata();
+    if (metadata == null) {
+      metadata = mapper.createObjectNode();
+    }
+    int status = metadata.path("response").path("status").asInt(-1);
+    if (status != 400 && status != 422) {
+      return result;
+    }
+
+    String hint = null;
+    switch (operation) {
+      case "create":
+        hint =
+            "Create requests must include `name`, `type`, and optional `description`/`content` in the body. "
+                + "See CreatePolicyRequest in spec/polaris-catalog-apis/policy-apis.yaml. "
+                + "Common types include system.data_compaction, system.metadata_compaction, "
+                + "system.orphan_file_removal, and system.snapshot_expiry.";
+        break;
+      case "update":
+        hint =
+            "Update requests require the policy name in the path and the body with `description`, `content`, and `currentVersion`.";
+        break;
+      case "attach":
+        hint =
+            "Attach requests require a body with `targetType`, `targetName`, and optional `parameters`.";
+        break;
+      case "detach":
+        hint =
+            "Detach requests require a body with `targetType`, `targetName`, and optional `parameters`.";
+        break;
+      default:
+        break;
+    }
+    if (hint == null) {
+      return result;
+    }
+
+    metadata.put("hint", hint);
+    String text = result.text();
+    if (!text.contains(hint)) {
+      text = text + System.lineSeparator() + "Hint: " + hint;
+    }
+    return new ToolExecutionResult(text, true, metadata);
   }
 
   private static String normalizeOperation(String operation) {
