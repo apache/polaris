@@ -63,7 +63,6 @@ pyiceberg = "==0.10.0"
 pre-commit = "==4.3.0"
 openapi-generator-cli = ">=7.15.0"
 pip-licenses-cli = "==v2.0.0"
-virtualenv = ">=20.33.0"
 
 [tool.pip-licenses]
 partial-match = true
