@@ -187,7 +187,7 @@ Python tests are based on `pytest`. They rely on a python Polaris client, which 
 The client can be generated using two commands:
 
 ```shell
-# Management client
+# generate the management api client
 docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli:v7.9.0 generate \
   -i /local/spec/polaris-management-service.yml \
@@ -196,7 +196,7 @@ docker run --rm \
   --additional-properties=packageName=polaris.management \
   --additional-properties=apiNamePrefix=polaris
 
-# IRC client
+# generate the management api client
 docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli:v7.9.0 generate \
   -i /local/spec/polaris-catalog-service.yaml \
