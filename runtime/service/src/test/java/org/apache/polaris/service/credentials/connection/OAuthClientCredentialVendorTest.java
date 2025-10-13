@@ -36,16 +36,16 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Tests for {@link OAuthConnectionCredentialVendor}. */
-public class OAuthConnectionCredentialVendorTest {
+/** Tests for {@link OAuthClientCredentialVendor}. */
+public class OAuthClientCredentialVendorTest {
 
-  private OAuthConnectionCredentialVendor oauthVendor;
+  private OAuthClientCredentialVendor oauthVendor;
   private UserSecretsManager mockSecretsManager;
 
   @BeforeEach
   void setup() {
     mockSecretsManager = mock(UserSecretsManager.class);
-    oauthVendor = new OAuthConnectionCredentialVendor(mockSecretsManager);
+    oauthVendor = new OAuthClientCredentialVendor(mockSecretsManager);
   }
 
   @Test

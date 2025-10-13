@@ -49,14 +49,14 @@ import org.apache.polaris.service.credentials.CredentialVendorPriorities;
 @RequestScoped
 @AuthType(AuthenticationType.OAUTH)
 @Priority(CredentialVendorPriorities.DEFAULT)
-public class OAuthConnectionCredentialVendor implements ConnectionCredentialVendor {
+public class OAuthClientCredentialVendor implements ConnectionCredentialVendor {
 
   private static final Joiner COLON_JOINER = Joiner.on(":");
 
   private final UserSecretsManager secretsManager;
 
   @Inject
-  public OAuthConnectionCredentialVendor(UserSecretsManager secretsManager) {
+  public OAuthClientCredentialVendor(UserSecretsManager secretsManager) {
     this.secretsManager = secretsManager;
   }
 
