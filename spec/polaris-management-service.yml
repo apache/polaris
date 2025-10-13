@@ -16,7 +16,7 @@
 #  under the License.
 
 
-openapi: 3.0.3
+openapi: 3.1.1
 info:
   title: Polaris Management Service
   version: 0.0.1
@@ -161,12 +161,12 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePrincipalRequest"
-              example:
-                principal:
-                  name: "alice"
-                  properties:
-                    department: "engineering"
-                credentialRotationRequired: false
+            example:
+              principal:
+                name: "alice"
+                properties:
+                  department: "engineering"
+              credentialRotationRequired: false
       responses:
         201:
           description: "Successful response"
