@@ -196,7 +196,7 @@ docker run --rm \
   --additional-properties=packageName=polaris.management \
   --additional-properties=apiNamePrefix=polaris
 
-# generate the management api client
+# generate the Polaris catalog api client
 docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli:v7.9.0 generate \
   -i /local/spec/polaris-catalog-service.yaml \
