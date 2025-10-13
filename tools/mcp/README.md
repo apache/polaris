@@ -83,7 +83,7 @@ Add the following changes to it:
 ```json
 {
     "mcpServers": {
-      "polaris-table-api": {
+      "polaris": {
         "command": "java",
         "args": [
           "-cp",
@@ -99,7 +99,7 @@ Add the following changes to it:
 }
 ```
 
-The server currently exposes a single MCP tool:
+The server currently exposes two MCP tools:
 
 * `polaris-table-request` — High-level helper for the table REST API. Supported operations include:
   * `list`: `GET /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
@@ -107,6 +107,14 @@ The server currently exposes a single MCP tool:
   * `create`: `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
   * `commit` (alias `update`): `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/tables/{table}`
   * `delete` (alias `drop`): `DELETE /api/catalog/v1/{catalog}/namespaces/{namespace}/tables/{table}`
+* `polaris-policy-request` — Endpoints for policy lifecycle management. Supported operations include:
+  * `list`: `GET /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies`
+  * `get` (aliases `load`, `fetch`): `GET /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies/{policy}`
+  * `create`: `POST /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies`
+  * `update`: `PUT /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies/{policy}`
+  * `delete` (aliases `drop`, `remove`): `DELETE /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies/{policy}`
+  * `attach` / `detach`: `PUT`/`POST /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies/{policy}/mappings`
+  * `applicable`: `GET /api/catalog/polaris/v1/{catalog}/applicable-policies`
 
 Each operation returns the HTTP status, headers, and response body (pretty-printed
 when JSON) to the MCP client, along with structured metadata that includes

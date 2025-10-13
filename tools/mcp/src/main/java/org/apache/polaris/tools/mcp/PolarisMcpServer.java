@@ -55,6 +55,7 @@ public final class PolarisMcpServer {
 
     List<McpTool> tools = new ArrayList<>();
     tools.add(new PolarisTableTool(mapper, executor, baseUri, token));
+    tools.add(new PolarisPolicyTool(mapper, executor, baseUri, token));
     String serverVersion =
         Optional.ofNullable(PolarisMcpServer.class.getPackage().getImplementationVersion())
             .orElse("dev");
