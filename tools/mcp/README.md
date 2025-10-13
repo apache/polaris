@@ -75,11 +75,12 @@ curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
 The MCP server will then attach `Authorization: Bearer $POLARIS_API_TOKEN` to
 every outgoing request.
 
-Config example for Claude desktop
+## Config a MCP Client(Claude Desktop)
+Open the config file:
 ```bash
 vim ~/Library/Application\ Support/Claude/claude_desktop_config.json
 ```
-Add the following changes to it:
+Add the Polaris MCP to it:
 ```json
 {
     "mcpServers": {
@@ -87,7 +88,7 @@ Add the following changes to it:
         "command": "java",
         "args": [
           "-cp",
-          "/Users/ygu/tmp/polaris/tools/mcp/build/libs/polaris-mcp-1.2.0-incubating-SNAPSHOT.jar:/Users/ygu/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-databind/2.20.0/f0a5e62fbd21285e9a5498a60dccb097e1ef793b/jackson-databind-2.20.0.jar:/Users/ygu/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.20.0/3c97f7fad069f7cfae639d790bd93d6a0b2dff31/jackson-core-2.20.0.jar:/Users/ygu/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.20/6a5e7291ea3f2b590a7ce400adb7b3aea4d7e12c/jackson-annotations-2.20.jar",
+          "<classpaths got from ./gradlew :polaris-mcp:printRuntimeClasspath>",
           "org.apache.polaris.tools.mcp.PolarisMcpServer"
          ],
         "env": {
