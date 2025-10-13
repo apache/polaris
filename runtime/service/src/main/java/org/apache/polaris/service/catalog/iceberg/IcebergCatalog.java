@@ -90,7 +90,6 @@ import org.apache.iceberg.view.ViewProperties;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -122,7 +121,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.SupportsNotifications;
@@ -959,38 +957,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       TableIdentifier identifier,
       String location,
       PolarisResolvedPathWrapper resolvedStorageEntity) {
-    validateLocationsForTableLike(identifier, Set.of(location), resolvedStorageEntity);
-  }
-
-  /**
-   * Validates that the specified {@code locations} are valid for whatever storage config is found
-   * for this TableLike's parent hierarchy.
-   */
-  private void validateLocationsForTableLike(
-      TableIdentifier identifier,
-      Set<String> locations,
-      PolarisResolvedPathWrapper resolvedStorageEntity) {
-
-    PolarisStorageConfigurationInfo.forEntityPath(
-            realmConfig, resolvedStorageEntity.getRawFullPath())
-        .ifPresentOrElse(
-            restrictions -> restrictions.validate(realmConfig, identifier, locations),
-            () -> {
-              List<String> allowedStorageTypes =
-                  realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
-              if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
-                List<String> invalidLocations =
-                    locations.stream()
-                        .filter(
-                            location -> location.startsWith("file:") || location.startsWith("http"))
-                        .collect(Collectors.toList());
-                if (!invalidLocations.isEmpty()) {
-                  throw new ForbiddenException(
-                      "Invalid locations '%s' for identifier '%s': File locations are not allowed",
-                      invalidLocations, identifier);
-                }
-              }
-            });
+    CatalogUtils.validateLocationsForTableLike(
+        realmConfig, identifier, Set.of(location), resolvedStorageEntity);
   }
 
   /**
@@ -1486,7 +1454,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         // for the storage configuration inherited under this entity's path.
         Set<String> dataLocations =
             StorageUtil.getLocationsUsedByTable(metadata.location(), metadata.properties());
-        validateLocationsForTableLike(tableIdentifier, dataLocations, resolvedStorageEntity);
+        CatalogUtils.validateLocationsForTableLike(
+            realmConfig, tableIdentifier, dataLocations, resolvedStorageEntity);
         // also validate that the table location doesn't overlap an existing table
         dataLocations.forEach(
             location ->
