@@ -44,6 +44,18 @@ with the same names are also supported):
 | `POLARIS_API_TOKEN` / `POLARIS_BEARER_TOKEN` / `POLARIS_TOKEN` | Bearer token automatically attached to requests (if provided). | _unset_ |
 
 ```bash
+# start a local Polaris Server
+./gradlew run
+
+# generate token
+curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=client_credentials' \
+  -d 'client_id=root' \
+  -d 'client_secret=s3cr3t' \
+  -d 'scope=PRINCIPAL_ROLE:ALL'
+
+export POLARIS_API_TOKEN=
 export POLARIS_BASE_URL=http://localhost:8181/
 ```
 
