@@ -306,7 +306,8 @@ public class CatalogEntityTest {
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
-    assertThat(((AwsStorageConfigInfo)catalog.getStorageConfigInfo()).getKmsKeyArn()).isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
+    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getKmsKeyArn())
+        .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test
@@ -331,7 +332,8 @@ public class CatalogEntityTest {
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
-    assertThat(((AwsStorageConfigInfo)catalog.getStorageConfigInfo()).getKmsKeyArn()).isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
+    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getKmsKeyArn())
+        .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test
