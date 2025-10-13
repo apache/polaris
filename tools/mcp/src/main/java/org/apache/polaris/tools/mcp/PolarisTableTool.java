@@ -148,10 +148,7 @@ final class PolarisTableTool implements McpTool {
     }
     ObjectNode args = (ObjectNode) arguments;
 
-    String operation =
-        requireText(args, "operation")
-            .toLowerCase(Locale.ROOT)
-            .trim();
+    String operation = requireText(args, "operation").toLowerCase(Locale.ROOT).trim();
     String normalized = normalizeOperation(operation);
 
     String catalog = encodeSegment(requireText(args, "catalog"));
@@ -269,8 +266,7 @@ final class PolarisTableTool implements McpTool {
       for (int i = 0; i < array.size(); i++) {
         JsonNode element = array.get(i);
         if (!element.isTextual() || element.asText().trim().isEmpty()) {
-          throw new IllegalArgumentException(
-              "Namespace array elements must be non-empty strings.");
+          throw new IllegalArgumentException("Namespace array elements must be non-empty strings.");
         }
         parts[i] = element.asText().trim();
       }

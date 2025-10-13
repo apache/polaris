@@ -37,8 +37,7 @@ final class McpDispatcher {
   private final String serverName;
   private final String serverVersion;
 
-  McpDispatcher(
-      ObjectMapper mapper, List<McpTool> tools, String serverName, String serverVersion) {
+  McpDispatcher(ObjectMapper mapper, List<McpTool> tools, String serverName, String serverVersion) {
     this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
     this.tools = List.copyOf(Objects.requireNonNull(tools, "tools must not be null"));
     this.serverName = Objects.requireNonNull(serverName, "serverName must not be null");
@@ -171,8 +170,8 @@ final class McpDispatcher {
     return new DispatchResult(response, false);
   }
 
-  private DispatchResult handleToolsCall(
-      JsonNode params, JsonNode idNode, boolean isNotification) throws Exception {
+  private DispatchResult handleToolsCall(JsonNode params, JsonNode idNode, boolean isNotification)
+      throws Exception {
     if (!(params instanceof ObjectNode)) {
       throw new IllegalArgumentException("'params' must be an object for tools/call.");
     }
@@ -186,8 +185,7 @@ final class McpDispatcher {
         tools.stream()
             .filter(t -> t.name().equals(toolName))
             .findFirst()
-            .orElseThrow(
-                () -> new IllegalArgumentException("Unknown tool: " + toolName));
+            .orElseThrow(() -> new IllegalArgumentException("Unknown tool: " + toolName));
 
     JsonNode arguments = parameters.get("arguments");
     if (arguments == null) {

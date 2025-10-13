@@ -46,7 +46,8 @@ final class TestHttpExecutor implements HttpExecutor {
   }
 
   @Override
-  public HttpResponse<String> execute(HttpRequest request) throws IOException, InterruptedException {
+  public HttpResponse<String> execute(HttpRequest request)
+      throws IOException, InterruptedException {
     this.lastRequest = request;
     this.lastRequestBody = readBody(request);
     Map<String, List<String>> headers = Collections.emptyMap();
@@ -126,7 +127,6 @@ final class TestHttpExecutor implements HttpExecutor {
     public HttpClient.Version version() {
       return HttpClient.Version.HTTP_1_1;
     }
-
   }
 
   private static final class BodyCaptureSubscriber implements Flow.Subscriber<ByteBuffer> {

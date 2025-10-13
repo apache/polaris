@@ -39,8 +39,7 @@ final class McpDispatcherTest {
   @Test
   void promptsListReturnsEmptyArray() throws Exception {
     JsonNode request =
-        mapper.readTree(
-            "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"prompts/list\",\"params\":{}}");
+        mapper.readTree("{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"prompts/list\",\"params\":{}}");
     McpDispatcher.DispatchResult result = dispatcher.handle(request);
     assertThat(result.response()).isNotNull();
     assertThat(result.response().get("result").get("prompts").isArray()).isTrue();

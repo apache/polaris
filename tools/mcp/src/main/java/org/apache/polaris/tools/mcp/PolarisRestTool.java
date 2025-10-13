@@ -39,9 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * Tool that issues HTTP requests to the Polaris REST APIs and returns the raw response payload.
- */
+/** Tool that issues HTTP requests to the Polaris REST APIs and returns the raw response payload. */
 final class PolarisRestTool implements McpTool {
   private static final String HTTP = "http://";
   private static final String HTTPS = "https://";
@@ -180,9 +178,7 @@ final class PolarisRestTool implements McpTool {
     ObjectNode args = (ObjectNode) arguments;
 
     String method =
-        args.has("method")
-            ? args.get("method").asText("").trim().toUpperCase(Locale.ROOT)
-            : "GET";
+        args.has("method") ? args.get("method").asText("").trim().toUpperCase(Locale.ROOT) : "GET";
     if (method.isEmpty()) {
       method = "GET";
     }
@@ -209,8 +205,7 @@ final class PolarisRestTool implements McpTool {
       requestHeaders.add(new HeaderValue("Content-Type", "application/json"));
     }
 
-    HttpRequest.Builder requestBuilder =
-        HttpRequest.newBuilder(targetUri).timeout(DEFAULT_TIMEOUT);
+    HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(targetUri).timeout(DEFAULT_TIMEOUT);
     for (HeaderValue header : requestHeaders) {
       requestBuilder.header(header.name(), header.value());
     }
@@ -235,7 +230,11 @@ final class PolarisRestTool implements McpTool {
     String renderedBody = renderBody(responseBody);
 
     StringBuilder message = new StringBuilder();
-    message.append(request.method()).append(" ").append(request.uri()).append(System.lineSeparator());
+    message
+        .append(request.method())
+        .append(" ")
+        .append(request.uri())
+        .append(System.lineSeparator());
     message.append("Status: ").append(response.statusCode()).append(System.lineSeparator());
     response
         .headers()
@@ -321,10 +320,7 @@ final class PolarisRestTool implements McpTool {
   }
 
   private ObjectNode buildMetadata(
-      HttpRequest request,
-      String requestBody,
-      HttpResponse<String> response,
-      String responseBody) {
+      HttpRequest request, String requestBody, HttpResponse<String> response, String responseBody) {
     ObjectNode metadata = mapper.createObjectNode();
     metadata.put("method", request.method());
     metadata.put("url", request.uri().toString());

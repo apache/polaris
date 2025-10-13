@@ -152,10 +152,7 @@ final class PolarisPolicyTool implements McpTool {
     }
     ObjectNode args = (ObjectNode) arguments;
 
-    String operation =
-        requireText(args, "operation")
-            .toLowerCase(Locale.ROOT)
-            .trim();
+    String operation = requireText(args, "operation").toLowerCase(Locale.ROOT).trim();
     String normalized = normalizeOperation(operation);
 
     String catalog = encodeSegment(requireText(args, "catalog"));
@@ -246,7 +243,8 @@ final class PolarisPolicyTool implements McpTool {
           "Update operations require a request body that matches the UpdatePolicyRequest schema.");
     }
     String policy =
-        encodeSegment(requireText(args, "policy", "Policy name is required for update operations."));
+        encodeSegment(
+            requireText(args, "policy", "Policy name is required for update operations."));
     String path = catalog + "/namespaces/" + namespace + "/policies/" + policy;
     delegateArgs.put("method", "PUT");
     delegateArgs.put("path", path);
@@ -256,7 +254,8 @@ final class PolarisPolicyTool implements McpTool {
   private void handleDelete(
       ObjectNode args, ObjectNode delegateArgs, String catalog, String namespace) {
     String policy =
-        encodeSegment(requireText(args, "policy", "Policy name is required for delete operations."));
+        encodeSegment(
+            requireText(args, "policy", "Policy name is required for delete operations."));
     String path = catalog + "/namespaces/" + namespace + "/policies/" + policy;
     delegateArgs.put("method", "DELETE");
     delegateArgs.put("path", path);
@@ -270,7 +269,8 @@ final class PolarisPolicyTool implements McpTool {
           "Attach operations require a request body that matches the AttachPolicyRequest schema.");
     }
     String policy =
-        encodeSegment(requireText(args, "policy", "Policy name is required for attach operations."));
+        encodeSegment(
+            requireText(args, "policy", "Policy name is required for attach operations."));
     String path = catalog + "/namespaces/" + namespace + "/policies/" + policy + "/mappings";
     delegateArgs.put("method", "PUT");
     delegateArgs.put("path", path);
@@ -285,7 +285,8 @@ final class PolarisPolicyTool implements McpTool {
           "Detach operations require a request body that matches the DetachPolicyRequest schema.");
     }
     String policy =
-        encodeSegment(requireText(args, "policy", "Policy name is required for detach operations."));
+        encodeSegment(
+            requireText(args, "policy", "Policy name is required for detach operations."));
     String path = catalog + "/namespaces/" + namespace + "/policies/" + policy + "/mappings";
     delegateArgs.put("method", "POST");
     delegateArgs.put("path", path);
@@ -404,7 +405,9 @@ final class PolarisPolicyTool implements McpTool {
   private static void requireNamespace(String namespace, String operation) {
     if (namespace == null || namespace.isEmpty()) {
       throw new IllegalArgumentException(
-          "Namespace is required for " + operation + " operations. Provide `namespace` as a string or array.");
+          "Namespace is required for "
+              + operation
+              + " operations. Provide `namespace` as a string or array.");
     }
   }
 
@@ -421,8 +424,7 @@ final class PolarisPolicyTool implements McpTool {
       for (int i = 0; i < array.size(); i++) {
         JsonNode element = array.get(i);
         if (!element.isTextual() || element.asText().trim().isEmpty()) {
-          throw new IllegalArgumentException(
-              "Namespace array elements must be non-empty strings.");
+          throw new IllegalArgumentException("Namespace array elements must be non-empty strings.");
         }
         parts[i] = element.asText().trim();
       }

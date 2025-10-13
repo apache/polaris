@@ -55,8 +55,7 @@ final class PolarisRestToolTest {
     assertThat(executor.lastRequest().method()).isEqualTo("GET");
     assertThat(executor.lastRequest().uri().toString())
         .isEqualTo("http://localhost:8181/api/management/v1/catalogs?includeDisabled=false");
-    assertThat(executor.lastRequest().headers().firstValue("Accept"))
-        .contains("application/json");
+    assertThat(executor.lastRequest().headers().firstValue("Accept")).contains("application/json");
     assertThat(executor.lastRequest().headers().firstValue("Authorization"))
         .contains("Bearer token-123");
     assertThat(result.isError()).isFalse();
