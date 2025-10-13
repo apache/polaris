@@ -89,6 +89,10 @@ final class McpDispatcher {
           return handleToolsList(idNode, isNotification);
         case "tools/call":
           return handleToolsCall(request.get("params"), idNode, isNotification);
+        case "prompts/list":
+          return handlePromptsList(idNode, isNotification);
+        case "resources/list":
+          return handleResourcesList(idNode, isNotification);
         default:
           ObjectNode error =
               errorResponse(
@@ -132,6 +136,8 @@ final class McpDispatcher {
     ObjectNode capabilities = result.putObject("capabilities");
     ObjectNode toolsCaps = capabilities.putObject("tools");
     toolsCaps.put("listChanged", false);
+    capabilities.set("resources", mapper.createObjectNode());
+    capabilities.set("prompts", mapper.createObjectNode());
 
     ObjectNode response = isNotification ? null : successResponse(idNode, result);
     return new DispatchResult(response, false);
@@ -210,6 +216,20 @@ final class McpDispatcher {
     response.set("id", copyId(idNode));
     response.set("result", result);
     return response;
+  }
+
+  private DispatchResult handlePromptsList(JsonNode idNode, boolean isNotification) {
+    ObjectNode result = mapper.createObjectNode();
+    result.set("prompts", mapper.createArrayNode());
+    ObjectNode response = isNotification ? null : successResponse(idNode, result);
+    return new DispatchResult(response, false);
+  }
+
+  private DispatchResult handleResourcesList(JsonNode idNode, boolean isNotification) {
+    ObjectNode result = mapper.createObjectNode();
+    result.set("resources", mapper.createArrayNode());
+    ObjectNode response = isNotification ? null : successResponse(idNode, result);
+    return new DispatchResult(response, false);
   }
 
   private ObjectNode errorResponse(JsonNode idNode, int code, String message, String data) {

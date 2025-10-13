@@ -45,7 +45,7 @@ Once started, the process waits for JSON-RPC messages on stdin. You can experime
 ```jsonc
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"manual","version":"0"}}}
 {"jsonrpc":"2.0","id":2,"method":"tools/list"}
-{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"polaris.table.request","arguments":{"operation":"list","catalog":"dev","namespace":"analytics.daily","query":{"page-size":"10"}}}}
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"polaris-table-request","arguments":{"operation":"list","catalog":"dev","namespace":"analytics.daily","query":{"page-size":"10"}}}}
 ```
 
 Each `tools/call` response includes a human-readable block in
@@ -72,16 +72,36 @@ curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -d 'client_secret=s3cr3t' \
   -d 'scope=PRINCIPAL_ROLE:ALL'
 
-export POLARIS_API_TOKEN=<paste_access_token_here>
+export POLARIS_API_TOKEN=
 export POLARIS_BASE_URL=http://localhost:8181/
 ```
 
 The MCP server will then attach `Authorization: Bearer $POLARIS_API_TOKEN` to
 every outgoing request.
 
+Config example for Claude desktop:
+```json
+{
+    "mcpServers": {
+      "polaris-table-api": {
+        "command": "java",
+        "args": [
+          "-cp",
+          "/Users/ygu/tmp/polaris/tools/mcp/build/libs/polaris-mcp-1.2.0-incubating-SNAPSHOT.jar:/Users/ygu/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-databind/2.20.0/f0a5e62fbd21285e9a5498a60dccb097e1ef793b/jackson-databind-2.20.0.jar:/Users/ygu/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.20.0/3c97f7fad069f7cfae639d790bd93d6a0b2dff31/jackson-core-2.20.0.jar:/Users/ygu/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.20/6a5e7291ea3f2b590a7ce400adb7b3aea4d7e12c/jackson-annotations-2.20.jar",
+          "org.apache.polaris.tools.mcp.PolarisMcpServer"
+         ],
+        "env": {
+          "POLARIS_BASE_URL": "http://localhost:8181/",
+          "POLARIS_API_TOKEN": "<paste_access_token_here>" 
+         }
+      }
+    }
+}
+```
+
 The server currently exposes a single MCP tool:
 
-* `polaris.table.request` — High-level helper for the table REST API. Supported operations include:
+* `polaris-table-request` — High-level helper for the table REST API. Supported operations include:
   * `list`: `GET /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
   * `get` (aliases `load`, `fetch`): `GET /api/catalog/v1/{catalog}/namespaces/{namespace}/tables/{table}`
   * `create`: `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
