@@ -1,4 +1,4 @@
-openapi: 3.1.1
+openapi: 3.0.3
 info:
   title: Apache Polaris and Apache Iceberg REST Catalog API
   license:

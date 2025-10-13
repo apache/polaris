@@ -16,7 +16,7 @@
 #  under the License.
 
 
-openapi: 3.1.1
+openapi: 3.0.3
 info:
   title: Polaris Management Service
   version: 0.0.1
