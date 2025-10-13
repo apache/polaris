@@ -24,14 +24,33 @@ using the helper task:
 
 ## Running
 
-```bash
-java -cp "$(./gradlew -q :polaris-mcp:printRuntimeClasspath)" \
-  org.apache.polaris.tools.mcp.PolarisMcpServer
-```
-
 The server communicates over STDIN/STDOUT using JSON-RPC 2.0. Most MCP
 clients expect to spawn the server as a subprocess with pipes connected to
 standard input and output.
+
+A typical launch sequence looks like:
+
+```bash
+./gradlew :polaris-mcp:classes
+CP=$(./gradlew :polaris-mcp:printRuntimeClasspath --console=plain | grep '^/')
+
+export POLARIS_BASE_URL="http://localhost:8181/"      # adjust as needed
+export POLARIS_API_TOKEN="<bearer_token_optional>"
+
+java -cp "$CP" org.apache.polaris.tools.mcp.PolarisMcpServer
+```
+
+Once started, the process waits for JSON-RPC messages on stdin. You can experiment manually, for example:
+
+```jsonc
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"manual","version":"0"}}}
+{"jsonrpc":"2.0","id":2,"method":"tools/list"}
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"polaris.table.request","arguments":{"operation":"list","catalog":"dev","namespace":"analytics.daily","query":{"page-size":"10"}}}}
+```
+
+Each `tools/call` response includes a human-readable block in
+`result.content[0].text` and a structured JSON copy of the HTTP exchange in
+`result.meta`. Errors surface as `result.isError = true`.
 
 ## Configuration
 
@@ -43,11 +62,9 @@ with the same names are also supported):
 | `POLARIS_BASE_URL` | Base URL for all Polaris REST calls. | `http://localhost:8181/` |
 | `POLARIS_API_TOKEN` / `POLARIS_BEARER_TOKEN` / `POLARIS_TOKEN` | Bearer token automatically attached to requests (if provided). | _unset_ |
 
-```bash
-# start a local Polaris Server
-./gradlew run
+To authenticate via the built-in OAuth flow you can generate a token like this:
 
-# generate token
+```bash
 curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'grant_type=client_credentials' \
@@ -55,9 +72,12 @@ curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -d 'client_secret=s3cr3t' \
   -d 'scope=PRINCIPAL_ROLE:ALL'
 
-export POLARIS_API_TOKEN=
+export POLARIS_API_TOKEN=<paste_access_token_here>
 export POLARIS_BASE_URL=http://localhost:8181/
 ```
+
+The MCP server will then attach `Authorization: Bearer $POLARIS_API_TOKEN` to
+every outgoing request.
 
 The server currently exposes a single MCP tool:
 
