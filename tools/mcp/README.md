@@ -57,13 +57,12 @@ Each `tools/call` response includes a human-readable block in
 Configuration is supplied through environment variables (system properties
 with the same names are also supported):
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `POLARIS_BASE_URL` | Base URL for all Polaris REST calls. | `http://localhost:8181/` |
-| `POLARIS_API_TOKEN` / `POLARIS_BEARER_TOKEN` / `POLARIS_TOKEN` | Bearer token automatically attached to requests (if provided). | _unset_ |
+| Variable                                                       | Description                                                    | Default                  |
+|----------------------------------------------------------------|----------------------------------------------------------------|--------------------------|
+| `POLARIS_BASE_URL`                                             | Base URL for all Polaris REST calls.                           | `http://localhost:8181/` |
+| `POLARIS_API_TOKEN` / `POLARIS_BEARER_TOKEN` / `POLARIS_TOKEN` | Bearer token automatically attached to requests (if provided). | _unset_                  |
 
 To authenticate via the built-in OAuth flow you can generate a token like this:
-
 ```bash
 curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -H 'Content-Type: application/x-www-form-urlencoded' \
@@ -71,15 +70,16 @@ curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -d 'client_id=root' \
   -d 'client_secret=s3cr3t' \
   -d 'scope=PRINCIPAL_ROLE:ALL'
-
-export POLARIS_API_TOKEN=
-export POLARIS_BASE_URL=http://localhost:8181/
 ```
 
 The MCP server will then attach `Authorization: Bearer $POLARIS_API_TOKEN` to
 every outgoing request.
 
-Config example for Claude desktop:
+Config example for Claude desktop
+```bash
+vim ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+Add the following changes to it:
 ```json
 {
     "mcpServers": {
