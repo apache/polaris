@@ -374,7 +374,7 @@ public class ProductionReadinessChecks {
         var type = org.apache.polaris.core.connection.AuthenticationType.valueOf(name);
         if (credentialVendors.select(AuthType.Literal.of(type)).isUnsatisfied()) {
           errors.add(
-              Error.of(
+              Error.ofSevere(
                   format(
                       "Catalog federation is enabled but no ConnectionCredentialVendor found for "
                           + "authentication type '%s'. External catalog connections using this "
@@ -384,7 +384,7 @@ public class ProductionReadinessChecks {
         }
       } catch (IllegalArgumentException e) {
         errors.add(
-            Error.of(
+            Error.ofSevere(
                 format(
                     "Invalid authentication type '%s' in SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES "
                         + "configuration.",
