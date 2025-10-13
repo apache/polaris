@@ -429,4 +429,13 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               "When true, enables finer grained update table privileges which are passed to the authorizer for update table operations")
           .defaultValue(true)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING")
+          .catalogConfig("polaris.config.allow-federated-catalogs-credential-vending")
+          .description(
+              "If set to true (default), allow credential vending for external catalogs. Note this requires ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING to be true first.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
 }

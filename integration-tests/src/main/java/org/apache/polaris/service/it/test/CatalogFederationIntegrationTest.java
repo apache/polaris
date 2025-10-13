@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
@@ -34,7 +35,6 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CatalogRole;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.NamespaceGrant;
@@ -52,6 +52,9 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.it.ext.SparkSessionBuilder;
+import org.apache.polaris.test.minio.Minio;
+import org.apache.polaris.test.minio.MinioAccess;
+import org.apache.polaris.test.minio.MinioExtension;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterAll;
@@ -66,8 +69,13 @@ import org.junit.jupiter.api.io.TempDir;
  * Integration test for catalog federation functionality. This test verifies that an external
  * catalog can be created that federates with an internal catalog.
  */
+@ExtendWith(MinioExtension.class)
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class CatalogFederationIntegrationTest {
+
+  public static final String BUCKET_URI_PREFIX = "/minio-test-catalog-federation";
+  public static final String MINIO_ACCESS_KEY = "test-ak-123-catalog-federation";
+  public static final String MINIO_SECRET_KEY = "test-sk-123-catalog-federation";
 
   private static PolarisClient client;
   private static CatalogApi catalogApi;
@@ -78,6 +86,8 @@ public class CatalogFederationIntegrationTest {
   private static String federatedCatalogName;
   private static String localCatalogRoleName;
   private static String federatedCatalogRoleName;
+  private static URI storageBase;
+  private static String endpoint;
 
   private static final String PRINCIPAL_NAME = "test-catalog-federation-user";
   private static final String PRINCIPAL_ROLE_NAME = "test-catalog-federation-user-role";
@@ -93,12 +103,17 @@ public class CatalogFederationIntegrationTest {
   private PrincipalWithCredentials newUserCredentials;
 
   @BeforeAll
-  static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+  static void setup(
+      PolarisApiEndpoints apiEndpoints,
+      ClientCredentials credentials,
+      @Minio(accessKey = MINIO_ACCESS_KEY, secretKey = MINIO_SECRET_KEY) MinioAccess minioAccess) {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     String adminToken = client.obtainToken(credentials);
     managementApi = client.managementApi(adminToken);
     catalogApi = client.catalogApi(adminToken);
+    storageBase = minioAccess.s3BucketUri(BUCKET_URI_PREFIX);
+    endpoint = minioAccess.s3endpoint();
   }
 
   @AfterAll
@@ -129,12 +144,14 @@ public class CatalogFederationIntegrationTest {
   }
 
   private void setupCatalogs() {
-    baseLocation = URI.create("file:///tmp/warehouse");
+    baseLocation = storageBase;
     newUserCredentials = managementApi.createPrincipalWithRole(PRINCIPAL_NAME, PRINCIPAL_ROLE_NAME);
 
-    FileStorageConfigInfo storageConfig =
-        FileStorageConfigInfo.builder()
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+    AwsStorageConfigInfo storageConfig =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setPathStyleAccess(true)
+            .setEndpoint(endpoint)
             .setAllowedLocations(List.of(baseLocation.toString()))
             .build();
 
@@ -197,6 +214,14 @@ public class CatalogFederationIntegrationTest {
     spark =
         SparkSessionBuilder.buildWithTestDefaults()
             .withWarehouse(warehouseDir.toUri())
+            .withConfig(
+                "spark.sql.catalog." + localCatalogName + ".header.X-Iceberg-Access-Delegation",
+                "vended-credentials")
+            .withConfig(
+                "spark.sql.catalog." + federatedCatalogName + ".header.X-Iceberg-Access-Delegation",
+                "vended-credentials")
+            .withConfig("spark.sql.catalog." + localCatalogName + ".cache-enabled", "false")
+            .withConfig("spark.sql.catalog." + federatedCatalogName + ".cache-enabled", "false")
             .addCatalog(
                 localCatalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
             .addCatalog(
@@ -296,10 +321,6 @@ public class CatalogFederationIntegrationTest {
             .sql("SELECT * FROM " + localCatalogName + ".ns2.test_table ORDER BY id")
             .collectAsList();
     assertThat(localNs2Data).hasSize(2);
-
-    // Restore the grant
-    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, namespaceGrant);
-    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
   }
 
   @Test
@@ -335,9 +356,76 @@ public class CatalogFederationIntegrationTest {
             .sql("SELECT * FROM " + localCatalogName + ".ns2.test_table ORDER BY id")
             .collectAsList();
     assertThat(localNs2Data).hasSize(2);
+  }
 
-    // Restore the grant
-    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableGrant);
-    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
+  @Test
+  void testFederatedCatalogWithCredentialVending() {
+    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, defaultCatalogGrant);
+
+    // Case 1: Only have TABLE_READ_PROPERTIES privilege, should not be able to read data
+    TableGrant tablePropertiesGrant =
+        TableGrant.builder()
+            .setType(GrantResource.TypeEnum.TABLE)
+            .setPrivilege(TablePrivilege.TABLE_READ_PROPERTIES)
+            .setNamespace(List.of("ns1"))
+            .setTableName("test_table")
+            .build();
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tablePropertiesGrant);
+    spark.sql("USE " + federatedCatalogName);
+
+    // Read table data should fail since TABLE_READ_PROPERTIES does not allow reading data
+    assertThatThrownBy(() -> spark.sql("SELECT * FROM ns1.test_table ORDER BY id"))
+        .isInstanceOf(ForbiddenException.class);
+
+    // Case 2: Only have TABLE_READ_DATA privilege, should be able to read data but not write
+    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tablePropertiesGrant);
+    TableGrant tableReadDataGrant =
+        TableGrant.builder()
+            .setType(GrantResource.TypeEnum.TABLE)
+            .setPrivilege(TablePrivilege.TABLE_READ_DATA)
+            .setNamespace(List.of("ns1"))
+            .setTableName("test_table")
+            .build();
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
+
+    // Verify that the vended credential allows reading the data
+    List<Row> ns1Data = spark.sql("SELECT * FROM ns1.test_table ORDER BY id").collectAsList();
+    assertThat(ns1Data).hasSize(2);
+    assertThat(ns1Data.get(0).getInt(0)).isEqualTo(1);
+    assertThat(ns1Data.get(0).getString(1)).isEqualTo("Alice");
+
+    // Verify that write is blocked since the vended credential should only have read permission
+    assertThatThrownBy(() -> spark.sql("INSERT INTO ns1.test_table VALUES (3, 'Charlie')"))
+        .hasMessageContaining(
+            "software.amazon.awssdk.services.s3.model.S3Exception: Access Denied. (Service: S3, Status Code: 403,");
+
+    // Case 3: TABLE_WRITE_DATA should
+    managementApi.revokeGrant(federatedCatalogName, federatedCatalogRoleName, tableReadDataGrant);
+    TableGrant tableWriteDataGrant =
+        TableGrant.builder()
+            .setType(GrantResource.TypeEnum.TABLE)
+            .setPrivilege(TablePrivilege.TABLE_WRITE_DATA)
+            .setNamespace(List.of("ns1"))
+            .setTableName("test_table")
+            .build();
+    managementApi.addGrant(federatedCatalogName, federatedCatalogRoleName, tableWriteDataGrant);
+
+    spark.sql("INSERT INTO ns1.test_table VALUES (3, 'Charlie')");
+
+    // Verify the write was successful by reading back
+    List<Row> updatedData = spark.sql("SELECT * FROM ns1.test_table ORDER BY id").collectAsList();
+    assertThat(updatedData).hasSize(3);
+    assertThat(updatedData.get(2).getInt(0)).isEqualTo(3);
+    assertThat(updatedData.get(2).getString(1)).isEqualTo("Charlie");
+
+    // Verify the data is also visible from the local catalog (both point to same storage)
+    spark.sql(String.format("REFRESH TABLE %s.ns1.test_table", localCatalogName));
+    List<Row> localData =
+        spark
+            .sql(String.format("SELECT * FROM %s.ns1.test_table ORDER BY id", localCatalogName))
+            .collectAsList();
+    assertThat(localData).hasSize(3);
+    assertThat(localData.get(2).getInt(0)).isEqualTo(3);
+    assertThat(localData.get(2).getString(1)).isEqualTo("Charlie");
   }
 }
