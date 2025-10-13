@@ -35,6 +35,7 @@ import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredenti
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
+import org.apache.polaris.service.credentials.CredentialVendorPriorities;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
@@ -55,12 +56,12 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
  *   <li>Returns temporary access key, secret key, and session token
  * </ol>
  *
- * <p>This is the default implementation with {@code @Priority(100)}. Custom implementations can
- * override this by providing a higher priority value.
+ * <p>This is the default implementation with {@code @Priority(CredentialVendorPriorities.DEFAULT)}.
+ * Custom implementations can override this by providing a higher priority value.
  */
 @RequestScoped
 @AuthType(AuthenticationType.SIGV4)
-@Priority(100)
+@Priority(CredentialVendorPriorities.DEFAULT)
 public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVendor {
 
   private static final String DEFAULT_ROLE_SESSION_NAME = "polaris";

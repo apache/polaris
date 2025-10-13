@@ -28,6 +28,7 @@ import org.apache.polaris.core.connection.ImplicitAuthenticationParametersDpo;
 import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
+import org.apache.polaris.service.credentials.CredentialVendorPriorities;
 
 /**
  * Connection credential vendor for Implicit (no authentication) type.
@@ -39,12 +40,12 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
  * not send any authentication headers or credentials. This is typically used for publicly
  * accessible catalogs or when authentication is handled externally.
  *
- * <p>This is the default implementation with {@code @Priority(100)}. Custom implementations can
- * override this by providing a higher priority value.
+ * <p>This is the default implementation with {@code @Priority(CredentialVendorPriorities.DEFAULT)}.
+ * Custom implementations can override this by providing a higher priority value.
  */
 @RequestScoped
 @AuthType(AuthenticationType.IMPLICIT)
-@Priority(100)
+@Priority(CredentialVendorPriorities.DEFAULT)
 public class ImplicitConnectionCredentialVendor implements ConnectionCredentialVendor {
 
   @Override

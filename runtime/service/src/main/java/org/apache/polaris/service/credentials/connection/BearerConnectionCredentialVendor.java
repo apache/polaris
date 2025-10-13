@@ -30,6 +30,7 @@ import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.service.credentials.CredentialVendorPriorities;
 
 /**
  * Connection credential vendor for Bearer token authentication.
@@ -41,12 +42,12 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
  * will use this token as-is in HTTP Authorization headers. Bearer tokens typically have a limited
  * lifetime and should be refreshed by the user when they expire.
  *
- * <p>This is the default implementation with {@code @Priority(100)}. Custom implementations can
- * override this by providing a higher priority value.
+ * <p>This is the default implementation with {@code @Priority(CredentialVendorPriorities.DEFAULT)}.
+ * Custom implementations can override this by providing a higher priority value.
  */
 @RequestScoped
 @AuthType(AuthenticationType.BEARER)
-@Priority(100)
+@Priority(CredentialVendorPriorities.DEFAULT)
 public class BearerConnectionCredentialVendor implements ConnectionCredentialVendor {
 
   private final UserSecretsManager secretsManager;

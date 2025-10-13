@@ -31,6 +31,7 @@ import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.service.credentials.CredentialVendorPriorities;
 
 /**
  * Connection credential vendor for OAuth 2.0 Client Credentials authentication.
@@ -42,12 +43,12 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
  * connecting to the remote catalog, Iceberg SDK will use this credential to fetch OAuth tokens
  * automatically.
  *
- * <p>This is the default implementation with {@code @Priority(100)}. Custom implementations can
- * override this by providing a higher priority value.
+ * <p>This is the default implementation with {@code @Priority(CredentialVendorPriorities.DEFAULT)}.
+ * Custom implementations can override this by providing a higher priority value.
  */
 @RequestScoped
 @AuthType(AuthenticationType.OAUTH)
-@Priority(100)
+@Priority(CredentialVendorPriorities.DEFAULT)
 public class OAuthConnectionCredentialVendor implements ConnectionCredentialVendor {
 
   private static final Joiner COLON_JOINER = Joiner.on(":");
