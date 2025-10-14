@@ -348,22 +348,22 @@ Sets authentication options for a given realm in the projected config volume.
 {{- $tokenBrokerType := dig "tokenBroker" "type" "rsa-key-pair" $auth -}}
 {{- $subpath := empty $realm | ternary "" (printf "%s/" (urlquery $realm)) -}}
 - secret:
-    name: {{ tpl $secretName . }}
+    name: {{ $secretName }}
     items:
     {{- if eq $tokenBrokerType "rsa-key-pair" }}
       {{- /* Backward compatibility for publicKey: new takes precedence */ -}}
       {{- $publicKey := coalesce (dig "tokenBroker" "secret" "rsaKeyPair" "publicKey" "" $auth) (dig "tokenBroker" "secret" "publicKey" "public.pem" $auth) }}
       {{- /* Backward compatibility for privateKey: new takes precedence */ -}}
       {{- $privateKey := coalesce (dig "tokenBroker" "secret" "rsaKeyPair" "privateKey" "" $auth) (dig "tokenBroker" "secret" "privateKey" "private.pem" $auth) }}
-      - key: {{ tpl $publicKey . }}
+      - key: {{ $publicKey }}
         path: {{ $subpath }}public.pem
-      - key: {{ tpl $privateKey . }}
+      - key: {{ $privateKey }}
         path: {{ $subpath }}private.pem
     {{- end }}
     {{- if eq $tokenBrokerType "symmetric-key" }}
       {{- /* Backward compatibility for symmetricKey: new takes precedence */ -}}
       {{- $secretKey := coalesce (dig "tokenBroker" "secret" "symmetricKey" "secretKey" "" $auth) (dig "tokenBroker" "secret" "secretKey" "symmetric.key" $auth) }}
-      - key: {{ tpl $secretKey . }}
+      - key: {{ $secretKey }}
         path: {{ $subpath }}symmetric.key
     {{- end }}
 {{- end }}
