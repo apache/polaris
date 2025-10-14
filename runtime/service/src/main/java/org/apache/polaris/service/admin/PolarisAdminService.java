@@ -1182,15 +1182,12 @@ public class PolarisAdminService {
               "Failed to %s secrets for principal '%s'",
               shouldReset ? "reset" : "rotate", principalName));
     }
-    PolarisEntity newPrincipal =
-        PolarisEntity.of(
-            metaStoreManager.loadEntity(
-                getCurrentPolarisContext(),
-                0L,
-                currentPrincipalEntity.getId(),
-                currentPrincipalEntity.getType()));
+    PrincipalEntity newPrincipal =
+        metaStoreManager
+            .findPrincipalById(getCurrentPolarisContext(), currentPrincipalEntity.getId())
+            .orElseThrow();
     return new PrincipalWithCredentials(
-        PrincipalEntity.of(newPrincipal).asPrincipal(),
+        newPrincipal.asPrincipal(),
         new PrincipalWithCredentialsCredentials(
             newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
   }
