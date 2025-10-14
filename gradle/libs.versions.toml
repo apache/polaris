@@ -82,7 +82,7 @@ jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.19" }
-micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.4" }
+micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.5" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.20.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.20.0" }
