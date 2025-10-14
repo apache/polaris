@@ -349,7 +349,7 @@ public class ServiceProducers {
         config.type() == AuthenticationType.EXTERNAL ? "none" : config.tokenBroker().type();
     TokenBrokerFactory tokenBrokerFactory =
         tokenBrokerFactories.select(Identifier.Literal.of(type)).get();
-    return tokenBrokerFactory.apply(realmContext);
+    return tokenBrokerFactory.newTokenBroker(realmContext);
   }
 
   // other beans

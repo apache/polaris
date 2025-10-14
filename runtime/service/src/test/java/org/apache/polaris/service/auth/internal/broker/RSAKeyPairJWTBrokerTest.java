@@ -25,12 +25,9 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Optional;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -42,8 +39,6 @@ import org.mockito.Mockito;
 @QuarkusTest
 public class RSAKeyPairJWTBrokerTest {
 
-  @Inject protected PolarisConfigurationStore configurationStore;
-
   @Test
   public void testSuccessfulTokenGeneration() throws Exception {
     var keyPair = PemUtils.generateKeyPair();
@@ -52,7 +47,6 @@ public class RSAKeyPairJWTBrokerTest {
     final String clientId = "test-client-id";
     final String scope = "PRINCIPAL_ROLE:TEST";
 
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, configurationStore);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =
@@ -64,14 +58,14 @@ public class RSAKeyPairJWTBrokerTest {
     Mockito.when(metastoreManager.findPrincipalById(principalId))
         .thenReturn(Optional.of(principal));
     KeyProvider provider = new LocalRSAKeyProvider(keyPair);
-    TokenBroker tokenBroker = new RSAKeyPairJWTBroker(metastoreManager, 420, provider);
+    TokenBroker tokenBroker = new RSAKeyPairJWTBroker(420, provider);
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
             clientId,
             mainSecret,
             TokenRequestValidator.CLIENT_CREDENTIALS,
             scope,
-            polarisCallContext,
+            metastoreManager,
             TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);

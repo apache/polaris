@@ -26,8 +26,6 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
@@ -36,21 +34,17 @@ import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBro
 @Identifier("rsa-key-pair")
 public class RSAKeyPairJWTBrokerFactory implements TokenBrokerFactory {
 
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final AuthenticationConfiguration authenticationConfiguration;
 
   private final ConcurrentMap<String, RSAKeyPairJWTBroker> tokenBrokers = new ConcurrentHashMap<>();
 
   @Inject
-  public RSAKeyPairJWTBrokerFactory(
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      AuthenticationConfiguration authenticationConfiguration) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
+  public RSAKeyPairJWTBrokerFactory(AuthenticationConfiguration authenticationConfiguration) {
     this.authenticationConfiguration = authenticationConfiguration;
   }
 
   @Override
-  public TokenBroker apply(RealmContext realmContext) {
+  public TokenBroker newTokenBroker(RealmContext realmContext) {
     return tokenBrokers.computeIfAbsent(
         realmContext.getRealmIdentifier(), k -> createTokenBroker(realmContext));
   }
@@ -64,10 +58,7 @@ public class RSAKeyPairJWTBrokerFactory implements TokenBrokerFactory {
             .rsaKeyPair()
             .map(this::fileSystemKeyPair)
             .orElseGet(this::generateEphemeralKeyPair);
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.createMetaStoreManager(realmContext, null);
-    return new RSAKeyPairJWTBroker(
-        metaStoreManager, (int) maxTokenGeneration.toSeconds(), keyProvider);
+    return new RSAKeyPairJWTBroker((int) maxTokenGeneration.toSeconds(), keyProvider);
   }
 
   private KeyProvider fileSystemKeyPair(RSAKeyPairConfiguration config) {
