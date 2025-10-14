@@ -16,22 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.connection.iceberg;
+package org.apache.polaris.service.credentials;
 
-import jakarta.annotation.Nonnull;
-import java.util.Map;
-import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 
 /**
- * Configuration wrappers which ultimately translate their contents into Iceberg properties and
- * which may hold other nested configuration wrapper objects implement this interface to allow
- * delegating type-specific configuration translation logic to subclasses instead of needing to
- * expose the internals of deeply nested configuration objects to a visitor class.
+ * Priority constants for credential vendor implementations. e.g., {@link
+ * ConnectionCredentialVendor}
+ *
+ * <p>Higher priority values are selected first when multiple vendors support the same
+ * authentication or storage type. Default built-in implementations use {@code DEFAULT}. Custom
+ * implementations should use a higher priority value to override defaults.
  */
-public interface IcebergCatalogPropertiesProvider {
-  @Nonnull
-  default Map<String, String> asIcebergCatalogProperties(
-      PolarisCredentialManager credentialManager) {
-    return Map.of();
-  }
+public final class CredentialVendorPriorities {
+  /** Priority for default built-in vendor implementations. */
+  public static final int DEFAULT = 100;
+
+  private CredentialVendorPriorities() {}
 }
