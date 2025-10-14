@@ -85,12 +85,13 @@ project, just run:
 env POLARIS_HOST=localhost ./regtests/run.sh
 ```
 
-The catalog federation tests rely on the following configurations in `application.properties` to
+The catalog federation tests and some cloud providers test rely on the following configurations in `application.properties` to
 be set in order to succeed.
 
 ```
 polaris.features."ENABLE_CATALOG_FEDERATION"=true
 polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS"=true
+polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION"=true
 ```
 
 To run the tests in verbose mode, with test stdout printing to console, set the `VERBOSE`
