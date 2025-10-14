@@ -45,7 +45,7 @@ repository = "https://github.com/apache/polaris/"
 polaris = "cli.polaris_cli:main"
 
 [tool.poetry]
-requires-poetry = ">=2.1.4"
+requires-poetry = "==2.2.1"
 include = [
     { path = "polaris/**", format = ["sdist", "wheel"] },
     { path = "cli/**", format = ["sdist", "wheel"] },
@@ -69,7 +69,7 @@ partial-match = true
 allow-only = "Apache;BSD License;BSD-3-Clause;ISC;MIT;Mozilla Public License;PSF-2.0;Python Software Foundation License;The Unlicense"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0", "openapi-generator-cli==7.12.0"]
+requires = ["poetry-core==2.2.1", "openapi-generator-cli==7.12.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]
