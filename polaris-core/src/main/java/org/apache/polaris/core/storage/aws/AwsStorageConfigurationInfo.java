@@ -46,7 +46,11 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
 
   // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
   @JsonIgnore
-  public static final String ROLE_ARN_PATTERN = "^arn:(aws|aws-us-gov):iam::(\\d{12}):role/.+$";
+  // Account id may be a 12-digit AWS account number or a vendor-specific namespace that must
+  // not be purely numeric (must start with a letter, underscore or hyphen followed by allowed
+  // chars).
+  public static final String ROLE_ARN_PATTERN =
+      "^(arn|urn):(aws|aws-us-gov|ecs):iam::((\\d{12})|([a-zA-Z_-][a-zA-Z0-9_-]*)):role/.+$";
 
   private static final Pattern ROLE_ARN_PATTERN_COMPILED = Pattern.compile(ROLE_ARN_PATTERN);
 
@@ -125,7 +129,8 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     if (arn != null) {
       Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
       checkState(matcher.matches());
-      return matcher.group(2);
+      // group(3) is the account identifier (either 12-digit AWS account or vendor namespace)
+      return matcher.group(3);
     }
     return null;
   }
@@ -137,7 +142,8 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     if (arn != null) {
       Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
       checkState(matcher.matches());
-      return matcher.group(1);
+      // group(2) captures the partition (e.g. aws, aws-us-gov, ecs)
+      return matcher.group(2);
     }
     return null;
   }

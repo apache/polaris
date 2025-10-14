@@ -189,14 +189,24 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
     String arnPrefix = arnPrefixForPartition(awsPartition);
+    boolean isEcsPartition = "ecs".equals(awsPartition);
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
             location -> {
               URI uri = URI.create(location);
-              allowGetObjectStatementBuilder.addResource(
-                  IamResource.create(
-                      arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+              // Some on-prem S3/STSc implementations (for example ECS) do not accept object ARNs
+              // that include the path portion (bucket/key/*). For those, scope object permissions
+              // to
+              // the whole bucket (bucket/*) and rely on s3:prefix conditions for finer granularity.
+              if (isEcsPartition) {
+                allowGetObjectStatementBuilder.addResource(
+                    IamResource.create(arnPrefix + StorageUtil.getBucket(uri) + "/*"));
+              } else {
+                allowGetObjectStatementBuilder.addResource(
+                    IamResource.create(
+                        arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+              }
               final var bucket = arnPrefix + StorageUtil.getBucket(uri);
               if (allowList) {
                 bucketListStatementBuilder
@@ -230,9 +240,14 @@ public class AwsCredentialsStorageIntegration
       writeLocations.forEach(
           location -> {
             URI uri = URI.create(location);
-            allowPutObjectStatementBuilder.addResource(
-                IamResource.create(
-                    arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+            if (isEcsPartition) {
+              allowPutObjectStatementBuilder.addResource(
+                  IamResource.create(arnPrefix + StorageUtil.getBucket(uri) + "/*"));
+            } else {
+              allowPutObjectStatementBuilder.addResource(
+                  IamResource.create(
+                      arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+            }
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
     }
@@ -253,7 +268,13 @@ public class AwsCredentialsStorageIntegration
   }
 
   private static String arnPrefixForPartition(String awsPartition) {
-    return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
+    // Some on-prem S3 compatible systems (e.g. ECS) use a non-standard partition value
+    // but expect S3 resource ARNs to use the 'aws' partition form (arn:aws:s3:::bucket).
+    String partition = awsPartition != null ? awsPartition : "aws";
+    if ("ecs".equals(partition)) {
+      partition = "aws";
+    }
+    return String.format("arn:%s:s3:::", partition);
   }
 
   private static @Nonnull String parseS3Path(URI uri) {

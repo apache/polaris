@@ -286,6 +286,31 @@ public class CatalogEntityTest {
   }
 
   @Test
+  public void testUrnRoleArnAccepted() {
+    String urnRole = "urn:ecs:iam::test-namespace:role/test-role";
+    String baseLocation = "s3://externally-owned-bucket";
+    AwsStorageConfigInfo awsStorageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn(urnRole)
+            .setExternalId("externalId")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(baseLocation))
+            .build();
+
+    CatalogProperties prop = new CatalogProperties(baseLocation);
+    Catalog awsCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("name")
+            .setProperties(prop)
+            .setStorageConfigInfo(awsStorageConfigModel)
+            .build();
+
+    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
   public void testCatalogTypeDefaultsToInternal() {
     String baseLocation = "s3://test-bucket/path";
     AwsStorageConfigInfo storageConfigModel =
