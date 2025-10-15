@@ -21,6 +21,8 @@
 
 This guide walks you through the release process of the Apache Polaris podling.
 
+Instructions how to verify a release candidate are available [here](release-verify.md).
+
 ## Setup
 
 To create a release candidate, you will need:
