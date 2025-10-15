@@ -22,4 +22,15 @@
 tasks.withType<AbstractArchiveTask>().configureEach {
   isPreserveFileTimestamps = false
   isReproducibleFileOrder = true
+
+  dirPermissions { unix("755") }
+  filePermissions {
+    // do not force the "execute" bit in case the file _is_ executable
+    user.read = true
+    user.write = true
+    group.read = true
+    group.write = false
+    other.read = true
+    other.write = false
+  }
 }
