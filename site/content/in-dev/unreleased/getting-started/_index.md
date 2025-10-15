@@ -25,12 +25,12 @@ weight: 101
 
 The fastest way to get started is with our Docker Compose examples. Each example provides a complete working environment with detailed instructions.
 
-## Next Steps
+## Docker Compose Examples and Next Steps
 
-1. Check/Install dependencies
-2. Choose the way you want to deploy Polaris
-3. Create a catalog
-4. Check Using polaris page
+1. [Check/Install dependencies]({{% ref "install-dependencies.md" %}})
+2. [Choose the way you want to deploy Polaris]({{% ref "deploying-polaris/" %}})
+3. [Create a catalog]({{% ref "creating-a-catalog/" %}})
+4. Check the [Using Polaris]({{% ref "using-polaris/" %}}) page for more setup options and connections
 
 ## Getting Help
 

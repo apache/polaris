@@ -50,6 +50,10 @@ Customization to host jQuery + Lunr JS files on ASF site
 <link rel="stylesheet" href="{{ "css/prism.css" | relURL }}"/>
 {{ end -}}
 
+<!-- Progressive Navigation JavaScript -->
+{{ $navbarJS := resources.Get "js/navbar.js" | resources.Minify }}
+<script src="{{ $navbarJS.RelPermalink }}" defer></script>
+
 {{ template "algolia/head" . -}}
 
 {{ partial "hooks/head-end.html" . -}}

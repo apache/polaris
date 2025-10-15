@@ -17,6 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+linkTitle: 'Downloads'
+title: 'Downloads'
 weight: 200
 toc_hide: true
 hide_summary: true

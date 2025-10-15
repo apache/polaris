@@ -22,35 +22,150 @@ type: home
 cascade:
   no_list: true
 ---
-{{< blocks/cover title="Welcome to the Apache Polaris™ (incubating) web site!" image_anchor="center" color="primary" >}}
-Apache Polaris is an open-source, fully-featured catalog for Apache Iceberg™. It implements Iceberg's REST API, enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®, Apache Spark™, Dremio® OSS, StarRocks, and Trino.
+{{< blocks/cover image_anchor="center" height="min" color="primary">}}
+<div class="homepage-logo mb-4">
+  <img src="/img/logos/apache-polaris-logo-stacked-light.svg" alt="Apache Polaris" class="polaris-hero-logo">
+</div>
 
-<a href="/in-dev/unreleased/getting-started/" class="btn btn-lg btn-dark mt-5">Get Started <i class="fas fa-arrow-alt-circle-right ms-2"></i></a>
+The open-source catalog built for secure interoperability
+
+<div class="mt-5 d-flex flex-column flex-md-row gap-3 justify-content-center">
+  <a href="/in-dev/unreleased/getting-started/" class="btn btn-lg btn-light">Get Started <i class="fas fa-rocket ms-2"></i></a>
+  <a href="https://github.com/apache/polaris" class="btn btn-lg btn-outline-light">View on GitHub <i class="fab fa-github ms-2"></i></a>
+</div>
 
 {{< /blocks/cover >}}
 
-image::img/Polaris-Catalog-BLOG-symmetrical-subhead.png[Polaris Catalog]
+{{< blocks/section color="gray-light" >}}
+<div class="container text-center">
+  <h2 class="mb-5">What is Apache Polaris?</h2>
+  Apache Polaris™ is an enterprise-grade data catalog that enables seamless, secure multi-engine interoperability. Built on Iceberg's REST API, it powers your data lakehouse across Apache Doris™, Apache Flink®, Apache Spark™, StarRocks, Trino, and more.
 
-{{< blocks/section color="dark" type="row" >}}
-{{% blocks/feature icon="fa-lightbulb" title="Join the community!" url="https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw" url_text="Chat with us" %}}
-Chat with users and project developers!
-{{% /blocks/feature %}}
-{{% blocks/feature icon="fa-brands fa-github" title="Contributions welcome!" url="https://github.com/apache/polaris/pulls" url_text="Polaris Pull Requests" %}}
-We do a https://github.com/apache/polaris/pulls[Pull Request] contributions workflow on **GitHub**. New users are always welcome!
-{{% /blocks/feature %}}
-{{% blocks/feature icon="fa fa-envelope" title="Join our mailing list" url="https://lists.apache.org/list.html?dev@polaris.apache.org" url_text="Subscribe" %}}
-For announcement and discussions about the project.
-{{% /blocks/feature %}}
+<img src="/img/polaris-diagram.png" alt="Apache Polaris Architecture Diagram" class="img-fluid mb-4">
+
+</div>
 {{< /blocks/section >}}
 
-{{< blocks/section color="dark" >}}
-<p>
-<a href="https://incubator.apache.org/"><img src="img/apache-incubator.svg" width="200em"></a>
-</p>
-<p>
-Apache Polaris™ is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
-</p>
-<p>
-Apache®, Apache Polaris™, Apache Iceberg™, Apache Spark™ are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.
-</p>
+{{< blocks/section color="light" >}}
+<div class="text-center">
+  <h2 class="mb-4">Key Features</h2>
+  <div class="row key-features-row">
+    <div class="col-md-3 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-cogs"></i>
+        <h3>Multi-Engine Support</h3>
+        <p>With Iceberg's REST API, power your data lakehouse across Apache Spark™, Trino, Apache Flink®, and more with seamless, secure interoperability.</p>
+      </div>
+    </div>
+    <div class="col-md-3 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-shield-alt"></i>
+        <h3>Role-based Access Controls</h3>
+        <p>Fully open and engine-agnostic controls let you define and enforce permissions consistently across any Iceberg-compatible catalog or tool.</p>
+      </div>
+    </div>
+    <div class="col-md-3 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-database"></i>
+        <h3>JDBC and NoSQL Backend</h3>
+        <p>Choose how and where to store catalog metadata—using standard relational databases or lightweight NoSQL backends.</p>
+      </div>
+    </div>
+    <div class="col-md-3 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-sync-alt"></i>
+        <h3>Safe Concurrent Operations</h3>
+        <p>Concurrent metadata writes are detected and resolved via optimistic retries and atomic compare-and-swap semantics, protecting consistency without requiring heavy locking.</p>
+      </div>
+    </div>
+  </div>
+  <div class="row key-features-row">
+    <div class="col-md-3 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-sitemap"></i>
+        <h3>Catalog Federation</h3>
+        <p>Connect and query data from multiple underlying catalogs through a single unified interface, so you can discover and manage all your tables without migrating or duplicating them.</p>
+      </div>
+    </div>
+    <div class="col-md-3 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-user-check"></i>
+        <h3>Identity Federation and SSO</h3>
+        <p>Authenticate users through their existing enterprise identity provider, giving seamless, centralized access across all connected data catalogs without separate logins.</p>
+      </div>
+    </div>
+    <div class="col-md-3 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-key"></i>
+        <h3>Credential Vending</h3>
+        <p>Issue temporary, scoped access tokens to query engines and services, so they can access underlying data without needing to store or manage long-lived credentials.</p>
+      </div>
+    </div>
+    <div class="col-md-3 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-layer-group"></i>
+        <h3>Multiple Table Formats <span class="badge bg-info">Beta</span></h3>
+        <p>Register and manage Iceberg and non-Iceberg datasets in the same catalog, so you can apply unified governance and discovery across all your data, regardless of format.</p>
+      </div>
+    </div>
+  </div>
+  
+  
+  <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+    <a href="/in-dev/unreleased/" class="btn btn-lg btn-outline-primary">Explore Documentation</a>
+  </div>
+</div>
+{{< /blocks/section >}}
+
+{{< blocks/section color="white" >}}
+<div class="container text-center">
+  <h2 class="mb-5">Join the Community</h2>
+  <p class="lead mb-5">Connect with developers, architects, and data engineers building the future of data catalogs</p>
+  <div class="row">
+    <div class="col-md-4 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-users"></i>
+        <h3>Chat</h3>
+        <p>Ask questions, share ideas, and chat with users and project developers on Slack.</p>
+        <a href="https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw" class="btn btn-primary">Join Slack</a>
+      </div>
+    </div>
+    <div class="col-md-4 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-code-branch"></i>
+        <h3>Contribute</h3>
+        <p>Join our collaborative development process. Every contribution matters—from bug reports to major features.</p>
+        <a href="https://github.com/apache/polaris/pulls" class="btn btn-primary">Contribute on GitHub</a>
+      </div>
+    </div>
+    <div class="col-md-4 mb-4">
+      <div class="blocks-feature">
+        <i class="fa-solid fa-bullhorn"></i>
+        <h3>Subscribe</h3>
+        <p>Get the latest announcements, release updates, and technical discussions delivered to your inbox.</p>
+        <a href="https://lists.apache.org/list.html?dev@polaris.apache.org" class="btn btn-primary">Subscribe to Updates</a>
+      </div>
+    </div>
+  </div>
+</div>
+{{< /blocks/section >}}
+
+{{< blocks/section color="gray-light" >}}
+<div class="container text-center">
+  <div class="mb-4">
+    <a href="https://incubator.apache.org/">
+      <img src="img/incubator_feather_egg_logo.png" width="180" alt="Apache Incubator" class="mb-4">
+    </a>
+  </div>
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <p class="mb-4">
+        Apache Polaris™ is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects.
+      </p>
+      <p class="small text-muted">
+        Apache®, Apache Polaris™, Apache Iceberg™, Apache Spark™ are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.
+      </p>
+    </div>
+  </div>
+</div>
 {{< /blocks/section >}}

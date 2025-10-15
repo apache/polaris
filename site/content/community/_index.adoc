@@ -26,77 +26,248 @@ cascade:
   type: docs
 ---
 
-{{< blocks/section color="white" type="row" >}}
-{{% blocks/feature icon="fa-solid fa-graduation-cap" title="Learn, Connect and Collaborate" %}}
-[cols="2,3"]
-|===
-| link:https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw[Slack]
-| Public chat, open to everybody
+== Learn, Connect and Collaborate
 
-| link:{{% ref "meetings" %}}[Community Meetings]
-| Upcoming, live and recorded Community Meetings
+* **link:https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw[Slack]** - Public chat, open to everybody
+* **link:{{% ref "meetings" %}}[Community Meetings]** - Upcoming, live and recorded Community Meetings  
+* **link:{{% ref "proposals" %}}[Proposals and Roadmap]** - Proposals for important features and Polaris Roadmap
+* **link:https://github.com/apache/polaris[GitHub]** - Development takes place here!
+* **link:{{% ref "chat-bylaws" %}}[Chat Bylaws]** - A few rules around our public chat as a collaboration tool for the project
+* **link:{{% ref "contributing-guidelines" %}}[Contribution Guidelines]** - How to contribute to Apache Polaris
 
-| link:{{% ref "proposals" %}}[Proposals and Roadmap]
-| Proposals for important features and Polaris Roadmap
+== Mailing Lists
 
-| link:https://github.com/apache/polaris[GitHub]
-| Development takes place here!
+* **Development** - Development oriented content
+** mailto:dev-subscribe@polaris.apache.org[Subscribe to dev@]
+** link:https://lists.apache.org/list.html?polaris.apache.org[Mailing List Archives,window=_blank]
+* **Issues** - Notifications about GitHub issues and PRs
+** mailto:issues-subscribe@polaris.apache.org[Subscribe to issues@]
+** link:https://lists.apache.org/list.html?polaris.apache.org[Mailing List Archives,window=_blank]
+* **Commits** - Notifications about Git commits
+** mailto:commits-subscribe@polaris.apache.org[Subscribe to commits@]
+** link:https://lists.apache.org/list.html?polaris.apache.org[Mailing List Archives,window=_blank]
 
-| link:{{% ref "chat-bylaws" %}}[Chat Bylaws]
-| A few rules around our public chat as a collaboration tool for the project.
+== Team
 
-| link:{{% ref "contributing-guidelines" %}}[Contribution Guidelines]
-| How to contribute to Apache Polaris
-|===
-{{% /blocks/feature %}}
+We deeply appreciate your contribution!
 
-{{% blocks/feature icon="fa fa-envelope" title="All Mailing Lists" %}}
-[cols="3,3"]
-|===
-| Development oriented content
-| mailto:dev-subscribe@polaris.apache.org[Subscribe to dev@]
+=== PPMC Members
 
-  link:https://lists.apache.org/list.html?polaris.apache.org[Mailing List Archives,window=_blank]
-| Notifications about GitHub issues and PRs
-| mailto:issues-subscribe@polaris.apache.org[Subscribe to issues@]
+++++
+<div class="team-grid">
+<div class="team-member">
+<div class="team-avatar-placeholder">AJ</div>
+<div class="team-content">
+<strong>Anoop Johnson</strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.databricks.com/">Databricks</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/ashvina" target="_blank"><img src="https://github.com/ashvina.png" alt="Ashvin Agrawal" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/ashvina">Ashvin Agrawal</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.microsoft.com/">Microsoft</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/adutra" target="_blank"><img src="https://github.com/adutra.png" alt="Alexandre Dutra" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/adutra">Alexandre Dutra</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.dremio.com/">Dremio</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/dennishuo" target="_blank"><img src="https://github.com/dennishuo.png" alt="Dennis Huo" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/dennishuo">Dennis Huo</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.snowflake.com/">Snowflake</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/dimas-b" target="_blank"><img src="https://github.com/dimas-b.png" alt="Dmitri Bourlatchkov" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/dimas-b">Dmitri Bourlatchkov</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.dremio.com/">Dremio</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/jackye1995" target="_blank"><img src="https://github.com/jackye1995.png" alt="Jack Ye" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/jackye1995">Jack Ye</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://lancedb.com/">LanceDB</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/jbonofre" target="_blank"><img src="https://github.com/jbonofre.png" alt="JB Onofre" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/jbonofre">JB Onofre</a></strong><br>
+<span class="badge bg-info">PPMC & Mentor</span><br>
+<small><a href="https://www.dremio.com/">Dremio</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/vvcephei" target="_blank"><img src="https://github.com/vvcephei.png" alt="John Roesler" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/vvcephei">John Roesler</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.confluent.io/">Confluent</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/collado-mike" target="_blank"><img src="https://github.com/collado-mike.png" alt="Michael Collado" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/collado-mike">Michael Collado</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.snowflake.com/">Snowflake</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/snazy" target="_blank"><img src="https://github.com/snazy.png" alt="Robert Stupp" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/snazy">Robert Stupp</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.dremio.com/">Dremio</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/russellspitzer" target="_blank"><img src="https://github.com/russellspitzer.png" alt="Russell Spitzer" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/russellspitzer">Russell Spitzer</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.snowflake.com/">Snowflake</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/takidau" target="_blank"><img src="https://github.com/takidau.png" alt="Tyler Akidau" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/takidau">Tyler Akidau</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.snowflake.com/">Redpanda</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/flyrain" target="_blank"><img src="https://github.com/flyrain.png" alt="Yufei Gu" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/flyrain">Yufei Gu</a></strong><br>
+<span class="badge bg-success">PPMC Member</span><br>
+<small><a href="https://www.snowflake.com/">Snowflake</a></small>
+</div>
+</div>
+</div>
+++++
 
-  link:https://lists.apache.org/list.html?polaris.apache.org[Mailing List Archives,window=_blank]
-| Notifications about Git commits
-| mailto:commits-subscribe@polaris.apache.org[Subscribe to commits@]
+=== Committers
 
-  link:https://lists.apache.org/list.html?polaris.apache.org[Mailing List Archives,window=_blank]
-|===
-{{% /blocks/feature %}}
+++++
+<div class="team-grid">
+<div class="team-member">
+<a href="https://github.com/ajantha-bhat" target="_blank"><img src="https://github.com/ajantha-bhat.png" alt="Ajantha Bhat" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/ajantha-bhat">Ajantha Bhat</a></strong><br>
+<span class="badge bg-primary">Committer</span><br>
+<small><a href="https://www.dremio.com/">Dremio</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/annafil" target="_blank"><img src="https://github.com/annafil.png" alt="Anna Filippova" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/annafil">Anna Filippova</a></strong><br>
+<span class="badge bg-primary">Committer</span><br>
+<small><a href="https://www.snowflake.com/">Snowflake</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/eric-maynard" target="_blank"><img src="https://github.com/eric-maynard.png" alt="Eric Maynard" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/eric-maynard">Eric Maynard</a></strong><br>
+<span class="badge bg-primary">Committer</span><br>
+<small><a href="https://www.snowflake.com/">Snowflake</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/HonahX" target="_blank"><img src="https://github.com/HonahX.png" alt="Jonas Jiang" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/HonahX">Jonas Jiang</a></strong><br>
+<span class="badge bg-primary">Committer</span><br>
+<small><a href="https://www.snowflake.com/">Snowflake</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/pingtimeout" target="_blank"><img src="https://github.com/pingtimeout.png" alt="Pierre Laporte" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/pingtimeout">Pierre Laporte</a></strong><br>
+<span class="badge bg-primary">Committer</span><br>
+<small><a href="https://www.dremio.com/">Dremio</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/singhpk234" target="_blank"><img src="https://github.com/singhpk234.png" alt="Prashant Singh" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/singhpk234">Prashant Singh</a></strong><br>
+<span class="badge bg-primary">Committer</span><br>
+<small><a href="https://www.snowflake.com/">Snowflake</a></small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/MonkeyCanCode" target="_blank"><img src="https://github.com/MonkeyCanCode.png" alt="Yong Zheng" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/MonkeyCanCode">Yong Zheng</a></strong><br>
+<span class="badge bg-primary">Committer</span><br>
+<small>&nbsp;</small>
+</div>
+</div>
+<div class="team-member">
+<a href="https://github.com/ebyhr" target="_blank"><img src="https://github.com/ebyhr.png" alt="Yuya Ebihara" class="team-avatar"></a>
+<div class="team-content">
+<strong><a href="https://github.com/ebyhr">Yuya Ebihara</a></strong><br>
+<span class="badge bg-primary">Committer</span><br>
+<small><a href="https://www.starburst.io/">Starburst</a></small>
+</div>
+</div>
+</div>
+++++
 
-{{% blocks/feature icon="fa-solid fa-people-group" title="Team" %}}
-[cols="4,1,3"]
-|===
+=== Mentors
 
-| https://github.com/ajantha-bhat[Ajantha Bhat] | Committer | link:https://www.dremio.com/[Dremio]
-| https://github.com/adutra[Alex Dutra] | Committer | link:https://www.dremio.com/[Dremio]
-| https://github.com/annafil[Anna Filippova] | Committer | link:https://www.snowflake.com/[Snowflake]
-| Anoop Johnson | PPMC Member | link:https://www.google.com/[Google]
-| https://github.com/ashvina[Ashvin Agrawal] | PPMC Member | link:https://www.microsoft.com/[Microsoft]
-| Bertrand Delacretaz | Mentor |
-| https://github.com/dennishuo[Dennis Huo] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/dimas-b[Dmitri Bourlatchkov] | PPMC Member | link:https://www.dremio.com/[Dremio]
-| https://github.com/eric-maynard[Eric Maynard] | Committer |
-| Holden Karau | Mentor |
-| https://github.com/jackye1995[Jack Ye] | PPMC Member | link:https://lancedb.com/[LanceDB]
-| https://github.com/jbonofre[JB Onofre] | PPMC Member & Mentor | link:https://www.dremio.com/[Dremio]
-| https://github.com/vvcephei[John Roesler] | PPMC Member | link:https://www.confluent.io/[Confluent]
-| https://github.com/HonahX[Jonas Jiang] | Committer | link:https://www.snowflake.com/[Snowflake]
-| Kent Yao | Mentor |
-| https://github.com/collado-mike[Michael Collado] | Committer | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/pingtimeout[Pierre Laporte] | Committer | link:https://www.dremio.com/[Dremio]
-| https://github.com/singhpk234[Prashant Singh] | Committer | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/snazy[Robert Stupp] | PPMC Member | link:https://www.dremio.com/[Dremio]
-| https://github.com/russellspitzer[Russell Spitzer] | PPMC | link:https://www.snowflake.com/[Snowflake]
-| Ryan Blue | Mentor |
-| https://github.com/takidau[Tyler Akidau] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/MonkeyCanCode[Yong Zheng] | Committer |
-| https://github.com/flyrain[Yufei Gu] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
-| https://github.com/ebyhr[Yuya Ebihara] | Committer | link:https://www.starburst.io/[Starburst]
-|===
-{{% /blocks/feature %}}
-{{< /blocks/section >}}
+++++
+<div class="team-grid">
+<div class="team-member">
+<div class="team-avatar-placeholder">BD</div>
+<div class="team-content">
+<strong>Bertrand Delacretaz</strong><br>
+<span class="badge bg-warning">Mentor</span><br>
+<small>&nbsp;</small>
+</div>
+</div>
+<div class="team-member">
+<div class="team-avatar-placeholder">HK</div>
+<div class="team-content">
+<strong>Holden Karau</strong><br>
+<span class="badge bg-warning">Mentor</span><br>
+<small>&nbsp;</small>
+</div>
+</div>
+<div class="team-member">
+<div class="team-avatar-placeholder">KY</div>
+<div class="team-content">
+<strong>Kent Yao</strong><br>
+<span class="badge bg-warning">Mentor</span><br>
+<small>&nbsp;</small>
+</div>
+</div>
+<div class="team-member">
+<div class="team-avatar-placeholder">RB</div>
+<div class="team-content">
+<strong>Ryan Blue</strong><br>
+<span class="badge bg-warning">Mentor</span><br>
+<small>&nbsp;</small>
+</div>
+</div>
+</div>
+++++

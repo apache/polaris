@@ -17,10 +17,2318 @@
  * under the License.
  */
 
-.td-navbar .navbar-brand svg {
-  height: 2.5rem;
+// =============================================================================
+// GLOBAL IMPROVEMENTS - DevLake Inspired Clean Design
+// =============================================================================
+
+// Clean body and typography
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  line-height: 1.6;
+  color: #374151;
+}
+
+// Better container and section spacing
+.container, .container-fluid {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+// Override Docsy's default sidebar constraints
+.td-outer {
+  max-width: none !important;
+}
+
+// Improve layout ONLY for pages with sidebars (not homepage)
+.td-docs {
+  .td-default {
+    display: flex;
+    min-height: 100vh;
+    
+    .td-sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 10;
+      padding-top: 76px; // Account for fixed navbar height
+      background: #ffffff;
+      border-right: 1px solid rgba(0, 90, 97, 0.1);
+      
+      @media (max-width: 768px) {
+        position: static;
+        height: auto;
+        padding-top: 1rem;
+      }
+    }
+  }
+}
+
+// Homepage and other full-width pages should remain full width
+.td-home, .td-community, .td-downloads {
+  .td-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+  
+  .td-content {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  
+  // Ensure no sidebar constraints
+  .td-sidebar {
+    display: none !important;
+  }
+}
+
+// Ensure navbar spans full width and stays consistent
+.navbar {
+  width: 100% !important;
+}
+
+// Fix navbar container max-width for better spacing
+.td-navbar .container-fluid {
+  width: 100% !important;
+  
+  @media (min-width: 1400px) {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+  }
+}
+
+// Clean section padding
+section, .blocks-section {
+  padding: 5rem 0;
+}
+
+// Page header improvements for documentation pages
+.td-page-meta {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 90, 97, 0.1);
+}
+
+.td-page-meta h1 {
+  margin-bottom: 0.5rem;
+}
+
+// Breadcrumb improvements
+.td-breadcrumbs {
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  
+  a {
+    color: #005A61;
+    text-decoration: none;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+// Professional typography hierarchy
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+  color: #005A61;
+}
+
+h1 {
+  font-size: 3.5rem;
+  
+  @media (max-width: 768px) {
+    font-size: 2.5rem;
+  }
+}
+
+h2 {
+  font-size: 2.5rem;
+  
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+.lead {
+  font-size: 1.25rem;
+  font-weight: 300;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+p {
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+// Remove default image spacing issues
+img {
+  max-width: 100%;
+  height: auto;
+  margin: 2rem 0;
+}
+
+// =============================================================================
+// SEARCH ENHANCEMENTS
+// =============================================================================
+
+// =============================================================================
+// PROGRESSIVE NAVIGATION COLLAPSE (DevLake-style)
+// =============================================================================
+
+// Simplified progressive navigation for desktop
+@media (min-width: 768px) {
+  
+  // Extra large screens - show everything with proper spacing
+  @media (min-width: 1200px) {
+    .td-navbar .container-fluid {
+      max-width: 1400px !important;
+      margin: 0 auto !important;
+    }
+    
+    .navbar-nav .nav-item {
+      display: flex !important;
+    }
+    
+    .navbar-search .search-expandable {
+      .search-toggle-btn {
+        display: none !important;
+      }
+      .search-input-wrapper {
+        display: block !important;
+        opacity: 1 !important;
+        width: auto !important;
+      }
+    }
+  }
+
+  // Large screens - maintain good spacing
+  @media (max-width: 1199px) and (min-width: 1000px) {
+    .td-navbar .container-fluid {
+      max-width: 1200px !important;
+      margin: 0 auto !important;
+    }
+    
+    .navbar-search .search-expandable {
+      .search-toggle-btn {
+        display: none !important;
+      }
+      .search-input-wrapper {
+        display: block !important;
+        opacity: 1 !important;
+        width: auto !important;
+      }
+    }
+  }
+
+  // Medium screens - compact search to icon
+  @media (max-width: 999px) {
+    .td-navbar .container-fluid {
+      padding-left: 1rem !important;
+      padding-right: 1rem !important;
+    }
+    
+    .navbar-brand {
+      margin-right: 1rem !important;
+    }
+    
+    // Compact search - icon only, expandable
+    .navbar-search .search-expandable {
+      display: flex !important;
+      align-items: center !important;
+      position: relative !important;
+      
+      .search-toggle-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 40px !important;
+        height: 40px !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 1.1rem !important;
+        border-radius: 50% !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+        
+        &:hover, &:focus {
+          color: #ffffff !important;
+          background: rgba(255, 255, 255, 0.1) !important;
+        }
+      }
+      
+      .search-input-wrapper {
+        display: none !important;
+        position: absolute !important;
+        right: 0 !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 250px !important;
+        z-index: 1100 !important;
+        
+        &.expanded {
+          display: block !important;
+          animation: searchExpand 0.3s ease-out !important;
+        }
+      }
+    }
+  }
+  
+}
+
+@keyframes searchExpand {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.9);
+    width: 40px;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+    width: 250px;
+  }
+}
+
+// =============================================================================
+// NAVIGATION ENHANCEMENTS
+// =============================================================================
+
+.td-navbar {
+  background: linear-gradient(135deg, #005A61, #003545);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  
+  // Hamburger menu button
+  .navbar-toggler {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 1.1rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 0.375rem !important;
+    background: transparent !important;
+    
+    &:focus {
+      box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
+    }
+    
+    .navbar-toggler-icon {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.9%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+      width: 1.5em !important;
+      height: 1.5em !important;
+    }
+  }
+  
+  // Desktop layout - logo left, nav right (DevLake-style)
+  @media (min-width: 768px) {
+    .container-fluid {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      padding: 0.75rem 1.5rem !important;
+    }
+    
+    .navbar-brand {
+      flex-shrink: 0 !important;
+      margin-right: 2rem !important;
+      
+      .navbar-brand__logo svg {
+        height: 2.5rem !important;
+      }
+    }
+    
+    .navbar-collapse {
+      display: flex !important;
+      flex-basis: auto !important;
+      width: auto !important;
+      margin-left: auto !important;
+      
+      .navbar-nav {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 0 !important;
+        margin-left: auto !important;
+        
+        .nav-item {
+          margin: 0 !important;
+          
+          .nav-link {
+            padding: 0.75rem 1rem !important;
+            margin: 0 0.25rem !important;
+            font-weight: 500 !important;
+            font-size: 0.95rem !important;
+            transition: all 0.2s ease !important;
+            border-radius: 0.375rem !important;
+            
+            &:hover {
+              background: rgba(255, 255, 255, 0.1) !important;
+            }
+          }
+          
+          &.dropdown {
+            .nav-link {
+              display: flex !important;
+              align-items: center !important;
+              gap: 0.375rem !important;
+            }
+          }
+        }
+      }
+    }
+    
+    .navbar-search {
+      margin-left: 1rem !important;
+      flex-shrink: 0 !important;
+    }
+    
+    .navbar-toggler {
+      display: none !important;
+    }
+  }
+  
+  // Mobile layout - hamburger menu to the left
+  @media (max-width: 767px) {
+    .container-fluid {
+      display: flex !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+      padding: 0.5rem 1rem !important;
+    }
+    
+    .navbar-toggler {
+      display: block !important;
+      order: 1 !important;
+      margin-right: 1rem !important;
+      padding: 0.25rem 0.5rem !important;
+      
+      &:focus {
+        box-shadow: none !important;
+      }
+    }
+    
+    .navbar-brand {
+      order: 2 !important;
+      flex: 1 !important;
+      text-align: center !important;
+    }
+    
+    // Hide desktop navigation on mobile
+    .navbar-collapse {
+      display: none !important;
+    }
+    
+    // Hide desktop search on mobile
+    .navbar-search {
+      display: none !important;
+    }
+    
+    // All navigation items show in mobile sidebar
+  }
+  
+  // Search styling now handled in progressive navigation section above
+}
+
+// Force sticky navbar on all pages
+.navbar, .td-navbar, header .navbar {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  z-index: 1050 !important;
+  background: linear-gradient(135deg, #005A61, #003545) !important;
+}
+
+// Add top padding to body to account for fixed navbar
+body {
+  padding-top: 76px !important;
+}
+
+// Global fix for any dark backgrounds - ensure light text
+[style*="background:#272822"],
+[style*="background-color:#272822"],
+[style*="background:#2f3129"],
+[style*="background-color:#2f3129"],
+.highlight-dark,
+.code-dark,
+div[style*="background-color: #272822"],
+div[style*="background: #272822"] {
+  background: #f6f8fa !important;
+  color: #24292f !important;
+  
+  * {
+    color: #24292f !important;
+  }
+}
+
+.td-navbar, .navbar {
+  .navbar-brand svg {
+    height: 2.8rem;
+    transition: transform 0.2s ease;
+    
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+  
+  .navbar-nav .nav-link {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9) !important;
+    transition: all 0.2s ease;
+    display: flex !important;
+    align-items: center !important;
+    line-height: 1.5 !important;
+    text-decoration: none !important;
+    
+    &:hover {
+      color: #ffffff !important;
+      background: rgba(255, 255, 255, 0.1) !important;
+      text-decoration: none !important;
+    }
+    
+    &:focus {
+      color: #ffffff !important;
+      background: rgba(255, 255, 255, 0.1) !important;
+      box-shadow: none !important;
+    }
+  }
+  
+  .navbar-nav .dropdown-toggle {
+    display: flex !important;
+    align-items: center !important;
+    
+    &::after {
+      margin-left: 0.375rem !important;
+      border: none !important;
+      content: "▼" !important;
+      font-size: 0.7rem !important;
+      transition: transform 0.2s ease !important;
+    }
+    
+    &[aria-expanded="true"]::after {
+      transform: rotate(180deg) !important;
+    }
+  }
+  
+  // Dropdown positioning and styling
+  .nav-item {
+    position: relative !important;
+    
+    .dropdown-menu {
+      position: absolute !important;
+      top: 100% !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      border: none !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+      border-radius: 0.5rem !important;
+      margin-top: 0.5rem !important;
+      background: #ffffff !important;
+      border: 1px solid rgba(0, 90, 97, 0.08) !important;
+      min-width: 180px !important;
+      z-index: 1055 !important;
+      
+      &.dropdown-menu-end {
+        left: auto !important;
+        right: 0 !important;
+        transform: none !important;
+      }
+      
+      .dropdown-item {
+        padding: 0.4rem 0.75rem !important;
+        transition: all 0.2s ease !important;
+        font-size: 0.9rem !important;
+        line-height: 1.4 !important;
+        color: #003545 !important;
+        border-radius: 0.375rem !important;
+        margin: 0.125rem 0.25rem !important;
+        
+        &:hover, &:focus {
+          background: rgba(0, 90, 97, 0.1) !important;
+          border-radius: 0.5rem !important;
+          color: #005A61 !important;
+          padding-left: 1rem !important;
+        }
+        
+        &:active {
+          background: rgba(0, 90, 97, 0.15) !important;
+          color: #005A61 !important;
+        }
+      }
+      
+      .dropdown-divider {
+        border-color: rgba(0, 90, 97, 0.1) !important;
+        margin: 0.25rem 0 !important;
+      }
+    }
+  }
+}
+
+// =============================================================================
+// MOBILE SIDEBAR MENU (DevLake-style)
+// =============================================================================
+
+.mobile-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1060;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  
+  &.show {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.mobile-sidebar-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  background: linear-gradient(135deg, #005A61, #003545);
+  z-index: 1070;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+  
+  &.show {
+    transform: translateX(0);
+  }
+  
+  .mobile-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    
+    .mobile-sidebar-brand {
+      color: white;
+      text-decoration: none;
+      
+      .navbar-brand__logo {
+        svg {
+          height: 2rem;
+          fill: white;
+        }
+      }
+    }
+    
+    .mobile-sidebar-close {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.5rem;
+      padding: 0.5rem;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+      }
+    }
+  }
+  
+  .mobile-sidebar-content {
+    padding: 1rem 0;
+    
+    .mobile-nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      
+      .mobile-nav-item {
+        
+        .mobile-nav-link {
+          display: block;
+          padding: 0.75rem 1rem;
+          color: rgba(255, 255, 255, 0.9);
+          text-decoration: none;
+          font-weight: 500;
+          border: none;
+          background: none;
+          width: 100%;
+          text-align: left;
+          transition: all 0.2s ease;
+          
+          &:hover, &:focus {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+          }
+          
+          &.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+          }
+        }
+        
+        .mobile-nav-dropdown {
+          .mobile-nav-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            
+            .mobile-dropdown-arrow {
+              font-size: 0.8rem;
+              transition: transform 0.2s ease;
+            }
+            
+            &.expanded .mobile-dropdown-arrow {
+              transform: rotate(180deg);
+            }
+          }
+          
+          .mobile-dropdown-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            background: rgba(0, 0, 0, 0.2);
+            display: none;
+            
+            &.show {
+              display: block;
+            }
+            
+            .mobile-dropdown-item {
+              display: block;
+              padding: 0.5rem 1rem 0.5rem 2rem;
+              color: rgba(255, 255, 255, 0.8);
+              text-decoration: none;
+              font-size: 0.9rem;
+              transition: all 0.2s ease;
+              
+              &:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #ffffff;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    .mobile-search-wrapper {
+      padding: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 1rem;
+      
+      .form-control {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        
+        &::placeholder {
+          color: rgba(255, 255, 255, 0.6);
+        }
+        
+        &:focus {
+          background: rgba(255, 255, 255, 0.15);
+          border-color: rgba(255, 255, 255, 0.4);
+          color: white;
+          box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+        }
+      }
+    }
+  }
+}
+
+// Hide mobile sidebar on desktop
+@media (min-width: 768px) {
+  .mobile-sidebar-overlay,
+  .mobile-sidebar-menu {
+    display: none !important;
+  }
+}
+
+// Ensure main content doesn't get hidden behind fixed navbar
+.td-main, main {
+  margin-top: 0 !important;
+}
+
+// =============================================================================
+// HERO SECTION ENHANCEMENTS
+// =============================================================================
+
+  // Main hero section styling - applies to homepage hero with high specificity
+.blocks-cover,
+div.blocks-cover,
+section.blocks-cover,
+.td-cover-block,
+.td-overlay {
+  position: relative !important;
+  overflow: hidden !important;
+  padding: 4rem 0 4rem 0 !important;
+  min-height: 60vh !important;
+  max-height: none !important;
+  display: flex !important;
+  align-items: center !important;
+  margin-left: calc(-50vw + 50%) !important;
+  margin-right: calc(-50vw + 50%) !important;
+  width: 100vw !important;
+  background-image: url('/img/apache-polaris-homepage-banner.jpg') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  
+  @media (max-width: 768px) {
+    min-height: 70vh !important;
+    padding: 3rem 0 5rem 0 !important;
+  }
+  
+  // Remove duplicate background - use only the main element background
+  &::before {
+    content: none !important;
+    display: none !important;
+  }
+  
+  // Add overlay for better text readability
+  &::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 90, 97, 0.7) !important;
+    z-index: 0 !important;
+  }
+  
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+  }
+  
+  h1 {
+    font-weight: 700;
+    font-size: 3.5rem;
+    color: white;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+    
+    @media (max-width: 768px) {
+      font-size: 2.5rem;
+    }
+  }
+  
+  .lead {
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: white;
+    margin-bottom: 2rem;
+    opacity: 0.95;
+    
+    @media (max-width: 768px) {
+      font-size: 1.25rem;
+    }
+  }
+  
+  p {
+    font-size: 1.25rem;
+    line-height: 1.7;
+    color: white;
+    margin-bottom: 3rem;
+    opacity: 0.95;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    
+    @media (max-width: 768px) {
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+    }
+  }
+  
+  .btn {
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    margin: 0 0.5rem;
+    min-width: 180px;
+    text-shadow: none !important; // Remove any inherited text shadow
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.2);
+    }
+    
+    @media (max-width: 768px) {
+      margin: 0.75rem auto;
+      width: auto;
+      min-width: 280px;
+      max-width: 90vw;
+      display: block;
+    }
+  }
+  
+  // Ensure button container is properly centered on mobile
+  .d-flex.flex-column.flex-md-row {
+    @media (max-width: 768px) {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 0 1rem !important;
+    }
+  }
+}
+
+// Force override any theme background colors with maximum specificity
+body .blocks-cover,
+body div.blocks-cover,
+body section.blocks-cover,
+body .bg-primary.blocks-cover,
+body .bg-primary.blocks-section,
+body.td-home .blocks-cover,
+body.td-home .blocks-section[color="primary"],
+body section.blocks-cover,
+body section.blocks-section[color="primary"],
+html body .td-cover-block,
+html body .td-overlay {
+  background-color: transparent !important;
+  background-image: url('/img/apache-polaris-homepage-banner.jpg') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  position: relative !important;
+  min-height: 60vh !important;
+  max-height: none !important;
+  
+  @media (max-width: 768px) {
+    min-height: 70vh !important;
+  }
+  
+  &::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: url('/img/apache-polaris-homepage-banner.jpg') center center/cover no-repeat !important;
+    z-index: -1 !important;
+  }
+  
+  &::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 90, 97, 0.7) !important;
+    z-index: 0 !important;
+  }
+  
+  .container {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+  
+  h1, h2, p, .lead {
+    color: white !important;
+  }
+}
+
+// Additional override for any Bootstrap/Docsy background utilities
+.bg-primary,
+.td-cover-block.bg-primary,
+div.bg-primary,
+section.bg-primary {
+  background-color: transparent !important;
+  background-image: url('/img/apache-polaris-homepage-banner.jpg') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
+
+// Nuclear option - override everything possible with the banner image
+* {
+  &.blocks-cover,
+  &[class*="blocks-cover"],
+  &[class*="bg-primary"] {
+    background-image: url('/img/apache-polaris-homepage-banner.jpg') !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+  }
+}
+
+// Target the actual Docsy classes being generated
+#td-cover-block-0,
+.td-cover-block,
+.td-cover-block--height-min,
+.td-overlay,
+.td-overlay--dark,
+.-bg-primary,
+section.td-cover-block,
+section.td-overlay {
+  background-color: transparent !important;
+  background-image: url('/img/apache-polaris-homepage-banner.jpg') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  min-height: 60vh !important;
+  max-height: none !important;
+  padding: 4rem 0 4rem 0 !important;
+  
+  @media (max-width: 768px) {
+    min-height: 70vh !important;
+    padding: 3rem 0 5rem 0 !important;
+  }
+}
+
+// Even more specific targeting
+body #td-cover-block-0,
+body .td-cover-block,
+body section.td-cover-block,
+html body .td-overlay {
+  background: url('/img/apache-polaris-homepage-banner.jpg') center top/100% auto no-repeat !important;
+}
+
+// =============================================================================
+// FEATURE SECTIONS
+// =============================================================================
+
+.blocks-section {
+  padding: 5rem 0;
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  width: 100vw;
+  
+  &[color="white"] {
+    background: #ffffff;
+    
+    h2, h3 {
+      color: #005A61;
+    }
+    
+    p {
+      color: #003545;
+    }
+    
+    .lead {
+      color: #78909c;
+    }
+    
+    .blocks-feature {
+      background: #ffffff;
+      border: 1px solid rgba(0, 90, 97, 0.08);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+      
+      &:hover {
+        border-color: rgba(0, 90, 97, 0.15);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+      }
+      
+      .fa, .fas, .fab {
+        color: #003545;
+      }
+      
+      h3 {
+        color: #005A61;
+      }
+      
+      p {
+        color: #003545;
+        opacity: 1;
+      }
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #005A61, #67dfe0);
+      border: none;
+      color: white;
+      
+      &:hover {
+        background: linear-gradient(135deg, #003545, #005A61);
+        color: white;
+      }
+    }
+  }
+  
+  &[color="gray-light"] {
+    background: #f8fafb;
+    
+    h2, h3 {
+      color: #005A61;
+    }
+    
+    p {
+      color: #003545;
+    }
+    
+    .lead {
+      color: #78909c;
+    }
+    
+    .blocks-feature {
+      background: #ffffff;
+      border: 1px solid rgba(0, 90, 97, 0.05);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      
+      &:hover {
+        border-color: rgba(0, 90, 97, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      }
+      
+      .fa, .fas, .fab {
+        color: #003545;
+      }
+      
+      h3 {
+        color: #005A61;
+      }
+      
+      p {
+        color: #003545;
+        opacity: 1;
+      }
+    }
+  }
+  
+  &[color="light"] {
+    background: #e1f7f9;
+    
+    h2, h3, p {
+      color: #003545;
+    }
+    
+    .lead {
+      color: #005A61;
+    }
+    
+    .text-muted {
+      color: #78909c !important;
+    }
+    
+    img {
+      margin: 1rem 0;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #005A61, #67dfe0);
+      border: none;
+      color: white;
+      
+      &:hover {
+        background: linear-gradient(135deg, #003545, #005A61);
+        color: white;
+      }
+    }
+    
+    .btn-outline-primary {
+      border-color: #005A61;
+      color: #005A61;
+      
+      &:hover {
+        background: #005A61;
+        border-color: #005A61;
+        color: white;
+      }
+    }
+  }
+  
+  &[color="primary"] {
+    background: linear-gradient(135deg, #005A61, #003545);
+    
+    h2, p {
+      color: white;
+    }
+    
+    .btn-light {
+      background: #ffffff;
+      color: #005A61;
+      border: none;
+      
+      &:hover {
+        background: #e1f7f9;
+        color: #003545;
+      }
+    }
+    
+    .btn-outline-light {
+      border-color: rgba(255, 255, 255, 0.8);
+      color: rgba(255, 255, 255, 0.9);
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: #ffffff;
+        color: #ffffff;
+      }
+    }
+  }
+  
+  &[color="dark"] {
+    background: linear-gradient(135deg, #003545, #005A61);
+    
+    h2, h3, p {
+      color: white;
+    }
+  }
+  
+  .blocks-feature {
+    padding: 3rem 2rem;
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    height: 100%;
+    text-align: center;
+    margin-bottom: 2rem;
+    
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .fa, .fas, .fab {
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+      color: #003545;
+      display: block;
+    }
+    
+    h3 {
+      font-weight: 600;
+      font-size: 1.5rem;
+      margin-bottom: 1.25rem;
+      line-height: 1.3;
+    }
+    
+    p {
+      line-height: 1.7;
+      font-size: 1rem;
+      opacity: 0.9;
+      margin-bottom: 1.5rem;
+    }
+    
+    .btn {
+      margin-top: auto;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      padding: 0.75rem 1.5rem;
+      transition: all 0.2s ease;
+    }
+  }
+  
+  // Clean section spacing and centering
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .row {
+    margin-left: -15px;
+    margin-right: -15px;
+    
+    .col, [class*="col-"] {
+      padding-left: 15px;
+      padding-right: 15px;
+    }
+  }
+}
+
+// =============================================================================
+// SIDEBAR AND CONTENT IMPROVEMENTS
+// =============================================================================
+
+// Increase sidebar width for better text layout - ONLY for pages with sidebars
+.td-docs {
+  .td-sidebar {
+    width: 320px;
+    min-width: 320px;
+    flex: 0 0 320px;
+    overflow: hidden; // Prevent content from overflowing
+    
+    @media (max-width: 1200px) {
+      width: 280px;
+      min-width: 280px;
+      flex: 0 0 280px;
+    }
+    
+    @media (max-width: 992px) {
+      width: 260px;
+      min-width: 260px;
+      flex: 0 0 260px;
+    }
+    
+    @media (max-width: 768px) {
+      width: 100%;
+      min-width: 100%;
+      flex: none;
+      overflow: visible; // Allow normal overflow on mobile
+    }
+  }
+  
+  // Ensure sidebar menu container matches sidebar width
+  .td-sidebar-menu,
+  .td-sidebar__inner {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+}
+
+.td-main {
+  .container-fluid {
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+// Adjust content area ONLY for documentation pages with sidebars
+.td-docs {
+  .td-main {
+    margin-left: 320px;
+    width: calc(100% - 320px);
+    padding: 2rem;
+    
+    @media (max-width: 1200px) {
+      margin-left: 280px;
+      width: calc(100% - 280px);
+    }
+    
+    @media (max-width: 992px) {
+      margin-left: 260px;
+      width: calc(100% - 260px);
+      padding: 1.5rem;
+    }
+    
+    @media (max-width: 768px) {
+      margin-left: 0;
+      width: 100%;
+      padding: 1rem;
+    }
+  }
+
+  .td-content {
+    max-width: 1000px;
+    padding: 0;
+    
+    @media (max-width: 768px) {
+      max-width: 100%;
+    }
+  }
 }
 
 .td-sidebar-toc {
   padding-top: 1.75rem;
+  
+  .td-toc {
+    background: #f8fafc;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(226, 232, 240, 0.5);
+    
+    a {
+      transition: color 0.2s ease;
+      
+      &:hover {
+        color: #005A61;
+      }
+    }
+  }
 }
+
+.td-sidebar-nav {
+  width: 100%;
+  max-width: 100%;
+  padding-right: 1rem;
+  padding-left: 0.5rem;
+  min-width: 0; // Allow shrinking
+  box-sizing: border-box;
+  
+  @media (max-width: 992px) {
+    padding-right: 0.75rem;
+    padding-left: 0.25rem;
+  }
+  
+  @media (max-width: 768px) {
+    padding-right: 0.5rem;
+    padding-left: 0;
+  }
+  
+  // Ensure all text can wrap naturally at word boundaries
+  * {
+    white-space: normal !important;
+    word-wrap: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
+  }
+  
+  .td-sidebar-nav__section {
+    margin-bottom: 1.2rem;
+    
+    .td-sidebar-link {
+      padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+      border-radius: 0.5rem;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      display: block;
+      white-space: normal;
+      word-wrap: normal;
+      
+      @media (max-width: 992px) {
+        font-size: 0.85rem;
+        padding: 0.3rem 0.25rem 0.3rem 0.5rem;
+      }
+      
+      @media (max-width: 768px) {
+        font-size: 0.85rem;
+        padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+      }
+      
+      &:hover, &.active {
+        background: rgba(0, 90, 97, 0.1) !important;
+        color: #005A61 !important;
+        padding-left: 1rem !important;
+        
+        @media (max-width: 992px) {
+          padding-left: 0.75rem !important;
+        }
+        
+        @media (max-width: 768px) {
+          padding-left: 0.875rem !important;
+        }
+      }
+    }
+    
+    .td-sidebar-link__page {
+      font-weight: 500;
+    }
+    
+    // Nested items
+    .td-sidebar-nav__section {
+      margin-left: 0.5rem;
+      margin-bottom: 0.4rem;
+      
+      @media (max-width: 992px) {
+        margin-left: 0.25rem;
+      }
+      
+      @media (max-width: 768px) {
+        margin-left: 0.5rem;
+      }
+      
+      .td-sidebar-link {
+        font-size: 0.85rem;
+        padding: 0.3rem 0.25rem 0.3rem 0.5rem;
+        
+        @media (max-width: 992px) {
+          font-size: 0.8rem;
+          padding: 0.25rem 0.2rem 0.25rem 0.25rem;
+        }
+        
+        @media (max-width: 768px) {
+          font-size: 0.8rem;
+          padding: 0.25rem 0.5rem 0.25rem 0.5rem;
+        }
+        
+        &:hover, &.active {
+          padding-left: 1rem;
+          
+          @media (max-width: 992px) {
+            padding-left: 0.75rem;
+          }
+          
+          @media (max-width: 768px) {
+            padding-left: 0.875rem;
+          }
+        }
+      }
+    }
+  }
+  
+  // Section headers
+  .td-sidebar-nav__section-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #005A61;
+    margin-bottom: 0.6rem;
+    padding-left: 0.75rem;
+    padding-right: 0.5rem;
+    white-space: normal;
+    word-wrap: normal;
+    
+    @media (max-width: 992px) {
+      font-size: 0.85rem;
+      padding-left: 0.5rem;
+      padding-right: 0.25rem;
+    }
+    
+    @media (max-width: 768px) {
+      font-size: 0.85rem;
+      padding-left: 0.75rem;
+      padding-right: 0.5rem;
+    }
+  }
+}
+
+// Override any existing white-space constraints on sidebar links
+.td-sidebar-nav a, 
+.td-sidebar-nav .td-sidebar-link,
+.td-sidebar .nav-link {
+  white-space: normal !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+}
+
+// Enhanced hover spacing for all sidebar links
+.td-sidebar-nav .td-sidebar-link:hover,
+.td-sidebar-nav .td-sidebar-link.active,
+.td-sidebar-nav a:hover,
+.td-sidebar .nav-link:hover {
+  padding-left: 1rem !important;
+  background: rgba(0, 90, 97, 0.1) !important;
+  border-radius: 0.5rem !important;
+  
+  @media (max-width: 992px) {
+    padding-left: 0.75rem !important;
+  }
+  
+  @media (max-width: 768px) {
+    padding-left: 0.875rem !important;
+  }
+}
+
+// =============================================================================
+// CONTENT TYPOGRAPHY ENHANCEMENTS
+// =============================================================================
+
+.td-content {
+  line-height: 1.7;
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+    
+    &:not(:first-child) {
+      margin-top: 2.5rem;
+    }
+  }
+  
+  h1 {
+    font-size: 2.5rem;
+    color: #005A61;
+    border-bottom: 2px solid rgba(0, 90, 97, 0.1);
+    padding-bottom: 1rem;
+  }
+  
+  h2 {
+    font-size: 2rem;
+    color: #005A61;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+    color: #003545;
+  }
+  
+  p {
+    margin-bottom: 1.25rem;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  blockquote {
+    border-left: 4px solid #67dfe0;
+    background: rgba(103, 223, 224, 0.05);
+    padding: 1.5rem;
+    border-radius: 0 0.5rem 0.5rem 0;
+    margin: 1.5rem 0;
+  }
+  
+  code {
+    background: #f6f8fa;
+    color: #24292f;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.875em;
+    border: 1px solid #d0d7de;
+  }
+  
+  pre {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    overflow-x: auto;
+    
+    code {
+      background: transparent;
+      color: #24292f;
+      padding: 0;
+      border: none;
+      font-size: 0.9em;
+      line-height: 1.5;
+    }
+  }
+  
+  // Syntax highlighting improvements for light theme
+  .highlight {
+    background: #f6f8fa;
+    border-radius: 0.75rem;
+    
+    pre {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      margin: 0;
+    }
+  }
+  
+  // Fix dark background elements with light text
+  .chroma, 
+  [style*="background:#272822"],
+  [style*="background-color:#272822"],
+  .highlight[style*="#272822"] {
+    background: #f6f8fa !important;
+    
+    * {
+      color: #24292f !important;
+    }
+  }
+  
+  // Override any dark syntax highlighting themes
+  .highlight .c,   // Comments
+  .highlight .cm,  // Comment.Multiline
+  .highlight .cp,  // Comment.Preproc
+  .highlight .c1,  // Comment.Single
+  .highlight .cs,  // Comment.Special
+  .highlight .k,   // Keyword
+  .highlight .kc,  // Keyword.Constant
+  .highlight .kd,  // Keyword.Declaration
+  .highlight .kn,  // Keyword.Namespace
+  .highlight .kp,  // Keyword.Pseudo
+  .highlight .kr,  // Keyword.Reserved
+  .highlight .kt,  // Keyword.Type
+  .highlight .n,   // Name
+  .highlight .na,  // Name.Attribute
+  .highlight .nb,  // Name.Builtin
+  .highlight .nc,  // Name.Class
+  .highlight .no,  // Name.Constant
+  .highlight .nd,  // Name.Decorator
+  .highlight .ni,  // Name.Entity
+  .highlight .ne,  // Name.Exception
+  .highlight .nf,  // Name.Function
+  .highlight .nl,  // Name.Label
+  .highlight .nn,  // Name.Namespace
+  .highlight .nx,  // Name.Other
+  .highlight .py,  // Name.Property
+  .highlight .nt,  // Name.Tag
+  .highlight .nv,  // Name.Variable
+  .highlight .ow,  // Operator.Word
+  .highlight .w,   // Text.Whitespace
+  .highlight .mf,  // Literal.Number.Float
+  .highlight .mh,  // Literal.Number.Hex
+  .highlight .mi,  // Literal.Number.Integer
+  .highlight .mo,  // Literal.Number.Oct
+  .highlight .s,   // Literal.String
+  .highlight .sb,  // Literal.String.Backtick
+  .highlight .sc,  // Literal.String.Char
+  .highlight .sd,  // Literal.String.Doc
+  .highlight .s2,  // Literal.String.Double
+  .highlight .se,  // Literal.String.Escape
+  .highlight .sh,  // Literal.String.Heredoc
+  .highlight .si,  // Literal.String.Interpol
+  .highlight .sx,  // Literal.String.Other
+  .highlight .sr,  // Literal.String.Regex
+  .highlight .s1,  // Literal.String.Single
+  .highlight .ss,  // Literal.String.Symbol
+  .highlight .bp,  // Name.Builtin.Pseudo
+  .highlight .vc,  // Name.Variable.Class
+  .highlight .vg,  // Name.Variable.Global
+  .highlight .vi,  // Name.Variable.Instance
+  .highlight .il {  // Literal.Number.Integer.Long
+    color: #24292f !important;
+  }
+  
+  // Ensure keywords and special syntax stand out on light background
+  .highlight .k,   // Keywords
+  .highlight .kc,
+  .highlight .kd,
+  .highlight .kn,
+  .highlight .kp,
+  .highlight .kr,
+  .highlight .kt {
+    color: #d73a49 !important;  // Red for keywords
+    font-weight: 600;
+  }
+  
+  .highlight .s,   // Strings
+  .highlight .s1,
+  .highlight .s2,
+  .highlight .sb,
+  .highlight .sc,
+  .highlight .sd,
+  .highlight .se,
+  .highlight .sh,
+  .highlight .si,
+  .highlight .sx,
+  .highlight .sr,
+  .highlight .ss {
+    color: #032f62 !important;  // Dark blue for strings
+  }
+  
+  .highlight .c,   // Comments
+  .highlight .cm,
+  .highlight .cp,
+  .highlight .c1,
+  .highlight .cs {
+    color: #6a737d !important;  // Gray for comments
+    font-style: italic;
+  }
+  
+  .highlight .nf,  // Function names
+  .highlight .nc {  // Class names
+    color: #6f42c1 !important;  // Purple for functions/classes
+  }
+  
+  .highlight .mf,  // Numbers
+  .highlight .mh,
+  .highlight .mi,
+  .highlight .mo,
+  .highlight .il {
+    color: #005cc5 !important;  // Blue for numbers
+  }
+}
+
+// =============================================================================
+// COPY TO CLIPBOARD IMPROVEMENTS
+// =============================================================================
+
+// Lighter, cleaner copy to clipboard button
+.copy-to-clipboard,
+.highlight .copy-to-clipboard,
+button[data-clipboard-target],
+.highlight-copy-btn,
+.copy-btn,
+[class*="copy"] button {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(100, 116, 139, 0.2) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.5rem !important;
+  opacity: 0.7 !important;
+  transition: all 0.2s ease !important;
+  
+  &:hover {
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-color: rgba(100, 116, 139, 0.3) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  // Lighter icon styling
+  &::before,
+  &::after,
+  svg,
+  .icon {
+    color: #6b7280 !important;
+    fill: #6b7280 !important;
+    stroke: #6b7280 !important;
+    opacity: 0.8 !important;
+  }
+  
+  &:hover {
+    &::before,
+    &::after,
+    svg,
+    .icon {
+      color: #374151 !important;
+      fill: #374151 !important;
+      stroke: #374151 !important;
+      opacity: 1 !important;
+    }
+  }
+}
+
+// Override any heavy/dark clipboard icons
+.highlight .copy-to-clipboard svg,
+.copy-to-clipboard svg,
+button[data-clipboard-target] svg {
+  width: 16px !important;
+  height: 16px !important;
+  stroke-width: 1.5px !important;
+  fill: none !important;
+  stroke: #6b7280 !important;
+}
+
+// Custom lighter clipboard icon if needed
+.copy-to-clipboard::before {
+  content: "📋" !important;
+  font-size: 14px !important;
+  opacity: 0.7 !important;
+}
+
+// Alternative: Use a lighter Unicode icon
+.highlight .copy-to-clipboard::before,
+button[data-clipboard-target]::before {
+  content: "⧉" !important;  // Lighter copy symbol
+  font-size: 14px !important;
+  color: #6b7280 !important;
+  font-weight: 400 !important;
+}
+
+// Position copy button nicely in code blocks
+.highlight {
+  position: relative;
+  
+  .copy-to-clipboard,
+  button[data-clipboard-target] {
+    position: absolute !important;
+    top: 0.75rem !important;
+    right: 0.75rem !important;
+    z-index: 10 !important;
+  }
+}
+
+// Ensure copy button doesn't interfere with code
+pre {
+  padding-right: 3rem !important; // Make space for copy button
+}
+
+// =============================================================================
+// COMMUNITY PAGE STYLING
+// =============================================================================
+
+// Fix spacing in nested lists
+.td-content ul li {
+  margin-bottom: 0.25rem;
+  
+  ul {
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+    
+    li {
+      margin-bottom: 0.125rem;
+    }
+  }
+}
+
+.community-item {
+  background: #ffffff;
+  border: 1px solid rgba(0, 90, 97, 0.1);
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+  height: 100%;
+  
+  &:hover {
+    border-color: rgba(0, 90, 97, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
+  
+  h5 {
+    color: #005A61;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    
+    i {
+      color: #67dfe0;
+    }
+    
+    a {
+      color: #005A61;
+      text-decoration: none;
+      
+      &:hover {
+        color: #67dfe0;
+        text-decoration: underline;
+      }
+    }
+  }
+  
+  p {
+    color: #003545;
+    line-height: 1.6;
+  }
+  
+  .btn {
+    border-radius: 0.5rem;
+    font-weight: 500;
+  }
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 3rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+// Team section styling
+.td-content h3 {
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  color: #005A61;
+  font-weight: 600;
+  
+  &:first-of-type {
+    margin-top: 1.5rem;
+  }
+}
+
+.team-member {
+  background: #ffffff;
+  border: 1px solid rgba(0, 90, 97, 0.08);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: rgba(0, 90, 97, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    transform: translateY(-2px);
+  }
+  
+  .team-content {
+    flex: 1;
+    text-align: left;
+  }
+  
+  strong a {
+    color: #005A61;
+    text-decoration: none;
+    font-size: 1rem;
+    
+    &:hover {
+      color: #67dfe0;
+      text-decoration: underline;
+    }
+  }
+  
+  .badge {
+    margin: 0.25rem 0;
+    font-size: 0.75rem;
+    
+    &.bg-primary {
+      // Override bg-primary for badges only, not hero sections
+      &:not(.blocks-cover):not(.blocks-section) {
+        background-color: #005A61 !important;
+      }
+    }
+    
+    &.bg-success {
+      background-color: #059669 !important;
+    }
+    
+    &.bg-warning {
+      background-color: #d97706 !important;
+    }
+    
+    &.bg-info {
+      background-color: #003545 !important;
+      color: #ffffff !important;
+    }
+    
+    &.bg-brand-dark {
+      background-color: #003545 !important;
+      color: #ffffff !important;
+      border: none !important;
+    }
+  }
+
+// Standalone rule for brand dark badge in case nesting doesn't work
+.badge.bg-brand-dark {
+  background-color: #003545 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+  
+  small {
+    color: #78909c;
+    
+    a {
+      color: #78909c;
+      text-decoration: none;
+      
+      &:hover {
+        color: #005A61;
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+.team-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(0, 90, 97, 0.1);
+}
+
+.team-avatar-placeholder {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #005A61, #67dfe0);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+  border: 2px solid rgba(0, 90, 97, 0.1);
+}
+
+// Make community section icons bigger on homepage with brand color
+body.td-home .blocks-section .blocks-feature {
+  i, .fa, .fas, .fab, .fa-solid {
+    font-size: 2.5rem !important;
+    margin-bottom: 1rem !important;
+    display: block !important;
+    line-height: 1 !important;
+    color: #003545 !important;
+  }
+}
+
+// Add extra spacing between community items on mobile - more specific targeting
+@media (max-width: 767px) {
+  // Target community section specifically
+  .blocks-section .container .blocks-feature,
+  section .container .blocks-feature,
+  .td-home .blocks-feature {
+    margin-bottom: 4rem !important;
+    padding: 3rem 2rem !important;
+    border-bottom: 2px solid rgba(0, 90, 97, 0.2) !important;
+    border-radius: 0.5rem !important;
+    
+    &:last-child {
+      border-bottom: none !important;
+      margin-bottom: 2rem !important;
+    }
+    
+    .btn {
+      margin-top: 1.5rem !important;
+    }
+  }
+}
+
+// Additional fallback for homepage community icons with brand color
+.td-home .container .blocks-feature i {
+  font-size: 2.5rem !important;
+  margin-bottom: 1rem !important;
+  color: #003545 !important;
+}
+
+// Target specific FontAwesome classes used on homepage with brand color
+.fa-users, .fa-code-branch, .fa-bullhorn, .fa-database, .fa-shield-alt, .fa-bolt,
+.fa-sync, .fa-chart-bar, .fa-cogs, .fa-cloud, .fa-sync-alt, .fa-sitemap, 
+.fa-user-check, .fa-key, .fa-layer-group {
+  font-size: 2.5rem !important;
+  margin-bottom: 1rem !important;
+  display: block !important;
+  color: #003545 !important;
+}
+
+// Key Features section spacing improvements
+.key-features-row {
+  padding-bottom: 0.1rem !important;
+  
+  &:last-child {
+    padding-bottom: 0 !important;
+  }
+  
+  .blocks-feature {
+    padding: 1.5rem 1rem !important;
+    margin-bottom: 0.5rem !important;
+    
+    i {
+      margin-bottom: 0.75rem !important;
+    }
+    
+    h3 {
+      margin-bottom: 0.5rem !important;
+    }
+    
+    p {
+      line-height: 1.5 !important;
+      margin-bottom: 0 !important;
+    }
+  }
+}
+
+// =============================================================================
+// BUTTONS AND INTERACTIVE ELEMENTS
+// =============================================================================
+
+.btn {
+  font-weight: 500;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.5rem;
+  border-width: 1px;
+  
+  &:focus {
+    box-shadow: 0 0 0 3px rgba(103, 223, 224, 0.25);
+  }
+  
+  &.btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #005A61, #67dfe0);
+  border: none;
+  
+  &:hover {
+    background: linear-gradient(135deg, #003545, #005A61);
+    transform: translateY(-1px);
+  }
+}
+
+.btn-outline-primary {
+  border-color: #005A61;
+  color: #005A61;
+  
+  &:hover {
+    background: #005A61;
+    border-color: #005A61;
+    color: white;
+  }
+}
+
+.btn-light {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #005A61;
+  
+  &:hover {
+    background: #e1f7f9;
+    border-color: #e1f7f9;
+    color: #003545;
+  }
+}
+
+.btn-outline-light {
+  border-color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: #ffffff;
+    color: #005A61;
+  }
+}
+
+// =============================================================================
+// CARDS AND CONTAINERS
+// =============================================================================
+
+.card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+  }
+  
+  .card-header {
+    background: rgba(225, 247, 249, 0.8);
+    border-bottom: 1px solid rgba(103, 223, 224, 0.2);
+    border-radius: 1rem 1rem 0 0 !important;
+  }
+}
+
+// =============================================================================
+// FOOTER IMPROVEMENTS
+// =============================================================================
+
+.td-footer {
+  background: #003545;
+  border-top: 1px solid rgba(0, 90, 97, 0.2);
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  width: 100vw;
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  a {
+    color: rgba(255, 255, 255, 0.8);
+    transition: color 0.2s ease;
+    
+    &:hover {
+      color: #67dfe0;
+      text-decoration: none;
+    }
+  }
+}
+
+// =============================================================================
+// UTILITY CLASSES
+// =============================================================================
+
+.text-gradient {
+  background: linear-gradient(135deg, #005A61, #67dfe0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+// =============================================================================
+// RESPONSIVE IMPROVEMENTS
+// =============================================================================
+
+@media (max-width: 768px) {
+  .blocks-cover {
+    h1 {
+      font-size: 2rem;
+    }
+    
+    p {
+      font-size: 1.1rem;
+    }
+  }
+  
+  .blocks-section .blocks-feature {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+// =============================================================================
+// FINAL OVERRIDE - HOMEPAGE BANNER IMAGE (placed at end for maximum priority)
+// =============================================================================
+
+/* Force banner image on homepage hero section with ultimate specificity */
+html body #td-cover-block-0,
+html body section#td-cover-block-0,
+html body .td-cover-block,
+html body section.td-cover-block,
+html body .td-overlay,
+html body section.td-overlay,
+html body .-bg-primary {
+  background-image: url('/img/apache-polaris-homepage-banner.jpg') !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  background-color: transparent !important;
+  min-height: 60vh !important;
+  max-height: none !important;
+  padding: 4rem 0 4rem 0 !important;
+  
+  @media (max-width: 768px) {
+    min-height: 70vh !important;
+    padding: 3rem 0 5rem 0 !important;
+  }
+}
+
+/* Keep background that covers entire container without white space */
+html body #td-cover-block-0 {
+  background: url('/img/apache-polaris-homepage-banner.jpg') center center/cover no-repeat !important;
+  
+  /* Ensure no pseudo-elements create duplicate backgrounds */
+  &::before,
+  &::after {
+    background-image: none !important;
+    background: none !important;
+  }
+}
+
+/* Ensure text remains readable */
+html body #td-cover-block-0 h1,
+html body #td-cover-block-0 .lead,
+html body #td-cover-block-0 p {
+  color: white !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Homepage logo styling */
+.homepage-logo {
+  text-align: center !important;
+  margin-bottom: 2rem !important;
+}
+
+.polaris-hero-logo {
+  max-width: 500px !important;
+  width: 100% !important;
+  height: auto !important;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3)) !important;
+  
+  @media (max-width: 768px) {
+    max-width: 350px !important;
+  }
+  
+  @media (max-width: 480px) {
+    max-width: 280px !important;
+  }
+}
+
+
