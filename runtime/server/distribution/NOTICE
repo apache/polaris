@@ -1042,6 +1042,7 @@ Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.35.0
 Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.35.0
 Group: software.amazon.awssdk Name: checksums Version: 2.35.0
 Group: software.amazon.awssdk Name: checksums-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: cloudwatchlogs Version: 2.35.0
 Group: software.amazon.awssdk Name: crt-core Version: 2.35.0
 Group: software.amazon.awssdk Name: endpoints-spi Version: 2.35.0
 Group: software.amazon.awssdk Name: http-auth Version: 2.35.0

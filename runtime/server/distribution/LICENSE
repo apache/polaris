@@ -1154,7 +1154,7 @@ License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.persistence Name: jakarta.persistence-api Version: 3.1.0
+Group: jakarta.persistence Name: jakarta.persistence-api Version: 3.2.0
 Project URL: https://github.com/jakartaee/persistence
 License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
@@ -1172,7 +1172,7 @@ License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.validation Name: jakarta.validation-api Version: 3.0.2
+Group: jakarta.validation Name: jakarta.validation-api Version: 3.1.1
 Project URL: https://beanvalidation.org
 License: Apache License 2.0 - https://www.apache.org/licenses/LICENSE-2.0.txt
 
@@ -1184,7 +1184,7 @@ License: EPL 2.0 - https://www.eclipse.org/legal/epl-2.0
 
 --------------------------------------------------------------------------------
 
-Group: jakarta.xml.bind Name: jakarta.xml.bind-api Version: 4.0.2
+Group: jakarta.xml.bind Name: jakarta.xml.bind-api Version: 4.0.4
 Project URL: https://github.com/jakartaee/jaxb-api
 License: Eclipse Distribution License 1.0 - http://www.eclipse.org/org/documents/edl-v10.php
 
@@ -1413,7 +1413,7 @@ License: MIT license
 
 --------------------------------------------------------------------------------
 
-Group: org.codehaus.woodstox Name: stax2-api Version: 4.2.2
+Group: org.codehaus.woodstox Name: stax2-api Version: 4.2.1
 Project URL: http://github.com/FasterXML/stax2-api
 License: BSD 2-Clause
 | BSD 2-Clause License
@@ -1784,6 +1784,7 @@ Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.35.0
 Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.35.0
 Group: software.amazon.awssdk Name: checksums Version: 2.35.0
 Group: software.amazon.awssdk Name: checksums-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: cloudwatchlogs Version: 2.35.0
 Group: software.amazon.awssdk Name: crt-core Version: 2.35.0
 Group: software.amazon.awssdk Name: endpoints-spi Version: 2.35.0
 Group: software.amazon.awssdk Name: http-auth Version: 2.35.0
