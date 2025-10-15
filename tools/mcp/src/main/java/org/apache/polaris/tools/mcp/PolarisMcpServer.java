@@ -138,25 +138,35 @@ public final class PolarisMcpServer {
       return new StaticAuthorizationProvider(staticToken.get());
     }
 
-    Optional<AuthorizationProvider> oauthProvider = resolveClientCredentialsProvider(baseUri, mapper);
+    Optional<AuthorizationProvider> oauthProvider =
+        resolveClientCredentialsProvider(baseUri, mapper);
     return oauthProvider.orElseGet(AuthorizationProvider::none);
   }
 
   private static Optional<AuthorizationProvider> resolveClientCredentialsProvider(
       URI baseUri, ObjectMapper mapper) {
     Optional<String> clientIdOpt =
-        Optional.ofNullable(firstNonBlank(System.getenv("POLARIS_CLIENT_ID"), System.getProperty("polaris.clientId")));
+        Optional.ofNullable(
+            firstNonBlank(
+                System.getenv("POLARIS_CLIENT_ID"), System.getProperty("polaris.clientId")));
     Optional<String> clientSecretOpt =
-        Optional.ofNullable(firstNonBlank(System.getenv("POLARIS_CLIENT_SECRET"), System.getProperty("polaris.clientSecret")));
+        Optional.ofNullable(
+            firstNonBlank(
+                System.getenv("POLARIS_CLIENT_SECRET"),
+                System.getProperty("polaris.clientSecret")));
     if (!clientIdOpt.isPresent() || !clientSecretOpt.isPresent()) {
       return Optional.empty();
     }
 
     Optional<String> scopeOpt =
-        Optional.ofNullable(firstNonBlank(System.getenv("POLARIS_TOKEN_SCOPE"), System.getProperty("polaris.tokenScope")));
+        Optional.ofNullable(
+            firstNonBlank(
+                System.getenv("POLARIS_TOKEN_SCOPE"), System.getProperty("polaris.tokenScope")));
 
     Optional<String> tokenUrlOpt =
-        Optional.ofNullable(firstNonBlank(System.getenv("POLARIS_TOKEN_URL"), System.getProperty("polaris.tokenUrl")));
+        Optional.ofNullable(
+            firstNonBlank(
+                System.getenv("POLARIS_TOKEN_URL"), System.getProperty("polaris.tokenUrl")));
 
     URI tokenEndpoint =
         tokenUrlOpt.map(URI::create).orElse(baseUri.resolve("api/catalog/v1/oauth/tokens"));
@@ -164,12 +174,7 @@ public final class PolarisMcpServer {
     HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
     AuthorizationProvider provider =
         new ClientCredentialsAuthorizationProvider(
-            tokenEndpoint,
-            clientIdOpt.get(),
-            clientSecretOpt.get(),
-            scopeOpt,
-            httpClient,
-            mapper);
+            tokenEndpoint, clientIdOpt.get(), clientSecretOpt.get(), scopeOpt, httpClient, mapper);
     return Optional.of(provider);
   }
 

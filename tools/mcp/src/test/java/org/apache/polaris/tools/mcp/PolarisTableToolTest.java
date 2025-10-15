@@ -90,7 +90,7 @@ final class PolarisTableToolTest {
     TestHttpExecutor executor = new TestHttpExecutor(200, "{\"status\":\"committed\"}");
     PolarisTableTool tool =
         new PolarisTableTool(
-            mapper, executor, URI.create("http://localhost:8181"), Optional.empty());
+            mapper, executor, URI.create("http://localhost:8181"), AuthorizationProvider.none());
 
     ObjectNode args = mapper.createObjectNode();
     args.put("operation", "commit");
@@ -108,7 +108,7 @@ final class PolarisTableToolTest {
     TestHttpExecutor executor = new TestHttpExecutor(204, "");
     PolarisTableTool tool =
         new PolarisTableTool(
-            mapper, executor, URI.create("http://localhost:8181"), Optional.empty());
+            mapper, executor, URI.create("http://localhost:8181"), AuthorizationProvider.none());
 
     ObjectNode args = mapper.createObjectNode();
     args.put("operation", "delete");

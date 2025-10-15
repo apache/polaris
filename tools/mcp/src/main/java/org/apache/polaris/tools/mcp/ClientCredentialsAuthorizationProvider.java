@@ -82,8 +82,7 @@ final class ClientCredentialsAuthorizationProvider implements AuthorizationProvi
     StringBuilder body = new StringBuilder("grant_type=client_credentials");
     body.append("&client_id=").append(encode(clientId));
     body.append("&client_secret=").append(encode(clientSecret));
-    scope.ifPresent(
-        value -> body.append("&scope=").append(encode(value)));
+    scope.ifPresent(value -> body.append("&scope=").append(encode(value)));
 
     HttpRequest request =
         HttpRequest.newBuilder(tokenEndpoint)

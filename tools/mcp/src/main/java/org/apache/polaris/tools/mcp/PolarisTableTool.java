@@ -28,7 +28,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 
 /** MCP tool that exposes table-focused operations from the Polaris REST API. */
@@ -59,7 +58,8 @@ final class PolarisTableTool implements McpTool {
             "api/catalog/v1/",
             mapper,
             Objects.requireNonNull(executor, "executor must not be null"),
-            Objects.requireNonNull(authorizationProvider, "authorizationProvider must not be null"));
+            Objects.requireNonNull(
+                authorizationProvider, "authorizationProvider must not be null"));
   }
 
   @Override
