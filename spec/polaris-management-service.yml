@@ -1139,14 +1139,6 @@ components:
                 Whether S3 requests to files in this catalog should use 'path-style addressing for buckets'.
               example: true
               default: false
-            ignoreSSLVerification:
-              type: boolean
-              description: >-
-                Whether SSL certificate verification should be disabled for STS and S3 endpoints (optional).
-                WARNING: This should only be used for development and testing environments with self-signed certificates.
-                Disabling SSL verification in production environments compromises security.
-              example: false
-              default: false
 
     AzureStorageConfigInfo:
       type: object

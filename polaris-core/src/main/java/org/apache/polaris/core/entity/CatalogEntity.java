@@ -166,7 +166,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setRegion(awsConfig.getRegion())
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
-            .setIgnoreSSLVerification(awsConfig.getIgnoreSSLVerification())
             .setPathStyleAccess(awsConfig.getPathStyleAccess())
             .setStsUnavailable(awsConfig.getStsUnavailable())
             .setEndpointInternal(awsConfig.getEndpointInternal())
@@ -316,7 +315,6 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .pathStyleAccess(awsConfigModel.getPathStyleAccess())
                     .stsUnavailable(awsConfigModel.getStsUnavailable())
                     .endpointInternal(awsConfigModel.getEndpointInternal())
-                    .ignoreSSLVerification(awsConfigModel.getIgnoreSSLVerification())
                     .build();
             config = awsConfig;
             break;

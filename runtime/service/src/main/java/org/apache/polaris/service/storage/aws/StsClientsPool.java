@@ -45,8 +45,8 @@ public class StsClientsPool implements StsClientProvider {
 
   private static final String CACHE_NAME = "sts-clients";
 
-  private final Cache<StsClientProvider.StsDestination, StsClient> clients;
-  private final Function<StsClientProvider.StsDestination, StsClient> clientBuilder;
+  private final Cache<StsDestination, StsClient> clients;
+  private final Function<StsDestination, StsClient> clientBuilder;
 
   public StsClientsPool(
       int clientsCacheMaxSize, SdkHttpClient sdkHttpClient, MeterRegistry meterRegistry) {
@@ -56,21 +56,10 @@ public class StsClientsPool implements StsClientProvider {
         Optional.ofNullable(meterRegistry));
   }
 
-  public StsClientsPool(
-      int clientsCacheMaxSize,
-      SdkHttpClient sdkHttpClient,
-      SdkHttpClient insecureHttpClient,
-      MeterRegistry meterRegistry) {
-    this(
-        clientsCacheMaxSize,
-        key -> createStsClient(key, sdkHttpClient, insecureHttpClient),
-        Optional.of(meterRegistry));
-  }
-
   @VisibleForTesting
   StsClientsPool(
       int maxSize,
-      Function<StsClientProvider.StsDestination, StsClient> clientBuilder,
+      Function<StsDestination, StsClient> clientBuilder,
       Optional<MeterRegistry> meterRegistry) {
     this.clientBuilder = clientBuilder;
     this.clients =
@@ -81,12 +70,11 @@ public class StsClientsPool implements StsClientProvider {
   }
 
   @Override
-  public StsClient stsClient(StsClientProvider.StsDestination destination) {
+  public StsClient stsClient(StsDestination destination) {
     return clients.get(destination, clientBuilder);
   }
 
-  private static StsClient defaultStsClient(
-      StsClientProvider.StsDestination parameters, SdkHttpClient sdkClient) {
+  private static StsClient defaultStsClient(StsDestination parameters, SdkHttpClient sdkClient) {
     StsClientBuilder builder = StsClient.builder();
     builder.httpClient(sdkClient);
     if (parameters.endpoint().isPresent()) {
@@ -109,25 +97,5 @@ public class StsClientsPool implements StsClientProvider {
       return new CaffeineStatsCounter(meterRegistry.get(), CACHE_NAME);
     }
     return StatsCounter.disabledStatsCounter();
-  }
-
-  private static StsClient createStsClient(
-      StsClientProvider.StsDestination parameters,
-      SdkHttpClient secureClient,
-      SdkHttpClient insecureClient) {
-    StsClientBuilder builder = StsClient.builder();
-
-    boolean ignoreSSL = parameters.ignoreSSLVerification().orElse(false);
-    builder.httpClient(ignoreSSL ? insecureClient : secureClient);
-
-    if (parameters.endpoint().isPresent()) {
-      CompletableFuture<Endpoint> endpointFuture =
-          completedFuture(Endpoint.builder().url(parameters.endpoint().get()).build());
-      builder.endpointProvider(params -> endpointFuture);
-    }
-
-    parameters.region().ifPresent(r -> builder.region(Region.of(r)));
-
-    return builder.build();
   }
 }

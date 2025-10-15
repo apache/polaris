@@ -102,11 +102,7 @@ public class AwsCredentialsStorageIntegration
       @SuppressWarnings("resource")
       // Note: stsClientProvider returns "thin" clients that do not need closing
       StsClient stsClient =
-          stsClientProvider.stsClient(
-              StsDestination.of(
-                  storageConfig.getStsEndpointUri(),
-                  region,
-                  storageConfig.getIgnoreSSLVerification()));
+          stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
 
       AssumeRoleResponse response = stsClient.assumeRole(request.build());
       accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
@@ -141,12 +137,6 @@ public class AwsCredentialsStorageIntegration
     if (internalEndpointUri != null) {
       accessConfig.putInternalProperty(
           StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
-    }
-
-    // Propagate ignore SSL verification flag so callers (e.g., FileIOFactory) can honor it when
-    // constructing S3 clients for metadata ops.
-    if (Boolean.TRUE.equals(storageConfig.getIgnoreSSLVerification())) {
-      accessConfig.putInternalProperty("polaris.ignore-ssl-verification", "true");
     }
 
     if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {

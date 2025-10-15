@@ -112,9 +112,6 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract String getStsEndpoint();
 
-  /** Flag indicating whether SSL certificate verification should be disabled */
-  public abstract @Nullable Boolean getIgnoreSSLVerification();
-
   /** Returns the STS endpoint if set, defaulting to {@link #getEndpointUri()} otherwise. */
   @JsonIgnore
   @Nullable
