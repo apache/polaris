@@ -126,7 +126,7 @@ Add the Polaris MCP to it:
 }
 ```
 
-The server currently exposes two MCP tools:
+The server currently exposes four MCP tools:
 
 * `polaris-table-request` — High-level helper for the table REST API. Supported operations include:
   * `list`: `GET /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
@@ -134,6 +134,14 @@ The server currently exposes two MCP tools:
   * `create`: `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
   * `commit` (alias `update`): `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/tables/{table}`
   * `delete` (alias `drop`): `DELETE /api/catalog/v1/{catalog}/namespaces/{namespace}/tables/{table}`
+* `polaris-namespace-request` — Namespace lifecycle helper:
+  * `list`: `GET /api/catalog/v1/{catalog}/namespaces`
+  * `get`: `GET /api/catalog/v1/{catalog}/namespaces/{namespace}`
+  * `exists`: `HEAD /api/catalog/v1/{catalog}/namespaces/{namespace}`
+  * `create`: `POST /api/catalog/v1/{catalog}/namespaces`
+  * `update-properties`: `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/properties`
+  * `get-properties`: `GET /api/catalog/v1/{catalog}/namespaces/{namespace}/properties`
+  * `delete`: `DELETE /api/catalog/v1/{catalog}/namespaces/{namespace}`
 * `polaris-policy-request` — Endpoints for policy lifecycle management. Supported operations include:
   * `list`: `GET /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies`
   * `get` (aliases `load`, `fetch`): `GET /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies/{policy}`
@@ -142,6 +150,12 @@ The server currently exposes two MCP tools:
   * `delete` (aliases `drop`, `remove`): `DELETE /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies/{policy}`
   * `attach` / `detach`: `PUT`/`POST /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies/{policy}/mappings`
   * `applicable`: `GET /api/catalog/polaris/v1/{catalog}/applicable-policies`
+* `polaris-catalog-request` — Polaris Management API helper:
+  * `list`: `GET /api/management/v1/catalogs`
+  * `get`: `GET /api/management/v1/catalogs/{catalog}`
+  * `create`: `POST /api/management/v1/catalogs`
+  * `update`: `PUT /api/management/v1/catalogs/{catalog}`
+  * `delete`: `DELETE /api/management/v1/catalogs/{catalog}`
 
 Each operation returns the HTTP status, headers, and response body (pretty-printed
 when JSON) to the MCP client, along with structured metadata that includes
