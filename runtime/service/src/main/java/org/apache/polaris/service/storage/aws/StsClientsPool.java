@@ -88,6 +88,11 @@ public class StsClientsPool implements StsClientProvider {
   private static StsClient defaultStsClient(
       StsClientProvider.StsDestination parameters, SdkHttpClient sdkClient) {
     StsClientBuilder builder = StsClient.builder();
+    // capture raw STS HTTP responses for troubleshooting non-standard endpoints
+    builder.overrideConfiguration(
+        b ->
+            b.addExecutionInterceptor(
+                new org.apache.polaris.core.storage.aws.StsResponseCaptureInterceptor()));
     builder.httpClient(sdkClient);
     if (parameters.endpoint().isPresent()) {
       CompletableFuture<Endpoint> endpointFuture =
@@ -116,6 +121,12 @@ public class StsClientsPool implements StsClientProvider {
       SdkHttpClient secureClient,
       SdkHttpClient insecureClient) {
     StsClientBuilder builder = StsClient.builder();
+
+    // capture raw STS HTTP responses for troubleshooting non-standard endpoints
+    builder.overrideConfiguration(
+        b ->
+            b.addExecutionInterceptor(
+                new org.apache.polaris.core.storage.aws.StsResponseCaptureInterceptor()));
 
     boolean ignoreSSL = parameters.ignoreSSLVerification().orElse(false);
     builder.httpClient(ignoreSSL ? insecureClient : secureClient);

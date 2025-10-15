@@ -176,7 +176,8 @@ public class DefaultConfigurationStoreTest {
   }
 
   @Test
-  public void testRegisterAndUseFeatureConfigurations() {
+    @SuppressWarnings("deprecation")
+    public void testRegisterAndUseFeatureConfigurations() {
     String prefix = "testRegisterAndUseFeatureConfigurations";
 
     FeatureConfiguration<Boolean> safeConfig =
