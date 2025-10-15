@@ -76,12 +76,17 @@ Each `tools/call` response includes a human-readable block in
 Configuration is supplied through environment variables (system properties
 with the same names are also supported):
 
-| Variable                                                       | Description                                                    | Default                  |
-|----------------------------------------------------------------|----------------------------------------------------------------|--------------------------|
-| `POLARIS_BASE_URL`                                             | Base URL for all Polaris REST calls.                           | `http://localhost:8181/` |
-| `POLARIS_API_TOKEN` / `POLARIS_BEARER_TOKEN` / `POLARIS_TOKEN` | Bearer token automatically attached to requests (if provided). | _unset_                  |
+| Variable                                                       | Description                                              | Default                                          |
+|----------------------------------------------------------------|----------------------------------------------------------|--------------------------------------------------|
+| `POLARIS_BASE_URL`                                             | Base URL for all Polaris REST calls.                     | `http://localhost:8181/`                         |
+| `POLARIS_API_TOKEN` / `POLARIS_BEARER_TOKEN` / `POLARIS_TOKEN` | Static bearer token (if supplied, overrides other auth). | _unset_                                          |
+| `POLARIS_CLIENT_ID`                                            | OAuth client id for client-credential flow.              | _unset_                                          |
+| `POLARIS_CLIENT_SECRET`                                        | OAuth client secret.                                     | _unset_                                          |
+| `POLARIS_TOKEN_SCOPE`                                          | OAuth scope string.                                      | _unset_                                          |
+| `POLARIS_TOKEN_URL`                                            | Optional override for the token endpoint URL.            | `${POLARIS_BASE_URL}api/catalog/v1/oauth/tokens` |
 
-To authenticate via the built-in OAuth flow you can generate a token like this:
+If `POLARIS_CLIENT_ID`, `POLARIS_CLIENT_SECRET`, `POLARIS_TOKEN_SCOPE` are set, the MCP server automatically requests and refreshes access tokens using the client credentials flow. If you prefer to manage tokens manually, you can generate one like this:
+
 ```bash
 curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -H 'Content-Type: application/x-www-form-urlencoded' \
@@ -112,7 +117,9 @@ Add the Polaris MCP to it:
          ],
         "env": {
           "POLARIS_BASE_URL": "http://localhost:8181/",
-          "POLARIS_API_TOKEN": "<paste_access_token_here>" 
+          "POLARIS_CLIENT_ID": "<client id>",
+          "POLARIS_CLIENT_SECRET": "<client secret>",
+          "POLARIS_TOKEN_SCOPE": "PRINCIPAL_ROLE:ALL"
          }
       }
     }

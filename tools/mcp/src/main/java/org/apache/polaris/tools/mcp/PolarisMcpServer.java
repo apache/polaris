@@ -29,7 +29,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URI;
+import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -50,12 +52,12 @@ public final class PolarisMcpServer {
     ObjectMapper mapper = new ObjectMapper();
 
     URI baseUri = URI.create(resolveBaseUrl());
-    Optional<String> token = resolveToken();
+    AuthorizationProvider authorizationProvider = resolveAuthorizationProvider(baseUri, mapper);
     HttpExecutor executor = PolarisRestTool.defaultExecutor();
 
     List<McpTool> tools = new ArrayList<>();
-    tools.add(new PolarisTableTool(mapper, executor, baseUri, token));
-    tools.add(new PolarisPolicyTool(mapper, executor, baseUri, token));
+    tools.add(new PolarisTableTool(mapper, executor, baseUri, authorizationProvider));
+    tools.add(new PolarisPolicyTool(mapper, executor, baseUri, authorizationProvider));
     String serverVersion =
         Optional.ofNullable(PolarisMcpServer.class.getPackage().getImplementationVersion())
             .orElse("dev");
@@ -127,6 +129,48 @@ public final class PolarisMcpServer {
             System.getenv("POLARIS_TOKEN"),
             System.getProperty("polaris.apiToken"));
     return Optional.ofNullable(token);
+  }
+
+  private static AuthorizationProvider resolveAuthorizationProvider(
+      URI baseUri, ObjectMapper mapper) {
+    Optional<String> staticToken = resolveToken();
+    if (staticToken.isPresent()) {
+      return new StaticAuthorizationProvider(staticToken.get());
+    }
+
+    Optional<AuthorizationProvider> oauthProvider = resolveClientCredentialsProvider(baseUri, mapper);
+    return oauthProvider.orElseGet(AuthorizationProvider::none);
+  }
+
+  private static Optional<AuthorizationProvider> resolveClientCredentialsProvider(
+      URI baseUri, ObjectMapper mapper) {
+    Optional<String> clientIdOpt =
+        Optional.ofNullable(firstNonBlank(System.getenv("POLARIS_CLIENT_ID"), System.getProperty("polaris.clientId")));
+    Optional<String> clientSecretOpt =
+        Optional.ofNullable(firstNonBlank(System.getenv("POLARIS_CLIENT_SECRET"), System.getProperty("polaris.clientSecret")));
+    if (!clientIdOpt.isPresent() || !clientSecretOpt.isPresent()) {
+      return Optional.empty();
+    }
+
+    Optional<String> scopeOpt =
+        Optional.ofNullable(firstNonBlank(System.getenv("POLARIS_TOKEN_SCOPE"), System.getProperty("polaris.tokenScope")));
+
+    Optional<String> tokenUrlOpt =
+        Optional.ofNullable(firstNonBlank(System.getenv("POLARIS_TOKEN_URL"), System.getProperty("polaris.tokenUrl")));
+
+    URI tokenEndpoint =
+        tokenUrlOpt.map(URI::create).orElse(baseUri.resolve("api/catalog/v1/oauth/tokens"));
+
+    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
+    AuthorizationProvider provider =
+        new ClientCredentialsAuthorizationProvider(
+            tokenEndpoint,
+            clientIdOpt.get(),
+            clientSecretOpt.get(),
+            scopeOpt,
+            httpClient,
+            mapper);
+    return Optional.of(provider);
   }
 
   private static String firstNonBlank(String... candidates) {

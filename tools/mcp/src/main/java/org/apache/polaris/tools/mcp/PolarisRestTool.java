@@ -51,7 +51,7 @@ final class PolarisRestTool implements McpTool {
   private final String defaultPathPrefix;
   private final ObjectMapper mapper;
   private final HttpExecutor httpExecutor;
-  private final Optional<String> authToken;
+  private final AuthorizationProvider authorizationProvider;
 
   PolarisRestTool(
       String name,
@@ -60,14 +60,15 @@ final class PolarisRestTool implements McpTool {
       String defaultPathPrefix,
       ObjectMapper mapper,
       HttpExecutor httpExecutor,
-      Optional<String> authToken) {
+      AuthorizationProvider authorizationProvider) {
     this.name = Objects.requireNonNull(name, "name must not be null");
     this.description = Objects.requireNonNull(description, "description must not be null");
     this.baseUri = ensureTrailingSlash(Objects.requireNonNull(baseUri, "baseUri must not be null"));
     this.defaultPathPrefix = normalizePrefix(defaultPathPrefix);
     this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
     this.httpExecutor = Objects.requireNonNull(httpExecutor, "httpExecutor must not be null");
-    this.authToken = Objects.requireNonNull(authToken, "authToken must not be null");
+    this.authorizationProvider =
+        authorizationProvider == null ? AuthorizationProvider.none() : authorizationProvider;
   }
 
   static PolarisRestTool general(
@@ -76,8 +77,9 @@ final class PolarisRestTool implements McpTool {
       URI baseUri,
       ObjectMapper mapper,
       HttpExecutor executor,
-      Optional<String> authToken) {
-    return new PolarisRestTool(name, description, baseUri, "", mapper, executor, authToken);
+      AuthorizationProvider authorizationProvider) {
+    return new PolarisRestTool(
+        name, description, baseUri, "", mapper, executor, authorizationProvider);
   }
 
   static PolarisRestTool withPrefix(
@@ -87,9 +89,9 @@ final class PolarisRestTool implements McpTool {
       String defaultPathPrefix,
       ObjectMapper mapper,
       HttpExecutor executor,
-      Optional<String> authToken) {
+      AuthorizationProvider authorizationProvider) {
     return new PolarisRestTool(
-        name, description, baseUri, defaultPathPrefix, mapper, executor, authToken);
+        name, description, baseUri, defaultPathPrefix, mapper, executor, authorizationProvider);
   }
 
   @Override
@@ -193,8 +195,11 @@ final class PolarisRestTool implements McpTool {
     List<HeaderValue> requestHeaders = buildHeaders(headers);
     boolean hasAuthorization =
         requestHeaders.stream().anyMatch(h -> "authorization".equalsIgnoreCase(h.name()));
-    if (authToken.isPresent() && !hasAuthorization) {
-      requestHeaders.add(new HeaderValue("Authorization", "Bearer " + authToken.get()));
+    if (!hasAuthorization) {
+      Optional<String> headerValue = authorizationProvider.authorizationHeader();
+      if (headerValue.isPresent()) {
+        requestHeaders.add(new HeaderValue("Authorization", headerValue.get()));
+      }
     }
 
     boolean hasContentType =

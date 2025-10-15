@@ -50,7 +50,10 @@ final class PolarisPolicyTool implements McpTool {
   private final PolarisRestTool delegate;
 
   PolarisPolicyTool(
-      ObjectMapper mapper, HttpExecutor executor, URI baseUri, Optional<String> authToken) {
+      ObjectMapper mapper,
+      HttpExecutor executor,
+      URI baseUri,
+      AuthorizationProvider authorizationProvider) {
     this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
     this.delegate =
         new PolarisRestTool(
@@ -60,7 +63,7 @@ final class PolarisPolicyTool implements McpTool {
             "api/catalog/polaris/v1/",
             mapper,
             Objects.requireNonNull(executor, "executor must not be null"),
-            Objects.requireNonNull(authToken, "authToken must not be null"));
+            Objects.requireNonNull(authorizationProvider, "authorizationProvider must not be null"));
   }
 
   @Override

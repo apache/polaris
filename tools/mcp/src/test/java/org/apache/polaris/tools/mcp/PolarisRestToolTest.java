@@ -41,7 +41,7 @@ final class PolarisRestToolTest {
             "api/management/v1/",
             mapper,
             executor,
-            Optional.of("token-123"));
+            () -> Optional.of("Bearer token-123"));
 
     ObjectNode args = mapper.createObjectNode();
     args.put("method", "GET");
@@ -72,7 +72,7 @@ final class PolarisRestToolTest {
             URI.create("http://localhost:8181"),
             mapper,
             executor,
-            Optional.empty());
+            AuthorizationProvider.none());
 
     ObjectNode args = mapper.createObjectNode();
     args.put("method", "POST");

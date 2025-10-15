@@ -37,7 +37,10 @@ final class PolarisTableToolTest {
     TestHttpExecutor executor = new TestHttpExecutor(200, "{\"tables\":[]}");
     PolarisTableTool tool =
         new PolarisTableTool(
-            mapper, executor, URI.create("http://localhost:8181"), Optional.of("token-abc"));
+            mapper,
+            executor,
+            URI.create("http://localhost:8181"),
+            () -> Optional.of("Bearer token-abc"));
 
     ObjectNode args = mapper.createObjectNode();
     args.put("operation", "list");
@@ -62,7 +65,7 @@ final class PolarisTableToolTest {
     TestHttpExecutor executor = new TestHttpExecutor(200, "{\"metadata\":{}}");
     PolarisTableTool tool =
         new PolarisTableTool(
-            mapper, executor, URI.create("http://localhost:8181"), Optional.empty());
+            mapper, executor, URI.create("http://localhost:8181"), AuthorizationProvider.none());
 
     ObjectNode args = mapper.createObjectNode();
     args.put("operation", "GET");

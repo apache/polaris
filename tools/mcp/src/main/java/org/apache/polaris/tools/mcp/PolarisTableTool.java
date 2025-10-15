@@ -46,7 +46,10 @@ final class PolarisTableTool implements McpTool {
   private final PolarisRestTool delegate;
 
   PolarisTableTool(
-      ObjectMapper mapper, HttpExecutor executor, URI baseUri, Optional<String> authToken) {
+      ObjectMapper mapper,
+      HttpExecutor executor,
+      URI baseUri,
+      AuthorizationProvider authorizationProvider) {
     this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
     this.delegate =
         new PolarisRestTool(
@@ -56,7 +59,7 @@ final class PolarisTableTool implements McpTool {
             "api/catalog/v1/",
             mapper,
             Objects.requireNonNull(executor, "executor must not be null"),
-            Objects.requireNonNull(authToken, "authToken must not be null"));
+            Objects.requireNonNull(authorizationProvider, "authorizationProvider must not be null"));
   }
 
   @Override

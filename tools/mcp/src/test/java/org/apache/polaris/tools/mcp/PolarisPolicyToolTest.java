@@ -35,7 +35,10 @@ final class PolarisPolicyToolTest {
     TestHttpExecutor executor = new TestHttpExecutor(200, "{\"policies\":[]}");
     PolarisPolicyTool tool =
         new PolarisPolicyTool(
-            mapper, executor, URI.create("http://localhost:8181"), Optional.of("token"));
+            mapper,
+            executor,
+            URI.create("http://localhost:8181"),
+            () -> Optional.of("Bearer token"));
 
     ObjectNode args = mapper.createObjectNode();
     args.put("operation", "list");
@@ -57,7 +60,7 @@ final class PolarisPolicyToolTest {
     TestHttpExecutor executor = new TestHttpExecutor(204, "");
     PolarisPolicyTool tool =
         new PolarisPolicyTool(
-            mapper, executor, URI.create("http://localhost:8181"), Optional.empty());
+            mapper, executor, URI.create("http://localhost:8181"), AuthorizationProvider.none());
 
     ObjectNode args = mapper.createObjectNode();
     args.put("operation", "delete");
@@ -80,7 +83,7 @@ final class PolarisPolicyToolTest {
     TestHttpExecutor executor = new TestHttpExecutor(204, "");
     PolarisPolicyTool tool =
         new PolarisPolicyTool(
-            mapper, executor, URI.create("http://localhost:8181"), Optional.empty());
+            mapper, executor, URI.create("http://localhost:8181"), AuthorizationProvider.none());
 
     ObjectNode args = mapper.createObjectNode();
     args.put("operation", "attach");
@@ -105,7 +108,7 @@ final class PolarisPolicyToolTest {
     TestHttpExecutor executor = new TestHttpExecutor(200, "{\"policies\":[]}");
     PolarisPolicyTool tool =
         new PolarisPolicyTool(
-            mapper, executor, URI.create("http://localhost:8181"), Optional.empty());
+            mapper, executor, URI.create("http://localhost:8181"), AuthorizationProvider.none());
 
     ObjectNode args = mapper.createObjectNode();
     args.put("operation", "applicable");
