@@ -50,7 +50,8 @@ packages = [
     { include = "apache_polaris" }
 ]
 include = [
-    { path = "apache_polaris/**", format = ["sdist", "wheel"] },
+    { path = "apache_polaris/cli", format = ["sdist", "wheel"] },
+    { path = "apache_polaris/sdk", format = ["sdist", "wheel"] },
     { path = "templates/**", format = "sdist" },
     { path = "spec/**", format = "sdist" },
 ]

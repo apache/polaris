@@ -61,6 +61,7 @@ EXCLUDE_PATHS = [
     Path(".openapi-generator-ignore"),
     Path(".pytest_cache/"),
     Path("test/test_cli_parsing.py"),
+    Path("apache_polaris/__pycache__/"),
     Path("apache_polaris/cli/"),
     Path("apache_polaris/sdk/__pycache__/"),
     Path("apache_polaris/sdk/catalog/__pycache__/"),
