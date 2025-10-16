@@ -16,15 +16,16 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+import json
+
 import os
 import sys
-import json
 from dataclasses import dataclass
 from typing import Dict, Optional, List
 
-
-from cli.command import Command
-from cli.constants import (
+from apache_polaris.cli.command import Command
+from apache_polaris.cli.constants import (
   Subcommands,
   Arguments,
   DEFAULT_HEADER,
@@ -33,7 +34,7 @@ from cli.constants import (
   CONFIG_DIR,
   CONFIG_FILE,
 )
-from polaris.management import PolarisDefaultApi
+from apache_polaris.sdk.management import PolarisDefaultApi
 
 
 @dataclass

@@ -17,15 +17,15 @@
 # under the License.
 #
 from dataclasses import dataclass
+from pydantic import StrictStr
 from typing import Dict, Optional, List
 
-from pydantic import StrictStr
-
-from cli.command import Command
-from cli.constants import Subcommands, Arguments
-from cli.options.option_tree import Argument
-from polaris.management import PolarisDefaultApi, CreatePrincipalRoleRequest, PrincipalRole, UpdatePrincipalRoleRequest, \
-    GrantPrincipalRoleRequest
+from apache_polaris.cli.command import Command
+from apache_polaris.cli.constants import Subcommands, Arguments
+from apache_polaris.cli.options.option_tree import Argument
+from apache_polaris.sdk.management import PolarisDefaultApi, \
+  CreatePrincipalRoleRequest, PrincipalRole, UpdatePrincipalRoleRequest, \
+  GrantPrincipalRoleRequest
 
 
 @dataclass

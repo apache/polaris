@@ -16,22 +16,29 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-import os
+
 import json
+
+import os
 from dataclasses import dataclass
 from typing import Optional, Dict
-from cli.command import Command
-from cli.command.utils import get_catalog_api_client
-from cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
-from cli.options.option_tree import Argument
-from polaris.management import PolarisDefaultApi
-from polaris.catalog.api.policy_api import PolicyAPI
-from polaris.catalog.models.create_policy_request import CreatePolicyRequest
-from polaris.catalog.models.update_policy_request import UpdatePolicyRequest
-from polaris.catalog.models.policy_attachment_target import PolicyAttachmentTarget
-from polaris.catalog.models.attach_policy_request import AttachPolicyRequest
-from polaris.catalog.models.detach_policy_request import DetachPolicyRequest
 
+from apache_polaris.cli.command import Command
+from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
+from apache_polaris.cli.options.option_tree import Argument
+from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
+from apache_polaris.sdk.catalog.models.attach_policy_request import \
+  AttachPolicyRequest
+from apache_polaris.sdk.catalog.models.create_policy_request import \
+  CreatePolicyRequest
+from apache_polaris.sdk.catalog.models.detach_policy_request import \
+  DetachPolicyRequest
+from apache_polaris.sdk.catalog.models.policy_attachment_target import \
+  PolicyAttachmentTarget
+from apache_polaris.sdk.catalog.models.update_policy_request import \
+  UpdatePolicyRequest
+from apache_polaris.sdk.management import PolarisDefaultApi
 
 
 @dataclass
