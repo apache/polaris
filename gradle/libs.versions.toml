@@ -103,7 +103,7 @@ smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.0" }
 spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark35" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
-testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "2.0.0" }
+testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "2.0.1" }
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "3.9.0" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 weld-se-core = { module = "org.jboss.weld.se:weld-se-core", version = "6.0.3.Final" }
