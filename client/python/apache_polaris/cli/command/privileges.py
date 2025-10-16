@@ -21,10 +21,10 @@ from typing import List
 
 from pydantic import StrictStr
 
-from cli.command import Command
-from cli.constants import Subcommands, Actions, Arguments
-from cli.options.option_tree import Argument
-from polaris.management import (
+from apache_polaris.cli.command import Command
+from apache_polaris.cli.constants import Subcommands, Actions, Arguments
+from apache_polaris.cli.options.option_tree import Argument
+from apache_polaris.sdk.management import (
     PolarisDefaultApi,
     AddGrantRequest,
     NamespaceGrant,

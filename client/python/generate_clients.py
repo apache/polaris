@@ -44,9 +44,11 @@ OPEN_API_GENERATOR_IGNORE = os.path.join(CLIENT_DIR, ".openapi-generator-ignore"
 
 # Open API Generator Configs
 PACKAGE_NAME_POLARIS_MANAGEMENT = (
-    "--additional-properties=packageName=polaris.management"
+  "--additional-properties=packageName=apache_polaris.sdk.management"
 )
-PACKAGE_NAME_POLARIS_CATALOG = "--additional-properties=packageName=polaris.catalog"
+PACKAGE_NAME_POLARIS_CATALOG = (
+  "--additional-properties=packageName=apache_polaris.sdk.catalog"
+)
 PYTHON_VERSION = "--additional-properties=pythonVersion=3.10"
 
 # Cleanup
@@ -59,14 +61,14 @@ EXCLUDE_PATHS = [
     Path(".openapi-generator-ignore"),
     Path(".pytest_cache/"),
     Path("test/test_cli_parsing.py"),
-    Path("cli/"),
-    Path("polaris/__pycache__/"),
-    Path("polaris/catalog/__pycache__/"),
-    Path("polaris/catalog/models/__pycache__/"),
-    Path("polaris/catalog/api/__pycache__/"),
-    Path("polaris/management/__pycache__/"),
-    Path("polaris/management/models/__pycache__/"),
-    Path("polaris/management/api/__pycache__/"),
+    Path("apache_polaris/cli/"),
+    Path("apache_polaris/sdk/__pycache__/"),
+    Path("apache_polaris/sdk/catalog/__pycache__/"),
+    Path("apache_polaris/sdk/catalog/models/__pycache__/"),
+    Path("apache_polaris/sdk/catalog/api/__pycache__/"),
+    Path("apache_polaris/sdk/management/__pycache__/"),
+    Path("apache_polaris/sdk/management/models/__pycache__/"),
+    Path("apache_polaris/sdk/management/api/__pycache__/"),
     Path("integration_tests/"),
     Path(".github/workflows/python.yml"),
     Path(".gitlab-ci.yml"),
