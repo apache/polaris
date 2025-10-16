@@ -401,10 +401,16 @@ def _patch_generated_models() -> None:
     from apache_polaris.sdk.catalog.models.get_applicable_policies_response import (
         GetApplicablePoliciesResponse,
     )
-    from apache_polaris.sdk.catalog.models.list_policies_response import ListPoliciesResponse
-    from apache_polaris.sdk.catalog.models.load_policy_response import LoadPolicyResponse
+    from apache_polaris.sdk.catalog.models.list_policies_response import (
+        ListPoliciesResponse,
+    )
+    from apache_polaris.sdk.catalog.models.load_policy_response import (
+        LoadPolicyResponse,
+    )
     from apache_polaris.sdk.catalog.models.policy import Policy
-    from apache_polaris.sdk.catalog.models.policy_attachment_target import PolicyAttachmentTarget
+    from apache_polaris.sdk.catalog.models.policy_attachment_target import (
+        PolicyAttachmentTarget,
+    )
     from apache_polaris.sdk.catalog.models.policy_identifier import PolicyIdentifier
 
     models_to_patch = {
