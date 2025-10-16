@@ -64,6 +64,3 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
-
-# OpenAPI spec
-spec/

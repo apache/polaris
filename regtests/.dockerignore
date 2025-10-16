@@ -21,4 +21,4 @@
 .pytest_cache
 t_pyspark/src/spark-warehouse
 t_pyspark/src/.pytest_cache
-polaris/polaris.management.egg-info
+polaris/apache_polaris.sdk.management.egg-info
