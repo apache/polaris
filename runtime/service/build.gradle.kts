@@ -133,7 +133,8 @@ dependencies {
 
   testImplementation("io.rest-assured:rest-assured")
 
-  testImplementation(libs.localstack)
+  testImplementation(platform(libs.testcontainers.bom))
+  testImplementation("org.testcontainers:testcontainers-localstack")
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
