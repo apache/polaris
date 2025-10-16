@@ -55,6 +55,7 @@ class CatalogConnectionType(Enum):
 
     HADOOP = "hadoop"
     ICEBERG = "iceberg-rest"
+    HIVE = "hive"
 
 
 class AuthenticationType(Enum):
