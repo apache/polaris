@@ -52,8 +52,16 @@ public interface StsClientProvider {
     @Value.Parameter(order = 2)
     Optional<String> region();
 
-    static StsDestination of(@Nullable URI endpoint, @Nullable String region) {
-      return ImmutableStsDestination.of(Optional.ofNullable(endpoint), Optional.ofNullable(region));
+    /** Whether to ignore SSL certificate verification */
+    @Value.Parameter(order = 3)
+    Optional<Boolean> ignoreSSLVerification();
+
+    static StsDestination of(
+        @Nullable URI endpoint, @Nullable String region, @Nullable Boolean ignoreSSLVerification) {
+      return ImmutableStsDestination.of(
+          Optional.ofNullable(endpoint),
+          Optional.ofNullable(region),
+          Optional.ofNullable(ignoreSSLVerification));
     }
   }
 }
