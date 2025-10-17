@@ -25,7 +25,7 @@ import jakarta.inject.Inject;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -63,7 +63,8 @@ public class AccessConfigProvider {
   /**
    * Vends credentials for accessing table storage at explicit locations.
    *
-   * @param callContext the call context containing realm, principal, and security context
+   * @param realmContext the realm context
+   * @param realmConfig the realm configuration
    * @param tableIdentifier the table identifier, used for logging and refresh endpoint construction
    * @param tableLocations set of storage location URIs to scope credentials to
    * @param storageActions the storage operations (READ, WRITE, LIST, DELETE) to scope credentials
@@ -74,7 +75,8 @@ public class AccessConfigProvider {
    *     found
    */
   public AccessConfig getAccessConfig(
-      @Nonnull CallContext callContext,
+      @Nonnull RealmContext realmContext,
+      @Nonnull RealmConfig realmConfig,
       @Nonnull TableIdentifier tableIdentifier,
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
@@ -93,12 +95,12 @@ public class AccessConfigProvider {
           .log("Table entity has no storage configuration in its hierarchy");
       return AccessConfig.builder().supportsCredentialVending(false).build();
     }
-    RealmContext realmContext = callContext.getRealmContext();
     PolarisCredentialVendor credentialVendor =
         metaStoreManagerFactory.createMetaStoreManager(realmContext);
 
     return FileIOUtil.refreshAccessConfig(
-        callContext,
+        realmContext,
+        realmConfig,
         storageCredentialCache,
         credentialVendor,
         tableIdentifier,

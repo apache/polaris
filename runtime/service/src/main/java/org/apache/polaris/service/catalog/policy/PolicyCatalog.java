@@ -41,7 +41,6 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -72,7 +71,6 @@ import org.slf4j.LoggerFactory;
 public class PolicyCatalog {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolicyCatalog.class);
 
-  private final CallContext callContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
   private final long catalogId;
@@ -80,9 +78,7 @@ public class PolicyCatalog {
 
   public PolicyCatalog(
       PolarisMetaStoreManager metaStoreManager,
-      CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
-    this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.catalogId = catalogEntity.getId();

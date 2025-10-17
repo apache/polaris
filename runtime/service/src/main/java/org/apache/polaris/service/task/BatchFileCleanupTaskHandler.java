@@ -23,7 +23,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
@@ -49,11 +50,11 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity task, CallContext callContext) {
+  public boolean handleTask(RealmContext realmContext, RealmConfig realmConfig, TaskEntity task) {
     BatchFileCleanupTask cleanupTask = task.readData(BatchFileCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
     List<String> batchFiles = cleanupTask.batchFiles();
-    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId, callContext)) {
+    try (FileIO authorizedFileIO = fileIOSupplier.apply(realmContext, realmConfig, task, tableId)) {
       List<String> validFiles =
           batchFiles.stream().filter(file -> TaskUtils.exists(file, authorizedFileIO)).toList();
       if (validFiles.isEmpty()) {

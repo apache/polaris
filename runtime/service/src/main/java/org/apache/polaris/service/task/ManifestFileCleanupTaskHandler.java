@@ -31,7 +31,8 @@ import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.ManifestReader;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
@@ -58,10 +59,10 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity task, CallContext callContext) {
+  public boolean handleTask(RealmContext realmContext, RealmConfig realmConfig, TaskEntity task) {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
-    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId, callContext)) {
+    try (FileIO authorizedFileIO = fileIOSupplier.apply(realmContext, realmConfig, task, tableId)) {
       ManifestFile manifestFile = TaskUtils.decodeManifestFileData(cleanupTask.manifestFileData());
       return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
     }

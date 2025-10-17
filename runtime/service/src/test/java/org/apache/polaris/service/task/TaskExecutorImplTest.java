@@ -18,8 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -43,8 +42,6 @@ public class TaskExecutorImplTest {
         (TestPolarisEventListener) testServices.polarisEventListener();
 
     PolarisMetaStoreManager metaStoreManager = testServices.metaStoreManager();
-
-    PolarisCallContext polarisCallCtx = testServices.newCallContext();
 
     // This task doesn't have a type so it won't be handle-able by a real handler. We register a
     // test TaskHandler below that can handle any task.
@@ -75,7 +72,8 @@ public class TaskExecutorImplTest {
           }
 
           @Override
-          public boolean handleTask(TaskEntity task, CallContext callContext) {
+          public boolean handleTask(
+              RealmContext realmContext, RealmConfig realmConfig, TaskEntity task) {
             var beforeTaskAttemptedEvent =
                 testPolarisEventListener.getLatest(BeforeAttemptTaskEvent.class);
             Assertions.assertEquals(taskEntity.getId(), beforeTaskAttemptedEvent.taskEntityId());
@@ -84,7 +82,8 @@ public class TaskExecutorImplTest {
           }
         });
 
-    executor.handleTask(taskEntity.getId(), polarisCallCtx, attempt);
+    executor.handleTask(
+        testServices.realmContext(), testServices.realmConfig(), taskEntity.getId(), attempt);
 
     var afterAttemptTaskEvent = testPolarisEventListener.getLatest(AfterAttemptTaskEvent.class);
     Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.taskEntityId());

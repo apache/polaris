@@ -82,7 +82,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -142,7 +142,7 @@ import org.slf4j.LoggerFactory;
 public class PolarisAdminService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAdminService.class);
 
-  private final CallContext callContext;
+  private final RealmContext realmContext;
   private final RealmConfig realmConfig;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final SecurityContext securityContext;
@@ -156,7 +156,8 @@ public class PolarisAdminService {
   @Inject
   public PolarisAdminService(
       @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull CallContext callContext,
+      @Nonnull RealmContext realmContext,
+      @Nonnull RealmConfig realmConfig,
       @Nonnull ResolutionManifestFactory resolutionManifestFactory,
       @Nonnull PolarisMetaStoreManager metaStoreManager,
       @Nonnull UserSecretsManager userSecretsManager,
@@ -164,8 +165,8 @@ public class PolarisAdminService {
       @Nonnull SecurityContext securityContext,
       @Nonnull PolarisAuthorizer authorizer,
       @Nonnull ReservedProperties reservedProperties) {
-    this.callContext = callContext;
-    this.realmConfig = callContext.getRealmConfig();
+    this.realmContext = realmContext;
+    this.realmConfig = realmConfig;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
     this.securityContext = securityContext;

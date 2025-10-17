@@ -43,7 +43,6 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.types.Types;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -54,6 +53,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -140,7 +140,7 @@ public abstract class AbstractPolicyCatalogTest {
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private UserSecretsManager userSecretsManager;
-  private PolarisCallContext polarisContext;
+  private RealmContext realmContext;
   private RealmConfig realmConfig;
   private PolarisAdminService adminService;
   private FileIOFactory fileIOFactory;
@@ -169,13 +169,12 @@ public abstract class AbstractPolicyCatalogTest {
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     bootstrapRealm(realmName);
 
-    RealmContext realmContext = () -> realmName;
+    realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
     accessConfigProvider =
         new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
-    polarisContext = new PolarisCallContext(realmContext, configurationStore);
-    realmConfig = polarisContext.getRealmConfig();
+    realmConfig = new RealmConfigImpl(configurationStore, realmContext);
     metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
@@ -192,7 +191,8 @@ public abstract class AbstractPolicyCatalogTest {
     adminService =
         new PolarisAdminService(
             diagServices,
-            polarisContext,
+            realmContext,
+            realmConfig,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
@@ -252,13 +252,14 @@ public abstract class AbstractPolicyCatalogTest {
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
-    this.policyCatalog = new PolicyCatalog(metaStoreManager, polarisContext, passthroughView);
+    this.policyCatalog = new PolicyCatalog(metaStoreManager, passthroughView);
     this.icebergCatalog =
         new IcebergCatalog(
             diagServices,
             resolverFactory,
             metaStoreManager,
-            polarisContext,
+            realmContext,
+            realmConfig,
             passthroughView,
             securityContext,
             taskExecutor,
