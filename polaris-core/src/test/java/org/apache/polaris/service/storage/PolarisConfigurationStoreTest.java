@@ -163,10 +163,10 @@ public class PolarisConfigurationStoreTest {
 
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
+          @SuppressWarnings("unchecked")
           @Override
           public <T> @Nullable T getConfiguration(
               @Nonnull RealmContext realmContext, String configName) {
-            //noinspection unchecked
             return (T) Map.of("key2", "config-value2").get(configName);
           }
         };

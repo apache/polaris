@@ -102,22 +102,48 @@ public class AwsCredentialsStorageIntegration
       @SuppressWarnings("resource")
       // Note: stsClientProvider returns "thin" clients that do not need closing
       StsClient stsClient =
-          stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
+          stsClientProvider.stsClient(
+              StsDestination.of(
+                  storageConfig.getStsEndpointUri(),
+                  region,
+                  storageConfig.getIgnoreSSLVerification()));
 
       AssumeRoleResponse response = stsClient.assumeRole(request.build());
-      accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
-      accessConfig.put(
-          StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
-      accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
-      Optional.ofNullable(response.credentials().expiration())
-          .ifPresent(
-              i -> {
-                accessConfig.put(
-                    StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
-                accessConfig.put(
-                    StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                    String.valueOf(i.toEpochMilli()));
-              });
+      if (response != null && response.credentials() != null) {
+        accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
+        accessConfig.put(
+            StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
+        accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
+        Optional.ofNullable(response.credentials().expiration())
+            .ifPresent(
+                i -> {
+                  accessConfig.put(
+                      StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
+                  accessConfig.put(
+                      StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                      String.valueOf(i.toEpochMilli()));
+                });
+      } else {
+        // Try to recover by reading raw STS body captured by interceptor
+        try {
+          String raw = org.apache.polaris.core.storage.aws.StsResponseCapture.getLastBody();
+          if (raw != null && !raw.isBlank()) {
+            try {
+              var parsed =
+                  org.apache.polaris.core.storage.aws.StsXmlParser.parseToAccessConfig(raw);
+              // merge parsed credentials into accessConfig builder
+              parsed.credentials().forEach((k, v) -> accessConfig.putCredential(k, v));
+              parsed.internalProperties().forEach((k, v) -> accessConfig.putInternalProperty(k, v));
+              parsed.extraProperties().forEach((k, v) -> accessConfig.putExtraProperty(k, v));
+              parsed.expiresAt().ifPresent(accessConfig::expiresAt);
+            } catch (Exception ignore) {
+              // parsing failed - ignore and fallthrough
+            }
+          }
+        } finally {
+          org.apache.polaris.core.storage.aws.StsResponseCapture.clear();
+        }
+      }
     }
 
     if (region != null) {
@@ -137,6 +163,12 @@ public class AwsCredentialsStorageIntegration
     if (internalEndpointUri != null) {
       accessConfig.putInternalProperty(
           StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), internalEndpointUri.toString());
+    }
+
+    // Propagate ignore SSL verification flag so callers (e.g., FileIOFactory) can honor it when
+    // constructing S3 clients for metadata ops.
+    if (Boolean.TRUE.equals(storageConfig.getIgnoreSSLVerification())) {
+      accessConfig.putInternalProperty("polaris.ignore-ssl-verification", "true");
     }
 
     if (Boolean.TRUE.equals(storageConfig.getPathStyleAccess())) {
@@ -179,14 +211,24 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
     String arnPrefix = arnPrefixForPartition(awsPartition);
+    boolean isEcsPartition = "ecs".equals(awsPartition);
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
             location -> {
               URI uri = URI.create(location);
-              allowGetObjectStatementBuilder.addResource(
-                  IamResource.create(
-                      arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+              // Some on-prem S3/STSc implementations (for example ECS) do not accept object ARNs
+              // that include the path portion (bucket/key/*). For those, scope object permissions
+              // to
+              // the whole bucket (bucket/*) and rely on s3:prefix conditions for finer granularity.
+              if (isEcsPartition) {
+                allowGetObjectStatementBuilder.addResource(
+                    IamResource.create(arnPrefix + StorageUtil.getBucket(uri) + "/*"));
+              } else {
+                allowGetObjectStatementBuilder.addResource(
+                    IamResource.create(
+                        arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+              }
               final var bucket = arnPrefix + StorageUtil.getBucket(uri);
               if (allowList) {
                 bucketListStatementBuilder
@@ -220,9 +262,14 @@ public class AwsCredentialsStorageIntegration
       writeLocations.forEach(
           location -> {
             URI uri = URI.create(location);
-            allowPutObjectStatementBuilder.addResource(
-                IamResource.create(
-                    arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+            if (isEcsPartition) {
+              allowPutObjectStatementBuilder.addResource(
+                  IamResource.create(arnPrefix + StorageUtil.getBucket(uri) + "/*"));
+            } else {
+              allowPutObjectStatementBuilder.addResource(
+                  IamResource.create(
+                      arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+            }
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
     }
@@ -243,7 +290,13 @@ public class AwsCredentialsStorageIntegration
   }
 
   private static String arnPrefixForPartition(String awsPartition) {
-    return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
+    // Some on-prem S3 compatible systems (e.g. ECS) use a non-standard partition value
+    // but expect S3 resource ARNs to use the 'aws' partition form (arn:aws:s3:::bucket).
+    String partition = awsPartition != null ? awsPartition : "aws";
+    if ("ecs".equals(partition)) {
+      partition = "aws";
+    }
+    return String.format("arn:%s:s3:::", partition);
   }
 
   private static @Nonnull String parseS3Path(URI uri) {

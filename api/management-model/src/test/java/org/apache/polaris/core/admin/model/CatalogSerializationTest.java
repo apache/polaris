@@ -71,6 +71,7 @@ public class CatalogSerializationTest {
                 + "\"storageConfigInfo\":{"
                 + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-role\","
                 + "\"pathStyleAccess\":false,"
+                + "\"ignoreSSLVerification\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"
                 + "}}");
