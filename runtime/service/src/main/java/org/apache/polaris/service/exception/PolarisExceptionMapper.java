@@ -68,7 +68,8 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
     getLogger()
         .atLevel(
             status.getFamily() == Response.Status.Family.SERVER_ERROR ? Level.INFO : Level.DEBUG)
-        .log("Full PolarisException", exception);
+        .setCause(exception)
+        .log("Full PolarisException");
 
     ErrorResponse errorResponse =
         ErrorResponse.builder()
