@@ -28,9 +28,6 @@ dependencies {
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
-  constraints {
-    implementation("io.airlift:aircompressor:2.0.2") { because("Vulnerability detected in 0.25") }
-  }
 
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
@@ -47,24 +44,6 @@ dependencies {
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
-
-  constraints {
-    implementation("org.xerial.snappy:snappy-java:1.1.10.8") {
-      because("Vulnerability detected in 1.1.8.2")
-    }
-    implementation("org.codehaus.jettison:jettison:1.5.4") {
-      because("Vulnerability detected in 1.1")
-    }
-    implementation("org.apache.commons:commons-configuration2:2.12.0") {
-      because("Vulnerability detected in 2.8.0")
-    }
-    implementation("org.apache.commons:commons-compress:1.28.0") {
-      because("Vulnerability detected in 1.21")
-    }
-    implementation("com.nimbusds:nimbus-jose-jwt:10.5") {
-      because("Vulnerability detected in 9.8.1")
-    }
-  }
 
   implementation(libs.swagger.annotations)
   implementation(libs.swagger.jaxrs)
@@ -86,14 +65,6 @@ dependencies {
   implementation("com.azure:azure-storage-common")
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
-  constraints {
-    implementation("io.netty:netty-codec-http2:4.2.6.Final") {
-      because("Vulnerability detected in 4.1.72")
-    }
-    implementation("io.projectreactor.netty:reactor-netty-http:1.2.11") {
-      because("Vulnerability detected in 1.0.45")
-    }
-  }
 
   implementation("org.apache.iceberg:iceberg-gcp")
   implementation(platform(libs.google.cloud.storage.bom))
