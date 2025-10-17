@@ -283,7 +283,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
     polarisContext = new PolarisCallContext(realmContext, configurationStore);
     realmConfig = polarisContext.getRealmConfig();
-    metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext);
+    metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(polarisContext);
     userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
 
     EntityCache entityCache = createEntityCache(diagServices, realmConfig);

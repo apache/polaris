@@ -26,7 +26,6 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -93,9 +92,8 @@ public class AccessConfigProvider {
           .log("Table entity has no storage configuration in its hierarchy");
       return AccessConfig.builder().supportsCredentialVending(false).build();
     }
-    RealmContext realmContext = callContext.getRealmContext();
     PolarisCredentialVendor credentialVendor =
-        metaStoreManagerFactory.createMetaStoreManager(realmContext);
+        metaStoreManagerFactory.createMetaStoreManager(callContext);
 
     return FileIOUtil.refreshAccessConfig(
         callContext,

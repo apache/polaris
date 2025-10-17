@@ -35,6 +35,7 @@ import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
@@ -200,7 +201,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   @Override
-  public PolarisMetaStoreManager createMetaStoreManager(RealmContext realmContext) {
+  public PolarisMetaStoreManager createMetaStoreManager(CallContext callContext) {
+    return createMetaStoreManager(callContext.getRealmContext());
+  }
+
+  private PolarisMetaStoreManager createMetaStoreManager(RealmContext realmContext) {
     RealmConfig realmConfig = new RealmConfigImpl(configurationStore, realmContext);
     return new AtomicOperationMetaStoreManager(
         clock,

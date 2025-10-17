@@ -31,6 +31,7 @@ import io.quarkus.test.junit.TestProfile;
 import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
 import io.smallrye.mutiny.subscription.BackPressureFailure;
 import java.util.Map;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -72,7 +73,8 @@ class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListe
 
   @Test
   void testFlushFailureRecovery() {
-    var manager = metaStoreManagerFactory.createMetaStoreManager(() -> "test1");
+    var callContext = new PolarisCallContext(() -> "test1", configurationStore);
+    var manager = metaStoreManagerFactory.createMetaStoreManager(callContext);
     var managerSpy = Mockito.spy(manager);
     doReturn(managerSpy).when(metaStoreManagerFactory).createMetaStoreManager(any());
 

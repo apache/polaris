@@ -38,6 +38,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -65,6 +66,8 @@ abstract class InMemoryBufferEventListenerTestBase {
   @Inject
   @Identifier("persistence-in-memory-buffer")
   InMemoryBufferEventListener producer;
+
+  @Inject PolarisConfigurationStore configurationStore;
 
   @InjectSpy
   @Identifier("relational-jdbc")
