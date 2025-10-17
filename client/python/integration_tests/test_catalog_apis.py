@@ -289,7 +289,7 @@ def test_policies(
         assert len(applicable_policies_catalog.applicable_policies) == 1
         assert applicable_policies_catalog.applicable_policies[0].name == policy_name
 
-        # GET inherited APPLICABLE policies on table
+        # GET inherited APPLICABLE on table
         applicable_for_table_inherit = test_policy_api.get_applicable_policies(
             prefix=test_catalog.name,
             namespace=format_namespace(sub_namespace_path),
