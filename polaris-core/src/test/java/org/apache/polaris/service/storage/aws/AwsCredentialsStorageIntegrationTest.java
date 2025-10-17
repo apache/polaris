@@ -542,6 +542,74 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
+  @Test
+  public void testGetSubscopedCredsInlinePolicyWithKmsKey() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String firstPath = warehouseKeyPrefix + "/namespace/table";
+    String kmsKeyArn = "arn:aws:kms:us-east-1:012345678901:key/444343245";
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleRequest.class)
+                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                  .extracting(AssumeRoleRequest::policy)
+                  .extracting(IamPolicy::fromJson)
+                  .satisfies(
+                      policy -> {
+                        assertThat(policy)
+                            .extracting(IamPolicy::statements)
+                            .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
+                            .hasSize(5)
+                            .anySatisfy(
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(IamEffect.ALLOW, IamStatement::effect)
+                                        .returns(
+                                            List.of(
+                                                IamAction.create(
+                                                    "kms:GenerateDataKeyWithoutPlaintext"),
+                                                IamAction.create("kms:Encrypt"),
+                                                IamAction.create("kms:DescribeKey"),
+                                                IamAction.create("kms:Decrypt"),
+                                                IamAction.create("kms:GenerateDataKey")),
+                                            IamStatement::actions)
+                                        .returns(
+                                            List.of(IamResource.create(kmsKeyArn)),
+                                            IamStatement::resources));
+                      });
+              return ASSUME_ROLE_RESPONSE;
+            });
+    AccessConfig accessConfig =
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .region("us-east-1")
+                    .kmsKeyArn(kmsKeyArn)
+                    .build(),
+                stsClient)
+            .getSubscopedCreds(
+                EMPTY_REALM_CONFIG,
+                true,
+                Set.of(s3Path(bucket, firstPath)),
+                Set.of(s3Path(bucket, firstPath)),
+                Optional.empty());
+    assertThat(accessConfig.credentials())
+        .isNotEmpty()
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
+        .containsEntry(
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
+            String.valueOf(EXPIRE_TIME.toEpochMilli()));
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {AWS_PARTITION, "aws-cn", "aws-us-gov"})
   public void testClientRegion(String awsPartition) {
