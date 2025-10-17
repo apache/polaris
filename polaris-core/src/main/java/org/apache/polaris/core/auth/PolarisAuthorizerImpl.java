@@ -128,6 +128,7 @@ import com.google.common.collect.SetMultimap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -774,33 +775,63 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
+    authorizeOrThrow(
+        polarisPrincipal, activatedEntities, EnumSet.of(authzOp), targets, secondaries);
+  }
+
+  @Override
+  public void authorizeOrThrow(
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull Set<PolarisAuthorizableOperation> authzOps,
+      @Nullable PolarisResolvedPathWrapper target,
+      @Nullable PolarisResolvedPathWrapper secondary) {
+    authorizeOrThrow(
+        polarisPrincipal,
+        activatedEntities,
+        authzOps,
+        target == null ? null : List.of(target),
+        secondary == null ? null : List.of(secondary));
+  }
+
+  @Override
+  public void authorizeOrThrow(
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull Set<PolarisAuthorizableOperation> authzOps,
+      @Nullable List<PolarisResolvedPathWrapper> targets,
+      @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     boolean enforceCredentialRotationRequiredState =
         realmConfig.getConfig(
             FeatureConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
     boolean isRoot = getRootPrincipalName().equals(polarisPrincipal.getName());
-    if (enforceCredentialRotationRequiredState
-        && polarisPrincipal
-            .getProperties()
-            .containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
-        && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS) {
-      throw new ForbiddenException(
-          "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE",
-          polarisPrincipal.getName(), authzOp);
-    } else if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
-      if (!isRoot) {
-        throw new ForbiddenException("Only Root principal(service-admin) can perform %s", authzOp);
+    for (PolarisAuthorizableOperation authzOp : authzOps) {
+      if (enforceCredentialRotationRequiredState
+          && polarisPrincipal
+              .getProperties()
+              .containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
+          && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS) {
+        throw new ForbiddenException(
+            "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE",
+            polarisPrincipal.getName(), authzOp);
+      } else if (authzOp == PolarisAuthorizableOperation.RESET_CREDENTIALS) {
+        if (!isRoot) {
+          throw new ForbiddenException(
+              "Only Root principal(service-admin) can perform %s", authzOp);
+        }
+        LOGGER
+            .atDebug()
+            .addKeyValue("principalName", polarisPrincipal.getName())
+            .log("Root principal allowed to reset credentials");
+      } else if (!isAuthorized(
+          polarisPrincipal, activatedEntities, authzOp, targets, secondaries)) {
+        throw new ForbiddenException(
+            "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
+            polarisPrincipal.getName(),
+            polarisPrincipal.getRoles(),
+            activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
+            authzOp);
       }
-      LOGGER
-          .atDebug()
-          .addKeyValue("principalName", polarisPrincipal.getName())
-          .log("Root principal allowed to reset credentials");
-    } else if (!isAuthorized(polarisPrincipal, activatedEntities, authzOp, targets, secondaries)) {
-      throw new ForbiddenException(
-          "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
-          polarisPrincipal.getName(),
-          polarisPrincipal.getRoles(),
-          activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
-          authzOp);
     }
   }
 
