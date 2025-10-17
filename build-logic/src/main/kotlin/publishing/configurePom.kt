@@ -24,7 +24,6 @@ import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.component.ModuleComponentSelector
 import org.gradle.api.provider.Provider
-import org.gradle.api.publish.maven.MavenPom
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.internal.extensions.stdlib.capitalized
 
@@ -36,13 +35,14 @@ import org.gradle.internal.extensions.stdlib.capitalized
  * consumable by Maven.
  *
  * The root project generates the parent pom, containing all the necessary elements to pass Sonatype
- * validation and some more information like `<developers>` and `<contributors>`. Most of the
- * information is taken from publicly consumable Apache project information from
- * `https://projects.apache.org/json/projects/<project-name>>.json`. `<developers>` contains all
- * (P)PMC members and committers from that project info JSON, ordered by real name. `<contributors>`
- * is taken from GitHub's
- * `https://api.github.com/repos/apache/<project-name>/contributors?per_page=1000` endpoint to give
- * all contributors credit, ordered by number of contributions (as returned by that endpoint).
+ * validation. Most of the information is taken from publicly consumable Apache project information
+ * from `https://projects.apache.org/json/projects/<project-name>.json`. Changes to the Apache
+ * project metadata, including podling information, will break the reproducibility of the build.
+ *
+ * Developer and contributor elements are intentionally *not* included in the POM. Such information
+ * is not considered stable (enough) to satisfy reproducible build requirements. The generated POM
+ * must be exactly the same when built by a release manager and by someone else to verify the built
+ * artifact(s).
  */
 internal fun configurePom(project: Project, mavenPublication: MavenPublication, task: Task) =
   mavenPublication.run {
@@ -50,7 +50,7 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
 
     pom {
       if (project != project.rootProject) {
-        // Add the license to every pom to make it easier for downstream project to retrieve the
+        // Add the license to every pom to make it easier for downstream projects to retrieve the
         // license.
         licenses {
           license {
@@ -75,7 +75,7 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
         task.doFirst {
           mavenPom.run {
             val asfName = e.asfProjectId.get()
-            val projectPeople = fetchProjectPeople(asfName)
+            val projectInfo = fetchProjectInformation(asfName)
 
             organization {
               name.set("The Apache Software Foundation")
@@ -84,7 +84,7 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
             licenses {
               license {
                 name.set("Apache-2.0") // SPDX identifier
-                url.set(projectPeople.licenseUrl)
+                url.set(projectInfo.licenseUrl)
               }
             }
             mailingLists {
@@ -92,7 +92,7 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
                 mailingList {
                   name.set("${ml.capitalized()} Mailing List")
                   subscribe.set("$ml-subscribe@$asfName.apache.org")
-                  unsubscribe.set("$ml-ubsubscribe@$asfName.apache.org")
+                  unsubscribe.set("$ml-unsubscribe@$asfName.apache.org")
                   post.set("$ml@$asfName.apache.org")
                   archive.set("https://lists.apache.org/list.html?$ml@$asfName.apache.org")
                 }
@@ -104,7 +104,7 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
               e.overrideScm.orElse(
                 githubRepoName
                   .map { r -> "https://github.com/apache/$r" }
-                  .orElse(projectPeople.repository)
+                  .orElse(projectInfo.repository)
               )
 
             scm {
@@ -115,56 +115,25 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
               val version = project.version.toString()
               if (!version.endsWith("-SNAPSHOT")) {
                 val tagPrefix: String =
-                  e.overrideTagPrefix.orElse("apache-${projectPeople.apacheId}").get()
+                  e.overrideTagPrefix.orElse("apache-${projectInfo.apacheId}").get()
                 tag.set("$tagPrefix-$version")
               }
             }
             issueManagement {
               val issuesUrl: Provider<String> =
-                codeRepo.map { r -> "$r/issues" }.orElse(projectPeople.bugDatabase)
+                codeRepo.map { r -> "$r/issues" }.orElse(projectInfo.bugDatabase)
               url.set(e.overrideIssueManagement.orElse(issuesUrl))
             }
 
-            name.set(e.overrideName.orElse("Apache ${projectPeople.name}"))
-            description.set(e.overrideDescription.orElse(projectPeople.description))
-            url.set(e.overrideProjectUrl.orElse(projectPeople.website))
-            inceptionYear.set(projectPeople.inceptionYear.toString())
+            name.set(e.overrideName.orElse("Apache ${projectInfo.name}"))
+            description.set(e.overrideDescription.orElse(projectInfo.description))
+            url.set(e.overrideProjectUrl.orElse(projectInfo.website))
+            inceptionYear.set(projectInfo.inceptionYear.toString())
 
-            developers {
-              projectPeople.people.forEach { person ->
-                developer {
-                  this.id.set(person.apacheId)
-                  this.name.set(person.name)
-                  this.organization.set("Apache Software Foundation")
-                  this.email.set("${person.apacheId}@apache.org")
-                  this.roles.addAll(person.roles)
-                }
-              }
-            }
-
-            addContributorsToPom(mavenPom, githubRepoName.get(), "Apache ${projectPeople.name}")
+            developers { developer { url.set("https://$asfName.apache.org/community/") } }
           }
         }
       }
-    }
-  }
-
-/** Adds contributors as returned by GitHub, in descending `contributions` order. */
-fun addContributorsToPom(mavenPom: MavenPom, asfName: String, asfProjectName: String) =
-  mavenPom.run {
-    contributors {
-      val contributors: List<Map<String, Any>> =
-        parseJson("https://api.github.com/repos/apache/$asfName/contributors?per_page=1000")
-      contributors
-        .filter { contributor -> contributor["type"] == "User" }
-        .forEach { contributor ->
-          contributor {
-            name.set(contributor["login"] as String)
-            url.set(contributor["url"] as String)
-            organization.set("$asfProjectName, GitHub contributors")
-            organizationUrl.set("https://github.com/apache/$asfName")
-          }
-        }
     }
   }
 
