@@ -164,11 +164,13 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
-  public synchronized EntityCache getOrCreateEntityCache(
-      RealmContext realmContext, RealmConfig realmConfig) {
+  public synchronized EntityCache getOrCreateEntityCache(RealmContext realmContext) {
     return entityCacheMap.computeIfAbsent(
         realmContext.getRealmIdentifier(),
-        realmId -> new InMemoryEntityCache(diagnostics, realmConfig));
+        realmId -> {
+          RealmConfig realmConfig = new RealmConfigImpl(configurationStore, realmContext);
+          return new InMemoryEntityCache(diagnostics, realmConfig);
+        });
   }
 
   /**

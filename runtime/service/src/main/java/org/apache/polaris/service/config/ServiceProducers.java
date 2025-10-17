@@ -146,11 +146,9 @@ public class ServiceProducers {
   public ResolverFactory resolverFactory(
       PolarisDiagnostics diagnostics,
       RealmContext realmContext,
-      RealmConfig realmConfig,
       MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisMetaStoreManager polarisMetaStoreManager) {
-    EntityCache entityCache =
-        metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
+    EntityCache entityCache = metaStoreManagerFactory.getOrCreateEntityCache(realmContext);
     return (securityContext, referenceCatalogName) ->
         new Resolver(
             diagnostics,

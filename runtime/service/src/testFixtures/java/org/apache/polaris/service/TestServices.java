@@ -205,8 +205,7 @@ public record TestServices(
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.createMetaStoreManager(realmContext);
 
-      EntityCache entityCache =
-          metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
+      EntityCache entityCache = metaStoreManagerFactory.getOrCreateEntityCache(realmContext);
       ResolverFactory resolverFactory =
           (securityContext, referenceCatalogName) ->
               new Resolver(
