@@ -27,7 +27,8 @@ import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -44,7 +45,11 @@ public class TaskFileIOSupplier {
     this.fileIOFactory = fileIOFactory;
   }
 
-  public FileIO apply(TaskEntity task, TableIdentifier identifier, CallContext callContext) {
+  public FileIO apply(
+      RealmContext realmContext,
+      RealmConfig realmConfig,
+      TaskEntity task,
+      TableIdentifier identifier) {
     Map<String, String> internalProperties = task.getInternalPropertiesAsMap();
     Map<String, String> properties = new HashMap<>(internalProperties);
 
@@ -60,6 +65,13 @@ public class TaskFileIOSupplier {
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.io.ResolvingFileIO");
 
     return fileIOFactory.loadFileIO(
-        callContext, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
+        realmContext,
+        realmConfig,
+        ioImpl,
+        properties,
+        identifier,
+        locations,
+        storageActions,
+        resolvedPath);
   }
 }

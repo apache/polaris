@@ -31,9 +31,10 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -50,13 +51,12 @@ import org.slf4j.LoggerFactory;
 public class GenericTableCatalogHandler extends CatalogHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(GenericTableCatalogHandler.class);
 
-  private PolarisMetaStoreManager metaStoreManager;
-
   private GenericTableCatalog genericTableCatalog;
 
   public GenericTableCatalogHandler(
       PolarisDiagnostics diagnostics,
-      CallContext callContext,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       SecurityContext securityContext,
@@ -66,14 +66,15 @@ public class GenericTableCatalogHandler extends CatalogHandler {
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(
         diagnostics,
-        callContext,
+        realmContext,
+        realmConfig,
+        metaStoreManager,
         resolutionManifestFactory,
         securityContext,
         catalogName,
         authorizer,
         polarisCredentialManager,
         externalCatalogFactories);
-    this.metaStoreManager = metaStoreManager;
   }
 
   @Override
@@ -87,7 +88,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
           .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
-          callContext.getRealmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+          realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
 
       GenericTableCatalog federatedCatalog;
       ConnectionType connectionType =

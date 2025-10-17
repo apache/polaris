@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,31 +37,27 @@ import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
-import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.TestFileIOFactory;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class ManifestFileCleanupTaskHandlerTest {
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-
   private final RealmContext realmContext = () -> "realmName";
+  private final RealmConfig realmConfig =
+      new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
 
   private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
     return new TaskFileIOSupplier(new TestFileIOFactory(fileIO));
   }
 
-  private PolarisCallContext newCallContext() {
-    return new PolarisCallContext(realmContext);
-  }
-
   @Test
   public void testCleanupFileNotExists() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
 
@@ -83,12 +78,11 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThat(handler.handleTask(realmContext, realmConfig, task)).isTrue();
   }
 
   @Test
   public void testCleanupFileManifestExistsDataFilesDontExist() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     ManifestFileCleanupTaskHandler handler =
@@ -107,12 +101,11 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThat(handler.handleTask(realmContext, realmConfig, task)).isTrue();
   }
 
   @Test
   public void testCleanupFiles() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -146,14 +139,13 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThat(handler.handleTask(realmContext, realmConfig, task)).isTrue();
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
   }
 
   @Test
   public void testCleanupFilesWithRetries() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -201,7 +193,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
     task = addTaskLocation(task);
     assertThatPredicate(handler::canHandleTask).accepts(task);
-    assertThat(handler.handleTask(task, polarisCallContext)).isTrue();
+    assertThat(handler.handleTask(realmContext, realmConfig, task)).isTrue();
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
     assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
   }

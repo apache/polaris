@@ -34,10 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.awaitility.Awaitility;
@@ -138,18 +135,12 @@ class AwsCloudWatchEventListenerTest {
         };
 
     // Set up call context and security context
-    CallContext callContext = Mockito.mock(CallContext.class);
-    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
-    RealmContext realmContext = Mockito.mock(RealmContext.class);
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
-    when(callContext.getRealmContext()).thenReturn(realmContext);
-    when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(realmContext.getRealmIdentifier()).thenReturn(REALM);
     when(securityContext.getUserPrincipal()).thenReturn(principal);
     when(principal.getName()).thenReturn(TEST_USER);
     when(principal.getRoles()).thenReturn(Set.of("role1", "role2"));
-    listener.callContext = callContext;
+    listener.realmContext = () -> REALM;
     listener.securityContext = securityContext;
 
     return listener;

@@ -35,7 +35,8 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -59,13 +60,12 @@ import org.apache.polaris.service.types.UpdatePolicyRequest;
 
 public class PolicyCatalogHandler extends CatalogHandler {
 
-  private PolarisMetaStoreManager metaStoreManager;
-
   private PolicyCatalog policyCatalog;
 
   public PolicyCatalogHandler(
       PolarisDiagnostics diagnostics,
-      CallContext callContext,
+      RealmContext realmContext,
+      RealmConfig realmConfig,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       SecurityContext securityContext,
@@ -75,19 +75,20 @@ public class PolicyCatalogHandler extends CatalogHandler {
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(
         diagnostics,
-        callContext,
+        realmContext,
+        realmConfig,
+        metaStoreManager,
         resolutionManifestFactory,
         securityContext,
         catalogName,
         authorizer,
         polarisCredentialManager,
         externalCatalogFactories);
-    this.metaStoreManager = metaStoreManager;
   }
 
   @Override
   protected void initializeCatalog() {
-    this.policyCatalog = new PolicyCatalog(metaStoreManager, callContext, this.resolutionManifest);
+    this.policyCatalog = new PolicyCatalog(metaStoreManager, this.resolutionManifest);
   }
 
   public ListPoliciesResponse listPolicies(Namespace parent, @Nullable PolicyType policyType) {
