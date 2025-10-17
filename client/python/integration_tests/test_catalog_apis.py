@@ -271,6 +271,41 @@ def test_policies(
         assert updated_policy.policy.description == updated_policy_description
         assert json.loads(updated_policy.policy.content) == updated_policy_content
 
+        # ATTACH to catalog
+        test_policy_api.attach_policy(
+            prefix=test_catalog.name,
+            namespace=namespace_name,
+            policy_name=policy_name,
+            attach_policy_request=AttachPolicyRequest(
+                target=PolicyAttachmentTarget(type="catalog", path=[])
+            ),
+        )
+
+        # GET APPLICABLE on catalog
+        applicable_policies = test_policy_api.get_applicable_policies(
+            prefix=test_catalog.name
+        )
+
+        assert len(applicable_policies.applicable_policies) == 1
+        assert applicable_policies.applicable_policies[0].name == policy_name
+
+        # DETACH from catalog
+        test_policy_api.detach_policy(
+            prefix=test_catalog.name,
+            namespace=namespace_name,
+            policy_name=policy_name,
+            detach_policy_request=DetachPolicyRequest(
+                target=PolicyAttachmentTarget(type="catalog", path=[])
+            ),
+        )
+
+        # GET APPLICABLE on catalog after DETACH
+        applicable_policies = test_policy_api.get_applicable_policies(
+            prefix=test_catalog.name
+        )
+
+        assert len(applicable_policies.applicable_policies) == 0
+
         # ATTACH to namespace
         test_policy_api.attach_policy(
             prefix=test_catalog.name,
