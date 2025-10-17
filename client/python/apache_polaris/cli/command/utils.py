@@ -18,9 +18,9 @@
 #
 import re
 
-from polaris.catalog.api_client import ApiClient
-from polaris.catalog.configuration import Configuration
-from polaris.management import PolarisDefaultApi
+from apache_polaris.sdk.catalog.api_client import ApiClient
+from apache_polaris.sdk.catalog.configuration import Configuration
+from apache_polaris.sdk.management import PolarisDefaultApi
 
 
 def get_catalog_api_client(api: PolarisDefaultApi) -> ApiClient:

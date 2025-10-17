@@ -19,9 +19,9 @@
 import argparse
 from abc import ABC
 
-from cli.constants import Commands, Arguments
-from cli.options.parser import Parser
-from polaris.management import PolarisDefaultApi
+from apache_polaris.cli.constants import Commands, Arguments
+from apache_polaris.cli.options.parser import Parser
+from apache_polaris.sdk.management import PolarisDefaultApi
 
 
 class Command(ABC):
@@ -44,7 +44,7 @@ class Command(ABC):
 
         command = None
         if options.command == Commands.CATALOGS:
-            from cli.command.catalogs import CatalogsCommand
+            from apache_polaris.cli.command.catalogs import CatalogsCommand
 
             command = CatalogsCommand(
                 options_get(f"{Commands.CATALOGS}_subcommand"),
@@ -87,7 +87,7 @@ class Command(ABC):
                 catalog_signing_name=options_get(Arguments.CATALOG_SIGNING_NAME)
             )
         elif options.command == Commands.PRINCIPALS:
-            from cli.command.principals import PrincipalsCommand
+            from apache_polaris.cli.command.principals import PrincipalsCommand
 
             command = PrincipalsCommand(
                 options_get(f"{Commands.PRINCIPALS}_subcommand"),
@@ -104,7 +104,7 @@ class Command(ABC):
                 new_client_secret=options_get(Arguments.NEW_CLIENT_SECRET),
             )
         elif options.command == Commands.PRINCIPAL_ROLES:
-            from cli.command.principal_roles import PrincipalRolesCommand
+            from apache_polaris.cli.command.principal_roles import PrincipalRolesCommand
 
             command = PrincipalRolesCommand(
                 options_get(f"{Commands.PRINCIPAL_ROLES}_subcommand"),
@@ -119,7 +119,7 @@ class Command(ABC):
                 else remove_properties,
             )
         elif options.command == Commands.CATALOG_ROLES:
-            from cli.command.catalog_roles import CatalogRolesCommand
+            from apache_polaris.cli.command.catalog_roles import CatalogRolesCommand
 
             command = CatalogRolesCommand(
                 options_get(f"{Commands.CATALOG_ROLES}_subcommand"),
@@ -133,7 +133,7 @@ class Command(ABC):
                 else remove_properties,
             )
         elif options.command == Commands.PRIVILEGES:
-            from cli.command.privileges import PrivilegesCommand
+            from apache_polaris.cli.command.privileges import PrivilegesCommand
 
             subcommand = options_get(f"{Commands.PRIVILEGES}_subcommand")
             command = PrivilegesCommand(
@@ -150,7 +150,7 @@ class Command(ABC):
                 cascade=options_get(Arguments.CASCADE),
             )
         elif options.command == Commands.NAMESPACES:
-            from cli.command.namespaces import NamespacesCommand
+            from apache_polaris.cli.command.namespaces import NamespacesCommand
 
             subcommand = options_get(f"{Commands.NAMESPACES}_subcommand")
             command = NamespacesCommand(
@@ -164,14 +164,14 @@ class Command(ABC):
                 properties=properties,
             )
         elif options.command == Commands.PROFILES:
-            from cli.command.profiles import ProfilesCommand
+            from apache_polaris.cli.command.profiles import ProfilesCommand
 
             subcommand = options_get(f"{Commands.PROFILES}_subcommand")
             command = ProfilesCommand(
                 subcommand, profile_name=options_get(Arguments.PROFILE)
             )
         elif options.command == Commands.POLICIES:
-            from cli.command.policies import PoliciesCommand
+            from apache_polaris.cli.command.policies import PoliciesCommand
 
             subcommand = options_get(f"{Commands.POLICIES}_subcommand")
             command = PoliciesCommand(
