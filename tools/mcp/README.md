@@ -126,7 +126,7 @@ Add the Polaris MCP to it:
 }
 ```
 
-The server currently exposes four MCP tools:
+The server currently exposes seven MCP tools:
 
 * `polaris-table-request` — High-level helper for the table REST API. Supported operations include:
   * `list`: `GET /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
@@ -156,6 +156,37 @@ The server currently exposes four MCP tools:
   * `create`: `POST /api/management/v1/catalogs`
   * `update`: `PUT /api/management/v1/catalogs/{catalog}`
   * `delete`: `DELETE /api/management/v1/catalogs/{catalog}`
+* `polaris-principal-request` — Principal lifecycle helper:
+  * `list`: `GET /api/management/v1/principals`
+  * `create`: `POST /api/management/v1/principals`
+  * `get`: `GET /api/management/v1/principals/{principal}`
+  * `update`: `PUT /api/management/v1/principals/{principal}`
+  * `delete`: `DELETE /api/management/v1/principals/{principal}`
+  * `rotate-credentials`: `POST /api/management/v1/principals/{principal}/rotate`
+  * `reset-credentials`: `POST /api/management/v1/principals/{principal}/reset`
+  * `list-principal-roles`: `GET /api/management/v1/principals/{principal}/principal-roles`
+  * `assign-principal-role`: `PUT /api/management/v1/principals/{principal}/principal-roles`
+  * `revoke-principal-role`: `DELETE /api/management/v1/principals/{principal}/principal-roles/{principalRole}`
+* `polaris-principal-role-request` — Principal role and mapping helper:
+  * `list`: `GET /api/management/v1/principal-roles`
+  * `create`: `POST /api/management/v1/principal-roles`
+  * `get`: `GET /api/management/v1/principal-roles/{principalRole}`
+  * `update`: `PUT /api/management/v1/principal-roles/{principalRole}`
+  * `delete`: `DELETE /api/management/v1/principal-roles/{principalRole}`
+  * `list-principals`: `GET /api/management/v1/principal-roles/{principalRole}/principals`
+  * `list-catalog-roles`: `GET /api/management/v1/principal-roles/{principalRole}/catalog-roles/{catalog}`
+  * `assign-catalog-role`: `PUT /api/management/v1/principal-roles/{principalRole}/catalog-roles/{catalog}`
+  * `revoke-catalog-role`: `DELETE /api/management/v1/principal-roles/{principalRole}/catalog-roles/{catalog}/{catalogRole}`
+* `polaris-catalog-role-request` — Catalog role and grants helper:
+  * `list`: `GET /api/management/v1/catalogs/{catalog}/catalog-roles`
+  * `create`: `POST /api/management/v1/catalogs/{catalog}/catalog-roles`
+  * `get`: `GET /api/management/v1/catalogs/{catalog}/catalog-roles/{catalogRole}`
+  * `update`: `PUT /api/management/v1/catalogs/{catalog}/catalog-roles/{catalogRole}`
+  * `delete`: `DELETE /api/management/v1/catalogs/{catalog}/catalog-roles/{catalogRole}`
+  * `list-principal-roles`: `GET /api/management/v1/catalogs/{catalog}/catalog-roles/{catalogRole}/principal-roles`
+  * `list-grants`: `GET /api/management/v1/catalogs/{catalog}/catalog-roles/{catalogRole}/grants`
+  * `add-grant`: `PUT /api/management/v1/catalogs/{catalog}/catalog-roles/{catalogRole}/grants`
+  * `revoke-grant`: `POST /api/management/v1/catalogs/{catalog}/catalog-roles/{catalogRole}/grants`
 
 Each operation returns the HTTP status, headers, and response body (pretty-printed
 when JSON) to the MCP client, along with structured metadata that includes
