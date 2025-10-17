@@ -118,7 +118,7 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
   @Fallback(fallbackMethod = "onFlushError")
   protected void flush(String realmId, List<PolarisEvent> events) {
     RealmContext realmContext = () -> realmId;
-    var metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext, null);
+    var metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext);
     metaStoreManager.writeEvents(events);
   }
 

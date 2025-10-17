@@ -188,7 +188,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
-      PolarisMetaStoreManager metaStoreManager = createMetaStoreManager(realmContext, null);
+      PolarisMetaStoreManager metaStoreManager = createMetaStoreManager(realmContext);
 
       BaseResult result = metaStoreManager.purge();
       results.put(realm, result);
@@ -200,11 +200,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   }
 
   @Override
-  public PolarisMetaStoreManager createMetaStoreManager(
-      RealmContext realmContext, @Nullable RealmConfig realmConfig) {
-    if (realmConfig == null) {
-      realmConfig = new RealmConfigImpl(configurationStore, realmContext);
-    }
+  public PolarisMetaStoreManager createMetaStoreManager(RealmContext realmContext) {
+    RealmConfig realmConfig = new RealmConfigImpl(configurationStore, realmContext);
     return new AtomicOperationMetaStoreManager(
         clock,
         diagnostics,
@@ -236,8 +233,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
    */
   private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
       RealmContext realmContext) {
-    // While bootstrapping a proper RealmConfig is not needed
-    PolarisMetaStoreManager metaStoreManager = createMetaStoreManager(realmContext, null);
+    PolarisMetaStoreManager metaStoreManager = createMetaStoreManager(realmContext);
 
     Optional<PrincipalEntity> preliminaryRootPrincipal = metaStoreManager.findRootPrincipal();
     if (preliminaryRootPrincipal.isPresent()) {
@@ -262,8 +258,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
    * entities
    */
   private void checkPolarisServiceBootstrappedForRealm(RealmContext realmContext) {
-    // While bootstrapping a proper RealmConfig is not needed
-    PolarisMetaStoreManager metaStoreManager = createMetaStoreManager(realmContext, null);
+    PolarisMetaStoreManager metaStoreManager = createMetaStoreManager(realmContext);
 
     Optional<PrincipalEntity> rootPrincipal = metaStoreManager.findRootPrincipal();
     if (rootPrincipal.isEmpty()) {

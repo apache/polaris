@@ -72,9 +72,9 @@ class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListe
 
   @Test
   void testFlushFailureRecovery() {
-    var manager = metaStoreManagerFactory.createMetaStoreManager(() -> "test1", null);
+    var manager = metaStoreManagerFactory.createMetaStoreManager(() -> "test1");
     var managerSpy = Mockito.spy(manager);
-    doReturn(managerSpy).when(metaStoreManagerFactory).createMetaStoreManager(any(), any());
+    doReturn(managerSpy).when(metaStoreManagerFactory).createMetaStoreManager(any());
 
     RuntimeException error = new RuntimeException("error");
     doThrow(error)

@@ -103,7 +103,7 @@ public class PolarisIntegrationTestFixture {
             .join();
 
     PolarisMetaStoreManager metaStoreManager =
-        helper.metaStoreManagerFactory.createMetaStoreManager(realmContext, helper.realmConfig);
+        helper.metaStoreManagerFactory.createMetaStoreManager(realmContext);
     PrincipalEntity principal = metaStoreManager.findRootPrincipal().orElseThrow();
     return metaStoreManager.loadPrincipalSecrets(principal.getClientId()).getPrincipalSecrets();
   }

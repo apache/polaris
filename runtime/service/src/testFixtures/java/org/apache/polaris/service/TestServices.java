@@ -203,7 +203,7 @@ public record TestServices(
       RealmConfig realmConfig = callContext.getRealmConfig();
 
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
+          metaStoreManagerFactory.createMetaStoreManager(realmContext);
 
       EntityCache entityCache =
           metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);

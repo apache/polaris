@@ -107,8 +107,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
           TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
 
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.createMetaStoreManager(
-              callContext.getRealmContext(), callContext.getRealmConfig());
+          metaStoreManagerFactory.createMetaStoreManager(callContext.getRealmContext());
 
       Stream<TaskEntity> manifestCleanupTasks =
           getManifestTaskStream(cleanupTask, tableMetadata, fileIO, tableEntity, metaStoreManager);

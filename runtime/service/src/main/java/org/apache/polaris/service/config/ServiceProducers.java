@@ -198,10 +198,8 @@ public class ServiceProducers {
   @Produces
   @RequestScoped
   public PolarisMetaStoreManager polarisMetaStoreManager(
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      RealmContext realmContext,
-      RealmConfig realmConfig) {
-    return metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
+      MetaStoreManagerFactory metaStoreManagerFactory, RealmContext realmContext) {
+    return metaStoreManagerFactory.createMetaStoreManager(realmContext);
   }
 
   @Produces

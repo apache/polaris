@@ -39,7 +39,6 @@ import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -80,8 +79,7 @@ class TableCleanupTaskHandlerTest {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
 
     callContext = new PolarisCallContext(realmContext, configurationStore);
-    RealmConfig realmConfig = callContext.getRealmConfig();
-    metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext, realmConfig);
+    metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext);
   }
 
   @Test

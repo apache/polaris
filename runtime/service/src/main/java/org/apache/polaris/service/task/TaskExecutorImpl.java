@@ -149,8 +149,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     try {
       LOGGER.info("Handling task entity id {}", taskEntityId);
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.createMetaStoreManager(
-              ctx.getRealmContext(), ctx.getRealmConfig());
+          metaStoreManagerFactory.createMetaStoreManager(ctx.getRealmContext());
       PolarisBaseEntity taskEntity =
           metaStoreManager.loadEntity(0L, taskEntityId, PolarisEntityType.TASK).getEntity();
       if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
