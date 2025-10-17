@@ -22,7 +22,7 @@ import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import java.util.Map;
 
-public class PostgresRelationalJdbcLifeCycleManagement
+public class MySqlRelationalJdbcLifeCycleManagement
     implements QuarkusTestResourceLifecycleManager, DevServicesContext.ContextAware {
 
   public static final String INIT_SCRIPT = RelationalJdbcLifeCycleManagement.INIT_SCRIPT;
@@ -33,7 +33,7 @@ public class PostgresRelationalJdbcLifeCycleManagement
   @Override
   public void init(Map<String, String> initArgs) {
     Map<String, String> enhancedArgs = new java.util.HashMap<>(initArgs);
-    enhancedArgs.put(RelationalJdbcLifeCycleManagement.DATABASE_TYPE, "POSTGRESQL");
+    enhancedArgs.put(RelationalJdbcLifeCycleManagement.DATABASE_TYPE, "MYSQL");
     delegate.init(enhancedArgs);
   }
 

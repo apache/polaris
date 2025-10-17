@@ -23,7 +23,8 @@ import java.util.Locale;
 
 public enum DatabaseType {
   POSTGRES("postgres"),
-  H2("h2");
+  H2("h2"),
+  MYSQL("mysql");
 
   private final String displayName; // Store the user-friendly name
 
@@ -40,6 +41,7 @@ public enum DatabaseType {
     return switch (displayName.toLowerCase(Locale.ROOT)) {
       case "h2" -> DatabaseType.H2;
       case "postgresql" -> DatabaseType.POSTGRES;
+      case "mysql" -> DatabaseType.MYSQL;
       default -> throw new IllegalStateException("Unsupported DatabaseType: '" + displayName + "'");
     };
   }
