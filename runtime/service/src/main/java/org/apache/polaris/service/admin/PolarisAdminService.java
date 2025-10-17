@@ -1182,12 +1182,17 @@ public class PolarisAdminService {
               "Failed to %s secrets for principal '%s'",
               shouldReset ? "reset" : "rotate", principalName));
     }
-    PrincipalEntity newPrincipal =
-        metaStoreManager
-            .findPrincipalById(getCurrentPolarisContext(), currentPrincipalEntity.getId())
-            .orElseThrow();
+    Optional<PrincipalEntity> updatedPrincipalEntity =
+        metaStoreManager.findPrincipalById(
+            getCurrentPolarisContext(), currentPrincipalEntity.getId());
+    if (updatedPrincipalEntity.isEmpty()) {
+      throw new IllegalStateException(
+          String.format(
+              "Failed to reload principal '%s' by id: %s",
+              principalName, currentPrincipalEntity.getId()));
+    }
     return new PrincipalWithCredentials(
-        newPrincipal.asPrincipal(),
+        updatedPrincipalEntity.get().asPrincipal(),
         new PrincipalWithCredentialsCredentials(
             newSecrets.getPrincipalClientId(), newSecrets.getMainSecret()));
   }
