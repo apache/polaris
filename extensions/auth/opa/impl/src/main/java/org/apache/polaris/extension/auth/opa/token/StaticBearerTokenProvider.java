@@ -16,22 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.extension.auth.opa.token;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.config.RealmConfig;
+import static com.google.common.base.Preconditions.checkArgument;
 
-/** Factory for creating the default Polaris authorizer implementation. */
-@ApplicationScoped
-@Identifier("internal")
-class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
+import com.google.common.base.Strings;
+
+/** A simple token provider that returns a static string value. */
+public class StaticBearerTokenProvider implements BearerTokenProvider {
+
+  private final String token;
+
+  public StaticBearerTokenProvider(String token) {
+    checkArgument(!Strings.isNullOrEmpty(token), "Token cannot be null or empty");
+    this.token = token;
+  }
 
   @Override
-  public PolarisAuthorizer create(RealmConfig realmConfig) {
-    return new PolarisAuthorizerImpl(realmConfig);
+  public String getToken() {
+    return token;
   }
 }

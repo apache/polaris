@@ -16,22 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.extension.auth.opa.token;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.config.RealmConfig;
+import jakarta.annotation.Nullable;
 
-/** Factory for creating the default Polaris authorizer implementation. */
-@ApplicationScoped
-@Identifier("internal")
-class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
+/**
+ * Interface for providing bearer tokens for authentication.
+ *
+ * <p>Implementations can provide tokens from various sources such as:
+ *
+ * <ul>
+ *   <li>Static string values
+ *   <li>Files (with automatic reloading)
+ *   <li>External token services
+ * </ul>
+ */
+public interface BearerTokenProvider extends AutoCloseable {
 
+  /**
+   * Get the current bearer token.
+   *
+   * @return the bearer token, or null if no token is available
+   */
+  @Nullable
+  String getToken();
+
+  /**
+   * Clean up any resources used by this token provider. Should be called when the provider is no
+   * longer needed.
+   */
   @Override
-  public PolarisAuthorizer create(RealmConfig realmConfig) {
-    return new PolarisAuthorizerImpl(realmConfig);
+  default void close() {
+    // Default implementation does nothing
   }
 }
