@@ -37,7 +37,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -52,7 +53,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Given a list of registered {@link TaskHandler}s, execute tasks asynchronously with the provided
- * {@link CallContext}.
+ * {@link RealmContext}.
  */
 @ApplicationScoped
 public class TaskExecutorImpl implements TaskExecutor {
@@ -110,50 +111,47 @@ public class TaskExecutorImpl implements TaskExecutor {
   }
 
   /**
-   * Register a {@link CallContext} for a specific task id. That task will be loaded and executed
-   * asynchronously with a clone of the provided {@link CallContext}.
+   * Register a {@link RealmContext} for a specific task id. That task will be loaded and executed
+   * asynchronously with a clone of the provided {@link RealmContext}.
    */
   @Override
   @SuppressWarnings("FutureReturnValueIgnored") // it _should_ be okay in this particular case
-  public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {
-    // Unfortunately CallContext is a request-scoped bean and must be cloned now,
-    // because its usage inside the TaskExecutor thread pool will outlive its
-    // lifespan, so the original CallContext will eventually be closed while
-    // the task is still running.
-    // Note: PolarisCallContext has request-scoped beans as well, and must be cloned.
-    // FIXME replace with context propagation?
-    CallContext clone = callContext.copy();
-    tryHandleTask(taskEntityId, clone, null, 1);
+  public void addTaskHandlerContext(
+      RealmContext realmContext, RealmConfig realmConfig, long taskEntityId) {
+    tryHandleTask(realmContext, realmConfig, taskEntityId, null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
-      long taskEntityId, CallContext callContext, Throwable e, int attempt) {
+      RealmContext realmContext,
+      RealmConfig realmConfig,
+      long taskEntityId,
+      Throwable e,
+      int attempt) {
     if (attempt > 3) {
       return CompletableFuture.failedFuture(e);
     }
     return CompletableFuture.runAsync(
-            () -> handleTaskWithTracing(taskEntityId, callContext, attempt), executor)
+            () -> handleTaskWithTracing(realmContext, realmConfig, taskEntityId, attempt), executor)
         .exceptionallyComposeAsync(
             (t) -> {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
-              return tryHandleTask(taskEntityId, callContext, t, attempt + 1);
+              return tryHandleTask(realmContext, realmConfig, taskEntityId, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
   }
 
-  protected void handleTask(long taskEntityId, CallContext ctx, int attempt) {
+  protected void handleTask(
+      RealmContext realmContext, RealmConfig realmConfig, long taskEntityId, int attempt) {
     polarisEventListener.onBeforeAttemptTask(new BeforeAttemptTaskEvent(taskEntityId, attempt));
 
     boolean success = false;
     try {
       LOGGER.info("Handling task entity id {}", taskEntityId);
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
+          metaStoreManagerFactory.createMetaStoreManager(realmContext);
       PolarisBaseEntity taskEntity =
-          metaStoreManager
-              .loadEntity(ctx.getPolarisCallContext(), 0L, taskEntityId, PolarisEntityType.TASK)
-              .getEntity();
+          metaStoreManager.loadEntity(0L, taskEntityId, PolarisEntityType.TASK).getEntity();
       if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
         throw new IllegalArgumentException("Provided taskId must be a task entity type");
       }
@@ -169,15 +167,14 @@ public class TaskExecutorImpl implements TaskExecutor {
         return;
       }
       TaskHandler handler = handlerOpt.get();
-      success = handler.handleTask(task, ctx);
+      success = handler.handleTask(realmContext, realmConfig, task);
       if (success) {
         LOGGER
             .atInfo()
             .addKeyValue("taskEntityId", taskEntityId)
             .addKeyValue("handlerClass", handler.getClass())
             .log("Task successfully handled");
-        metaStoreManager.dropEntityIfExists(
-            ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
+        metaStoreManager.dropEntityIfExists(null, taskEntity, Map.of(), false);
       } else {
         LOGGER
             .atWarn()
@@ -191,22 +188,21 @@ public class TaskExecutorImpl implements TaskExecutor {
     }
   }
 
-  protected void handleTaskWithTracing(long taskEntityId, CallContext callContext, int attempt) {
+  protected void handleTaskWithTracing(
+      RealmContext realmContext, RealmConfig realmConfig, long taskEntityId, int attempt) {
     if (tracer == null) {
-      handleTask(taskEntityId, callContext, attempt);
+      handleTask(realmContext, realmConfig, taskEntityId, attempt);
     } else {
       Span span =
           tracer
               .spanBuilder("polaris.task")
               .setParent(Context.current())
-              .setAttribute(
-                  TracingFilter.REALM_ID_ATTRIBUTE,
-                  callContext.getRealmContext().getRealmIdentifier())
+              .setAttribute(TracingFilter.REALM_ID_ATTRIBUTE, realmContext.getRealmIdentifier())
               .setAttribute("polaris.task.entity.id", taskEntityId)
               .setAttribute("polaris.task.attempt", attempt)
               .startSpan();
       try (Scope ignored = span.makeCurrent()) {
-        handleTask(taskEntityId, callContext, attempt);
+        handleTask(realmContext, realmConfig, taskEntityId, attempt);
       } finally {
         span.end();
       }

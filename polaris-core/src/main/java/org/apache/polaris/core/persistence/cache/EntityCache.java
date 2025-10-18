@@ -20,9 +20,9 @@ package org.apache.polaris.core.persistence.cache;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 
 /** Interface for a Polaris entity cache */
@@ -38,7 +38,6 @@ public interface EntityCache {
    * Refresh the cache if needs be with a version of the entity/grant records matching the minimum
    * specified version.
    *
-   * @param callContext the Polaris call context
    * @param entityToValidate copy of the entity held by the caller to validate
    * @param entityMinVersion minimum expected version. Should be reloaded if found in a cache with a
    *     version less than this one
@@ -48,7 +47,7 @@ public interface EntityCache {
    */
   @Nullable
   ResolvedPolarisEntity getAndRefreshIfNeeded(
-      @Nonnull PolarisCallContext callContext,
+      @Nonnull PolarisMetaStoreManager metaStoreManager,
       @Nonnull PolarisBaseEntity entityToValidate,
       int entityMinVersion,
       int entityGrantRecordsMinVersion);
@@ -56,7 +55,6 @@ public interface EntityCache {
   /**
    * Get the specified entity by name and load it if it is not found.
    *
-   * @param callContext the Polaris call context
    * @param entityCatalogId id of the catalog where this entity resides or NULL_ID if top-level
    * @param entityId id of the entity to lookup
    * @return null if the entity does not exist or was dropped. Else return the entry for that
@@ -64,7 +62,7 @@ public interface EntityCache {
    */
   @Nullable
   EntityCacheLookupResult getOrLoadEntityById(
-      @Nonnull PolarisCallContext callContext,
+      @Nonnull PolarisMetaStoreManager metaStoreManager,
       long entityCatalogId,
       long entityId,
       PolarisEntityType entityType);
@@ -72,12 +70,12 @@ public interface EntityCache {
   /**
    * Get the specified entity by name and load it if it is not found.
    *
-   * @param callContext the Polaris call context
    * @param entityNameKey name of the entity to load
    * @return null if the entity does not exist or was dropped. Else return the entry for that
    *     entity, either as found in the cache or loaded from the backend
    */
   @Nullable
   EntityCacheLookupResult getOrLoadEntityByName(
-      @Nonnull PolarisCallContext callContext, @Nonnull EntityCacheByNameKey entityNameKey);
+      @Nonnull PolarisMetaStoreManager metaStoreManager,
+      @Nonnull EntityCacheByNameKey entityNameKey);
 }

@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -43,13 +42,12 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
@@ -191,7 +189,7 @@ public record TestServices(
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
       InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
           new InMemoryPolarisMetaStoreManagerFactory(
-              clock, diagnostics, storageIntegrationProvider);
+              clock, diagnostics, configurationStore, storageIntegrationProvider);
 
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
       StorageCredentialCache storageCredentialCache =
@@ -200,21 +198,16 @@ public record TestServices(
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
-      BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
-      CallContext callContext =
-          new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
-      RealmConfig realmConfig = callContext.getRealmConfig();
+      RealmConfig realmConfig = new RealmConfigImpl(configurationStore, realmContext);
 
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+          metaStoreManagerFactory.createMetaStoreManager(realmContext);
 
-      EntityCache entityCache =
-          metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
+      EntityCache entityCache = metaStoreManagerFactory.getOrCreateEntityCache(realmContext);
       ResolverFactory resolverFactory =
           (securityContext, referenceCatalogName) ->
               new Resolver(
                   diagnostics,
-                  callContext.getPolarisCallContext(),
                   metaStoreManager,
                   securityContext,
                   entityCache,
@@ -257,8 +250,7 @@ public record TestServices(
               fileIOFactory,
               polarisEventListener);
 
-      AccessConfigProvider accessConfigProvider =
-          new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+      AccessConfigProvider accessConfigProvider = new AccessConfigProvider(storageCredentialCache);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
@@ -273,7 +265,7 @@ public record TestServices(
           new IcebergCatalogAdapter(
               diagnostics,
               realmContext,
-              callContext,
+              realmConfig,
               callContextFactory,
               resolverFactory,
               resolutionManifestFactory,
@@ -293,7 +285,6 @@ public record TestServices(
 
       CreatePrincipalResult createdPrincipal =
           metaStoreManager.createPrincipal(
-              callContext.getPolarisCallContext(),
               new PrincipalEntity.Builder()
                   .setName("test-principal")
                   .setCreateTimestamp(Instant.now().toEpochMilli())
@@ -327,7 +318,8 @@ public record TestServices(
       PolarisAdminService adminService =
           new PolarisAdminService(
               diagnostics,
-              callContext,
+              realmContext,
+              realmConfig,
               resolutionManifestFactory,
               metaStoreManager,
               userSecretsManager,
@@ -361,10 +353,5 @@ public record TestServices(
           polarisEventListener,
           accessConfigProvider);
     }
-  }
-
-  public PolarisCallContext newCallContext() {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore, configurationStore);
   }
 }

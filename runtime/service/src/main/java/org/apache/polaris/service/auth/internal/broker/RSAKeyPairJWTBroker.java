@@ -21,18 +21,14 @@ package org.apache.polaris.service.auth.internal.broker;
 import com.auth0.jwt.algorithms.Algorithm;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 
 /** Generates a JWT using a Public/Private RSA Key */
 public class RSAKeyPairJWTBroker extends JWTBroker {
 
   private final KeyProvider keyProvider;
 
-  RSAKeyPairJWTBroker(
-      PolarisMetaStoreManager metaStoreManager,
-      int maxTokenGenerationInSeconds,
-      KeyProvider keyProvider) {
-    super(metaStoreManager, maxTokenGenerationInSeconds);
+  RSAKeyPairJWTBroker(int maxTokenGenerationInSeconds, KeyProvider keyProvider) {
+    super(maxTokenGenerationInSeconds);
     this.keyProvider = keyProvider;
   }
 
