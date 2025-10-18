@@ -21,7 +21,6 @@ package org.apache.polaris.core.storage;
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 
@@ -31,7 +30,6 @@ public interface PolarisCredentialVendor {
    * Get a sub-scoped credentials for an entity against the provided allowed read and write
    * locations.
    *
-   * @param callCtx the polaris call context
    * @param catalogId the catalog id
    * @param entityId the entity id
    * @param allowListOperation whether to allow LIST operation on the allowedReadLocations and
@@ -46,7 +44,6 @@ public interface PolarisCredentialVendor {
    */
   @Nonnull
   ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
       PolarisEntityType entityType,

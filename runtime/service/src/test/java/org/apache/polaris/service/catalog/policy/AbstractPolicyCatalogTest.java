@@ -169,17 +169,13 @@ public abstract class AbstractPolicyCatalogTest {
 
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
-    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            configurationStore);
-    realmConfig = polarisContext.getRealmConfig();
 
-    PrincipalEntity rootPrincipal =
-        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
+    polarisContext = new PolarisCallContext(realmContext, configurationStore);
+    realmConfig = polarisContext.getRealmConfig();
+    metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(polarisContext);
+    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
+
+    PrincipalEntity rootPrincipal = metaStoreManager.findRootPrincipal().orElseThrow();
     authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     securityContext = Mockito.mock(SecurityContext.class);
@@ -272,7 +268,7 @@ public abstract class AbstractPolicyCatalogTest {
 
   @AfterEach
   public void after() throws IOException {
-    metaStoreManager.purge(polarisContext);
+    metaStoreManager.purge();
   }
 
   @Test

@@ -34,10 +34,10 @@ import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.service.auth.internal.broker.TokenUtils;
@@ -104,16 +104,11 @@ public class PolarisIntegrationTestFixture {
             .toCompletableFuture()
             .join();
 
-    BasePersistence metaStoreSession =
-        helper.metaStoreManagerFactory.getOrCreateSession(realmContext);
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(realmContext, metaStoreSession, helper.configurationStore);
+    CallContext callContext = new PolarisCallContext(realmContext, helper.configurationStore);
     PolarisMetaStoreManager metaStoreManager =
-        helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    PrincipalEntity principal = metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    return metaStoreManager
-        .loadPrincipalSecrets(polarisContext, principal.getClientId())
-        .getPrincipalSecrets();
+        helper.metaStoreManagerFactory.createMetaStoreManager(callContext);
+    PrincipalEntity principal = metaStoreManager.findRootPrincipal().orElseThrow();
+    return metaStoreManager.loadPrincipalSecrets(principal.getClientId()).getPrincipalSecrets();
   }
 
   private SnowmanCredentials createSnowmanCredentials(TestEnvironment testEnv) {

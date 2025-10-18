@@ -31,7 +31,6 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -72,9 +71,8 @@ public class DefaultFileIOFactory implements FileIOFactory {
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
-    RealmContext realmContext = callContext.getRealmContext();
     PolarisCredentialVendor credentialVendor =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+        metaStoreManagerFactory.createMetaStoreManager(callContext);
 
     // Get subcoped creds
     properties = new HashMap<>(properties);
