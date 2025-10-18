@@ -127,7 +127,6 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -728,7 +727,6 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   private final RealmConfig realmConfig;
 
-  @Inject
   public PolarisAuthorizerImpl(RealmConfig realmConfig) {
     this.realmConfig = realmConfig;
   }

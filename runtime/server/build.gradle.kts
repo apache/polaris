@@ -45,6 +45,7 @@ dependencies {
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
+  runtimeOnly(project(":polaris-extensions-auth-opa"))
 
   if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {
     runtimeOnly(project(":polaris-extensions-federation-hive"))

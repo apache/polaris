@@ -75,6 +75,7 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
+  implementation(libs.apache.httpclient5)
   implementation(libs.smallrye.common.annotation)
   implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
@@ -138,6 +139,8 @@ dependencies {
 
   testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
+
+  testImplementation(project(":polaris-extensions-auth-opa"))
 
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
