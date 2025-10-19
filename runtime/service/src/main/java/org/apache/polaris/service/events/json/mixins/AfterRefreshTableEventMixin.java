@@ -27,10 +27,10 @@ import org.apache.polaris.service.events.json.serde.TableIdentifierToStringSeria
 
 @JsonTypeName("AfterRefreshTableEvent")
 public abstract class AfterRefreshTableEventMixin {
-    @JsonProperty("catalog_name")
-    abstract String catalogName();
+  @JsonProperty("catalog_name")
+  abstract String catalogName();
 
-    @JsonProperty("table_identifier")
-    @JsonSerialize(using = TableIdentifierToStringSerializer.class)
-    abstract TableIdentifier tableIdentifier();
+  @JsonProperty("table_identifier")
+  @JsonSerialize(using = TableIdentifierToStringSerializer.class)
+  abstract TableIdentifier tableIdentifier();
 }

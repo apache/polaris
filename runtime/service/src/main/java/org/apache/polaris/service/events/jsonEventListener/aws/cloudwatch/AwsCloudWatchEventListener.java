@@ -33,7 +33,6 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
@@ -159,62 +158,57 @@ public class AwsCloudWatchEventListener extends AfterRefreshTableEventListener {
     }
   }
 
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record CloudWatchEvent(
-            String principal,
-            String realmId,
-            Collection<String> activatedRoles,
-            String eventType,
-            @JsonUnwrapped
-            PolarisEvent event // flatten
-    ) {}
+  @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+  public record CloudWatchEvent(
+      String principal,
+      String realmId,
+      Collection<String> activatedRoles,
+      String eventType,
+      @JsonUnwrapped PolarisEvent event // flatten
+      ) {}
 
-    @Override
-    protected void transformAndSendEvent(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
+  @Override
+  protected void transformAndSendEvent(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
 
+    CloudWatchEvent payload =
+        new CloudWatchEvent(
+            securityContext.getUserPrincipal().getName(),
+            callContext.getRealmContext().getRealmIdentifier(),
+            ((PolarisPrincipal) securityContext.getUserPrincipal()).getRoles(),
+            event.getClass().getSimpleName(),
+            event);
 
-        CloudWatchEvent payload = new CloudWatchEvent(
-                securityContext.getUserPrincipal().getName(),
-                callContext.getRealmContext().getRealmIdentifier(),
-                ((PolarisPrincipal) securityContext.getUserPrincipal()).getRoles(),
-                event.getClass().getSimpleName(),
-                event
-        );
-
-        String eventAsJson;
-        try
-        {
-            eventAsJson = objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException ex) {
-            LOGGER.error("Error serializing CloudWatch payload: ", ex);
-            LOGGER.debug("Failed to convert the following object into JSON string: {}", payload);
-            return;
-        }
-
-        InputLogEvent inputLogEvent =
-                InputLogEvent.builder().message(eventAsJson).timestamp(clock.millis()).build();
-
-        PutLogEventsRequest.Builder requestBuilder =
-                PutLogEventsRequest.builder()
-                        .logGroupName(logGroup)
-                        .logStreamName(logStream)
-                        .logEvents(List.of(inputLogEvent));
-
-        CompletableFuture<PutLogEventsResponse> future =
-                client
-                        .putLogEvents(requestBuilder.build())
-                        .whenComplete(
-                                (resp, err) -> {
-                                    if (err != null) {
-                                        LOGGER.error(
-                                                "Error writing log to CloudWatch. Event: {}, Error: ", inputLogEvent, err);
-                                    }
-                                });
-
-
-        if (synchronousMode) {
-            future.join();
-        }
-
+    String eventAsJson;
+    try {
+      eventAsJson = objectMapper.writeValueAsString(payload);
+    } catch (JsonProcessingException ex) {
+      LOGGER.error("Error serializing CloudWatch payload: ", ex);
+      LOGGER.debug("Failed to convert the following object into JSON string: {}", payload);
+      return;
     }
+
+    InputLogEvent inputLogEvent =
+        InputLogEvent.builder().message(eventAsJson).timestamp(clock.millis()).build();
+
+    PutLogEventsRequest.Builder requestBuilder =
+        PutLogEventsRequest.builder()
+            .logGroupName(logGroup)
+            .logStreamName(logStream)
+            .logEvents(List.of(inputLogEvent));
+
+    CompletableFuture<PutLogEventsResponse> future =
+        client
+            .putLogEvents(requestBuilder.build())
+            .whenComplete(
+                (resp, err) -> {
+                  if (err != null) {
+                    LOGGER.error(
+                        "Error writing log to CloudWatch. Event: {}, Error: ", inputLogEvent, err);
+                  }
+                });
+
+    if (synchronousMode) {
+      future.join();
+    }
+  }
 }

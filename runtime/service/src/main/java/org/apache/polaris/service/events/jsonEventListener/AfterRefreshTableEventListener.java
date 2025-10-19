@@ -19,7 +19,6 @@
 
 package org.apache.polaris.service.events.jsonEventListener;
 
-import java.util.HashMap;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
@@ -31,7 +30,8 @@ import org.apache.polaris.service.events.listeners.PolarisEventListener;
  * transformed into a JSON string, transmitted, and/or stored.
  */
 public abstract class AfterRefreshTableEventListener implements PolarisEventListener {
-  protected abstract void transformAndSendEvent(IcebergRestCatalogEvents.AfterRefreshTableEvent event);
+  protected abstract void transformAndSendEvent(
+      IcebergRestCatalogEvents.AfterRefreshTableEvent event);
 
   @Override
   public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
