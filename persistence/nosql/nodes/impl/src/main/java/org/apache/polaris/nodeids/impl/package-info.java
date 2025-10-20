@@ -16,15 +16,5 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.spi;
-
-import java.util.Optional;
-import org.apache.polaris.ids.api.IdGeneratorSpec;
-import org.apache.polaris.immutables.PolarisImmutable;
-
-public interface NodeManagementState {
-  Optional<IdGeneratorSpec> idGeneratorSpec();
-
-  @PolarisImmutable
-  interface BuildableNodeManagementState extends NodeManagementState {}
-}
+/** Node management implementation, do not directly use the types in this package. */
+package org.apache.polaris.nodeids.impl;

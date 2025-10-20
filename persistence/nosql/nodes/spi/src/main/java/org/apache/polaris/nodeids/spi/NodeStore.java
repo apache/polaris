@@ -16,23 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.impl;
+package org.apache.polaris.nodeids.spi;
 
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Optional;
-import org.apache.polaris.ids.api.IdGeneratorSpec;
-import org.apache.polaris.ids.api.ImmutableBuildableIdGeneratorSpec;
-import org.apache.polaris.nodes.spi.NodeManagementState;
 
-public final class Util {
-  private Util() {}
+/** Abstraction of nodes persistence for the node management implementation. */
+public interface NodeStore {
+  Optional<NodeState> fetch(int nodeId);
 
-  @VisibleForTesting
-  public static IdGeneratorSpec idgenSpecFromManagementState(
-      Optional<NodeManagementState> existingNodeManagementState) {
-    return existingNodeManagementState
-        .orElseThrow()
-        .idGeneratorSpec()
-        .orElse(ImmutableBuildableIdGeneratorSpec.builder().build());
-  }
+  @Nonnull
+  NodeState[] fetchMany(@Nonnull int... nodeIds);
+
+  @Nullable
+  NodeState persist(int nodeId, Optional<NodeState> expectedNodeState, @Nonnull NodeState newState);
 }

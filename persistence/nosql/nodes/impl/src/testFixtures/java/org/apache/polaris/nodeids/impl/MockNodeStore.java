@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.impl;
+package org.apache.polaris.nodeids.impl;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.polaris.nodes.spi.NodeState;
-import org.apache.polaris.nodes.spi.NodeStore;
+import org.apache.polaris.nodeids.spi.NodeState;
+import org.apache.polaris.nodeids.spi.NodeStore;
 
 public class MockNodeStore implements NodeStore {
   private final Map<Integer, NodeState> nodeStates = new ConcurrentHashMap<>();

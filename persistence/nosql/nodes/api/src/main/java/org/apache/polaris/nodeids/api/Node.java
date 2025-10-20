@@ -16,5 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-/** Node management implementation, do not directly use the types in this package. */
-package org.apache.polaris.nodes.impl;
+package org.apache.polaris.nodeids.api;
+
+import jakarta.annotation.Nullable;
+import java.time.Instant;
+import org.apache.polaris.immutables.PolarisImmutable;
+
+/** Represents the local node's ID and informative, mutable state information. */
+@PolarisImmutable
+public interface Node {
+  /**
+   * Returns the ID of this node.
+   *
+   * @return ID of this node
+   * @throws IllegalStateException if the lease is no longer valid, for example, expired before it
+   *     being renewed
+   */
+  int id();
+
+  default boolean valid(long nowInMillis) {
+    return nowInMillis < expirationTimestamp().toEpochMilli();
+  }
+
+  Instant leaseTimestamp();
+
+  @Nullable
+  Instant renewLeaseTimestamp();
+
+  /** Timestamp since which this node's lease is no longer valid. */
+  Instant expirationTimestamp();
+}

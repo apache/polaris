@@ -16,30 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.api;
+package org.apache.polaris.nodeids.spi;
 
-import jakarta.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import java.util.Optional;
+import org.apache.polaris.ids.api.IdGenerator;
 
-public interface NodeLease {
-  /**
-   * Returns the {@link Node} representation for this lease if the lease has not been released or
-   * {@code null}.
-   */
-  @Nullable
-  Node node();
+public interface NodeStoreFactory {
+  @Nonnull
+  NodeStore createNodeStore(@Nonnull IdGenerator idGenerator);
 
-  /**
-   * Permanently release the lease. Does nothing, if already released. Throws if persisting the
-   * released state fails.
-   */
-  void release();
+  Optional<NodeManagementState> fetchManagementState();
 
-  /**
-   * Force a lease renewal, generally not recommended nor necessary. Throws, if the lease is already
-   * released.
-   */
-  void renew();
-
-  /** Returns the node ID if the lease is active/valid or {@code -1}. */
-  int nodeIdIfValid();
+  boolean storeManagementState(@Nonnull NodeManagementState state);
 }

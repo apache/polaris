@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.impl;
+package org.apache.polaris.nodeids.impl;
 
 import static java.time.temporal.ChronoUnit.MILLIS;
 import static java.util.Objects.requireNonNull;
-import static org.apache.polaris.nodes.impl.NodeManagementImpl.RESCHEDULE_AFTER_FAILURE;
+import static org.apache.polaris.nodeids.impl.NodeManagementImpl.RESCHEDULE_AFTER_FAILURE;
 import static org.assertj.core.api.InstanceOfAssertFactories.BOOLEAN;
 
 import jakarta.annotation.Nonnull;
@@ -29,8 +29,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.polaris.ids.api.IdGeneratorSpec;
 import org.apache.polaris.ids.mocks.MutableMonotonicClock;
-import org.apache.polaris.nodes.api.NodeManagementConfig;
-import org.apache.polaris.nodes.spi.NodeState;
+import org.apache.polaris.nodeids.api.NodeManagementConfig;
+import org.apache.polaris.nodeids.spi.NodeState;
 import org.apache.polaris.nosql.async.MockAsyncExec;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
