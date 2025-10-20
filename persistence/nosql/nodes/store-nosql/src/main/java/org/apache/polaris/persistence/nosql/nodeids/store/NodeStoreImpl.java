@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.store.nosql;
+package org.apache.polaris.persistence.nosql.nodeids.store;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.polaris.persistence.nosql.api.Realms.SYSTEM_REALM_ID;
@@ -27,11 +27,11 @@ import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.polaris.ids.api.IdGenerator;
-import org.apache.polaris.nodes.spi.ImmutableNodeState;
-import org.apache.polaris.nodes.spi.NodeState;
-import org.apache.polaris.nodes.spi.NodeStore;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
+import org.apache.polaris.persistence.nosql.nodeids.spi.ImmutableNodeState;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeState;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStore;
 
 class NodeStoreImpl implements NodeStore {
   private final Persistence startupPersistence;

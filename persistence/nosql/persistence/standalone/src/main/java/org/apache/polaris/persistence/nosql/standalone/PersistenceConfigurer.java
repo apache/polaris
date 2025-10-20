@@ -22,11 +22,11 @@ import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfig;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import java.util.Map;
-import org.apache.polaris.nodes.api.NodeManagementConfig;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.backend.BackendConfiguration;
 import org.apache.polaris.persistence.nosql.api.backend.BackendFactory;
 import org.apache.polaris.persistence.nosql.api.backend.BackendLoader;
+import org.apache.polaris.persistence.nosql.nodeids.api.NodeManagementConfig;
 
 /**
  * Leverages smallrye-config to get a {@link BackendConfiguration} instance populated with the

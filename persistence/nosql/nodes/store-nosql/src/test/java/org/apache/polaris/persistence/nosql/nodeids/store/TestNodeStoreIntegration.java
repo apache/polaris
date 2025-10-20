@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.store.nosql;
+package org.apache.polaris.persistence.nosql.nodeids.store;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.polaris.nodes.impl.Util.idgenSpecFromManagementState;
+import static org.apache.polaris.persistence.nosql.nodeids.impl.Util.idgenSpecFromManagementState;
 
 import jakarta.inject.Inject;
 import java.util.ArrayList;
 import org.apache.polaris.ids.api.IdGeneratorSpec;
 import org.apache.polaris.ids.api.ImmutableIdGeneratorSpec;
 import org.apache.polaris.ids.api.MonotonicClock;
-import org.apache.polaris.nodes.api.NodeLease;
-import org.apache.polaris.nodes.api.NodeManagement;
-import org.apache.polaris.nodes.spi.ImmutableBuildableNodeManagementState;
-import org.apache.polaris.nodes.spi.NodeManagementState;
-import org.apache.polaris.nodes.spi.NodeStoreFactory;
+import org.apache.polaris.persistence.nosql.nodeids.api.NodeLease;
+import org.apache.polaris.persistence.nosql.nodeids.api.NodeManagement;
+import org.apache.polaris.persistence.nosql.nodeids.spi.ImmutableBuildableNodeManagementState;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeManagementState;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStoreFactory;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;

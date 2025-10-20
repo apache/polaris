@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.store.nosql;
+package org.apache.polaris.persistence.nosql.nodeids.store;
 
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
@@ -24,9 +24,9 @@ import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.stream.IntStream;
-import org.apache.polaris.nodes.api.NodeManagement;
 import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
 import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
+import org.apache.polaris.persistence.nosql.nodeids.api.NodeManagement;
 
 @ApplicationScoped
 class NodeManagementRetainedIdentifier implements PerRealmRetainedIdentifier {

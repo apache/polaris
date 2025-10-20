@@ -32,7 +32,7 @@ import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import org.apache.polaris.ids.api.IdGenerator;
-import org.apache.polaris.nodes.api.NodeManagement;
+import org.apache.polaris.persistence.nosql.nodeids.api.NodeManagement;
 
 /**
  * Qualifier for system-level {@link Persistence} instance against the {@linkplain

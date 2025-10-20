@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.store.nosql;
+package org.apache.polaris.persistence.nosql.nodeids.store;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.polaris.persistence.nosql.api.Realms.SYSTEM_REALM_ID;
@@ -27,11 +27,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
 import org.apache.polaris.ids.api.IdGenerator;
-import org.apache.polaris.nodes.spi.NodeManagementState;
-import org.apache.polaris.nodes.spi.NodeStore;
-import org.apache.polaris.nodes.spi.NodeStoreFactory;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.StartupPersistence;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeManagementState;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStore;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStoreFactory;
 
 @ApplicationScoped
 class NodeStoreFactoryImpl implements NodeStoreFactory {

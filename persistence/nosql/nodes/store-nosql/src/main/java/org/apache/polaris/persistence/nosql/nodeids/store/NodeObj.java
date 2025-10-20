@@ -16,43 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.store.nosql;
+package org.apache.polaris.persistence.nosql.nodeids.store;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nullable;
+import java.time.Instant;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.apache.polaris.nodes.spi.NodeManagementState;
 import org.apache.polaris.persistence.nosql.api.obj.AbstractObjType;
 import org.apache.polaris.persistence.nosql.api.obj.Obj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 
 @PolarisImmutable
-@JsonSerialize(as = ImmutableNodeManagementObj.class)
-@JsonDeserialize(as = ImmutableNodeManagementObj.class)
-public interface NodeManagementObj extends Obj, NodeManagementState {
-  ObjType TYPE = new NodeManagementObjType();
-  long CONSTANT_ID = Long.MAX_VALUE;
+@JsonSerialize(as = ImmutableNodeObj.class)
+@JsonDeserialize(as = ImmutableNodeObj.class)
+public interface NodeObj extends Obj {
+  ObjType TYPE = new NodeObjType();
 
-  @Nullable
-  @Override
-  default String versionToken() {
-    return "immutable";
-  }
+  Instant leaseTimestamp();
 
-  @Override
-  default long id() {
-    return CONSTANT_ID; // constant
-  }
+  Instant expirationTimestamp();
 
   @Override
   default ObjType type() {
     return TYPE;
   }
 
-  final class NodeManagementObjType extends AbstractObjType<NodeManagementObj> {
-    public NodeManagementObjType() {
-      super("nodes", "Nodes", NodeManagementObj.class);
+  final class NodeObjType extends AbstractObjType<NodeObj> {
+    public NodeObjType() {
+      super("node", "Node", NodeObj.class);
     }
   }
 }
