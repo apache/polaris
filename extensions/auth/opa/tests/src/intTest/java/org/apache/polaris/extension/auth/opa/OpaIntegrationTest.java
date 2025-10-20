@@ -19,7 +19,7 @@
 package org.apache.polaris.extension.auth.opa;
 
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -28,12 +28,11 @@ import io.quarkus.test.junit.TestProfile;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.extension.auth.opa.OpaTestResource;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 @TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)
-public class OpaIntegrationTest {
+public class OpaIntegrationTest extends OpaIntegrationTestBase {
 
   /**
    * Test demonstrates OPA integration with bearer token authentication. The OPA container runs with
@@ -45,99 +44,43 @@ public class OpaIntegrationTest {
     public Map<String, String> getConfigOverrides() {
       Map<String, String> config = new HashMap<>();
       config.put("polaris.authorization.type", "opa");
-      config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/authz");
-      config.put("polaris.authorization.opa.http.timeout-ms", "2000");
 
-      // Configure OPA server authentication with static bearer token
+      // Override default configuration for static token authentication (if needed)
       config.put("polaris.authorization.opa.auth.type", "bearer");
       config.put("polaris.authorization.opa.auth.bearer.type", "static-token");
-      config.put(
-          "polaris.authorization.opa.auth.bearer.static-token.value",
-          "test-opa-bearer-token-12345");
-      config.put(
-          "polaris.authorization.opa.http.verify-ssl",
-          "false"); // Disable SSL verification for tests
-
-      // TODO: Add tests for OIDC and federated principal
-      config.put("polaris.authentication.type", "internal");
+      config.put("polaris.authorization.opa.auth.bearer.static-token.value", "test-opa-bearer-token-12345");
 
       return config;
     }
 
     @Override
     public List<TestResourceEntry> testResources() {
-      String customRegoPolicy =
-          """
-        package polaris.authz
-
-        default allow := false
-
-        # Allow root user for all operations
-        allow {
-          input.actor.principal == "root"
-        }
-
-        # Allow admin user for all operations
-        allow {
-          input.actor.principal == "admin"
-        }
-
-        # Deny stranger user explicitly (though default is false)
-        allow {
-          input.actor.principal == "stranger"
-          false
-        }
-        """;
-
       return List.of(
-          new TestResourceEntry(
-              OpaTestResource.class,
-              Map.of("policy-name", "polaris-authz", "rego-policy", customRegoPolicy)));
+          new TestResourceEntry(OpaTestResource.class));
     }
   }
 
   @Test
   void testOpaAllowsRootUser() {
-    // Test demonstrates the complete integration flow:
-    // 1. OAuth token acquisition with internal authentication
-    // 2. OPA policy allowing root users
-
-    // Get a token using the catalog service OAuth endpoint
-    String response =
-        given()
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("grant_type", "client_credentials")
-            .formParam("client_id", "test-admin")
-            .formParam("client_secret", "test-secret")
-            .formParam("scope", "PRINCIPAL_ROLE:ALL")
-            .when()
-            .post("/api/catalog/v1/oauth/tokens")
-            .then()
-            .statusCode(200)
-            .extract()
-            .body()
-            .asString();
-
-    // Parse JSON response to get access_token
-    String accessToken = null;
-    if (response.contains("\"access_token\"")) {
-      accessToken = response.substring(response.indexOf("\"access_token\"") + 15);
-      accessToken = accessToken.substring(accessToken.indexOf("\"") + 1);
-      accessToken = accessToken.substring(0, accessToken.indexOf("\""));
-    }
-
-    if (accessToken == null) {
-      fail("Failed to parse access_token from OAuth response: " + response);
-    }
+    String rootToken = getRootToken();
 
     // Use the Bearer token to test OPA authorization
     // The JWT token has principal "root" which our policy allows
     given()
-        .header("Authorization", "Bearer " + accessToken)
+        .header("Authorization", "Bearer " + rootToken)
         .when()
-        .get("/api/management/v1/principals")
+        .get("api/management/v1/catalogs")
         .then()
         .statusCode(200); // Should succeed - "root" user is allowed by policy
+  }
+
+  @Test
+  void testCreatePrincipalAndGetToken() {
+    // Test the helper method createPrincipalAndGetToken
+    // useful for debugging and ensuring that the helper method works correctly
+    assertDoesNotThrow(() -> {
+        createPrincipalAndGetToken("test-user");
+    });
   }
 
   @Test
@@ -149,7 +92,7 @@ public class OpaIntegrationTest {
     given()
         .header("Authorization", "Bearer " + strangerToken)
         .when()
-        .get("/api/management/v1/principals")
+        .get("/api/management/v1/catalogs")
         .then()
         .statusCode(403); // Should be forbidden by OPA policy - stranger is denied
   }
@@ -163,109 +106,8 @@ public class OpaIntegrationTest {
     given()
         .header("Authorization", "Bearer " + adminToken)
         .when()
-        .get("/api/management/v1/principals")
+        .get("/api/management/v1/catalogs")
         .then()
         .statusCode(200); // Should succeed - admin user is allowed by policy
-  }
-
-  @Test
-  void testOpaBearerTokenAuthentication() {
-    // Test that OpaPolarisAuthorizer is configured to send bearer tokens
-    // and can handle HTTP connections for testing
-    String rootToken = getRootToken();
-
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .when()
-        .get("/api/management/v1/principals")
-        .then()
-        .statusCode(200);
-  }
-
-  /** Helper method to create a principal and get an OAuth access token for that principal */
-  private String createPrincipalAndGetToken(String principalName) {
-    // First get root token to create the principal
-    String rootToken = getRootToken();
-
-    // Create the principal using the root token
-    String createResponse =
-        given()
-            .contentType("application/json")
-            .header("Authorization", "Bearer " + rootToken)
-            .body("{\"principal\":{\"name\":\"" + principalName + "\",\"properties\":{}}}")
-            .when()
-            .post("/api/management/v1/principals")
-            .then()
-            .statusCode(201)
-            .extract()
-            .body()
-            .asString();
-
-    // Parse the principal's credentials from the response
-    String clientId = extractJsonValue(createResponse, "clientId");
-    String clientSecret = extractJsonValue(createResponse, "clientSecret");
-
-    if (clientId == null || clientSecret == null) {
-      fail("Could not parse principal credentials from response: " + createResponse);
-    }
-
-    // Get access token for the newly created principal
-    String tokenResponse =
-        given()
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("grant_type", "client_credentials")
-            .formParam("client_id", clientId)
-            .formParam("client_secret", clientSecret)
-            .formParam("scope", "PRINCIPAL_ROLE:ALL")
-            .when()
-            .post("/api/catalog/v1/oauth/tokens")
-            .then()
-            .statusCode(200)
-            .extract()
-            .body()
-            .asString();
-
-    String accessToken = extractJsonValue(tokenResponse, "access_token");
-    if (accessToken == null) {
-      fail("Could not get access token for principal " + principalName);
-    }
-
-    return accessToken;
-  }
-
-  /** Helper method to get root access token */
-  private String getRootToken() {
-    String response =
-        given()
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("grant_type", "client_credentials")
-            .formParam("client_id", "test-admin")
-            .formParam("client_secret", "test-secret")
-            .formParam("scope", "PRINCIPAL_ROLE:ALL")
-            .when()
-            .post("/api/catalog/v1/oauth/tokens")
-            .then()
-            .statusCode(200)
-            .extract()
-            .body()
-            .asString();
-
-    String accessToken = extractJsonValue(response, "access_token");
-    if (accessToken == null) {
-      fail("Failed to parse access_token from admin OAuth response: " + response);
-    }
-    return accessToken;
-  }
-
-  /** Simple JSON value extractor */
-  private String extractJsonValue(String json, String key) {
-    String searchKey = "\"" + key + "\"";
-    if (json.contains(searchKey)) {
-      String value = json.substring(json.indexOf(searchKey) + searchKey.length());
-      value = value.substring(value.indexOf("\"") + 1);
-      value = value.substring(0, value.indexOf("\""));
-      return value;
-    }
-    return null;
   }
 }

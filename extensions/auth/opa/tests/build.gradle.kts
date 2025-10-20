@@ -27,16 +27,16 @@ dependencies {
   // Quarkus platform
   implementation(platform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-rest-jackson")
-  
+
   // Add the OPA implementation as RUNTIME dependency to include in Quarkus app
   implementation(project(":polaris-extensions-auth-opa"))
-  
+
   // Include all runtime-service dependencies
   implementation(project(":polaris-runtime-service"))
-  
+
   // Test common for integration testing
   testImplementation(project(":polaris-runtime-test-common"))
-  
+
   // Test dependencies
   intTestImplementation("io.quarkus:quarkus-junit5")
   intTestImplementation("io.rest-assured:rest-assured")

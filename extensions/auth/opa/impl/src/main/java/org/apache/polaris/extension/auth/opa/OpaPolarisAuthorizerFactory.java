@@ -152,11 +152,16 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
         }
         OpaAuthorizationConfig.BearerTokenConfig.FileBasedConfig fileConfig =
             bearerToken.fileBased().get();
-        Duration refreshInterval = fileConfig.refreshInterval();
-        boolean jwtExpirationRefresh = fileConfig.jwtExpirationRefresh();
-        Duration jwtExpirationBuffer = fileConfig.jwtExpirationBuffer();
+        
+        Duration refreshInterval = fileConfig.refreshInterval().orElse(Duration.ofMinutes(5));
+        boolean jwtExpirationRefresh = fileConfig.jwtExpirationRefresh().orElse(true);
+        Duration jwtExpirationBuffer = fileConfig.jwtExpirationBuffer().orElse(Duration.ofMinutes(1));
+        
         return new FileBearerTokenProvider(
-            fileConfig.path(), refreshInterval, jwtExpirationRefresh, jwtExpirationBuffer);
+            fileConfig.path(),
+            refreshInterval,
+            jwtExpirationRefresh,
+            jwtExpirationBuffer);
 
       default:
         throw new IllegalStateException("Unsupported bearer token type: " + bearerToken.type());

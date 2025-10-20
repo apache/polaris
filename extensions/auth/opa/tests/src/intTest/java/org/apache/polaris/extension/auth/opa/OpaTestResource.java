@@ -47,8 +47,8 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
       if (opa == null || !opa.isRunning()) {
         opa =
             new GenericContainer<>(
-                ContainerSpecHelper.containerSpecHelper("opa", OpaTestResource.class)
-                    .dockerImageName(null))
+                    ContainerSpecHelper.containerSpecHelper("opa", OpaTestResource.class)
+                        .dockerImageName(null))
                 .withExposedPorts(8181)
                 .withReuse(true)
                 .withCommand("run", "--server", "--addr=0.0.0.0:8181")
@@ -65,11 +65,28 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
       String containerHost = opa.getHost();
       String baseUrl = "http://" + containerHost + ":" + mappedPort;
 
-      // Load Rego policy into OPA
-      loadRegoPolicy(baseUrl, "policy-name", "rego-policy");
+      // Load Opa Polaris Authorizer Rego policy into OPA
+      String polarisPolicyName = "polaris-authz";
+      String polarisRegoPolicy =
+        """
+        package polaris.authz
+
+        default allow := false
+
+        # Allow root user for all operations
+        allow {
+          input.actor.principal == "root"
+        }
+
+        # Allow admin user for all operations
+        allow {
+          input.actor.principal == "admin"
+        }
+        """;
+      loadRegoPolicy(baseUrl, polarisPolicyName, polarisRegoPolicy);
 
       Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.opa.url", baseUrl);
+      config.put("polaris.authorization.opa.policy-uri", baseUrl + "/v1/data/polaris/authz");
 
       return config;
 
@@ -78,21 +95,12 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
     }
   }
 
-  private void loadRegoPolicy(String baseUrl, String policyNameKey, String regoPolicyKey) {
-    String policyName = resourceConfig.get(policyNameKey);
-    String regoPolicy = resourceConfig.get(regoPolicyKey);
-
-    if (policyName == null) {
-      throw new IllegalArgumentException(
-          policyNameKey + " parameter is required for OpaTestResource");
-    }
-    if (regoPolicy == null) {
-      throw new IllegalArgumentException(
-          regoPolicyKey + " parameter is required for OpaTestResource");
-    }
-
+  private void loadRegoPolicy(String baseUrl, String policyName, String regoPolicy) {
+    // Hardcode the policy directly instead of loading through QuarkusTestProfile
     try {
       URL url = new URL(baseUrl + "/v1/policies/" + policyName);
+      System.out.println("Uploading policy to: " + url);
+      
       HttpURLConnection conn = (HttpURLConnection) url.openConnection();
       conn.setRequestMethod("PUT");
       conn.setDoOutput(true);
@@ -103,9 +111,13 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
       }
 
       int code = conn.getResponseCode();
+      System.out.println("OPA policy upload response code: " + code);
+      
       if (code < 200 || code >= 300) {
         throw new RuntimeException("OPA policy upload failed, HTTP " + code);
       }
+      
+      System.out.println("Successfully uploaded policy to OPA");
     } catch (Exception e) {
       // Surface container logs to help debug on CI
       String logs = "";

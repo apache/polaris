@@ -23,6 +23,23 @@ import io.smallrye.config.WithDefault;
 
 @ConfigMapping(prefix = "polaris.authorization")
 public interface AuthorizationConfiguration {
+
+  /** Authorization types supported by Polaris */
+  enum AuthorizationType {
+    INTERNAL("internal"),
+    OPA("opa");
+
+    private final String value;
+
+    AuthorizationType(String value) {
+      this.value = value;
+    }
+
+    public String getValue() {
+      return value;
+    }
+  }
+
   @WithDefault("internal")
-  String type();
+  AuthorizationType type();
 }

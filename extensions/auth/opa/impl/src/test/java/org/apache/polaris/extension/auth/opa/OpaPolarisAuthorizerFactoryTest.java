@@ -84,9 +84,9 @@ public class OpaPolarisAuthorizerFactoryTest {
     OpaAuthorizationConfig.BearerTokenConfig.FileBasedConfig fileTokenConfig =
         mock(OpaAuthorizationConfig.BearerTokenConfig.FileBasedConfig.class);
     when(fileTokenConfig.path()).thenReturn(tokenFile);
-    when(fileTokenConfig.refreshInterval()).thenReturn(Duration.ofMinutes(5));
-    when(fileTokenConfig.jwtExpirationRefresh()).thenReturn(true);
-    when(fileTokenConfig.jwtExpirationBuffer()).thenReturn(Duration.ofMinutes(1));
+    when(fileTokenConfig.refreshInterval()).thenReturn(Optional.of(Duration.ofMinutes(5)));
+    when(fileTokenConfig.jwtExpirationRefresh()).thenReturn(Optional.of(true));
+    when(fileTokenConfig.jwtExpirationBuffer()).thenReturn(Optional.of(Duration.ofMinutes(1)));
 
     OpaAuthorizationConfig.BearerTokenConfig bearerTokenConfig =
         mock(OpaAuthorizationConfig.BearerTokenConfig.class);

@@ -144,7 +144,10 @@ public class ServiceProducers {
   public PolarisAuthorizerFactory polarisAuthorizerFactory(
       AuthorizationConfiguration authorizationConfig,
       @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
-    return authorizerFactories.select(Identifier.Literal.of(authorizationConfig.type())).get();
+    PolarisAuthorizerFactory factory = authorizerFactories
+        .select(Identifier.Literal.of(authorizationConfig.type().getValue()))
+        .get();
+    return factory;
   }
 
   @Produces

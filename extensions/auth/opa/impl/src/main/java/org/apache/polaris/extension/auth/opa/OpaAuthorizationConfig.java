@@ -170,29 +170,31 @@ public interface OpaAuthorizationConfig {
       /** Path to file containing bearer token */
       Path path();
 
-      /** How often to refresh file-based bearer tokens */
-      @WithDefault("PT5M")
-      Duration refreshInterval();
+      /** How often to refresh file-based bearer tokens (defaults to 5 minutes if not specified) */
+      Optional<Duration> refreshInterval();
 
       /**
        * Whether to automatically detect JWT tokens and use their 'exp' field for refresh timing. If
        * true and the token is a valid JWT with an 'exp' claim, the token will be refreshed based on
-       * the expiration time minus the buffer, rather than the fixed refresh interval.
+       * the expiration time minus the buffer, rather than the fixed refresh interval. Defaults to
+       * true if not specified.
        */
-      @WithDefault("true")
-      boolean jwtExpirationRefresh();
+      Optional<Boolean> jwtExpirationRefresh();
 
       /**
        * Buffer time before JWT expiration to refresh the token. Only used when jwtExpirationRefresh
-       * is true and the token is a valid JWT. Default is 60 seconds.
+       * is true and the token is a valid JWT. Defaults to 1 minute if not specified.
        */
-      @WithDefault("PT1M")
-      Duration jwtExpirationBuffer();
+      Optional<Duration> jwtExpirationBuffer();
 
       default void validate() {
         checkArgument(path() != null, "Bearer token file path cannot be null");
-        checkArgument(refreshInterval().isPositive(), "refreshInterval must be positive");
-        checkArgument(jwtExpirationBuffer().isPositive(), "jwtExpirationBuffer must be positive");
+        checkArgument(
+            refreshInterval().isEmpty() || refreshInterval().get().isPositive(),
+            "refreshInterval must be positive");
+        checkArgument(
+            jwtExpirationBuffer().isEmpty() || jwtExpirationBuffer().get().isPositive(),
+            "jwtExpirationBuffer must be positive");
       }
     }
   }

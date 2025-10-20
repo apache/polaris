@@ -19,7 +19,7 @@
 package org.apache.polaris.extension.auth.opa;
 
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -31,153 +31,81 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.extension.auth.opa.OpaTestResource;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Integration tests for OPA with file-based bearer token authentication.
+ *
+ * <p>These tests verify that OpaPolarisAuthorizer correctly reads bearer tokens from a file and
+ * uses them to authenticate with OPA.
+ */
 @QuarkusTest
 @TestProfile(OpaFileTokenIntegrationTest.FileTokenOpaProfile.class)
-public class OpaFileTokenIntegrationTest {
+public class OpaFileTokenIntegrationTest extends OpaIntegrationTestBase {
 
-  @ConfigProperty(name = "polaris.authorization.opa.auth.bearer.file-based.path")
-  String tokenFilePath;
-
+  /**
+   * Test profile for OPA integration with file-based bearer token authentication. The OPA
+   * container runs with HTTP for simplicity in CI environments.
+   */
   public static class FileTokenOpaProfile implements QuarkusTestProfile {
+    // Static field to hold token file path for test access
+    public static Path tokenFilePath;
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.type", "opa");
-      config.put("polaris.authorization.opa.policy-path", "/v1/data/polaris/authz");
-      config.put("polaris.authorization.opa.http.timeout-ms", "2000");
+      try {
+        // Create token file early so SmallRye Config validation sees the property
+        tokenFilePath = Files.createTempFile("opa-test-token", ".txt");
+        Files.writeString(tokenFilePath, "test-opa-bearer-token-from-file");
 
-      // Configure OPA server authentication with file-based bearer token
-      config.put("polaris.authorization.opa.auth.type", "bearer");
-      config.put("polaris.authorization.opa.auth.bearer.type", "file-based");
-      // Token file path will be provided by OpaFileTokenTestResource
-      config.put(
-          "polaris.authorization.opa.http.verify-ssl",
-          "false"); // Disable SSL verification for tests
+        Map<String, String> config = new HashMap<>();
+        config.put("polaris.authorization.type", "opa");
 
-      // TODO: Add tests for OIDC and federated principal
-      config.put("polaris.authentication.type", "internal");
+        // Configure file-based bearer token authentication
+        config.put("polaris.authorization.opa.auth.type", "bearer");
+        config.put("polaris.authorization.opa.auth.bearer.type", "file-based");
+        config.put(
+            "polaris.authorization.opa.auth.bearer.file-based.path", tokenFilePath.toString());
+        config.put("polaris.authorization.opa.auth.bearer.file-based.refresh-interval", "PT1S");
 
-      return config;
+        return config;
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to create test token file", e);
+      }
     }
 
     @Override
     public List<TestResourceEntry> testResources() {
-      String customRegoPolicy =
-          """
-        package polaris.authz
-
-        default allow := false
-
-        # Allow root user for all operations
-        allow {
-          input.actor.principal == "root"
-        }
-
-        # Allow admin user for all operations
-        allow {
-          input.actor.principal == "admin"
-        }
-
-        # Deny stranger user explicitly (though default is false)
-        allow {
-          input.actor.principal == "stranger"
-          false
-        }
-        """;
-
-      return List.of(
-          new TestResourceEntry(
-              OpaTestResource.class,
-              Map.of("policy-name", "polaris-authz", "rego-policy", customRegoPolicy)),
-          new TestResourceEntry(OpaFileTokenTestResource.class));
+      return List.of(new TestResourceEntry(OpaTestResource.class));
     }
   }
 
-  /**
-   * Test demonstrates OPA integration with file-based bearer token authentication. This test
-   * verifies that the FileBearerTokenProvider correctly reads tokens from a file and that the full
-   * integration works with file-based configuration.
-   */
   @Test
-  void testOpaAllowsRootUserWithFileToken() {
-    // Test demonstrates the complete integration flow with file-based tokens:
-    // 1. OAuth token acquisition with internal authentication
-    // 2. OPA policy allowing root users
-    // 3. Bearer token read from file by FileBearerTokenProvider
-
-    // Get a token using the catalog service OAuth endpoint
-    String response =
-        given()
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("grant_type", "client_credentials")
-            .formParam("client_id", "test-admin")
-            .formParam("client_secret", "test-secret")
-            .formParam("scope", "PRINCIPAL_ROLE:ALL")
-            .when()
-            .post("/api/catalog/v1/oauth/tokens")
-            .then()
-            .statusCode(200)
-            .extract()
-            .body()
-            .asString();
-
-    // Parse JSON response to get access_token
-    String accessToken = extractJsonValue(response, "access_token");
-
-    if (accessToken == null) {
-      fail("Failed to parse access_token from OAuth response: " + response);
-    }
+  void testOpaAllowsRootUser() {
+    String rootToken = getRootToken();
 
     // Use the Bearer token to test OPA authorization
     // The JWT token has principal "root" which our policy allows
     given()
-        .header("Authorization", "Bearer " + accessToken)
+        .header("Authorization", "Bearer " + rootToken)
         .when()
-        .get("/api/management/v1/principals")
+        .get("api/management/v1/catalogs")
         .then()
         .statusCode(200); // Should succeed - "root" user is allowed by policy
   }
 
   @Test
-  void testFileTokenRefresh() throws IOException, InterruptedException {
-    // This test verifies that the FileBearerTokenProvider refreshes tokens from the file
-
-    // First verify the system works with the initial token
-    String rootToken = getRootToken();
-
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .when()
-        .get("/api/management/v1/principals")
-        .then()
-        .statusCode(200);
-
-    // Get the token file path from injected configuration
-    Path tokenFile = Path.of(tokenFilePath);
-    if (Files.exists(tokenFile)) {
-      String originalContent = Files.readString(tokenFile);
-
-      // Update the file content
-      Files.writeString(tokenFile, "test-opa-bearer-token-updated-12345");
-
-      // Wait for refresh interval (1 second as configured) plus some buffer
-      Thread.sleep(1500); // 1.5 seconds to ensure refresh happens
-
-      // Verify the file was updated
-      String updatedContent = Files.readString(tokenFile);
-      if (updatedContent.equals(originalContent)) {
-        fail("Token file was not updated as expected");
-      }
-    }
+  void testCreatePrincipalAndGetToken() {
+    // Test the helper method createPrincipalAndGetToken
+    // useful for debugging and ensuring that the helper method works correctly
+    assertDoesNotThrow(
+        () -> {
+          createPrincipalAndGetToken("test-user");
+        });
   }
 
   @Test
-  void testOpaPolicyDeniesStrangerUserWithFileToken() {
+  void testOpaPolicyDeniesStrangerUser() {
     // Create a "stranger" principal and get its access token
     String strangerToken = createPrincipalAndGetToken("stranger");
 
@@ -185,13 +113,13 @@ public class OpaFileTokenIntegrationTest {
     given()
         .header("Authorization", "Bearer " + strangerToken)
         .when()
-        .get("/api/management/v1/principals")
+        .get("/api/management/v1/catalogs")
         .then()
         .statusCode(403); // Should be forbidden by OPA policy - stranger is denied
   }
 
   @Test
-  void testOpaAllowsAdminUserWithFileToken() {
+  void testOpaAllowsAdminUser() {
     // Create an "admin" principal and get its access token
     String adminToken = createPrincipalAndGetToken("admin");
 
@@ -199,95 +127,8 @@ public class OpaFileTokenIntegrationTest {
     given()
         .header("Authorization", "Bearer " + adminToken)
         .when()
-        .get("/api/management/v1/principals")
+        .get("/api/management/v1/catalogs")
         .then()
         .statusCode(200); // Should succeed - admin user is allowed by policy
-  }
-
-  /** Helper method to create a principal and get an OAuth access token for that principal */
-  private String createPrincipalAndGetToken(String principalName) {
-    // First get root token to create the principal
-    String rootToken = getRootToken();
-
-    // Create the principal using the root token
-    String createResponse =
-        given()
-            .contentType("application/json")
-            .header("Authorization", "Bearer " + rootToken)
-            .body("{\"principal\":{\"name\":\"" + principalName + "\",\"properties\":{}}}")
-            .when()
-            .post("/api/management/v1/principals")
-            .then()
-            .statusCode(201)
-            .extract()
-            .body()
-            .asString();
-
-    // Parse the principal's credentials from the response
-    String clientId = extractJsonValue(createResponse, "clientId");
-    String clientSecret = extractJsonValue(createResponse, "clientSecret");
-
-    if (clientId == null || clientSecret == null) {
-      fail("Could not parse principal credentials from response: " + createResponse);
-    }
-
-    // Get access token for the newly created principal
-    String tokenResponse =
-        given()
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("grant_type", "client_credentials")
-            .formParam("client_id", clientId)
-            .formParam("client_secret", clientSecret)
-            .formParam("scope", "PRINCIPAL_ROLE:ALL")
-            .when()
-            .post("/api/catalog/v1/oauth/tokens")
-            .then()
-            .statusCode(200)
-            .extract()
-            .body()
-            .asString();
-
-    String accessToken = extractJsonValue(tokenResponse, "access_token");
-    if (accessToken == null) {
-      fail("Could not get access token for principal " + principalName);
-    }
-
-    return accessToken;
-  }
-
-  /** Helper method to get root access token */
-  private String getRootToken() {
-    String response =
-        given()
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("grant_type", "client_credentials")
-            .formParam("client_id", "test-admin")
-            .formParam("client_secret", "test-secret")
-            .formParam("scope", "PRINCIPAL_ROLE:ALL")
-            .when()
-            .post("/api/catalog/v1/oauth/tokens")
-            .then()
-            .statusCode(200)
-            .extract()
-            .body()
-            .asString();
-
-    String accessToken = extractJsonValue(response, "access_token");
-    if (accessToken == null) {
-      fail("Failed to parse access_token from admin OAuth response: " + response);
-    }
-    return accessToken;
-  }
-
-  /** Simple JSON value extractor */
-  private String extractJsonValue(String json, String key) {
-    String searchKey = "\"" + key + "\"";
-    if (json.contains(searchKey)) {
-      String value = json.substring(json.indexOf(searchKey) + searchKey.length());
-      value = value.substring(value.indexOf("\"") + 1);
-      value = value.substring(0, value.indexOf("\""));
-      return value;
-    }
-    return null;
   }
 }
