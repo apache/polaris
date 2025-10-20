@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.impl;
+package org.apache.polaris.nodeids.impl;
 
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
@@ -34,12 +34,12 @@ import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.ids.api.SnowflakeIdGenerator;
 import org.apache.polaris.ids.impl.MonotonicClockImpl;
 import org.apache.polaris.ids.mocks.MutableMonotonicClock;
-import org.apache.polaris.nodes.api.NodeLease;
-import org.apache.polaris.nodes.api.NodeManagementConfig;
-import org.apache.polaris.nodes.spi.ImmutableBuildableNodeManagementState;
-import org.apache.polaris.nodes.spi.NodeManagementState;
-import org.apache.polaris.nodes.spi.NodeStore;
-import org.apache.polaris.nodes.spi.NodeStoreFactory;
+import org.apache.polaris.nodeids.api.NodeLease;
+import org.apache.polaris.nodeids.api.NodeManagementConfig;
+import org.apache.polaris.nodeids.spi.ImmutableBuildableNodeManagementState;
+import org.apache.polaris.nodeids.spi.NodeManagementState;
+import org.apache.polaris.nodeids.spi.NodeStore;
+import org.apache.polaris.nodeids.spi.NodeStoreFactory;
 import org.apache.polaris.nosql.async.AsyncExec;
 import org.apache.polaris.nosql.async.java.JavaPoolAsyncExec;
 import org.assertj.core.api.SoftAssertions;

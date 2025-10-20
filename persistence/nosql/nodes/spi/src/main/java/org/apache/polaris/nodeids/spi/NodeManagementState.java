@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodes.spi;
+package org.apache.polaris.nodeids.spi;
 
-import java.time.Instant;
+import java.util.Optional;
+import org.apache.polaris.ids.api.IdGeneratorSpec;
 import org.apache.polaris.immutables.PolarisImmutable;
 
-@PolarisImmutable
-public interface NodeState {
-  Instant leaseTimestamp();
+public interface NodeManagementState {
+  Optional<IdGeneratorSpec> idGeneratorSpec();
 
-  /** Timestamp since which this node's lease is no longer valid. */
-  Instant expirationTimestamp();
+  @PolarisImmutable
+  interface BuildableNodeManagementState extends NodeManagementState {}
 }
