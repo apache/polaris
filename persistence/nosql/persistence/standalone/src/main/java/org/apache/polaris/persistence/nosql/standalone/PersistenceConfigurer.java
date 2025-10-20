@@ -22,7 +22,7 @@ import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfig;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import java.util.Map;
-import org.apache.polaris.nodes.api.NodeManagementConfig;
+import org.apache.polaris.nodeids.api.NodeManagementConfig;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.backend.BackendConfiguration;
 import org.apache.polaris.persistence.nosql.api.backend.BackendFactory;

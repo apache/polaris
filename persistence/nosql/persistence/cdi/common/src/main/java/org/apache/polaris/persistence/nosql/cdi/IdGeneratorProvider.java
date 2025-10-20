@@ -21,8 +21,8 @@ package org.apache.polaris.persistence.nosql.cdi;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import org.apache.polaris.ids.api.IdGenerator;
-import org.apache.polaris.nodes.api.NodeLease;
-import org.apache.polaris.nodes.api.NodeManagement;
+import org.apache.polaris.nodeids.api.NodeLease;
+import org.apache.polaris.nodeids.api.NodeManagement;
 
 @ApplicationScoped
 class IdGeneratorProvider {

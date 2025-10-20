@@ -27,7 +27,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import org.apache.polaris.ids.api.IdGeneratorSpec;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.misc.types.memorysize.MemorySize;
-import org.apache.polaris.nodes.api.NodeManagementConfig;
+import org.apache.polaris.nodeids.api.NodeManagementConfig;
 import org.apache.polaris.nosql.async.AsyncConfiguration;
 import org.apache.polaris.persistence.nosql.api.PersistenceParams;
 import org.apache.polaris.persistence.nosql.api.backend.BackendConfiguration;

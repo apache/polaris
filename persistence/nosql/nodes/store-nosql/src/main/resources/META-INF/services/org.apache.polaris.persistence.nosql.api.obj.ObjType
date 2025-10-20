@@ -17,5 +17,5 @@
 # under the License.
 #
 
-org.apache.polaris.nodes.store.nosql.NodeObj$NodeObjType
-org.apache.polaris.nodes.store.nosql.NodeManagementObj$NodeManagementObjType
+org.apache.polaris.nodeids.store.nosql.NodeObj$NodeObjType
+org.apache.polaris.nodeids.store.nosql.NodeManagementObj$NodeManagementObjType
