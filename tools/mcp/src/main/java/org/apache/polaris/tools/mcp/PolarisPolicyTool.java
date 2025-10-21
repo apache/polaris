@@ -32,7 +32,7 @@ import java.util.Set;
 
 /** MCP tool exposing Polaris policy management endpoints. */
 final class PolarisPolicyTool implements McpTool {
-  private static final String TOOL_NAME = "polaris-policy-request";
+  private static final String TOOL_NAME = "polaris-policy";
   private static final String TOOL_DESCRIPTION =
       "Manage Polaris policies (list, create, update, delete, attach, detach, applicable).";
 

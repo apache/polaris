@@ -134,7 +134,7 @@ The server currently exposes seven MCP tools:
   * `create`: `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
   * `commit` (alias `update`): `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/tables/{table}`
   * `delete` (alias `drop`): `DELETE /api/catalog/v1/{catalog}/namespaces/{namespace}/tables/{table}`
-* `polaris-namespace-request` — Namespace lifecycle helper:
+* `polaris-namespace-request` — For Namespace lifecycle management. Supported operations include: 
   * `list`: `GET /api/catalog/v1/{catalog}/namespaces`
   * `get`: `GET /api/catalog/v1/{catalog}/namespaces/{namespace}`
   * `exists`: `HEAD /api/catalog/v1/{catalog}/namespaces/{namespace}`
@@ -142,7 +142,7 @@ The server currently exposes seven MCP tools:
   * `update-properties`: `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/properties`
   * `get-properties`: `GET /api/catalog/v1/{catalog}/namespaces/{namespace}/properties`
   * `delete`: `DELETE /api/catalog/v1/{catalog}/namespaces/{namespace}`
-* `polaris-policy-request` — Endpoints for policy lifecycle management. Supported operations include:
+* `polaris-policy` — For policy lifecycle management. Supported operations include:
   * `list`: `GET /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies`
   * `get` (aliases `load`, `fetch`): `GET /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies/{policy}`
   * `create`: `POST /api/catalog/polaris/v1/{catalog}/namespaces/{namespace}/policies`
