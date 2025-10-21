@@ -45,7 +45,6 @@ final class PolarisCatalogRoleTool implements McpTool {
   private static final Set<String> ADD_GRANT_ALIASES = Set.of("add-grant", "grant");
   private static final Set<String> REVOKE_GRANT_ALIASES = Set.of("revoke-grant");
 
-  private final ObjectMapper mapper;
   private final PolarisRestTool delegate;
 
   PolarisCatalogRoleTool(
@@ -53,14 +52,13 @@ final class PolarisCatalogRoleTool implements McpTool {
       HttpExecutor executor,
       URI baseUri,
       AuthorizationProvider authorizationProvider) {
-    this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
     this.delegate =
         new PolarisRestTool(
             "polaris.catalogrole.delegate",
             "Internal delegate for catalog role operations",
             baseUri,
             "api/management/v1/",
-            mapper,
+            Objects.requireNonNull(mapper, "mapper must not be null"),
             Objects.requireNonNull(executor, "executor must not be null"),
             Objects.requireNonNull(
                 authorizationProvider, "authorizationProvider must not be null"));

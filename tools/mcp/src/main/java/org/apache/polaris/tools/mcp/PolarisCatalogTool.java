@@ -40,7 +40,6 @@ final class PolarisCatalogTool implements McpTool {
   private static final Set<String> UPDATE_ALIASES = Set.of("update");
   private static final Set<String> DELETE_ALIASES = Set.of("delete", "drop", "remove");
 
-  private final ObjectMapper mapper;
   private final PolarisRestTool delegate;
 
   PolarisCatalogTool(
@@ -48,14 +47,13 @@ final class PolarisCatalogTool implements McpTool {
       HttpExecutor executor,
       URI baseUri,
       AuthorizationProvider authorizationProvider) {
-    this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
     this.delegate =
         new PolarisRestTool(
             "polaris.catalog.delegate",
             "Internal delegate for catalog operations",
             baseUri,
             "api/management/v1/",
-            mapper,
+            Objects.requireNonNull(mapper, "mapper must not be null"),
             Objects.requireNonNull(executor, "executor must not be null"),
             Objects.requireNonNull(
                 authorizationProvider, "authorizationProvider must not be null"));

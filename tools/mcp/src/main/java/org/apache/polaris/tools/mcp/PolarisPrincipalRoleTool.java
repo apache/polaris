@@ -48,7 +48,6 @@ final class PolarisPrincipalRoleTool implements McpTool {
   private static final Set<String> REVOKE_CATALOG_ROLE_ALIASES =
       Set.of("revoke-catalog-role", "remove-catalog-role");
 
-  private final ObjectMapper mapper;
   private final PolarisRestTool delegate;
 
   PolarisPrincipalRoleTool(
@@ -56,14 +55,13 @@ final class PolarisPrincipalRoleTool implements McpTool {
       HttpExecutor executor,
       URI baseUri,
       AuthorizationProvider authorizationProvider) {
-    this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
     this.delegate =
         new PolarisRestTool(
             "polaris.principalrole.delegate",
             "Internal delegate for principal role operations",
             baseUri,
             "api/management/v1/",
-            mapper,
+            Objects.requireNonNull(mapper, "mapper must not be null"),
             Objects.requireNonNull(executor, "executor must not be null"),
             Objects.requireNonNull(
                 authorizationProvider, "authorizationProvider must not be null"));
