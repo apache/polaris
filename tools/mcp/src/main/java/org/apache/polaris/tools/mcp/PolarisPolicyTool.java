@@ -310,7 +310,7 @@ final class PolarisPolicyTool implements McpTool {
       metadata = mapper.createObjectNode();
     }
     int status = metadata.path("response").path("status").asInt(-1);
-    if (status != 400 && status != 422) {
+    if (status != 400 && status != 404 && status != 422) {
       return result;
     }
 
@@ -331,7 +331,8 @@ final class PolarisPolicyTool implements McpTool {
         break;
       case "attach":
         hint =
-            "Attach requests require a body with `targetType`, `targetName`, and optional `parameters`.";
+            "Attach requests require a body with `targetType`, `targetName`, and optional `parameters`. "
+                + "Ensure the policy exists first (create it with operation=create) before attaching.";
         break;
       case "detach":
         hint =
