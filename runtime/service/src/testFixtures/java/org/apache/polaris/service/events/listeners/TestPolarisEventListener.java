@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.events.listeners;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
@@ -33,9 +31,7 @@ import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PrincipalRolesServiceEvents;
 import org.apache.polaris.service.events.PrincipalsServiceEvents;
 
-/** Event listener that stores all emitted events forever. Not recommended for use in production. */
-@ApplicationScoped
-@Identifier("test")
+/** Test event listener that stores all emitted events forever. */
 public class TestPolarisEventListener implements PolarisEventListener {
   private final Map<Class<? extends PolarisEvent>, PolarisEvent> latestEvents =
       new ConcurrentHashMap<>();
