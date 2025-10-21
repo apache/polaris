@@ -529,4 +529,59 @@ public class ManagementServiceTest {
                 resultWithError.getReturnStatus(),
                 resultWithError.getExtraInformation()));
   }
+
+  @Test
+  public void testCreateCatalogWithIgnoreSSLVerification() {
+    // Create a new test service that allows setting S3 endpoints
+    TestServices sslTestServices =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
+            .config(Map.of("ALLOW_SETTING_S3_ENDPOINTS", Boolean.TRUE))
+            .build();
+
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-bucket/path/to/data"))
+            .setStsEndpoint("https://sts.example.com:4443")
+            .setIgnoreSSLVerification(true)
+            .build();
+
+    String catalogName = "ssl-ignore-catalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://my-bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+
+    // Verify catalog creation succeeds with ignoreSSLVerification flag
+    try (Response response =
+        sslTestServices
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                sslTestServices.realmContext(),
+                sslTestServices.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // Verify the flag is persisted and returned in GET
+    try (Response response =
+        sslTestServices
+            .catalogsApi()
+            .getCatalog(
+                catalogName, sslTestServices.realmContext(), sslTestServices.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog fetchedCatalog = (Catalog) response.getEntity();
+      AwsStorageConfigInfo storageConfig =
+          (AwsStorageConfigInfo) fetchedCatalog.getStorageConfigInfo();
+      assertThat(storageConfig.getIgnoreSSLVerification()).isTrue();
+      assertThat(storageConfig.getStsEndpoint()).isEqualTo("https://sts.example.com:4443");
+    }
+  }
 }
