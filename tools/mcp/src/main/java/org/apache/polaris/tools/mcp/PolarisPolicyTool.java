@@ -45,7 +45,6 @@ final class PolarisPolicyTool implements McpTool {
   private static final Set<String> DETACH_ALIASES = Set.of("detach", "unmap", "unattach");
   private static final Set<String> APPLICABLE_ALIASES = Set.of("applicable", "applicable-policies");
 
-  private final ObjectMapper mapper;
   private final PolarisRestTool delegate;
 
   PolarisPolicyTool(
@@ -53,14 +52,13 @@ final class PolarisPolicyTool implements McpTool {
       HttpExecutor executor,
       URI baseUri,
       AuthorizationProvider authorizationProvider) {
-    this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
     this.delegate =
         new PolarisRestTool(
             "polaris.policy.delegate",
             "Internal delegate for policy operations",
             baseUri,
             "api/catalog/polaris/v1/",
-            mapper,
+            Objects.requireNonNull(mapper, "mapper must not be null"),
             Objects.requireNonNull(executor, "executor must not be null"),
             Objects.requireNonNull(
                 authorizationProvider, "authorizationProvider must not be null"));
