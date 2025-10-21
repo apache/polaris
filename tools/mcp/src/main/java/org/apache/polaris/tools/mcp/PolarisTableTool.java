@@ -32,7 +32,7 @@ import java.util.Set;
 
 /** MCP tool that exposes table-focused operations from the Polaris REST API. */
 final class PolarisTableTool implements McpTool {
-  private static final String TOOL_NAME = "polaris-table-request";
+  private static final String TOOL_NAME = "polaris-table";
   private static final String TOOL_DESCRIPTION =
       "Perform table-centric operations (list, get, create, commit, delete) using the Polaris REST API.";
   private static final Set<String> LIST_ALIASES = Set.of("list", "ls");
