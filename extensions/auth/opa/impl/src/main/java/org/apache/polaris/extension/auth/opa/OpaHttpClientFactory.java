@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  * (OPA) servers.
  */
 class OpaHttpClientFactory {
-  private static final Logger LOGGER = LoggerFactory.getLogger(OpaHttpClientFactory.class);
+  private static final Logger logger = LoggerFactory.getLogger(OpaHttpClientFactory.class);
 
   /**
    * Creates a configured HTTP client for OPA communication.
@@ -104,7 +104,7 @@ class OpaHttpClientFactory {
       throws Exception {
     if (!config.verifySsl()) {
       // Disable SSL verification (for development/testing)
-      LOGGER.warn(
+      logger.warn(
           "SSL verification is disabled for OPA server. This should only be used in development/testing environments.");
       return SSLContexts.custom()
           .loadTrustMaterial(
@@ -113,7 +113,7 @@ class OpaHttpClientFactory {
     } else if (config.trustStorePath().isPresent()) {
       // Load custom trust store for SSL verification
       Path trustStorePath = config.trustStorePath().get();
-      LOGGER.info("Loading custom trust store for OPA SSL verification: {}", trustStorePath);
+      logger.info("Loading custom trust store for OPA SSL verification: {}", trustStorePath);
       KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
       try (FileInputStream trustStoreStream = new FileInputStream(trustStorePath.toFile())) {
         String trustStorePassword = config.trustStorePassword().orElse(null);
@@ -123,7 +123,7 @@ class OpaHttpClientFactory {
       return SSLContexts.custom().loadTrustMaterial(trustStore, null).build();
     } else {
       // Use default system trust store for SSL verification
-      LOGGER.debug("Using default system trust store for OPA SSL verification");
+      logger.debug("Using default system trust store for OPA SSL verification");
       return SSLContexts.createDefault();
     }
   }

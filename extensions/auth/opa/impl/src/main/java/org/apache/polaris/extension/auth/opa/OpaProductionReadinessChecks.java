@@ -20,6 +20,8 @@ package org.apache.polaris.extension.auth.opa;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
@@ -28,29 +30,25 @@ import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 public class OpaProductionReadinessChecks {
 
   @Produces
-  public ProductionReadinessCheck checkBetaStatus(PolarisAuthorizerFactory authorizerFactory) {
-
+  public ProductionReadinessCheck checkOpaAuthorization(
+      PolarisAuthorizerFactory authorizerFactory, OpaAuthorizationConfig config) {
     if (authorizerFactory instanceof OpaPolarisAuthorizerFactory) {
-      return ProductionReadinessCheck.of(
+      List<Error> errors = new ArrayList<>();
+
+      errors.add(
           Error.of(
               "OPA authorization is currently a Beta feature and is not a stable release. Breaking changes may be introduced in future versions. Use with caution in production environments.",
               "polaris.authorization.type"));
+
+      if (!config.http().verifySsl()) {
+        errors.add(
+            Error.ofSevere(
+                "SSL certificate verification is disabled for OPA communication. This exposes the service to man-in-the-middle attacks and other severe security risks.",
+                "polaris.authorization.opa.http.verify-ssl"));
+      }
+
+      return ProductionReadinessCheck.of(errors);
     }
-
-    return ProductionReadinessCheck.OK;
-  }
-
-  @Produces
-  public ProductionReadinessCheck checkSslVerification(
-      PolarisAuthorizerFactory authorizerFactory, OpaAuthorizationConfig config) {
-
-    if ((authorizerFactory instanceof OpaPolarisAuthorizerFactory) && !config.http().verifySsl()) {
-      return ProductionReadinessCheck.of(
-          Error.ofSevere(
-              "SSL certificate verification is disabled for OPA communication. This exposes the service to man-in-the-middle attacks and other severe security risks.",
-              "polaris.authorization.opa.http.verify-ssl"));
-    }
-
     return ProductionReadinessCheck.OK;
   }
 }
