@@ -32,7 +32,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
@@ -76,28 +75,22 @@ public class DefaultFileIOFactory implements FileIOFactory {
 
     // Get subcoped creds
     properties = new HashMap<>(properties);
-    Optional<PolarisEntity> storageInfoEntity =
-        FileIOUtil.findStorageInfoFromHierarchy(resolvedEntityPath);
-    Optional<AccessConfig> accessConfig =
-        storageInfoEntity.map(
-            storageInfo ->
-                accessConfigProvider.getAccessConfig(
-                    callContext,
-                    identifier,
-                    tableLocations,
-                    storageActions,
-                    Optional.empty(),
-                    resolvedEntityPath));
+    AccessConfig accessConfig =
+        accessConfigProvider.getAccessConfig(
+            callContext,
+            identifier,
+            tableLocations,
+            storageActions,
+            Optional.empty(),
+            resolvedEntityPath);
 
     // Update the FileIO with the subscoped credentials
     // Update with properties in case there are table-level overrides the credentials should
     // always override table-level properties, since storage configuration will be found at
     // whatever entity defines it
-    if (accessConfig.isPresent()) {
-      properties.putAll(accessConfig.get().credentials());
-      properties.putAll(accessConfig.get().extraProperties());
-      properties.putAll(accessConfig.get().internalProperties());
-    }
+    properties.putAll(accessConfig.credentials());
+    properties.putAll(accessConfig.extraProperties());
+    properties.putAll(accessConfig.internalProperties());
 
     return loadFileIOInternal(ioImplClassName, properties);
   }
