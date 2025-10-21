@@ -322,10 +322,10 @@ final class PolarisPolicyTool implements McpTool {
         hint =
             "Create requests must include `name`, `type`, and optional `description`/`content` in the body. "
                 + "See CreatePolicyRequest in spec/polaris-catalog-apis/policy-apis.yaml. "
-                + "Common types include system.data_compaction, system.metadata_compaction, "
-                + "system.orphan_file_removal, and system.snapshot_expiry. "
-                + "Example: {\"name\":\"weekly_compaction\",\"type\":\"system.data_compaction\",\"content\":{...}}. "
-                + "Reference schema: https://polaris.apache.org/schemas/policies/system/data-compaction/2025-02-03.json";
+                + "Common types include system.data-compaction, system.metadata-compaction, "
+                + "system.orphan-file-removal, and system.snapshot-expiry. "
+                + "Example: {\"name\":\"weekly_compaction\",\"type\":\"system.data-compaction\",\"content\":{...}}. "
+                + "Reference schema: http://polaris.apache.org/schemas/policies/system/data-compaction/2025-02-03.json";
         break;
       case "update":
         hint =
