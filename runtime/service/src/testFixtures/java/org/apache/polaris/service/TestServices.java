@@ -117,7 +117,7 @@ public record TestServices(
 
   @FunctionalInterface
   public interface FileIOFactorySupplier
-      extends BiFunction<StorageCredentialCache, MetaStoreManagerFactory, FileIOFactory> {}
+      extends BiFunction<MetaStoreManagerFactory, AccessConfigProvider, FileIOFactory> {}
 
   private static class MockedConfigurationStore implements PolarisConfigurationStore {
     private final Map<String, Object> defaults;
@@ -242,8 +242,10 @@ public record TestServices(
       PolarisCredentialManager credentialManager =
           new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
 
+      AccessConfigProvider accessConfigProvider =
+          new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
       FileIOFactory fileIOFactory =
-          fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);
+          fileIOFactorySupplier.apply(metaStoreManagerFactory, accessConfigProvider);
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
@@ -256,9 +258,6 @@ public record TestServices(
               taskExecutor,
               fileIOFactory,
               polarisEventListener);
-
-      AccessConfigProvider accessConfigProvider =
-          new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 

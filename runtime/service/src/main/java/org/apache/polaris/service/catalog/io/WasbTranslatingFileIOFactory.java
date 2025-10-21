@@ -42,9 +42,9 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
   @Inject
   public WasbTranslatingFileIOFactory(
       StorageCredentialCache storageCredentialCache,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    defaultFileIOFactory =
-        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      AccessConfigProvider accessConfigProvider) {
+    defaultFileIOFactory = new DefaultFileIOFactory(metaStoreManagerFactory, accessConfigProvider);
   }
 
   @Override

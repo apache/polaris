@@ -102,9 +102,9 @@ public class FileIOFactoryTest {
 
     // Spy FileIOFactory and check if the credentials are passed to the FileIO
     TestServices.FileIOFactorySupplier fileIOFactorySupplier =
-        (storageCredentialCache, metaStoreManagerFactory) ->
+        (metaStoreManagerFactory, accessConfigProvider) ->
             Mockito.spy(
-                new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory) {
+                new DefaultFileIOFactory(metaStoreManagerFactory, accessConfigProvider) {
                   @Override
                   FileIO loadFileIOInternal(
                       @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {

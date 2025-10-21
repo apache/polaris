@@ -33,7 +33,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
  * A FileIOFactory that measures the number of bytes read, files written, and files deleted. It can
@@ -53,10 +52,8 @@ public class MeasuredFileIOFactory implements FileIOFactory {
 
   @Inject
   public MeasuredFileIOFactory(
-      StorageCredentialCache storageCredentialCache,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    defaultFileIOFactory =
-        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+      MetaStoreManagerFactory metaStoreManagerFactory, AccessConfigProvider accessConfigProvider) {
+    defaultFileIOFactory = new DefaultFileIOFactory(metaStoreManagerFactory, accessConfigProvider);
   }
 
   @Override

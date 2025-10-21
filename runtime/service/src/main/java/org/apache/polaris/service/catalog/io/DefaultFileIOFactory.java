@@ -38,7 +38,6 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
@@ -52,15 +51,14 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
-  private final StorageCredentialCache storageCredentialCache;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final AccessConfigProvider accessConfigProvider;
 
   @Inject
   public DefaultFileIOFactory(
-      StorageCredentialCache storageCredentialCache,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.storageCredentialCache = storageCredentialCache;
+      MetaStoreManagerFactory metaStoreManagerFactory, AccessConfigProvider accessConfigProvider) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.accessConfigProvider = accessConfigProvider;
   }
 
   @Override
@@ -83,15 +81,13 @@ public class DefaultFileIOFactory implements FileIOFactory {
     Optional<AccessConfig> accessConfig =
         storageInfoEntity.map(
             storageInfo ->
-                FileIOUtil.refreshAccessConfig(
+                accessConfigProvider.getAccessConfig(
                     callContext,
-                    storageCredentialCache,
-                    credentialVendor,
                     identifier,
                     tableLocations,
                     storageActions,
-                    storageInfo,
-                    Optional.empty()));
+                    Optional.empty(),
+                    resolvedEntityPath));
 
     // Update the FileIO with the subscoped credentials
     // Update with properties in case there are table-level overrides the credentials should
