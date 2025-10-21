@@ -135,11 +135,6 @@ public class IcebergCatalogAdapter
           .add(Endpoint.V1_RENAME_VIEW)
           .build();
 
-  private static final Set<Endpoint> COMMIT_ENDPOINT =
-      ImmutableSet.<Endpoint>builder()
-          .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
-          .build();
-
   private final PolarisDiagnostics diagnostics;
   private final RealmContext realmContext;
   private final CallContext callContext;
@@ -823,7 +818,6 @@ public class IcebergCatalogAdapter
                     ImmutableList.<Endpoint>builder()
                         .addAll(DEFAULT_ENDPOINTS)
                         .addAll(VIEW_ENDPOINTS)
-                        .addAll(COMMIT_ENDPOINT)
                         .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig))
                         .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig))
                         .build())
