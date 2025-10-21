@@ -34,6 +34,8 @@ jobs:
         with:
           ref: "versioned-docs"
           path: site/content/releases
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
 
       - name: Install docker-compose
         run: |
