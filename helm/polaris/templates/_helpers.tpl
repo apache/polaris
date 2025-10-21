@@ -176,9 +176,9 @@ Prints the config volume definition for deployments and jobs.
           items:
             - key: application.properties
               path: application.properties
-      {{- include "polaris.configVolumeAuthenticationOptions" (list "" .Values.authentication) | nindent 6 }}
+      {{- include "polaris.configVolumeAuthenticationOptions" (list "" .Values.authentication .) | nindent 6 }}
       {{- range $realm, $auth := .Values.authentication.realmOverrides -}}
-      {{- include "polaris.configVolumeAuthenticationOptions" (list $realm $auth) | nindent 6 }}
+      {{- include "polaris.configVolumeAuthenticationOptions" (list $realm $auth $) | nindent 6 }}
       {{- end -}}
 {{- end -}}
 
@@ -341,6 +341,7 @@ Sets authentication options for a given realm in the projected config volume.
 {{- define "polaris.configVolumeAuthenticationOptions" -}}
 {{- $realm := index . 0 -}}
 {{- $auth := index . 1 -}}
+{{- $global := index . 2 -}}
 {{- $authType := coalesce $auth.type "internal" -}}
 {{- if (or (eq $authType "mixed") (eq $authType "internal")) }}
 {{- $secretName := dig "tokenBroker" "secret" "name" "" $auth -}}
@@ -348,22 +349,22 @@ Sets authentication options for a given realm in the projected config volume.
 {{- $tokenBrokerType := dig "tokenBroker" "type" "rsa-key-pair" $auth -}}
 {{- $subpath := empty $realm | ternary "" (printf "%s/" (urlquery $realm)) -}}
 - secret:
-    name: {{ $secretName }}
+    name: {{ tpl $secretName $global }}
     items:
     {{- if eq $tokenBrokerType "rsa-key-pair" }}
       {{- /* Backward compatibility for publicKey: new takes precedence */ -}}
       {{- $publicKey := coalesce (dig "tokenBroker" "secret" "rsaKeyPair" "publicKey" "" $auth) (dig "tokenBroker" "secret" "publicKey" "public.pem" $auth) }}
       {{- /* Backward compatibility for privateKey: new takes precedence */ -}}
       {{- $privateKey := coalesce (dig "tokenBroker" "secret" "rsaKeyPair" "privateKey" "" $auth) (dig "tokenBroker" "secret" "privateKey" "private.pem" $auth) }}
-      - key: {{ $publicKey }}
+      - key: {{ tpl $publicKey $global }}
         path: {{ $subpath }}public.pem
-      - key: {{ $privateKey }}
+      - key: {{ tpl $privateKey $global }}
         path: {{ $subpath }}private.pem
     {{- end }}
     {{- if eq $tokenBrokerType "symmetric-key" }}
       {{- /* Backward compatibility for symmetricKey: new takes precedence */ -}}
       {{- $secretKey := coalesce (dig "tokenBroker" "secret" "symmetricKey" "secretKey" "" $auth) (dig "tokenBroker" "secret" "secretKey" "symmetric.key" $auth) }}
-      - key: {{ $secretKey }}
+      - key: {{ tpl $secretKey $global }}
         path: {{ $subpath }}symmetric.key
     {{- end }}
 {{- end }}
