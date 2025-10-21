@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.auth.opa;
+package org.apache.polaris.extension.auth.opa.test;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import java.io.OutputStream;
@@ -33,12 +33,6 @@ import org.testcontainers.containers.wait.strategy.Wait;
 public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
   private static GenericContainer<?> opa;
   private int mappedPort;
-  private Map<String, String> resourceConfig;
-
-  @Override
-  public void init(Map<String, String> initArgs) {
-    this.resourceConfig = initArgs;
-  }
 
   @Override
   public Map<String, String> start() {
@@ -68,7 +62,7 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
       // Load Opa Polaris Authorizer Rego policy into OPA
       String polarisPolicyName = "polaris-authz";
       String polarisRegoPolicy =
-        """
+          """
         package polaris.authz
 
         default allow := false
@@ -100,7 +94,7 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
     try {
       URL url = new URL(baseUrl + "/v1/policies/" + policyName);
       System.out.println("Uploading policy to: " + url);
-      
+
       HttpURLConnection conn = (HttpURLConnection) url.openConnection();
       conn.setRequestMethod("PUT");
       conn.setDoOutput(true);
@@ -112,11 +106,11 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
 
       int code = conn.getResponseCode();
       System.out.println("OPA policy upload response code: " + code);
-      
+
       if (code < 200 || code >= 300) {
         throw new RuntimeException("OPA policy upload failed, HTTP " + code);
       }
-      
+
       System.out.println("Successfully uploaded policy to OPA");
     } catch (Exception e) {
       // Surface container logs to help debug on CI

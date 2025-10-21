@@ -23,6 +23,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Optional;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,8 @@ public class OpaHttpClientFactoryTest {
 
   @Test
   void testCreateHttpClientWithHttpUrl() throws Exception {
-    OpaAuthorizationConfig.HttpConfig httpConfig = createMockHttpConfig(5000, true, null, null);
+    OpaAuthorizationConfig.HttpConfig httpConfig =
+        createMockHttpConfig(Duration.ofSeconds(5), true, null, null);
 
     try (CloseableHttpClient client = OpaHttpClientFactory.createHttpClient(httpConfig)) {
       assertNotNull(client);
@@ -41,7 +43,8 @@ public class OpaHttpClientFactoryTest {
 
   @Test
   void testCreateHttpClientWithHttpsUrl() throws Exception {
-    OpaAuthorizationConfig.HttpConfig httpConfig = createMockHttpConfig(5000, false, null, null);
+    OpaAuthorizationConfig.HttpConfig httpConfig =
+        createMockHttpConfig(Duration.ofSeconds(5), false, null, null);
 
     try (CloseableHttpClient client = OpaHttpClientFactory.createHttpClient(httpConfig)) {
       assertNotNull(client);
@@ -49,9 +52,9 @@ public class OpaHttpClientFactoryTest {
   }
 
   private OpaAuthorizationConfig.HttpConfig createMockHttpConfig(
-      int timeoutMs, boolean verifySsl, String trustStorePath, String trustStorePassword) {
+      Duration timeout, boolean verifySsl, String trustStorePath, String trustStorePassword) {
     OpaAuthorizationConfig.HttpConfig httpConfig = mock(OpaAuthorizationConfig.HttpConfig.class);
-    when(httpConfig.timeoutMs()).thenReturn(timeoutMs);
+    when(httpConfig.timeout()).thenReturn(timeout);
     when(httpConfig.verifySsl()).thenReturn(verifySsl);
     when(httpConfig.trustStorePath())
         .thenReturn(Optional.ofNullable(trustStorePath != null ? Paths.get(trustStorePath) : null));

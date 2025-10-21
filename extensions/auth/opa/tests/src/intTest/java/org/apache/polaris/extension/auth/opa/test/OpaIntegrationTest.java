@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.auth.opa;
+package org.apache.polaris.extension.auth.opa.test;
 
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -45,18 +45,18 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
       Map<String, String> config = new HashMap<>();
       config.put("polaris.authorization.type", "opa");
 
-      // Override default configuration for static token authentication (if needed)
+      // Configure static token authentication
       config.put("polaris.authorization.opa.auth.type", "bearer");
-      config.put("polaris.authorization.opa.auth.bearer.type", "static-token");
-      config.put("polaris.authorization.opa.auth.bearer.static-token.value", "test-opa-bearer-token-12345");
+      config.put(
+          "polaris.authorization.opa.auth.bearer.static-token.value",
+          "test-opa-bearer-token-12345");
 
       return config;
     }
 
     @Override
     public List<TestResourceEntry> testResources() {
-      return List.of(
-          new TestResourceEntry(OpaTestResource.class));
+      return List.of(new TestResourceEntry(OpaTestResource.class));
     }
   }
 
@@ -78,9 +78,10 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
   void testCreatePrincipalAndGetToken() {
     // Test the helper method createPrincipalAndGetToken
     // useful for debugging and ensuring that the helper method works correctly
-    assertDoesNotThrow(() -> {
-        createPrincipalAndGetToken("test-user");
-    });
+    assertDoesNotThrow(
+        () -> {
+          createPrincipalAndGetToken("test-user");
+        });
   }
 
   @Test

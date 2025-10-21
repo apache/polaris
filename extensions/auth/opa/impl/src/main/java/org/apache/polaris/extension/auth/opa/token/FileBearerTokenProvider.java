@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.extension.auth.opa.token;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -31,8 +33,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +60,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
   private final boolean jwtExpirationRefresh;
   private final Duration jwtExpirationBuffer;
   private final Clock clock;
-  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  private final AtomicBoolean refreshLock = new AtomicBoolean();
 
   private volatile String cachedToken;
   private volatile Instant lastRefresh;
@@ -73,31 +74,9 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
    * @param refreshInterval how often to check for token file changes (fallback for non-JWT tokens)
    * @param jwtExpirationRefresh whether to use JWT expiration for refresh timing
    * @param jwtExpirationBuffer buffer time before JWT expiration to refresh the token
+   * @param clock clock instance for time operations
    */
   public FileBearerTokenProvider(
-      Path tokenFilePath,
-      Duration refreshInterval,
-      boolean jwtExpirationRefresh,
-      Duration jwtExpirationBuffer) {
-    this(
-        tokenFilePath,
-        refreshInterval,
-        jwtExpirationRefresh,
-        jwtExpirationBuffer,
-        Clock.systemUTC());
-  }
-
-  /**
-   * Create a new file-based token provider with JWT expiration support and custom clock.
-   * Package-private constructor for testing purposes.
-   *
-   * @param tokenFilePath path to the file containing the bearer token
-   * @param refreshInterval how often to check for token file changes (fallback for non-JWT tokens)
-   * @param jwtExpirationRefresh whether to use JWT expiration for refresh timing
-   * @param jwtExpirationBuffer buffer time before JWT expiration to refresh the token
-   * @param clock clock instance for time operations (useful for testing)
-   */
-  FileBearerTokenProvider(
       Path tokenFilePath,
       Duration refreshInterval,
       boolean jwtExpirationRefresh,
@@ -122,34 +101,20 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
   @Override
   @Nullable
   public String getToken() {
-    if (closed) {
-      logger.warn("Token provider is closed, returning null");
-      return null;
-    }
+    checkState(!closed, "Token provider is closed");
 
     // Check if we need to refresh
     if (shouldRefresh()) {
       refreshToken();
     }
 
-    lock.readLock().lock();
-    try {
-      return cachedToken;
-    } finally {
-      lock.readLock().unlock();
-    }
+    return cachedToken;
   }
 
   @Override
   public void close() {
     closed = true;
-    lock.writeLock().lock();
-    try {
-      cachedToken = null;
-      logger.info("File token provider closed");
-    } finally {
-      lock.writeLock().unlock();
-    }
+    cachedToken = null;
   }
 
   private boolean shouldRefresh() {
@@ -157,13 +122,10 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
   }
 
   private void refreshToken() {
-    lock.writeLock().lock();
+    if (!refreshLock.compareAndSet(false, true)) {
+      return;
+    }
     try {
-      // Double-check pattern - another thread might have refreshed while we waited for the lock
-      if (!shouldRefresh()) {
-        return;
-      }
-
       String newToken = loadTokenFromFile();
 
       // If we couldn't load a token and have no cached token, this is a fatal error
@@ -190,9 +152,8 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
           tokenFilePath,
           cachedToken != null && !cachedToken.isEmpty(),
           nextRefresh);
-
     } finally {
-      lock.writeLock().unlock();
+      refreshLock.set(false);
     }
   }
 
@@ -232,60 +193,15 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
 
   @Nullable
   private String loadTokenFromFile() {
-    int attempts = 0;
-    long deadlineMs =
-        clock.millis()
-            + 3000; // 3 second deadline for retries (reasonable for CSI driver file mounts)
-    String currentCachedToken = cachedToken; // Snapshot of current cache
-
-    while (true) {
-      try {
-        // Check if file is readable first
-        if (!Files.isReadable(tokenFilePath)) {
-          // Treat as transient error and retry (could be CSI driver not ready yet)
-          throw new IOException("File is not readable: " + tokenFilePath);
-        }
-
-        String token = Files.readString(tokenFilePath, StandardCharsets.UTF_8).trim();
-        if (!token.isEmpty()) {
-          return token;
-        }
-
-        // Empty token - treat as transient issue (could be file being written)
-        throw new IOException("File contains only whitespace: " + tokenFilePath);
-      } catch (IOException e) {
-        // Treat file system exceptions as transient (file being rotated, temporary unavailability)
-        logger.debug(
-            "Transient error reading token file (attempt {}): {}", attempts + 1, e.getMessage());
+    try {
+      String token = Files.readString(tokenFilePath, StandardCharsets.UTF_8).trim();
+      if (!token.isEmpty()) {
+        return token;
       }
-
-      // If we have a cached token and it's safe to use, fall back to it
-      if (currentCachedToken != null && !currentCachedToken.isEmpty()) {
-        logger.warn(
-            "Failed to read new token from file after {} attempts, using cached token",
-            attempts + 1);
-        return currentCachedToken;
-      }
-
-      // No cached token available and we can't read from file
-      attempts++;
-      if (attempts >= 5 || clock.millis() > deadlineMs) {
-        // Return null to let refreshToken() decide how to handle this based on cached token state
-        logger.debug("Token unavailable after {} attempts", attempts);
-        return null;
-      }
-
-      // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1000ms (reasonable for CSI driver
-      // scenarios)
-      long delayMs = Math.min(100L << (attempts - 1), 1000);
-      try {
-        Thread.sleep(delayMs);
-      } catch (InterruptedException ie) {
-        Thread.currentThread().interrupt();
-        logger.debug("Interrupted while reading token, returning null");
-        return null;
-      }
+    } catch (IOException e) {
+      logger.debug("Failed to read token from file", e);
     }
+    return null;
   }
 
   /**

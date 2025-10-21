@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.auth.opa;
+package org.apache.polaris.extension.auth.opa.test;
 
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -44,8 +44,8 @@ import org.junit.jupiter.api.Test;
 public class OpaFileTokenIntegrationTest extends OpaIntegrationTestBase {
 
   /**
-   * Test profile for OPA integration with file-based bearer token authentication. The OPA
-   * container runs with HTTP for simplicity in CI environments.
+   * Test profile for OPA integration with file-based bearer token authentication. The OPA container
+   * runs with HTTP for simplicity in CI environments.
    */
   public static class FileTokenOpaProfile implements QuarkusTestProfile {
     // Static field to hold token file path for test access
@@ -63,7 +63,6 @@ public class OpaFileTokenIntegrationTest extends OpaIntegrationTestBase {
 
         // Configure file-based bearer token authentication
         config.put("polaris.authorization.opa.auth.type", "bearer");
-        config.put("polaris.authorization.opa.auth.bearer.type", "file-based");
         config.put(
             "polaris.authorization.opa.auth.bearer.file-based.path", tokenFilePath.toString());
         config.put("polaris.authorization.opa.auth.bearer.file-based.refresh-interval", "PT1S");

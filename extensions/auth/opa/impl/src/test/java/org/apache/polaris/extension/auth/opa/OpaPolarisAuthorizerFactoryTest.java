@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Optional;
 import org.apache.polaris.core.config.RealmConfig;
@@ -47,7 +48,6 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     OpaAuthorizationConfig.BearerTokenConfig bearerTokenConfig =
         mock(OpaAuthorizationConfig.BearerTokenConfig.class);
-    when(bearerTokenConfig.type()).thenReturn(OpaAuthorizationConfig.BearerTokenType.STATIC_TOKEN);
     when(bearerTokenConfig.staticToken()).thenReturn(Optional.of(staticTokenConfig));
     when(bearerTokenConfig.fileBased()).thenReturn(Optional.empty());
 
@@ -60,11 +60,12 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     OpaAuthorizationConfig opaConfig = mock(OpaAuthorizationConfig.class);
     when(opaConfig.policyUri())
-        .thenReturn(Optional.of(URI.create("http://localhost:8181/v1/data/polaris/authz/allow")));
-    when(opaConfig.auth()).thenReturn(Optional.of(authConfig));
-    when(opaConfig.http()).thenReturn(Optional.of(httpConfig));
+        .thenReturn(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"));
+    when(opaConfig.auth()).thenReturn(authConfig);
+    when(opaConfig.http()).thenReturn(httpConfig);
 
-    OpaPolarisAuthorizerFactory factory = new OpaPolarisAuthorizerFactory(opaConfig);
+    OpaPolarisAuthorizerFactory factory =
+        new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC());
 
     // Create authorizer
     RealmConfig realmConfig = mock(RealmConfig.class);
@@ -90,7 +91,6 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     OpaAuthorizationConfig.BearerTokenConfig bearerTokenConfig =
         mock(OpaAuthorizationConfig.BearerTokenConfig.class);
-    when(bearerTokenConfig.type()).thenReturn(OpaAuthorizationConfig.BearerTokenType.FILE_BASED);
     when(bearerTokenConfig.staticToken()).thenReturn(Optional.empty());
     when(bearerTokenConfig.fileBased()).thenReturn(Optional.of(fileTokenConfig));
 
@@ -103,11 +103,12 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     OpaAuthorizationConfig opaConfig = mock(OpaAuthorizationConfig.class);
     when(opaConfig.policyUri())
-        .thenReturn(Optional.of(URI.create("http://localhost:8181/v1/data/polaris/authz/allow")));
-    when(opaConfig.auth()).thenReturn(Optional.of(authConfig));
-    when(opaConfig.http()).thenReturn(Optional.of(httpConfig));
+        .thenReturn(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"));
+    when(opaConfig.auth()).thenReturn(authConfig);
+    when(opaConfig.http()).thenReturn(httpConfig);
 
-    OpaPolarisAuthorizerFactory factory = new OpaPolarisAuthorizerFactory(opaConfig);
+    OpaPolarisAuthorizerFactory factory =
+        new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC());
 
     // Create authorizer
     RealmConfig realmConfig = mock(RealmConfig.class);
@@ -118,7 +119,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     // Also verify that the token provider actually reads from the file
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1))) {
+            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1), Clock.systemUTC())) {
 
       String actualToken = provider.getToken();
       assertEquals(tokenValue, actualToken);
@@ -137,11 +138,12 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     OpaAuthorizationConfig opaConfig = mock(OpaAuthorizationConfig.class);
     when(opaConfig.policyUri())
-        .thenReturn(Optional.of(URI.create("http://localhost:8181/v1/data/polaris/authz/allow")));
-    when(opaConfig.auth()).thenReturn(Optional.of(authConfig));
-    when(opaConfig.http()).thenReturn(Optional.of(httpConfig));
+        .thenReturn(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"));
+    when(opaConfig.auth()).thenReturn(authConfig);
+    when(opaConfig.http()).thenReturn(httpConfig);
 
-    OpaPolarisAuthorizerFactory factory = new OpaPolarisAuthorizerFactory(opaConfig);
+    OpaPolarisAuthorizerFactory factory =
+        new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC());
 
     // Create authorizer
     RealmConfig realmConfig = mock(RealmConfig.class);
@@ -152,7 +154,7 @@ public class OpaPolarisAuthorizerFactoryTest {
 
   private OpaAuthorizationConfig.HttpConfig createMockHttpConfig() {
     OpaAuthorizationConfig.HttpConfig httpConfig = mock(OpaAuthorizationConfig.HttpConfig.class);
-    when(httpConfig.timeoutMs()).thenReturn(2000);
+    when(httpConfig.timeout()).thenReturn(Duration.ofSeconds(2));
     when(httpConfig.verifySsl()).thenReturn(true);
     when(httpConfig.trustStorePath()).thenReturn(Optional.empty());
     when(httpConfig.trustStorePassword()).thenReturn(Optional.empty());

@@ -54,40 +54,22 @@ public interface OpaAuthorizationConfig {
     }
   }
 
-  /** Bearer token configuration types */
-  enum BearerTokenType {
-    STATIC_TOKEN("static-token"),
-    FILE_BASED("file-based");
+  URI policyUri();
 
-    private final String value;
+  AuthenticationConfig auth();
 
-    BearerTokenType(String value) {
-      this.value = value;
-    }
-
-    public String getValue() {
-      return value;
-    }
-  }
-
-  Optional<URI> policyUri();
-
-  Optional<AuthenticationConfig> auth();
-
-  Optional<HttpConfig> http();
+  HttpConfig http();
 
   /** Validates the complete OPA configuration */
   default void validate() {
-    checkArgument(policyUri().isPresent(), "OPA policy URI cannot be null");
-    checkArgument(auth().isPresent(), "Authentication configuration is required");
 
-    auth().get().validate();
+    auth().validate();
   }
 
   /** HTTP client configuration for OPA communication. */
   interface HttpConfig {
-    @WithDefault("2000")
-    int timeoutMs();
+    @WithDefault("PT2S")
+    Duration timeout();
 
     @WithDefault("true")
     boolean verifySsl();
@@ -124,10 +106,6 @@ public interface OpaAuthorizationConfig {
   }
 
   interface BearerTokenConfig {
-    /** Type of bearer token configuration */
-    @WithDefault("static-token")
-    BearerTokenType type();
-
     /** Static bearer token configuration */
     Optional<StaticTokenConfig> staticToken();
 
@@ -135,22 +113,16 @@ public interface OpaAuthorizationConfig {
     Optional<FileBasedConfig> fileBased();
 
     default void validate() {
-      switch (type()) {
-        case STATIC_TOKEN:
-          checkArgument(
-              staticToken().isPresent(),
-              "Static token configuration is required when type is 'static-token'");
-          staticToken().get().validate();
-          break;
-        case FILE_BASED:
-          checkArgument(
-              fileBased().isPresent(),
-              "File-based configuration is required when type is 'file-based'");
-          fileBased().get().validate();
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "Invalid bearer token type: " + type() + ". Must be 'static-token' or 'file-based'");
+      // Ensure exactly one bearer token configuration is present (mutually exclusive)
+      checkArgument(
+          staticToken().isPresent() ^ fileBased().isPresent(),
+          "Exactly one of 'static-token' or 'file-based' bearer token configuration must be specified");
+
+      // Validate the present configuration
+      if (staticToken().isPresent()) {
+        staticToken().get().validate();
+      } else {
+        fileBased().get().validate();
       }
     }
 
@@ -188,7 +160,6 @@ public interface OpaAuthorizationConfig {
       Optional<Duration> jwtExpirationBuffer();
 
       default void validate() {
-        checkArgument(path() != null, "Bearer token file path cannot be null");
         checkArgument(
             refreshInterval().isEmpty() || refreshInterval().get().isPositive(),
             "refreshInterval must be positive");

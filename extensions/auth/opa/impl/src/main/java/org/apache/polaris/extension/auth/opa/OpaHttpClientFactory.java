@@ -53,7 +53,7 @@ class OpaHttpClientFactory {
   public static CloseableHttpClient createHttpClient(OpaAuthorizationConfig.HttpConfig config) {
     RequestConfig requestConfig =
         RequestConfig.custom()
-            .setResponseTimeout(Timeout.ofMilliseconds(config.timeoutMs()))
+            .setResponseTimeout(Timeout.ofMilliseconds(config.timeout().toMillis()))
             .build();
 
     try {

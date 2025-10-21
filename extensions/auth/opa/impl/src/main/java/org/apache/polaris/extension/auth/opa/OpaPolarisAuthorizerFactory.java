@@ -25,6 +25,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.net.URI;
+import java.time.Clock;
 import java.time.Duration;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -45,12 +46,14 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   private static final Logger logger = LoggerFactory.getLogger(OpaPolarisAuthorizerFactory.class);
 
   private final OpaAuthorizationConfig opaConfig;
+  private final Clock clock;
   private CloseableHttpClient httpClient;
   private BearerTokenProvider bearerTokenProvider;
 
   @Inject
-  public OpaPolarisAuthorizerFactory(OpaAuthorizationConfig opaConfig) {
+  public OpaPolarisAuthorizerFactory(OpaAuthorizationConfig opaConfig, Clock clock) {
     this.opaConfig = opaConfig;
+    this.clock = clock;
   }
 
   @PostConstruct
@@ -62,13 +65,13 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     httpClient = createHttpClient();
 
     // Setup authentication once during startup
-    setupAuthentication(opaConfig.auth().get());
+    setupAuthentication(opaConfig.auth());
   }
 
   @Override
   public PolarisAuthorizer create(RealmConfig realmConfig) {
     // All components are now pre-initialized, just create the authorizer
-    URI policyUri = opaConfig.policyUri().get();
+    URI policyUri = opaConfig.policyUri();
 
     return new OpaPolarisAuthorizer(policyUri, httpClient, bearerTokenProvider);
   }
@@ -79,7 +82,7 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     if (bearerTokenProvider != null) {
       try {
         bearerTokenProvider.close();
-        logger.info("Bearer token provider closed successfully");
+        logger.debug("Bearer token provider closed successfully");
       } catch (Exception e) {
         // Log but don't throw - we're shutting down anyway
         logger.warn("Error closing bearer token provider: {}", e.getMessage(), e);
@@ -90,7 +93,7 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     if (httpClient != null) {
       try {
         httpClient.close();
-        logger.info("HTTP client closed successfully");
+        logger.debug("HTTP client closed successfully");
       } catch (IOException e) {
         // Log but don't throw - we're shutting down anyway
         logger.warn("Error closing HTTP client: {}", e.getMessage(), e);
@@ -100,10 +103,7 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
   private CloseableHttpClient createHttpClient() {
     try {
-      if (opaConfig.http().isEmpty()) {
-        throw new IllegalStateException("HTTP configuration is required");
-      }
-      return OpaHttpClientFactory.createHttpClient(opaConfig.http().get());
+      return OpaHttpClientFactory.createHttpClient(opaConfig.http());
     } catch (Exception e) {
       // Fallback to simple client
       return HttpClients.custom().build();
@@ -135,36 +135,24 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
   private BearerTokenProvider createBearerTokenProvider(
       OpaAuthorizationConfig.BearerTokenConfig bearerToken) {
-    switch (bearerToken.type()) {
-      case STATIC_TOKEN:
-        if (bearerToken.staticToken().isEmpty()) {
-          throw new IllegalStateException(
-              "Static token configuration is required when type is 'static-token'");
-        }
-        OpaAuthorizationConfig.BearerTokenConfig.StaticTokenConfig staticConfig =
-            bearerToken.staticToken().get();
-        return new StaticBearerTokenProvider(staticConfig.value());
+    // Check which configuration is present
+    if (bearerToken.staticToken().isPresent()) {
+      OpaAuthorizationConfig.BearerTokenConfig.StaticTokenConfig staticConfig =
+          bearerToken.staticToken().get();
+      return new StaticBearerTokenProvider(staticConfig.value());
+    } else if (bearerToken.fileBased().isPresent()) {
+      OpaAuthorizationConfig.BearerTokenConfig.FileBasedConfig fileConfig =
+          bearerToken.fileBased().get();
 
-      case FILE_BASED:
-        if (bearerToken.fileBased().isEmpty()) {
-          throw new IllegalStateException(
-              "File-based configuration is required when type is 'file-based'");
-        }
-        OpaAuthorizationConfig.BearerTokenConfig.FileBasedConfig fileConfig =
-            bearerToken.fileBased().get();
-        
-        Duration refreshInterval = fileConfig.refreshInterval().orElse(Duration.ofMinutes(5));
-        boolean jwtExpirationRefresh = fileConfig.jwtExpirationRefresh().orElse(true);
-        Duration jwtExpirationBuffer = fileConfig.jwtExpirationBuffer().orElse(Duration.ofMinutes(1));
-        
-        return new FileBearerTokenProvider(
-            fileConfig.path(),
-            refreshInterval,
-            jwtExpirationRefresh,
-            jwtExpirationBuffer);
+      Duration refreshInterval = fileConfig.refreshInterval().orElse(Duration.ofMinutes(5));
+      boolean jwtExpirationRefresh = fileConfig.jwtExpirationRefresh().orElse(true);
+      Duration jwtExpirationBuffer = fileConfig.jwtExpirationBuffer().orElse(Duration.ofMinutes(1));
 
-      default:
-        throw new IllegalStateException("Unsupported bearer token type: " + bearerToken.type());
+      return new FileBearerTokenProvider(
+          fileConfig.path(), refreshInterval, jwtExpirationRefresh, jwtExpirationBuffer, clock);
+    } else {
+      throw new IllegalStateException(
+          "No bearer token configuration found. Must specify either 'static-token' or 'file-based'");
     }
   }
 }

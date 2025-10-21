@@ -28,10 +28,10 @@ public class StaticBearerTokenProviderTest {
   @Test
   public void testStaticBearerTokenProvider() {
     String expectedToken = "static-bearer-token";
-    StaticBearerTokenProvider provider = new StaticBearerTokenProvider(expectedToken);
-
-    String actualToken = provider.getToken();
-    assertEquals(expectedToken, actualToken);
+    try (StaticBearerTokenProvider provider = new StaticBearerTokenProvider(expectedToken)) {
+      String actualToken = provider.getToken();
+      assertEquals(expectedToken, actualToken);
+    }
   }
 
   @Test

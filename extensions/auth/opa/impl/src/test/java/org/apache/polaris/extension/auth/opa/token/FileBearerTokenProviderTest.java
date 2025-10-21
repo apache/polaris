@@ -19,7 +19,6 @@
 package org.apache.polaris.extension.auth.opa.token;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -52,7 +52,7 @@ public class FileBearerTokenProviderTest {
     // Create file token provider
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1))) {
+            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1), Clock.systemUTC())) {
 
       // Test token retrieval
       String actualToken = provider.getToken();
@@ -71,7 +71,7 @@ public class FileBearerTokenProviderTest {
     // Create file token provider
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1))) {
+            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1), Clock.systemUTC())) {
 
       // Test token retrieval (should trim whitespace)
       String actualToken = provider.getToken();
@@ -119,7 +119,8 @@ public class FileBearerTokenProviderTest {
             Paths.get("/non/existent/file.txt"),
             Duration.ofMinutes(5),
             true,
-            Duration.ofMinutes(1))) {
+            Duration.ofMinutes(1),
+            Clock.systemUTC())) {
 
       // Test token retrieval (should throw exception when no cached token exists)
       assertThrows(RuntimeException.class, provider::getToken);
@@ -135,27 +136,11 @@ public class FileBearerTokenProviderTest {
     // Create file token provider
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1))) {
+            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1), Clock.systemUTC())) {
 
       // Test token retrieval (should throw exception for empty file when no cached token exists)
       assertThrows(RuntimeException.class, provider::getToken);
     }
-  }
-
-  @Test
-  public void testClosedProvider() throws IOException {
-    // Create a temporary token file
-    Path tokenFile = tempDir.resolve("token.txt");
-    Files.writeString(tokenFile, "test-token");
-
-    // Create file token provider and explicitly close it to test closed behavior
-    FileBearerTokenProvider provider =
-        new FileBearerTokenProvider(tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1));
-    provider.close();
-
-    // Test token retrieval after closing (should return null)
-    String token = provider.getToken();
-    assertNull(token);
   }
 
   @Test
@@ -265,7 +250,7 @@ public class FileBearerTokenProviderTest {
     // Create file token provider with JWT expiration refresh enabled
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(5), true, Duration.ofSeconds(60))) {
+            tokenFile, Duration.ofMinutes(5), true, Duration.ofSeconds(60), Clock.systemUTC())) {
 
       // Should fall back to fixed interval when JWT expires too soon
       String token = provider.getToken();
@@ -283,7 +268,7 @@ public class FileBearerTokenProviderTest {
     // Create file token provider with JWT expiration refresh enabled
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMillis(100), true, Duration.ofSeconds(1))) {
+            tokenFile, Duration.ofMillis(100), true, Duration.ofSeconds(1), Clock.systemUTC())) {
 
       // Should fall back to fixed interval when JWT has no expiration
       String token = provider.getToken();

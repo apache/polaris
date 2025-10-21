@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.auth.opa;
+package org.apache.polaris.extension.auth.opa.test;
 
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.fail;
