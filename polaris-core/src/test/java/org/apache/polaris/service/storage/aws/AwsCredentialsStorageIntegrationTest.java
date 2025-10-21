@@ -573,10 +573,10 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create(
                                                     "kms:GenerateDataKeyWithoutPlaintext"),
-                                                IamAction.create("kms:Encrypt"),
                                                 IamAction.create("kms:DescribeKey"),
                                                 IamAction.create("kms:Decrypt"),
-                                                IamAction.create("kms:GenerateDataKey")),
+                                                IamAction.create("kms:GenerateDataKey"),
+                                                IamAction.create("kms:Encrypt")),
                                             IamStatement::actions)
                                         .returns(
                                             List.of(IamResource.create(kmsKeyArn)),

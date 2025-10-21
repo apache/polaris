@@ -44,6 +44,7 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1904,7 +1905,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),
-                Optional.empty())
+                Optional.empty(),
+                Collections.emptyMap())
             .getAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)

@@ -39,6 +39,8 @@ import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
@@ -54,6 +56,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
 
   private final StorageCredentialCache storageCredentialCache;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultFileIOFactory.class);
 
   @Inject
   public DefaultFileIOFactory(
@@ -77,7 +80,10 @@ public class DefaultFileIOFactory implements FileIOFactory {
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
     // Get subcoped creds
+
+    LOGGER.info("Properties before adding scoped credentials: {}", properties);
     properties = new HashMap<>(properties);
+    final Map newProps = new HashMap<>(properties);
     Optional<PolarisEntity> storageInfoEntity =
         FileIOUtil.findStorageInfoFromHierarchy(resolvedEntityPath);
     Optional<AccessConfig> accessConfig =
@@ -91,12 +97,14 @@ public class DefaultFileIOFactory implements FileIOFactory {
                     tableLocations,
                     storageActions,
                     storageInfo,
-                    Optional.empty()));
+                    Optional.empty(),
+                    newProps));
 
     // Update the FileIO with the subscoped credentials
     // Update with properties in case there are table-level overrides the credentials should
     // always override table-level properties, since storage configuration will be found at
     // whatever entity defines it
+
     if (accessConfig.isPresent()) {
       properties.putAll(accessConfig.get().credentials());
       properties.putAll(accessConfig.get().extraProperties());

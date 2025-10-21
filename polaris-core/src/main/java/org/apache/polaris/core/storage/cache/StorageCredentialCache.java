@@ -110,7 +110,8 @@ public class StorageCredentialCache {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Map props) {
     if (!isTypeSupported(polarisEntity.getType())) {
       diagnostics.fail(
           "entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
@@ -136,7 +137,8 @@ public class StorageCredentialCache {
                   k.allowedListAction(),
                   k.allowedReadLocations(),
                   k.allowedWriteLocations(),
-                  k.refreshCredentialsEndpoint());
+                  k.refreshCredentialsEndpoint(),
+                  props);
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmConfig());
             return new StorageCredentialCacheEntry(
