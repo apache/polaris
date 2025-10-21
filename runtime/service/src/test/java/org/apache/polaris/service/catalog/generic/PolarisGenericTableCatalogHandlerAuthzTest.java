@@ -54,7 +54,6 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         catalogName,
         polarisAuthorizer,
         null,
-        null,
         null);
   }
 

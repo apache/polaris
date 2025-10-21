@@ -29,9 +29,9 @@ import org.apache.iceberg.gcp.GCPProperties;
  * storage.
  */
 public enum StorageAccessProperty {
-  AWS_KEY_ID(String.class, "s3.access-key-id", "the aws access key id"),
-  AWS_SECRET_KEY(String.class, "s3.secret-access-key", "the aws access key secret"),
-  AWS_TOKEN(String.class, "s3.session-token", "the aws scoped access token"),
+  AWS_KEY_ID(String.class, "s3.access-key-id", "the aws access key id", true),
+  AWS_SECRET_KEY(String.class, "s3.secret-access-key", "the aws access key secret", true),
+  AWS_TOKEN(String.class, "s3.session-token", "the aws scoped access token", true),
   AWS_SESSION_TOKEN_EXPIRES_AT_MS(
       String.class,
       "s3.session-token-expires-at-ms",
@@ -42,7 +42,10 @@ public enum StorageAccessProperty {
   AWS_PATH_STYLE_ACCESS(
       Boolean.class, "s3.path-style-access", "whether to use S3 path style access", false),
   CLIENT_REGION(
-      String.class, "client.region", "region to configure client for making requests to AWS"),
+      String.class,
+      "client.region",
+      "region to configure client for making requests to AWS",
+      false),
   AWS_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
@@ -50,7 +53,7 @@ public enum StorageAccessProperty {
       false,
       false),
 
-  GCS_ACCESS_TOKEN(String.class, "gcs.oauth2.token", "the gcs scoped access token"),
+  GCS_ACCESS_TOKEN(String.class, "gcs.oauth2.token", "the gcs scoped access token", true),
   GCS_ACCESS_TOKEN_EXPIRES_AT(
       String.class,
       "gcs.oauth2.token-expires-at",
@@ -66,8 +69,8 @@ public enum StorageAccessProperty {
 
   // Currently not using ACCESS TOKEN as the ResolvingFileIO is using ADLSFileIO for azure case and
   // it expects for SAS
-  AZURE_ACCESS_TOKEN(String.class, "", "the azure scoped access token"),
-  AZURE_SAS_TOKEN(String.class, "adls.sas-token.", "an azure shared access signature token"),
+  AZURE_ACCESS_TOKEN(String.class, "", "the azure scoped access token", true),
+  AZURE_SAS_TOKEN(String.class, "adls.sas-token.", "an azure shared access signature token", true),
   AZURE_REFRESH_CREDENTIALS_ENDPOINT(
       String.class,
       AzureProperties.ADLS_REFRESH_CREDENTIALS_ENDPOINT,
@@ -92,15 +95,6 @@ public enum StorageAccessProperty {
   private final String description;
   private final boolean isCredential;
   private final boolean isExpirationTimestamp;
-
-  /*
-  s3.access-key-id`: id for for credentials that provide access to the data in S3
-           - `s3.secret-access-key`: secret for credentials that provide access to data in S3
-           - `s3.session-token
-   */
-  StorageAccessProperty(Class valueType, String propertyName, String description) {
-    this(valueType, propertyName, description, true);
-  }
 
   StorageAccessProperty(
       Class valueType, String propertyName, String description, boolean isCredential) {

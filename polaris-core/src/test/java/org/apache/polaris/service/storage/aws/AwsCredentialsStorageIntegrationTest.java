@@ -662,13 +662,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(),
                     Optional.empty());
         assertThat(accessConfig.credentials())
-            .isNotEmpty()
-            .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), clientRegion);
+            .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
+            .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+            .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
+            .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
         break;
       default:
         throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
     }
-    ;
   }
 
   @ParameterizedTest

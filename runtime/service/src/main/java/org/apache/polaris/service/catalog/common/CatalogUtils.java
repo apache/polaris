@@ -19,11 +19,18 @@
 
 package org.apache.polaris.service.catalog.common;
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Utility methods for working with Polaris catalog entities. */
 public class CatalogUtils {
@@ -44,5 +51,46 @@ public class CatalogUtils {
       return resolvedTableEntities;
     }
     return resolvedEntityView.getResolvedPath(tableIdentifier.namespace());
+  }
+
+  /**
+   * Validates that the specified {@code locations} are valid for whatever storage config is found
+   * for the given entity's parent hierarchy.
+   *
+   * @param realmConfig the realm configuration
+   * @param identifier the table identifier (for error messages)
+   * @param locations the set of locations to validate (base location + write.data.path +
+   *     write.metadata.path)
+   * @param resolvedStorageEntity the resolved path wrapper containing storage configuration
+   * @throws ForbiddenException if any location is outside the allowed locations or if file
+   *     locations are not allowed
+   */
+  public static void validateLocationsForTableLike(
+      RealmConfig realmConfig,
+      TableIdentifier identifier,
+      Set<String> locations,
+      PolarisResolvedPathWrapper resolvedStorageEntity) {
+
+    PolarisStorageConfigurationInfo.forEntityPath(
+            realmConfig, resolvedStorageEntity.getRawFullPath())
+        .ifPresentOrElse(
+            restrictions -> restrictions.validate(realmConfig, identifier, locations),
+            () -> {
+              List<String> allowedStorageTypes =
+                  realmConfig.getConfig("SUPPORTED_CATALOG_STORAGE_TYPES");
+              if (allowedStorageTypes != null
+                  && !allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
+                List<String> invalidLocations =
+                    locations.stream()
+                        .filter(
+                            location -> location.startsWith("file:") || location.startsWith("http"))
+                        .collect(Collectors.toList());
+                if (!invalidLocations.isEmpty()) {
+                  throw new ForbiddenException(
+                      "Invalid locations '%s' for identifier '%s': File locations are not allowed",
+                      invalidLocations, identifier);
+                }
+              }
+            });
   }
 }

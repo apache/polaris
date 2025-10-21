@@ -46,7 +46,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
@@ -72,7 +71,6 @@ public class PolicyCatalogHandler extends CatalogHandler {
       SecurityContext securityContext,
       String catalogName,
       PolarisAuthorizer authorizer,
-      UserSecretsManager userSecretsManager,
       PolarisCredentialManager polarisCredentialManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(
@@ -82,7 +80,6 @@ public class PolicyCatalogHandler extends CatalogHandler {
         securityContext,
         catalogName,
         authorizer,
-        userSecretsManager,
         polarisCredentialManager,
         externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;

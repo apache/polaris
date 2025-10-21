@@ -99,7 +99,6 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -156,7 +155,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
-      UserSecretsManager userSecretsManager,
       PolarisCredentialManager credentialManager,
       SecurityContext securityContext,
       CallContextCatalogFactory catalogFactory,
@@ -174,7 +172,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         securityContext,
         catalogName,
         authorizer,
-        userSecretsManager,
         credentialManager,
         externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
@@ -258,10 +255,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         federatedCatalog =
             externalCatalogFactory
                 .get()
-                .createCatalog(
-                    connectionConfigInfoDpo,
-                    getUserSecretsManager(),
-                    getPolarisCredentialManager());
+                .createCatalog(connectionConfigInfoDpo, getPolarisCredentialManager());
       } else {
         throw new UnsupportedOperationException(
             "External catalog factory for type '" + connectionType + "' is unavailable.");
@@ -810,11 +804,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (baseCatalog instanceof IcebergCatalog
         || realmConfig.getConfig(
             ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, getResolvedCatalogEntity())) {
+
+      Set<String> tableLocations = StorageUtil.getLocationsUsedByTable(tableMetadata);
+
+      // For non polaris' catalog, validate that table locations are within allowed locations
+      if (!(baseCatalog instanceof IcebergCatalog)) {
+        validateRemoteTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
+      }
+
       AccessConfig accessConfig =
           accessConfigProvider.getAccessConfig(
               callContext,
               tableIdentifier,
-              StorageUtil.getLocationsUsedByTable(tableMetadata),
+              tableLocations,
               actions,
               refreshCredentialsEndpoint,
               resolvedStoragePath);
@@ -840,6 +842,33 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     }
 
     return responseBuilder;
+  }
+
+  private void validateRemoteTableLocations(
+      TableIdentifier tableIdentifier,
+      Set<String> tableLocations,
+      PolarisResolvedPathWrapper resolvedStoragePath) {
+
+    try {
+      // Delegate to common validation logic
+      CatalogUtils.validateLocationsForTableLike(
+          realmConfig, tableIdentifier, tableLocations, resolvedStoragePath);
+
+      LOGGER
+          .atInfo()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue("tableLocations", tableLocations)
+          .log("Validated federated table locations");
+    } catch (ForbiddenException e) {
+      LOGGER
+          .atError()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue("tableLocations", tableLocations)
+          .log("Federated table locations validation failed");
+      throw new ForbiddenException(
+          "Table '%s' in remote catalog has locations outside catalog's allowed locations: %s",
+          tableIdentifier, e.getMessage());
+    }
   }
 
   private UpdateTableRequest applyUpdateFilters(UpdateTableRequest request) {
