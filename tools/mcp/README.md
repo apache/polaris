@@ -64,7 +64,7 @@ Once started, the process waits for JSON-RPC messages on stdin. You can experime
 ```jsonc
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"manual","version":"0"}}}
 {"jsonrpc":"2.0","id":2,"method":"tools/list"}
-{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"polaris-table","arguments":{"operation":"list","catalog":"dev","namespace":"analytics.daily","query":{"page-size":"10"}}}}
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"polaris-iceberg-table","arguments":{"operation":"list","catalog":"dev","namespace":"analytics.daily","query":{"page-size":"10"}}}}
 ```
 
 Each `tools/call` response includes a human-readable block in
@@ -128,7 +128,7 @@ Add the Polaris MCP to it:
 
 The server currently exposes seven MCP tools:
 
-* `polaris-table` — High-level helper for the table REST API. Supported operations include:
+* `polaris-iceberg-table` — High-level helper for the Iceberg table REST API. Supported operations include:
   * `list`: `GET /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
   * `get` (aliases `load`, `fetch`): `GET /api/catalog/v1/{catalog}/namespaces/{namespace}/tables/{table}`
   * `create`: `POST /api/catalog/v1/{catalog}/namespaces/{namespace}/tables`
