@@ -271,6 +271,51 @@ def test_policies(
         assert updated_policy.policy.description == updated_policy_description
         assert json.loads(updated_policy.policy.content) == updated_policy_content
 
+        # ATTACH to catalog
+        test_policy_api.attach_policy(
+            prefix=test_catalog.name,
+            namespace=namespace_name,
+            policy_name=policy_name,
+            attach_policy_request=AttachPolicyRequest(
+                target=PolicyAttachmentTarget(type="catalog")
+            ),
+        )
+
+        # GET APPLICABLE on catalog
+        applicable_policies_catalog = test_policy_api.get_applicable_policies(
+            prefix=test_catalog.name
+        )
+
+        assert len(applicable_policies_catalog.applicable_policies) == 1
+        assert applicable_policies_catalog.applicable_policies[0].name == policy_name
+
+        # GET inherited APPLICABLE on table
+        applicable_for_table_inherit = test_policy_api.get_applicable_policies(
+            prefix=test_catalog.name,
+            namespace=format_namespace(sub_namespace_path),
+            target_name=table_name,
+        )
+        assert len(applicable_for_table_inherit.applicable_policies) == 1
+        assert applicable_for_table_inherit.applicable_policies[0].name == policy_name
+        assert applicable_for_table_inherit.applicable_policies[0].inherited
+
+        # DETACH from catalog
+        test_policy_api.detach_policy(
+            prefix=test_catalog.name,
+            namespace=namespace_name,
+            policy_name=policy_name,
+            detach_policy_request=DetachPolicyRequest(
+                target=PolicyAttachmentTarget(type="catalog")
+            ),
+        )
+
+        # GET APPLICABLE on catalog after DETACH
+        applicable_policies_catalog_after_detach = (
+            test_policy_api.get_applicable_policies(prefix=test_catalog.name)
+        )
+
+        assert len(applicable_policies_catalog_after_detach.applicable_policies) == 0
+
         # ATTACH to namespace
         test_policy_api.attach_policy(
             prefix=test_catalog.name,
@@ -282,11 +327,11 @@ def test_policies(
         )
 
         # GET APPLICABLE on namespace
-        applicable_policies = test_policy_api.get_applicable_policies(
+        applicable_policies_namespace = test_policy_api.get_applicable_policies(
             prefix=test_catalog.name, namespace=format_namespace(sub_namespace_path)
         )
-        assert len(applicable_policies.applicable_policies) == 1
-        assert applicable_policies.applicable_policies[0].name == policy_name
+        assert len(applicable_policies_namespace.applicable_policies) == 1
+        assert applicable_policies_namespace.applicable_policies[0].name == policy_name
 
         # DETACH from namespace
         test_policy_api.detach_policy(
@@ -299,10 +344,12 @@ def test_policies(
         )
 
         # GET APPLICABLE on namespace after DETACH
-        applicable_policies_after_detach = test_policy_api.get_applicable_policies(
-            prefix=test_catalog.name, namespace=format_namespace(sub_namespace_path)
+        applicable_policies_namespace_after_detach = (
+            test_policy_api.get_applicable_policies(
+                prefix=test_catalog.name, namespace=format_namespace(sub_namespace_path)
+            )
         )
-        assert len(applicable_policies_after_detach.applicable_policies) == 0
+        assert len(applicable_policies_namespace_after_detach.applicable_policies) == 0
 
         # ATTACH to table
         test_policy_api.attach_policy(

@@ -28,10 +28,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.DefaultAuthenticator;
 import org.apache.polaris.service.auth.PolarisCredential;
@@ -106,11 +104,9 @@ public abstract class JWTBroker implements TokenBroker {
       LOGGER.error("Failed to verify the token", e.getCause());
       return TokenResponse.of(OAuthError.invalid_client);
     }
-    EntityResult principalLookup =
-        metaStoreManager.loadEntity(
-            polarisCallContext, 0L, decodedToken.getPrincipalId(), PolarisEntityType.PRINCIPAL);
-    if (!principalLookup.isSuccess()
-        || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
+    Optional<PrincipalEntity> principalLookup =
+        metaStoreManager.findPrincipalById(polarisCallContext, decodedToken.getPrincipalId());
+    if (principalLookup.isEmpty()) {
       return TokenResponse.of(OAuthError.unauthorized_client);
     }
     String tokenString =
@@ -191,15 +187,7 @@ public abstract class JWTBroker implements TokenBroker {
     if (!principalSecrets.getPrincipalSecrets().matchesSecret(clientSecret)) {
       return Optional.empty();
     }
-    EntityResult result =
-        metaStoreManager.loadEntity(
-            polarisCallContext,
-            0L,
-            principalSecrets.getPrincipalSecrets().getPrincipalId(),
-            PolarisEntityType.PRINCIPAL);
-    if (!result.isSuccess() || result.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
-      return Optional.empty();
-    }
-    return Optional.of(PrincipalEntity.of(result.getEntity()));
+    return metaStoreManager.findPrincipalById(
+        polarisCallContext, principalSecrets.getPrincipalSecrets().getPrincipalId());
   }
 }

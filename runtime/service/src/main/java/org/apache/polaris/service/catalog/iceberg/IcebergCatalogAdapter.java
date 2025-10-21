@@ -77,7 +77,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -149,7 +148,6 @@ public class IcebergCatalogAdapter
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final ResolverFactory resolverFactory;
   private final PolarisMetaStoreManager metaStoreManager;
-  private final UserSecretsManager userSecretsManager;
   private final PolarisCredentialManager credentialManager;
   private final PolarisAuthorizer polarisAuthorizer;
   private final CatalogPrefixParser prefixParser;
@@ -168,7 +166,6 @@ public class IcebergCatalogAdapter
       ResolverFactory resolverFactory,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
-      UserSecretsManager userSecretsManager,
       PolarisCredentialManager credentialManager,
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser,
@@ -185,7 +182,6 @@ public class IcebergCatalogAdapter
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.resolverFactory = resolverFactory;
     this.metaStoreManager = metaStoreManager;
-    this.userSecretsManager = userSecretsManager;
     this.credentialManager = credentialManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
@@ -225,7 +221,6 @@ public class IcebergCatalogAdapter
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
-        userSecretsManager,
         credentialManager,
         securityContext,
         catalogFactory,

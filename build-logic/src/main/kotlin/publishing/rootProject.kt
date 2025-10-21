@@ -55,6 +55,8 @@ internal fun configureOnRootProject(project: Project) =
         "archive",
         "--prefix=${e.baseName.get()}/",
         "--format=tar.gz",
+        // use a fixed mtime for reproducible tarballs, using the same timestamp as jars do
+        "--mtime=1980-02-01 00:00:00",
         "--output=${e.sourceTarball.get().asFile.relativeTo(projectDir)}",
         "HEAD",
       )

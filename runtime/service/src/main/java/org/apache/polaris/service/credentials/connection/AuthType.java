@@ -39,7 +39,7 @@ import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor
  * <pre>{@code
  * @ApplicationScoped
  * @AuthType(AuthenticationType.SIGV4)
- * @Priority(100)
+ * @Priority(CredentialVendorPriorities.DEFAULT)
  * public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVendor {
  *   // AWS STS AssumeRole logic for SigV4 authentication
  * }

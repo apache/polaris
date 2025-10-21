@@ -16,21 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.credentials;
 
-// ensure jars conform to reproducible builds
-// (https://docs.gradle.org/current/userguide/working_with_files.html#sec:reproducible_archives)
-tasks.withType<AbstractArchiveTask>().configureEach {
-  isPreserveFileTimestamps = false
-  isReproducibleFileOrder = true
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 
-  dirPermissions { unix("755") }
-  filePermissions {
-    // do not force the "execute" bit in case the file _is_ executable
-    user.read = true
-    user.write = true
-    group.read = true
-    group.write = false
-    other.read = true
-    other.write = false
-  }
+/**
+ * Priority constants for credential vendor implementations. e.g., {@link
+ * ConnectionCredentialVendor}
+ *
+ * <p>Higher priority values are selected first when multiple vendors support the same
+ * authentication or storage type. Default built-in implementations use {@code DEFAULT}. Custom
+ * implementations should use a higher priority value to override defaults.
+ */
+public final class CredentialVendorPriorities {
+  /** Priority for default built-in vendor implementations. */
+  public static final int DEFAULT = 100;
+
+  private CredentialVendorPriorities() {}
 }

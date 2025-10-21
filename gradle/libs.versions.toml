@@ -22,7 +22,7 @@ checkstyle = "10.25.0"
 hadoop = "3.4.2"
 hive = "3.1.3"
 iceberg = "1.10.0" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
-quarkus = "3.28.2"
+quarkus = "3.28.4"
 immutables = "2.11.6"
 jmh = "1.37"
 picocli = "4.7.7"
@@ -76,7 +76,6 @@ jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0
 jandex = { module = "io.smallrye.jandex:jandex", version ="3.5.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.14.0" }
-localstack = { module = "org.testcontainers:localstack", version = "1.21.3" }
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.7" }
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
@@ -103,7 +102,7 @@ smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.0" }
 spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark35" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
-testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.21.3" }
+testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "2.0.1" }
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "3.9.0" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 weld-se-core = { module = "org.jboss.weld.se:weld-se-core", version = "6.0.3.Final" }

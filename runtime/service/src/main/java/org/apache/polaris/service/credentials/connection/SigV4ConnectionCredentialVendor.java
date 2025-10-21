@@ -22,7 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
 import org.apache.polaris.core.connection.AuthenticationType;
@@ -35,6 +35,7 @@ import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredenti
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
+import org.apache.polaris.service.credentials.CredentialVendorPriorities;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
@@ -55,12 +56,12 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
  *   <li>Returns temporary access key, secret key, and session token
  * </ol>
  *
- * <p>This is the default implementation with {@code @Priority(100)}. Custom implementations can
- * override this by providing a higher priority value.
+ * <p>This is the default implementation with {@code @Priority(CredentialVendorPriorities.DEFAULT)}.
+ * Custom implementations can override this by providing a higher priority value.
  */
-@ApplicationScoped
+@RequestScoped
 @AuthType(AuthenticationType.SIGV4)
-@Priority(100)
+@Priority(CredentialVendorPriorities.DEFAULT)
 public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVendor {
 
   private static final String DEFAULT_ROLE_SESSION_NAME = "polaris";
@@ -124,17 +125,16 @@ public class SigV4ConnectionCredentialVendor implements ConnectionCredentialVend
 
     // Build connection credentials from AWS temporary credentials
     ConnectionCredentials.Builder builder = ConnectionCredentials.builder();
-    builder.putCredential(
-        CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(),
-        response.credentials().accessKeyId());
-    builder.putCredential(
-        CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
-        response.credentials().secretAccessKey());
-    builder.putCredential(
-        CatalogAccessProperty.AWS_SESSION_TOKEN.getPropertyName(),
-        response.credentials().sessionToken());
+    builder.put(CatalogAccessProperty.AWS_ACCESS_KEY_ID, response.credentials().accessKeyId());
+    builder.put(
+        CatalogAccessProperty.AWS_SECRET_ACCESS_KEY, response.credentials().secretAccessKey());
+    builder.put(CatalogAccessProperty.AWS_SESSION_TOKEN, response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
-        .ifPresent(expiration -> builder.expiresAt(expiration));
+        .ifPresent(
+            expiration ->
+                builder.put(
+                    CatalogAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                    String.valueOf(expiration.toEpochMilli())));
 
     return builder.build();
   }
