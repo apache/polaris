@@ -33,6 +33,8 @@ Today’s data-driven enterprises face two chronic ailments:
 An open, interoperable architecture is no longer a luxury, it is a survival requirement.
 
 ### StarRocks at a Glance: Speed & Simplicity
+[StarRocks](https://www.starrocks.io/) is a modern MPP database designed for high-performance analytics and real-time data processing. Key features include:
+
 * MPP, fully-vectorised execution, CBO that thrives on complex multi-table joins.
 
 * Sub-second response on TB-scale data without pre-aggregation.
@@ -78,12 +80,13 @@ An open, interoperable architecture is no longer a luxury, it is a survival requ
 ### Clone Source Code and Start Polaris
 
 1. Clone source code and checkout to released version
+
+User can get the latest released version from https://github.com/apache/polaris/releases
 ```bash
-# cloning polaris repo
-git clone https://github.com/apache/polaris.git
-cd polaris
-# Recommend using a released stable version
-git checkout apache-polaris-1.1.0-incubating
+# download the latest released version 1.1.0-incubating
+wget https://dlcdn.apache.org/incubator/polaris/1.1.0-incubating/apache-polaris-1.1.0-incubating.tar.gz
+tar -xvzf apache-polaris-1.1.0-incubating.tar.gz
+cd apache-polaris-1.1.0-incubating
 ```
 
 2. Build Polaris
@@ -219,6 +222,9 @@ Use below command to grant privileges
 We grant **CATALOG_MANAGE_CONTENT** privilege to the catalog role `test_catalog_role`, and assign the principal role `test_user_role` to principal `jack`, then assign the catalog role `test_catalog_role` to principal role `test_user_role`.
 
 ## Configure StarRocks Iceberg Catalog
+
+First, you need to have a StarRocks cluster up and running. Please refer to the [StarRocks Quick Start Guide](https://docs.starrocks.io/docs/quick_start) for instructions on setting up a StarRocks cluster.
+Then you can create an external Iceberg catalog in StarRocks that connects to Polaris.
 
 ### Create External Catalog
 1. Use credentials vending
