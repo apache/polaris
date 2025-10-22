@@ -40,7 +40,7 @@ class Command(ABC):
         set_properties = Parser.parse_properties(options_get(Arguments.SET_PROPERTY))
         remove_properties = options_get(Arguments.REMOVE_PROPERTY)
         catalog_client_scopes = options_get(Arguments.CATALOG_CLIENT_SCOPE)
-        parameters = Parser.parse_properties(options_get(Arguments.PARAMETERS)),
+        parameters = Parser.parse_properties(options_get(Arguments.PARAMETERS))
 
         command = None
         if options.command == Commands.CATALOGS:
