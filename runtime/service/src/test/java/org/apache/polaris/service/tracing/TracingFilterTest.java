@@ -73,7 +73,9 @@ public class TracingFilterTest {
     String traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
     String spanId = "00f067aa0ba902b7";
     String traceparent = "00-" + traceId + "-" + spanId + "-01";
-    String tracestate = "rojo=00f067aa0ba902b7,congo=t61rcWkgMzE";
+    String rojoState = spanId;
+    String congoState = "t61rcWkgMzE";
+    String tracestate = "rojo=" + rojoState + ",congo=" + congoState;
 
     given()
         .contentType(ContentType.URLENC)
@@ -109,7 +111,7 @@ public class TracingFilterTest {
     assertThat(parent.isRemote()).isTrue();
     assertThat(parent.getTraceFlags().asByte()).isEqualTo((byte) 1);
     assertThat(parent.getTraceState().asMap())
-        .containsEntry("rojo", "00f067aa0ba902b7")
-        .containsEntry("congo", "t61rcWkgMzE");
+        .containsEntry("rojo", rojoState)
+        .containsEntry("congo", congoState);
   }
 }
