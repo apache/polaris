@@ -618,6 +618,17 @@ class TestCliParsing(unittest.TestCase):
                 (1, 'client_secret'): 'e469c048cf866dfae469c048cf866df1',
             })
 
+    def test_policies_attach_parameters_parsed_to_dict(self):
+        options = Parser.parse([
+            'policies', 'attach', 'policy-name',
+            '--catalog', 'cat',
+            '--attachment-type', 'catalog',
+            '--parameters', 'key=value',
+        ])
+        command = Command.from_options(options)
+        self.assertIsInstance(command.parameters, dict)
+        self.assertEqual({'key': 'value'}, command.parameters)
+
 
 if __name__ == '__main__':
     unittest.main()
