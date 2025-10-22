@@ -83,7 +83,13 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   @Override
   public PolarisAuthorizer create(RealmConfig realmConfig) {
     // All components are now pre-initialized, just create the authorizer
-    URI policyUri = opaConfig.policyUri();
+    URI policyUri =
+        opaConfig
+            .policyUri()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "OPA policy URI must be configured via polaris.authorization.opa.policy-uri"));
 
     return new OpaPolarisAuthorizer(policyUri, httpClient, objectMapper, bearerTokenProvider);
   }

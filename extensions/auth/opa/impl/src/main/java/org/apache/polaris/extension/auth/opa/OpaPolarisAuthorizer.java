@@ -56,8 +56,7 @@ import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
  * environments.
  */
 class OpaPolarisAuthorizer implements PolarisAuthorizer {
-  private final String opaServerUrl;
-  private final String opaPolicyPath;
+  private final URI policyUri;
   private final BearerTokenProvider tokenProvider;
   private final CloseableHttpClient httpClient;
   private final ObjectMapper objectMapper;
@@ -79,17 +78,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       @Nonnull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider) {
 
-    Preconditions.checkArgument(policyUri != null, "policyUri cannot be null");
-    Preconditions.checkArgument(
-        policyUri.getScheme() != null && policyUri.getAuthority() != null,
-        "Policy URI must have a valid scheme and authority");
-    Preconditions.checkArgument(
-        policyUri.getPath() != null && !policyUri.getPath().isEmpty(),
-        "Policy URI must have a non-empty path");
-    Preconditions.checkArgument(objectMapper != null, "objectMapper cannot be null");
-
-    this.opaServerUrl = policyUri.getScheme() + "://" + policyUri.getAuthority();
-    this.opaPolicyPath = policyUri.getPath();
+    this.policyUri = policyUri;
     this.tokenProvider = tokenProvider;
     this.httpClient = httpClient;
     this.objectMapper = objectMapper;
@@ -172,7 +161,7 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       String inputJson = buildOpaInputJson(principal, entities, op, targets, secondaries);
 
       // Create HTTP POST request using Apache HttpComponents
-      HttpPost httpPost = new HttpPost(opaServerUrl + opaPolicyPath);
+      HttpPost httpPost = new HttpPost(policyUri);
       httpPost.setHeader("Content-Type", "application/json");
 
       // Add bearer token authentication if provided
@@ -319,13 +308,12 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   /**
    * Builds the context section of the OPA input JSON.
    *
-   * <p>Includes only timestamp and request ID.
+   * <p>Includes a request ID for correlating OPA server requests with logs.
    *
    * @return the context node for OPA input
    */
   private ObjectNode buildContextNode() {
     ObjectNode context = objectMapper.createObjectNode();
-    context.put("time", java.time.ZonedDateTime.now().toString());
     context.put("request_id", java.util.UUID.randomUUID().toString());
     return context;
   }

@@ -54,7 +54,7 @@ public interface OpaAuthorizationConfig {
     }
   }
 
-  URI policyUri();
+  Optional<URI> policyUri();
 
   AuthenticationConfig auth();
 
@@ -62,6 +62,14 @@ public interface OpaAuthorizationConfig {
 
   /** Validates the complete OPA configuration */
   default void validate() {
+    checkArgument(
+        policyUri().isPresent(), "polaris.authorization.opa.policy-uri must be configured");
+
+    URI uri = policyUri().get();
+    String scheme = uri.getScheme();
+    checkArgument(
+        "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme),
+        "polaris.authorization.opa.policy-uri must use http or https scheme, but got: " + scheme);
 
     auth().validate();
   }

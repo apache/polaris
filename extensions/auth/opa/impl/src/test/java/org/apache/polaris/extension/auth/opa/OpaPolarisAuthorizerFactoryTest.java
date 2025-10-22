@@ -60,7 +60,7 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     OpaAuthorizationConfig opaConfig = mock(OpaAuthorizationConfig.class);
     when(opaConfig.policyUri())
-        .thenReturn(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"));
+        .thenReturn(Optional.of(URI.create("http://localhost:8181/v1/data/polaris/authz/allow")));
     when(opaConfig.auth()).thenReturn(authConfig);
     when(opaConfig.http()).thenReturn(httpConfig);
 
@@ -103,7 +103,7 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     OpaAuthorizationConfig opaConfig = mock(OpaAuthorizationConfig.class);
     when(opaConfig.policyUri())
-        .thenReturn(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"));
+        .thenReturn(Optional.of(URI.create("http://localhost:8181/v1/data/polaris/authz/allow")));
     when(opaConfig.auth()).thenReturn(authConfig);
     when(opaConfig.http()).thenReturn(httpConfig);
 
@@ -128,7 +128,7 @@ public class OpaPolarisAuthorizerFactoryTest {
 
   @Test
   public void testFactoryWithNoTokenConfiguration() {
-    // Mock configuration with "none" authentication (no tokens)
+    // Mock configuration with no authentication
     OpaAuthorizationConfig.AuthenticationConfig authConfig =
         mock(OpaAuthorizationConfig.AuthenticationConfig.class);
     when(authConfig.type()).thenReturn(OpaAuthorizationConfig.AuthenticationType.NONE);
@@ -138,7 +138,7 @@ public class OpaPolarisAuthorizerFactoryTest {
 
     OpaAuthorizationConfig opaConfig = mock(OpaAuthorizationConfig.class);
     when(opaConfig.policyUri())
-        .thenReturn(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"));
+        .thenReturn(Optional.of(URI.create("http://localhost:8181/v1/data/polaris/authz/allow")));
     when(opaConfig.auth()).thenReturn(authConfig);
     when(opaConfig.http()).thenReturn(httpConfig);
 
