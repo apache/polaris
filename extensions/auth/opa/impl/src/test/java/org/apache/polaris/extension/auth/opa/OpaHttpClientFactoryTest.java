@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.extension.auth.opa;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -37,7 +37,7 @@ public class OpaHttpClientFactoryTest {
         createMockHttpConfig(Duration.ofSeconds(5), true, null, null);
 
     try (CloseableHttpClient client = OpaHttpClientFactory.createHttpClient(httpConfig)) {
-      assertNotNull(client);
+      assertThat(client).isNotNull();
     }
   }
 
@@ -47,7 +47,7 @@ public class OpaHttpClientFactoryTest {
         createMockHttpConfig(Duration.ofSeconds(5), false, null, null);
 
     try (CloseableHttpClient client = OpaHttpClientFactory.createHttpClient(httpConfig)) {
-      assertNotNull(client);
+      assertThat(client).isNotNull();
     }
   }
 

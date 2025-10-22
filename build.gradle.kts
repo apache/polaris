@@ -89,7 +89,7 @@ tasks.named<RatTask>("rat").configure {
   // Misc build artifacts
   excludes.add(".java-version")
   excludes.add("**/.keep")
-  excludes.add("extensions/auth/opa/tests/logs/**")
+  excludes.add("logs/**")
   excludes.add("**/*.lock")
 
   // Polaris service startup banner

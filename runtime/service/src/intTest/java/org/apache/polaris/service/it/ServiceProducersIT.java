@@ -18,10 +18,11 @@
  */
 package org.apache.polaris.service.it;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,16 +41,14 @@ public class ServiceProducersIT {
   }
 
   @QuarkusTest
-  @io.quarkus.test.junit.TestProfile(ServiceProducersIT.InternalAuthorizationConfig.class)
+  @TestProfile(ServiceProducersIT.InternalAuthorizationConfig.class)
   public static class InternalAuthorizationTest {
 
     @Inject PolarisAuthorizer polarisAuthorizer;
 
     @Test
     void testInternalPolarisAuthorizerProduced() {
-      assertNotNull(polarisAuthorizer, "PolarisAuthorizer should be produced");
-      // Verify it's the correct implementation for internal config
-      assertNotNull(polarisAuthorizer, "Internal PolarisAuthorizer should not be null");
+      assertThat(polarisAuthorizer).isNotNull();
     }
   }
 }

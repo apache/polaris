@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.extension.auth.opa.token;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,19 +30,21 @@ public class StaticBearerTokenProviderTest {
     String expectedToken = "static-bearer-token";
     try (StaticBearerTokenProvider provider = new StaticBearerTokenProvider(expectedToken)) {
       String actualToken = provider.getToken();
-      assertEquals(expectedToken, actualToken);
+      assertThat(actualToken).isEqualTo(expectedToken);
     }
   }
 
   @Test
   public void testStaticBearerTokenProviderWithEmptyString() {
     // Empty strings should be rejected
-    assertThrows(IllegalArgumentException.class, () -> new StaticBearerTokenProvider(""));
+    assertThatThrownBy(() -> new StaticBearerTokenProvider(""))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   public void testStaticBearerTokenProviderWithNullString() {
     // Null tokens should be rejected
-    assertThrows(IllegalArgumentException.class, () -> new StaticBearerTokenProvider(null));
+    assertThatThrownBy(() -> new StaticBearerTokenProvider(null))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 }

@@ -145,9 +145,7 @@ public class ServiceProducers {
       AuthorizationConfiguration authorizationConfig,
       @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
     PolarisAuthorizerFactory factory =
-        authorizerFactories
-            .select(Identifier.Literal.of(authorizationConfig.type().getValue()))
-            .get();
+        authorizerFactories.select(Identifier.Literal.of(authorizationConfig.type())).get();
     return factory;
   }
 

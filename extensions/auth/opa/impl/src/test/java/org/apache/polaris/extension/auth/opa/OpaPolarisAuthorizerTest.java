@@ -18,9 +18,8 @@
  */
 package org.apache.polaris.extension.auth.opa;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -85,20 +84,25 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
-      assertDoesNotThrow(
-          () ->
-              authorizer.authorizeOrThrow(
-                  principal, entities, PolarisAuthorizableOperation.LOAD_VIEW, target, secondary));
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      entities,
+                      PolarisAuthorizableOperation.LOAD_VIEW,
+                      target,
+                      secondary));
 
       // Parse and verify JSON structure from captured request
       ObjectMapper mapper = new ObjectMapper();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
-      assertTrue(root.has("input"), "Root should have 'input' field");
+      assertThat(root.has("input")).as("Root should have 'input' field").isTrue();
       var input = root.get("input");
-      assertTrue(input.has("actor"), "Input should have 'actor' field");
-      assertTrue(input.has("action"), "Input should have 'action' field");
-      assertTrue(input.has("resource"), "Input should have 'resource' field");
-      assertTrue(input.has("context"), "Input should have 'context' field");
+      assertThat(input.has("actor")).as("Input should have 'actor' field").isTrue();
+      assertThat(input.has("action")).as("Input should have 'action' field").isTrue();
+      assertThat(input.has("resource")).as("Input should have 'resource' field").isTrue();
+      assertThat(input.has("context")).as("Input should have 'context' field").isTrue();
     } finally {
       server.stop(0);
     }
@@ -170,79 +174,90 @@ public class OpaPolarisAuthorizerTest {
 
       Set<PolarisBaseEntity> entities = Set.of(catalogEntity, namespaceEntity, tableEntity);
 
-      assertDoesNotThrow(
-          () ->
-              authorizer.authorizeOrThrow(
-                  principal, entities, PolarisAuthorizableOperation.LOAD_TABLE, tablePath, null));
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      entities,
+                      PolarisAuthorizableOperation.LOAD_TABLE,
+                      tablePath,
+                      null));
 
       // Parse and verify the complete JSON structure
       ObjectMapper mapper = new ObjectMapper();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
 
       // Verify top-level structure
-      assertTrue(root.has("input"), "Root should have 'input' field");
+      assertThat(root.has("input")).as("Root should have 'input' field").isTrue();
       var input = root.get("input");
-      assertTrue(input.has("actor"), "Input should have 'actor' field");
-      assertTrue(input.has("action"), "Input should have 'action' field");
-      assertTrue(input.has("resource"), "Input should have 'resource' field");
-      assertTrue(input.has("context"), "Input should have 'context' field");
+      assertThat(input.has("actor")).as("Input should have 'actor' field").isTrue();
+      assertThat(input.has("action")).as("Input should have 'action' field").isTrue();
+      assertThat(input.has("resource")).as("Input should have 'resource' field").isTrue();
+      assertThat(input.has("context")).as("Input should have 'context' field").isTrue();
 
       // Verify actor details
       var actor = input.get("actor");
-      assertTrue(actor.has("principal"), "Actor should have 'principal' field");
-      assertEquals("alice", actor.get("principal").asText());
-      assertTrue(actor.has("roles"), "Actor should have 'roles' field");
-      assertTrue(actor.get("roles").isArray(), "Roles should be an array");
-      assertEquals(2, actor.get("roles").size());
+      assertThat(actor.has("principal")).as("Actor should have 'principal' field").isTrue();
+      assertThat(actor.get("principal").asText()).isEqualTo("alice");
+      assertThat(actor.has("roles")).as("Actor should have 'roles' field").isTrue();
+      assertThat(actor.get("roles").isArray()).as("Roles should be an array").isTrue();
+      assertThat(actor.get("roles").size()).isEqualTo(2);
 
       // Verify action
       var action = input.get("action");
-      assertEquals("LOAD_TABLE", action.asText());
+      assertThat(action.asText()).isEqualTo("LOAD_TABLE");
 
       // Verify resource structure - this is the key part for hierarchical resources
       var resource = input.get("resource");
-      assertTrue(resource.has("targets"), "Resource should have 'targets' field");
-      assertTrue(resource.has("secondaries"), "Resource should have 'secondaries' field");
+      assertThat(resource.has("targets")).as("Resource should have 'targets' field").isTrue();
+      assertThat(resource.has("secondaries"))
+          .as("Resource should have 'secondaries' field")
+          .isTrue();
 
       var targets = resource.get("targets");
-      assertTrue(targets.isArray(), "Targets should be an array");
-      assertEquals(1, targets.size(), "Should have exactly one target");
+      assertThat(targets.isArray()).as("Targets should be an array").isTrue();
+      assertThat(targets.size()).as("Should have exactly one target").isEqualTo(1);
 
       var target = targets.get(0);
       // Verify the target entity (table) details
-      assertTrue(target.isObject(), "Target should be an object");
-      assertTrue(target.has("type"), "Target should have 'type' field");
-      assertEquals("TABLE_LIKE", target.get("type").asText(), "Target type should be TABLE_LIKE");
-      assertTrue(target.has("name"), "Target should have 'name' field");
-      assertEquals(
-          "customer_orders", target.get("name").asText(), "Target name should be customer_orders");
+      assertThat(target.isObject()).as("Target should be an object").isTrue();
+      assertThat(target.has("type")).as("Target should have 'type' field").isTrue();
+      assertThat(target.get("type").asText())
+          .as("Target type should be TABLE_LIKE")
+          .isEqualTo("TABLE_LIKE");
+      assertThat(target.has("name")).as("Target should have 'name' field").isTrue();
+      assertThat(target.get("name").asText())
+          .as("Target name should be customer_orders")
+          .isEqualTo("customer_orders");
 
       // Verify the hierarchical parents array
-      assertTrue(target.has("parents"), "Target should have 'parents' field");
+      assertThat(target.has("parents")).as("Target should have 'parents' field").isTrue();
       var parents = target.get("parents");
-      assertTrue(parents.isArray(), "Parents should be an array");
-      assertEquals(2, parents.size(), "Should have 2 parents (catalog and namespace)");
+      assertThat(parents.isArray()).as("Parents should be an array").isTrue();
+      assertThat(parents.size()).as("Should have 2 parents (catalog and namespace)").isEqualTo(2);
 
       // Verify catalog parent (first in the hierarchy)
       var catalogParent = parents.get(0);
-      assertEquals("CATALOG", catalogParent.get("type").asText(), "First parent should be catalog");
-      assertEquals(
-          "prod_catalog",
-          catalogParent.get("name").asText(),
-          "Catalog name should be prod_catalog");
+      assertThat(catalogParent.get("type").asText())
+          .as("First parent should be catalog")
+          .isEqualTo("CATALOG");
+      assertThat(catalogParent.get("name").asText())
+          .as("Catalog name should be prod_catalog")
+          .isEqualTo("prod_catalog");
 
       // Verify namespace parent (second in the hierarchy)
       var namespaceParent = parents.get(1);
-      assertEquals(
-          "NAMESPACE", namespaceParent.get("type").asText(), "Second parent should be namespace");
-      assertEquals(
-          "sales_data",
-          namespaceParent.get("name").asText(),
-          "Namespace name should be sales_data");
+      assertThat(namespaceParent.get("type").asText())
+          .as("Second parent should be namespace")
+          .isEqualTo("NAMESPACE");
+      assertThat(namespaceParent.get("name").asText())
+          .as("Namespace name should be sales_data")
+          .isEqualTo("sales_data");
 
       var secondaries = resource.get("secondaries");
-      assertTrue(secondaries.isArray(), "Secondaries should be an array");
-      assertEquals(0, secondaries.size(), "Should have no secondaries in this test");
+      assertThat(secondaries.isArray()).as("Secondaries should be an array").isTrue();
+      assertThat(secondaries.size()).as("Should have no secondaries in this test").isEqualTo(0);
     } finally {
       server.stop(0);
     }
@@ -326,78 +341,89 @@ public class OpaPolarisAuthorizerTest {
       Set<PolarisBaseEntity> entities =
           Set.of(catalogEntity, departmentEntity, teamEntity, tableEntity);
 
-      assertDoesNotThrow(
-          () ->
-              authorizer.authorizeOrThrow(
-                  principal, entities, PolarisAuthorizableOperation.LOAD_TABLE, tablePath, null));
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      entities,
+                      PolarisAuthorizableOperation.LOAD_TABLE,
+                      tablePath,
+                      null));
 
       // Parse and verify the complete JSON structure
       ObjectMapper mapper = new ObjectMapper();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
 
       // Verify top-level structure
-      assertTrue(root.has("input"), "Root should have 'input' field");
+      assertThat(root.has("input")).as("Root should have 'input' field").isTrue();
       var input = root.get("input");
-      assertTrue(input.has("actor"), "Input should have 'actor' field");
-      assertTrue(input.has("action"), "Input should have 'action' field");
-      assertTrue(input.has("resource"), "Input should have 'resource' field");
-      assertTrue(input.has("context"), "Input should have 'context' field");
+      assertThat(input.has("actor")).as("Input should have 'actor' field").isTrue();
+      assertThat(input.has("action")).as("Input should have 'action' field").isTrue();
+      assertThat(input.has("resource")).as("Input should have 'resource' field").isTrue();
+      assertThat(input.has("context")).as("Input should have 'context' field").isTrue();
 
       // Verify actor details
       var actor = input.get("actor");
-      assertEquals("bob", actor.get("principal").asText());
-      assertEquals(2, actor.get("roles").size());
+      assertThat(actor.get("principal").asText()).isEqualTo("bob");
+      assertThat(actor.get("roles").size()).isEqualTo(2);
 
       // Verify action
       var action = input.get("action");
-      assertEquals("LOAD_TABLE", action.asText());
+      assertThat(action.asText()).isEqualTo("LOAD_TABLE");
 
       // Verify resource structure with multi-level namespace hierarchy
       var resource = input.get("resource");
       var targets = resource.get("targets");
-      assertEquals(1, targets.size(), "Should have exactly one target");
+      assertThat(targets.size()).as("Should have exactly one target").isEqualTo(1);
 
       var target = targets.get(0);
       // Verify the target entity (table) details
-      assertEquals("TABLE_LIKE", target.get("type").asText(), "Target type should be TABLE_LIKE");
-      assertEquals(
-          "feature_store", target.get("name").asText(), "Target name should be feature_store");
+      assertThat(target.get("type").asText())
+          .as("Target type should be TABLE_LIKE")
+          .isEqualTo("TABLE_LIKE");
+      assertThat(target.get("name").asText())
+          .as("Target name should be feature_store")
+          .isEqualTo("feature_store");
 
       // Verify the multi-level hierarchical parents array
-      assertTrue(target.has("parents"), "Target should have 'parents' field");
+      assertThat(target.has("parents")).as("Target should have 'parents' field").isTrue();
       var parents = target.get("parents");
-      assertTrue(parents.isArray(), "Parents should be an array");
-      assertEquals(3, parents.size(), "Should have 3 parents (catalog, department, team)");
+      assertThat(parents.isArray()).as("Parents should be an array").isTrue();
+      assertThat(parents.size())
+          .as("Should have 3 parents (catalog, department, team)")
+          .isEqualTo(3);
 
       // Verify catalog parent (first in the hierarchy)
       var catalogParent = parents.get(0);
-      assertEquals("CATALOG", catalogParent.get("type").asText(), "First parent should be catalog");
-      assertEquals(
-          "analytics_catalog",
-          catalogParent.get("name").asText(),
-          "Catalog name should be analytics_catalog");
+      assertThat(catalogParent.get("type").asText())
+          .as("First parent should be catalog")
+          .isEqualTo("CATALOG");
+      assertThat(catalogParent.get("name").asText())
+          .as("Catalog name should be analytics_catalog")
+          .isEqualTo("analytics_catalog");
 
       // Verify department namespace parent (second in the hierarchy)
       var departmentParent = parents.get(1);
-      assertEquals(
-          "NAMESPACE", departmentParent.get("type").asText(), "Second parent should be namespace");
-      assertEquals(
-          "engineering",
-          departmentParent.get("name").asText(),
-          "Department name should be engineering");
+      assertThat(departmentParent.get("type").asText())
+          .as("Second parent should be namespace")
+          .isEqualTo("NAMESPACE");
+      assertThat(departmentParent.get("name").asText())
+          .as("Department name should be engineering")
+          .isEqualTo("engineering");
 
       // Verify team namespace parent (third in the hierarchy)
       var teamParent = parents.get(2);
-      assertEquals(
-          "NAMESPACE", teamParent.get("type").asText(), "Third parent should be namespace");
-      assertEquals(
-          "machine_learning",
-          teamParent.get("name").asText(),
-          "Team name should be machine_learning");
+      assertThat(teamParent.get("type").asText())
+          .as("Third parent should be namespace")
+          .isEqualTo("NAMESPACE");
+      assertThat(teamParent.get("name").asText())
+          .as("Team name should be machine_learning")
+          .isEqualTo("machine_learning");
 
       var secondaries = resource.get("secondaries");
-      assertTrue(secondaries.isArray(), "Secondaries should be an array");
-      assertEquals(0, secondaries.size(), "Should have no secondaries in this test");
+      assertThat(secondaries.isArray()).as("Secondaries should be an array").isTrue();
+      assertThat(secondaries.size()).as("Should have no secondaries in this test").isEqualTo(0);
     } finally {
       server.stop(0);
     }
@@ -421,14 +447,15 @@ public class OpaPolarisAuthorizerTest {
       PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
       PolarisResolvedPathWrapper secondary = new PolarisResolvedPathWrapper(List.of());
 
-      assertDoesNotThrow(
-          () ->
-              authorizer.authorizeOrThrow(
-                  principal,
-                  entities,
-                  PolarisAuthorizableOperation.CREATE_CATALOG,
-                  target,
-                  secondary));
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      entities,
+                      PolarisAuthorizableOperation.CREATE_CATALOG,
+                      target,
+                      secondary));
 
       // Test multiple targets
       PolarisResolvedPathWrapper target1 = new PolarisResolvedPathWrapper(List.of());
@@ -436,14 +463,15 @@ public class OpaPolarisAuthorizerTest {
       List<PolarisResolvedPathWrapper> targets = List.of(target1, target2);
       List<PolarisResolvedPathWrapper> secondaries = List.of();
 
-      assertDoesNotThrow(
-          () ->
-              authorizer.authorizeOrThrow(
-                  principal,
-                  entities,
-                  PolarisAuthorizableOperation.LOAD_VIEW,
-                  targets,
-                  secondaries));
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      entities,
+                      PolarisAuthorizableOperation.LOAD_VIEW,
+                      targets,
+                      secondaries));
     } finally {
       server.stop(0);
     }
@@ -458,7 +486,7 @@ public class OpaPolarisAuthorizerTest {
         new OpaPolarisAuthorizer(
             policyUri, HttpClients.createDefault(), new ObjectMapper(), tokenProvider);
 
-    assertTrue(authorizer != null);
+    assertThat(authorizer).isNotNull();
   }
 
   @Test
@@ -484,15 +512,16 @@ public class OpaPolarisAuthorizerTest {
         PolarisPrincipal.of("test-user", Map.of(), Collections.emptySet());
 
     PolarisAuthorizableOperation mockOperation = PolarisAuthorizableOperation.LOAD_TABLE;
-    assertDoesNotThrow(
-        () -> {
-          authorizer.authorizeOrThrow(
-              mockPrincipal,
-              Collections.emptySet(),
-              mockOperation,
-              (PolarisResolvedPathWrapper) null,
-              (PolarisResolvedPathWrapper) null);
-        });
+    assertThatNoException()
+        .isThrownBy(
+            () -> {
+              authorizer.authorizeOrThrow(
+                  mockPrincipal,
+                  Collections.emptySet(),
+                  mockOperation,
+                  (PolarisResolvedPathWrapper) null,
+                  (PolarisResolvedPathWrapper) null);
+            });
 
     // Verify the Authorization header with static bearer token
     verifyAuthorizationHeader(mockHttpClient, "test-bearer-token");
@@ -527,15 +556,16 @@ public class OpaPolarisAuthorizerTest {
     PolarisAuthorizableOperation mockOperation = PolarisAuthorizableOperation.LOAD_TABLE;
 
     // Execute authorization (should not throw since we mocked allow=true)
-    assertDoesNotThrow(
-        () -> {
-          authorizer.authorizeOrThrow(
-              mockPrincipal,
-              Collections.emptySet(),
-              mockOperation,
-              (PolarisResolvedPathWrapper) null,
-              (PolarisResolvedPathWrapper) null);
-        });
+    assertThatNoException()
+        .isThrownBy(
+            () -> {
+              authorizer.authorizeOrThrow(
+                  mockPrincipal,
+                  Collections.emptySet(),
+                  mockOperation,
+                  (PolarisResolvedPathWrapper) null,
+                  (PolarisResolvedPathWrapper) null);
+            });
 
     // Verify the Authorization header with bearer token from provider
     verifyAuthorizationHeader(mockHttpClient, "dynamic-token-12345");
@@ -616,19 +646,18 @@ public class OpaPolarisAuthorizerTest {
 
     if (expectedToken != null) {
       // Verify the Authorization header is present and contains the expected token
-      assertTrue(
-          capturedRequest.containsHeader("Authorization"),
-          "Authorization header should be present when bearer token is provided");
+      assertThat(capturedRequest.containsHeader("Authorization"))
+          .as("Authorization header should be present when bearer token is provided")
+          .isTrue();
       String authHeader = capturedRequest.getFirstHeader("Authorization").getValue();
-      assertEquals(
-          "Bearer " + expectedToken,
-          authHeader,
-          "Authorization header should contain the correct bearer token");
+      assertThat(authHeader)
+          .as("Authorization header should contain the correct bearer token")
+          .isEqualTo("Bearer " + expectedToken);
     } else {
       // Verify no Authorization header is present when token is null
-      assertTrue(
-          !capturedRequest.containsHeader("Authorization"),
-          "Authorization header should not be present when token provider returns null");
+      assertThat(capturedRequest.containsHeader("Authorization"))
+          .as("Authorization header should not be present when token provider returns null")
+          .isFalse();
     }
   }
 }

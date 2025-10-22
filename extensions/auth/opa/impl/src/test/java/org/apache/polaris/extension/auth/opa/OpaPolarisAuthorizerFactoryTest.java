@@ -18,8 +18,7 @@
  */
 package org.apache.polaris.extension.auth.opa;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -71,7 +70,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     RealmConfig realmConfig = mock(RealmConfig.class);
     OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
-    assertNotNull(authorizer);
+    assertThat(authorizer).isNotNull();
   }
 
   @Test
@@ -114,7 +113,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     RealmConfig realmConfig = mock(RealmConfig.class);
     OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
-    assertNotNull(authorizer);
+    assertThat(authorizer).isNotNull();
 
     // Also verify that the token provider actually reads from the file
     try (FileBearerTokenProvider provider =
@@ -122,7 +121,7 @@ public class OpaPolarisAuthorizerFactoryTest {
             tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1), Clock.systemUTC())) {
 
       String actualToken = provider.getToken();
-      assertEquals(tokenValue, actualToken);
+      assertThat(actualToken).isEqualTo(tokenValue);
     }
   }
 
@@ -149,7 +148,7 @@ public class OpaPolarisAuthorizerFactoryTest {
     RealmConfig realmConfig = mock(RealmConfig.class);
     OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
-    assertNotNull(authorizer);
+    assertThat(authorizer).isNotNull();
   }
 
   private OpaAuthorizationConfig.HttpConfig createMockHttpConfig() {

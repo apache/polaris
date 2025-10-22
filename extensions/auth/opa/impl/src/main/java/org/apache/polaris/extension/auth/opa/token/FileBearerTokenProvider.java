@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.extension.auth.opa.token;
 
-import static com.google.common.base.Preconditions.checkState;
-
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -66,7 +64,6 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
   private volatile String cachedToken;
   private volatile Instant lastRefresh;
   private volatile Instant nextRefresh;
-  private volatile boolean closed = false;
 
   /**
    * Create a new file-based token provider with JWT expiration support.
@@ -76,6 +73,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
    * @param jwtExpirationRefresh whether to use JWT expiration for refresh timing
    * @param jwtExpirationBuffer buffer time before JWT expiration to refresh the token
    * @param clock clock instance for time operations
+   * @throws IllegalStateException if the initial token cannot be loaded from the file
    */
   public FileBearerTokenProvider(
       Path tokenFilePath,
@@ -88,39 +86,45 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     this.jwtExpirationRefresh = jwtExpirationRefresh;
     this.jwtExpirationBuffer = jwtExpirationBuffer;
     this.clock = clock;
-    this.lastRefresh = Instant.MIN; // Force initial load
-    this.nextRefresh = Instant.MIN; // Force initial refresh
+
+    // Load initial token eagerly to avoid race conditions during first getToken() calls
+    this.cachedToken = loadTokenFromFile();
+    if (Strings.isNullOrEmpty(this.cachedToken)) {
+      throw new IllegalStateException(
+          "Failed to load initial bearer token from file: "
+              + tokenFilePath
+              + ". This is required for OPA authorization.");
+    }
+
+    this.lastRefresh = clock.instant();
+    this.nextRefresh = calculateNextRefresh(this.cachedToken);
 
     logger.debug(
-        "Created file token provider for path: {} with refresh interval: {}, JWT expiration refresh: {}, JWT buffer: {}",
+        "Created file token provider for path: {} with refresh interval: {}, JWT expiration refresh: {}, JWT buffer: {}, next refresh: {}",
         tokenFilePath,
         refreshInterval,
         jwtExpirationRefresh,
-        jwtExpirationBuffer);
+        jwtExpirationBuffer,
+        nextRefresh);
   }
 
   @Override
   public String getToken() {
-    checkState(!closed, "Token provider is closed");
-
     // Check if we need to refresh
     if (shouldRefresh()) {
       refreshToken();
     }
 
-    // If we couldn't load a token and have no cached token, this is a fatal error
+    // Token is guaranteed to be present after construction, but check anyway for safety
     if (Strings.isNullOrEmpty(cachedToken)) {
       throw new RuntimeException(
-          "Unable to load bearer token from file: "
-              + tokenFilePath
-              + ". This is required for OPA authorization.");
+          "Bearer token is unexpectedly empty. This should not happen after successful construction.");
     }
     return cachedToken;
   }
 
   @Override
   public void close() {
-    closed = true;
     cachedToken = null;
   }
 
@@ -129,6 +133,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
   }
 
   private void refreshToken() {
+    // Only one thread should refresh at a time. Other threads will use the cached token.
     if (!refreshLock.compareAndSet(false, true)) {
       return;
     }

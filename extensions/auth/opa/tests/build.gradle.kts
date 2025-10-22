@@ -57,4 +57,17 @@ tasks.withType<Test> {
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   systemProperty("java.security.manager", "allow")
   maxParallelForks = 1
+
+  val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
+
+  jvmArgumentProviders.add(
+    CommandLineArgumentProvider {
+      listOf("-Dquarkus.log.file.path=${logsDir.resolve("polaris.log").absolutePath}")
+    }
+  )
+
+  doFirst {
+    logsDir.deleteRecursively()
+    project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
+  }
 }
