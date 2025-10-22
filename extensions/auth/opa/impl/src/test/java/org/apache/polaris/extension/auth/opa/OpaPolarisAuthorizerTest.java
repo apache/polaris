@@ -75,7 +75,8 @@ public class OpaPolarisAuthorizerTest {
           URI.create(
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
-          new OpaPolarisAuthorizer(policyUri, HttpClients.createDefault(), null);
+          new OpaPolarisAuthorizer(
+              policyUri, HttpClients.createDefault(), new ObjectMapper(), null);
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
@@ -114,7 +115,8 @@ public class OpaPolarisAuthorizerTest {
           URI.create(
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
-          new OpaPolarisAuthorizer(policyUri, HttpClients.createDefault(), null);
+          new OpaPolarisAuthorizer(
+              policyUri, HttpClients.createDefault(), new ObjectMapper(), null);
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -257,7 +259,8 @@ public class OpaPolarisAuthorizerTest {
           URI.create(
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
-          new OpaPolarisAuthorizer(policyUri, HttpClients.createDefault(), null);
+          new OpaPolarisAuthorizer(
+              policyUri, HttpClients.createDefault(), new ObjectMapper(), null);
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -408,7 +411,8 @@ public class OpaPolarisAuthorizerTest {
           URI.create(
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
-          new OpaPolarisAuthorizer(policyUri, HttpClients.createDefault(), null);
+          new OpaPolarisAuthorizer(
+              policyUri, HttpClients.createDefault(), new ObjectMapper(), null);
 
       PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
 
@@ -451,7 +455,8 @@ public class OpaPolarisAuthorizerTest {
     BearerTokenProvider tokenProvider = new StaticBearerTokenProvider("test-bearer-token");
     URI policyUri = URI.create("http://opa.example.com:8181/v1/data/polaris/allow");
     OpaPolarisAuthorizer authorizer =
-        new OpaPolarisAuthorizer(policyUri, HttpClients.createDefault(), tokenProvider);
+        new OpaPolarisAuthorizer(
+            policyUri, HttpClients.createDefault(), new ObjectMapper(), tokenProvider);
 
     assertTrue(authorizer != null);
   }
@@ -473,7 +478,7 @@ public class OpaPolarisAuthorizerTest {
 
     BearerTokenProvider tokenProvider = new StaticBearerTokenProvider("test-bearer-token");
     OpaPolarisAuthorizer authorizer =
-        new OpaPolarisAuthorizer(policyUri, mockHttpClient, tokenProvider);
+        new OpaPolarisAuthorizer(policyUri, mockHttpClient, new ObjectMapper(), tokenProvider);
 
     PolarisPrincipal mockPrincipal =
         PolarisPrincipal.of("test-user", Map.of(), Collections.emptySet());
@@ -513,7 +518,7 @@ public class OpaPolarisAuthorizerTest {
     URI policyUri = URI.create("http://opa.example.com:8181/v1/data/polaris/allow");
     // Create authorizer with the token provider instead of static token
     OpaPolarisAuthorizer authorizer =
-        new OpaPolarisAuthorizer(policyUri, mockHttpClient, tokenProvider);
+        new OpaPolarisAuthorizer(policyUri, mockHttpClient, new ObjectMapper(), tokenProvider);
 
     // Create mock principal and entities
     PolarisPrincipal mockPrincipal =

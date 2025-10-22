@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.extension.auth.opa;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -49,11 +50,22 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   private final Clock clock;
   private CloseableHttpClient httpClient;
   private BearerTokenProvider bearerTokenProvider;
+  private ObjectMapper objectMapper;
 
   @Inject
   public OpaPolarisAuthorizerFactory(OpaAuthorizationConfig opaConfig, Clock clock) {
     this.opaConfig = opaConfig;
     this.clock = clock;
+    this.objectMapper = new ObjectMapper();
+  }
+
+  /**
+   * Gets the OPA authorization configuration. Used by OpaProductionReadinessCheck
+   *
+   * @return the OPA configuration
+   */
+  OpaAuthorizationConfig getConfig() {
+    return opaConfig;
   }
 
   @PostConstruct
@@ -73,7 +85,7 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     // All components are now pre-initialized, just create the authorizer
     URI policyUri = opaConfig.policyUri();
 
-    return new OpaPolarisAuthorizer(policyUri, httpClient, bearerTokenProvider);
+    return new OpaPolarisAuthorizer(policyUri, httpClient, objectMapper, bearerTokenProvider);
   }
 
   @PreDestroy

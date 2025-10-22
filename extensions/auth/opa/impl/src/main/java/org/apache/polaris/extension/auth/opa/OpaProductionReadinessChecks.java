@@ -31,8 +31,10 @@ public class OpaProductionReadinessChecks {
 
   @Produces
   public ProductionReadinessCheck checkOpaAuthorization(
-      PolarisAuthorizerFactory authorizerFactory, OpaAuthorizationConfig config) {
-    if (authorizerFactory instanceof OpaPolarisAuthorizerFactory) {
+      PolarisAuthorizerFactory authorizerFactory) {
+    if (authorizerFactory instanceof OpaPolarisAuthorizerFactory opaFactory) {
+      OpaAuthorizationConfig config = opaFactory.getConfig();
+
       List<Error> errors = new ArrayList<>();
 
       errors.add(

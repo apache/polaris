@@ -69,11 +69,14 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
    *     https://opa.example.com/v1/polaris/allow
    * @param httpClient Apache HttpClient (required, injected by CDI). SSL configuration should be
    *     handled by the CDI producer.
+   * @param objectMapper Jackson ObjectMapper for JSON serialization (required). Shared across
+   *     authorizer instances to avoid initialization overhead.
    * @param tokenProvider Token provider for authentication (optional)
    */
   public OpaPolarisAuthorizer(
       @Nonnull URI policyUri,
       @Nonnull CloseableHttpClient httpClient,
+      @Nonnull ObjectMapper objectMapper,
       @Nullable BearerTokenProvider tokenProvider) {
 
     Preconditions.checkArgument(policyUri != null, "policyUri cannot be null");
@@ -83,12 +86,13 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
     Preconditions.checkArgument(
         policyUri.getPath() != null && !policyUri.getPath().isEmpty(),
         "Policy URI must have a non-empty path");
+    Preconditions.checkArgument(objectMapper != null, "objectMapper cannot be null");
 
     this.opaServerUrl = policyUri.getScheme() + "://" + policyUri.getAuthority();
     this.opaPolicyPath = policyUri.getPath();
     this.tokenProvider = tokenProvider;
     this.httpClient = httpClient;
-    this.objectMapper = new ObjectMapper();
+    this.objectMapper = objectMapper;
   }
 
   /**
