@@ -253,7 +253,7 @@ class Hints:
                 "(Only for S3) The STS endpoint to use when connecting to STS"
             )
             STS_UNAVAILABLE = (
-                "(Only for S3) Indicates that STS is not available"
+                "(Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)"
             )
             PATH_STYLE_ACCESS = "(Only for S3) Whether to use path-style-access for S3"
 
