@@ -63,6 +63,10 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract String getRoleARN();
 
+  /** KMS Key ARN for server-side encryption, optional */
+  @Nullable
+  public abstract String getKmsKeyArn();
+
   /** AWS external ID, optional */
   @Nullable
   public abstract String getExternalId();

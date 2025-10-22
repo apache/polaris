@@ -99,6 +99,7 @@ public class AccessConfigProvider {
         tableLocations,
         storageActions,
         storageInfo.get(),
-        refreshCredentialsEndpoint);
+        refreshCredentialsEndpoint,
+        new java.util.HashMap<>());
   }
 }

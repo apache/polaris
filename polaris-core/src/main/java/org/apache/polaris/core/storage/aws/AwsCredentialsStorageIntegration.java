@@ -33,6 +33,8 @@ import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
@@ -48,6 +50,9 @@ public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
 
   public AwsCredentialsStorageIntegration(
       AwsStorageConfigurationInfo config, StsClient fixedClient) {
@@ -75,11 +80,15 @@ public class AwsCredentialsStorageIntegration
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Map props) {
+    LOGGER.info("Getting subscoped creds props: {}", props);
+    String kmsKey = props.get("s3.sse.key") != null ? props.get("s3.sse.key").toString() : null;
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
     String region = storageConfig.getRegion();
+    String accountId = storageConfig.getAwsAccountId();
     AccessConfig.Builder accessConfig = AccessConfig.builder();
 
     if (shouldUseSts(storageConfig)) {
@@ -90,10 +99,13 @@ public class AwsCredentialsStorageIntegration
               .roleSessionName("PolarisAwsCredentialsStorageIntegration")
               .policy(
                   policyString(
-                          storageConfig.getAwsPartition(),
+                          storageConfig,
                           allowListOperation,
                           allowedReadLocations,
-                          allowedWriteLocations)
+                          allowedWriteLocations,
+                          kmsKey,
+                          region,
+                          accountId)
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
       credentialsProvider.ifPresent(
@@ -163,12 +175,14 @@ public class AwsCredentialsStorageIntegration
    * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
    * and just assuming the role with full privileges.
    */
-  // TODO - add KMS key access
   private IamPolicy policyString(
-      String awsPartition,
+      AwsStorageConfigurationInfo storageConfigurationInfo,
       boolean allowList,
       Set<String> readLocations,
-      Set<String> writeLocations) {
+      Set<String> writeLocations,
+      String kmsKey,
+      String region,
+      String accountId) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -178,7 +192,9 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
-    String arnPrefix = arnPrefixForPartition(awsPartition);
+    String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
+    String kmsKeyArn = storageConfigurationInfo.getKmsKeyArn();
+
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
@@ -225,6 +241,9 @@ public class AwsCredentialsStorageIntegration
                     arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
+      addKmsKeyPolicy(kmsKey, kmsKeyArn, policyBuilder, true, region, accountId);
+    } else {
+      addKmsKeyPolicy(kmsKey, kmsKeyArn, policyBuilder, false, region, accountId);
     }
     if (!bucketListStatementBuilder.isEmpty()) {
       bucketListStatementBuilder
@@ -239,7 +258,45 @@ public class AwsCredentialsStorageIntegration
     bucketGetLocationStatementBuilder
         .values()
         .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
+    var r = policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
+    LOGGER.info("Policies  {}", r);
+    return r;
+  }
+
+  private static void addKmsKeyPolicy(
+      String kmsKeyArnOverride,
+      String kmsKeyArn,
+      IamPolicy.Builder policyBuilder,
+      boolean canEncrypt,
+      String region,
+      String accountId) {
+    if (kmsKeyArn == null && kmsKeyArnOverride == null) {
+      kmsKeyArn = arnKeyAll(region, accountId);
+    }
+    IamStatement.Builder allowKms =
+        IamStatement.builder()
+            .effect(IamEffect.ALLOW)
+            .addAction("kms:GenerateDataKeyWithoutPlaintext")
+            .addAction("kms:DescribeKey")
+            .addAction("kms:Decrypt")
+            .addAction("kms:GenerateDataKey");
+
+    if (canEncrypt) {
+      allowKms.addAction("kms:Encrypt");
+    }
+    if (kmsKeyArnOverride != null) {
+      LOGGER.info("Adding KMS key policy for key {}", kmsKeyArnOverride);
+      allowKms.addResource(IamResource.create(kmsKeyArnOverride));
+    }
+    if (kmsKeyArn != null) {
+      LOGGER.info("Adding KMS key policy for key {}", kmsKeyArn);
+      allowKms.addResource(IamResource.create(kmsKeyArn));
+    }
+    policyBuilder.addStatement(allowKms.build());
+  }
+
+  private static String arnKeyAll(String region, String accountId) {
+    return String.format("arn:aws:kms:%s:%s:key/*", region, accountId);
   }
 
   private static String arnPrefixForPartition(String awsPartition) {
