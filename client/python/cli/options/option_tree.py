@@ -119,6 +119,7 @@ class OptionTree:
                     Argument(Arguments.ENDPOINT, str, Hints.Catalogs.Create.ENDPOINT),
                     Argument(Arguments.ENDPOINT_INTERNAL, str, Hints.Catalogs.Create.ENDPOINT_INTERNAL),
                     Argument(Arguments.STS_ENDPOINT, str, Hints.Catalogs.Create.STS_ENDPOINT),
+                    Argument(Arguments.STS_UNAVAILABLE, bool, Hints.Catalogs.Create.STS_UNAVAILABLE),
                     Argument(Arguments.PATH_STYLE_ACCESS, bool, Hints.Catalogs.Create.PATH_STYLE_ACCESS),
                     Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION,
                              allow_repeats=True),
