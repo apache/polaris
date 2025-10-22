@@ -34,7 +34,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -116,8 +116,7 @@ public record TestServices(
   private static final String GCP_ACCESS_TOKEN = "abc";
 
   @FunctionalInterface
-  public interface FileIOFactorySupplier
-      extends BiFunction<MetaStoreManagerFactory, AccessConfigProvider, FileIOFactory> {}
+  public interface FileIOFactorySupplier extends Function<AccessConfigProvider, FileIOFactory> {}
 
   private static class MockedConfigurationStore implements PolarisConfigurationStore {
     private final Map<String, Object> defaults;
@@ -144,7 +143,8 @@ public record TestServices(
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient;
-    private FileIOFactorySupplier fileIOFactorySupplier = MeasuredFileIOFactory::new;
+    private FileIOFactorySupplier fileIOFactorySupplier =
+        metaStoreManagerFactory1 -> new MeasuredFileIOFactory(metaStoreManagerFactory1);
 
     private Builder() {
       stsClient = Mockito.mock(StsClient.class, RETURNS_DEEP_STUBS);
@@ -244,8 +244,7 @@ public record TestServices(
 
       AccessConfigProvider accessConfigProvider =
           new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
-      FileIOFactory fileIOFactory =
-          fileIOFactorySupplier.apply(metaStoreManagerFactory, accessConfigProvider);
+      FileIOFactory fileIOFactory = fileIOFactorySupplier.apply(accessConfigProvider);
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 

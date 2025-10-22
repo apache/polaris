@@ -210,8 +210,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, securityContext, CATALOG_NAME);
-    FileIOFactory fileIOFactory =
-        new DefaultFileIOFactory(metaStoreManagerFactory, accessConfigProvider);
+    FileIOFactory fileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     testPolarisEventListener.clear();

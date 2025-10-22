@@ -355,7 +355,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
-    this.fileIOFactory = new DefaultFileIOFactory(metaStoreManagerFactory, accessConfigProvider);
+    this.fileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -999,8 +999,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // filename.
     final String tableLocation = "s3://externally-owned-bucket/validate_table/";
     final String tableMetadataLocation = tableLocation + "metadata/";
-    FileIOFactory fileIOFactory =
-        spy(new DefaultFileIOFactory(metaStoreManagerFactory, accessConfigProvider));
+    FileIOFactory fileIOFactory = spy(new DefaultFileIOFactory(accessConfigProvider));
     IcebergCatalog catalog = newIcebergCatalog(catalog().name(), metaStoreManager, fileIOFactory);
     catalog.initialize(
         CATALOG_NAME,
@@ -1917,8 +1916,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_ACCESS_KEY)
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), SESSION_TOKEN);
     FileIO fileIO =
-        new TaskFileIOSupplier(
-                new DefaultFileIOFactory(metaStoreManagerFactory, accessConfigProvider))
+        new TaskFileIOSupplier(new DefaultFileIOFactory(accessConfigProvider))
             .apply(taskEntity, TABLE, polarisContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
@@ -2044,8 +2042,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Test
   public void testFileIOWrapper() {
-    MeasuredFileIOFactory measured =
-        new MeasuredFileIOFactory(metaStoreManagerFactory, accessConfigProvider);
+    MeasuredFileIOFactory measured = new MeasuredFileIOFactory(accessConfigProvider);
     IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
     catalog.initialize(
         CATALOG_NAME,

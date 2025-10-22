@@ -31,11 +31,8 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /**
@@ -50,13 +47,10 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final AccessConfigProvider accessConfigProvider;
 
   @Inject
-  public DefaultFileIOFactory(
-      MetaStoreManagerFactory metaStoreManagerFactory, AccessConfigProvider accessConfigProvider) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
+  public DefaultFileIOFactory(AccessConfigProvider accessConfigProvider) {
     this.accessConfigProvider = accessConfigProvider;
   }
 
@@ -69,9 +63,6 @@ public class DefaultFileIOFactory implements FileIOFactory {
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
-    RealmContext realmContext = callContext.getRealmContext();
-    PolarisCredentialVendor credentialVendor =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
     // Get subcoped creds
     properties = new HashMap<>(properties);
