@@ -18,11 +18,19 @@
  */
 package org.apache.polaris.service.events;
 
+import java.util.UUID;
+
 /**
  * Emitted before the RateLimiterFilter rejects a request due to exceeding the rate limit.
  *
  * @param method The request's HTTP method
  * @param absolutePath The request's absolute path
  */
-public record BeforeLimitRequestRateEvent(String method, String absolutePath)
-    implements PolarisEvent {}
+public record BeforeLimitRequestRateEvent(
+    UUID id, PolarisEventMetadata metadata, String method, String absolutePath)
+    implements PolarisEvent {
+  @Override
+  public PolarisEventType type() {
+    return PolarisEventType.BEFORE_LIMIT_REQUEST_RATE;
+  }
+}
