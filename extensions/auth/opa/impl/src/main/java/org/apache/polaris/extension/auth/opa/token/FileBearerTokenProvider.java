@@ -23,6 +23,7 @@ import static com.google.common.base.Preconditions.checkState;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -99,7 +100,6 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
   }
 
   @Override
-  @Nullable
   public String getToken() {
     checkState(!closed, "Token provider is closed");
 
@@ -108,6 +108,13 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
       refreshToken();
     }
 
+    // If we couldn't load a token and have no cached token, this is a fatal error
+    if (Strings.isNullOrEmpty(cachedToken)) {
+      throw new RuntimeException(
+          "Unable to load bearer token from file: "
+              + tokenFilePath
+              + ". This is required for OPA authorization.");
+    }
     return cachedToken;
   }
 
@@ -128,19 +135,12 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     try {
       String newToken = loadTokenFromFile();
 
-      // If we couldn't load a token and have no cached token, this is a fatal error
-      if (newToken == null && cachedToken == null) {
-        throw new RuntimeException(
-            "Unable to load bearer token from file: "
-                + tokenFilePath
-                + ". This is required for OPA authorization.");
-      }
-
       // Only update cached token if we successfully loaded a new one
-      if (newToken != null) {
-        cachedToken = newToken;
+      if (newToken == null) {
+        logger.debug("Couldn't load new bearer token from {}, will retry.", tokenFilePath);
+        return;
       }
-      // If newToken is null but cachedToken exists, we keep using the cached token
+      cachedToken = newToken;
 
       lastRefresh = clock.instant();
 
@@ -158,9 +158,8 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
   }
 
   /** Calculate when the next refresh should occur based on JWT expiration or fixed interval. */
-  private Instant calculateNextRefresh(@Nullable String token) {
-    if (token == null || !jwtExpirationRefresh) {
-      // Use fixed interval
+  private Instant calculateNextRefresh(String token) {
+    if (!jwtExpirationRefresh) {
       return lastRefresh.plus(refreshInterval);
     }
 
