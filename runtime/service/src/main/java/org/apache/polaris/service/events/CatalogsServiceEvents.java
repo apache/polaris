@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.events;
 
+import java.util.UUID;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogRole;
@@ -29,55 +30,182 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 
 public class CatalogsServiceEvents {
-  public record BeforeCreateCatalogEvent(String catalogName) implements PolarisEvent {}
 
-  public record AfterCreateCatalogEvent(Catalog catalog) implements PolarisEvent {}
+  public record BeforeCreateCatalogEvent(UUID id, PolarisEventMetadata metadata, String catalogName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CREATE_CATALOG;
+    }
+  }
 
-  public record BeforeDeleteCatalogEvent(String catalogName) implements PolarisEvent {}
+  public record AfterCreateCatalogEvent(UUID id, PolarisEventMetadata metadata, Catalog catalog)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CREATE_CATALOG;
+    }
+  }
 
-  public record AfterDeleteCatalogEvent(String catalogName) implements PolarisEvent {}
+  public record BeforeDeleteCatalogEvent(UUID id, PolarisEventMetadata metadata, String catalogName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_DELETE_CATALOG;
+    }
+  }
 
-  public record BeforeGetCatalogEvent(String catalogName) implements PolarisEvent {}
+  public record AfterDeleteCatalogEvent(UUID id, PolarisEventMetadata metadata, String catalogName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_DELETE_CATALOG;
+    }
+  }
 
-  public record AfterGetCatalogEvent(Catalog catalog) implements PolarisEvent {}
+  public record BeforeGetCatalogEvent(UUID id, PolarisEventMetadata metadata, String catalogName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_GET_CATALOG;
+    }
+  }
 
-  public record BeforeUpdateCatalogEvent(String catalogName, UpdateCatalogRequest updateRequest)
-      implements PolarisEvent {}
+  public record AfterGetCatalogEvent(UUID id, PolarisEventMetadata metadata, Catalog catalog)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_GET_CATALOG;
+    }
+  }
 
-  public record AfterUpdateCatalogEvent(Catalog catalog) implements PolarisEvent {}
+  public record BeforeUpdateCatalogEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      UpdateCatalogRequest updateRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_UPDATE_CATALOG;
+    }
+  }
 
-  public record BeforeListCatalogsEvent() implements PolarisEvent {}
+  public record AfterUpdateCatalogEvent(UUID id, PolarisEventMetadata metadata, Catalog catalog)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_UPDATE_CATALOG;
+    }
+  }
 
-  public record AfterListCatalogsEvent() implements PolarisEvent {}
+  public record BeforeListCatalogsEvent(UUID id, PolarisEventMetadata metadata)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_CATALOGS;
+    }
+  }
 
-  public record BeforeCreateCatalogRoleEvent(String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+  public record AfterListCatalogsEvent(UUID id, PolarisEventMetadata metadata)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_CATALOGS;
+    }
+  }
 
-  public record AfterCreateCatalogRoleEvent(String catalogName, CatalogRole catalogRole)
-      implements PolarisEvent {}
+  public record BeforeCreateCatalogRoleEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CREATE_CATALOG_ROLE;
+    }
+  }
 
-  public record BeforeDeleteCatalogRoleEvent(String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+  public record AfterCreateCatalogRoleEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, CatalogRole catalogRole)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CREATE_CATALOG_ROLE;
+    }
+  }
 
-  public record AfterDeleteCatalogRoleEvent(String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+  public record BeforeDeleteCatalogRoleEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_DELETE_CATALOG_ROLE;
+    }
+  }
 
-  public record BeforeGetCatalogRoleEvent(String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+  public record AfterDeleteCatalogRoleEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_DELETE_CATALOG_ROLE;
+    }
+  }
 
-  public record AfterGetCatalogRoleEvent(String catalogName, CatalogRole catalogRole)
-      implements PolarisEvent {}
+  public record BeforeGetCatalogRoleEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_GET_CATALOG_ROLE;
+    }
+  }
+
+  public record AfterGetCatalogRoleEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, CatalogRole catalogRole)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_GET_CATALOG_ROLE;
+    }
+  }
 
   public record BeforeUpdateCatalogRoleEvent(
-      String catalogName, String catalogRoleName, UpdateCatalogRoleRequest updateRequest)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String catalogRoleName,
+      UpdateCatalogRoleRequest updateRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_UPDATE_CATALOG_ROLE;
+    }
+  }
 
-  public record AfterUpdateCatalogRoleEvent(String catalogName, CatalogRole updatedCatalogRole)
-      implements PolarisEvent {}
+  public record AfterUpdateCatalogRoleEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, CatalogRole updatedCatalogRole)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_UPDATE_CATALOG_ROLE;
+    }
+  }
 
-  public record BeforeListCatalogRolesEvent(String catalogName) implements PolarisEvent {}
+  public record BeforeListCatalogRolesEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_CATALOG_ROLES;
+    }
+  }
 
-  public record AfterListCatalogRolesEvent(String catalogName) implements PolarisEvent {}
+  public record AfterListCatalogRolesEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_CATALOG_ROLES;
+    }
+  }
 
   /**
    * Event fired before a grant is added to a catalog role in Polaris.
@@ -87,8 +215,17 @@ public class CatalogsServiceEvents {
    * @param grantRequest the grant request
    */
   public record BeforeAddGrantToCatalogRoleEvent(
-      String catalogName, String catalogRoleName, AddGrantRequest grantRequest)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String catalogRoleName,
+      AddGrantRequest grantRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_ADD_GRANT_TO_CATALOG_ROLE;
+    }
+  }
 
   /**
    * Event fired after a grant is added to a catalog role in Polaris.
@@ -99,11 +236,18 @@ public class CatalogsServiceEvents {
    * @param grantResource the grant resource
    */
   public record AfterAddGrantToCatalogRoleEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       String catalogRoleName,
       PolarisPrivilege privilege,
       GrantResource grantResource)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_ADD_GRANT_TO_CATALOG_ROLE;
+    }
+  }
 
   /**
    * Event fired before a grant is revoked from a catalog role in Polaris.
@@ -114,8 +258,18 @@ public class CatalogsServiceEvents {
    * @param cascade whether the revoke is cascading
    */
   public record BeforeRevokeGrantFromCatalogRoleEvent(
-      String catalogName, String catalogRoleName, RevokeGrantRequest grantRequest, Boolean cascade)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String catalogRoleName,
+      RevokeGrantRequest grantRequest,
+      Boolean cascade)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_REVOKE_GRANT_FROM_CATALOG_ROLE;
+    }
+  }
 
   /**
    * Event fired after a grant is revoked from a catalog role in Polaris.
@@ -127,22 +281,53 @@ public class CatalogsServiceEvents {
    * @param cascade whether to cascade the revocation
    */
   public record AfterRevokeGrantFromCatalogRoleEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       String catalogRoleName,
       PolarisPrivilege privilege,
       GrantResource grantResource,
       Boolean cascade)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_REVOKE_GRANT_FROM_CATALOG_ROLE;
+    }
+  }
 
   public record BeforeListAssigneePrincipalRolesForCatalogRoleEvent(
-      String catalogName, String catalogRoleName) implements PolarisEvent {}
+      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE;
+    }
+  }
 
   public record AfterListAssigneePrincipalRolesForCatalogRoleEvent(
-      String catalogName, String catalogRoleName) implements PolarisEvent {}
+      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE;
+    }
+  }
 
-  public record BeforeListGrantsForCatalogRoleEvent(String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+  public record BeforeListGrantsForCatalogRoleEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_GRANTS_FOR_CATALOG_ROLE;
+    }
+  }
 
-  public record AfterListGrantsForCatalogRoleEvent(String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+  public record AfterListGrantsForCatalogRoleEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_GRANTS_FOR_CATALOG_ROLE;
+    }
+  }
 }

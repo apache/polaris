@@ -45,6 +45,9 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventMetadata;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.slf4j.Logger;
@@ -65,11 +68,12 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final TaskFileIOSupplier fileIOSupplier;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
   private final PolarisEventListener polarisEventListener;
+  private final PolarisEventMetadataFactory eventMetadataFactory;
   @Nullable private final Tracer tracer;
 
   @SuppressWarnings("unused") // Required by CDI
   protected TaskExecutorImpl() {
-    this(null, null, null, null, null, null);
+    this(null, null, null, null, null, null, null);
   }
 
   @Inject
@@ -79,12 +83,14 @@ public class TaskExecutorImpl implements TaskExecutor {
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
       PolarisEventListener polarisEventListener,
+      PolarisEventMetadataFactory eventMetadataFactory,
       @Nullable Tracer tracer) {
     this.executor = executor;
     this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
     this.polarisEventListener = polarisEventListener;
+    this.eventMetadataFactory = eventMetadataFactory;
     this.tracer = tracer;
   }
 
@@ -123,27 +129,40 @@ public class TaskExecutorImpl implements TaskExecutor {
     // Note: PolarisCallContext has request-scoped beans as well, and must be cloned.
     // FIXME replace with context propagation?
     CallContext clone = callContext.copy();
-    tryHandleTask(taskEntityId, clone, null, 1);
+    // Capture the metadata now in order to capture the principal and request ID, if any.
+    PolarisEventMetadata eventMetadata = eventMetadataFactory.create();
+    tryHandleTask(taskEntityId, clone, eventMetadata, null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
-      long taskEntityId, CallContext callContext, Throwable e, int attempt) {
+      long taskEntityId,
+      CallContext callContext,
+      PolarisEventMetadata eventMetadata,
+      Throwable e,
+      int attempt) {
     if (attempt > 3) {
       return CompletableFuture.failedFuture(e);
     }
     return CompletableFuture.runAsync(
-            () -> handleTaskWithTracing(taskEntityId, callContext, attempt), executor)
+            () -> handleTaskWithTracing(taskEntityId, callContext, eventMetadata, attempt),
+            executor)
         .exceptionallyComposeAsync(
             (t) -> {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
-              return tryHandleTask(taskEntityId, callContext, t, attempt + 1);
+              return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
   }
 
-  protected void handleTask(long taskEntityId, CallContext ctx, int attempt) {
-    polarisEventListener.onBeforeAttemptTask(new BeforeAttemptTaskEvent(taskEntityId, attempt));
+  protected void handleTask(
+      long taskEntityId, CallContext ctx, PolarisEventMetadata eventMetadata, int attempt) {
+    polarisEventListener.onBeforeAttemptTask(
+        new BeforeAttemptTaskEvent(
+            PolarisEvent.createEventId(),
+            eventMetadataFactory.copy(eventMetadata),
+            taskEntityId,
+            attempt));
 
     boolean success = false;
     try {
@@ -187,13 +206,19 @@ public class TaskExecutorImpl implements TaskExecutor {
       }
     } finally {
       polarisEventListener.onAfterAttemptTask(
-          new AfterAttemptTaskEvent(taskEntityId, attempt, success));
+          new AfterAttemptTaskEvent(
+              PolarisEvent.createEventId(),
+              eventMetadataFactory.copy(eventMetadata),
+              taskEntityId,
+              attempt,
+              success));
     }
   }
 
-  protected void handleTaskWithTracing(long taskEntityId, CallContext callContext, int attempt) {
+  protected void handleTaskWithTracing(
+      long taskEntityId, CallContext callContext, PolarisEventMetadata eventMetadata, int attempt) {
     if (tracer == null) {
-      handleTask(taskEntityId, callContext, attempt);
+      handleTask(taskEntityId, callContext, eventMetadata, attempt);
     } else {
       Span span =
           tracer
@@ -206,7 +231,7 @@ public class TaskExecutorImpl implements TaskExecutor {
               .setAttribute("polaris.task.attempt", attempt)
               .startSpan();
       try (Scope ignored = span.makeCurrent()) {
-        handleTask(taskEntityId, callContext, attempt);
+        handleTask(taskEntityId, callContext, eventMetadata, attempt);
       } finally {
         span.end();
       }

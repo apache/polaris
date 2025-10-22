@@ -29,6 +29,8 @@ import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @Decorator
@@ -38,15 +40,20 @@ public class IcebergRestConfigurationEventServiceDelegator
 
   @Inject @Delegate IcebergCatalogAdapter delegate;
   @Inject PolarisEventListener polarisEventListener;
+  @Inject PolarisEventMetadataFactory eventMetadataFactory;
 
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
     polarisEventListener.onBeforeGetConfig(
-        new IcebergRestCatalogEvents.BeforeGetConfigEvent(warehouse));
+        new IcebergRestCatalogEvents.BeforeGetConfigEvent(
+            PolarisEvent.createEventId(), eventMetadataFactory.create(), warehouse));
     Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
     polarisEventListener.onAfterGetConfig(
-        new IcebergRestCatalogEvents.AfterGetConfigEvent((ConfigResponse) resp.getEntity()));
+        new IcebergRestCatalogEvents.AfterGetConfigEvent(
+            PolarisEvent.createEventId(),
+            eventMetadataFactory.create(),
+            (ConfigResponse) resp.getEntity()));
     return resp;
   }
 }

@@ -29,6 +29,8 @@ import jakarta.ws.rs.ext.Provider;
 import java.io.IOException;
 import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,11 +45,16 @@ public class RateLimiterFilter implements ContainerRequestFilter {
 
   private final RateLimiter rateLimiter;
   private final PolarisEventListener polarisEventListener;
+  private final PolarisEventMetadataFactory eventMetadataFactory;
 
   @Inject
-  public RateLimiterFilter(RateLimiter rateLimiter, PolarisEventListener polarisEventListener) {
+  public RateLimiterFilter(
+      RateLimiter rateLimiter,
+      PolarisEventListener polarisEventListener,
+      PolarisEventMetadataFactory eventMetadataFactory) {
     this.rateLimiter = rateLimiter;
     this.polarisEventListener = polarisEventListener;
+    this.eventMetadataFactory = eventMetadataFactory;
   }
 
   /** Returns a 429 if the rate limiter says so. Otherwise, forwards the request along. */
@@ -56,7 +63,10 @@ public class RateLimiterFilter implements ContainerRequestFilter {
     if (!rateLimiter.canProceed()) {
       polarisEventListener.onBeforeLimitRequestRate(
           new BeforeLimitRequestRateEvent(
-              ctx.getMethod(), ctx.getUriInfo().getAbsolutePath().toString()));
+              PolarisEvent.createEventId(),
+              eventMetadataFactory.create(),
+              ctx.getMethod(),
+              ctx.getUriInfo().getAbsolutePath().toString()));
       ctx.abortWith(Response.status(Response.Status.TOO_MANY_REQUESTS).build());
       LOGGER.atDebug().log("Rate limiting request");
     }

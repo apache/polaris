@@ -20,6 +20,7 @@
 package org.apache.polaris.service.events;
 
 import java.util.Map;
+import java.util.UUID;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -47,259 +48,671 @@ public class IcebergRestCatalogEvents {
 
   // Namespace Events
   public record BeforeCreateNamespaceEvent(
-      String catalogName, CreateNamespaceRequest createNamespaceRequest) implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      CreateNamespaceRequest createNamespaceRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CREATE_NAMESPACE;
+    }
+  }
 
   public record AfterCreateNamespaceEvent(
-      String catalogName, Namespace namespace, Map<String, String> namespaceProperties)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      Map<String, String> namespaceProperties)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CREATE_NAMESPACE;
+    }
+  }
 
-  public record BeforeListNamespacesEvent(String catalogName, String parent)
-      implements PolarisEvent {}
+  public record BeforeListNamespacesEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, String parent)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_NAMESPACES;
+    }
+  }
 
-  public record AfterListNamespacesEvent(String catalogName, String parent)
-      implements PolarisEvent {}
+  public record AfterListNamespacesEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, String parent)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_NAMESPACES;
+    }
+  }
 
-  public record BeforeLoadNamespaceMetadataEvent(String catalogName, Namespace namespace)
-      implements PolarisEvent {}
+  public record BeforeLoadNamespaceMetadataEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LOAD_NAMESPACE_METADATA;
+    }
+  }
 
   public record AfterLoadNamespaceMetadataEvent(
-      String catalogName, Namespace namespace, Map<String, String> namespaceProperties)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      Map<String, String> namespaceProperties)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LOAD_NAMESPACE_METADATA;
+    }
+  }
 
-  public record BeforeCheckExistsNamespaceEvent(String catalogName, Namespace namespace)
-      implements PolarisEvent {}
+  public record BeforeCheckExistsNamespaceEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CHECK_EXISTS_NAMESPACE;
+    }
+  }
 
-  public record AfterCheckExistsNamespaceEvent(String catalogName, Namespace namespace)
-      implements PolarisEvent {}
+  public record AfterCheckExistsNamespaceEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CHECK_EXISTS_NAMESPACE;
+    }
+  }
 
-  public record BeforeDropNamespaceEvent(String catalogName, Namespace namespace)
-      implements PolarisEvent {}
+  public record BeforeDropNamespaceEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_DROP_NAMESPACE;
+    }
+  }
 
-  public record AfterDropNamespaceEvent(String catalogName, String namespace)
-      implements PolarisEvent {}
+  public record AfterDropNamespaceEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, String namespace)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_DROP_NAMESPACE;
+    }
+  }
 
   public record BeforeUpdateNamespacePropertiesEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_UPDATE_NAMESPACE_PROPERTIES;
+    }
+  }
 
   public record AfterUpdateNamespacePropertiesEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       UpdateNamespacePropertiesResponse updateNamespacePropertiesResponse)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_UPDATE_NAMESPACE_PROPERTIES;
+    }
+  }
 
   // Table Events
   public record BeforeCreateTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       CreateTableRequest createTableRequest,
       String accessDelegationMode)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CREATE_TABLE;
+    }
+  }
 
   public record AfterCreateTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String tableName,
       LoadTableResponse loadTableResponse)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CREATE_TABLE;
+    }
+  }
 
-  public record BeforeListTablesEvent(String catalogName, Namespace namespace)
-      implements PolarisEvent {}
+  public record BeforeListTablesEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_TABLES;
+    }
+  }
 
-  public record AfterListTablesEvent(String catalogName, Namespace namespace)
-      implements PolarisEvent {}
+  public record AfterListTablesEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_TABLES;
+    }
+  }
 
   public record BeforeLoadTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String table,
       String accessDelegationMode,
       String ifNoneMatchString,
       String snapshots)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LOAD_TABLE;
+    }
+  }
 
   public record AfterLoadTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String tableName,
       LoadTableResponse loadTableResponse)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LOAD_TABLE;
+    }
+  }
 
-  public record BeforeCheckExistsTableEvent(String catalogName, Namespace namespace, String table)
-      implements PolarisEvent {}
+  public record BeforeCheckExistsTableEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CHECK_EXISTS_TABLE;
+    }
+  }
 
-  public record AfterCheckExistsTableEvent(String catalogName, Namespace namespace, String table)
-      implements PolarisEvent {}
+  public record AfterCheckExistsTableEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CHECK_EXISTS_TABLE;
+    }
+  }
 
   public record BeforeDropTableEvent(
-      String catalogName, Namespace namespace, String table, Boolean purgeRequested)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      String table,
+      Boolean purgeRequested)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_DROP_TABLE;
+    }
+  }
 
   public record AfterDropTableEvent(
-      String catalogName, Namespace namespace, String table, Boolean purgeRequested)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      String table,
+      Boolean purgeRequested)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_DROP_TABLE;
+    }
+  }
 
   public record BeforeRegisterTableEvent(
-      String catalogName, Namespace namespace, RegisterTableRequest registerTableRequest)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      RegisterTableRequest registerTableRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_REGISTER_TABLE;
+    }
+  }
 
   public record AfterRegisterTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String tableName,
       LoadTableResponse loadTableResponse)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_REGISTER_TABLE;
+    }
+  }
 
-  public record BeforeRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest)
-      implements PolarisEvent {}
+  public record BeforeRenameTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      RenameTableRequest renameTableRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_RENAME_TABLE;
+    }
+  }
 
-  public record AfterRenameTableEvent(String catalogName, RenameTableRequest renameTableRequest)
-      implements PolarisEvent {}
+  public record AfterRenameTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      RenameTableRequest renameTableRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_RENAME_TABLE;
+    }
+  }
 
   public record BeforeUpdateTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String sourceTable,
       CommitTableRequest commitTableRequest)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_UPDATE_TABLE;
+    }
+  }
 
   public record AfterUpdateTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String sourceTable,
       CommitTableRequest commitTableRequest,
       LoadTableResponse loadTableResponse)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_UPDATE_TABLE;
+    }
+  }
 
   // View Events
   public record BeforeCreateViewEvent(
-      String catalogName, Namespace namespace, CreateViewRequest createViewRequest)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      CreateViewRequest createViewRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CREATE_VIEW;
+    }
+  }
 
   public record AfterCreateViewEvent(
-      String catalogName, Namespace namespace, String viewName, LoadViewResponse loadViewResponse)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      String viewName,
+      LoadViewResponse loadViewResponse)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CREATE_VIEW;
+    }
+  }
 
-  public record BeforeListViewsEvent(String catalogName, Namespace namespace)
-      implements PolarisEvent {}
+  public record BeforeListViewsEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_VIEWS;
+    }
+  }
 
-  public record AfterListViewsEvent(String catalogName, Namespace namespace)
-      implements PolarisEvent {}
+  public record AfterListViewsEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_VIEWS;
+    }
+  }
 
-  public record BeforeLoadViewEvent(String catalogName, Namespace namespace, String view)
-      implements PolarisEvent {}
+  public record BeforeLoadViewEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LOAD_VIEW;
+    }
+  }
 
   public record AfterLoadViewEvent(
-      String catalogName, Namespace namespace, String viewName, LoadViewResponse loadViewResponse)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      String viewName,
+      LoadViewResponse loadViewResponse)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LOAD_VIEW;
+    }
+  }
 
-  public record BeforeCheckExistsViewEvent(String catalogName, Namespace namespace, String view)
-      implements PolarisEvent {}
+  public record BeforeCheckExistsViewEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CHECK_EXISTS_VIEW;
+    }
+  }
 
-  public record AfterCheckExistsViewEvent(String catalogName, Namespace namespace, String view)
-      implements PolarisEvent {}
+  public record AfterCheckExistsViewEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CHECK_EXISTS_VIEW;
+    }
+  }
 
-  public record BeforeDropViewEvent(String catalogName, Namespace namespace, String view)
-      implements PolarisEvent {}
+  public record BeforeDropViewEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_DROP_VIEW;
+    }
+  }
 
-  public record AfterDropViewEvent(String catalogName, Namespace namespace, String view)
-      implements PolarisEvent {}
+  public record AfterDropViewEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_DROP_VIEW;
+    }
+  }
 
-  public record BeforeRenameViewEvent(String catalogName, RenameTableRequest renameTableRequest)
-      implements PolarisEvent {}
+  public record BeforeRenameViewEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      RenameTableRequest renameTableRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_RENAME_VIEW;
+    }
+  }
 
-  public record AfterRenameViewEvent(String catalogName, RenameTableRequest renameTableRequest)
-      implements PolarisEvent {}
+  public record AfterRenameViewEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      RenameTableRequest renameTableRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_RENAME_VIEW;
+    }
+  }
 
   public record BeforeReplaceViewEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String sourceView,
       CommitViewRequest commitViewRequest)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_REPLACE_VIEW;
+    }
+  }
 
   public record AfterReplaceViewEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String sourceView,
       CommitViewRequest commitViewRequest,
       LoadViewResponse loadViewResponse)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_REPLACE_VIEW;
+    }
+  }
 
   // Credential Events
-  public record BeforeLoadCredentialsEvent(String catalogName, Namespace namespace, String table)
-      implements PolarisEvent {}
+  public record BeforeLoadCredentialsEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LOAD_CREDENTIALS;
+    }
+  }
 
-  public record AfterLoadCredentialsEvent(String catalogName, Namespace namespace, String table)
-      implements PolarisEvent {}
+  public record AfterLoadCredentialsEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LOAD_CREDENTIALS;
+    }
+  }
 
   // Transaction Events
   public record BeforeCommitTransactionEvent(
-      String catalogName, CommitTransactionRequest commitTransactionRequest)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      CommitTransactionRequest commitTransactionRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_COMMIT_TRANSACTION;
+    }
+  }
 
   // TODO: Add all PolarisEntities that were modified with this transaction.
   public record AfterCommitTransactionEvent(
-      String catalogName, CommitTransactionRequest commitTransactionRequest)
-      implements PolarisEvent {}
+      UUID id,
+      PolarisEventMetadata metadata,
+      String catalogName,
+      CommitTransactionRequest commitTransactionRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_COMMIT_TRANSACTION;
+    }
+  }
 
   // Notification Events
   public record BeforeSendNotificationEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String table,
       NotificationRequest notificationRequest)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_SEND_NOTIFICATION;
+    }
+  }
 
   // TODO: Add result once SendNotification API changes are confirmed to return the result.
-  public record AfterSendNotificationEvent(String catalogName, Namespace namespace, String table)
-      implements PolarisEvent {}
+  public record AfterSendNotificationEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_SEND_NOTIFICATION;
+    }
+  }
 
   // Configuration Events
-  public record BeforeGetConfigEvent(String warehouse) implements PolarisEvent {}
+  public record BeforeGetConfigEvent(UUID id, PolarisEventMetadata metadata, String warehouse)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_GET_CONFIG;
+    }
+  }
 
-  public record AfterGetConfigEvent(ConfigResponse configResponse) implements PolarisEvent {}
+  public record AfterGetConfigEvent(
+      UUID id, PolarisEventMetadata metadata, ConfigResponse configResponse)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_GET_CONFIG;
+    }
+  }
 
   // Legacy events
   public record BeforeCommitTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       TableIdentifier identifier,
       TableMetadata metadataBefore,
       TableMetadata metadataAfter)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_COMMIT_TABLE;
+    }
+  }
 
   public record AfterCommitTableEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       TableIdentifier identifier,
       TableMetadata metadataBefore,
       TableMetadata metadataAfter)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_COMMIT_TABLE;
+    }
+  }
 
   public record BeforeCommitViewEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       TableIdentifier identifier,
       ViewMetadata metadataBefore,
       ViewMetadata metadataAfter)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_COMMIT_VIEW;
+    }
+  }
 
   public record AfterCommitViewEvent(
+      UUID id,
+      PolarisEventMetadata metadata,
       String catalogName,
       TableIdentifier identifier,
       ViewMetadata metadataBefore,
       ViewMetadata metadataAfter)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_COMMIT_VIEW;
+    }
+  }
 
-  public record BeforeRefreshTableEvent(String catalogName, TableIdentifier tableIdentifier)
-      implements PolarisEvent {}
+  public record BeforeRefreshTableEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, TableIdentifier tableIdentifier)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_REFRESH_TABLE;
+    }
+  }
 
-  public record AfterRefreshTableEvent(String catalogName, TableIdentifier tableIdentifier)
-      implements PolarisEvent {}
+  public record AfterRefreshTableEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, TableIdentifier tableIdentifier)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_REFRESH_TABLE;
+    }
+  }
 
-  public record BeforeRefreshViewEvent(String catalogName, TableIdentifier viewIdentifier)
-      implements PolarisEvent {}
+  public record BeforeRefreshViewEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, TableIdentifier viewIdentifier)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_REFRESH_VIEW;
+    }
+  }
 
-  public record AfterRefreshViewEvent(String catalogName, TableIdentifier viewIdentifier)
-      implements PolarisEvent {}
+  public record AfterRefreshViewEvent(
+      UUID id, PolarisEventMetadata metadata, String catalogName, TableIdentifier viewIdentifier)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_REFRESH_VIEW;
+    }
+  }
 }
