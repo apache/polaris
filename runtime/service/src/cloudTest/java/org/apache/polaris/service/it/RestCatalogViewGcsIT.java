@@ -22,14 +22,14 @@ import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import org.apache.iceberg.view.ViewCatalogTests;
-import org.apache.polaris.service.it.test.PolarisRestCatalogViewGcpIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogViewGcsIntegrationTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
 @EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_GCS_PATH", matches = ".+")
-public class RestCatalogViewGcpIT extends PolarisRestCatalogViewGcpIntegrationTest {
+public class RestCatalogViewGcsIT extends PolarisRestCatalogViewGcsIntegrationTestBase {
 
   @BeforeEach
   public void setUpTempDir(@TempDir Path tempDir) throws Exception {

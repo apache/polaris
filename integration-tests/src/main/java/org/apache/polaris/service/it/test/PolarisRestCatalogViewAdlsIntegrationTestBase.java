@@ -18,23 +18,29 @@
  */
 package org.apache.polaris.service.it.test;
 
+import com.google.common.base.Strings;
 import java.util.List;
-import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
+import java.util.stream.Stream;
+import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
-/** Runs PolarisRestCatalogIntegrationBase test on GCP. */
-public abstract class PolarisRestCatalogGcpIntegrationTestBase
-    extends PolarisRestCatalogIntegrationBase {
-  public static final String SERVICE_ACCOUNT =
-      System.getenv("INTEGRATION_TEST_GCS_SERVICE_ACCOUNT");
-  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_GCS_PATH");
+/** Runs PolarisRestCatalogViewIntegrationTest on Azure. */
+public abstract class PolarisRestCatalogViewAdlsIntegrationTestBase
+    extends PolarisRestCatalogViewIntegrationBase {
+  public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_ADLS_TENANT_ID");
+  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_ADLS_PATH");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
-    return GcpStorageConfigInfo.builder()
-        .setGcsServiceAccount(SERVICE_ACCOUNT)
-        .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+    return AzureStorageConfigInfo.builder()
+        .setTenantId(TENANT_ID)
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
         .setAllowedLocations(List.of(BASE_LOCATION))
         .build();
+  }
+
+  @Override
+  protected boolean shouldSkip() {
+    return Stream.of(BASE_LOCATION, TENANT_ID).anyMatch(Strings::isNullOrEmpty);
   }
 }
