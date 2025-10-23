@@ -36,6 +36,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.StaticBearerTokenProvider;
+import org.apache.polaris.nosql.async.AsyncExec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,14 +49,17 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
   private final OpaAuthorizationConfig opaConfig;
   private final Clock clock;
+  private final ObjectMapper objectMapper;
+  private final AsyncExec asyncExec;
   private CloseableHttpClient httpClient;
   private BearerTokenProvider bearerTokenProvider;
-  private ObjectMapper objectMapper;
 
   @Inject
-  public OpaPolarisAuthorizerFactory(OpaAuthorizationConfig opaConfig, Clock clock) {
+  public OpaPolarisAuthorizerFactory(
+      OpaAuthorizationConfig opaConfig, Clock clock, AsyncExec asyncExec) {
     this.opaConfig = opaConfig;
     this.clock = clock;
+    this.asyncExec = asyncExec;
     this.objectMapper = new ObjectMapper();
   }
 
@@ -167,7 +171,13 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
       Duration jwtExpirationBuffer = fileConfig.jwtExpirationBuffer().orElse(Duration.ofMinutes(1));
 
       return new FileBearerTokenProvider(
-          fileConfig.path(), refreshInterval, jwtExpirationRefresh, jwtExpirationBuffer, clock);
+          fileConfig.path(),
+          refreshInterval,
+          jwtExpirationRefresh,
+          jwtExpirationBuffer,
+          Duration.ofSeconds(5),
+          asyncExec,
+          clock::instant);
     } else {
       throw new IllegalStateException(
           "No bearer token configuration found. Must specify either 'static-token' or 'file-based'");

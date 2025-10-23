@@ -18,21 +18,26 @@
  */
 package org.apache.polaris.extension.auth.opa.token;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+import org.apache.polaris.nosql.async.AsyncExec;
+import org.apache.polaris.nosql.async.Cancelable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,12 +63,16 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
   private final Duration refreshInterval;
   private final boolean jwtExpirationRefresh;
   private final Duration jwtExpirationBuffer;
-  private final Clock clock;
+  private final Supplier<Instant> clock;
   private final AtomicBoolean refreshLock = new AtomicBoolean();
+  private final AsyncExec asyncExec;
+  private final CompletableFuture<String> initialTokenFuture = new CompletableFuture<>();
+  private final long initialTokenWaitMillis;
 
   private volatile String cachedToken;
   private volatile Instant lastRefresh;
   private volatile Instant nextRefresh;
+  private volatile Cancelable<?> refreshTask;
 
   /**
    * Create a new file-based token provider with JWT expiration support.
@@ -80,24 +89,23 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
       Duration refreshInterval,
       boolean jwtExpirationRefresh,
       Duration jwtExpirationBuffer,
-      Clock clock) {
+      Duration initialTokenWait,
+      AsyncExec asyncExec,
+      Supplier<Instant> clock) {
     this.tokenFilePath = tokenFilePath;
     this.refreshInterval = refreshInterval;
     this.jwtExpirationRefresh = jwtExpirationRefresh;
     this.jwtExpirationBuffer = jwtExpirationBuffer;
+    this.initialTokenWaitMillis = initialTokenWait.toMillis();
     this.clock = clock;
+    this.asyncExec = asyncExec;
 
-    // Load initial token eagerly to avoid race conditions during first getToken() calls
-    this.cachedToken = loadTokenFromFile();
-    if (Strings.isNullOrEmpty(this.cachedToken)) {
-      throw new IllegalStateException(
-          "Failed to load initial bearer token from file: "
-              + tokenFilePath
-              + ". This is required for OPA authorization.");
-    }
+    this.nextRefresh = Instant.MIN;
+    this.lastRefresh = Instant.MIN;
+    // start refreshing the token (immediately)
+    scheduleRefreshAttempt(Duration.ZERO);
 
-    this.lastRefresh = clock.instant();
-    this.nextRefresh = calculateNextRefresh(this.cachedToken);
+    checkState(Files.isReadable(tokenFilePath), "OPA token file does not exist or is not readable");
 
     logger.debug(
         "Created file token provider for path: {} with refresh interval: {}, JWT expiration refresh: {}, JWT buffer: {}, next refresh: {}",
@@ -110,56 +118,74 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
 
   @Override
   public String getToken() {
-    // Check if we need to refresh
-    if (shouldRefresh()) {
-      refreshToken();
+    String token = cachedToken;
+    if (token != null) {
+      // Regular case, we have a cached token
+      return cachedToken;
     }
-
-    // Token is guaranteed to be present after construction, but check anyway for safety
-    if (Strings.isNullOrEmpty(cachedToken)) {
-      throw new RuntimeException(
-          "Bearer token is unexpectedly empty. This should not happen after successful construction.");
+    // We get here if the cached token is null, which means that the initial token
+    // has not been loaded yet.
+    // In this case we wait for the configured amount of time
+    // (5 seconds in production, much lower in tests).
+    try {
+      return initialTokenFuture.get(initialTokenWaitMillis, TimeUnit.MILLISECONDS);
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to read initial OPA bearer token", e);
     }
-    return cachedToken;
   }
 
   @Override
   public void close() {
     cachedToken = null;
-  }
-
-  private boolean shouldRefresh() {
-    return clock.instant().isAfter(nextRefresh);
-  }
-
-  private void refreshToken() {
-    // Only one thread should refresh at a time. Other threads will use the cached token.
-    if (!refreshLock.compareAndSet(false, true)) {
-      return;
+    Cancelable<?> task = refreshTask;
+    if (task != null) {
+      refreshTask.cancel();
     }
-    try {
-      String newToken = loadTokenFromFile();
+  }
 
-      // Only update cached token if we successfully loaded a new one
-      if (newToken == null) {
-        logger.debug("Couldn't load new bearer token from {}, will retry.", tokenFilePath);
-        return;
+  private void refreshTokenAttempt() {
+    boolean isInitialRefresh = cachedToken == null;
+    Duration delay;
+    if (doRefreshToken()) {
+      delay = Duration.between(clock.get(), nextRefresh);
+      if (isInitialRefresh) {
+        // If we have never cached a token, complete the initial token-future to "unblock"
+        // getToken() call sites waiting for it.
+        initialTokenFuture.complete(cachedToken);
       }
-      cachedToken = newToken;
-
-      lastRefresh = clock.instant();
-
-      // Calculate next refresh time based on current token (may be cached)
-      nextRefresh = calculateNextRefresh(cachedToken);
-
-      logger.debug(
-          "Token refreshed from file: {} (token present: {}), next refresh: {}",
-          tokenFilePath,
-          cachedToken != null && !cachedToken.isEmpty(),
-          nextRefresh);
-    } finally {
-      refreshLock.set(false);
+    } else {
+      // Token refresh did not succeed, retry soon
+      delay = Duration.ofSeconds(1); // TODO configurable ?
     }
+    scheduleRefreshAttempt(delay);
+  }
+
+  private void scheduleRefreshAttempt(Duration delay) {
+    this.refreshTask = asyncExec.schedule(this::refreshTokenAttempt, delay);
+  }
+
+  private boolean doRefreshToken() {
+    String newToken = loadTokenFromFile();
+
+    // Only update cached token if we successfully loaded a new one
+    if (newToken == null) {
+      logger.debug("Couldn't load new bearer token from {}, will retry.", tokenFilePath);
+      return false;
+    }
+    cachedToken = newToken;
+
+    lastRefresh = clock.get();
+
+    // Calculate next refresh time based on current token (may be cached)
+    nextRefresh = calculateNextRefresh(cachedToken);
+
+    logger.debug(
+        "Token refreshed from file: {} (token present: {}), next refresh: {}",
+        tokenFilePath,
+        cachedToken != null && !cachedToken.isEmpty(),
+        nextRefresh);
+
+    return true;
   }
 
   /** Calculate when the next refresh should occur based on JWT expiration or fixed interval. */
@@ -176,7 +202,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
       Instant refreshTime = expiration.get().minus(jwtExpirationBuffer);
 
       // Ensure refresh time is in the future and not too soon (at least 1 second)
-      Instant minRefreshTime = clock.instant().plus(Duration.ofSeconds(1));
+      Instant minRefreshTime = clock.get().plus(Duration.ofSeconds(1));
       if (refreshTime.isBefore(minRefreshTime)) {
         logger.warn(
             "JWT expires too soon ({}), using minimum refresh interval instead", expiration.get());

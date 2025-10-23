@@ -31,6 +31,7 @@ import java.time.Duration;
 import java.util.Optional;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
+import org.apache.polaris.nosql.async.java.JavaPoolAsyncExec;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -63,14 +64,16 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(opaConfig.auth()).thenReturn(authConfig);
     when(opaConfig.http()).thenReturn(httpConfig);
 
-    OpaPolarisAuthorizerFactory factory =
-        new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC());
+    try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      OpaPolarisAuthorizerFactory factory =
+          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec);
 
-    // Create authorizer
-    RealmConfig realmConfig = mock(RealmConfig.class);
-    OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+      // Create authorizer
+      RealmConfig realmConfig = mock(RealmConfig.class);
+      OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
-    assertThat(authorizer).isNotNull();
+      assertThat(authorizer).isNotNull();
+    }
   }
 
   @Test
@@ -106,22 +109,30 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(opaConfig.auth()).thenReturn(authConfig);
     when(opaConfig.http()).thenReturn(httpConfig);
 
-    OpaPolarisAuthorizerFactory factory =
-        new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC());
+    try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      OpaPolarisAuthorizerFactory factory =
+          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec);
 
-    // Create authorizer
-    RealmConfig realmConfig = mock(RealmConfig.class);
-    OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+      // Create authorizer
+      RealmConfig realmConfig = mock(RealmConfig.class);
+      OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
-    assertThat(authorizer).isNotNull();
+      assertThat(authorizer).isNotNull();
 
-    // Also verify that the token provider actually reads from the file
-    try (FileBearerTokenProvider provider =
-        new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1), Clock.systemUTC())) {
+      // Also verify that the token provider actually reads from the file
+      try (FileBearerTokenProvider provider =
+          new FileBearerTokenProvider(
+              tokenFile,
+              Duration.ofMinutes(5),
+              true,
+              Duration.ofMinutes(1),
+              Duration.ofSeconds(10),
+              asyncExec,
+              Clock.systemUTC()::instant)) {
 
-      String actualToken = provider.getToken();
-      assertThat(actualToken).isEqualTo(tokenValue);
+        String actualToken = provider.getToken();
+        assertThat(actualToken).isEqualTo(tokenValue);
+      }
     }
   }
 
@@ -141,14 +152,16 @@ public class OpaPolarisAuthorizerFactoryTest {
     when(opaConfig.auth()).thenReturn(authConfig);
     when(opaConfig.http()).thenReturn(httpConfig);
 
-    OpaPolarisAuthorizerFactory factory =
-        new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC());
+    try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+      OpaPolarisAuthorizerFactory factory =
+          new OpaPolarisAuthorizerFactory(opaConfig, Clock.systemUTC(), asyncExec);
 
-    // Create authorizer
-    RealmConfig realmConfig = mock(RealmConfig.class);
-    OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
+      // Create authorizer
+      RealmConfig realmConfig = mock(RealmConfig.class);
+      OpaPolarisAuthorizer authorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
 
-    assertThat(authorizer).isNotNull();
+      assertThat(authorizer).isNotNull();
+    }
   }
 
   private OpaAuthorizationConfig.HttpConfig createMockHttpConfig() {
