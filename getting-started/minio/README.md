@@ -60,7 +60,7 @@ bin/spark-sql \
     --conf spark.sql.catalog.polaris.client.region=irrelevant
 ```
 
-Note: `s3cr3t` is defined as the password for the `root` users in the `docker-compose.yml` file.
+Note: `s3cr3t` is defined as the password for the `root` user in the `docker-compose.yml` file.
 
 Note: The `client.region` configuration is required for the AWS S3 client to work, but it is not used in this example
 since MinIO does not require a specific region.
