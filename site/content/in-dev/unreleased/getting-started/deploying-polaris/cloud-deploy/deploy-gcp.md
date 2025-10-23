@@ -32,7 +32,6 @@ The requirements to run the script below are:
 * Ensure the VM's Principal has access to at least Read-only scope on Compute Engine: `compute.readonly`.
 
 ```shell
-chmod +x getting-started/assets/cloud_providers/deploy-gcp.sh
 export ASSETS_PATH=$(pwd)/getting-started/assets/
 export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
