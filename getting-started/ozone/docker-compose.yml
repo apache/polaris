@@ -109,9 +109,6 @@ services:
     command:
       - "-c"
       - >-
-        chmod +x /assets/polaris/create-catalog.sh;
-        chmod +x /assets/polaris/obtain-token.sh;
-        chmod +x /assets/cloud_providers/await-s3.sh;
         /assets/cloud_providers/await-s3.sh http://ozone-s3g:9878/ ;
         source /assets/polaris/obtain-token.sh;
         echo Creating bucket...;
