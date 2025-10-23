@@ -21,7 +21,7 @@ title: "StarRocks and Apache Polaris Integration: Building a Unified, High-Perfo
 date: 2025-10-21
 author: Wayne Yang
 ---
-## Introduction: Why StarRocks + Polaris?
+## Introduction: Why StarRocks + Apache Polaris?
 
 ### Modern Data-Architecture Pain Points: Silos & Engine Lock-in
 Today’s data-driven enterprises face two chronic ailments:
@@ -76,6 +76,9 @@ An open, interoperable architecture is no longer a luxury, it is a survival requ
 * Applies its own CBO and vectorised execution for query acceleration
 
 ## Deploy and Configure Polaris
+
+User can refer to [Polaris Quickstart](https://polaris.apache.org/releases/1.1.0/getting-started/) to deploy Polaris,
+Here we will compile from source code and deploy Polaris via a standalone process.
 
 ### Clone Source Code and Start Polaris
 
