@@ -104,22 +104,26 @@ menu:
       url: "/in-dev/unreleased/"
       parent: "releases"
       weight: 10
+    - name: "1.2.0"
+      url: "/releases/1.2.0/"
+      parent: "releases"
+      weight: 20
     - name: "1.1.0"
       url: "/releases/1.1.0/"
       parent: "releases"
-      weight: 20
+      weight: 30
     - name: "1.0.1"
       url: "/releases/1.0.1/"
       parent: "releases"
-      weight: 30
+      weight: 40
     - name: "1.0.0"
       url: "/releases/1.0.0/"
       parent: "releases"
-      weight: 40
+      weight: 50
     - name: "0.9.0"
       url: "/releases/0.9.0/"
       parent: "releases"
-      weight: 50
+      weight: 60
 
     - name: "Downloads"
       identifier: "downloads"
