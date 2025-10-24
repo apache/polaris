@@ -16,19 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.core.auth;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.config.RealmConfig;
 
 /** Factory for creating the default Polaris authorizer implementation. */
 @ApplicationScoped
 @Identifier("internal")
-class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
+public class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
   @Override
   public PolarisAuthorizer create(RealmConfig realmConfig) {

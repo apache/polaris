@@ -112,6 +112,7 @@ dependencies {
   testFixturesApi(libs.jakarta.ws.rs.api)
 
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jakarta.enterprise.cdi.api)
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }

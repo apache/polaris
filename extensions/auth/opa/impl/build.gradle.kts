@@ -37,10 +37,16 @@ dependencies {
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
 
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
   compileOnly(libs.smallrye.config.core)
+
+  testCompileOnly(project(":polaris-immutables"))
+  testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
   testImplementation(testFixtures(project(":polaris-core")))
   testImplementation(platform(libs.junit.bom))

@@ -175,7 +175,7 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
           refreshInterval,
           jwtExpirationRefresh,
           jwtExpirationBuffer,
-          Duration.ofSeconds(5),
+          Duration.ofSeconds(5), // TODO: make configurable
           asyncExec,
           clock::instant);
     } else {

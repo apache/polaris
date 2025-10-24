@@ -27,6 +27,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Configuration for OPA (Open Policy Agent) authorization.
@@ -35,6 +36,7 @@ import java.util.Optional;
  * release. It may undergo breaking changes in future versions. Use with caution in production
  * environments.
  */
+@PolarisImmutable
 @ConfigMapping(prefix = "polaris.authorization.opa")
 public interface OpaAuthorizationConfig {
 
@@ -75,6 +77,7 @@ public interface OpaAuthorizationConfig {
   }
 
   /** HTTP client configuration for OPA communication. */
+  @PolarisImmutable
   interface HttpConfig {
     @WithDefault("PT2S")
     Duration timeout();
@@ -88,6 +91,7 @@ public interface OpaAuthorizationConfig {
   }
 
   /** Authentication configuration for OPA communication. */
+  @PolarisImmutable
   interface AuthenticationConfig {
     /** Type of authentication */
     @WithDefault("none")
@@ -113,6 +117,7 @@ public interface OpaAuthorizationConfig {
     }
   }
 
+  @PolarisImmutable
   interface BearerTokenConfig {
     /** Static bearer token configuration */
     Optional<StaticTokenConfig> staticToken();
@@ -135,6 +140,7 @@ public interface OpaAuthorizationConfig {
     }
 
     /** Configuration for static bearer tokens */
+    @PolarisImmutable
     interface StaticTokenConfig {
       /** Static bearer token value */
       String value();
@@ -146,6 +152,7 @@ public interface OpaAuthorizationConfig {
     }
 
     /** Configuration for file-based bearer tokens */
+    @PolarisImmutable
     interface FileBasedConfig {
       /** Path to file containing bearer token */
       Path path();

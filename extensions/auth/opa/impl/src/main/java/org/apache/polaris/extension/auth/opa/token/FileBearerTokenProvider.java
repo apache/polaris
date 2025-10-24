@@ -118,8 +118,8 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
 
   @Override
   public String getToken() {
-    String token = cachedToken;
-    if (token != null) {
+    ;
+    if (cachedToken != null) {
       // Regular case, we have a cached token
       return cachedToken;
     }
@@ -155,7 +155,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
       }
     } else {
       // Token refresh did not succeed, retry soon
-      delay = Duration.ofSeconds(1); // TODO configurable ?
+      delay = Duration.ofSeconds(1); // TODO: make configurable
     }
     scheduleRefreshAttempt(delay);
   }
@@ -166,7 +166,6 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
 
   private boolean doRefreshToken() {
     String newToken = loadTokenFromFile();
-
     // Only update cached token if we successfully loaded a new one
     if (newToken == null) {
       logger.debug("Couldn't load new bearer token from {}, will retry.", tokenFilePath);
@@ -182,7 +181,7 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     logger.debug(
         "Token refreshed from file: {} (token present: {}), next refresh: {}",
         tokenFilePath,
-        cachedToken != null && !cachedToken.isEmpty(),
+        cachedToken != null,
         nextRefresh);
 
     return true;

@@ -20,7 +20,6 @@ package org.apache.polaris.extension.auth.opa;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.net.URI;
@@ -28,7 +27,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.Optional;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
 import org.apache.polaris.nosql.async.java.JavaPoolAsyncExec;
@@ -41,28 +39,27 @@ public class OpaPolarisAuthorizerFactoryTest {
 
   @Test
   public void testFactoryWithStaticTokenConfiguration() {
-    // Mock configuration for static token
-    OpaAuthorizationConfig.BearerTokenConfig.StaticTokenConfig staticTokenConfig =
-        mock(OpaAuthorizationConfig.BearerTokenConfig.StaticTokenConfig.class);
-    when(staticTokenConfig.value()).thenReturn("static-token-value");
-
-    OpaAuthorizationConfig.BearerTokenConfig bearerTokenConfig =
-        mock(OpaAuthorizationConfig.BearerTokenConfig.class);
-    when(bearerTokenConfig.staticToken()).thenReturn(Optional.of(staticTokenConfig));
-    when(bearerTokenConfig.fileBased()).thenReturn(Optional.empty());
-
-    OpaAuthorizationConfig.AuthenticationConfig authConfig =
-        mock(OpaAuthorizationConfig.AuthenticationConfig.class);
-    when(authConfig.type()).thenReturn(OpaAuthorizationConfig.AuthenticationType.BEARER);
-    when(authConfig.bearer()).thenReturn(Optional.of(bearerTokenConfig));
-
-    OpaAuthorizationConfig.HttpConfig httpConfig = createMockHttpConfig();
-
-    OpaAuthorizationConfig opaConfig = mock(OpaAuthorizationConfig.class);
-    when(opaConfig.policyUri())
-        .thenReturn(Optional.of(URI.create("http://localhost:8181/v1/data/polaris/authz/allow")));
-    when(opaConfig.auth()).thenReturn(authConfig);
-    when(opaConfig.http()).thenReturn(httpConfig);
+    // Build configuration for static token
+    OpaAuthorizationConfig opaConfig =
+        ImmutableOpaAuthorizationConfig.builder()
+            .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
+            .auth(
+                ImmutableAuthenticationConfig.builder()
+                    .type(OpaAuthorizationConfig.AuthenticationType.BEARER)
+                    .bearer(
+                        ImmutableBearerTokenConfig.builder()
+                            .staticToken(
+                                ImmutableStaticTokenConfig.builder()
+                                    .value("static-token-value")
+                                    .build())
+                            .build())
+                    .build())
+            .http(
+                ImmutableHttpConfig.builder()
+                    .timeout(Duration.ofSeconds(2))
+                    .verifySsl(true)
+                    .build())
+            .build();
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       OpaPolarisAuthorizerFactory factory =
@@ -83,31 +80,30 @@ public class OpaPolarisAuthorizerFactoryTest {
     String tokenValue = "file-based-token-value";
     Files.writeString(tokenFile, tokenValue);
 
-    // Mock configuration for file-based token
-    OpaAuthorizationConfig.BearerTokenConfig.FileBasedConfig fileTokenConfig =
-        mock(OpaAuthorizationConfig.BearerTokenConfig.FileBasedConfig.class);
-    when(fileTokenConfig.path()).thenReturn(tokenFile);
-    when(fileTokenConfig.refreshInterval()).thenReturn(Optional.of(Duration.ofMinutes(5)));
-    when(fileTokenConfig.jwtExpirationRefresh()).thenReturn(Optional.of(true));
-    when(fileTokenConfig.jwtExpirationBuffer()).thenReturn(Optional.of(Duration.ofMinutes(1)));
-
-    OpaAuthorizationConfig.BearerTokenConfig bearerTokenConfig =
-        mock(OpaAuthorizationConfig.BearerTokenConfig.class);
-    when(bearerTokenConfig.staticToken()).thenReturn(Optional.empty());
-    when(bearerTokenConfig.fileBased()).thenReturn(Optional.of(fileTokenConfig));
-
-    OpaAuthorizationConfig.AuthenticationConfig authConfig =
-        mock(OpaAuthorizationConfig.AuthenticationConfig.class);
-    when(authConfig.type()).thenReturn(OpaAuthorizationConfig.AuthenticationType.BEARER);
-    when(authConfig.bearer()).thenReturn(Optional.of(bearerTokenConfig));
-
-    OpaAuthorizationConfig.HttpConfig httpConfig = createMockHttpConfig();
-
-    OpaAuthorizationConfig opaConfig = mock(OpaAuthorizationConfig.class);
-    when(opaConfig.policyUri())
-        .thenReturn(Optional.of(URI.create("http://localhost:8181/v1/data/polaris/authz/allow")));
-    when(opaConfig.auth()).thenReturn(authConfig);
-    when(opaConfig.http()).thenReturn(httpConfig);
+    // Build configuration for file-based token
+    OpaAuthorizationConfig opaConfig =
+        ImmutableOpaAuthorizationConfig.builder()
+            .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
+            .auth(
+                ImmutableAuthenticationConfig.builder()
+                    .type(OpaAuthorizationConfig.AuthenticationType.BEARER)
+                    .bearer(
+                        ImmutableBearerTokenConfig.builder()
+                            .fileBased(
+                                ImmutableFileBasedConfig.builder()
+                                    .path(tokenFile)
+                                    .refreshInterval(Duration.ofMinutes(5))
+                                    .jwtExpirationRefresh(true)
+                                    .jwtExpirationBuffer(Duration.ofMinutes(1))
+                                    .build())
+                            .build())
+                    .build())
+            .http(
+                ImmutableHttpConfig.builder()
+                    .timeout(Duration.ofSeconds(2))
+                    .verifySsl(true)
+                    .build())
+            .build();
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       OpaPolarisAuthorizerFactory factory =
@@ -138,19 +134,20 @@ public class OpaPolarisAuthorizerFactoryTest {
 
   @Test
   public void testFactoryWithNoTokenConfiguration() {
-    // Mock configuration with no authentication
-    OpaAuthorizationConfig.AuthenticationConfig authConfig =
-        mock(OpaAuthorizationConfig.AuthenticationConfig.class);
-    when(authConfig.type()).thenReturn(OpaAuthorizationConfig.AuthenticationType.NONE);
-    when(authConfig.bearer()).thenReturn(Optional.empty());
-
-    OpaAuthorizationConfig.HttpConfig httpConfig = createMockHttpConfig();
-
-    OpaAuthorizationConfig opaConfig = mock(OpaAuthorizationConfig.class);
-    when(opaConfig.policyUri())
-        .thenReturn(Optional.of(URI.create("http://localhost:8181/v1/data/polaris/authz/allow")));
-    when(opaConfig.auth()).thenReturn(authConfig);
-    when(opaConfig.http()).thenReturn(httpConfig);
+    // Build configuration with no authentication
+    OpaAuthorizationConfig opaConfig =
+        ImmutableOpaAuthorizationConfig.builder()
+            .policyUri(URI.create("http://localhost:8181/v1/data/polaris/authz/allow"))
+            .auth(
+                ImmutableAuthenticationConfig.builder()
+                    .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                    .build())
+            .http(
+                ImmutableHttpConfig.builder()
+                    .timeout(Duration.ofSeconds(2))
+                    .verifySsl(true)
+                    .build())
+            .build();
 
     try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
       OpaPolarisAuthorizerFactory factory =
@@ -162,14 +159,5 @@ public class OpaPolarisAuthorizerFactoryTest {
 
       assertThat(authorizer).isNotNull();
     }
-  }
-
-  private OpaAuthorizationConfig.HttpConfig createMockHttpConfig() {
-    OpaAuthorizationConfig.HttpConfig httpConfig = mock(OpaAuthorizationConfig.HttpConfig.class);
-    when(httpConfig.timeout()).thenReturn(Duration.ofSeconds(2));
-    when(httpConfig.verifySsl()).thenReturn(true);
-    when(httpConfig.trustStorePath()).thenReturn(Optional.empty());
-    when(httpConfig.trustStorePassword()).thenReturn(Optional.empty());
-    return httpConfig;
   }
 }
