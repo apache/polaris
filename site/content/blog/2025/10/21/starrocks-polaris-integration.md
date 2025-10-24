@@ -48,13 +48,12 @@ An open, interoperable architecture is no longer a luxury, it is a survival requ
 
 * Fine-grained RBAC + credential-vending (temporary STS tokens) for secure, governed sharing across engines.
 
-### Business Value of the Pairing
-**StarRocks** delivers performance; **Polaris** delivers openness. Together they let you:
+### Technical benefits
 * Keep **ONE** copy of data in Iceberg on S3, queryable by Spark, Flink, Trino, and StarRocks concurrently.
 
 * Maintain **ONE** set of role-based permissions in Polaris that apply to every engine.
 
-* Deliver BI dashboards, ad-hoc exploration and lightweight ETL operations on the same fresh dataset, zero data movement, zero lock-in.
+* Utilize **StarRocks** to deliver BI dashboards, conduct ad-hoc exploration, and perform lightweight ETL operations on the same up-to-date dataset, zero data movement and zero vendor lock-in.
 
 ## Architecture
 ![](/img/blog/2025/10/21/fig1-polaris-starrocks-architecture.png)
