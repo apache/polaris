@@ -90,22 +90,24 @@ tasks.named<JcstressTask>("jcstress") {
   inputs.files(configurations.runtimeClasspath)
   outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
 
-  // Capture jcstress output in a log file, dump that in case of a failure.
+  if (!System.getProperty("jcstress-no-capture").toBoolean()) {
+    // Capture jcstress output in a log file, dump that in case of a failure.
 
-  val logDir = project.layout.buildDirectory.dir("reports/jcstress").get().asFile
-  val logFile = File(logDir, "jcstress.log")
-  var logStream: FileOutputStream? = null
+    val logDir = project.layout.buildDirectory.dir("reports/jcstress").get().asFile
+    val logFile = File(logDir, "jcstress.log")
+    var logStream: FileOutputStream? = null
 
-  actions.addFirst {
-    logStream = FileOutputStream(logFile)
-    standardOutput = logStream
-    errorOutput = logStream
-  }
+    actions.addFirst {
+      logStream = FileOutputStream(logFile)
+      standardOutput = logStream
+      errorOutput = logStream
+    }
 
-  actions.addLast {
-    logStream?.close()
-    if (state.failure != null) {
-      logger.error("jcstress output\n{}", Files.readString(logFile.toPath()))
+    actions.addLast {
+      logStream?.close()
+      if (state.failure != null) {
+        logger.error("jcstress output\n{}", Files.readString(logFile.toPath()))
+      }
     }
   }
 }
