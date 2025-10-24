@@ -48,7 +48,7 @@ plugins.withType<JandexPlugin>().configureEach {
     version =
       versionCatalogs
         .named("libs")
-        .findLibrary("jandex")
+        .findLibrary("smallrye-jandex")
         .orElseThrow { GradleException("jandex version not found in libs.versions.toml") }
         .get()
         .version
