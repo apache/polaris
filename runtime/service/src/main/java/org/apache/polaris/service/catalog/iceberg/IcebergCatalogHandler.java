@@ -68,6 +68,7 @@ import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.CreateNamespaceResponse;
@@ -112,6 +113,7 @@ import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.reporting.MetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,7 +142,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final PolarisEventListener polarisEventListener;
   private final AccessConfigProvider accessConfigProvider;
-
+  private final MetricsReporter metricsReporter;
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
   protected Catalog baseCatalog = null;
@@ -164,7 +166,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener,
-      AccessConfigProvider accessConfigProvider) {
+      AccessConfigProvider accessConfigProvider,
+      MetricsReporter metricsReporter) {
     super(
         diagnostics,
         callContext,
@@ -180,6 +183,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.polarisEventListener = polarisEventListener;
     this.accessConfigProvider = accessConfigProvider;
+    this.metricsReporter = metricsReporter;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -587,6 +591,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         op, TableIdentifier.of(namespace, request.name()));
 
     return catalogHandlerUtils.registerTable(baseCatalog, namespace, request);
+  }
+
+  public void reportMetric(
+      String prefix, String namespace, String table, ReportMetricsRequest reportMetricsRequest) {
+    metricsReporter.reportMetric(prefix, namespace, table, reportMetricsRequest);
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {

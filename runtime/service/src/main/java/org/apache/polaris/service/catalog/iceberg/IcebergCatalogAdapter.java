@@ -87,6 +87,7 @@ import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.reporting.MetricsReporter;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -150,6 +151,7 @@ public class IcebergCatalogAdapter
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
   private final PolarisEventListener polarisEventListener;
   private final AccessConfigProvider accessConfigProvider;
+  private final MetricsReporter metricsReporter;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -167,7 +169,8 @@ public class IcebergCatalogAdapter
       CatalogHandlerUtils catalogHandlerUtils,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener,
-      AccessConfigProvider accessConfigProvider) {
+      AccessConfigProvider accessConfigProvider,
+      MetricsReporter metricsReporter) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -184,6 +187,7 @@ public class IcebergCatalogAdapter
     this.externalCatalogFactories = externalCatalogFactories;
     this.polarisEventListener = polarisEventListener;
     this.accessConfigProvider = accessConfigProvider;
+    this.metricsReporter = metricsReporter;
   }
 
   /**
@@ -224,7 +228,8 @@ public class IcebergCatalogAdapter
         catalogHandlerUtils,
         externalCatalogFactories,
         polarisEventListener,
-        accessConfigProvider);
+        accessConfigProvider,
+        metricsReporter);
   }
 
   @Override
@@ -755,7 +760,13 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.reportMetric(prefix, namespace, table, reportMetricsRequest);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
