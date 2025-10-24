@@ -106,6 +106,8 @@ dependencies {
 
   implementation(libs.jakarta.servlet.api)
 
+  runtimeOnly(project(":polaris-async-vertx"))
+
   testFixturesApi(project(":polaris-tests")) {
     // exclude all spark dependencies
     exclude(group = "org.apache.iceberg", module = "iceberg-spark-3.5_2.12")
