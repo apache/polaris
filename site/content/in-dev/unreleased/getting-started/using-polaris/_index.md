@@ -31,7 +31,7 @@ export CLIENT_ID=YOUR_CLIENT_ID
 export CLIENT_SECRET=YOUR_CLIENT_SECRET
 ```
 
-Refer to the [Creating a Catalog]({{% ref "creating-a-catalog" %}}) page for instructions on defining a
+Refer to the [Creating a Catalog]({{% ref "../creating-a-catalog" %}}) page for instructions on defining a
 catalog for your specific storage type. The following examples assume the catalog's name is `quickstart_catalog`.
 
 In Polaris, the [catalog]({{% relref "../../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../../entities#table" %}}) and [views]({{% relref "../../entities#view" %}}) are organized under.
