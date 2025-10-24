@@ -91,7 +91,8 @@ public class TracingFilterTest {
         .when()
         .post()
         .then()
-        .statusCode(200);
+        .statusCode(200)
+        .header("Polaris-Request-Id", "12345");
 
     List<SpanData> spans =
         await()
