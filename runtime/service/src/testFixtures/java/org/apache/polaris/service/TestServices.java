@@ -70,9 +70,9 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
@@ -112,7 +112,7 @@ public record TestServices(
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
     PolarisEventListener polarisEventListener,
-    AccessConfigProvider accessConfigProvider) {
+    StorageAccessConfigProvider storageAccessConfigProvider) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -273,8 +273,8 @@ public record TestServices(
       PolarisCredentialManager credentialManager =
           new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
 
-      AccessConfigProvider accessConfigProvider =
-          new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+        StorageAccessConfigProvider storageAccessConfigProvider  =
+          new StorageAccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
@@ -285,7 +285,7 @@ public record TestServices(
               diagnostics,
               resolverFactory,
               taskExecutor,
-              accessConfigProvider,
+                  storageAccessConfigProvider,
               fileIOFactory,
               polarisEventListener,
               metaStoreManager,
@@ -317,7 +317,7 @@ public record TestServices(
               catalogHandlerUtils,
               externalCatalogFactory,
               polarisEventListener,
-              accessConfigProvider,
+                  storageAccessConfigProvider,
               new DefaultMetricsReporter());
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
@@ -359,7 +359,7 @@ public record TestServices(
           fileIOFactory,
           taskExecutor,
           polarisEventListener,
-          accessConfigProvider);
+          storageAccessConfigProvider);
     }
   }
 

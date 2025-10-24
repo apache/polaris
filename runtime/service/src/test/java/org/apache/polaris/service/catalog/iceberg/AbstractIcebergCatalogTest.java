@@ -136,11 +136,11 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -252,7 +252,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private PolarisPrincipal authenticatedRoot;
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
-  private AccessConfigProvider accessConfigProvider;
+  private StorageAccessConfigProvider storageAccessConfigProvider;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -290,8 +290,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
-    accessConfigProvider =
-        new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+    storageAccessConfigProvider =
+        new StorageAccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
     EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =
         (principal, referenceCatalogName) ->

@@ -134,7 +134,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
         polarisEventListener,
-        accessConfigProvider);
+        storageAccessConfigProvider);
   }
 
   protected void doTestInsufficientPrivileges(
@@ -274,7 +274,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
             polarisEventListener,
-            accessConfigProvider);
+            storageAccessConfigProvider);
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -312,7 +312,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
             polarisEventListener,
-            accessConfigProvider);
+            storageAccessConfigProvider);
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),
@@ -1189,7 +1189,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
         polarisEventListener,
-        accessConfigProvider);
+        storageAccessConfigProvider);
   }
 
   @Test

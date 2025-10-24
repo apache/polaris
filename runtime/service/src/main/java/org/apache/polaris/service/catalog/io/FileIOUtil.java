@@ -26,9 +26,9 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.slf4j.Logger;
@@ -74,7 +74,7 @@ public class FileIOUtil {
    *       and read/write metadata JSON files.
    * </ul>
    */
-  public static AccessConfig refreshAccessConfig(
+  public static StorageAccessConfig refreshAccessConfig(
       CallContext callContext,
       StorageCredentialCache storageCredentialCache,
       PolarisCredentialVendor credentialVendor,
@@ -93,7 +93,7 @@ public class FileIOUtil {
           .atDebug()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Skipping generation of subscoped creds for table");
-      return AccessConfig.builder().build();
+      return StorageAccessConfig.builder().build();
     }
 
     boolean allowList =
@@ -105,7 +105,7 @@ public class FileIOUtil {
                 || storageActions.contains(PolarisStorageActions.ALL)
             ? tableLocations
             : Set.of();
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         storageCredentialCache.getOrGenerateSubScopeCreds(
             credentialVendor,
             callContext.getPolarisCallContext(),
@@ -117,12 +117,12 @@ public class FileIOUtil {
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("credentialKeys", accessConfig.credentials().keySet())
-        .addKeyValue("extraProperties", accessConfig.extraProperties())
+        .addKeyValue("credentialKeys", storageAccessConfig.credentials().keySet())
+        .addKeyValue("extraProperties", storageAccessConfig.extraProperties())
         .log("Loaded scoped credentials for table");
-    if (accessConfig.credentials().isEmpty()) {
+    if (storageAccessConfig.credentials().isEmpty()) {
       LOGGER.debug("No credentials found for table");
     }
-    return accessConfig;
+    return storageAccessConfig;
   }
 }

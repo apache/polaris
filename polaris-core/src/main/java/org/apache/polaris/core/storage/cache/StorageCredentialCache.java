@@ -37,8 +37,8 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,7 +103,7 @@ public class StorageCredentialCache {
    * @param allowedWriteLocations a set of allowed to write locations.
    * @return the a map of string containing the scoped creds information
    */
-  public AccessConfig getOrGenerateSubScopeCreds(
+  public StorageAccessConfig getOrGenerateSubScopeCreds(
       @Nonnull PolarisCredentialVendor credentialVendor,
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntity polarisEntity,
@@ -156,11 +156,11 @@ public class StorageCredentialCache {
   @VisibleForTesting
   @Nullable
   Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
-    return getAccessConfig(key).map(AccessConfig::credentials).orElse(null);
+    return getAccessConfig(key).map(StorageAccessConfig::credentials).orElse(null);
   }
 
   @VisibleForTesting
-  Optional<AccessConfig> getAccessConfig(StorageCredentialCacheKey key) {
+  Optional<StorageAccessConfig> getAccessConfig(StorageCredentialCacheKey key) {
     return Optional.ofNullable(cache.getIfPresent(key))
         .map(StorageCredentialCacheEntry::toAccessConfig);
   }

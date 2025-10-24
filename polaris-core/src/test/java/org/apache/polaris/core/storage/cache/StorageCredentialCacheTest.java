@@ -42,7 +42,7 @@ import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
-import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
@@ -412,7 +412,7 @@ public class StorageCredentialCacheTest {
               : String.valueOf(Long.MAX_VALUE);
       res.add(
           new ScopedCredentialsResult(
-              AccessConfig.builder()
+              StorageAccessConfig.builder()
                   .put(StorageAccessProperty.AWS_KEY_ID, "key_id_" + finalI)
                   .put(StorageAccessProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
                   .put(StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
@@ -421,14 +421,14 @@ public class StorageCredentialCacheTest {
       if (res.size() == number) return res;
       res.add(
           new ScopedCredentialsResult(
-              AccessConfig.builder()
+              StorageAccessConfig.builder()
                   .put(StorageAccessProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
                   .put(StorageAccessProperty.EXPIRATION_TIME, expireTime)
                   .build()));
       if (res.size() == number) return res;
       res.add(
           new ScopedCredentialsResult(
-              AccessConfig.builder()
+              StorageAccessConfig.builder()
                   .put(StorageAccessProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
                   .put(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
                   .build()));
@@ -459,7 +459,7 @@ public class StorageCredentialCacheTest {
     storageCredentialCache = newStorageCredentialCache();
     ScopedCredentialsResult properties =
         new ScopedCredentialsResult(
-            AccessConfig.builder()
+            StorageAccessConfig.builder()
                 .put(StorageAccessProperty.AWS_SECRET_KEY, "super-secret-123")
                 .put(StorageAccessProperty.AWS_ENDPOINT, "test-endpoint1")
                 .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, "true")
@@ -477,7 +477,7 @@ public class StorageCredentialCacheTest {
         .thenReturn(properties);
     List<PolarisEntity> entityList = getPolarisEntities();
 
-    AccessConfig config =
+    StorageAccessConfig config =
         storageCredentialCache.getOrGenerateSubScopeCreds(
             metaStoreManager,
             callCtx,

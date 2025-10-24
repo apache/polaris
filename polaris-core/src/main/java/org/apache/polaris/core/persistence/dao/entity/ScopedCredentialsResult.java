@@ -20,13 +20,13 @@ package org.apache.polaris.core.persistence.dao.entity;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 
 /** Result of a getSubscopedCredsForEntity() call */
 public class ScopedCredentialsResult extends BaseResult {
 
   // null if not success. Else, set of name/value pairs for the credentials
-  private final AccessConfig accessConfig;
+  private final StorageAccessConfig storageAccessConfig;
 
   /**
    * Constructor for an error
@@ -37,20 +37,20 @@ public class ScopedCredentialsResult extends BaseResult {
   public ScopedCredentialsResult(
       @Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
-    this.accessConfig = null;
+    this.storageAccessConfig = null;
   }
 
   /**
    * Constructor for success
    *
-   * @param accessConfig credentials
+   * @param storageAccessConfig credentials
    */
-  public ScopedCredentialsResult(AccessConfig accessConfig) {
+  public ScopedCredentialsResult(StorageAccessConfig storageAccessConfig) {
     super(ReturnStatus.SUCCESS);
-    this.accessConfig = accessConfig;
+    this.storageAccessConfig = storageAccessConfig;
   }
 
-  public AccessConfig getAccessConfig() {
-    return accessConfig;
+  public StorageAccessConfig getAccessConfig() {
+    return storageAccessConfig;
   }
 }
