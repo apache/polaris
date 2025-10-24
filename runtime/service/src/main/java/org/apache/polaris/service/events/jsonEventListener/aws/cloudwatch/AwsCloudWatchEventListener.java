@@ -19,8 +19,11 @@
 
 package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -29,14 +32,17 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
-import org.apache.polaris.service.events.jsonEventListener.PropertyMapEventListener;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.json.mixins.ObjectMapperFactory;
+import org.apache.polaris.service.events.jsonEventListener.AfterRefreshTableEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.regions.Region;
@@ -51,9 +57,9 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse
 
 @ApplicationScoped
 @Identifier("aws-cloudwatch")
-public class AwsCloudWatchEventListener extends PropertyMapEventListener {
+public class AwsCloudWatchEventListener extends AfterRefreshTableEventListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(AwsCloudWatchEventListener.class);
-  final ObjectMapper objectMapper = new ObjectMapper();
+  final ObjectMapper objectMapper;
 
   private CloudWatchLogsAsyncClient client;
 
@@ -77,6 +83,7 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
     this.region = Region.of(config.awsCloudWatchRegion());
     this.synchronousMode = config.synchronousMode();
     this.clock = clock;
+    this.objectMapper = ObjectMapperFactory.create();
     customizer.customize(this.objectMapper);
   }
 
@@ -151,28 +158,44 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
     }
   }
 
+  @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+  public record CloudWatchEvent(
+      String principal,
+      String realmId,
+      Collection<String> activatedRoles,
+      String eventType,
+      @JsonUnwrapped PolarisEvent event // flatten
+      ) {}
+
   @Override
-  protected void transformAndSendEvent(HashMap<String, Object> properties) {
-    properties.put("realm_id", callContext.getRealmContext().getRealmIdentifier());
-    properties.put("principal", securityContext.getUserPrincipal().getName());
-    properties.put(
-        "activated_roles", ((PolarisPrincipal) securityContext.getUserPrincipal()).getRoles());
-    // TODO: Add request ID when it is available
+  protected void transformAndSendEvent(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
+
+    CloudWatchEvent payload =
+        new CloudWatchEvent(
+            securityContext.getUserPrincipal().getName(),
+            callContext.getRealmContext().getRealmIdentifier(),
+            ((PolarisPrincipal) securityContext.getUserPrincipal()).getRoles(),
+            event.getClass().getSimpleName(),
+            event);
+
     String eventAsJson;
     try {
-      eventAsJson = objectMapper.writeValueAsString(properties);
-    } catch (JsonProcessingException e) {
-      LOGGER.error("Error processing event into JSON string: ", e);
-      LOGGER.debug("Failed to convert the following object into JSON string: {}", properties);
+      eventAsJson = objectMapper.writeValueAsString(payload);
+    } catch (JsonProcessingException ex) {
+      LOGGER.error("Error serializing CloudWatch payload: ", ex);
+      LOGGER.debug("Failed to convert the following object into JSON string: {}", payload);
       return;
     }
+
     InputLogEvent inputLogEvent =
         InputLogEvent.builder().message(eventAsJson).timestamp(clock.millis()).build();
+
     PutLogEventsRequest.Builder requestBuilder =
         PutLogEventsRequest.builder()
             .logGroupName(logGroup)
             .logStreamName(logStream)
             .logEvents(List.of(inputLogEvent));
+
     CompletableFuture<PutLogEventsResponse> future =
         client
             .putLogEvents(requestBuilder.build())
@@ -183,6 +206,7 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
                         "Error writing log to CloudWatch. Event: {}, Error: ", inputLogEvent, err);
                   }
                 });
+
     if (synchronousMode) {
       future.join();
     }
