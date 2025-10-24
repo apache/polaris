@@ -49,7 +49,7 @@ Tasks that need human intervention:
 * Contents of jar artifacts `META-INF/LICENSE` and `META-INF/NOTICE` files are correct.
 * All files have license headers if necessary.
   This is (mostly) verified using the "rat" tool during builds/CI.
-* No compiled artifacts are bundled in the source archive.
+* No disallowed binary artifacts are bundled in the source archive.
   This is a (soft) requirement to be held true by committers.   
 
 **Imply good intent!**
