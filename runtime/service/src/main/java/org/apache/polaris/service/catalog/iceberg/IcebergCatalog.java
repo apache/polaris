@@ -1493,6 +1493,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               "Generic table with same name already exists: %s", tableIdentifier);
         }
       }
+      Map<String, String> storedProperties = buildTableMetadataPropertiesMap(metadata);
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
       String existingLocation;
@@ -1500,7 +1501,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         existingLocation = null;
         entity =
             new IcebergTableLikeEntity.Builder(
-                    PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, newLocation)
+                    PolarisEntitySubType.ICEBERG_TABLE,
+                    tableIdentifier,
+                    Map.of(),
+                    storedProperties,
+                    newLocation)
                 .setCatalogId(getCatalogId())
                 .setBaseLocation(metadata.location())
                 .setId(
@@ -1510,6 +1515,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         existingLocation = entity.getMetadataLocation();
         entity =
             new IcebergTableLikeEntity.Builder(entity)
+                .setInternalProperties(storedProperties)
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation)
                 .build();
@@ -1637,6 +1643,41 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           meta,
           String.format(Locale.ROOT, "%05d-%s%s", newVersion, UUID.randomUUID(), fileExtension));
     }
+  }
+
+  private static Map<String, String> buildTableMetadataPropertiesMap(TableMetadata metadata) {
+    Map<String, String> storedProperties = new HashMap<>();
+    storedProperties.put(IcebergTableLikeEntity.LOCATION, metadata.location());
+    storedProperties.put(
+        IcebergTableLikeEntity.FORMAT_VERSION, String.valueOf(metadata.formatVersion()));
+    storedProperties.put(IcebergTableLikeEntity.TABLE_UUID, metadata.uuid());
+    storedProperties.put(
+        IcebergTableLikeEntity.CURRENT_SCHEMA_ID, String.valueOf(metadata.currentSchemaId()));
+    if (metadata.currentSnapshot() != null) {
+      storedProperties.put(
+          IcebergTableLikeEntity.CURRENT_SNAPSHOT_ID,
+          String.valueOf(metadata.currentSnapshot().snapshotId()));
+    }
+    storedProperties.put(
+        IcebergTableLikeEntity.LAST_COLUMN_ID, String.valueOf(metadata.lastColumnId()));
+    storedProperties.put(IcebergTableLikeEntity.NEXT_ROW_ID, String.valueOf(metadata.nextRowId()));
+    storedProperties.put(
+        IcebergTableLikeEntity.LAST_SEQUENCE_NUMBER, String.valueOf(metadata.lastSequenceNumber()));
+    storedProperties.put(
+        IcebergTableLikeEntity.LAST_UPDATED_MILLIS, String.valueOf(metadata.lastUpdatedMillis()));
+    if (metadata.sortOrder() != null) {
+      storedProperties.put(
+          IcebergTableLikeEntity.DEFAULT_SORT_ORDER_ID,
+          String.valueOf(metadata.defaultSortOrderId()));
+    }
+    if (metadata.spec() != null) {
+      storedProperties.put(
+          IcebergTableLikeEntity.DEFAULT_SPEC_ID, String.valueOf(metadata.defaultSpecId()));
+      storedProperties.put(
+          IcebergTableLikeEntity.LAST_PARTITION_ID,
+          String.valueOf(metadata.lastAssignedPartitionId()));
+    }
+    return storedProperties;
   }
 
   /**

@@ -44,7 +44,7 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +63,7 @@ import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.FileMetadata;
 import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.NullOrder;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.RowDelta;
 import org.apache.iceberg.Schema;
@@ -104,12 +105,14 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -136,6 +139,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -156,6 +160,7 @@ import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.AbstractCollectionAssert;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.assertj.core.api.ListAssert;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.assertj.core.configuration.PreferredAssumptionException;
@@ -250,6 +255,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private SecurityContext securityContext;
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
+  private AccessConfigProvider accessConfigProvider;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -287,7 +293,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
-
+    accessConfigProvider =
+        new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
     EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =
         (securityContext, referenceCatalogName) ->
@@ -353,7 +360,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                     .build()
                     .asCatalog(serviceIdentityProvider)));
 
-    this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+    this.fileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -997,8 +1004,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // filename.
     final String tableLocation = "s3://externally-owned-bucket/validate_table/";
     final String tableMetadataLocation = tableLocation + "metadata/";
-    FileIOFactory fileIOFactory =
-        spy(new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory));
+    FileIOFactory fileIOFactory = spy(new DefaultFileIOFactory(accessConfigProvider));
     IcebergCatalog catalog = newIcebergCatalog(catalog().name(), metaStoreManager, fileIOFactory);
     catalog.initialize(
         CATALOG_NAME,
@@ -1905,8 +1911,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),
-                Optional.empty(),
-                Collections.emptyMap())
+                Optional.empty())
             .getAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)
@@ -1916,8 +1921,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_ACCESS_KEY)
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), SESSION_TOKEN);
     FileIO fileIO =
-        new TaskFileIOSupplier(
-                new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory))
+        new TaskFileIOSupplier(new DefaultFileIOFactory(accessConfigProvider))
             .apply(taskEntity, TABLE, polarisContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
@@ -2043,8 +2047,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Test
   public void testFileIOWrapper() {
-    MeasuredFileIOFactory measured =
-        new MeasuredFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+    MeasuredFileIOFactory measured = new MeasuredFileIOFactory(accessConfigProvider);
     IcebergCatalog catalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
     catalog.initialize(
         CATALOG_NAME,
@@ -2286,6 +2289,96 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     } finally {
       catalog.dropTable(TABLE, true);
     }
+  }
+
+  @Test
+  public void testTableInternalPropertiesStoredOnCommit() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_A).commit();
+    Table afterAppend = catalog.loadTable(TABLE);
+    EntityResult schemaResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            NS.toString());
+    Assertions.assertThat(schemaResult).returns(true, EntityResult::isSuccess);
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, schemaResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            TABLE.name());
+    Assertions.assertThat(tableResult)
+        .returns(true, EntityResult::isSuccess)
+        .extracting(er -> PolarisEntity.of(er.getEntity()))
+        .extracting(PolarisEntity::getInternalPropertiesAsMap)
+        .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
+        .containsEntry(NamespaceEntity.PARENT_NAMESPACE_KEY, NS.toString())
+        .containsEntry(
+            IcebergTableLikeEntity.CURRENT_SNAPSHOT_ID,
+            String.valueOf(afterAppend.currentSnapshot().snapshotId()))
+        .containsEntry(IcebergTableLikeEntity.LOCATION, afterAppend.location())
+        .containsEntry(IcebergTableLikeEntity.TABLE_UUID, afterAppend.uuid().toString())
+        .containsEntry(
+            IcebergTableLikeEntity.CURRENT_SCHEMA_ID,
+            String.valueOf(afterAppend.schema().schemaId()))
+        .containsEntry(
+            IcebergTableLikeEntity.LAST_COLUMN_ID,
+            afterAppend.schema().columns().stream()
+                .max(Comparator.comparing(Types.NestedField::fieldId))
+                .map(Types.NestedField::fieldId)
+                .orElse(0)
+                .toString())
+        .containsEntry(
+            IcebergTableLikeEntity.LAST_SEQUENCE_NUMBER,
+            String.valueOf(afterAppend.currentSnapshot().sequenceNumber()));
+
+    catalog.loadTable(TABLE).refresh();
+    catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_B).commit();
+    validatePropertiesUpdated(
+        schemaResult,
+        IcebergTableLikeEntity.CURRENT_SNAPSHOT_ID,
+        tbl -> String.valueOf(tbl.currentSnapshot().snapshotId()));
+
+    catalog.loadTable(TABLE).refresh();
+    catalog.loadTable(TABLE).updateSchema().addColumn("new_col", Types.LongType.get()).commit();
+    validatePropertiesUpdated(
+        schemaResult,
+        IcebergTableLikeEntity.CURRENT_SCHEMA_ID,
+        tbl -> String.valueOf(tbl.schema().schemaId()));
+
+    catalog.loadTable(TABLE).refresh();
+    catalog.loadTable(TABLE).replaceSortOrder().desc("new_col", NullOrder.NULLS_FIRST).commit();
+    validatePropertiesUpdated(
+        schemaResult,
+        IcebergTableLikeEntity.DEFAULT_SORT_ORDER_ID,
+        table -> String.valueOf(table.sortOrder().orderId()));
+  }
+
+  private void validatePropertiesUpdated(
+      EntityResult schemaResult, String key, Function<Table, String> expectedValue) {
+    Table afterUpdate = catalog.loadTable(TABLE);
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, schemaResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            TABLE.name());
+    Assertions.assertThat(tableResult)
+        .returns(true, EntityResult::isSuccess)
+        .extracting(er -> PolarisEntity.of(er.getEntity()))
+        .extracting(PolarisEntity::getInternalPropertiesAsMap)
+        .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
+        .containsEntry(key, expectedValue.apply(afterUpdate));
   }
 
   @Test

@@ -67,6 +67,7 @@ class CatalogsCommand(Command):
     endpoint: str
     endpoint_internal: str
     sts_endpoint: str
+    sts_unavailable: bool
     path_style_access: bool
     catalog_connection_type: str
     catalog_authentication_type: str
@@ -131,7 +132,8 @@ class CatalogsCommand(Command):
                     f" {Argument.to_flag_name(Arguments.USER_ARN)},"
                     f" {Argument.to_flag_name(Arguments.ENDPOINT)},"
                     f" {Argument.to_flag_name(Arguments.ENDPOINT_INTERNAL)},"
-                    f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)}, and"
+                    f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)},"
+                    f" {Argument.to_flag_name(Arguments.STS_UNAVAILABLE)}, and"
                     f" {Argument.to_flag_name(Arguments.PATH_STYLE_ACCESS)}"
                 )
         elif self.storage_type == StorageType.AZURE.value:
@@ -185,6 +187,7 @@ class CatalogsCommand(Command):
                 endpoint=self.endpoint,
                 endpoint_internal=self.endpoint_internal,
                 sts_endpoint=self.sts_endpoint,
+                sts_unavailable=self.sts_unavailable,
                 path_style_access=self.path_style_access,
             )
         elif self.storage_type == StorageType.AZURE.value:

@@ -176,6 +176,7 @@ class Arguments:
     ENDPOINT = "endpoint"
     ENDPOINT_INTERNAL = "endpoint_internal"
     STS_ENDPOINT = "sts_endpoint"
+    STS_UNAVAILABLE = "no_sts"
     PATH_STYLE_ACCESS = "path_style_access"
     CATALOG_CONNECTION_TYPE = "catalog_connection_type"
     CATALOG_AUTHENTICATION_TYPE = "catalog_authentication_type"
@@ -250,6 +251,9 @@ class Hints:
             ENDPOINT_INTERNAL = "(Only for S3) The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use"
             STS_ENDPOINT = (
                 "(Only for S3) The STS endpoint to use when connecting to STS"
+            )
+            STS_UNAVAILABLE = (
+                "(Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)"
             )
             PATH_STYLE_ACCESS = "(Only for S3) Whether to use path-style-access for S3"
 

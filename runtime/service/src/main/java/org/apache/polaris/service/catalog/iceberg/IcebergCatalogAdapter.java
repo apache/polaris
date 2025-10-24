@@ -46,7 +46,6 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTUtil;
-import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -133,11 +132,6 @@ public class IcebergCatalogAdapter
           .add(Endpoint.V1_UPDATE_VIEW)
           .add(Endpoint.V1_DELETE_VIEW)
           .add(Endpoint.V1_RENAME_VIEW)
-          .build();
-
-  private static final Set<Endpoint> COMMIT_ENDPOINT =
-      ImmutableSet.<Endpoint>builder()
-          .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
           .build();
 
   private final PolarisDiagnostics diagnostics;
@@ -823,7 +817,6 @@ public class IcebergCatalogAdapter
                     ImmutableList.<Endpoint>builder()
                         .addAll(DEFAULT_ENDPOINTS)
                         .addAll(VIEW_ENDPOINTS)
-                        .addAll(COMMIT_ENDPOINT)
                         .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig))
                         .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig))
                         .build())

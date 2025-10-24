@@ -60,6 +60,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
       - name: Lint
         run: |
           make client-lint
