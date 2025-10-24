@@ -31,6 +31,7 @@ dependencies {
   implementation(libs.guava)
   implementation(libs.slf4j.api)
   implementation(libs.auth0.jwt)
+  implementation(project(":polaris-async-api"))
 
   // Iceberg dependency for ForbiddenException
   implementation(platform(libs.iceberg.bom))
@@ -47,4 +48,7 @@ dependencies {
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
   testImplementation(libs.threeten.extra)
+  testImplementation(testFixtures(project(":polaris-async-api")))
+  testImplementation(project(":polaris-async-java"))
+  testImplementation(project(":polaris-idgen-mocks"))
 }

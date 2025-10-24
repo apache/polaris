@@ -19,6 +19,7 @@
 package org.apache.polaris.extension.auth.opa.token;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,32 +28,73 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.polaris.ids.mocks.MutableMonotonicClock;
+import org.apache.polaris.nosql.async.MockAsyncExec;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.threeten.extra.MutableClock;
 
 public class FileBearerTokenProviderTest {
 
   @TempDir Path tempDir;
 
   @Test
-  public void testLoadTokenFromFile() throws IOException {
+  public void testInitialRefresh() throws IOException {
     // Create a temporary token file
     Path tokenFile = tempDir.resolve("token.txt");
-    String expectedToken = "test-bearer-token-123";
-    Files.writeString(tokenFile, expectedToken);
+    Files.writeString(tokenFile, "");
+
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
 
     // Create file token provider
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1), Clock.systemUTC())) {
+            tokenFile,
+            Duration.ofMinutes(5),
+            true,
+            Duration.ofMinutes(1),
+            Duration.ofMillis(1),
+            asyncExec,
+            monotonicClock::currentInstant)) {
+
+      // initial refresh has not happened yet, getToken() times out waiting for the initial token
+      assertThatIllegalStateException()
+          .isThrownBy(provider::getToken)
+          .withMessage("Failed to read initial OPA bearer token");
+
+      // initial refresh should have been scheduled, run it
+      assertThat(asyncExec.readyCount()).isEqualTo(1);
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
+      assertThat(asyncExec.readyCount()).isEqualTo(0);
+
+      // Token file is still empty, getToken() still times out waiting for the initial token
+      assertThatIllegalStateException()
+          .isThrownBy(provider::getToken)
+          .withMessage("Failed to read initial OPA bearer token");
+
+      monotonicClock.advanceBoth(Duration.ofSeconds(1));
+      // refresh should have been scheduled, run it
+      assertThat(asyncExec.readyCount()).isEqualTo(1);
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
+      assertThat(asyncExec.readyCount()).isEqualTo(0);
+
+      // Token file is still empty, getToken() still times out waiting for the initial token
+      assertThatIllegalStateException()
+          .isThrownBy(provider::getToken)
+          .withMessage("Failed to read initial OPA bearer token");
+
+      String expectedToken = "test-bearer-token-123";
+      Files.writeString(tokenFile, expectedToken);
+
+      monotonicClock.advanceBoth(Duration.ofSeconds(1));
+      // refresh should have been scheduled, run it
+      assertThat(asyncExec.readyCount()).isEqualTo(1);
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test token retrieval
       String actualToken = provider.getToken();
@@ -68,10 +110,22 @@ public class FileBearerTokenProviderTest {
     String expectedToken = "test-bearer-token-456";
     Files.writeString(tokenFile, tokenWithWhitespace);
 
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
+
     // Create file token provider
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(5), true, Duration.ofMinutes(1), Clock.systemUTC())) {
+            tokenFile,
+            Duration.ofMinutes(5),
+            true,
+            Duration.ofMinutes(1),
+            Duration.ofMillis(1),
+            asyncExec,
+            monotonicClock::currentInstant)) {
+
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test token retrieval (should trim whitespace)
       String actualToken = provider.getToken();
@@ -87,23 +141,38 @@ public class FileBearerTokenProviderTest {
     Files.writeString(tokenFile, initialToken);
 
     // Create mutable clock for deterministic time control
-    MutableClock clock = MutableClock.of(Instant.parse("2023-01-01T00:00:00Z"), ZoneOffset.UTC);
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
 
     // Create file token provider with short refresh interval
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMillis(100), false, Duration.ofMinutes(1), clock)) {
+            tokenFile,
+            Duration.ofMillis(100),
+            false,
+            Duration.ofMinutes(1),
+            Duration.ofMillis(1),
+            asyncExec,
+            monotonicClock::currentInstant)) {
+
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test initial token
       String token1 = provider.getToken();
       assertThat(token1).isEqualTo(initialToken);
 
       // Advance time past refresh interval
-      clock.add(Duration.ofMillis(200));
+      monotonicClock.advanceBoth(Duration.ofMillis(200));
 
       // Update the file
       String updatedToken = "updated-token";
       Files.writeString(tokenFile, updatedToken);
+
+      // refresh task didn't run yet, so token should still be the same
+      assertThat(token1).isEqualTo(initialToken);
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test that token is refreshed
       String token2 = provider.getToken();
@@ -113,64 +182,63 @@ public class FileBearerTokenProviderTest {
 
   @Test
   public void testNonExistentFileThrows() {
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
+
     // Constructor should throw exception when token file doesn't exist
     assertThatThrownBy(
             () ->
                 new FileBearerTokenProvider(
-                    Paths.get("/non/existent/file.txt"),
-                    Duration.ofMinutes(5),
-                    true,
-                    Duration.ofMinutes(1),
-                    Clock.systemUTC()))
+                        Paths.get("/non/existent/file.txt"),
+                        Duration.ofMinutes(5),
+                        true,
+                        Duration.ofMinutes(1),
+                        Duration.ofMillis(1),
+                        asyncExec,
+                        monotonicClock::currentInstant)
+                    .close())
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("Failed to load initial bearer token from file");
-  }
-
-  @Test
-  public void testEmptyFile() throws IOException {
-    // Create an empty token file
-    Path tokenFile = tempDir.resolve("empty.txt");
-    Files.writeString(tokenFile, "");
-
-    // Constructor should throw exception when token file is empty
-    assertThatThrownBy(
-            () ->
-                new FileBearerTokenProvider(
-                    tokenFile,
-                    Duration.ofMinutes(5),
-                    true,
-                    Duration.ofMinutes(1),
-                    Clock.systemUTC()))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("Failed to load initial bearer token from file");
+        .hasMessageContaining("OPA token file does not exist or is not readable");
   }
 
   @Test
   public void testJwtExpirationRefresh() throws IOException {
     // Create mutable clock for deterministic time control
-    MutableClock clock = MutableClock.of(Instant.parse("2023-01-01T00:00:00Z"), ZoneOffset.UTC);
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
 
     // Create a temporary token file with a JWT that expires in 10 seconds from clock time
     Path tokenFile = tempDir.resolve("jwt-token.txt");
-    String jwtToken = createJwtWithExpiration(clock.instant().plusSeconds(10));
+    String jwtToken = createJwtWithExpiration(monotonicClock.currentInstant().plusSeconds(10));
     Files.writeString(tokenFile, jwtToken);
 
     // Create file token provider with JWT expiration refresh enabled
     // Buffer of 3 seconds means it should refresh 3 seconds before expiration (at 7 seconds)
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(10), true, Duration.ofSeconds(3), clock)) {
+            tokenFile,
+            Duration.ofMinutes(10),
+            true,
+            Duration.ofSeconds(3),
+            Duration.ofMillis(1),
+            asyncExec,
+            monotonicClock::currentInstant)) {
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test initial token
       String token1 = provider.getToken();
       assertThat(token1).isEqualTo(jwtToken);
 
       // Advance time by 7.1 seconds (should trigger refresh due to 3 second buffer)
-      clock.add(Duration.ofMillis(7100));
+      monotonicClock.advanceBoth(Duration.ofMillis(7100));
 
       // Update the file with a new JWT
-      String newJwtToken = createJwtWithExpiration(clock.instant().plusSeconds(20));
+      String newJwtToken = createJwtWithExpiration(monotonicClock.currentInstant().plusSeconds(20));
       Files.writeString(tokenFile, newJwtToken);
+
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test that token is refreshed
       String token2 = provider.getToken();
@@ -181,28 +249,42 @@ public class FileBearerTokenProviderTest {
   @Test
   public void testJwtExpirationRefreshDisabled() throws IOException {
     // Create mutable clock for deterministic time control
-    MutableClock clock = MutableClock.of(Instant.parse("2023-01-01T00:00:00Z"), ZoneOffset.UTC);
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
 
     // Create a temporary token file with a JWT that expires in 1 second from clock time
     Path tokenFile = tempDir.resolve("jwt-token.txt");
-    String jwtToken = createJwtWithExpiration(clock.instant().plusSeconds(1));
+    String jwtToken = createJwtWithExpiration(monotonicClock.currentInstant().plusSeconds(1));
     Files.writeString(tokenFile, jwtToken);
 
     // Create file token provider with JWT expiration refresh disabled
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMillis(100), false, Duration.ofSeconds(1), clock)) {
+            tokenFile,
+            Duration.ofMillis(100),
+            false,
+            Duration.ofSeconds(1),
+            Duration.ofMillis(1),
+            asyncExec,
+            monotonicClock::currentInstant)) {
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test initial token
       String token1 = provider.getToken();
       assertThat(token1).isEqualTo(jwtToken);
 
       // Advance time past fixed refresh interval (150ms)
-      clock.add(Duration.ofMillis(150));
+      monotonicClock.advanceBoth(Duration.ofMillis(150));
 
       // Update the file
       String newToken = "updated-non-jwt-token";
       Files.writeString(tokenFile, newToken);
+
+      // refresh task didn't run yet, so token should still be the same
+      assertThat(provider.getToken()).isEqualTo(token1);
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test that token is refreshed based on fixed interval, not JWT expiration
       String token2 = provider.getToken();
@@ -213,7 +295,8 @@ public class FileBearerTokenProviderTest {
   @Test
   public void testNonJwtTokenWithJwtRefreshEnabled() throws IOException {
     // Create mutable clock for deterministic time control
-    MutableClock clock = MutableClock.of(Instant.parse("2023-01-01T00:00:00Z"), ZoneOffset.UTC);
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
 
     // Create a temporary token file with a non-JWT token
     Path tokenFile = tempDir.resolve("token.txt");
@@ -223,18 +306,30 @@ public class FileBearerTokenProviderTest {
     // Create file token provider with JWT expiration refresh enabled
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMillis(100), true, Duration.ofSeconds(1), clock)) {
+            tokenFile,
+            Duration.ofMillis(100),
+            true,
+            Duration.ofSeconds(1),
+            Duration.ofMillis(1),
+            asyncExec,
+            monotonicClock::currentInstant)) {
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test initial token
       String token1 = provider.getToken();
       assertThat(token1).isEqualTo(nonJwtToken);
 
       // Advance time past fallback refresh interval
-      clock.add(Duration.ofMillis(150));
+      monotonicClock.advanceBoth(Duration.ofMillis(150));
 
       // Update the file
       String updatedToken = "updated-non-jwt-token";
       Files.writeString(tokenFile, updatedToken);
+
+      assertThat(provider.getToken()).isEqualTo(token1);
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Test that token is refreshed using fallback interval
       String token2 = provider.getToken();
@@ -249,10 +344,21 @@ public class FileBearerTokenProviderTest {
     String expiredJwtToken = createJwtWithExpiration(Instant.now().minusSeconds(1));
     Files.writeString(tokenFile, expiredJwtToken);
 
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
+
     // Create file token provider with JWT expiration refresh enabled
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMinutes(5), true, Duration.ofSeconds(60), Clock.systemUTC())) {
+            tokenFile,
+            Duration.ofMinutes(5),
+            true,
+            Duration.ofSeconds(60),
+            Duration.ofMillis(1),
+            asyncExec,
+            monotonicClock::currentInstant)) {
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Should fall back to fixed interval when JWT expires too soon
       String token = provider.getToken();
@@ -267,10 +373,21 @@ public class FileBearerTokenProviderTest {
     String jwtWithoutExp = createJwtWithoutExpiration();
     Files.writeString(tokenFile, jwtWithoutExp);
 
+    MutableMonotonicClock monotonicClock = new MutableMonotonicClock();
+    MockAsyncExec asyncExec = new MockAsyncExec(monotonicClock);
+
     // Create file token provider with JWT expiration refresh enabled
     try (FileBearerTokenProvider provider =
         new FileBearerTokenProvider(
-            tokenFile, Duration.ofMillis(100), true, Duration.ofSeconds(1), Clock.systemUTC())) {
+            tokenFile,
+            Duration.ofMillis(100),
+            true,
+            Duration.ofSeconds(1),
+            Duration.ofMillis(1),
+            asyncExec,
+            monotonicClock::currentInstant)) {
+      // run outstanding token-refresh task
+      asyncExec.readyCallables().forEach(MockAsyncExec.Task::call);
 
       // Should fall back to fixed interval when JWT has no expiration
       String token = provider.getToken();
