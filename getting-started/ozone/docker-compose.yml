@@ -1,0 +1,131 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+services:
+
+  ozone-datanode:
+    image: &ozone-image apache/ozone:2.0.0
+    ports:
+      - 9864
+    command: ["ozone","datanode"]
+    environment:
+      &ozone-common-config
+      OZONE-SITE.XML_hdds.datanode.dir: "/data/hdds"
+      OZONE-SITE.XML_ozone.metadata.dirs: "/data/metadata"
+      OZONE-SITE.XML_ozone.om.address: "ozone-om"
+      OZONE-SITE.XML_ozone.om.http-address: "ozone-om:9874"
+      OZONE-SITE.XML_ozone.recon.address: "ozone-recon:9891"
+      OZONE-SITE.XML_ozone.recon.db.dir: "/data/metadata/recon"
+      OZONE-SITE.XML_ozone.replication: "1"
+      OZONE-SITE.XML_ozone.scm.block.client.address: "ozone-scm"
+      OZONE-SITE.XML_ozone.scm.client.address: "ozone-scm"
+      OZONE-SITE.XML_ozone.scm.datanode.id.dir: "/data/metadata"
+      OZONE-SITE.XML_ozone.scm.names: "ozone-scm"
+      no_proxy: "ozone-om,ozone-recon,ozone-scm,ozone-s3g,localhost,127.0.0.1"
+  ozone-om:
+    image: *ozone-image
+    ports:
+      - 9874:9874
+    environment:
+      <<: *ozone-common-config
+      CORE-SITE.XML_hadoop.proxyuser.hadoop.hosts: "*"
+      CORE-SITE.XML_hadoop.proxyuser.hadoop.groups: "*"
+      ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
+      WAITFOR: ozone-scm:9876
+    command: ["ozone","om"]
+  ozone-scm:
+    image: *ozone-image
+    ports:
+      - 9876:9876
+    environment:
+      <<: *ozone-common-config
+      ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
+    command: ["ozone","scm"]
+  ozone-recon:
+    image: *ozone-image
+    ports:
+      - 9888:9888
+    environment:
+      <<: *ozone-common-config
+    command: ["ozone","recon"]
+  ozone-s3g:
+    image: *ozone-image
+    ports:
+      - 9878:9878
+    environment:
+      <<: *ozone-common-config
+    command: ["ozone","s3g"]
+
+  polaris:
+    image: apache/polaris:latest
+    ports:
+      # API port
+      - "8181:8181"
+      # Optional, allows attaching a debugger to the Polaris JVM
+      - "5005:5005"
+    environment:
+      JAVA_DEBUG: true
+      JAVA_DEBUG_PORT: "*:5005"
+      AWS_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: minio_root
+      AWS_SECRET_ACCESS_KEY: m1n1opwd
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      polaris.realm-context.realms: POLARIS
+      quarkus.otel.sdk.disabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  polaris-setup:
+    image: alpine/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      - CLIENT_ID=root
+      - CLIENT_SECRET=s3cr3t
+    volumes:
+      - ../assets/:/assets/
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        /assets/cloud_providers/await-s3.sh http://ozone-s3g:9878/ ;
+        source /assets/polaris/obtain-token.sh;
+        echo Creating bucket...;
+        curl -X PUT --user "invalidKey:secret" --aws-sigv4 "aws:amz:us-west-1:s3" \
+          http://ozone-s3g:9878/bucket123 ;
+        echo Creating catalog...;
+        export STORAGE_CONFIG_INFO='{"storageType":"S3",
+          "endpoint":"http://localhost:9878",
+          "endpointInternal":"http://ozone-s3g:9878",
+          "stsUnavailable":true,
+          "pathStyleAccess":true}';
+        export STORAGE_LOCATION='s3://bucket123';
+        /assets/polaris/create-catalog.sh POLARIS $$TOKEN;
+        echo Extra grants...;
+        curl -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
+          -X PUT \
+          http://polaris:8181/api/management/v1/catalogs/quickstart_catalog/catalog-roles/catalog_admin/grants \
+          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}';
+        echo Done.;
+
