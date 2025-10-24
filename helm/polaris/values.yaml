@@ -442,8 +442,6 @@ serviceMonitor:
 logging:
   # -- The log level of the root category, which is used as the default log level for all categories.
   level: INFO
-  # -- The header name to use for the request ID.
-  requestIdHeaderName: Polaris-Request-Id
   # -- Configuration for the console appender.
   console:
     # -- Whether to enable the console appender.
@@ -517,6 +515,16 @@ realmContext:
   # the list is the default realm. Realms not in this list will be rejected.
   realms:
     - POLARIS
+
+# -- Configuration for correlation IDs.
+correlationId:
+  # -- The name of the header that contains the correlation ID.
+  # If a request does not contain this header, it will be assigned a new correlation ID generated
+  # using the configured generator. All responses will include the correlation ID in this header.
+  headerName: Polaris-Request-Id
+  generator:
+    # -- The type of the correlation ID generator to use.
+    type: default
 
 # -- Polaris features configuration.
 features:

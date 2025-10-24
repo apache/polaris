@@ -43,6 +43,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Deprecations
 
+* The property `polaris.log.request-id-header-name` is deprecated and has been renamed to
+  `polaris.correlation-id.header-name`; the old name is still supported for backwards compatibility, 
+  but will generate a warning.
+
 ### Fixes
 
 ### Commits

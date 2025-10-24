@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.tracing;
+package org.apache.polaris.service.correlation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,13 +36,13 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@TestProfile(RequestIdHeaderTest.Profile.class)
-public class RequestIdHeaderTest {
+@TestProfile(CorrelationIdHeaderTest.Profile.class)
+public class CorrelationIdHeaderTest {
   public static class Profile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.log.request-id-header-name",
+          "polaris.correlation-id.header-name",
           REQUEST_ID_HEADER,
           "polaris.realm-context.header-name",
           REALM_HEADER,
