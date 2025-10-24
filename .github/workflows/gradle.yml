@@ -73,7 +73,7 @@ jobs:
         with:
           job-name: 'unit-tests'
       - name: Archive test results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         if: always()
         with:
           name: upload-unit-test-artifacts
@@ -110,7 +110,7 @@ jobs:
         with:
           job-name: 'quarkus-runtime-tests'
       - name: Archive test results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         if: always()
         with:
           name: upload-quarkus-runtime-test-artifacts
@@ -145,7 +145,7 @@ jobs:
         with:
           job-name: 'quarkus-runtime-inttests'
       - name: Archive test results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         if: always()
         with:
           name: upload-quarkus-runtime-inttest-artifacts
@@ -180,7 +180,7 @@ jobs:
         with:
           job-name: 'quarkus-admin-tests'
       - name: Archive test results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         if: always()
         with:
           name: upload-quarkus-admin-test-artifacts
@@ -222,7 +222,7 @@ jobs:
         with:
           job-name: 'integration-tests'
       - name: Archive test results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         if: always()
         with:
           name: upload-integration-test-artifacts
