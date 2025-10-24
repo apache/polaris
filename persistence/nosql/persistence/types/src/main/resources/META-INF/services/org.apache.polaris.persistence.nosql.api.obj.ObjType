@@ -1,0 +1,45 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+org.apache.polaris.persistence.nosql.coretypes.acl.AclObj$AclObjType
+
+org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogObj$CatalogObjType
+org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRoleObj$CatalogRoleObjType
+org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj$CatalogRolesObjType
+org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj$CatalogStatesObjType
+org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj$CatalogsObjType
+org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogGrantsObj$CatalogGrantsObjType
+
+org.apache.polaris.persistence.nosql.coretypes.content.IcebergTableObj$IcebergTableObjType
+org.apache.polaris.persistence.nosql.coretypes.content.IcebergViewObj$IcebergViewObjType
+org.apache.polaris.persistence.nosql.coretypes.content.GenericTableObj$GenericTableObjType
+org.apache.polaris.persistence.nosql.coretypes.content.LocalNamespaceObj$LocalNamespaceObjType
+org.apache.polaris.persistence.nosql.coretypes.content.RemoteNamespaceObj$RemoteNamespaceObjType
+org.apache.polaris.persistence.nosql.coretypes.content.PolicyObj$CatalogPolicyObjType
+
+org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalObj$PrincipalObjType
+org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalRoleObj$PrincipalRoleObjType
+org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalRolesObj$PrincipalRolesObjType
+org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj$PrincipalsObjType
+
+org.apache.polaris.persistence.nosql.coretypes.realm.RootObj$RootObjType
+org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTaskObj$ImmediateTaskObjType
+org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTasksObj$ImmediateTasksObjType
+org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj$RealmGrantsObjType
+org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj$PolicyMappingsObjType
