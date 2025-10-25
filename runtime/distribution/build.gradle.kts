@@ -17,15 +17,18 @@
  * under the License.
  */
 
+import org.gradle.kotlin.dsl.invoke
 import publishing.PublishingHelperPlugin
 import publishing.digestTaskOutputs
 import publishing.signTaskOutputs
+import sbom.CyclonedxBundleTask
 
 plugins {
   id("distribution")
   id("signing")
   id("polaris-spotless")
   id("polaris-reproducible")
+  id("polaris-sbom-bundle")
 }
 
 description = "Apache Polaris Binary Distribution"
@@ -51,6 +54,8 @@ val serverDistribution by
 dependencies {
   adminDistribution(project(":polaris-admin", "distributionElements"))
   serverDistribution(project(":polaris-server", "distributionElements"))
+  bundleSboms(project(":polaris-admin", "cyclonedxDirectBomJson"))
+  bundleSboms(project(":polaris-server", "cyclonedxDirectBomJson"))
 }
 
 distributions {
@@ -88,3 +93,14 @@ digestTaskOutputs(distZip)
 signTaskOutputs(distTar)
 
 signTaskOutputs(distZip)
+
+tasks.named<CyclonedxBundleTask>("cyclonedxBundleBom") {
+  val baseName = distributions.main.get().distributionBaseName.get()
+  jsonOutput.set(
+    project.layout.buildDirectory.file("distributions/$baseName-$version.cyclonedx.json")
+  )
+  xmlOutput.set(
+    project.layout.buildDirectory.file("distributions/$baseName-$version.cyclonedx.xml")
+  )
+  // Note: the polaris-sbom-bundle build plugin sets up signing.
+}
