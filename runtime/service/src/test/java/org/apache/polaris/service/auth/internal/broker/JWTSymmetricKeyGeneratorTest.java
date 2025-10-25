@@ -25,7 +25,6 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.util.Optional;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -39,27 +38,26 @@ public class JWTSymmetricKeyGeneratorTest {
   /** Sanity test to verify that we can generate a token */
   @Test
   public void testJWTSymmetricKeyGenerator() {
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, null);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     long principalId = 123L;
     String mainSecret = "test_secret";
     String clientId = "test_client_id";
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(principalId, clientId, mainSecret, "otherSecret");
-    Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
+    Mockito.when(metastoreManager.loadPrincipalSecrets(clientId))
         .thenReturn(new PrincipalSecretsResult(principalSecrets));
     PrincipalEntity principal =
         new PrincipalEntity.Builder().setId(principalId).setName("principal").build();
-    Mockito.when(metastoreManager.findPrincipalById(polarisCallContext, principalId))
+    Mockito.when(metastoreManager.findPrincipalById(principalId))
         .thenReturn(Optional.of(principal));
-    TokenBroker generator = new SymmetricKeyJWTBroker(metastoreManager, 666, () -> "polaris");
+    TokenBroker generator = new SymmetricKeyJWTBroker(666, () -> "polaris");
     TokenResponse token =
         generator.generateFromClientSecrets(
             clientId,
             mainSecret,
             TokenRequestValidator.CLIENT_CREDENTIALS,
             "PRINCIPAL_ROLE:TEST",
-            polarisCallContext,
+            metastoreManager,
             TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
 

@@ -75,7 +75,8 @@ public class PolarisS3InteroperabilityTest {
     TestServices.FileIOFactorySupplier fileIOFactorySupplier =
         (accessConfigProvider) ->
             (FileIOFactory)
-                (callContext,
+                (realmContext,
+                    realmConfig,
                     ioImplClassName,
                     properties,
                     identifier,
