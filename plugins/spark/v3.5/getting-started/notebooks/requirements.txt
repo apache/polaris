@@ -1,0 +1,2 @@
+jupyterlab==4.4.10
+ipykernel==7.0.1
