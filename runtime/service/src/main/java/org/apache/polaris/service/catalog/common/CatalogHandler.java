@@ -275,14 +275,12 @@ public abstract class CatalogHandler {
       throwNotFoundExceptionForTableLikeEntity(identifier, List.of(subType));
     }
 
-    for (PolarisAuthorizableOperation op : ops) {
-      authorizer.authorizeOrThrow(
-          polarisPrincipal,
-          resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-          op,
-          target,
-          null /* secondary */);
-    }
+    authorizer.authorizeOrThrow(
+        polarisPrincipal,
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+        ops,
+        target,
+        null /* secondary */);
 
     initializeCatalog();
   }
