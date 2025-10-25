@@ -21,6 +21,7 @@ plugins { `kotlin-dsl` }
 
 dependencies {
   implementation(gradleKotlinDsl())
+  implementation(baselibs.cyclonedx)
   implementation(baselibs.errorprone)
   implementation(baselibs.idea.ext)
   implementation(baselibs.jandex)
