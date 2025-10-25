@@ -19,17 +19,18 @@
 package org.apache.polaris.core.storage.cache;
 
 import java.time.Instant;
-import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 
 /** A storage credential cached entry. */
 public class StorageCredentialCacheEntry {
   /** The scoped creds map that is fetched from a creds vending service */
-  public final AccessConfig accessConfig;
+  public final StorageAccessConfig storageAccessConfig;
 
   private final long maxCacheDurationMs;
 
-  public StorageCredentialCacheEntry(AccessConfig accessConfig, long maxCacheDurationMs) {
-    this.accessConfig = accessConfig;
+  public StorageCredentialCacheEntry(
+      StorageAccessConfig storageAccessConfig, long maxCacheDurationMs) {
+    this.storageAccessConfig = storageAccessConfig;
     this.maxCacheDurationMs = maxCacheDurationMs;
   }
 
@@ -39,7 +40,7 @@ public class StorageCredentialCacheEntry {
 
   /** Get the expiration time in millisecond for the cached entry */
   public long getExpirationTime() {
-    return accessConfig.expiresAt().map(Instant::toEpochMilli).orElse(Long.MAX_VALUE);
+    return storageAccessConfig.expiresAt().map(Instant::toEpochMilli).orElse(Long.MAX_VALUE);
   }
 
   /**
@@ -47,7 +48,7 @@ public class StorageCredentialCacheEntry {
    *
    * @return a map of string representing the subscoped creds info.
    */
-  AccessConfig toAccessConfig() {
-    return accessConfig;
+  StorageAccessConfig toAccessConfig() {
+    return storageAccessConfig;
   }
 }

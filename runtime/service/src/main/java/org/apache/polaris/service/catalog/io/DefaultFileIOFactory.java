@@ -32,8 +32,8 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
@@ -47,11 +47,11 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
-  private final AccessConfigProvider accessConfigProvider;
+  private final StorageAccessConfigProvider storageAccessConfigProvider;
 
   @Inject
-  public DefaultFileIOFactory(AccessConfigProvider accessConfigProvider) {
-    this.accessConfigProvider = accessConfigProvider;
+  public DefaultFileIOFactory(StorageAccessConfigProvider storageAccessConfigProvider) {
+    this.storageAccessConfigProvider = storageAccessConfigProvider;
   }
 
   @Override
@@ -66,8 +66,8 @@ public class DefaultFileIOFactory implements FileIOFactory {
 
     // Get subcoped creds
     properties = new HashMap<>(properties);
-    AccessConfig accessConfig =
-        accessConfigProvider.getAccessConfig(
+    StorageAccessConfig storageAccessConfig =
+        storageAccessConfigProvider.getStorageAccessConfig(
             callContext,
             identifier,
             tableLocations,
@@ -79,9 +79,9 @@ public class DefaultFileIOFactory implements FileIOFactory {
     // Update with properties in case there are table-level overrides the credentials should
     // always override table-level properties, since storage configuration will be found at
     // whatever entity defines it
-    properties.putAll(accessConfig.credentials());
-    properties.putAll(accessConfig.extraProperties());
-    properties.putAll(accessConfig.internalProperties());
+    properties.putAll(storageAccessConfig.credentials());
+    properties.putAll(storageAccessConfig.extraProperties());
+    properties.putAll(storageAccessConfig.internalProperties());
 
     return loadFileIOInternal(ioImplClassName, properties);
   }

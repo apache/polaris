@@ -50,8 +50,8 @@ public class MeasuredFileIOFactory implements FileIOFactory {
   private final FileIOFactory defaultFileIOFactory;
 
   @Inject
-  public MeasuredFileIOFactory(AccessConfigProvider accessConfigProvider) {
-    defaultFileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+  public MeasuredFileIOFactory(StorageAccessConfigProvider storageAccessConfigProvider) {
+    defaultFileIOFactory = new DefaultFileIOFactory(storageAccessConfigProvider);
   }
 
   @Override

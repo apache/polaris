@@ -70,9 +70,9 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
@@ -110,13 +110,14 @@ public record TestServices(
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
     PolarisEventListener polarisEventListener,
-    AccessConfigProvider accessConfigProvider) {
+    StorageAccessConfigProvider storageAccessConfigProvider) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
 
   @FunctionalInterface
-  public interface FileIOFactorySupplier extends Function<AccessConfigProvider, FileIOFactory> {}
+  public interface FileIOFactorySupplier
+      extends Function<StorageAccessConfigProvider, FileIOFactory> {}
 
   private static class MockedConfigurationStore implements PolarisConfigurationStore {
     private final Map<String, Object> defaults;
@@ -242,9 +243,9 @@ public record TestServices(
       PolarisCredentialManager credentialManager =
           new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
 
-      AccessConfigProvider accessConfigProvider =
-          new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
-      FileIOFactory fileIOFactory = fileIOFactorySupplier.apply(accessConfigProvider);
+      StorageAccessConfigProvider storageAccessConfigProvider =
+          new StorageAccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+      FileIOFactory fileIOFactory = fileIOFactorySupplier.apply(storageAccessConfigProvider);
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
@@ -283,7 +284,7 @@ public record TestServices(
               catalogHandlerUtils,
               externalCatalogFactory,
               polarisEventListener,
-              accessConfigProvider);
+              storageAccessConfigProvider);
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
       IcebergRestConfigurationApi restConfigurationApi =
@@ -357,7 +358,7 @@ public record TestServices(
           fileIOFactory,
           taskExecutor,
           polarisEventListener,
-          accessConfigProvider);
+          storageAccessConfigProvider);
     }
   }
 

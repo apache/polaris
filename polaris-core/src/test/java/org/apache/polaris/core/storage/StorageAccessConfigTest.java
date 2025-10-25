@@ -30,14 +30,14 @@ import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-public class AccessConfigTest {
+public class StorageAccessConfigTest {
 
   @Test
   public void testPutGet() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    StorageAccessConfig.Builder b = StorageAccessConfig.builder();
     b.put(AWS_ENDPOINT, "ep1");
     b.put(AWS_SECRET_KEY, "sk2");
-    AccessConfig c = b.build();
+    StorageAccessConfig c = b.build();
     assertThat(c.credentials()).isEqualTo(Map.of(AWS_SECRET_KEY.getPropertyName(), "sk2"));
     assertThat(c.extraProperties()).isEqualTo(Map.of(AWS_ENDPOINT.getPropertyName(), "ep1"));
     assertThat(c.get(AWS_SECRET_KEY)).isEqualTo("sk2");
@@ -46,19 +46,19 @@ public class AccessConfigTest {
 
   @Test
   public void testGetExtraProperty() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    StorageAccessConfig.Builder b = StorageAccessConfig.builder();
     b.putExtraProperty(AWS_ENDPOINT.getPropertyName(), "extra");
-    AccessConfig c = b.build();
+    StorageAccessConfig c = b.build();
     assertThat(c.extraProperties()).isEqualTo(Map.of(AWS_ENDPOINT.getPropertyName(), "extra"));
     assertThat(c.get(AWS_ENDPOINT)).isEqualTo("extra");
   }
 
   @Test
   public void testGetInternalProperty() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    StorageAccessConfig.Builder b = StorageAccessConfig.builder();
     b.putExtraProperty(AWS_ENDPOINT.getPropertyName(), "extra");
     b.putInternalProperty(AWS_ENDPOINT.getPropertyName(), "ep1");
-    AccessConfig c = b.build();
+    StorageAccessConfig c = b.build();
     assertThat(c.extraProperties()).isEqualTo(Map.of(AWS_ENDPOINT.getPropertyName(), "extra"));
     assertThat(c.internalProperties()).isEqualTo(Map.of(AWS_ENDPOINT.getPropertyName(), "ep1"));
     assertThat(c.get(AWS_ENDPOINT)).isEqualTo("ep1");
@@ -66,11 +66,11 @@ public class AccessConfigTest {
 
   @Test
   public void testNoCredentialOverride() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    StorageAccessConfig.Builder b = StorageAccessConfig.builder();
     b.put(AWS_SECRET_KEY, "sk-test");
     b.putExtraProperty(AWS_SECRET_KEY.getPropertyName(), "sk-extra");
     b.putInternalProperty(AWS_SECRET_KEY.getPropertyName(), "sk-internal");
-    AccessConfig c = b.build();
+    StorageAccessConfig c = b.build();
     assertThat(c.get(AWS_SECRET_KEY)).isEqualTo("sk-test");
     assertThat(c.extraProperties()).isEqualTo(Map.of(AWS_SECRET_KEY.getPropertyName(), "sk-extra"));
     assertThat(c.internalProperties())
@@ -79,7 +79,7 @@ public class AccessConfigTest {
 
   @Test
   public void testExpiresAt() {
-    AccessConfig.Builder b = AccessConfig.builder();
+    StorageAccessConfig.Builder b = StorageAccessConfig.builder();
     assertThat(b.build().expiresAt()).isEmpty();
     b.put(GCS_ACCESS_TOKEN_EXPIRES_AT, "111");
     assertThat(b.build().expiresAt()).hasValue(Instant.ofEpochMilli(111));

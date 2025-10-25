@@ -79,9 +79,9 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -147,7 +147,7 @@ public abstract class AbstractPolicyCatalogTest {
   private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
-  private AccessConfigProvider accessConfigProvider;
+  private StorageAccessConfigProvider storageAccessConfigProvider;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -179,8 +179,8 @@ public abstract class AbstractPolicyCatalogTest {
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
-    accessConfigProvider =
-        new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+    storageAccessConfigProvider =
+        new StorageAccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
@@ -234,7 +234,7 @@ public abstract class AbstractPolicyCatalogTest {
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    this.fileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+    this.fileIOFactory = new DefaultFileIOFactory(storageAccessConfigProvider);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))

@@ -49,8 +49,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +73,7 @@ public class AzureCredentialsStorageIntegration
   }
 
   @Override
-  public AccessConfig getSubscopedCreds(
+  public StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
@@ -176,12 +176,12 @@ public class AzureCredentialsStorageIntegration
   }
 
   @VisibleForTesting
-  static AccessConfig toAccessConfig(
+  static StorageAccessConfig toAccessConfig(
       String sasToken,
       String storageDnsName,
       Instant expiresAt,
       Optional<String> refreshCredentialsEndpoint) {
-    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
     handleAzureCredential(accessConfig, sasToken, storageDnsName, expiresAt);
     accessConfig.put(
         StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
@@ -193,7 +193,7 @@ public class AzureCredentialsStorageIntegration
   }
 
   private static void handleAzureCredential(
-      AccessConfig.Builder config, String sasToken, String host, Instant expiresAt) {
+      StorageAccessConfig.Builder config, String sasToken, String host, Instant expiresAt) {
     config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + host, sasToken);
     config.putCredential(
         StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX.getPropertyName() + host,
