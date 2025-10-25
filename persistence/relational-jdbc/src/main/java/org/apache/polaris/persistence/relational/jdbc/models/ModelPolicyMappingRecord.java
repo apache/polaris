@@ -175,11 +175,7 @@ public class ModelPolicyMappingRecord implements Converter<PolarisPolicyMappingR
     map.put("policy_type_code", policyTypeCode);
     map.put("policy_catalog_id", policyCatalogId);
     map.put("policy_id", policyId);
-    if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put("parameters", toJsonbPGobject(this.getParameters()));
-    } else {
-      map.put("parameters", this.getParameters());
-    }
+    map.put("parameters", toJsonObject(this.getParameters(), databaseType));
     return map;
   }
 }
