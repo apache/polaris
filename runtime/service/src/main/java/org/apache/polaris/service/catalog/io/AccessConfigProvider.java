@@ -30,6 +30,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
@@ -91,10 +92,13 @@ public class AccessConfigProvider {
           .log("Table entity has no storage configuration in its hierarchy");
       return AccessConfig.builder().supportsCredentialVending(false).build();
     }
+    PolarisCredentialVendor credentialVendor =
+        metaStoreManagerFactory.createMetaStoreManager(callContext);
+
     return FileIOUtil.refreshAccessConfig(
         callContext,
         storageCredentialCache,
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext()),
+        credentialVendor,
         tableIdentifier,
         tableLocations,
         storageActions,

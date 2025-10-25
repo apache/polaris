@@ -110,7 +110,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
     } else {
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.genericTableCatalog =
-          new PolarisGenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
+          new PolarisGenericTableCatalog(metaStoreManager, this.resolutionManifest);
       this.genericTableCatalog.initialize(catalogName, Map.of());
     }
   }

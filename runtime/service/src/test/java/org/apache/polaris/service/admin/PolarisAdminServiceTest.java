@@ -88,6 +88,7 @@ public class PolarisAdminServiceTest {
   void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedPrincipal);
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
     when(polarisCallContext.getRealmConfig()).thenReturn(realmConfig);
 
@@ -131,7 +132,7 @@ public class PolarisAdminServiceTest {
 
     PrivilegeResult successResult = mock(PrivilegeResult.class);
     when(successResult.isSuccess()).thenReturn(true);
-    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any(), any()))
+    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any()))
         .thenReturn(successResult);
 
     PrivilegeResult result =
@@ -220,7 +221,7 @@ public class PolarisAdminServiceTest {
 
     PrivilegeResult successResult = mock(PrivilegeResult.class);
     when(successResult.isSuccess()).thenReturn(true);
-    when(metaStoreManager.revokePrivilegeOnSecurableFromRole(any(), any(), any(), any(), any()))
+    when(metaStoreManager.revokePrivilegeOnSecurableFromRole(any(), any(), any(), any()))
         .thenReturn(successResult);
 
     PrivilegeResult result =
@@ -313,7 +314,7 @@ public class PolarisAdminServiceTest {
     // Mock creation of team-ns.
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
     when(idResult.getId()).thenReturn(4L);
-    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    when(metaStoreManager.generateNewEntityId()).thenReturn(idResult);
     EntityResult teamNsCreateResult = mock(EntityResult.class);
     EntityResult projectNsCreateResult = mock(EntityResult.class);
     when(teamNsCreateResult.isSuccess()).thenReturn(true);
@@ -324,12 +325,12 @@ public class PolarisAdminServiceTest {
 
     // Mock creation of project-ns.
     when(idResult.getId()).thenReturn(5L);
-    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    when(metaStoreManager.generateNewEntityId()).thenReturn(idResult);
     PolarisEntity projectNsEntity =
         createNamespaceEntity(Namespace.of("org-ns", "team-ns", "project-ns"), 5L, 4L);
     when(projectNsCreateResult.getEntity()).thenReturn(projectNsEntity);
 
-    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
+    when(metaStoreManager.createEntityIfNotExists(any(), any()))
         .thenReturn(teamNsCreateResult, projectNsCreateResult);
 
     // Mock successful synthetic namespace resolution.
@@ -340,7 +341,7 @@ public class PolarisAdminServiceTest {
 
     PrivilegeResult successResult = mock(PrivilegeResult.class);
     when(successResult.isSuccess()).thenReturn(true);
-    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any(), any()))
+    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any()))
         .thenReturn(successResult);
 
     PrivilegeResult result =
@@ -415,12 +416,12 @@ public class PolarisAdminServiceTest {
     // Mock generateNewEntityId for team-ns
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
     when(idResult.getId()).thenReturn(4L);
-    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    when(metaStoreManager.generateNewEntityId()).thenReturn(idResult);
 
     // Mock createEntityIfNotExists to fail
     EntityResult failedResult = mock(EntityResult.class);
     when(failedResult.isSuccess()).thenReturn(false);
-    when(metaStoreManager.createEntityIfNotExists(any(), any(), any())).thenReturn(failedResult);
+    when(metaStoreManager.createEntityIfNotExists(any(), any())).thenReturn(failedResult);
 
     // Mock getResolvedPath to return null for partial namespace
     PolarisResolvedPathWrapper partialPathWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -468,14 +469,13 @@ public class PolarisAdminServiceTest {
 
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
     when(idResult.getId()).thenReturn(5L);
-    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    when(metaStoreManager.generateNewEntityId()).thenReturn(idResult);
     PolarisEntity projectNsEntity =
         createNamespaceEntity(Namespace.of("org-ns", "team-ns", "project-ns"), 5L, 4L);
     EntityResult projectNsCreateResult = mock(EntityResult.class);
     when(projectNsCreateResult.isSuccess()).thenReturn(true);
     when(projectNsCreateResult.getEntity()).thenReturn(projectNsEntity);
-    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
-        .thenReturn(projectNsCreateResult);
+    when(metaStoreManager.createEntityIfNotExists(any(), any())).thenReturn(projectNsCreateResult);
 
     PolarisResolvedPathWrapper syntheticPathWrapper = mock(PolarisResolvedPathWrapper.class);
     when(syntheticPathWrapper.getRawFullPath())
@@ -486,13 +486,12 @@ public class PolarisAdminServiceTest {
     when(syntheticPathWrapper.getRawLeafEntity()).thenReturn(projectNsEntity);
 
     when(idResult.getId()).thenReturn(6L);
-    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    when(metaStoreManager.generateNewEntityId()).thenReturn(idResult);
     PolarisEntity tableEntity = createTableEntity(identifier, ICEBERG_TABLE, 6L, 5L);
     EntityResult tableCreateResult = mock(EntityResult.class);
     when(tableCreateResult.isSuccess()).thenReturn(true);
     when(tableCreateResult.getEntity()).thenReturn(tableEntity);
-    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
-        .thenReturn(tableCreateResult);
+    when(metaStoreManager.createEntityIfNotExists(any(), any())).thenReturn(tableCreateResult);
 
     PolarisResolvedPathWrapper tablePathWrapper = mock(PolarisResolvedPathWrapper.class);
     when(tablePathWrapper.getRawLeafEntity()).thenReturn(tableEntity);
@@ -502,7 +501,7 @@ public class PolarisAdminServiceTest {
 
     PrivilegeResult successResult = mock(PrivilegeResult.class);
     when(successResult.isSuccess()).thenReturn(true);
-    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any(), any()))
+    when(metaStoreManager.grantPrivilegeOnSecurableToRole(any(), any(), any(), any()))
         .thenReturn(successResult);
 
     PrivilegeResult result =
@@ -589,10 +588,9 @@ public class PolarisAdminServiceTest {
 
     GenerateEntityIdResult idResult = mock(GenerateEntityIdResult.class);
     when(idResult.getId()).thenReturn(3L);
-    when(metaStoreManager.generateNewEntityId(any())).thenReturn(idResult);
+    when(metaStoreManager.generateNewEntityId()).thenReturn(idResult);
     EntityResult tableCreateResult = mock(EntityResult.class);
-    when(metaStoreManager.createEntityIfNotExists(any(), any(), any()))
-        .thenReturn(tableCreateResult);
+    when(metaStoreManager.createEntityIfNotExists(any(), any())).thenReturn(tableCreateResult);
     when(tableCreateResult.isSuccess()).thenReturn(false);
 
     when(resolutionManifest.getResolvedPath(identifier)).thenReturn(existingPathWrapper);
