@@ -29,9 +29,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -49,15 +49,16 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   @SuppressWarnings("unused") // Required by CDI
   protected InMemoryPolarisMetaStoreManagerFactory() {
-    this(null, null, null);
+    this(null, null, null, null);
   }
 
   @Inject
   public InMemoryPolarisMetaStoreManagerFactory(
       Clock clock,
       PolarisDiagnostics diagnostics,
+      PolarisConfigurationStore configurationStore,
       PolarisStorageIntegrationProvider storageIntegration) {
-    super(clock, diagnostics);
+    super(clock, diagnostics, configurationStore);
     this.storageIntegration = storageIntegration;
   }
 
@@ -77,22 +78,13 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   @Override
-  public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
+  protected synchronized TransactionalPersistence createPersistenceSession(
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
       bootstrapRealmsFromEnvironment(List.of(realmId));
     }
-    return super.getOrCreateMetaStoreManager(realmContext);
-  }
-
-  @Override
-  public synchronized TransactionalPersistence getOrCreateSession(RealmContext realmContext) {
-    String realmId = realmContext.getRealmIdentifier();
-    if (!bootstrappedRealms.contains(realmId)) {
-      bootstrapRealmsFromEnvironment(List.of(realmId));
-    }
-    return super.getOrCreateSession(realmContext);
+    return super.createPersistenceSession(realmContext);
   }
 
   private void bootstrapRealmsFromEnvironment(List<String> realms) {
