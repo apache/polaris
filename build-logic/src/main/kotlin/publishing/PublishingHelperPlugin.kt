@@ -87,7 +87,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
       if (isRelease || project.hasProperty("jarWithGitInfo")) {
         // Runs `git`, considered expensive, so guarded behind project properties.
         tasks.withType<Jar>().configureEach {
-          manifest { MemoizedGitInfo.gitInfo(rootProject, attributes) }
+          manifest { MemoizedJarInfo.applyJarManifestAttributes(rootProject, attributes) }
         }
 
         addAdditionalJarContent(this)

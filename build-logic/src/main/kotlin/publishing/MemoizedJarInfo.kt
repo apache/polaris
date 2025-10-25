@@ -24,46 +24,24 @@ import org.gradle.api.java.archives.Attributes
 import org.gradle.kotlin.dsl.extra
 
 /**
- * Container to memoize Git information retrieved via `git` command executions across all Gradle
- * projects. Jar release artifacts get some attributes added to the jar manifest, which can be quite
- * useful for released jars.
+ * Helper class to generate Jar manifest attributes including Git commit SHA, Git describe, project
+ * version and Java specification version.
  */
-internal class MemoizedGitInfo {
+internal class MemoizedJarInfo {
   companion object {
-    private fun execProc(rootProject: Project, cmd: String, vararg args: Any): String {
-      var out =
-        rootProject.providers
-          .exec {
-            executable = cmd
-            args(args.toList())
-          }
-          .standardOutput
-          .asText
-          .get()
-      return out.trim()
-    }
-
-    fun gitInfo(rootProject: Project, attribs: Attributes) {
-      val props = gitInfo(rootProject)
+    fun applyJarManifestAttributes(rootProject: Project, attribs: Attributes) {
+      val props = jarManifestAttributes(rootProject)
       attribs.putAll(props)
     }
 
-    fun gitInfo(rootProject: Project): Map<String, String> {
+    private fun jarManifestAttributes(rootProject: Project): Map<String, String> {
       return if (rootProject.extra.has("gitReleaseInfo")) {
         @Suppress("UNCHECKED_CAST")
         rootProject.extra["gitReleaseInfo"] as Map<String, String>
       } else {
         val isRelease =
           rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")
-        val gitHead = execProc(rootProject, "git", "rev-parse", "HEAD")
-        val gitDescribe =
-          if (isRelease)
-            try {
-              execProc(rootProject, "git", "describe", "--tags")
-            } catch (_: Exception) {
-              execProc(rootProject, "git", "describe", "--always", "--dirty")
-            }
-          else ""
+        val gi = GitInfo.memoized(rootProject)
         val javaSpecificationVersion = System.getProperty("java.specification.version")
 
         val version = rootProject.version.toString()
@@ -72,8 +50,8 @@ internal class MemoizedGitInfo {
             "Implementation-Version" to version,
             "Apache-Polaris-Version" to version,
             "Apache-Polaris-Is-Release" to isRelease.toString(),
-            "Apache-Polaris-Build-Git-Head" to gitHead,
-            "Apache-Polaris-Build-Git-Describe" to gitDescribe,
+            "Apache-Polaris-Build-Git-Head" to gi.gitHead,
+            "Apache-Polaris-Build-Git-Describe" to gi.gitDescribe,
             "Apache-Polaris-Build-Java-Specification-Version" to javaSpecificationVersion,
           )
         rootProject.extra["gitReleaseInfo"] = info
