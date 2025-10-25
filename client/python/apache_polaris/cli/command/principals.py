@@ -22,9 +22,9 @@ from typing import Dict, Optional, List
 
 from pydantic import StrictStr
 
-from cli.command import Command
-from cli.constants import Subcommands
-from polaris.management import (
+from apache_polaris.cli.command import Command
+from apache_polaris.cli.constants import Subcommands
+from apache_polaris.sdk.management import (
     PolarisDefaultApi,
     CreatePrincipalRequest,
     Principal,

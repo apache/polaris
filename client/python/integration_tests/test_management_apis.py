@@ -17,12 +17,7 @@
 #  under the License.
 #
 
-from integration_tests.conftest import (
-    create_principal,
-    create_principal_role,
-    create_catalog_role,
-)
-from polaris.management import (
+from apache_polaris.sdk.management import (
     GrantPrincipalRoleRequest,
     GrantCatalogRoleRequest,
     AddGrantRequest,
@@ -32,6 +27,11 @@ from polaris.management import (
     PolarisDefaultApi,
     Catalog,
     ResetPrincipalRequest,
+)
+from integration_tests.conftest import (
+    create_principal,
+    create_principal_role,
+    create_catalog_role,
 )
 
 

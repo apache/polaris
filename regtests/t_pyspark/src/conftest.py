@@ -24,9 +24,9 @@ from typing import List
 
 import pytest
 
-from polaris.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
-from polaris.catalog.api_client import ApiClient as CatalogApiClient
-from polaris.management import Catalog, AwsStorageConfigInfo, ApiClient, PolarisDefaultApi, Configuration, \
+from apache_polaris.sdk.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
+from apache_polaris.sdk.catalog.api_client import ApiClient as CatalogApiClient
+from apache_polaris.sdk.management import Catalog, AwsStorageConfigInfo, ApiClient, PolarisDefaultApi, Configuration, \
   CreateCatalogRequest, GrantCatalogRoleRequest, CatalogRole, ApiException, AddGrantRequest, CatalogGrant, \
   CatalogPrivilege, CreateCatalogRoleRequest, CatalogProperties
 
@@ -192,7 +192,7 @@ def _create_catalog_with_storage(root_client, catalog_client, catalog_name, stor
     storage_config_info: Storage configuration (S3 or FILE)
     base_location: Base location for the catalog
   """
-  from polaris.management import AwsStorageConfigInfo
+  from apache_polaris.sdk.management import AwsStorageConfigInfo
   
   # Build properties dict
   catalog_properties = {
@@ -256,7 +256,7 @@ def file_catalog(root_client, catalog_client):
   Catalog that always uses FILE storage for local testing.
   This fixture runs in any environment without external dependencies.
   """
-  from polaris.management import FileStorageConfigInfo
+  from apache_polaris.sdk.management import FileStorageConfigInfo
   
   catalog_name = f'file_catalog_{str(uuid.uuid4())[-10:]}'
   storage_config = FileStorageConfigInfo(storage_type="FILE", allowed_locations=["file:///tmp"])
@@ -273,7 +273,7 @@ def s3_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucke
     Catalog that always uses S3 storage for AWS testing.
     Tests using this fixture should include @pytest.mark.skipif for AWS_TEST_ENABLED.
     """
-    from polaris.management import AwsStorageConfigInfo
+    from apache_polaris.sdk.management import AwsStorageConfigInfo
     
     catalog_name = f's3_catalog_{str(uuid.uuid4())[-10:]}'
     storage_config = AwsStorageConfigInfo(

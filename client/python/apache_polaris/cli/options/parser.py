@@ -20,8 +20,8 @@ import argparse
 import sys
 from typing import List, Optional, Dict
 
-from cli.constants import Arguments, DEFAULT_HEADER
-from cli.options.option_tree import OptionTree, Option, Argument
+from apache_polaris.cli.constants import Arguments, DEFAULT_HEADER
+from apache_polaris.cli.options.option_tree import OptionTree, Option, Argument
 
 
 class Parser(object):
