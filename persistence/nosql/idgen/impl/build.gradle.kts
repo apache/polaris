@@ -17,6 +17,10 @@
  * under the License.
  */
 
+import com.github.erizo.gradle.JcstressTask
+import java.io.FileOutputStream
+import java.nio.file.Files
+
 plugins {
   id("org.kordamp.gradle.jandex")
   alias(libs.plugins.jmh)
@@ -72,7 +76,7 @@ tasks.named("check") { dependsOn("jcstress") }
 
 jcstress { jcstressDependency = libs.jcstress.core.get().toString() }
 
-tasks.named("jcstress") {
+tasks.named<JcstressTask>("jcstress") {
   inputs.properties(
     System.getProperties()
       .mapKeys { it.key.toString() }
@@ -85,4 +89,25 @@ tasks.named("jcstress") {
   inputs.files(jcstressRuntime)
   inputs.files(configurations.runtimeClasspath)
   outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
+
+  if (!System.getProperty("jcstress-no-capture").toBoolean()) {
+    // Capture jcstress output in a log file, dump that in case of a failure.
+
+    val logDir = project.layout.buildDirectory.dir("reports/jcstress").get().asFile
+    val logFile = File(logDir, "jcstress.log")
+    var logStream: FileOutputStream? = null
+
+    actions.addFirst {
+      logStream = FileOutputStream(logFile)
+      standardOutput = logStream
+      errorOutput = logStream
+    }
+
+    actions.addLast {
+      logStream?.close()
+      if (state.failure != null) {
+        logger.error("jcstress output\n{}", Files.readString(logFile.toPath()))
+      }
+    }
+  }
 }
