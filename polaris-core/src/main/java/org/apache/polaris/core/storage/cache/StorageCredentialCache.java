@@ -140,7 +140,7 @@ public class StorageCredentialCache {
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(callCtx.getRealmConfig());
             return new StorageCredentialCacheEntry(
-                scopedCredentialsResult.getAccessConfig(), maxCacheDurationMs);
+                scopedCredentialsResult.getStorageAccessConfig(), maxCacheDurationMs);
           }
           LOGGER
               .atDebug()

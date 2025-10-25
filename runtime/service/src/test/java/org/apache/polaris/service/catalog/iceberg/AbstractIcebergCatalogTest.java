@@ -1905,7 +1905,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),
                 Optional.empty())
-            .getAccessConfig()
+            .getStorageAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()
