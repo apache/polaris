@@ -95,6 +95,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
 
       apply(plugin = "maven-publish")
       apply(plugin = "signing")
+      apply(plugin = "org.cyclonedx.bom")
 
       // Generate a source tarball for a release to be uploaded to
       // https://dist.apache.org/repos/dist/dev/<name>/apache-<name>-<version-with-rc>/
@@ -176,5 +177,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
           }
         }
       }
+
+      configureCycloneDx()
     }
 }
