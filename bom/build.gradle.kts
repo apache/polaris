@@ -52,6 +52,8 @@ dependencies {
     api(project(":polaris-eclipselink"))
     api(project(":polaris-relational-jdbc"))
 
+    api(project(":polaris-extensions-auth-opa"))
+
     api(project(":polaris-admin"))
     api(project(":polaris-runtime-common"))
     api(project(":polaris-runtime-test-common"))
