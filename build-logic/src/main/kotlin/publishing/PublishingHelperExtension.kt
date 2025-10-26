@@ -19,10 +19,13 @@
 
 package publishing
 
+import asf.AsfProject
 import java.io.File
 import javax.inject.Inject
 import org.gradle.api.Project
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.Provider
+import org.gradle.internal.extensions.stdlib.capitalized
 import org.gradle.kotlin.dsl.property
 
 /**
@@ -82,4 +85,54 @@ constructor(objectFactory: ObjectFactory, project: Project) {
 
   fun distributionFile(ext: String): File =
     distributionDir.get().file("${baseName.get()}.$ext").asFile
+}
+
+/**
+ * Provides the effective values for an ASF project using the ASF project metadata from `AsfProject`
+ * with overrides from `PublishingHelperExtension`.
+ */
+class EffectiveAsfProject(val pubExt: PublishingHelperExtension, val asfProject: AsfProject) {
+  fun githubRepoName(): Provider<String> = pubExt.githubRepositoryName.orElse(asfProject.apacheId)
+
+  fun tagPrefix(): Provider<String> =
+    pubExt.overrideTagPrefix.orElse("apache-${asfProject.apacheId}")
+
+  fun issueTracker(): Provider<String> {
+    val issuesUrl: Provider<String> =
+      codeRepoUrl().map { r -> "$r/issues" }.orElse(asfProject.bugDatabase)
+    return pubExt.overrideIssueManagement.orElse(issuesUrl)
+  }
+
+  fun codeRepoUrl(): Provider<String> =
+    pubExt.overrideScm.orElse(
+      githubRepoName().map { r -> "https://github.com/apache/$r" }.orElse(asfProject.repository)
+    )
+
+  fun fullName() = pubExt.overrideName.orElse("Apache ${asfProject.name}")
+
+  fun description() = pubExt.overrideDescription.orElse(asfProject.description)
+
+  fun projectUrl() = pubExt.overrideProjectUrl.orElse(asfProject.website)
+
+  fun mailingList(id: String) = MailingList(id, asfProject.apacheId)
+
+  companion object {
+    fun forProject(project: Project): EffectiveAsfProject {
+      val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+      val asfProject = AsfProject.memoized(project, e.asfProjectId.get())
+      return EffectiveAsfProject(e, asfProject)
+    }
+  }
+}
+
+class MailingList(val id: String, private val prj: String) {
+  fun name(): String = "${id.capitalized()} Mailing List"
+
+  fun subscribe(): String = "$id-subscribe@$prj.apache.org"
+
+  fun unsubscribe(): String = "$id-unsubscribe@$prj.apache.org"
+
+  fun post(): String = "$id@$prj.apache.org"
+
+  fun archive(): String = "https://lists.apache.org/list.html?$id@$prj.apache.org"
 }
