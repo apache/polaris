@@ -24,13 +24,11 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.Test;
@@ -43,23 +41,17 @@ public class JWTSymmetricKeyGeneratorTest {
   public void testJWTSymmetricKeyGenerator() {
     PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, null);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
+    long principalId = 123L;
     String mainSecret = "test_secret";
     String clientId = "test_client_id";
     PolarisPrincipalSecrets principalSecrets =
-        new PolarisPrincipalSecrets(1L, clientId, mainSecret, "otherSecret");
+        new PolarisPrincipalSecrets(principalId, clientId, mainSecret, "otherSecret");
     Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
         .thenReturn(new PrincipalSecretsResult(principalSecrets));
-    PolarisBaseEntity principal =
-        new PolarisBaseEntity(
-            0L,
-            1L,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            0L,
-            "principal");
-    Mockito.when(
-            metastoreManager.loadEntity(polarisCallContext, 0L, 1L, PolarisEntityType.PRINCIPAL))
-        .thenReturn(new EntityResult(principal));
+    PrincipalEntity principal =
+        new PrincipalEntity.Builder().setId(principalId).setName("principal").build();
+    Mockito.when(metastoreManager.findPrincipalById(polarisCallContext, principalId))
+        .thenReturn(Optional.of(principal));
     TokenBroker generator = new SymmetricKeyJWTBroker(metastoreManager, 666, () -> "polaris");
     TokenResponse token =
         generator.generateFromClientSecrets(

@@ -844,14 +844,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     BasePersistence ms = callCtx.getMetaStore();
 
     // if not found, the principal must have been dropped
-    EntityResult loadEntityResult =
-        loadEntity(
-            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
-    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+    Optional<PrincipalEntity> principalLookup = findPrincipalById(callCtx, principalId);
+    if (principalLookup.isEmpty()) {
       return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
-    PolarisBaseEntity principal = loadEntityResult.getEntity();
+    PrincipalEntity principal = principalLookup.get();
     Map<String, String> internalProps = principal.getInternalPropertiesAsMap();
 
     boolean doReset =
@@ -895,11 +893,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       String customClientSecret) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
+
     // if not found, the principal must have been dropped
-    EntityResult loadEntityResult =
-        loadEntity(
-            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
-    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+    Optional<PrincipalEntity> principalEntity = findPrincipalById(callCtx, principalId);
+    if (principalEntity.isEmpty()) {
       return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 

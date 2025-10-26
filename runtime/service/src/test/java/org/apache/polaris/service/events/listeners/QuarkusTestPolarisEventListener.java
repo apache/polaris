@@ -19,32 +19,9 @@
 
 package org.apache.polaris.service.events.listeners;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
 
-class ConcurrentLinkedQueueWithApproximateSize<T> {
-  private final ConcurrentLinkedQueue<T> queue = new ConcurrentLinkedQueue<>();
-  private final AtomicInteger size = new AtomicInteger();
-
-  public void add(T event) {
-    queue.add(event);
-    size.getAndIncrement();
-  }
-
-  public boolean isEmpty() {
-    return queue.isEmpty();
-  }
-
-  public T peek() {
-    return queue.peek();
-  }
-
-  public int size() {
-    return size.get();
-  }
-
-  public Stream<T> stream() {
-    return queue.stream();
-  }
-}
+@ApplicationScoped
+@Identifier("test")
+public class QuarkusTestPolarisEventListener extends TestPolarisEventListener {}

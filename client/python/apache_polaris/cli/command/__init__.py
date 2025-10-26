@@ -40,7 +40,7 @@ class Command(ABC):
         set_properties = Parser.parse_properties(options_get(Arguments.SET_PROPERTY))
         remove_properties = options_get(Arguments.REMOVE_PROPERTY)
         catalog_client_scopes = options_get(Arguments.CATALOG_CLIENT_SCOPE)
-        parameters = Parser.parse_properties(options_get(Arguments.PARAMETERS)),
+        parameters = Parser.parse_properties(options_get(Arguments.PARAMETERS))
 
         command = None
         if options.command == Commands.CATALOGS:
@@ -69,6 +69,7 @@ class Command(ABC):
                 endpoint=options_get(Arguments.ENDPOINT),
                 endpoint_internal=options_get(Arguments.ENDPOINT_INTERNAL),
                 sts_endpoint=options_get(Arguments.STS_ENDPOINT),
+                sts_unavailable=options_get(Arguments.STS_UNAVAILABLE),
                 path_style_access=options_get(Arguments.PATH_STYLE_ACCESS),
                 catalog_connection_type=options_get(Arguments.CATALOG_CONNECTION_TYPE),
                 catalog_authentication_type=options_get(Arguments.CATALOG_AUTHENTICATION_TYPE),

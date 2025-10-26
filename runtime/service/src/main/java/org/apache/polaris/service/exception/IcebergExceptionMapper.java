@@ -98,7 +98,8 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     } else {
       getLoggerForExceptionLogging()
           .atLevel(responseCode > 500 ? Level.INFO : Level.DEBUG)
-          .log("Full RuntimeException", runtimeException);
+          .setCause(runtimeException)
+          .log("Full RuntimeException");
     }
 
     ErrorResponse icebergErrorResponse =

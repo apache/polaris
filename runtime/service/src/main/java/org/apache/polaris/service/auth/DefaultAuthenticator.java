@@ -115,14 +115,10 @@ public class DefaultAuthenticator implements Authenticator {
       // otherwise, use the principal name to load the entity.
       if (credentials.getPrincipalId() != null && credentials.getPrincipalId() > 0) {
         principal =
-            PrincipalEntity.of(
-                metaStoreManager
-                    .loadEntity(
-                        callContext.getPolarisCallContext(),
-                        0L,
-                        credentials.getPrincipalId(),
-                        PolarisEntityType.PRINCIPAL)
-                    .getEntity());
+            metaStoreManager
+                .findPrincipalById(
+                    callContext.getPolarisCallContext(), credentials.getPrincipalId())
+                .orElse(null);
       } else if (credentials.getPrincipalName() != null) {
         principal =
             metaStoreManager

@@ -44,8 +44,6 @@ import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
 import org.apache.polaris.service.credentials.connection.AuthType;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
-import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.metrics.MetricsConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.eclipse.microprofile.config.Config;
@@ -218,18 +216,6 @@ public class ProductionReadinessChecks {
                 "The realm context resolver is configured to map requests without a realm header to the default realm.",
                 "polaris.realm-context.require-header"));
       }
-    }
-    return ProductionReadinessCheck.OK;
-  }
-
-  @Produces
-  public ProductionReadinessCheck checkPolarisEventListener(
-      PolarisEventListener polarisEventListener) {
-    if (polarisEventListener instanceof TestPolarisEventListener) {
-      return ProductionReadinessCheck.of(
-          Error.of(
-              "TestPolarisEventListener is intended for tests only.",
-              "polaris.event-listener.type"));
     }
     return ProductionReadinessCheck.OK;
   }

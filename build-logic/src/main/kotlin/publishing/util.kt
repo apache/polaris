@@ -99,36 +99,26 @@ internal fun <T : Any> parseJson(urlStr: String): T {
 
 /** Retrieves the project name, for example `Polaris` using the lower-case project ID. */
 internal fun fetchAsfProjectName(apacheId: String): String {
-  val projectsAll: Map<String, Map<String, Any>> =
-    parseJson("https://whimsy.apache.org/public/public_ldap_projects.json")
-  val projects = unsafeCast<Map<String, Map<String, Any>>>(projectsAll["projects"])
-  val project =
-    projects[apacheId]
-      ?: throw IllegalArgumentException(
-        "No project '$apacheId' found in https://whimsy.apache.org/public/public_ldap_projects.json"
-      )
+  val project = projectMap(apacheId)
   val isPodlingCurrent = project.containsKey("podling") && project["podling"] == "current"
   if (isPodlingCurrent) {
-    val podlingsAll: Map<String, Map<String, Any>> =
-      parseJson("https://whimsy.apache.org/public/public_podlings.json")
-    val podlings = unsafeCast<Map<String, Map<String, Any>>>(podlingsAll["podling"])
-    val podling =
-      podlings[apacheId]
-        ?: throw IllegalArgumentException(
-          "No podling '$apacheId' found in https://whimsy.apache.org/public/public_podlings.json"
-        )
+    val podling = podlingMap(apacheId)
     return podling["name"] as String
   } else {
     // top-level-project
-    val committeesAll: Map<String, Map<String, Any>> =
-      parseJson("https://whimsy.apache.org/public/committee-info.json")
-    val committees = unsafeCast<Map<String, Map<String, Any>>>(committeesAll["committees"])
-    val committee = unsafeCast<Map<String, Any>>(committees[apacheId])
+    val committee = projectCommitteeMap(apacheId)
     return committee["display_name"] as String
   }
 }
 
-internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
+internal fun projectCommitteeMap(apacheId: String): Map<String, Any> {
+  val committeesAll: Map<String, Map<String, Any>> =
+    parseJson("https://whimsy.apache.org/public/committee-info.json")
+  val committees = unsafeCast<Map<String, Map<String, Any>>>(committeesAll["committees"])
+  return unsafeCast(committees[apacheId])
+}
+
+internal fun projectMap(apacheId: String): Map<String, Any> {
   val projectsAll: Map<String, Map<String, Any>> =
     parseJson("https://whimsy.apache.org/public/public_ldap_projects.json")
   val projects = unsafeCast<Map<String, Map<String, Any>>>(projectsAll["projects"])
@@ -137,19 +127,26 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
       ?: throw IllegalArgumentException(
         "No project '$apacheId' found in https://whimsy.apache.org/public/public_ldap_projects.json"
       )
+  return project
+}
+
+internal fun podlingMap(apacheId: String): Map<String, Any> {
+  val podlingsAll: Map<String, Map<String, Any>> =
+    parseJson("https://whimsy.apache.org/public/public_podlings.json")
+  val podlings = unsafeCast<Map<String, Map<String, Any>>>(podlingsAll["podling"])
+  val podling =
+    podlings[apacheId]
+      ?: throw IllegalArgumentException(
+        "No podling '$apacheId' found in https://whimsy.apache.org/public/public_podlings.json"
+      )
+  return podling
+}
+
+internal fun fetchProjectInformation(apacheId: String): ProjectInformation {
+  val project = projectMap(apacheId)
   val isPodlingCurrent = project.containsKey("podling") && project["podling"] == "current"
 
   val inceptionYear = (project["createTimestamp"] as String).subSequence(0, 4).toString().toInt()
-
-  // Committers
-  val peopleProjectRoles: MutableMap<String, MutableList<String>> = mutableMapOf()
-  val members = unsafeCast(project["members"]) as List<String>
-  members.forEach { member -> peopleProjectRoles.put(member, mutableListOf("Committer")) }
-
-  // (P)PMC Members
-  val pmcRoleName = if (isPodlingCurrent) "PPMC member" else "PMC member"
-  val owners = unsafeCast(project["owners"]) as List<String>
-  owners.forEach { member -> peopleProjectRoles[member]!!.add(pmcRoleName) }
 
   val projectName: String
   val description: String
@@ -158,14 +155,7 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
   val licenseUrl: String
   val bugDatabase: String
   if (isPodlingCurrent) {
-    val podlingsAll: Map<String, Map<String, Any>> =
-      parseJson("https://whimsy.apache.org/public/public_podlings.json")
-    val podlings = unsafeCast<Map<String, Map<String, Any>>>(podlingsAll["podling"])
-    val podling =
-      podlings[apacheId]
-        ?: throw IllegalArgumentException(
-          "No podling '$apacheId' found in https://whimsy.apache.org/public/public_podlings.json"
-        )
+    val podling = podlingMap(apacheId)
     projectName = podling["name"] as String
     description = podling["description"] as String
     val podlingStatus = unsafeCast(podling["podlingStatus"]) as Map<String, Any>
@@ -174,12 +164,6 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
     repository = "https://github.com/apache/$apacheId.git"
     bugDatabase = "https://github.com/apache/$apacheId/issues"
     licenseUrl = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-
-    val champion = podling["champion"] as String
-    peopleProjectRoles[champion]!!.add("Champion")
-
-    val mentors = unsafeCast(podling["mentors"]) as List<String>
-    mentors.forEach { member -> peopleProjectRoles[member]!!.add("Mentor") }
   } else {
     // top-level-project
     val tlpPrj: Map<String, Any> =
@@ -189,33 +173,12 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
     bugDatabase = tlpPrj["bug-database"] as String
     licenseUrl = tlpPrj["license"] as String
 
-    val committeesAll: Map<String, Map<String, Any>> =
-      parseJson("https://whimsy.apache.org/public/committee-info.json")
-    val committees = unsafeCast<Map<String, Map<String, Any>>>(committeesAll["committees"])
-    val committee = unsafeCast<Map<String, Any>>(committees[apacheId])
-    val pmcChair = unsafeCast<Map<String, Map<String, Any>>>(committee["chair"])
+    val committee = projectCommitteeMap(apacheId)
     projectName = committee["display_name"] as String
     description = committee["description"] as String
-    pmcChair.keys.forEach { chair -> peopleProjectRoles[chair]!!.add("PMC Chair") }
   }
 
-  val peopleNames: Map<String, Map<String, Any>> =
-    parseJson("https://whimsy.apache.org/public/public_ldap_people.json")
-  val people: Map<String, Map<String, Any>> =
-    unsafeCast(peopleNames["people"]) as Map<String, Map<String, Any>>
-  val peopleList =
-    peopleProjectRoles.entries
-      .map { entry ->
-        val person =
-          people[entry.key]
-            ?: throw IllegalStateException(
-              "No person '${entry.key}' found in https://whimsy.apache.org/public/public_ldap_people.json"
-            )
-        ProjectMember(entry.key, person["name"]!! as String, entry.value)
-      }
-      .sortedBy { it.name }
-
-  return ProjectPeople(
+  return ProjectInformation(
     apacheId,
     projectName,
     description,
@@ -224,11 +187,10 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
     licenseUrl,
     bugDatabase,
     inceptionYear,
-    peopleList,
   )
 }
 
-internal class ProjectPeople(
+internal class ProjectInformation(
   val apacheId: String,
   val name: String,
   val description: String,
@@ -237,7 +199,4 @@ internal class ProjectPeople(
   val licenseUrl: String,
   val bugDatabase: String,
   val inceptionYear: Int,
-  val people: List<ProjectMember>,
 )
-
-internal class ProjectMember(val apacheId: String, val name: String, val roles: List<String>)

@@ -470,6 +470,20 @@ public interface PolarisMetaStoreManager
     return findPrincipalByName(polarisCallContext, PolarisEntityConstants.getRootPrincipalName());
   }
 
+  default Optional<PrincipalEntity> findPrincipalById(
+      PolarisCallContext polarisCallContext, long principalId) {
+    EntityResult loadResult =
+        loadEntity(
+            polarisCallContext,
+            PolarisEntityConstants.getNullId(),
+            principalId,
+            PolarisEntityType.PRINCIPAL);
+    if (!loadResult.isSuccess()) {
+      return Optional.empty();
+    }
+    return Optional.of(loadResult.getEntity()).map(PrincipalEntity::of);
+  }
+
   default Optional<PrincipalEntity> findPrincipalByName(
       PolarisCallContext polarisCallContext, String principalName) {
     EntityResult entityResult =
