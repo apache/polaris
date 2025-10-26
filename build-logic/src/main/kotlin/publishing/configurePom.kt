@@ -75,6 +75,7 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
 
         task.doFirst {
           mavenPom.run {
+            val gitInfo = GitInfo.memoized(project)
             val asfProject = AsfProject.memoized(project, e.asfProjectId.get())
             val asfProjectId = asfProject.apacheId
 
@@ -85,7 +86,14 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
             licenses {
               license {
                 name.set("Apache-2.0") // SPDX identifier
-                url.set(asfProject.licenseUrl)
+                url.set(gitInfo.rawGithubLink("LICENSE"))
+                comments.set(
+                  """
+                  NOTICE: ${gitInfo.rawGithubLink("NOTICE")}
+                  DISCLAIMER: ${gitInfo.rawGithubLink("DISCLAIMER")}
+                  """
+                    .trimIndent()
+                )
               }
             }
             mailingLists {
