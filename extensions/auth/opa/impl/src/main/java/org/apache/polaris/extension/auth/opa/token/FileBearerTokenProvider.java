@@ -118,10 +118,10 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
 
   @Override
   public String getToken() {
-    ;
-    if (cachedToken != null) {
+    String token = cachedToken;
+    if (token != null) {
       // Regular case, we have a cached token
-      return cachedToken;
+      return token;
     }
     // We get here if the cached token is null, which means that the initial token
     // has not been loaded yet.
