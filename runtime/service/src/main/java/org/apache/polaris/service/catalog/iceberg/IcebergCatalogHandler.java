@@ -113,7 +113,7 @@ import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.reporting.MetricsReporter;
+import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,7 +142,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final PolarisEventListener polarisEventListener;
   private final AccessConfigProvider accessConfigProvider;
-  private final MetricsReporter metricsReporter;
+  private final PolarisMetricsReporter metricsReporter;
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
   protected Catalog baseCatalog = null;
@@ -167,7 +167,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener,
       AccessConfigProvider accessConfigProvider,
-      MetricsReporter metricsReporter) {
+      PolarisMetricsReporter metricsReporter) {
     super(
         diagnostics,
         callContext,
@@ -594,8 +594,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void reportMetric(
-      String prefix, String namespace, String table, ReportMetricsRequest reportMetricsRequest) {
-    metricsReporter.reportMetric(prefix, namespace, table, reportMetricsRequest);
+      String prefix, TableIdentifier table, ReportMetricsRequest reportMetricsRequest) {
+    metricsReporter.reportMetric(prefix, table, reportMetricsRequest.report());
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {

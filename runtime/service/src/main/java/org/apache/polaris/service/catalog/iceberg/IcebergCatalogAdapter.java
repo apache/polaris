@@ -760,11 +760,14 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+        
+    Namespace ns = decodeNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     return withCatalog(
         securityContext,
         prefix,
         catalog -> {
-          catalog.reportMetric(prefix, namespace, table, reportMetricsRequest);
+          catalog.reportMetric(prefix, tableIdentifier, reportMetricsRequest);
           return Response.status(Response.Status.NO_CONTENT).build();
         });
   }
