@@ -28,7 +28,6 @@ import org.gradle.api.tasks.Exec
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
-import org.gradle.plugins.signing.Sign
 
 /**
  * Configures Apache project specific publishing tasks on the root project, for example the
@@ -39,7 +38,6 @@ internal fun configureOnRootProject(project: Project) =
     apply<NexusPublishPlugin>()
 
     val isRelease = project.hasProperty("release")
-    val isSigning = isRelease || project.hasProperty("signArtifacts")
 
     val sourceTarball = tasks.register<Exec>("sourceTarball")
     sourceTarball.configure {
@@ -61,6 +59,8 @@ internal fun configureOnRootProject(project: Project) =
         "HEAD",
       )
       workingDir(project.projectDir)
+
+      outputs.file(e.sourceTarball)
     }
 
     val digestSourceTarball =
@@ -75,18 +75,7 @@ internal fun configureOnRootProject(project: Project) =
 
     sourceTarball.configure { finalizedBy(digestSourceTarball) }
 
-    if (isSigning) {
-      val signSourceTarball =
-        tasks.register<Sign>("signSourceTarball") {
-          description = "Sign the source tarball"
-          mustRunAfter(sourceTarball)
-          doFirst {
-            val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-            sign(e.sourceTarball.get().asFile)
-          }
-        }
-      sourceTarball.configure { finalizedBy(signSourceTarball) }
-    }
+    signTaskOutputs(sourceTarball)
 
     val releaseEmailTemplate = tasks.register("releaseEmailTemplate")
     releaseEmailTemplate.configure {
