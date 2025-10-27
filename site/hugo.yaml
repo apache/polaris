@@ -65,6 +65,7 @@ params:
   # at the very right in the navbar.
   active_releases:
     # Mention all active releases here, in semver descending order
+    - "1.2.0"
     - "1.1.0"
     - "1.0.1"
     - "1.0.0"
