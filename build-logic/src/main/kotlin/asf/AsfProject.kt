@@ -41,8 +41,7 @@ class AsfProject(
     fun memoized(project: Project, asfName: String): AsfProject {
       val rootProject = project.rootProject
       return if (rootProject.extra.has("asfProject")) {
-        @Suppress("UNCHECKED_CAST")
-        rootProject.extra["asfProject"] as AsfProject
+        unsafeCast(rootProject.extra["asfProject"]) as AsfProject
       } else {
         val asfProject = fetchProjectInformation(asfName)
         rootProject.extra["asfProject"] = asfProject
