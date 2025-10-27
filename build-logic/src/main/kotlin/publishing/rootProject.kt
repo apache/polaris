@@ -64,17 +64,7 @@ internal fun configureOnRootProject(project: Project) =
       outputs.file(e.sourceTarball)
     }
 
-    val digestSourceTarball =
-      tasks.register<GenerateDigest>("digestSourceTarball") {
-        description = "Generate the source tarball digest"
-        mustRunAfter(sourceTarball)
-        file.set {
-          val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-          e.sourceTarball.get().asFile
-        }
-      }
-
-    sourceTarball.configure { finalizedBy(digestSourceTarball) }
+    digestTaskOutputs(sourceTarball)
 
     signTaskOutputs(sourceTarball)
 
