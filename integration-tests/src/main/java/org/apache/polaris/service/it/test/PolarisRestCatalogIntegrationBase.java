@@ -883,6 +883,27 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
   }
 
   @Test
+  public void testSendMetricsReport() {
+    Map<String, String> payload =
+        ImmutableMap.<String, String>builder()
+            .put("reportType", "SCAN_REPORT")
+            .put(
+                "report",
+                "{\"scanId\":\""
+                    + UUID.randomUUID()
+                    + "\",\"timestamp\":"
+                    + System.currentTimeMillis()
+                    + ",\"filesScanned\":1,\"rowsScanned\":100,\"metrics\":{\"bytesRead\":1024}}")
+            .build();
+    Invocation.Builder metricEndpoint =
+        catalogApi.request(
+            "v1/{cat}/namespaces/ns1/tables/tbl1/metrics", Map.of("cat", currentCatalogName));
+    try (Response response = metricEndpoint.post(Entity.json(payload))) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
   public void testSendNotificationInternalCatalog() {
     Map<String, String> payload =
         ImmutableMap.<String, String>builder()

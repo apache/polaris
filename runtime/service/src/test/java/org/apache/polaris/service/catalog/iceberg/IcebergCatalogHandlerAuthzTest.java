@@ -74,6 +74,7 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.reporting.DefaultMetricsReporter;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -135,7 +136,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
         polarisEventListener,
-        accessConfigProvider);
+        accessConfigProvider,
+        new DefaultMetricsReporter());
   }
 
   protected void doTestInsufficientPrivileges(
@@ -275,7 +277,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
             polarisEventListener,
-            accessConfigProvider);
+            accessConfigProvider,
+            new DefaultMetricsReporter());
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -313,7 +316,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
             polarisEventListener,
-            accessConfigProvider);
+            accessConfigProvider,
+            new DefaultMetricsReporter());
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),
@@ -1193,7 +1197,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
         polarisEventListener,
-        accessConfigProvider);
+        accessConfigProvider,
+        new DefaultMetricsReporter());
   }
 
   @Test
