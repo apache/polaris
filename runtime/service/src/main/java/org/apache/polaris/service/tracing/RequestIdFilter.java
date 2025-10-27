@@ -18,60 +18,43 @@
  */
 package org.apache.polaris.service.tracing;
 
-import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.FilterPriorities;
-import org.apache.polaris.service.logging.LoggingConfiguration;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 import org.jboss.resteasy.reactive.server.ServerResponseFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+/**
+ * Filter that handles request IDs for tracing.
+ *
+ * <p>See <a
+ * href="https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/observability/tracing">Envoy
+ * Tracing</a>
+ *
+ * @see <a href="https://devcenter.heroku.com/articles/http-request-id">Heroku - HTTP Request
+ *     IDs</a>
+ */
 public class RequestIdFilter {
 
   public static final String REQUEST_ID_KEY = "requestId";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RequestIdFilter.class);
-
-  @Inject LoggingConfiguration loggingConfiguration;
-  @Inject RequestIdGenerator requestIdGenerator;
+  @Inject TracingConfiguration tracingConfiguration;
 
   @ServerRequestFilter(preMatching = true, priority = FilterPriorities.REQUEST_ID_FILTER)
-  public Uni<Response> assignRequestId(ContainerRequestContext rc) {
-    var requestId = rc.getHeaderString(loggingConfiguration.requestIdHeaderName());
-    return (requestId != null
-            ? Uni.createFrom().item(requestId)
-            : requestIdGenerator.generateRequestId(rc))
-        .onItem()
-        .invoke(id -> rc.setProperty(REQUEST_ID_KEY, id))
-        .onItemOrFailure()
-        .transform((id, error) -> error == null ? null : errorResponse(error));
+  public void extractRequestId(ContainerRequestContext rc) {
+    String requestId = rc.getHeaderString(tracingConfiguration.requestId().headerName());
+    if (requestId != null) {
+      rc.setProperty(REQUEST_ID_KEY, requestId);
+    }
   }
 
   @ServerResponseFilter
   public void addResponseHeader(
       ContainerRequestContext request, ContainerResponseContext response) {
     String requestId = (String) request.getProperty(REQUEST_ID_KEY);
-    if (requestId != null) { // can be null if request ID generation fails
-      response.getHeaders().add(loggingConfiguration.requestIdHeaderName(), requestId);
+    if (requestId != null) {
+      response.getHeaders().add(tracingConfiguration.requestId().headerName(), requestId);
     }
-  }
-
-  private static Response errorResponse(Throwable error) {
-    LOGGER.error("Failed to generate request ID", error);
-    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-        .type(MediaType.APPLICATION_JSON_TYPE)
-        .entity(
-            ErrorResponse.builder()
-                .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
-                .withMessage("Request ID generation failed")
-                .withType("RequestIdGenerationError")
-                .build())
-        .build();
   }
 }

@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS events (
     principal_name TEXT,
     resource_type TEXT NOT NULL,
     resource_identifier TEXT NOT NULL,
+    otel_context TEXT,
     additional_properties TEXT NOT NULL,
     PRIMARY KEY (event_id)
 );

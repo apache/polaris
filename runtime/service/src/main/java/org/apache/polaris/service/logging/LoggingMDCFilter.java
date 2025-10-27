@@ -49,7 +49,10 @@ public class LoggingMDCFilter implements ContainerRequestFilter {
     // Also put the MDC values in the request context for use by other filters and handlers
     loggingConfiguration.mdc().forEach(MDC::put);
     loggingConfiguration.mdc().forEach(rc::setProperty);
-    MDC.put(REQUEST_ID_KEY, (String) rc.getProperty(REQUEST_ID_KEY));
+    String requestId = (String) rc.getProperty(REQUEST_ID_KEY);
+    if (requestId != null) {
+      MDC.put(REQUEST_ID_KEY, requestId);
+    }
     RealmContext realmContext = (RealmContext) rc.getProperty(REALM_CONTEXT_KEY);
     MDC.put(REALM_ID_KEY, realmContext.getRealmIdentifier());
   }

@@ -25,6 +25,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.google.common.annotations.VisibleForTesting;
+import io.opentelemetry.api.trace.Span;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
@@ -95,6 +96,23 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
   @Override
   protected String getRequestId() {
     return (String) requestContext.getProperty(REQUEST_ID_KEY);
+  }
+
+  @Nullable
+  @Override
+  protected String getOpenTelemetryContext() {
+    Span span = Span.current();
+    if (span.getSpanContext().isValid()) {
+      // construct a string from the span context according to W3C Trace Context proposal
+      // https://www.w3.org/TR/trace-context/
+      return "00-"
+          + span.getSpanContext().getTraceId()
+          + "-"
+          + span.getSpanContext().getSpanId()
+          + "-"
+          + span.getSpanContext().getTraceFlags().asHex();
+    }
+    return null;
   }
 
   @PreDestroy

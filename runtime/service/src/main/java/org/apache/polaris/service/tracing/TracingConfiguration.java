@@ -19,20 +19,19 @@
 
 package org.apache.polaris.service.tracing;
 
-import io.smallrye.mutiny.Uni;
-import jakarta.ws.rs.container.ContainerRequestContext;
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 
-/**
- * A generator for request IDs.
- *
- * @see RequestIdFilter
- */
-public interface RequestIdGenerator {
+@ConfigMapping(prefix = "polaris.tracing")
+public interface TracingConfiguration {
 
-  /**
-   * Generates a new request ID. IDs must be fast to generate and unique.
-   *
-   * @param requestContext The JAX-RS request context
-   */
-  Uni<String> generateRequestId(ContainerRequestContext requestContext);
+  RequestId requestId();
+
+  /** Configuration for the request ID filter. */
+  interface RequestId {
+
+    /** The name of the header that contains the request ID. */
+    @WithDefault("x-request-id")
+    String headerName();
+  }
 }

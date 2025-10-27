@@ -33,17 +33,48 @@ import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 public interface ModelEvent extends Converter<PolarisEvent> {
   String TABLE_NAME = "EVENTS";
 
+  String CATALOG_ID = "catalog_id";
+  String EVENT_ID = "event_id";
+  String REQUEST_ID = "request_id";
+  String EVENT_TYPE = "event_type";
+  String TIMESTAMP_MS = "timestamp_ms";
+  String PRINCIPAL_NAME = "principal_name";
+  String RESOURCE_TYPE = "resource_type";
+  String RESOURCE_IDENTIFIER = "resource_identifier";
+  String OTEL_CONTEXT = "otel_context";
+  String ADDITIONAL_PROPERTIES = "additional_properties";
+
   List<String> ALL_COLUMNS =
       List.of(
-          "catalog_id",
-          "event_id",
-          "request_id",
-          "event_type",
-          "timestamp_ms",
-          "principal_name",
-          "resource_type",
-          "resource_identifier",
-          "additional_properties");
+          CATALOG_ID,
+          EVENT_ID,
+          REQUEST_ID,
+          EVENT_TYPE,
+          TIMESTAMP_MS,
+          PRINCIPAL_NAME,
+          RESOURCE_TYPE,
+          RESOURCE_IDENTIFIER,
+          OTEL_CONTEXT,
+          ADDITIONAL_PROPERTIES);
+
+  /**
+   * Dummy instance to be used as a Converter when calling #fromResultSet().
+   *
+   * <p>FIXME: fromResultSet() is a factory method and should be static or moved to a factory class.
+   */
+  ModelEvent CONVERTER =
+      ImmutableModelEvent.builder()
+          .catalogId("")
+          .eventId("")
+          .requestId("")
+          .eventType("")
+          .timestampMs(0L)
+          .principalName("")
+          .resourceType(PolarisEvent.ResourceType.CATALOG)
+          .resourceIdentifier("")
+          .openTelemetryContext("")
+          .additionalProperties("")
+          .build();
 
   // catalog id
   String getCatalogId();
@@ -71,6 +102,10 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   // Which resource was operated on
   String getResourceIdentifier();
 
+  // OpenTelemetry context that was active when this event was emitted
+  @Nullable
+  String getOpenTelemetryContext();
+
   // Additional parameters that were not earlier recorded
   String getAdditionalProperties();
 
@@ -78,15 +113,16 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   default PolarisEvent fromResultSet(ResultSet rs) throws SQLException {
     var modelEvent =
         ImmutableModelEvent.builder()
-            .catalogId(rs.getString("catalog_id"))
-            .eventId(rs.getString("event_id"))
-            .requestId(rs.getString("request_id"))
-            .eventType(rs.getString("event_type"))
-            .timestampMs(rs.getLong("timestamp_ms"))
-            .principalName(rs.getString("actor"))
-            .resourceType(PolarisEvent.ResourceType.valueOf(rs.getString("resource_type")))
-            .resourceIdentifier(rs.getString("resource_identifier"))
-            .additionalProperties(rs.getString("additional_properties"))
+            .catalogId(rs.getString(CATALOG_ID))
+            .eventId(rs.getString(EVENT_ID))
+            .requestId(rs.getString(REQUEST_ID))
+            .eventType(rs.getString(EVENT_TYPE))
+            .timestampMs(rs.getLong(TIMESTAMP_MS))
+            .principalName(rs.getString(PRINCIPAL_NAME))
+            .resourceType(PolarisEvent.ResourceType.valueOf(rs.getString(RESOURCE_TYPE)))
+            .resourceIdentifier(rs.getString(RESOURCE_IDENTIFIER))
+            .openTelemetryContext(rs.getString(OTEL_CONTEXT))
+            .additionalProperties(rs.getString(ADDITIONAL_PROPERTIES))
             .build();
     return toEvent(modelEvent);
   }
@@ -94,18 +130,19 @@ public interface ModelEvent extends Converter<PolarisEvent> {
   @Override
   default Map<String, Object> toMap(DatabaseType databaseType) {
     Map<String, Object> map = new LinkedHashMap<>();
-    map.put("catalog_id", getCatalogId());
-    map.put("event_id", getEventId());
-    map.put("request_id", getRequestId());
-    map.put("event_type", getEventType());
-    map.put("timestamp_ms", getTimestampMs());
-    map.put("principal_name", getPrincipalName());
-    map.put("resource_type", getResourceType().toString());
-    map.put("resource_identifier", getResourceIdentifier());
+    map.put(CATALOG_ID, getCatalogId());
+    map.put(EVENT_ID, getEventId());
+    map.put(REQUEST_ID, getRequestId());
+    map.put(EVENT_TYPE, getEventType());
+    map.put(TIMESTAMP_MS, getTimestampMs());
+    map.put(PRINCIPAL_NAME, getPrincipalName());
+    map.put(RESOURCE_TYPE, getResourceType().toString());
+    map.put(RESOURCE_IDENTIFIER, getResourceIdentifier());
+    map.put(OTEL_CONTEXT, getOpenTelemetryContext());
     if (databaseType.equals(DatabaseType.POSTGRES)) {
-      map.put("additional_properties", toJsonbPGobject(getAdditionalProperties()));
+      map.put(ADDITIONAL_PROPERTIES, toJsonbPGobject(getAdditionalProperties()));
     } else {
-      map.put("additional_properties", getAdditionalProperties());
+      map.put(ADDITIONAL_PROPERTIES, getAdditionalProperties());
     }
     return map;
   }
@@ -122,6 +159,7 @@ public interface ModelEvent extends Converter<PolarisEvent> {
         .principalName(event.getPrincipalName())
         .resourceType(event.getResourceType())
         .resourceIdentifier(event.getResourceIdentifier())
+        .openTelemetryContext(event.getOpenTelemetryContext())
         .additionalProperties(event.getAdditionalProperties())
         .build();
   }
@@ -138,7 +176,8 @@ public interface ModelEvent extends Converter<PolarisEvent> {
             model.getTimestampMs(),
             model.getPrincipalName(),
             model.getResourceType(),
-            model.getResourceIdentifier());
+            model.getResourceIdentifier(),
+            model.getOpenTelemetryContext());
     polarisEvent.setAdditionalProperties(model.getAdditionalProperties());
     return polarisEvent;
   }

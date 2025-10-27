@@ -20,77 +20,41 @@
 package org.apache.polaris.service.tracing;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.anything;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.is;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.hamcrest.CoreMatchers.nullValue;
 
 import io.quarkus.test.common.http.TestHTTPEndpoint;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectSpy;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
-import io.smallrye.mutiny.Uni;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2Api;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 @QuarkusTest
 @TestHTTPEndpoint(IcebergRestOAuth2Api.class)
-@SuppressWarnings("UastIncorrectHttpHeaderInspection")
 public class RequestIdFilterTest {
 
-  @InjectSpy RequestIdGenerator requestIdGenerator;
-
-  @BeforeEach
-  void resetMocks() {
-    Mockito.reset(requestIdGenerator);
-  }
-
   @Test
-  void testSuccessWithGeneratedRequestId() {
+  void testNoRequestId() {
     givenTokenRequest()
         .when()
         .post()
         .then()
         .statusCode(200)
         .body(containsString("access_token"))
-        .header("Polaris-Request-Id", anything());
-    verify(requestIdGenerator, times(1)).generateRequestId(any());
+        .header("x-request-id", nullValue());
   }
 
   @Test
-  void testSuccessWithCustomRequestId() {
+  void testWithRequestId() {
     givenTokenRequest()
-        .header("Polaris-Request-Id", "custom-request-id")
+        .header("x-request-id", "custom-request-id")
         .when()
         .post()
         .then()
         .statusCode(200)
         .body(containsString("access_token"))
-        .header("Polaris-Request-Id", "custom-request-id");
-    verify(requestIdGenerator, never()).generateRequestId(any());
-  }
-
-  @Test
-  void testError() {
-    doReturn(Uni.createFrom().failure(new RuntimeException("test error")))
-        .when(requestIdGenerator)
-        .generateRequestId(any());
-    givenTokenRequest()
-        .when()
-        .post()
-        .then()
-        .statusCode(500)
-        .body("error.message", is("Request ID generation failed"))
-        .body("error.type", is("RequestIdGenerationError"))
-        .body("error.code", is(500));
-    verify(requestIdGenerator, times(1)).generateRequestId(any());
+        .header("x-request-id", "custom-request-id");
   }
 
   private static RequestSpecification givenTokenRequest() {

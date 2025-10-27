@@ -24,9 +24,6 @@ import java.util.Map;
 @ConfigMapping(prefix = "polaris.log")
 public interface LoggingConfiguration {
 
-  /** The name of the header that contains the request ID. */
-  String requestIdHeaderName();
-
   /** Additional MDC values to include in the log context. */
   Map<String, String> mdc();
 }

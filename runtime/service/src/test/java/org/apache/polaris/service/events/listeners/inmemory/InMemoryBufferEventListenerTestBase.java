@@ -112,6 +112,6 @@ abstract class InMemoryBufferEventListenerTestBase {
 
   static PolarisEvent event() {
     String id = UUID.randomUUID().toString();
-    return new PolarisEvent("test", id, null, "test", 0, null, CATALOG, "test");
+    return new PolarisEvent("test", id, null, "test", 0, null, CATALOG, "test", null);
   }
 }

@@ -45,7 +45,8 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
             contextSpecificInformation.timestamp(),
             contextSpecificInformation.principalName(),
             PolarisEvent.ResourceType.TABLE,
-            TableIdentifier.of(event.namespace(), event.tableName()).toString());
+            TableIdentifier.of(event.namespace(), event.tableName()).toString(),
+            getOpenTelemetryContext());
     Map<String, String> additionalParameters =
         Map.of(
             "table-uuid",
@@ -68,7 +69,8 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
             contextSpecificInformation.timestamp(),
             contextSpecificInformation.principalName(),
             PolarisEvent.ResourceType.CATALOG,
-            event.catalog().getName());
+            event.catalog().getName(),
+            getOpenTelemetryContext());
     processEvent(polarisEvent);
   }
 
@@ -78,6 +80,9 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
 
   @Nullable
   protected abstract String getRequestId();
+
+  @Nullable
+  protected abstract String getOpenTelemetryContext();
 
   protected abstract void processEvent(PolarisEvent event);
 }

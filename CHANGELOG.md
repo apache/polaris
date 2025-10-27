@@ -31,7 +31,16 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- JDBC persistence: a new column has been added to the `events` table to store the OpenTelemetry 
+  context that was active when the event was emitted. This column is nullable. To update your schema
+  to the latest version, run the following SQL statement: 
+  ```sql 
+  ALTER TABLE POLARIS_SCHEMA.EVENTS ADD COLUMN IF NOT EXISTS otel_context TEXT; 
+  ```
+
 ### Breaking changes
+
+- The default request ID header name has changed from `Polaris-Request-Id` to `x-request-id`.
 
 ### New Features
 
@@ -42,6 +51,15 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - `client.region` is no longer considered a "credential" property (related to Iceberg REST Catalog API).
 
 ### Deprecations
+
+* The configuration property `polaris.log.request-id-header-name` is deprecated and has been renamed 
+  to `polaris.tracing.request-id.header-name`; the old name is still supported for backwards 
+  compatibility, but will generate a warning. It will be removed in a future release.
+* Helm chart: the `tracing` section has been renamed to `tracing.otel`. The old name is still
+  supported for backwards compatibility, but will be removed in a future release.
+* Helm chart: the `logging.requestIdHeaderName` property is deprecated and has been renamed to 
+  `tracing.requestId.headerName`. The old name is still supported for backwards compatibility, but
+  will be removed in a future release.
 
 ### Fixes
 
