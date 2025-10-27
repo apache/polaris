@@ -23,5 +23,5 @@ import org.apache.polaris.service.it.test.PolarisRestCatalogAdlsIntegrationTestB
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @QuarkusIntegrationTest
-@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_ADLS_PATH", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_AZURE_PATH", matches = ".+")
 public class RestCatalogAdlsIT extends PolarisRestCatalogAdlsIntegrationTestBase {}

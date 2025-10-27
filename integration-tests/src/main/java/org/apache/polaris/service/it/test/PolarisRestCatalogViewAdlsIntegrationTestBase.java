@@ -27,8 +27,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 /** Runs PolarisRestCatalogViewIntegrationTest on Azure. */
 public abstract class PolarisRestCatalogViewAdlsIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
-  public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_ADLS_TENANT_ID");
-  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_ADLS_PATH");
+  public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_AZURE_TENANT_ID");
+  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_AZURE_PATH");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
