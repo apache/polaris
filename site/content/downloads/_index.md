@@ -58,7 +58,6 @@ Apache Polaris 1.2.0-incubating was released on October 23rd, 2025.
   - **Events Persistence (Preview)**: Introduced new event types and added support for persisting events to both Relational JDBC Persistence and AWS CloudWatch.
   
     **Note**: This is a preview feature. The persistence schema is subject to change in future releases, and previously stored event data MAY become unreadable (i.e., dropped) after an upgrade.
-  - Generate Request IDs (if not specified) for all incoming requests to Polaris.
 
 - **Changes**
   - The following APIs will now return the newly-created objects as part of the successful 201 response: createCatalog, createPrincipalRole, createCatalogRole.
