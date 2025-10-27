@@ -87,7 +87,7 @@ import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.reporting.MetricsReporter;
+import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -151,7 +151,7 @@ public class IcebergCatalogAdapter
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
   private final PolarisEventListener polarisEventListener;
   private final AccessConfigProvider accessConfigProvider;
-  private final MetricsReporter metricsReporter;
+  private final PolarisMetricsReporter metricsReporter;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -170,7 +170,7 @@ public class IcebergCatalogAdapter
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener,
       AccessConfigProvider accessConfigProvider,
-      MetricsReporter metricsReporter) {
+      PolarisMetricsReporter metricsReporter) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -760,7 +760,7 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-        
+
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     return withCatalog(
