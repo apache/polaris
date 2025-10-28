@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
@@ -69,7 +70,6 @@ public class Resolver {
 
   // the id of the principal making the call or 0 if unknown
   private final @Nonnull PolarisPrincipal polarisPrincipal;
-  private final @Nonnull SecurityContext securityContext;
 
   // reference catalog name for name resolution
   private final String referenceCatalogName;
@@ -137,7 +137,6 @@ public class Resolver {
     this.diagnostics = diagnostics;
     this.polarisMetaStoreManager = polarisMetaStoreManager;
     this.cache = cache;
-    this.securityContext = securityContext;
     this.referenceCatalogName = referenceCatalogName;
 
     // validate inputs
@@ -467,11 +466,11 @@ public class Resolver {
 
     // update all principal roles with latest
     if (!this.resolvedCallerPrincipalRoles.isEmpty()) {
-      List<ResolvedPolarisEntity> refreshedResolvedCallerPrincipalRoles =
-          new ArrayList<>(this.resolvedCallerPrincipalRoles.size());
-      this.resolvedCallerPrincipalRoles.forEach(
-          ce -> refreshedResolvedCallerPrincipalRoles.add(this.getFreshlyResolved(ce)));
-      this.resolvedCallerPrincipalRoles = refreshedResolvedCallerPrincipalRoles;
+      this.resolvedCallerPrincipalRoles =
+          resolvedCallerPrincipalRoles.stream()
+              .map(this::getFreshlyResolved)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toList());
     }
 
     // update referenced catalog
@@ -776,13 +775,11 @@ public class Resolver {
   /**
    * Resolve all principal roles that the principal has grants for
    *
-   * @param toValidate
-   * @param resolvedCallerPrincipal1
    * @return the list of resolved principal roles the principal has grants for
    */
   private List<ResolvedPolarisEntity> resolveAllPrincipalRoles(
-      List<ResolvedPolarisEntity> toValidate, ResolvedPolarisEntity resolvedCallerPrincipal1) {
-    return resolvedCallerPrincipal1.getGrantRecordsAsGrantee().stream()
+      List<ResolvedPolarisEntity> toValidate, ResolvedPolarisEntity callerPrincipal) {
+    return callerPrincipal.getGrantRecordsAsGrantee().stream()
         .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
         .map(
             gr ->
@@ -791,22 +788,22 @@ public class Resolver {
                     PolarisEntityType.PRINCIPAL_ROLE,
                     PolarisEntityConstants.getRootEntityId(),
                     gr.getSecurableId()))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 
   /**
-   * Resolve the specified list of principal roles. The SecurityContext is used to determine whether
-   * the principal actually has the roles specified.
+   * Resolve the specified list of principal roles. The PolarisPrincipal is used to determine
+   * whether the principal actually has the roles specified.
    *
-   * @param toValidate
-   * @param roleNames
    * @return the filtered list of resolved principal roles
    */
   private List<ResolvedPolarisEntity> resolvePrincipalRolesByName(
       List<ResolvedPolarisEntity> toValidate, Set<String> roleNames) {
     return roleNames.stream()
-        .filter(securityContext::isUserInRole)
+        .filter(roleName -> polarisPrincipal.getRoles().contains(roleName))
         .map(roleName -> resolveByName(toValidate, PolarisEntityType.PRINCIPAL_ROLE, roleName))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 

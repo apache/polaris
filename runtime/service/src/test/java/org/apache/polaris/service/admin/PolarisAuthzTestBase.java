@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Catalog;
@@ -69,7 +68,6 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
@@ -77,7 +75,6 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -464,32 +461,7 @@ public abstract class PolarisAuthzTestBase {
   protected @Nonnull SecurityContext securityContext(PolarisPrincipal p) {
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     Mockito.when(securityContext.getUserPrincipal()).thenReturn(p);
-    Set<String> principalRoleNames = loadPrincipalRolesNames(p);
-    Mockito.when(securityContext.isUserInRole(Mockito.anyString()))
-        .thenAnswer(invocation -> principalRoleNames.contains(invocation.getArgument(0)));
     return securityContext;
-  }
-
-  protected @Nonnull Set<String> loadPrincipalRolesNames(PolarisPrincipal p) {
-    PolarisBaseEntity principal =
-        metaStoreManager
-            .findPrincipalByName(callContext.getPolarisCallContext(), p.getName())
-            .orElseThrow();
-    return metaStoreManager
-        .loadGrantsToGrantee(callContext.getPolarisCallContext(), principal)
-        .getGrantRecords()
-        .stream()
-        .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
-        .map(
-            gr ->
-                metaStoreManager.loadEntity(
-                    callContext.getPolarisCallContext(),
-                    0L,
-                    gr.getSecurableId(),
-                    PolarisEntityType.PRINCIPAL_ROLE))
-        .map(EntityResult::getEntity)
-        .map(PolarisBaseEntity::getName)
-        .collect(Collectors.toSet());
   }
 
   protected @Nonnull PrincipalEntity rotateAndRefreshPrincipal(
@@ -524,7 +496,6 @@ public abstract class PolarisAuthzTestBase {
     }
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     Mockito.when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
-    Mockito.when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, securityContext, CATALOG_NAME);

@@ -188,7 +188,6 @@ public abstract class AbstractPolicyCatalogTest {
 
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
-    when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     ReservedProperties reservedProperties = ReservedProperties.NONE;
