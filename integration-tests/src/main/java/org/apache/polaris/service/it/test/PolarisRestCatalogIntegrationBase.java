@@ -65,9 +65,14 @@ import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
+import org.apache.iceberg.metrics.ImmutableScanReport;
+import org.apache.iceberg.metrics.ScanMetrics;
+import org.apache.iceberg.metrics.ScanMetricsResult;
+import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
@@ -897,7 +902,8 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Invocation.Builder metricEndpoint =
         catalogApi.request(
             "v1/{cat}/namespaces/ns1/tables/tbl1/metrics", Map.of("cat", currentCatalogName));
-    try (Response response = metricEndpoint.post(Entity.json(ReportMetricsRequest.of(scanReport)))) {
+    try (Response response =
+        metricEndpoint.post(Entity.json(ReportMetricsRequest.of(scanReport)))) {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }

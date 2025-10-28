@@ -2,8 +2,8 @@ package org.apache.polaris.service.reporting;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
-import org.apache.commons.lang3.function.TriConsumer;
 import jakarta.enterprise.context.RequestScoped;
+import org.apache.commons.lang3.function.TriConsumer;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.slf4j.Logger;
@@ -23,8 +23,7 @@ public class DefaultMetricsReporter implements PolarisMetricsReporter {
   }
 
   @VisibleForTesting
- DefaultMetricsReporter(
-      TriConsumer<String, TableIdentifier, MetricsReport> reportConsumer) {
+  DefaultMetricsReporter(TriConsumer<String, TableIdentifier, MetricsReport> reportConsumer) {
     this.reportConsumer = reportConsumer;
   }
 
