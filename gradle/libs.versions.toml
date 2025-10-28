@@ -43,7 +43,7 @@ quarkus-amazon-services-bom = { module = "io.quarkus.platform:quarkus-amazon-ser
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.6" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.35.10" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.36.2" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.38" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
@@ -73,7 +73,6 @@ jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-ap
 jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version = "6.1.0" }
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.1" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
-jandex = { module = "io.smallrye.jandex:jandex", version ="3.5.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.14.0" }
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.7" }
@@ -109,7 +108,7 @@ weld-se-core = { module = "org.jboss.weld.se:weld-se-core", version = "6.0.3.Fin
 weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.3.Final" }
 
 [plugins]
-jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "0.8.15" }
+jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "0.9.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
 openapi-generator = { id = "org.openapi.generator", version = "7.12.0" }
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }

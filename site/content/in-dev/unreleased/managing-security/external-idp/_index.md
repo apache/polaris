@@ -251,5 +251,5 @@ See more examples below.
 
 ### Additional Links 
 
-* For complete Keycloak integration example, see: [Keycloak External IDP Configuration Guide]({{< relref "keycloak-idp.md" >}})
+* For complete Keycloak integration example, see: [Keycloak External IDP Configuration Guide]({{< relref "../../getting-started/using-polaris/keycloak-idp.md" >}})
 * See [Developer Notes]({{< relref "idp-dev-notes.md" >}}) with internal implementation details for developers who want to understand or extend Polaris authentication.

@@ -32,7 +32,6 @@ The requirements to run the script below are:
 * Assign a System-Assigned Managed Identity to the Azure VM.
 
 ```shell
-chmod +x getting-started/assets/cloud_providers/deploy-azure.sh
 export ASSETS_PATH=$(pwd)/getting-started/assets/
 export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
