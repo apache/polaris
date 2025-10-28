@@ -50,7 +50,7 @@ public class PolarisGenericTableCatalogHandlerAuthzTest extends PolarisAuthzTest
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
-        securityContext(authenticatedPrincipal),
+        authenticatedPrincipal,
         catalogName,
         polarisAuthorizer,
         null,

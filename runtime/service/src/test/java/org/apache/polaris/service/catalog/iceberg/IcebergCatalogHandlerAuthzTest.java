@@ -23,7 +23,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -127,7 +126,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
-        securityContext(authenticatedPrincipal),
+        authenticatedPrincipal,
         factory,
         catalogName,
         polarisAuthorizer,
@@ -267,7 +266,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             credentialManager,
-            securityContext(authenticatedPrincipal),
+            authenticatedPrincipal,
             callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer,
@@ -305,7 +304,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             credentialManager,
-            securityContext(authenticatedPrincipal1),
+            authenticatedPrincipal1,
             callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer,
@@ -1125,9 +1124,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     CallContextCatalogFactory mockFactory = Mockito.mock(CallContextCatalogFactory.class);
 
     // Mock the catalog factory to return our regular catalog but with mocked config
-    Mockito.when(
-            mockFactory.createCallContextCatalog(
-                Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
+    Mockito.when(mockFactory.createCallContextCatalog(Mockito.any(), Mockito.any(), Mockito.any()))
         .thenReturn(baseCatalog);
 
     return newWrapperWithFineLevelAuthDisabled(Set.of(), CATALOG_NAME, mockFactory, false);
@@ -1185,7 +1182,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
-        securityContext(authenticatedPrincipal),
+        authenticatedPrincipal,
         factory,
         catalogName,
         polarisAuthorizer,
@@ -1906,11 +1903,9 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
           public Catalog createCallContextCatalog(
               CallContext context,
               PolarisPrincipal polarisPrincipal,
-              SecurityContext securityContext,
               PolarisResolutionManifest resolvedManifest) {
             Catalog catalog =
-                super.createCallContextCatalog(
-                    context, polarisPrincipal, securityContext, resolvedManifest);
+                super.createCallContextCatalog(context, polarisPrincipal, resolvedManifest);
             String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
