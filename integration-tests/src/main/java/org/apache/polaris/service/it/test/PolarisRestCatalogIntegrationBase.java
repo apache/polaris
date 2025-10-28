@@ -884,21 +884,20 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
 
   @Test
   public void testSendMetricsReport() {
-    Map<String, String> payload =
-        ImmutableMap.<String, String>builder()
-            .put("reportType", "SCAN_REPORT")
-            .put(
-                "report",
-                "{\"scanId\":\""
-                    + UUID.randomUUID()
-                    + "\",\"timestamp\":"
-                    + System.currentTimeMillis()
-                    + ",\"filesScanned\":1,\"rowsScanned\":100,\"metrics\":{\"bytesRead\":1024}}")
+    ScanReport scanReport =
+        ImmutableScanReport.builder()
+            .tableName("tbl1")
+            .schemaId(4)
+            .addProjectedFieldIds(1, 2, 3)
+            .addProjectedFieldNames("c1", "c2", "c3")
+            .snapshotId(23L)
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
             .build();
     Invocation.Builder metricEndpoint =
         catalogApi.request(
             "v1/{cat}/namespaces/ns1/tables/tbl1/metrics", Map.of("cat", currentCatalogName));
-    try (Response response = metricEndpoint.post(Entity.json(payload))) {
+    try (Response response = metricEndpoint.post(Entity.json(ReportMetricsRequest.of(scanReport)))) {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
