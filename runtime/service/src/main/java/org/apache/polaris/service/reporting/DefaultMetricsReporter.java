@@ -2,7 +2,7 @@ package org.apache.polaris.service.reporting;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
-import io.smallrye.mutiny.tuples.Functions.TriConsumer;
+import org.apache.commons.lang3.function.TriConsumer;
 import jakarta.enterprise.context.RequestScoped;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
