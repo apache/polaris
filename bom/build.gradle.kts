@@ -44,6 +44,10 @@ dependencies {
     api(project(":polaris-idgen-impl"))
     api(project(":polaris-idgen-spi"))
 
+    api(project(":polaris-nodes-api"))
+    api(project(":polaris-nodes-impl"))
+    api(project(":polaris-nodes-spi"))
+
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
