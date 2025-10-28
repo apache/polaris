@@ -23,7 +23,7 @@ public class DefaultMetricsReporter implements PolarisMetricsReporter {
   }
 
   @VisibleForTesting
-  public DefaultMetricsReporter(
+ DefaultMetricsReporter(
       TriConsumer<String, TableIdentifier, MetricsReport> reportConsumer) {
     this.reportConsumer = reportConsumer;
   }
