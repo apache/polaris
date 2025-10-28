@@ -39,6 +39,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
+import org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -137,6 +138,13 @@ public class ServiceProducers {
   @RequestScoped
   public RealmConfig realmConfig(CallContext callContext) {
     return callContext.getRealmConfig();
+  }
+
+  @Produces
+  @ApplicationScoped
+  @Identifier("internal")
+  public PolarisAuthorizerFactory defaultPolarisAuthorizerFactory() {
+    return new DefaultPolarisAuthorizerFactory();
   }
 
   @Produces

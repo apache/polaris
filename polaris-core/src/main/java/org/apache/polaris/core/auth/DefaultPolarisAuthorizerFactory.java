@@ -18,13 +18,9 @@
  */
 package org.apache.polaris.core.auth;
 
-import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.core.config.RealmConfig;
 
 /** Factory for creating the default Polaris authorizer implementation. */
-@ApplicationScoped
-@Identifier("internal")
 public class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
   @Override
