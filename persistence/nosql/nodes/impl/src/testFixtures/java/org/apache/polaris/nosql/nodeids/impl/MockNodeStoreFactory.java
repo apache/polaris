@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodeids.impl;
+package org.apache.polaris.nosql.nodeids.impl;
 
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.ids.api.IdGenerator;
-import org.apache.polaris.nodeids.spi.NodeManagementState;
-import org.apache.polaris.nodeids.spi.NodeStore;
-import org.apache.polaris.nodeids.spi.NodeStoreFactory;
+import org.apache.polaris.nosql.nodeids.spi.NodeManagementState;
+import org.apache.polaris.nosql.nodeids.spi.NodeStore;
+import org.apache.polaris.nosql.nodeids.spi.NodeStoreFactory;
 
 public class MockNodeStoreFactory implements NodeStoreFactory {
   private final AtomicReference<NodeManagementState> nodeState = new AtomicReference<>();

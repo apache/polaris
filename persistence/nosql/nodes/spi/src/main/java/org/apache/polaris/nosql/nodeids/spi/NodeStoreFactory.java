@@ -16,15 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodeids.spi;
+package org.apache.polaris.nosql.nodeids.spi;
 
+import jakarta.annotation.Nonnull;
 import java.util.Optional;
-import org.apache.polaris.ids.api.IdGeneratorSpec;
-import org.apache.polaris.immutables.PolarisImmutable;
+import org.apache.polaris.ids.api.IdGenerator;
 
-public interface NodeManagementState {
-  Optional<IdGeneratorSpec> idGeneratorSpec();
+public interface NodeStoreFactory {
+  @Nonnull
+  NodeStore createNodeStore(@Nonnull IdGenerator idGenerator);
 
-  @PolarisImmutable
-  interface BuildableNodeManagementState extends NodeManagementState {}
+  Optional<NodeManagementState> fetchManagementState();
+
+  boolean storeManagementState(@Nonnull NodeManagementState state);
 }
