@@ -22,8 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.SecurityContext;
-import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -371,38 +369,19 @@ public class ManagementServiceTest {
 
   private PolarisAdminService setupPolarisAdminService(
       PolarisMetaStoreManager metaStoreManager, PolarisCallContext callContext) {
+    PolarisPrincipal principal =
+        PolarisPrincipal.of(
+            new PrincipalEntity.Builder()
+                .setName(PolarisEntityConstants.getRootPrincipalName())
+                .build(),
+            Set.of(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()));
     return new PolarisAdminService(
-        services.polarisDiagnostics(),
         callContext,
         services.resolutionManifestFactory(),
         metaStoreManager,
         new UnsafeInMemorySecretsManager(),
         new DefaultServiceIdentityProvider(),
-        new SecurityContext() {
-          @Override
-          public Principal getUserPrincipal() {
-            return PolarisPrincipal.of(
-                new PrincipalEntity.Builder()
-                    .setName(PolarisEntityConstants.getRootPrincipalName())
-                    .build(),
-                Set.of(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()));
-          }
-
-          @Override
-          public boolean isUserInRole(String role) {
-            return true;
-          }
-
-          @Override
-          public boolean isSecure() {
-            return false;
-          }
-
-          @Override
-          public String getAuthenticationScheme() {
-            return "";
-          }
-        },
+        principal,
         new PolarisAuthorizerImpl(services.realmConfig()),
         ReservedProperties.NONE);
   }

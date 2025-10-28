@@ -208,7 +208,7 @@ public class IcebergCatalogAdapter
 
   @VisibleForTesting
   IcebergCatalogHandler newHandlerWrapper(SecurityContext securityContext, String catalogName) {
-    validatePrincipal(securityContext);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
 
     return new IcebergCatalogHandler(
         diagnostics,
@@ -216,7 +216,7 @@ public class IcebergCatalogAdapter
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
-        securityContext,
+        principal,
         catalogFactory,
         catalogName,
         polarisAuthorizer,
@@ -799,7 +799,7 @@ public class IcebergCatalogAdapter
     if (warehouse == null) {
       throw new BadRequestException("Please specify a warehouse");
     }
-    Resolver resolver = resolverFactory.createResolver(securityContext, warehouse);
+    Resolver resolver = resolverFactory.createResolver(authenticatedPrincipal, warehouse);
     ResolverStatus resolverStatus = resolver.resolveAll();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", warehouse);

@@ -30,7 +30,6 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
@@ -261,13 +260,12 @@ public abstract class PolarisAuthzTestBase {
 
     this.adminService =
         new PolarisAdminService(
-            diagServices,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             serviceIdentityProvider,
-            securityContext(authenticatedRoot),
+            authenticatedRoot,
             polarisAuthorizer,
             reservedProperties);
 
@@ -458,12 +456,6 @@ public abstract class PolarisAuthzTestBase {
     Assertions.assertThat(result.isSuccess()).isTrue();
   }
 
-  protected @Nonnull SecurityContext securityContext(PolarisPrincipal p) {
-    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-    Mockito.when(securityContext.getUserPrincipal()).thenReturn(p);
-    return securityContext;
-  }
-
   protected @Nonnull PrincipalEntity rotateAndRefreshPrincipal(
       PolarisMetaStoreManager metaStoreManager,
       String principalName,
@@ -494,11 +486,9 @@ public abstract class PolarisAuthzTestBase {
         throw new RuntimeException(e);
       }
     }
-    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-    Mockito.when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            resolutionManifestFactory, securityContext, CATALOG_NAME);
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
             diagServices,
@@ -506,7 +496,7 @@ public abstract class PolarisAuthzTestBase {
             metaStoreManager,
             callContext,
             passthroughView,
-            securityContext,
+            authenticatedRoot,
             Mockito.mock(),
             fileIOFactory,
             polarisEventListener);
@@ -527,13 +517,12 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisCallContextCatalogFactory() {
-      this(null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null);
     }
 
     @Inject
     public TestPolarisCallContextCatalogFactory(
         PolarisDiagnostics diagnostics,
-        StorageCredentialCache storageCredentialCache,
         ResolverFactory resolverFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
         TaskExecutor taskExecutor,
@@ -552,13 +541,10 @@ public abstract class PolarisAuthzTestBase {
     public Catalog createCallContextCatalog(
         CallContext context,
         PolarisPrincipal polarisPrincipal,
-        SecurityContext securityContext,
         final PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
-      Catalog catalog =
-          super.createCallContextCatalog(
-              context, polarisPrincipal, securityContext, resolvedManifest);
+      Catalog catalog = super.createCallContextCatalog(context, polarisPrincipal, resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(

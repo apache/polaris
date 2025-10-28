@@ -20,7 +20,6 @@ package org.apache.polaris.service.context.catalog;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
@@ -71,7 +70,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   public Catalog createCallContextCatalog(
       CallContext context,
       PolarisPrincipal polarisPrincipal,
-      SecurityContext securityContext,
       final PolarisResolutionManifest resolvedManifest) {
     CatalogEntity catalog = resolvedManifest.getResolvedCatalogEntity();
     String catalogName = catalog.getName();
@@ -87,7 +85,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
             context,
             resolvedManifest,
-            securityContext,
+            polarisPrincipal,
             taskExecutor,
             fileIOFactory,
             polarisEventListener);

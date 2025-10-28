@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.common;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -70,13 +69,12 @@ public abstract class CatalogHandler {
   protected final CallContext callContext;
   protected final RealmConfig realmConfig;
   protected final PolarisPrincipal polarisPrincipal;
-  protected final SecurityContext securityContext;
 
   public CatalogHandler(
       PolarisDiagnostics diagnostics,
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       String catalogName,
       PolarisAuthorizer authorizer,
       PolarisCredentialManager credentialManager,
@@ -86,14 +84,7 @@ public abstract class CatalogHandler {
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.catalogName = catalogName;
-    diagnostics.checkNotNull(securityContext, "null_security_context");
-    diagnostics.checkNotNull(securityContext.getUserPrincipal(), "null_user_principal");
-    diagnostics.check(
-        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
-        "invalid_principal_type",
-        "Principal must be a PolarisPrincipal");
-    this.securityContext = securityContext;
-    this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
+    this.polarisPrincipal = principal;
     this.authorizer = authorizer;
     this.credentialManager = credentialManager;
     this.externalCatalogFactories = externalCatalogFactories;
@@ -104,7 +95,7 @@ public abstract class CatalogHandler {
   }
 
   protected PolarisResolutionManifest newResolutionManifest() {
-    return resolutionManifestFactory.createResolutionManifest(securityContext, catalogName);
+    return resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
   }
 
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */

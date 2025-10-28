@@ -38,7 +38,6 @@ import io.quarkus.test.junit.QuarkusMock;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
@@ -252,7 +251,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private FileIOFactory fileIOFactory;
   private InMemoryFileIO fileIO;
   private PolarisEntity catalogEntity;
-  private SecurityContext securityContext;
+  private PolarisPrincipal authenticatedRoot;
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
   private AccessConfigProvider accessConfigProvider;
@@ -297,12 +296,12 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
     EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =
-        (securityContext, referenceCatalogName) ->
+        (principal, referenceCatalogName) ->
             new Resolver(
                 diagServices,
                 polarisContext,
                 metaStoreManager,
-                securityContext,
+                principal,
                 entityCache,
                 referenceCatalogName);
     QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
@@ -312,23 +311,19 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
-
-    securityContext = Mockito.mock(SecurityContext.class);
-    when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
+    authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     reservedProperties = new ReservedProperties() {};
 
     adminService =
         new PolarisAdminService(
-            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             serviceIdentityProvider,
-            securityContext,
+            authenticatedRoot,
             authorizer,
             reservedProperties);
 
@@ -451,7 +446,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
       String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            resolutionManifestFactory, securityContext, catalogName);
+            resolutionManifestFactory, authenticatedRoot, catalogName);
     TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
     return new IcebergCatalog(
         diagServices,
@@ -459,7 +454,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         metaStoreManager,
         polarisContext,
         passthroughView,
-        securityContext,
+        authenticatedRoot,
         taskExecutor,
         fileIOFactory,
         polarisEventListener);
