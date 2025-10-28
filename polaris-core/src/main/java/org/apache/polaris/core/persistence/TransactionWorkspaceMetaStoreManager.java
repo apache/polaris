@@ -339,11 +339,11 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public ScopedCredentialsResult getSubscopedCredsForEntity(
+  public @Nonnull ScopedCredentialsResult getSubscopedCredsForEntity(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
-      PolarisEntityType entityType,
+      @Nonnull PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
