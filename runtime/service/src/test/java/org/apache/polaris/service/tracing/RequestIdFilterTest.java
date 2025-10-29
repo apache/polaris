@@ -42,19 +42,19 @@ public class RequestIdFilterTest {
         .then()
         .statusCode(200)
         .body(containsString("access_token"))
-        .header("x-request-id", nullValue());
+        .header("X-Request-ID", nullValue());
   }
 
   @Test
   void testWithRequestId() {
     givenTokenRequest()
-        .header("x-request-id", "custom-request-id")
+        .header("X-Request-ID", "custom-request-id")
         .when()
         .post()
         .then()
         .statusCode(200)
         .body(containsString("access_token"))
-        .header("x-request-id", "custom-request-id");
+        .header("X-Request-ID", "custom-request-id");
   }
 
   private static RequestSpecification givenTokenRequest() {

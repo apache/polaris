@@ -110,10 +110,8 @@ quarkus.otel.resource.attributes[0]=service.name=Polaris
 quarkus.otel.resource.attributes[1]=deployment.environment=dev
 ```
 
-Finally, two additional span attributes are added to all request parent spans:
+Finally, one additional span attribute is added to all request parent spans:
 
-- `polaris.request.id`: The unique identifier of the request, if set by the caller through the
-  `Polaris-Request-Id` header.
 - `polaris.realm`: The unique identifier of the realm. Always set (unless the request failed because
   of a realm resolution error).
 
@@ -168,7 +166,7 @@ Polaris uses Mapped Diagnostic Context (MDC) to enrich log messages with additio
 following MDC keys are available:
 
 - `requestId`: The unique identifier of the request, if set by the caller through the
-  `Polaris-Request-Id` header.
+  `X-Request-ID` header.
 - `realmId`: The unique identifier of the realm. Always set.
 - `traceId`: The unique identifier of the trace. Present if tracing is enabled and the message is
   originating from a traced context.

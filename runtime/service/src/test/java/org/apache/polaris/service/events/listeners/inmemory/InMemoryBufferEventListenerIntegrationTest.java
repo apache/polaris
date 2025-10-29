@@ -137,7 +137,7 @@ class InMemoryBufferEventListenerIntegrationTest {
     try (Response response =
         managementApi
             .request("v1/catalogs")
-            .header("x-request-id", "12345")
+            .header("X-Request-ID", "12345")
             .post(Entity.json(catalog))) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
@@ -151,7 +151,7 @@ class InMemoryBufferEventListenerIntegrationTest {
               .put(OAuth2Properties.TOKEN, authToken)
               .put("warehouse", catalogName)
               .putAll(endpoints.extraHeaders("header."))
-              .put("header.x-request-id", "456789")
+              .put("header.X-Request-ID", "456789")
               .build());
 
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();

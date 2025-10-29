@@ -31,7 +31,7 @@ public interface TracingConfiguration {
   interface RequestId {
 
     /** The name of the header that contains the request ID. */
-    @WithDefault("x-request-id")
+    @WithDefault("X-Request-ID")
     String headerName();
   }
 }
