@@ -100,8 +100,7 @@ internal fun configureOnRootProject(project: Project) =
         val e = project.extensions.getByType(PublishingHelperExtension::class.java)
         val asfName = e.asfProjectId.get()
 
-        val gitInfo = MemoizedGitInfo.gitInfo(rootProject)
-        val gitCommitId = gitInfo["Apache-Polaris-Build-Git-Head"]
+        val gitCommitId = GitInfo.memoized(rootProject).gitHead
 
         val repos = project.extensions.getByType(NexusPublishExtension::class.java).repositories
         val repo = repos.iterator().next()
