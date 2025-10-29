@@ -79,7 +79,6 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
       extensions.create("publishingHelper", PublishingHelperExtension::class.java)
 
       val isRelease = project.hasProperty("release")
-      val isSigning = isRelease || project.hasProperty("signArtifacts")
 
       // Adds Git/Build/System related information to the generated jars, if the `release` project
       // property is present. Do not add that information in development builds, so that the
@@ -87,7 +86,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
       if (isRelease || project.hasProperty("jarWithGitInfo")) {
         // Runs `git`, considered expensive, so guarded behind project properties.
         tasks.withType<Jar>().configureEach {
-          manifest { MemoizedGitInfo.gitInfo(rootProject, attributes) }
+          manifest { MemoizedJarInfo.applyJarManifestAttributes(rootProject, attributes) }
         }
 
         addAdditionalJarContent(this)
@@ -102,7 +101,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
         configureOnRootProject(project)
       }
 
-      if (isSigning) {
+      if (isSigningEnabled()) {
         plugins.withType<SigningPlugin>().configureEach {
           configure<SigningExtension> {
             val signingKey: String? by project

@@ -19,6 +19,7 @@
 
 package publishing
 
+import asf.AsfProject
 import io.github.gradlenexus.publishplugin.NexusPublishExtension
 import io.github.gradlenexus.publishplugin.NexusPublishPlugin
 import io.github.gradlenexus.publishplugin.internal.StagingRepositoryDescriptorRegistryBuildService
@@ -28,7 +29,6 @@ import org.gradle.api.tasks.Exec
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
-import org.gradle.plugins.signing.Sign
 
 /**
  * Configures Apache project specific publishing tasks on the root project, for example the
@@ -39,7 +39,6 @@ internal fun configureOnRootProject(project: Project) =
     apply<NexusPublishPlugin>()
 
     val isRelease = project.hasProperty("release")
-    val isSigning = isRelease || project.hasProperty("signArtifacts")
 
     val sourceTarball = tasks.register<Exec>("sourceTarball")
     sourceTarball.configure {
@@ -61,6 +60,8 @@ internal fun configureOnRootProject(project: Project) =
         "HEAD",
       )
       workingDir(project.projectDir)
+
+      outputs.file(e.sourceTarball)
     }
 
     val digestSourceTarball =
@@ -75,18 +76,7 @@ internal fun configureOnRootProject(project: Project) =
 
     sourceTarball.configure { finalizedBy(digestSourceTarball) }
 
-    if (isSigning) {
-      val signSourceTarball =
-        tasks.register<Sign>("signSourceTarball") {
-          description = "Sign the source tarball"
-          mustRunAfter(sourceTarball)
-          doFirst {
-            val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-            sign(e.sourceTarball.get().asFile)
-          }
-        }
-      sourceTarball.configure { finalizedBy(signSourceTarball) }
-    }
+    signTaskOutputs(sourceTarball)
 
     val releaseEmailTemplate = tasks.register("releaseEmailTemplate")
     releaseEmailTemplate.configure {
@@ -100,8 +90,7 @@ internal fun configureOnRootProject(project: Project) =
         val e = project.extensions.getByType(PublishingHelperExtension::class.java)
         val asfName = e.asfProjectId.get()
 
-        val gitInfo = MemoizedGitInfo.gitInfo(rootProject)
-        val gitCommitId = gitInfo["Apache-Polaris-Build-Git-Head"]
+        val gitCommitId = GitInfo.memoized(rootProject).gitHead
 
         val repos = project.extensions.getByType(NexusPublishExtension::class.java).repositories
         val repo = repos.iterator().next()
@@ -134,8 +123,9 @@ internal fun configureOnRootProject(project: Project) =
             "NO STAGING REPOSITORY (no build service) !!"
           }
 
+        val asfProject = AsfProject.memoized(project, asfName)
         val asfProjectName =
-          e.overrideName.orElse(project.provider { "Apache ${fetchAsfProjectName(asfName)}" }).get()
+          e.overrideName.orElse(project.provider { "Apache ${asfProject.name}" }).get()
 
         val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
 
