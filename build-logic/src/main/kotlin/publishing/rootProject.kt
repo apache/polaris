@@ -19,6 +19,7 @@
 
 package publishing
 
+import asf.AsfProject
 import io.github.gradlenexus.publishplugin.NexusPublishExtension
 import io.github.gradlenexus.publishplugin.NexusPublishPlugin
 import io.github.gradlenexus.publishplugin.internal.StagingRepositoryDescriptorRegistryBuildService
@@ -133,8 +134,9 @@ internal fun configureOnRootProject(project: Project) =
             "NO STAGING REPOSITORY (no build service) !!"
           }
 
+        val asfProject = AsfProject.memoized(project, asfName)
         val asfProjectName =
-          e.overrideName.orElse(project.provider { "Apache ${fetchAsfProjectName(asfName)}" }).get()
+          e.overrideName.orElse(project.provider { "Apache ${asfProject.name}" }).get()
 
         val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
 
