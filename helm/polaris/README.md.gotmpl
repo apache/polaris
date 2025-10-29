@@ -48,12 +48,14 @@ weight: 675
 
 The below instructions assume Minikube and Helm are installed.
 
-Start the Minikube cluster, build and load image into the Minikube cluster:
-
+Start the Minikube cluster:
 ```bash
 minikube start
 eval $(minikube docker-env)
+```
 
+If you have cloned Polaris git repository, you may want to build and load image into the Minikube cluster:
+```bash
 ./gradlew \
   :polaris-server:assemble \
   :polaris-server:quarkusAppPartsBuild --rerun \
@@ -62,9 +64,23 @@ eval $(minikube docker-env)
   -Dquarkus.container-image.build=true
 ```
 
+Otherwise load ready images from Docker Hub:
+```bash
+minikube image pull apache/polaris:latest
+minikube image pull apache/polaris-admin-tool:latest
+```
+
 ### Installing the chart locally
 
 The below instructions assume a local Kubernetes cluster is running and Helm is installed.
+
+> [!NOTE]
+> The exampled below assume that you have cloned Polaris git repository, which contains Helm chart in `helm/polaris` directory.
+> If you do not want to clone the repository or want to use official release of Helm chart, you can download it from [Apache Polaris Helm Chart repository](https://downloads.apache.org/incubator/polaris/helm-chart/):
+> ```bash
+> helm pull polaris --repo https://downloads.apache.org/incubator/polaris/helm-chart --version 1.2.0-incubating --untar --untardir ./helm
+> ```
+> It will unpack the chart into `./helm/polaris` directory, so that scripts below can be used as is.
 
 #### Common setup
 
@@ -76,8 +92,12 @@ kubectl create namespace polaris
 Create all the required resources in the `polaris` namespace. This usually includes a Postgres
 database, Kubernetes secrets, and service accounts. The Polaris chart does not create
 these resources automatically, as they are not required for all Polaris deployments. The chart will
-fail if these resources are not created beforehand. You can find some examples in the 
-`helm/polaris/ci/fixtures` directory, but beware that these are primarily intended for tests.
+fail if these resources are not created beforehand. You can find some examples in the
+`helm/polaris/ci/fixtures` directory, but beware that these are primarily intended for tests. E.g. you can run the command:
+```bash
+kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
+kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=postgres --timeout=120s
+```
 
 Below are two sample deployment models for installing the chart: one with a non-persistent backend and another with a persistent backend.
 
@@ -107,26 +127,29 @@ helm upgrade --install --namespace polaris \
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=polaris --timeout=120s
 ```
 
-To access Polaris and Postgres locally, set up port forwarding for both services (This is needed for bootstrap processes):
+To access Polaris and Postgres locally, set up port forwarding for both services (this might be needed if you want to use Polaris command line tool or if you want to bootstrap the catalog by calling Polaris admin tool locally):
 ```bash
-kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') 8181:8181
+kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') 8181:8181 &
 
-kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=postgres -o jsonpath='{.items[0].metadata.name}') 5432:5432
+kubectl port-forward -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=postgres -o jsonpath='{.items[0].metadata.name}') 5432:5432 &
 ```
 
-Run the catalog bootstrap using the Polaris admin tool. This step initializes the catalog with the required configuration:
+Run the catalog bootstrap using the Polaris admin tool in minikube docker environment. This step initializes the catalog with the required configuration:
 ```bash
-container_envs=$(kubectl exec -it -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') -- env)
-export QUARKUS_DATASOURCE_USERNAME=$(echo "$container_envs" | grep quarkus.datasource.username | awk -F '=' '{print $2}' | tr -d '\n\r')
-export QUARKUS_DATASOURCE_PASSWORD=$(echo "$container_envs" | grep quarkus.datasource.password | awk -F '=' '{print $2}' | tr -d '\n\r')
-export QUARKUS_DATASOURCE_JDBC_URL=$(echo "$container_envs" | grep quarkus.datasource.jdbc.url | sed 's/postgres/localhost/2' | awk -F '=' '{print $2}' | tr -d '\n\r')
-
-java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap -c POLARIS,root,pass -r POLARIS
+container_envs=$(kubectl exec -n polaris $(kubectl get pod -n polaris -l app.kubernetes.io/name=polaris -o jsonpath='{.items[0].metadata.name}') -- env) && \
+docker run --rm \
+  -e QUARKUS_DATASOURCE_USERNAME="$(echo "$container_envs" | grep quarkus.datasource.username | awk -F '=' '{print $2}' | tr -d '\n\r')" \
+  -e QUARKUS_DATASOURCE_PASSWORD="$(echo "$container_envs" | grep quarkus.datasource.password | awk -F '=' '{print $2}' | tr -d '\n\r')" \
+  -e QUARKUS_DATASOURCE_JDBC_URL="jdbc:postgresql://$(kubectl get svc -n polaris postgres -o jsonpath='{.spec.clusterIP}'):5432/POLARIS" \
+  apache/polaris-admin-tool:latest \
+  bootstrap -c POLARIS,root,pass -r POLARIS
 ```
 
 ### Uninstalling
 
 ```bash
+kill $(lsof -ti :8181) $(lsof -ti :5432)
+
 helm uninstall --namespace polaris polaris
 
 kubectl delete --namespace polaris -f helm/polaris/ci/fixtures/
@@ -169,8 +192,12 @@ the Polaris repo root:
 helm unittest helm/polaris
 ```
 
-You can also lint the chart using the Chart Testing tool, with the following command:
+You can also lint the chart using the Chart Testing tool. You will need to install the [yamllint](https://github.com/adrienverge/yamllint) tool:
+```bash
+brew install yamllint
+```
 
+Then you can lint the chart, with the following command:
 ```bash
 ct lint --charts helm/polaris
 ```
