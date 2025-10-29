@@ -19,13 +19,17 @@
 
 package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
+import static org.apache.polaris.service.tracing.RequestIdFilter.REQUEST_ID_KEY;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
@@ -66,6 +70,8 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
   @Inject CallContext callContext;
 
   @Context SecurityContext securityContext;
+
+  @Context ContainerRequestContext requestContext;
 
   @Inject
   public AwsCloudWatchEventListener(
@@ -143,6 +149,12 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
     }
   }
 
+  @Nullable
+  @Override
+  protected String getRequestId() {
+    return (String) requestContext.getProperty(REQUEST_ID_KEY);
+  }
+
   @PreDestroy
   void shutdown() {
     if (client != null) {
@@ -157,7 +169,10 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
     properties.put("principal", securityContext.getUserPrincipal().getName());
     properties.put(
         "activated_roles", ((PolarisPrincipal) securityContext.getUserPrincipal()).getRoles());
-    // TODO: Add request ID when it is available
+    String requestId = getRequestId();
+    if (requestId != null) {
+      properties.put("request_id", requestId);
+    }
     String eventAsJson;
     try {
       eventAsJson = objectMapper.writeValueAsString(properties);

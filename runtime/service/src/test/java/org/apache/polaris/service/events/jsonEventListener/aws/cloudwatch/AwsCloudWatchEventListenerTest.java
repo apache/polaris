@@ -20,11 +20,13 @@
 package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
 
 import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
+import static org.apache.polaris.service.tracing.RequestIdFilter.REQUEST_ID_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import io.quarkus.runtime.configuration.MemorySize;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.SecurityContext;
 import java.math.BigInteger;
 import java.time.Clock;
@@ -77,6 +79,7 @@ class AwsCloudWatchEventListenerTest {
   private static final String LOG_STREAM = "test-log-stream";
   private static final String REALM = "test-realm";
   private static final String TEST_USER = "test-user";
+  private static final String TEST_REQUEST_ID = "test-request-id-12345";
   private static final Clock clock = Clock.systemUTC();
   private static final BigInteger MAX_BODY_SIZE = BigInteger.valueOf(1024 * 1024);
   private static final PolarisIcebergObjectMapperCustomizer customizer =
@@ -143,14 +146,17 @@ class AwsCloudWatchEventListenerTest {
     RealmContext realmContext = Mockito.mock(RealmContext.class);
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
+    ContainerRequestContext requestContext = Mockito.mock(ContainerRequestContext.class);
     when(callContext.getRealmContext()).thenReturn(realmContext);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
     when(realmContext.getRealmIdentifier()).thenReturn(REALM);
     when(securityContext.getUserPrincipal()).thenReturn(principal);
     when(principal.getName()).thenReturn(TEST_USER);
     when(principal.getRoles()).thenReturn(Set.of("role1", "role2"));
+    when(requestContext.getProperty(REQUEST_ID_KEY)).thenReturn(TEST_REQUEST_ID);
     listener.callContext = callContext;
     listener.securityContext = securityContext;
+    listener.requestContext = requestContext;
 
     return listener;
   }
@@ -242,6 +248,7 @@ class AwsCloudWatchEventListenerTest {
                         IcebergRestCatalogEvents.AfterRefreshTableEvent.class.getSimpleName());
                 assertThat(message).contains(TEST_USER);
                 assertThat(message).contains(testTable.toString());
+                assertThat(message).contains(TEST_REQUEST_ID);
               });
     } finally {
       // Clean up
