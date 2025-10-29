@@ -19,6 +19,7 @@
 
 import publishing.GenerateDigest
 import publishing.PublishingHelperPlugin
+import publishing.signTaskOutputs
 
 plugins {
   id("distribution")
@@ -98,9 +99,6 @@ distTar.configure { finalizedBy(digestDistTar) }
 
 distZip.configure { finalizedBy(digestDistZip) }
 
-if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
-  signing {
-    sign(distTar.get())
-    sign(distZip.get())
-  }
-}
+signTaskOutputs(distTar)
+
+signTaskOutputs(distZip)
