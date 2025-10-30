@@ -50,19 +50,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class TestCacheOvershoot {
   @InjectSoftAssertions protected SoftAssertions soft;
 
+  /** This simulates the production setup. */
   @RepeatedTest(3) // consider the first repetition as a warmup (C1/C2)
   public void testCacheOvershootDirectEviction() throws Exception {
-    testCacheOvershoot(Runnable::run);
+    testCacheOvershoot(Runnable::run, true);
   }
 
+  /** This test <em>illustrates</em> delayed eviction, leading to more heap usage than admitted. */
   @RepeatedTest(3) // consider the first repetition as a warmup (C1/C2)
   public void testCacheOvershootDelayedEviction() throws Exception {
     // Production uses Runnable::run, but that lets this test sometimes run way too
     // long, so we introduce some delay to simulate the case that eviction cannot keep up.
-    testCacheOvershoot(t -> delayedExecutor(2, TimeUnit.MILLISECONDS).execute(t));
+    testCacheOvershoot(t -> delayedExecutor(2, TimeUnit.MILLISECONDS).execute(t), false);
   }
 
-  private void testCacheOvershoot(Executor evictionExecutor) throws Exception {
+  private void testCacheOvershoot(Executor evictionExecutor, boolean direct) throws Exception {
     var meterRegistry = new SimpleMeterRegistry();
 
     var config =
@@ -119,10 +121,10 @@ public class TestCacheOvershoot {
             });
       }
 
-      for (int i = 0; i < 50 && !seenOvershoot; i++) {
+      for (int i = 0; i < 50; i++) {
         Thread.sleep(10);
         var w = cache.currentWeightReported();
-        if (w > maxWeight) {
+        if (w > admitWeight) {
           seenOvershoot = true;
         }
       }
@@ -130,9 +132,30 @@ public class TestCacheOvershoot {
       stop.set(true);
     }
 
-    soft.assertThat(cache.currentWeightReported()).isLessThanOrEqualTo(admitWeight);
-    soft.assertThat(cache.rejections()).isEqualTo(0L);
-    soft.assertThat(meterRejectedWeight.totalAmount()).isEqualTo(0d);
-    soft.assertThat(seenOvershoot).isFalse();
+    // The read of `Eviction` properties is a plain volatile read since Caffeine version 3.2.3
+    // and trigger cleanups asynchronously. Before 3.2.3, cleanups happened synchronously.
+    // This change breaks the initially present assertions of this test, but not the
+    // functionality of the production code.
+    // See https://github.com/ben-manes/caffeine/issues/1897
+    if (direct) {
+      soft.assertThat(cache.currentWeightReported()).isLessThanOrEqualTo(admitWeight);
+
+      // We will (with a good probability) see no rejections with direct eviction. But it can still
+      // happen,
+      // so we cannot have the following two assertions. Rejections are expected.
+      // soft.assertThat(cache.rejections()).isEqualTo(0L);
+      // soft.assertThat(meterRejectedWeight.totalAmount()).isEqualTo(0d);
+      soft.assertThat(seenOvershoot).isFalse();
+    } else {
+      // Note: we cannot ensure that the current weight is limited to the admitted weight with
+      // asynchronous eviction.
+
+      // We will (with an extremely high probability) see the current weight exceed the admitted
+      // weight with
+      // delayed eviction.
+      soft.assertThat(cache.rejections()).isGreaterThan(0L);
+      soft.assertThat(meterRejectedWeight.totalAmount()).isGreaterThan(0d);
+      soft.assertThat(seenOvershoot).isTrue();
+    }
   }
 }
