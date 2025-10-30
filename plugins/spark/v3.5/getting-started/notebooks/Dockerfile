@@ -34,14 +34,14 @@ USER spark
 WORKDIR /home/spark
 
 COPY --chown=spark client /home/spark/client
-COPY --chown=spark plugins/spark/v3.5/getting-started/notebooks/requirements.txt /tmp/notebook_requirements.txt
 COPY --chown=spark regtests/requirements.txt /tmp
+COPY --chown=spark regtests/notebook_requirements.txt /tmp
 COPY --chown=spark plugins/spark/v3.5/spark/build/2.12/libs /home/spark/polaris_libs
 
 SHELL ["/bin/bash", "-c"]
 
 RUN python3 -m venv /home/spark/venv && \
-    source /home/spark/venv/bin/activate && \
+    . /home/spark/venv/bin/activate && \
     pip install -r /tmp/requirements.txt -r /tmp/notebook_requirements.txt && \
     cd client/python && \
     poetry lock && \
