@@ -57,8 +57,8 @@ minikube image pull apache/polaris-admin-tool:latest
 The below instructions assume a local Kubernetes cluster is running and Helm is installed.
 
 {{< alert note >}}
-The exampled below assume that you have cloned Polaris git repository, which contains Helm chart in `helm/polaris` directory.
-If you do not want to clone the repository or want to use official release of Helm chart, you can download it from [Apache Polaris Helm Chart repository](https://downloads.apache.org/incubator/polaris/helm-chart/):
+The examples below assume that you have cloned Polaris git repository, which contains the Polaris Helm chart in the `helm/polaris` directory.
+If you do not want to clone the repository or want to use an official Helm chart release, you can download it from the [Apache Polaris Helm Chart repository](https://downloads.apache.org/incubator/polaris/helm-chart/):
 ```bash
 helm pull polaris --repo https://downloads.apache.org/incubator/polaris/helm-chart --version 1.2.0-incubating --untar --untardir ./helm
 ```
@@ -152,11 +152,13 @@ The following tools are required to run the tests:
 
 * [Helm Unit Test](https://github.com/helm-unittest/helm-unittest)
 * [Chart Testing](https://github.com/helm/chart-testing)
+* [yamllint](https://github.com/adrienverge/yamllint)
 
 Quick installation instructions for these tools:
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest.git
 brew install chart-testing
+brew install yamllint
 ```
 
 The integration tests also require some fixtures to be deployed. The `ci/fixtures` directory
@@ -177,12 +179,8 @@ the Polaris repo root:
 helm unittest helm/polaris
 ```
 
-You can also lint the chart using the Chart Testing tool. You will need to install the [yamllint](https://github.com/adrienverge/yamllint) tool:
-```bash
-brew install yamllint
-```
+You can also lint the chart using the Chart Testing tool, with the following command:
 
-Then you can lint the chart, with the following command:
 ```bash
 ct lint --charts helm/polaris
 ```

@@ -165,11 +165,13 @@ The following tools are required to run the tests:
 
 * [Helm Unit Test](https://github.com/helm-unittest/helm-unittest)
 * [Chart Testing](https://github.com/helm/chart-testing)
+* [yamllint](https://github.com/adrienverge/yamllint)
 
 Quick installation instructions for these tools:
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest.git
 brew install chart-testing
+brew install yamllint
 ```
 
 The integration tests also require some fixtures to be deployed. The `ci/fixtures` directory
@@ -190,12 +192,8 @@ the Polaris repo root:
 helm unittest helm/polaris
 ```
 
-You can also lint the chart using the Chart Testing tool. You will need to install the [yamllint](https://github.com/adrienverge/yamllint) tool:
-```bash
-brew install yamllint
-```
+You can also lint the chart using the Chart Testing tool, with the following command:
 
-Then you can lint the chart, with the following command:
 ```bash
 ct lint --charts helm/polaris
 ```
