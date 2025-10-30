@@ -19,11 +19,13 @@
 
 import publishing.GenerateDigest
 import publishing.PublishingHelperPlugin
+import publishing.signTaskOutputs
 
 plugins {
-    id("distribution")
-    id("signing")
-    id("polaris-reproducible")
+  id("distribution")
+  id("signing")
+  id("polaris-spotless")
+  id("polaris-reproducible")
 }
 
 description = "Apache Polaris Binary Distribution"
@@ -34,81 +36,69 @@ val adminProject = project(":polaris-admin")
 val serverProject = project(":polaris-server")
 
 // Configurations to resolve artifacts from other projects
-val adminDistribution by configurations.creating {
+val adminDistribution by
+  configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
-}
+  }
 
-val serverDistribution by configurations.creating {
+val serverDistribution by
+  configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
-}
+  }
 
 dependencies {
-    adminDistribution(project(":polaris-admin", "distributionElements"))
-    serverDistribution(project(":polaris-server", "distributionElements"))
+  adminDistribution(project(":polaris-admin", "distributionElements"))
+  serverDistribution(project(":polaris-server", "distributionElements"))
 }
 
 distributions {
-    main {
-        distributionBaseName.set("polaris-bin")
-        contents {
-            // Copy admin distribution contents
-            into("admin") {
-                from(adminDistribution) {
-                    exclude("quarkus-app-dependencies.txt")
-                }
-            }
+  main {
+    distributionBaseName.set("polaris-bin")
+    contents {
+      // Copy admin distribution contents
+      into("admin") { from(adminDistribution) { exclude("quarkus-app-dependencies.txt") } }
 
-            // Copy server distribution contents
-            into("server") {
-                from(serverDistribution) {
-                    exclude("quarkus-app-dependencies.txt")
-                }
-            }
+      // Copy server distribution contents
+      into("server") { from(serverDistribution) { exclude("quarkus-app-dependencies.txt") } }
 
-            // Copy scripts to bin directory
-            into("bin") {
-                from("bin/server")
-                from("bin/admin")
-            }
+      // Copy scripts to bin directory
+      into("bin") {
+        from("bin/server")
+        from("bin/admin")
+      }
 
-            from("README.md")
-            from("DISCLAIMER")
-            from("LICENSE")
-            from("NOTICE")
-        }
+      from("README.md")
+      from("DISCLAIMER")
+      from("LICENSE")
+      from("NOTICE")
     }
+  }
 }
 
-val distTar = tasks.named<Tar>("distTar") {
-    compression = Compression.GZIP
-}
+val distTar = tasks.named<Tar>("distTar") { compression = Compression.GZIP }
 
-val distZip = tasks.named<Zip>("distZip") {
-}
+val distZip = tasks.named<Zip>("distZip") {}
 
 val digestDistTar =
-    tasks.register<GenerateDigest>("digestDistTar") {
-        description = "Generate the distribution tar digest"
-        dependsOn(distTar)
-        file.set { distTar.get().archiveFile.get().asFile }
-    }
+  tasks.register<GenerateDigest>("digestDistTar") {
+    description = "Generate the distribution tar digest"
+    dependsOn(distTar)
+    file.set { distTar.get().archiveFile.get().asFile }
+  }
 
 val digestDistZip =
-    tasks.register<GenerateDigest>("digestDistZip") {
-        description = "Generate the distribution zip digest"
-        dependsOn(distZip)
-        file.set { distZip.get().archiveFile.get().asFile }
-    }
+  tasks.register<GenerateDigest>("digestDistZip") {
+    description = "Generate the distribution zip digest"
+    dependsOn(distZip)
+    file.set { distZip.get().archiveFile.get().asFile }
+  }
 
 distTar.configure { finalizedBy(digestDistTar) }
 
 distZip.configure { finalizedBy(digestDistZip) }
 
-if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
-    signing {
-        sign(distTar.get())
-        sign(distZip.get())
-    }
-}
+signTaskOutputs(distTar)
+
+signTaskOutputs(distZip)

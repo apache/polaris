@@ -38,7 +38,6 @@ COPY --chown=spark regtests/requirements.txt /tmp
 COPY --chown=spark regtests/notebook_requirements.txt /tmp
 COPY --chown=spark plugins/spark/v3.5/spark/build/2.12/libs /home/spark/polaris_libs
 
-SHELL ["/bin/bash", "-c"]
 
 RUN python3 -m venv /home/spark/venv && \
     . /home/spark/venv/bin/activate && \

@@ -19,6 +19,7 @@
 
 package publishing
 
+import asf.AsfProject
 import groovy.util.Node
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -74,8 +75,8 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
 
         task.doFirst {
           mavenPom.run {
-            val asfName = e.asfProjectId.get()
-            val projectInfo = fetchProjectInformation(asfName)
+            val asfProject = AsfProject.memoized(project, e.asfProjectId.get())
+            val asfProjectId = asfProject.apacheId
 
             organization {
               name.set("The Apache Software Foundation")
@@ -84,27 +85,27 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
             licenses {
               license {
                 name.set("Apache-2.0") // SPDX identifier
-                url.set(projectInfo.licenseUrl)
+                url.set(asfProject.licenseUrl)
               }
             }
             mailingLists {
               e.mailingLists.get().forEach { ml ->
                 mailingList {
                   name.set("${ml.capitalized()} Mailing List")
-                  subscribe.set("$ml-subscribe@$asfName.apache.org")
-                  unsubscribe.set("$ml-unsubscribe@$asfName.apache.org")
-                  post.set("$ml@$asfName.apache.org")
-                  archive.set("https://lists.apache.org/list.html?$ml@$asfName.apache.org")
+                  subscribe.set("$ml-subscribe@$asfProjectId.apache.org")
+                  unsubscribe.set("$ml-unsubscribe@$asfProjectId.apache.org")
+                  post.set("$ml@$asfProjectId.apache.org")
+                  archive.set("https://lists.apache.org/list.html?$ml@$asfProjectId.apache.org")
                 }
               }
             }
 
-            val githubRepoName: Provider<String> = e.githubRepositoryName.orElse(asfName)
+            val githubRepoName: Provider<String> = e.githubRepositoryName.orElse(asfProjectId)
             val codeRepo: Provider<String> =
               e.overrideScm.orElse(
                 githubRepoName
                   .map { r -> "https://github.com/apache/$r" }
-                  .orElse(projectInfo.repository)
+                  .orElse(asfProject.repository)
               )
 
             scm {
@@ -115,22 +116,22 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
               val version = project.version.toString()
               if (!version.endsWith("-SNAPSHOT")) {
                 val tagPrefix: String =
-                  e.overrideTagPrefix.orElse("apache-${projectInfo.apacheId}").get()
+                  e.overrideTagPrefix.orElse("apache-${asfProject.apacheId}").get()
                 tag.set("$tagPrefix-$version")
               }
             }
             issueManagement {
               val issuesUrl: Provider<String> =
-                codeRepo.map { r -> "$r/issues" }.orElse(projectInfo.bugDatabase)
+                codeRepo.map { r -> "$r/issues" }.orElse(asfProject.bugDatabase)
               url.set(e.overrideIssueManagement.orElse(issuesUrl))
             }
 
-            name.set(e.overrideName.orElse("Apache ${projectInfo.name}"))
-            description.set(e.overrideDescription.orElse(projectInfo.description))
-            url.set(e.overrideProjectUrl.orElse(projectInfo.website))
-            inceptionYear.set(projectInfo.inceptionYear.toString())
+            name.set(e.overrideName.orElse("Apache ${asfProject.name}"))
+            description.set(e.overrideDescription.orElse(asfProject.description))
+            url.set(e.overrideProjectUrl.orElse(asfProject.website))
+            inceptionYear.set(asfProject.inceptionYear.toString())
 
-            developers { developer { url.set("https://$asfName.apache.org/community/") } }
+            developers { developer { url.set("https://$asfProjectId.apache.org/community/") } }
           }
         }
       }
