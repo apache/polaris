@@ -8,6 +8,6 @@
 - [ ] 🔗 Related issue(s): Fixes #
 - [ ] 🧪 Added/updated tests with good coverage
 - [ ] 💡 Added comments for complex logic
-- [ ] ⚙️ Tested my changes with `./gradlew clean spotlessApply build`
-- [ ] 🧾 Updated `CHANGELOG.md`
-- [ ] 📚 Updated documentation (in `site/content/in-dev/unreleased`)
+- [ ] ⚙️ Tested my changes with `./gradlew spotlessApply check`
+- [ ] 🧾 Updated `CHANGELOG.md` (if needed)
+- [ ] 📚 Updated documentation in `site/content/in-dev/unreleased` (if needed)
