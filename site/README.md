@@ -103,9 +103,9 @@ the existing directory.
 cd site/
 
 cd content/releases/
-## Create a new empty branch 'versioned-docs'
+# Create a new empty branch 'versioned-docs'
 git worktree add --orphan -b versioned-docs .
-## (add some content to the content/releases/ directory - at least the "top-level" _index.adoc
+# (add some content to the content/releases/ directory - at least the "top-level" _index.adoc
 git add .
 git commit -m "Initial set of releases"
 ```
@@ -115,7 +115,7 @@ git commit -m "Initial set of releases"
 Use the following script to checkout the versioned release docs
 ```bash
 cd site/
-## Checkout the versioned-docs branch locally
+# Checkout the versioned-docs branch locally
 bin/checkout-releases.sh
 ```
 
