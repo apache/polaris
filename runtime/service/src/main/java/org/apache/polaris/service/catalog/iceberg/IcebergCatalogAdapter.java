@@ -759,10 +759,11 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-    metricsReporter.reportMetric(prefix, tableIdentifier, reportMetricsRequest.report());
+
+    metricsReporter.reportMetric(catalogName, tableIdentifier, reportMetricsRequest.report());
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 

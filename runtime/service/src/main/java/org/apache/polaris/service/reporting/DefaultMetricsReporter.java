@@ -36,8 +36,8 @@ public class DefaultMetricsReporter implements PolarisMetricsReporter {
 
   public DefaultMetricsReporter() {
     this(
-        (warehouse, table, metricsReport) ->
-            LOGGER.info("{}.{}: {}", warehouse, table, metricsReport));
+        (catalogName, table, metricsReport) ->
+            LOGGER.info("{}.{}: {}", catalogName, table, metricsReport));
   }
 
   @VisibleForTesting
@@ -46,7 +46,7 @@ public class DefaultMetricsReporter implements PolarisMetricsReporter {
   }
 
   @Override
-  public void reportMetric(String warehouse, TableIdentifier table, MetricsReport metricsReport) {
-    reportConsumer.accept(warehouse, table, metricsReport);
+  public void reportMetric(String catalogName, TableIdentifier table, MetricsReport metricsReport) {
+    reportConsumer.accept(catalogName, table, metricsReport);
   }
 }
