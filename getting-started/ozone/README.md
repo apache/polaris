@@ -28,20 +28,13 @@ See the [Spark Notebooks Example](../spark/README.md) for a more advanced Spark 
 
 ## Starting the Example
 
-1. Build the Polaris server image if it's not already present locally:
+Start the docker compose group by running the following command from the root of the repository:
 
-    ```shell
-    ./gradlew \
-       :polaris-server:assemble \
-       :polaris-server:quarkusAppPartsBuild --rerun \
-       -Dquarkus.container-image.build=true
-    ```
+```shell
+docker compose -f getting-started/minio/docker-compose.yml up
+```
 
-2. Start the docker compose group by running the following command from the root of the repository:
-
-    ```shell
-    docker compose -f getting-started/minio/docker-compose.yml up
-    ```
+Note: this example pulls the `apache/polaris:latest` image, but assumes the image is `1.2.0-incubating` or later. 
 
 ## Connecting From Spark
 
