@@ -95,6 +95,8 @@ In addition to modules, there are:
 - [server-templates](./server-templates) - OpenAPI Generator templates to generate the server code
 - [site](./site/README.md) - The Polaris website
 
+Outside of this repository, there are several other tools that can be found in a separate [Polaris-Tools](https://github.com/apache/polaris-tools) repository.
+
 ## Building and Running
 
 Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
