@@ -228,8 +228,7 @@ public class IcebergCatalogAdapter
         catalogHandlerUtils,
         externalCatalogFactories,
         polarisEventListener,
-        accessConfigProvider,
-        metricsReporter);
+        accessConfigProvider);
   }
 
   @Override
@@ -763,13 +762,8 @@ public class IcebergCatalogAdapter
 
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-    return withCatalog(
-        securityContext,
-        prefix,
-        catalog -> {
-          catalog.reportMetric(prefix, tableIdentifier, reportMetricsRequest);
-          return Response.status(Response.Status.NO_CONTENT).build();
-        });
+    metricsReporter.reportMetric(prefix, tableIdentifier, reportMetricsRequest);
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
