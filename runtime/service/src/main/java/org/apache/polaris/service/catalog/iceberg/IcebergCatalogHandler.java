@@ -140,6 +140,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final PolarisEventListener polarisEventListener;
   private final AccessConfigProvider accessConfigProvider;
+
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
   protected Catalog baseCatalog = null;

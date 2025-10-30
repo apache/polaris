@@ -762,7 +762,7 @@ public class IcebergCatalogAdapter
 
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-    metricsReporter.reportMetric(prefix, tableIdentifier, reportMetricsRequest);
+    metricsReporter.reportMetric(prefix, tableIdentifier, reportMetricsRequest.report());
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 

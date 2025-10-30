@@ -32,7 +32,6 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.reporting.DefaultMetricsReporter;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -72,8 +71,7 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
         polarisEventListener,
-        accessConfigProvider,
-        new DefaultMetricsReporter());
+        accessConfigProvider);
   }
 
   public static class Profile extends PolarisAuthzTestBase.Profile {
