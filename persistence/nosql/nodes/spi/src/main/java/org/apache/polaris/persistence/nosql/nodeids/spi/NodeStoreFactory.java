@@ -16,19 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodeids.spi;
+package org.apache.polaris.persistence.nosql.nodeids.spi;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.Optional;
+import org.apache.polaris.ids.api.IdGenerator;
 
-/** Abstraction of nodes persistence for the node management implementation. */
-public interface NodeStore {
-  Optional<NodeState> fetch(int nodeId);
-
+public interface NodeStoreFactory {
   @Nonnull
-  NodeState[] fetchMany(@Nonnull int... nodeIds);
+  NodeStore createNodeStore(@Nonnull IdGenerator idGenerator);
 
-  @Nullable
-  NodeState persist(int nodeId, Optional<NodeState> expectedNodeState, @Nonnull NodeState newState);
+  Optional<NodeManagementState> fetchManagementState();
+
+  boolean storeManagementState(@Nonnull NodeManagementState state);
 }

@@ -16,33 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodeids.api;
+package org.apache.polaris.persistence.nosql.nodeids.api;
 
 import jakarta.annotation.Nullable;
-import java.time.Instant;
-import org.apache.polaris.immutables.PolarisImmutable;
 
-/** Represents the local node's ID and informative, mutable state information. */
-@PolarisImmutable
-public interface Node {
+public interface NodeLease {
   /**
-   * Returns the ID of this node.
-   *
-   * @return ID of this node
-   * @throws IllegalStateException if the lease is no longer valid, for example, expired before it
-   *     being renewed
+   * Returns the {@link Node} representation for this lease if the lease has not been released or
+   * {@code null}.
    */
-  int id();
-
-  default boolean valid(long nowInMillis) {
-    return nowInMillis < expirationTimestamp().toEpochMilli();
-  }
-
-  Instant leaseTimestamp();
-
   @Nullable
-  Instant renewLeaseTimestamp();
+  Node node();
 
-  /** Timestamp since which this node's lease is no longer valid. */
-  Instant expirationTimestamp();
+  /**
+   * Permanently release the lease. Does nothing, if already released. Throws if persisting the
+   * released state fails.
+   */
+  void release();
+
+  /**
+   * Force a lease renewal, generally not recommended nor necessary. Throws, if the lease is already
+   * released.
+   */
+  void renew();
+
+  /** Returns the node ID if the lease is active/valid or {@code -1}. */
+  int nodeIdIfValid();
 }

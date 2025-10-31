@@ -16,15 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodeids.spi;
+package org.apache.polaris.persistence.nosql.nodeids.impl;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Optional;
 import org.apache.polaris.ids.api.IdGeneratorSpec;
-import org.apache.polaris.immutables.PolarisImmutable;
+import org.apache.polaris.ids.api.ImmutableBuildableIdGeneratorSpec;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeManagementState;
 
-public interface NodeManagementState {
-  Optional<IdGeneratorSpec> idGeneratorSpec();
+public final class Util {
+  private Util() {}
 
-  @PolarisImmutable
-  interface BuildableNodeManagementState extends NodeManagementState {}
+  @VisibleForTesting
+  public static IdGeneratorSpec idgenSpecFromManagementState(
+      Optional<NodeManagementState> existingNodeManagementState) {
+    return existingNodeManagementState
+        .orElseThrow()
+        .idGeneratorSpec()
+        .orElse(ImmutableBuildableIdGeneratorSpec.builder().build());
+  }
 }

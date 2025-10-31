@@ -16,23 +16,5 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodeids.impl;
-
-import com.google.common.annotations.VisibleForTesting;
-import java.util.Optional;
-import org.apache.polaris.ids.api.IdGeneratorSpec;
-import org.apache.polaris.ids.api.ImmutableBuildableIdGeneratorSpec;
-import org.apache.polaris.nodeids.spi.NodeManagementState;
-
-public final class Util {
-  private Util() {}
-
-  @VisibleForTesting
-  public static IdGeneratorSpec idgenSpecFromManagementState(
-      Optional<NodeManagementState> existingNodeManagementState) {
-    return existingNodeManagementState
-        .orElseThrow()
-        .idGeneratorSpec()
-        .orElse(ImmutableBuildableIdGeneratorSpec.builder().build());
-  }
-}
+/** Node management implementation, do not directly use the types in this package. */
+package org.apache.polaris.persistence.nosql.nodeids.impl;

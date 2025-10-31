@@ -16,15 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodeids.spi;
+package org.apache.polaris.persistence.nosql.nodeids.spi;
 
-import java.time.Instant;
-import org.apache.polaris.immutables.PolarisImmutable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.util.Optional;
 
-@PolarisImmutable
-public interface NodeState {
-  Instant leaseTimestamp();
+/** Abstraction of nodes persistence for the node management implementation. */
+public interface NodeStore {
+  Optional<NodeState> fetch(int nodeId);
 
-  /** Timestamp since which this node's lease is no longer valid. */
-  Instant expirationTimestamp();
+  @Nonnull
+  NodeState[] fetchMany(@Nonnull int... nodeIds);
+
+  @Nullable
+  NodeState persist(int nodeId, Optional<NodeState> expectedNodeState, @Nonnull NodeState newState);
 }

@@ -16,30 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodeids.api;
+package org.apache.polaris.persistence.nosql.nodeids.spi;
 
-import jakarta.annotation.Nullable;
+import java.util.Optional;
+import org.apache.polaris.ids.api.IdGeneratorSpec;
+import org.apache.polaris.immutables.PolarisImmutable;
 
-public interface NodeLease {
-  /**
-   * Returns the {@link Node} representation for this lease if the lease has not been released or
-   * {@code null}.
-   */
-  @Nullable
-  Node node();
+public interface NodeManagementState {
+  Optional<IdGeneratorSpec> idGeneratorSpec();
 
-  /**
-   * Permanently release the lease. Does nothing, if already released. Throws if persisting the
-   * released state fails.
-   */
-  void release();
-
-  /**
-   * Force a lease renewal, generally not recommended nor necessary. Throws, if the lease is already
-   * released.
-   */
-  void renew();
-
-  /** Returns the node ID if the lease is active/valid or {@code -1}. */
-  int nodeIdIfValid();
+  @PolarisImmutable
+  interface BuildableNodeManagementState extends NodeManagementState {}
 }

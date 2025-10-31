@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.nodeids.impl;
+package org.apache.polaris.persistence.nosql.nodeids.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -51,18 +51,18 @@ import org.apache.polaris.ids.api.ImmutableIdGeneratorSpec;
 import org.apache.polaris.ids.api.MonotonicClock;
 import org.apache.polaris.ids.spi.IdGeneratorFactory;
 import org.apache.polaris.ids.spi.IdGeneratorSource;
-import org.apache.polaris.nodeids.api.ImmutableNode;
-import org.apache.polaris.nodeids.api.Node;
-import org.apache.polaris.nodeids.api.NodeLease;
-import org.apache.polaris.nodeids.api.NodeManagement;
-import org.apache.polaris.nodeids.api.NodeManagementConfig;
-import org.apache.polaris.nodeids.spi.ImmutableBuildableNodeManagementState;
-import org.apache.polaris.nodeids.spi.ImmutableNodeState;
-import org.apache.polaris.nodeids.spi.NodeState;
-import org.apache.polaris.nodeids.spi.NodeStore;
-import org.apache.polaris.nodeids.spi.NodeStoreFactory;
 import org.apache.polaris.nosql.async.AsyncExec;
 import org.apache.polaris.nosql.async.Cancelable;
+import org.apache.polaris.persistence.nosql.nodeids.api.ImmutableNode;
+import org.apache.polaris.persistence.nosql.nodeids.api.Node;
+import org.apache.polaris.persistence.nosql.nodeids.api.NodeLease;
+import org.apache.polaris.persistence.nosql.nodeids.api.NodeManagement;
+import org.apache.polaris.persistence.nosql.nodeids.api.NodeManagementConfig;
+import org.apache.polaris.persistence.nosql.nodeids.spi.ImmutableBuildableNodeManagementState;
+import org.apache.polaris.persistence.nosql.nodeids.spi.ImmutableNodeState;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeState;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStore;
+import org.apache.polaris.persistence.nosql.nodeids.spi.NodeStoreFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
