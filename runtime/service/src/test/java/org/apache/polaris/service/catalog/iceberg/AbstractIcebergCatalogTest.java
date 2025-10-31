@@ -316,7 +316,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
-    when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     reservedProperties = new ReservedProperties() {};
