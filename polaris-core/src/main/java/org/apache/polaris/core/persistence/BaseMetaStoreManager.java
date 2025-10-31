@@ -19,18 +19,22 @@
 package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
+import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Shared basic PolarisMetaStoreManager logic for transactional and non-transactional impls. */
-public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
+public abstract class BaseMetaStoreManager<T extends BasePersistence>
+    implements PolarisMetaStoreManager {
 
   public static PolarisStorageConfigurationInfo extractStorageConfiguration(
       @Nonnull PolarisDiagnostics diagnostics, PolarisBaseEntity reloadedEntity) {
@@ -48,27 +52,37 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
   }
 
   private final PolarisDiagnostics diagnostics;
+  private final RealmContext realmContext;
+  private final RealmConfig realmConfig;
 
-  protected BaseMetaStoreManager(PolarisDiagnostics diagnostics) {
+  protected BaseMetaStoreManager(
+      PolarisDiagnostics diagnostics, RealmContext realmContext, RealmConfig realmConfig) {
     this.diagnostics = diagnostics;
+    this.realmContext = realmContext;
+    this.realmConfig = realmConfig;
   }
 
   protected PolarisDiagnostics getDiagnostics() {
     return diagnostics;
   }
 
+  protected RealmContext getRealmContext() {
+    return realmContext;
+  }
+
+  protected RealmConfig getRealmConfig() {
+    return realmConfig;
+  }
+
+  protected abstract T getMetaStore();
+
   /**
    * Performs basic validation of expected invariants on a new entity, then returns the entity with
    * fields filled out for which the persistence layer is responsible.
    *
-   * @param callCtx call context
-   * @param ms meta store in read/write mode
    * @param entity entity we need a new persisted record for
    */
-  protected PolarisBaseEntity prepareToPersistNewEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull BasePersistence ms,
-      @Nonnull PolarisBaseEntity entity) {
+  protected PolarisBaseEntity prepareToPersistNewEntity(@Nonnull PolarisBaseEntity entity) {
 
     // validate the entity type and subtype
     getDiagnostics().checkNotNull(entity, "unexpected_null_entity");
@@ -116,7 +130,6 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
    * Performs basic validation of expected invariants on a changed entity, then returns the entity
    * with fields filled out for which the persistence layer is responsible.
    *
-   * @param callCtx call context
    * @param ms meta store
    * @param entity the entity which has been changed
    * @param nameOrParentChanged indicates if parent or name changed
@@ -124,7 +137,6 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
    * @return the entity with its version and lastUpdateTimestamp updated
    */
   protected @Nonnull PolarisBaseEntity prepareToPersistEntityAfterChange(
-      @Nonnull PolarisCallContext callCtx,
       @Nonnull BasePersistence ms,
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
@@ -166,10 +178,16 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
-    // get meta store we should be using
-    BasePersistence ms = callCtx.getMetaStore();
+  public @Nonnull GenerateEntityIdResult generateNewEntityId() {
+    BasePersistence ms = getMetaStore();
 
-    return new GenerateEntityIdResult(ms.generateNewId(callCtx));
+    return new GenerateEntityIdResult(ms.generateNewId());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void writeEvents(@Nonnull List<PolarisEvent> polarisEvents) {
+    BasePersistence ms = getMetaStore();
+    ms.writeEvents(polarisEvents);
   }
 }

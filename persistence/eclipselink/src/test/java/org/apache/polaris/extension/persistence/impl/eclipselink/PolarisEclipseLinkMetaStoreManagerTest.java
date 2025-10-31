@@ -32,10 +32,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
@@ -83,14 +81,13 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
-    RealmContext realmContext = () -> "realm";
     PolarisEclipseLinkMetaStoreSessionImpl session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
             diagServices, store, Mockito.mock(), realmContext, null, "polaris", RANDOM_SECRETS);
     TransactionalMetaStoreManagerImpl metaStoreManager =
-        new TransactionalMetaStoreManagerImpl(clock, diagServices);
-    PolarisCallContext callCtx = new PolarisCallContext(realmContext, session);
-    return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
+        new TransactionalMetaStoreManagerImpl(
+            clock, diagServices, realmContext, realmConfig, () -> session);
+    return new PolarisTestMetaStoreManager(metaStoreManager);
   }
 
   @ParameterizedTest

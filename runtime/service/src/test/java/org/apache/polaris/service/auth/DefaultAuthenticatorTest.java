@@ -66,8 +66,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
                 .build());
 
     principalNoRoles =
-        rotateAndRefreshPrincipal(
-            metaStoreManager, PRINCIPAL_NO_ROLES, principal.getCredentials(), polarisContext);
+        rotateAndRefreshPrincipal(metaStoreManager, PRINCIPAL_NO_ROLES, principal.getCredentials());
   }
 
   @Test
@@ -109,7 +108,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
         PolarisCredential.of(123L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     metaStoreManager = Mockito.spy(metaStoreManager);
-    when(metaStoreManager.loadEntity(polarisContext, 0L, 123L, PolarisEntityType.PRINCIPAL))
+    when(metaStoreManager.loadEntity(0L, 123L, PolarisEntityType.PRINCIPAL))
         .thenThrow(new RuntimeException("Metastore exception"));
 
     assertUnauthorized(credentials);

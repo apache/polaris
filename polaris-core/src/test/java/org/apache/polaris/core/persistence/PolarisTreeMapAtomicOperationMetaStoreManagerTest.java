@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
@@ -37,8 +36,8 @@ public class PolarisTreeMapAtomicOperationMetaStoreManagerTest
         new TreeMapTransactionalPersistenceImpl(
             diagServices, store, Mockito.mock(), RANDOM_SECRETS);
     AtomicOperationMetaStoreManager metaStoreManager =
-        new AtomicOperationMetaStoreManager(clock, diagServices);
-    PolarisCallContext callCtx = new PolarisCallContext(() -> "testRealm", metaStore);
-    return new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
+        new AtomicOperationMetaStoreManager(
+            clock, diagServices, realmContext, realmConfig, () -> metaStore);
+    return new PolarisTestMetaStoreManager(metaStoreManager);
   }
 }

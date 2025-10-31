@@ -64,7 +64,6 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -136,7 +135,6 @@ public class IcebergCatalogAdapter
 
   private final PolarisDiagnostics diagnostics;
   private final RealmContext realmContext;
-  private final CallContext callContext;
   private final RealmConfig realmConfig;
   private final CallContextCatalogFactory catalogFactory;
   private final ResolutionManifestFactory resolutionManifestFactory;
@@ -155,7 +153,7 @@ public class IcebergCatalogAdapter
   public IcebergCatalogAdapter(
       PolarisDiagnostics diagnostics,
       RealmContext realmContext,
-      CallContext callContext,
+      RealmConfig realmConfig,
       CallContextCatalogFactory catalogFactory,
       ResolverFactory resolverFactory,
       ResolutionManifestFactory resolutionManifestFactory,
@@ -170,8 +168,7 @@ public class IcebergCatalogAdapter
       AccessConfigProvider accessConfigProvider) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
-    this.callContext = callContext;
-    this.realmConfig = callContext.getRealmConfig();
+    this.realmConfig = realmConfig;
     this.catalogFactory = catalogFactory;
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.resolverFactory = resolverFactory;
@@ -212,7 +209,8 @@ public class IcebergCatalogAdapter
 
     return new IcebergCatalogHandler(
         diagnostics,
-        callContext,
+        realmContext,
+        realmConfig,
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,

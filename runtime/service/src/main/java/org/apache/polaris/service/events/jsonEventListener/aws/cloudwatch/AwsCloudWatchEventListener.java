@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.jsonEventListener.PropertyMapEventListener;
 import org.slf4j.Logger;
@@ -63,7 +63,7 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
   private final boolean synchronousMode;
   private final Clock clock;
 
-  @Inject CallContext callContext;
+  @Inject RealmContext realmContext;
 
   @Context SecurityContext securityContext;
 
@@ -153,7 +153,7 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
 
   @Override
   protected void transformAndSendEvent(HashMap<String, Object> properties) {
-    properties.put("realm_id", callContext.getRealmContext().getRealmIdentifier());
+    properties.put("realm_id", realmContext.getRealmIdentifier());
     properties.put("principal", securityContext.getUserPrincipal().getName());
     properties.put(
         "activated_roles", ((PolarisPrincipal) securityContext.getUserPrincipal()).getRoles());

@@ -32,7 +32,6 @@ import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
 import io.smallrye.mutiny.subscription.BackPressureFailure;
 import java.util.Map;
 import org.apache.polaris.core.entity.PolarisEvent;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.Mockito;
@@ -73,15 +72,17 @@ class InMemoryBufferEventListenerBufferSizeTest extends InMemoryBufferEventListe
 
   @Test
   void testFlushFailureRecovery() {
-    var manager = Mockito.mock(PolarisMetaStoreManager.class);
-    doReturn(manager).when(metaStoreManagerFactory).getOrCreateMetaStoreManager(any());
+    var manager = metaStoreManagerFactory.createMetaStoreManager(() -> "test1");
+    var managerSpy = Mockito.spy(manager);
+    doReturn(managerSpy).when(metaStoreManagerFactory).createMetaStoreManager(any());
+
     RuntimeException error = new RuntimeException("error");
     doThrow(error)
         .doThrow(error) // first batch will give up after 2 attempts
         .doThrow(error)
         .doCallRealMethod() // second batch will succeed on the 2nd attempt
-        .when(manager)
-        .writeEvents(any(), any());
+        .when(managerSpy)
+        .writeEvents(any());
     sendAsync("test1", 20);
     assertRows("test1", 10);
   }

@@ -59,7 +59,8 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
     PolarisPrincipal authenticatedPrincipal = PolarisPrincipal.of(principalEntity, Set.of());
     return new IcebergCatalogHandler(
         diagServices,
-        callContext,
+        realmContext,
+        realmConfig,
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,

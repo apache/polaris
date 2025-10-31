@@ -23,7 +23,6 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
 import org.apache.polaris.core.entity.LocationBasedEntity;
@@ -68,11 +67,10 @@ public interface PolarisMetaStoreManager
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
    * service admin role. Will fail if the service has already been bootstrapped.
    *
-   * @param callCtx call context
    * @return the result of the bootstrap attempt
    */
   @Nonnull
-  BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx);
+  BaseResult bootstrapPolarisService();
 
   /**
    * Purge all metadata associated with the Polaris service, resetting the metastore to the state it
@@ -82,18 +80,16 @@ public interface PolarisMetaStoreManager
    *
    * <p>This will destroy whatever Polaris metadata exists in the metastore
    *
-   * @param callCtx call context
    * @return always success or unexpected error
    */
   @Nonnull
-  BaseResult purge(@Nonnull PolarisCallContext callCtx);
+  BaseResult purge();
 
   /**
    * Resolve an entity by name. Can be a top-level entity like a catalog or an entity inside a
    * catalog like a namespace, a role, a table like entity, or a principal. If the entity is inside
    * a catalog, the parameter catalogPath must be specified
    *
-   * @param callCtx call context
    * @param catalogPath path inside a catalog to that entity, rooted by the catalog. If null, the
    *     entity being resolved is a top-level account entity like a catalog.
    * @param entityType entity type
@@ -106,7 +102,6 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   EntityResult readEntityByName(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
@@ -116,7 +111,6 @@ public interface PolarisMetaStoreManager
    * List lightweight information about entities matching the given criteria. If all properties of
    * the entity are required,use {@link #loadEntities} instead.
    *
-   * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
    *     like catalogs
    * @param entityType entity type
@@ -126,7 +120,6 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   ListEntitiesResult listEntities(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
@@ -137,7 +130,6 @@ public interface PolarisMetaStoreManager
    * is required, use {@link #listEntities} instead. If no pagination is required, use {@link
    * #loadEntitiesAll} instead.
    *
-   * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
    *     like catalogs
    * @param entityType type of entities to list
@@ -146,7 +138,6 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   Page<PolarisBaseEntity> loadEntities(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
@@ -157,7 +148,6 @@ public interface PolarisMetaStoreManager
    * use {@link #loadEntities} instead. If only the entity name/id/type is required, use {@link
    * #listEntities} instead.
    *
-   * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
    *     like catalogs
    * @param entityType type of entities to list
@@ -165,43 +155,37 @@ public interface PolarisMetaStoreManager
    * @return list of all matching entities
    */
   default @Nonnull List<PolarisBaseEntity> loadEntitiesAll(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType) {
-    return loadEntities(callCtx, catalogPath, entityType, entitySubType, PageToken.readEverything())
-        .items();
+    return loadEntities(catalogPath, entityType, entitySubType, PageToken.readEverything()).items();
   }
 
   /**
    * Generate a new unique id that can be used by the Polaris client when it needs to create a new
    * entity
    *
-   * @param callCtx call context
    * @return the newly created id, not expected to fail
    */
   @Nonnull
-  GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx);
+  GenerateEntityIdResult generateNewEntityId();
 
   /**
    * Create a new principal. This not only creates the new principal entity but also generates a
    * client_id/secret pair for this new principal.
    *
-   * @param callCtx call context
    * @param principal the principal entity to create
    * @return the client_id/secret for the new principal which was created. Will return
    *     ENTITY_ALREADY_EXISTS if the principal already exists
    */
   @Nonnull
-  CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PrincipalEntity principal);
+  CreatePrincipalResult createPrincipal(@Nonnull PrincipalEntity principal);
 
   /**
    * Create a new catalog. This not only creates the new catalog entity but also the initial admin
    * role required to admin this catalog. If inline storage integration property is provided, create
    * a storage integration.
    *
-   * @param callCtx call context
    * @param catalog the catalog entity to create
    * @param principalRoles once the catalog has been created, list of principal roles to grant its
    *     catalog_admin role to. If no principal role is specified, we will grant the catalog_admin
@@ -210,9 +194,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   CreateCatalogResult createCatalog(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisBaseEntity catalog,
-      @Nonnull List<PolarisEntityCore> principalRoles);
+      @Nonnull PolarisBaseEntity catalog, @Nonnull List<PolarisEntityCore> principalRoles);
 
   /**
    * Persist a newly created entity under the specified catalog path if specified, else this is a
@@ -222,7 +204,6 @@ public interface PolarisMetaStoreManager
    * cannot be resolved, we will return null. And of course if another entity exists with the same
    * name, we will fail and also return null.
    *
-   * @param callCtx call context
    * @param catalogPath path inside a catalog. If null, the entity to persist is assumed to be
    *     top-level.
    * @param entity entity to write
@@ -233,9 +214,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   EntityResult createEntityIfNotExists(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity);
+      @Nullable List<PolarisEntityCore> catalogPath, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Persist a batch of newly created entities under the specified catalog path if specified, else
@@ -246,7 +225,6 @@ public interface PolarisMetaStoreManager
    * will be persisted. And of course if any entity conflicts with an existing entity with the same
    * name, we will fail all entities and also return null.
    *
-   * @param callCtx call context
    * @param catalogPath path inside a catalog. If null, the entity to persist is assumed to be
    *     top-level.
    * @param entities batch of entities to write
@@ -257,7 +235,6 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   EntitiesResult createEntitiesIfNotExist(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull List<? extends PolarisBaseEntity> entities);
 
@@ -266,35 +243,29 @@ public interface PolarisMetaStoreManager
    * has not changed. If this is not the case we will return false. Else we will update both the
    * internal and visible properties and return true
    *
-   * @param callCtx call context
    * @param catalogPath path to that entity. Could be null if this entity is top-level
    * @param entity entity to update, cannot be null
    * @return the entity we updated or null if the client should retry
    */
   @Nonnull
   EntityResult updateEntityPropertiesIfNotChanged(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity);
+      @Nullable List<PolarisEntityCore> catalogPath, @Nonnull PolarisBaseEntity entity);
 
   /**
-   * This works exactly like {@link #updateEntityPropertiesIfNotChanged(PolarisCallContext, List,
-   * PolarisBaseEntity)} but allows to operate on multiple entities at once. Just loop through the
-   * list, calling each entity update and return null if any of those fail.
+   * This works exactly like {@link #updateEntityPropertiesIfNotChanged(List, PolarisBaseEntity)}
+   * but allows to operate on multiple entities at once. Just loop through the list, calling each
+   * entity update and return null if any of those fail.
    *
-   * @param callCtx call context
    * @param entities the set of entities to update
    * @return list of all entities we updated or null if the client should retry because one update
    *     failed
    */
   @Nonnull
-  EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities);
+  EntitiesResult updateEntitiesPropertiesIfNotChanged(@Nonnull List<EntityWithPath> entities);
 
   /**
    * Rename an entity, potentially re-parenting it.
    *
-   * @param callCtx call context
    * @param catalogPath path to that entity. Could be an empty list of the entity is a catalog.
    * @param entityToRename entity to rename. This entity should have been resolved by the client
    * @param newCatalogPath if not null, new catalog path
@@ -305,7 +276,6 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   EntityResult renameEntity(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
@@ -314,7 +284,6 @@ public interface PolarisMetaStoreManager
   /**
    * Drop the specified entity assuming it exists
    *
-   * @param callCtx call context
    * @param catalogPath path to that entity. Could be an empty list of the entity is a catalog.
    * @param entityToDrop entity to drop, must have been resolved by the client
    * @param cleanupProperties if not null, properties that will be persisted with the cleanup task
@@ -325,7 +294,6 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   DropEntityResult dropEntityIfExists(
-      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
@@ -335,42 +303,34 @@ public interface PolarisMetaStoreManager
    * Load the entity from backend store. Will return NULL if the entity does not exist, i.e. has
    * been purged. The entity being loaded might have been dropped
    *
-   * @param callCtx call context
    * @param entityCatalogId id of the catalog for that entity
    * @param entityId the id of the entity to load
    */
   @Nonnull
   EntityResult loadEntity(
-      @Nonnull PolarisCallContext callCtx,
-      long entityCatalogId,
-      long entityId,
-      @Nonnull PolarisEntityType entityType);
+      long entityCatalogId, long entityId, @Nonnull PolarisEntityType entityType);
 
   /**
    * Fetch a list of tasks to be completed. Tasks
    *
-   * @param callCtx call context
    * @param executorId executor id
    * @param pageToken page token to start after
    * @return list of tasks to be completed
    */
   @Nonnull
-  EntitiesResult loadTasks(
-      @Nonnull PolarisCallContext callCtx, String executorId, PageToken pageToken);
+  EntitiesResult loadTasks(String executorId, PageToken pageToken);
 
   /**
    * Load change tracking information for a set of entities in one single shot and return for each
    * the version for the entity itself and the version associated to its grant records.
    *
-   * @param callCtx call context
    * @param entityIds list of catalog/entity pair ids for which we need to efficiently load the
    *     version information, both entity version and grant records version.
    * @return a list of version tracking information. Order in that returned list is the same as the
    *     input list. Some elements might be NULL if the entity has been purged. Not expected to fail
    */
   @Nonnull
-  ChangeTrackingResult loadEntitiesChangeTracking(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityId> entityIds);
+  ChangeTrackingResult loadEntitiesChangeTracking(@Nonnull List<PolarisEntityId> entityIds);
 
   /**
    * Load a resolved entity, i.e. an entity definition and associated grant records, from the
@@ -379,7 +339,6 @@ public interface PolarisMetaStoreManager
    * <p>For entities that can be grantees, the associated grant records will include both the grant
    * records for this entity as a grantee and for this entity as a securable.
    *
-   * @param callCtx call context
    * @param entityCatalogId id of the catalog for that entity
    * @param entityId id of the entity
    * @return result with entity and grants. Status will be ENTITY_NOT_FOUND if the entity was not
@@ -387,10 +346,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   ResolvedEntityResult loadResolvedEntityById(
-      @Nonnull PolarisCallContext callCtx,
-      long entityCatalogId,
-      long entityId,
-      PolarisEntityType entityType);
+      long entityCatalogId, long entityId, PolarisEntityType entityType);
 
   /**
    * Load a resolved entity, i.e. an entity definition and associated grant records, from the
@@ -400,7 +356,6 @@ public interface PolarisMetaStoreManager
    * <p>For entities that can be grantees, the associated grant records will include both the grant
    * records for this entity as a grantee and for this entity as a securable.
    *
-   * @param callCtx call context
    * @param entityCatalogId id of the catalog for that entity
    * @param parentId the id of the parent of that entity
    * @param entityType the type of this entity
@@ -410,7 +365,6 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   ResolvedEntityResult loadResolvedEntityByName(
-      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
@@ -424,7 +378,6 @@ public interface PolarisMetaStoreManager
    * <p>For entities that can be grantees, the associated grant records will include both the grant
    * records for this entity as a grantee and for this entity as a securable.
    *
-   * @param callCtx call context
    * @param entityType type of the entity whose entity and grants we are refreshing
    * @param entityCatalogId id of the catalog for that entity
    * @param entityId the id of the entity to load
@@ -433,7 +386,6 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   ResolvedEntityResult refreshResolvedEntity(
-      @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
       @Nonnull PolarisEntityType entityType,
@@ -444,15 +396,13 @@ public interface PolarisMetaStoreManager
    * Check if the specified IcebergTableLikeEntity has any same-namespace siblings which share a
    * location
    *
-   * @param callContext the polaris call context
    * @param entity the entity to check for overlapping siblings for
    * @return Optional.of(Optional.of ( location)) if the parent entity has children,
    *     Optional.of(Optional.empty()) if not, and Optional.empty() if the metastore doesn't support
    *     this operation
    */
   default <T extends PolarisEntity & LocationBasedEntity>
-      Optional<Optional<String>> hasOverlappingSiblings(
-          @Nonnull PolarisCallContext callContext, T entity) {
+      Optional<Optional<String>> hasOverlappingSiblings(T entity) {
     return Optional.empty();
   }
 
@@ -466,44 +416,32 @@ public interface PolarisMetaStoreManager
     return true;
   }
 
-  default Optional<PrincipalEntity> findRootPrincipal(PolarisCallContext polarisCallContext) {
-    return findPrincipalByName(polarisCallContext, PolarisEntityConstants.getRootPrincipalName());
+  default Optional<PrincipalEntity> findRootPrincipal() {
+    return findPrincipalByName(PolarisEntityConstants.getRootPrincipalName());
   }
 
-  default Optional<PrincipalEntity> findPrincipalById(
-      PolarisCallContext polarisCallContext, long principalId) {
+  default Optional<PrincipalEntity> findPrincipalById(long principalId) {
     EntityResult loadResult =
-        loadEntity(
-            polarisCallContext,
-            PolarisEntityConstants.getNullId(),
-            principalId,
-            PolarisEntityType.PRINCIPAL);
+        loadEntity(PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
     if (!loadResult.isSuccess()) {
       return Optional.empty();
     }
     return Optional.of(loadResult.getEntity()).map(PrincipalEntity::of);
   }
 
-  default Optional<PrincipalEntity> findPrincipalByName(
-      PolarisCallContext polarisCallContext, String principalName) {
+  default Optional<PrincipalEntity> findPrincipalByName(String principalName) {
     EntityResult entityResult =
         readEntityByName(
-            polarisCallContext,
-            null,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            principalName);
+            null, PolarisEntityType.PRINCIPAL, PolarisEntitySubType.NULL_SUBTYPE, principalName);
     if (!entityResult.isSuccess()) {
       return Optional.empty();
     }
     return Optional.of(entityResult.getEntity()).map(PrincipalEntity::of);
   }
 
-  default Optional<PrincipalRoleEntity> findPrincipalRoleByName(
-      PolarisCallContext polarisCallContext, String principalRoleName) {
+  default Optional<PrincipalRoleEntity> findPrincipalRoleByName(String principalRoleName) {
     EntityResult entityResult =
         readEntityByName(
-            polarisCallContext,
             null,
             PolarisEntityType.PRINCIPAL_ROLE,
             PolarisEntitySubType.NULL_SUBTYPE,

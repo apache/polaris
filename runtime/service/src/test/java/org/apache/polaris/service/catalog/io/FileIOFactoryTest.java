@@ -40,7 +40,6 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -74,7 +73,6 @@ public class FileIOFactoryTest {
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
 
-  private CallContext callContext;
   private RealmContext realmContext;
   private StsClient stsClient;
   private TestServices testServices;
@@ -133,8 +131,6 @@ public class FileIOFactoryTest {
             .stsClient(stsClient)
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
-
-    callContext = testServices.newCallContext();
   }
 
   @AfterEach
@@ -156,6 +152,7 @@ public class FileIOFactoryTest {
             Mockito.any(),
             Mockito.any(),
             Mockito.any(),
+            Mockito.any(),
             Mockito.any());
   }
 
@@ -170,12 +167,13 @@ public class FileIOFactoryTest {
     List<PolarisBaseEntity> tasks =
         testServices
             .metaStoreManager()
-            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", PageToken.fromLimit(1))
+            .loadTasks("testExecutor", PageToken.fromLimit(1))
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     FileIO fileIO =
-        new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, TABLE, callContext);
+        new TaskFileIOSupplier(testServices.fileIOFactory())
+            .apply(realmContext, testServices.realmConfig(), taskEntity, TABLE);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
         .isInstanceOf(InMemoryFileIO.class);
@@ -185,6 +183,7 @@ public class FileIOFactoryTest {
     // 3. TaskFileIOSupplier:apply: for clean up metadata files and merge files
     Mockito.verify(testServices.fileIOFactory(), Mockito.times(3))
         .loadFileIO(
+            Mockito.any(),
             Mockito.any(),
             Mockito.any(),
             Mockito.any(),
@@ -224,7 +223,8 @@ public class FileIOFactoryTest {
             services.polarisDiagnostics(),
             services.resolverFactory(),
             services.metaStoreManager(),
-            callContext,
+            realmContext,
+            services.realmConfig(),
             passthroughView,
             services.securityContext(),
             services.taskExecutor(),

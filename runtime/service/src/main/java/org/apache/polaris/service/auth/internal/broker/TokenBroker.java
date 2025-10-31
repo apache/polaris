@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.auth.internal.broker;
 
-import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.types.TokenType;
 
@@ -39,7 +39,7 @@ public interface TokenBroker {
       final String clientSecret,
       final String grantType,
       final String scope,
-      PolarisCallContext polarisCallContext,
+      PolarisMetaStoreManager metaStoreManager,
       TokenType requestedTokenType);
 
   /**
@@ -52,7 +52,7 @@ public interface TokenBroker {
       String subjectToken,
       final String grantType,
       final String scope,
-      PolarisCallContext polarisCallContext,
+      PolarisMetaStoreManager metaStoreManager,
       TokenType requestedTokenType);
 
   /** Decodes and verifies the token, then returns the associated {@link PolarisCredential}. */

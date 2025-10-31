@@ -24,7 +24,8 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
@@ -41,7 +42,8 @@ public interface FileIOFactory {
    * <p>This method may obtain subscoped credentials to restrict the FileIO's permissions, ensuring
    * secure and limited access to the table's data and locations.
    *
-   * @param callContext the call for which the FileIO is being loaded.
+   * @param realmContext the realm context.
+   * @param realmConfig the realm config.
    * @param ioImplClassName the class name of the FileIO implementation to load.
    * @param properties configuration properties for the FileIO.
    * @param identifier the table identifier.
@@ -51,7 +53,8 @@ public interface FileIOFactory {
    * @return a configured FileIO instance.
    */
   FileIO loadFileIO(
-      @Nonnull CallContext callContext,
+      @Nonnull RealmContext realmContext,
+      @Nonnull RealmConfig realmConfig,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
