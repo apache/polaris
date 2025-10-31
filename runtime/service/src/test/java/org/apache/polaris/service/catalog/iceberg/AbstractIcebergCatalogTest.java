@@ -266,9 +266,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Nullable
   protected abstract EntityCache createEntityCache(
-      PolarisDiagnostics diagnostics,
-      RealmConfig realmConfig,
-      PolarisMetaStoreManager metaStoreManager);
+      PolarisDiagnostics diagnostics, RealmConfig realmConfig);
 
   protected void bootstrapRealm(String realmName) {}
 
@@ -285,33 +283,25 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
-    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            configurationStore);
-    realmConfig = polarisContext.getRealmConfig();
+
     accessConfigProvider =
         new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
-    EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
+    polarisContext = new PolarisCallContext(realmContext, configurationStore);
+    realmConfig = polarisContext.getRealmConfig();
+    metaStoreManager = metaStoreManagerFactory.createMetaStoreManager(realmContext);
+    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
+
+    EntityCache entityCache = createEntityCache(diagServices, realmConfig);
     resolverFactory =
         (securityContext, referenceCatalogName) ->
             new Resolver(
-                diagServices,
-                polarisContext,
-                metaStoreManager,
-                securityContext,
-                entityCache,
-                referenceCatalogName);
+                diagServices, metaStoreManager, securityContext, entityCache, referenceCatalogName);
     QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
 
     resolutionManifestFactory =
         new ResolutionManifestFactoryImpl(diagServices, realmContext, resolverFactory);
 
-    PrincipalEntity rootPrincipal =
-        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
+    PrincipalEntity rootPrincipal = metaStoreManager.findRootPrincipal().orElseThrow();
     PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
     securityContext = Mockito.mock(SecurityContext.class);
@@ -390,7 +380,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @AfterEach
   public void after() throws IOException {
     catalog().close();
-    metaStoreManager.purge(polarisContext);
+    metaStoreManager.purge();
   }
 
   @Override
@@ -1114,7 +1104,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     // been the one to succeed creating the namespace first.
     doAnswer(
             invocation -> {
-              PolarisEntity entity = (PolarisEntity) invocation.getArgument(2);
+              PolarisEntity entity = invocation.getArgument(1);
               EntityResult result = (EntityResult) invocation.callRealMethod();
               if (entity.getType() == PolarisEntityType.NAMESPACE) {
                 return new EntityResult(
@@ -1125,7 +1115,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
               }
             })
         .when(spyMetaStore)
-        .createEntityIfNotExists(any(), any(), any());
+        .createEntityIfNotExists(any(), any());
 
     Assertions.assertThat(catalog.sendNotification(table, request))
         .as("Notification should be sent successfully")
@@ -1195,7 +1185,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         String.format("s3://my-bucket/path/to/data/another_table_%s/", tableSuffix);
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
-        polarisContext,
         List.of(PolarisEntity.toCore(catalogEntity)),
         new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
             .addProperty(
@@ -1255,7 +1244,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         String.format("s3://my-bucket/path/to/data/another_table_%s", tableSuffix);
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
-        polarisContext,
         List.of(PolarisEntity.toCore(catalogEntity)),
         new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
             .addProperty(
@@ -1312,7 +1300,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         String.format("s3://my-bucket/path/to/data/another_table_%s/", tableSuffix);
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
-        polarisContext,
         List.of(PolarisEntity.toCore(catalogEntity)),
         new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
             .addProperty(
@@ -1896,15 +1883,12 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .as("Table should not exist after drop")
         .rejects(TABLE);
     List<PolarisBaseEntity> tasks =
-        metaStoreManager
-            .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
-            .getEntities();
+        metaStoreManager.loadTasks("testExecutor", PageToken.fromLimit(1)).getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     Map<String, String> credentials =
         metaStoreManager
             .getSubscopedCredsForEntity(
-                polarisContext,
                 0,
                 taskEntity.getId(),
                 taskEntity.getType(),
@@ -2077,7 +2061,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     TaskEntity taskEntity =
         TaskEntity.of(
             metaStoreManager
-                .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+                .loadTasks("testExecutor", PageToken.fromLimit(1))
                 .getEntities()
                 .getFirst());
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
@@ -2155,7 +2139,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
                 PolarisEntitySubType.ICEBERG_TABLE.getCode()))
         .when(spyMetaStore)
-        .createEntityIfNotExists(any(), any(), any());
+        .createEntityIfNotExists(any(), any());
     Assertions.assertThatThrownBy(() -> catalog.createTable(table, SCHEMA))
         .isInstanceOf(AlreadyExistsException.class)
         .hasMessageContaining("conflict_table");
@@ -2190,7 +2174,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
         .when(spyMetaStore)
-        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+        .updateEntityPropertiesIfNotChanged(any(), any());
 
     UpdateSchema update = table.updateSchema().addColumn("new_col", Types.LongType.get());
     Schema expected = update.apply();

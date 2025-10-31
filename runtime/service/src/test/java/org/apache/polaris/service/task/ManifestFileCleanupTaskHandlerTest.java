@@ -42,7 +42,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.TestFileIOFactory;
 import org.junit.jupiter.api.Test;
@@ -58,8 +57,7 @@ class ManifestFileCleanupTaskHandlerTest {
   }
 
   private PolarisCallContext newCallContext() {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore);
+    return new PolarisCallContext(realmContext);
   }
 
   @Test

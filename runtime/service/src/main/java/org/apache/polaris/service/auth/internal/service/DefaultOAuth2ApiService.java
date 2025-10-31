@@ -27,8 +27,8 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 import org.apache.polaris.service.auth.internal.broker.TokenResponse;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
@@ -49,12 +49,13 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
   private static final String BEARER = "bearer";
 
   private final TokenBroker tokenBroker;
-  private final CallContext callContext;
+  private final PolarisMetaStoreManager metaStoreManager;
 
   @Inject
-  public DefaultOAuth2ApiService(TokenBroker tokenBroker, CallContext callContext) {
+  public DefaultOAuth2ApiService(
+      TokenBroker tokenBroker, PolarisMetaStoreManager metaStoreManager) {
     this.tokenBroker = tokenBroker;
-    this.callContext = callContext;
+    this.metaStoreManager = metaStoreManager;
   }
 
   @Override
@@ -104,12 +105,7 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     if (clientSecret != null) {
       tokenResponse =
           tokenBroker.generateFromClientSecrets(
-              clientId,
-              clientSecret,
-              grantType,
-              scope,
-              callContext.getPolarisCallContext(),
-              requestedTokenType);
+              clientId, clientSecret, grantType, scope, metaStoreManager, requestedTokenType);
     } else if (subjectToken != null) {
       tokenResponse =
           tokenBroker.generateFromToken(
@@ -117,7 +113,7 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
               subjectToken,
               grantType,
               scope,
-              callContext.getPolarisCallContext(),
+              metaStoreManager,
               requestedTokenType);
     } else {
       return OAuthUtils.getResponseFromError(OAuthError.invalid_request);

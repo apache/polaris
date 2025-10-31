@@ -31,7 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
@@ -40,22 +39,18 @@ import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBro
 @Identifier("symmetric-key")
 public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
 
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final AuthenticationConfiguration authenticationConfiguration;
 
   private final ConcurrentMap<String, SymmetricKeyJWTBroker> tokenBrokers =
       new ConcurrentHashMap<>();
 
   @Inject
-  public SymmetricKeyJWTBrokerFactory(
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      AuthenticationConfiguration authenticationConfiguration) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
+  public SymmetricKeyJWTBrokerFactory(AuthenticationConfiguration authenticationConfiguration) {
     this.authenticationConfiguration = authenticationConfiguration;
   }
 
   @Override
-  public TokenBroker apply(RealmContext realmContext) {
+  public TokenBroker newTokenBroker(RealmContext realmContext) {
     return tokenBrokers.computeIfAbsent(
         realmContext.getRealmIdentifier(), k -> createTokenBroker(realmContext));
   }
@@ -72,10 +67,7 @@ public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
     Path file = symmetricKeyConfiguration.file().orElse(null);
     checkState(secret != null || file != null, "Either file or secret must be set");
     Supplier<String> secretSupplier = secret != null ? () -> secret : readSecretFromDisk(file);
-    return new SymmetricKeyJWTBroker(
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
-        (int) maxTokenGeneration.toSeconds(),
-        secretSupplier);
+    return new SymmetricKeyJWTBroker((int) maxTokenGeneration.toSeconds(), secretSupplier);
   }
 
   private static Supplier<String> readSecretFromDisk(Path file) {
