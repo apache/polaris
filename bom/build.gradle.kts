@@ -47,6 +47,38 @@ dependencies {
     api(project(":polaris-nodes-api"))
     api(project(":polaris-nodes-impl"))
     api(project(":polaris-nodes-spi"))
+    api(project(":polaris-nodes-store-nosql"))
+
+    api(project(":polaris-realms-api"))
+    api(project(":polaris-realms-impl"))
+    api(project(":polaris-realms-spi"))
+    api(project(":polaris-realms-store-nosql"))
+
+    api(project(":polaris-authz-api"))
+    api(project(":polaris-authz-impl"))
+    api(project(":polaris-authz-spi"))
+    api(project(":polaris-authz-store-nosql"))
+
+    api(project(":polaris-persistence-nosql-api"))
+    api(project(":polaris-persistence-nosql-impl"))
+    api(project(":polaris-persistence-nosql-benchmark"))
+    api(project(":polaris-persistence-nosql-metastore"))
+    api(project(":polaris-persistence-nosql-cdi-common"))
+    api(project(":polaris-persistence-nosql-cdi-quarkus"))
+    api(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
+    api(project(":polaris-persistence-nosql-cdi-weld"))
+    api(project(":polaris-persistence-nosql-correctness"))
+    api(project(":polaris-persistence-nosql-standalone"))
+    api(project(":polaris-persistence-nosql-testextension"))
+    api(project(":polaris-persistence-nosql-types"))
+
+    api(project(":polaris-persistence-nosql-inmemory"))
+    api(project(":polaris-persistence-nosql-mongodb"))
+
+    api(project(":polaris-persistence-nosql-maintenance-api"))
+    api(project(":polaris-persistence-nosql-maintenance-impl"))
+    api(project(":polaris-persistence-nosql-maintenance-cel"))
+    api(project(":polaris-persistence-nosql-maintenance-spi"))
 
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
