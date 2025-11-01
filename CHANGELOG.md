@@ -29,6 +29,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
+- Support for [Iceberg Metrics Reporting] has been introduced in Polaris. Out of the box, metrics can
+  be printed to the logs by setting the `org.apache.polaris.service.reporting` logger level to `INFO` (it's
+  set to `OFF` by default). Custom reporters can be implemented and configured to send metrics to
+  external systems for further analysis and monitoring.
+
+[Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
+
 ### Upgrade notes
 
 ### Breaking changes

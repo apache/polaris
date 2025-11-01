@@ -65,9 +65,14 @@ import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
+import org.apache.iceberg.metrics.ImmutableScanReport;
+import org.apache.iceberg.metrics.ScanMetrics;
+import org.apache.iceberg.metrics.ScanMetricsResult;
+import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
@@ -879,6 +884,27 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
+    }
+  }
+
+  @Test
+  public void testSendMetricsReport() {
+    ScanReport scanReport =
+        ImmutableScanReport.builder()
+            .tableName("tbl1")
+            .schemaId(4)
+            .addProjectedFieldIds(1, 2, 3)
+            .addProjectedFieldNames("c1", "c2", "c3")
+            .snapshotId(23L)
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .build();
+    Invocation.Builder metricEndpoint =
+        catalogApi.request(
+            "v1/{cat}/namespaces/ns1/tables/tbl1/metrics", Map.of("cat", currentCatalogName));
+    try (Response response =
+        metricEndpoint.post(Entity.json(ReportMetricsRequest.of(scanReport)))) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
