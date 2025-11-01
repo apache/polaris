@@ -125,6 +125,24 @@ polaris.realm-context.require-header=true
 This will cause Polaris to also return a `404 Not Found` response if the realm header is not present
 in the request.
 
+### Polaris Server Header
+
+Polaris can emit an informational `Server` HTTP response header using Quarkus' built-in header
+configuration. The default configuration keeps the header disabled by pointing it at a path that does
+not match any request.
+
+```properties
+quarkus.http.header."Server".value=Polaris/${quarkus.application.version}
+quarkus.http.header."Server".path=/__disabled__
+```
+
+To enable the header for production traffic, override the header path for the desired profile (for
+example, `%prod`).
+
+```properties
+%prod.quarkus.http.header."Server".path=/*
+```
+
 ### Metastore Configuration
 
 A metastore should be configured with an implementation that durably persists Polaris entities. By
