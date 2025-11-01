@@ -97,37 +97,37 @@ imaging:
 menu:
   main:
     - name: "Documentation"
-      identifier: "releases"
+      identifier: "doc"
       weight: 100
       params:
         orderby: weight.desc
     - name: "In Development"
       url: "/in-dev/unreleased/"
-      parent: "releases"
+      parent: "doc"
       weight: 1
     - name: "1.2.0"
       url: "/releases/1.2.0/"
-      parent: "releases"
+      parent: "doc"
       weight: 996
     - name: "1.1.0"
       url: "/releases/1.1.0/"
-      parent: "releases"
+      parent: "doc"
       weight: 997
     - name: "1.0.1"
       url: "/releases/1.0.1/"
-      parent: "releases"
+      parent: "doc"
       weight: 998
     - name: "1.0.0"
       url: "/releases/1.0.0/"
-      parent: "releases"
+      parent: "doc"
       weight: 999
     - name: "0.9.0"
       url: "/releases/0.9.0/"
-      parent: "releases"
+      parent: "doc"
       weight: 1000
 
-    - name: "Downloads"
-      identifier: "downloads"
+    - name: "Releases"
+      identifier: "releases"
       url: "/downloads"
       weight: 200
 
