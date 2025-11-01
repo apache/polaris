@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -463,7 +464,12 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     PreparedQuery query =
         QueryGenerator.generateSelectQueryWithEntityIds(realmId, schemaVersion, entityIds);
     try {
-      return datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
+      Map<PolarisEntityId, PolarisBaseEntity> idMap =
+          datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion)).stream()
+              .collect(
+                  Collectors.toMap(
+                      e -> new PolarisEntityId(e.getCatalogId(), e.getId()), Function.identity()));
+      return entityIds.stream().map(idMap::get).collect(Collectors.toList());
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
@@ -476,6 +482,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     Map<PolarisEntityId, ModelEntity> idToEntityMap =
         lookupEntities(callCtx, entityIds).stream()
+            .filter(Objects::nonNull)
             .collect(
                 Collectors.toMap(
                     entry -> new PolarisEntityId(entry.getCatalogId(), entry.getId()),
@@ -570,7 +577,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
 
   @Nonnull
   @Override
-  public <T> Page<T> loadEntities(
+  public <T> Page<T> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
