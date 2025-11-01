@@ -18,31 +18,29 @@
 #
 
 FROM docker.io/apache/spark:3.5.6-java17
-ARG POLARIS_HOST=polaris
-ENV POLARIS_HOST=$POLARIS_HOST
-ENV SPARK_HOME=/opt/spark
-ENV CURRENT_SCALA_VERSION='2.12'
-ENV LANGUAGE='en_US:en'
+
+ARG POLARIS_HOST=polaris \
+    CURRENT_SCALA_VERSION=2.12
+
+ENV POLARIS_HOST=${POLARIS_HOST} \
+    CURRENT_SCALA_VERSION=${CURRENT_SCALA_VERSION} \
 
 USER root
-RUN apt update
-RUN apt-get install -y diffutils wget curl
-RUN mkdir -p /home/spark &&  \
-    chown -R spark /home/spark && \
-    mkdir -p /tmp/polaris-regtests && \
-    chown -R spark /tmp/polaris-regtests
-RUN mkdir /opt/spark/conf && chmod -R 777 /opt/spark/conf
 
-USER spark
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends diffutils wget curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /home/spark /tmp/polaris-regtests /opt/spark/conf && \
+    chown -R spark:spark /home/spark /tmp/polaris-regtests && \
+    chmod -R 777 /opt/spark/conf
 
 WORKDIR /home/spark/polaris
 
-COPY --chown=spark ./v3.5 /home/spark/polaris/v3.5
+COPY --chown=spark:spark ./v3.5 /home/spark/polaris/v3.5
 
 # /home/spark/regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
-USER root
-RUN chmod -R go+rwx /home/spark/polaris
-RUN chmod -R 777 ./v3.5/regtests
+RUN chmod -R 777 /home/spark/polaris/v3.5/regtests
+
 USER spark
 
 ENTRYPOINT ["./v3.5/regtests/run.sh"]
