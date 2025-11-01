@@ -111,7 +111,7 @@ weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.3.Final" }
 [plugins]
 jcstress = { id = "io.github.reyerizo.gradle.jcstress", version = "0.9.0" }
 jmh = { id = "me.champeau.jmh", version = "0.7.3" }
-openapi-generator = { id = "org.openapi.generator", version = "7.12.0" }
+openapi-generator = { id = "org.openapi.generator", version = "7.17.0" }
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }
 jetbrains-changelog = { id = "org.jetbrains.changelog",  version = "2.4.0"}
