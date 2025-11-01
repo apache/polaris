@@ -33,6 +33,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -46,6 +47,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
   private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
+  private final AccessConfigProvider accessConfigProvider;
   private final FileIOFactory fileIOFactory;
   private final ResolverFactory resolverFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
@@ -57,12 +59,14 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       ResolverFactory resolverFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskExecutor taskExecutor,
+      AccessConfigProvider accessConfigProvider,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.taskExecutor = taskExecutor;
+    this.accessConfigProvider = accessConfigProvider;
     this.fileIOFactory = fileIOFactory;
     this.polarisEventListener = polarisEventListener;
   }
@@ -89,6 +93,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             resolvedManifest,
             securityContext,
             taskExecutor,
+            accessConfigProvider,
             fileIOFactory,
             polarisEventListener);
 

@@ -49,7 +49,9 @@ import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.TestFileIOFactory;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 @QuarkusTest
 public class BatchFileCleanupTaskHandlerTest {
@@ -57,7 +59,8 @@ public class BatchFileCleanupTaskHandlerTest {
   private final RealmContext realmContext = () -> "realmName";
 
   private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
-    return new TaskFileIOSupplier(new TestFileIOFactory(fileIO));
+    return new TaskFileIOSupplier(
+        new TestFileIOFactory(fileIO), Mockito.mock(AccessConfigProvider.class));
   }
 
   private PolarisCallContext newCallContext() {

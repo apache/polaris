@@ -34,7 +34,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -115,9 +115,6 @@ public record TestServices(
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
 
-  @FunctionalInterface
-  public interface FileIOFactorySupplier extends Function<AccessConfigProvider, FileIOFactory> {}
-
   private static class MockedConfigurationStore implements PolarisConfigurationStore {
     private final Map<String, Object> defaults;
 
@@ -143,8 +140,7 @@ public record TestServices(
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient;
-    private FileIOFactorySupplier fileIOFactorySupplier =
-        metaStoreManagerFactory1 -> new MeasuredFileIOFactory(metaStoreManagerFactory1);
+    private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
 
     private Builder() {
       stsClient = Mockito.mock(StsClient.class, RETURNS_DEEP_STUBS);
@@ -169,7 +165,7 @@ public record TestServices(
       return this;
     }
 
-    public Builder fileIOFactorySupplier(FileIOFactorySupplier fileIOFactorySupplier) {
+    public Builder fileIOFactorySupplier(Supplier<FileIOFactory> fileIOFactorySupplier) {
       this.fileIOFactorySupplier = fileIOFactorySupplier;
       return this;
     }
@@ -244,7 +240,7 @@ public record TestServices(
 
       AccessConfigProvider accessConfigProvider =
           new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
-      FileIOFactory fileIOFactory = fileIOFactorySupplier.apply(accessConfigProvider);
+      FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
@@ -255,6 +251,7 @@ public record TestServices(
               resolverFactory,
               metaStoreManagerFactory,
               taskExecutor,
+              accessConfigProvider,
               fileIOFactory,
               polarisEventListener);
 

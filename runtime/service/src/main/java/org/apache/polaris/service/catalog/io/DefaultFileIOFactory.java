@@ -25,55 +25,32 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import org.apache.iceberg.CatalogUtil;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
  * contextual table-level properties.
  *
  * <p>This class acts as a translation layer between Polaris properties and the properties required
- * by Iceberg's {@link FileIO}. For example, it evaluates storage actions and retrieves subscoped
- * credentials to initialize a {@link FileIO} instance with the most limited permissions necessary.
+ * by Iceberg's {@link FileIO}.
  */
 @ApplicationScoped
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
-  private final AccessConfigProvider accessConfigProvider;
-
   @Inject
-  public DefaultFileIOFactory(AccessConfigProvider accessConfigProvider) {
-    this.accessConfigProvider = accessConfigProvider;
-  }
+  public DefaultFileIOFactory() {}
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull CallContext callContext,
+      @Nonnull AccessConfig accessConfig,
       @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties,
-      @Nonnull TableIdentifier identifier,
-      @Nonnull Set<String> tableLocations,
-      @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
+      @Nonnull Map<String, String> properties) {
 
     // Get subcoped creds
     properties = new HashMap<>(properties);
-    AccessConfig accessConfig =
-        accessConfigProvider.getAccessConfig(
-            callContext,
-            identifier,
-            tableLocations,
-            storageActions,
-            Optional.empty(),
-            resolvedEntityPath);
 
     // Update the FileIO with the subscoped credentials
     // Update with properties in case there are table-level overrides the credentials should

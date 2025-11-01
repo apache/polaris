@@ -508,6 +508,7 @@ public abstract class PolarisAuthzTestBase {
             passthroughView,
             securityContext,
             Mockito.mock(),
+            accessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     this.baseCatalog.initialize(
@@ -533,10 +534,10 @@ public abstract class PolarisAuthzTestBase {
     @Inject
     public TestPolarisCallContextCatalogFactory(
         PolarisDiagnostics diagnostics,
-        StorageCredentialCache storageCredentialCache,
         ResolverFactory resolverFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
         TaskExecutor taskExecutor,
+        AccessConfigProvider accessConfigProvider,
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener) {
       super(
@@ -544,6 +545,7 @@ public abstract class PolarisAuthzTestBase {
           resolverFactory,
           metaStoreManagerFactory,
           taskExecutor,
+          accessConfigProvider,
           fileIOFactory,
           polarisEventListener);
     }

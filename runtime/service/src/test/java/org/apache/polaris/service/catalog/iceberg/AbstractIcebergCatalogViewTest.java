@@ -209,7 +209,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, securityContext, CATALOG_NAME);
-    FileIOFactory fileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+    FileIOFactory fileIOFactory = new DefaultFileIOFactory();
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     testPolarisEventListener.clear();
@@ -222,6 +222,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             passthroughView,
             securityContext,
             Mockito.mock(),
+            accessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     Map<String, String> properties =

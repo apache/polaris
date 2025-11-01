@@ -233,7 +233,7 @@ public abstract class AbstractPolicyCatalogTest {
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    this.fileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+    this.fileIOFactory = new DefaultFileIOFactory();
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -265,6 +265,7 @@ public abstract class AbstractPolicyCatalogTest {
             passthroughView,
             securityContext,
             taskExecutor,
+            accessConfigProvider,
             fileIOFactory,
             new NoOpPolarisEventListener());
     this.icebergCatalog.initialize(
