@@ -165,7 +165,6 @@ data:
     {{- range $k, $v := $categories -}}
     {{- $_ = set $map (printf "quarkus.log.category.\"%s\".level" $k) $v -}}
     {{- end -}}
-    {{- $_ = set $map "polaris.log.request-id-header-name" .Values.logging.requestIdHeaderName -}}
     {{- $mdc := dict -}}
     {{- list .Values.logging.mdc "" $mdc | include "polaris.mergeConfigTree" -}}
     {{- range $k, $v := $mdc -}}
@@ -173,20 +172,24 @@ data:
     {{- end -}}
 
     {{- /* Telemetry */ -}}
-    {{- if .Values.tracing.enabled -}}
-    {{- $_ = set $map "quarkus.otel.exporter.otlp.endpoint" .Values.tracing.endpoint -}}
-    {{- if .Values.tracing.attributes -}}
+    {{- /* TODO remove deprecated configs, keep only tracing.otel.* */ -}}
+    {{- if (or .Values.tracing.enabled .Values.tracing.otel.enabled) -}}
+    {{- $_ = set $map "quarkus.otel.exporter.otlp.endpoint" (coalesce .Values.tracing.endpoint .Values.tracing.otel.endpoint) -}}
     {{- $attributes := dict -}}
+    {{- if .Values.tracing.otel.attributes -}}
+    {{- list .Values.tracing.otel.attributes "" $attributes | include "polaris.mergeConfigTree" -}}
+    {{- end -}}
+    {{- if .Values.tracing.attributes -}}
     {{- list .Values.tracing.attributes "" $attributes | include "polaris.mergeConfigTree" -}}
+    {{- end -}}
     {{- $i := 0 -}}
     {{- range $k, $v := $attributes -}}
     {{- $_ = set $map (printf "quarkus.otel.resource.attributes[%d]" $i) (printf "%s=%s" $k $v) -}}
     {{- $i = add1 $i -}}
     {{- end -}}
-    {{- end -}}
-    {{- if .Values.tracing.sample -}}
-    {{- $sample := toString .Values.tracing.sample -}}
-    {{ if eq $sample "all" -}}
+    {{- if (or .Values.tracing.sample .Values.tracing.otel.sample) -}}
+    {{- $sample := toString (coalesce .Values.tracing.sample .Values.tracing.otel.sample) -}}
+    {{- if eq $sample "all" -}}
     {{- $_ = set $map "quarkus.otel.traces.sampler" "parentbased_always_on" -}}
     {{- else if eq $sample "none" -}}
     {{- $_ = set $map "quarkus.otel.traces.sampler" "always_off" -}}
@@ -198,6 +201,7 @@ data:
     {{- else -}}
     {{- $_ = set $map "quarkus.otel.sdk.disabled" true -}}
     {{- end -}}
+    {{- $_ = set $map "polaris.tracing.request-id.header-name" (coalesce .Values.logging.requestIdHeaderName .Values.tracing.requestId.headerName) -}}
 
     {{- /* Metrics */ -}}
     {{- if .Values.metrics.enabled -}}

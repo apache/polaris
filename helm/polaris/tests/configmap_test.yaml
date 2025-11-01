@@ -292,7 +292,7 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.log.mdc.\"org.acme\"=foo" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.log.mdc.\"org.acme.service\"=foo" }
 
-  - it: should include telemetry configuration
+  - it: should include deprecated telemetry configuration
     set:
       tracing: { enabled: true, endpoint: http://custom:4317, attributes: { service.name: custom, foo: bar } }
     asserts:
@@ -300,22 +300,49 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.resource.attributes\\[\\d\\]=service.name=custom" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.resource.attributes\\[\\d\\]=foo=bar" }
 
-  - it: should include set sample rate numeric
+  - it: should include telemetry configuration
+    set:
+      tracing.otel: { enabled: true, endpoint: http://custom:4317, attributes: { service.name: custom, foo: bar } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.exporter.otlp.endpoint=http://custom:4317" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.resource.attributes\\[\\d\\]=service.name=custom" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.resource.attributes\\[\\d\\]=foo=bar" }
+
+  - it: should set sample rate numeric (deprecated)
     set:
       tracing: { enabled: true, sample: "0.123" }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler=parentbased_traceidratio" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler.arg=0.123" }
 
-  - it: should include set sample rate "all"
+  - it: should set sample rate numeric
+    set:
+      tracing.otel: { enabled: true, sample: "0.123" }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler=parentbased_traceidratio" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler.arg=0.123" }
+
+  - it: should set sample rate "all" (deprecated)
     set:
       tracing: { enabled: true, sample: "all" }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler=parentbased_always_on" }
 
-  - it: should include set sample rate "none"
+  - it: should set sample rate "all"
+    set:
+      tracing.otel: { enabled: true, sample: "all" }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler=parentbased_always_on" }
+
+  - it: should set sample rate "none" (deprecated)
     set:
       tracing: { enabled: true, sample: "none" }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler=always_off" }
+
+  - it: should set sample rate "none"
+    set:
+      tracing.otel: { enabled: true, sample: "none" }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler=always_off" }
 
@@ -323,11 +350,29 @@ tests:
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.sdk.disabled=true" }
 
-  - it: should disable tracing
+  - it: should disable tracing (deprecated)
     set:
       tracing: { enabled: false }
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.sdk.disabled=true" }
+
+  - it: should disable tracing
+    set:
+      tracing.otel: { enabled: false }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.sdk.disabled=true" }
+
+  - it: should including request ID header name (deprecated)
+    set:
+      logging.requestIdHeaderName: X-Custom-Request-ID
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.tracing.request-id.header-name=X-Custom-Request-ID" }
+
+  - it: should including request ID header name
+    set:
+      tracing.requestId: { headerName: X-Custom-Request-ID }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.tracing.request-id.header-name=X-Custom-Request-ID" }
 
   - it: should include custom metrics
     set:

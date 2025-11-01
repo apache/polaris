@@ -392,25 +392,31 @@ extraInitContainers: []
   #   command: ['sh', '-c', 'echo "hello world"']
 
 tracing:
-  # -- Specifies whether tracing for the polaris server should be enabled.
-  enabled: false
-  # -- The collector endpoint URL to connect to (required).
-  # The endpoint URL must have either the http:// or the https:// scheme.
-  # The collector must talk the OpenTelemetry protocol (OTLP) and the port must be its gRPC port (by default 4317).
-  # See https://quarkus.io/guides/opentelemetry for more information.
-  endpoint: "http://otlp-collector:4317"
-  # -- Which requests should be sampled. Valid values are: "all", "none", or a ratio between 0.0 and
-  # "1.0d" (inclusive). E.g. "0.5d" means that 50% of the requests will be sampled.
-  # Note: avoid entering numbers here, always prefer a string representation of the ratio.
-  sample: "1.0d"
-  # -- Resource attributes to identify the polaris service among other tracing sources.
-  # See https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/#service.
-  # If left empty, traces will be attached to a service named "Apache Polaris"; to change this,
-  # provide a service.name attribute here.
-  attributes:
-    {}
-    # service.name: my-polaris
-
+  # -- OpenTelemetry configuration.
+  otel:
+    # -- Specifies whether tracing for the Apache Polaris server should be enabled. When this is enabled,
+    # then an OpenTelemetry collector endpoint must be configured.
+    enabled: false
+    # -- The collector endpoint URL to connect to (required).
+    # The endpoint URL must have either the http:// or the https:// scheme.
+    # The collector must talk the OpenTelemetry protocol (OTLP) and the port must be its gRPC port (by default 4317).
+    # See https://quarkus.io/guides/opentelemetry for more information.
+    endpoint: "http://otlp-collector:4317"
+    # -- Which requests should be sampled. Valid values are: "all", "none", or a ratio between 0.0 and
+    # "1.0d" (inclusive). E.g. "0.5d" means that 50% of the requests will be sampled.
+    # Note: avoid entering numbers here, always prefer a string representation of the ratio.
+    sample: "1.0d"
+    # -- Resource attributes to identify the polaris service among other tracing sources.
+    # See https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/#service.
+    # If left empty, traces will be attached to a service named "Apache Polaris"; to change this,
+    # provide a service.name attribute here.
+    attributes:
+      {}
+      # service.name: my-polaris
+  # -- Configuration for the request ID filter.
+  requestId:
+    # -- The name of the header that contains the request ID.
+    headerName: X-Request-ID
 metrics:
   # -- Specifies whether metrics for the polaris server should be enabled.
   enabled: true
@@ -442,8 +448,6 @@ serviceMonitor:
 logging:
   # -- The log level of the root category, which is used as the default log level for all categories.
   level: INFO
-  # -- The header name to use for the request ID.
-  requestIdHeaderName: Polaris-Request-Id
   # -- Configuration for the console appender.
   console:
     # -- Whether to enable the console appender.

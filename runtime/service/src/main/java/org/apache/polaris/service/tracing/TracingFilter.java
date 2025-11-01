@@ -36,7 +36,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @Provider
 public class TracingFilter implements ContainerRequestFilter {
 
-  public static final String REQUEST_ID_ATTRIBUTE = "polaris.request.id";
   public static final String REALM_ID_ATTRIBUTE = "polaris.realm.id";
 
   @ConfigProperty(name = "quarkus.otel.sdk.disabled")
@@ -46,8 +45,6 @@ public class TracingFilter implements ContainerRequestFilter {
   public void filter(ContainerRequestContext rc) {
     if (!sdkDisabled) {
       Span span = Span.current();
-      String requestId = (String) rc.getProperty(RequestIdFilter.REQUEST_ID_KEY);
-      span.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
       RealmContext realmContext =
           (RealmContext) rc.getProperty(RealmContextFilter.REALM_CONTEXT_KEY);
       span.setAttribute(REALM_ID_ATTRIBUTE, realmContext.getRealmIdentifier());

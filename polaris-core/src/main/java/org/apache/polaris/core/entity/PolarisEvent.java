@@ -56,6 +56,9 @@ public class PolarisEvent {
   // Which resource was operated on
   private final String resourceIdentifier;
 
+  // OpenTelemetry context that was active when this event was emitted
+  @Nullable private final String openTelemetryContext;
+
   // Additional parameters that were not earlier recorded
   private String additionalProperties;
 
@@ -93,6 +96,11 @@ public class PolarisEvent {
     return resourceIdentifier;
   }
 
+  @Nullable
+  public String getOpenTelemetryContext() {
+    return openTelemetryContext;
+  }
+
   public String getAdditionalProperties() {
     return additionalProperties != null ? additionalProperties : EMPTY_MAP_STRING;
   }
@@ -105,7 +113,8 @@ public class PolarisEvent {
       long timestampMs,
       @Nullable String principalName,
       ResourceType resourceType,
-      String resourceIdentifier) {
+      String resourceIdentifier,
+      @Nullable String openTelemetryContext) {
     this.catalogId = catalogId;
     this.id = id;
     this.requestId = requestId;
@@ -114,6 +123,7 @@ public class PolarisEvent {
     this.principalName = principalName;
     this.resourceType = resourceType;
     this.resourceIdentifier = resourceIdentifier;
+    this.openTelemetryContext = openTelemetryContext;
   }
 
   @JsonIgnore
