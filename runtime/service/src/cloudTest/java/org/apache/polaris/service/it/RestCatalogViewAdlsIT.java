@@ -22,14 +22,14 @@ import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import org.apache.iceberg.view.ViewCatalogTests;
-import org.apache.polaris.service.it.test.PolarisRestCatalogViewAwsIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogViewAdlsIntegrationTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
-@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_S3_PATH", matches = ".+")
-public class RestCatalogViewAwsIT extends PolarisRestCatalogViewAwsIntegrationTest {
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_AZURE_PATH", matches = ".+")
+public class RestCatalogViewAdlsIT extends PolarisRestCatalogViewAdlsIntegrationTestBase {
 
   @BeforeEach
   public void setUpTempDir(@TempDir Path tempDir) throws Exception {
