@@ -168,6 +168,14 @@ client-license-check: client-setup-env ## Run license compliance check
 	@$(ACTIVATE_AND_CD) && pip-licenses
 	@echo "--- License compliance check complete ---"
 
+.PHONY: client-license-check
+client-sbom: client-setup-env ## Generate SBOM
+	@echo "--- Starting SBOM gernation ---"
+	@$(ACTIVATE_AND_CD) && mkdir -p dist; \
+		cyclonedx-py poetry --only main --output-reproducible --validate --output-format JSON --output-file dist/bom.json --verbose; \
+		cyclonedx-py poetry --only main --output-reproducible --validate --output-format XML --output-file dist/bom.xml --verbose
+	@echo "--- SBOM gernation complete ---"
+
 .PHONY: client-build
 client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format.
 	@echo "--- Building client distribution ---"
