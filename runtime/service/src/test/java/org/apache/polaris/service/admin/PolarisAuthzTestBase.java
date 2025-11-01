@@ -31,7 +31,9 @@ import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +84,9 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
@@ -92,10 +96,10 @@ import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.assertj.core.api.Assertions;
@@ -128,6 +132,7 @@ public abstract class PolarisAuthzTestBase {
           .put("polaris.features.\"DROP_WITH_PURGE_ENABLED\"", "true")
           .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
           .put("polaris.features.\"ENABLE_CATALOG_FEDERATION\"", "true")
+          .put("polaris.features.\"REMOTE_SIGNING_ENABLED\"", "true")
           .build();
     }
   }
@@ -193,7 +198,6 @@ public abstract class PolarisAuthzTestBase {
 
   @Inject protected MetaStoreManagerFactory managerFactory;
   @Inject protected ResolutionManifestFactory resolutionManifestFactory;
-  @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject protected ServiceIdentityProvider serviceIdentityProvider;
   @Inject protected PolarisCredentialManager credentialManager;
@@ -203,8 +207,12 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
   @Inject protected PolarisConfigurationStore configurationStore;
   @Inject protected StorageCredentialCache storageCredentialCache;
+  @Inject protected StorageConfiguration storageConfiguration;
   @Inject protected ResolverFactory resolverFactory;
   @Inject protected AccessConfigProvider accessConfigProvider;
+  @Inject protected PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject protected CatalogPrefixParser prefixParser;
+  @Inject protected Clock clock;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -509,7 +517,10 @@ public abstract class PolarisAuthzTestBase {
             securityContext,
             Mockito.mock(),
             fileIOFactory,
-            polarisEventListener);
+            polarisEventListener,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock());
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -527,7 +538,7 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisCallContextCatalogFactory() {
-      this(null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
@@ -538,14 +549,20 @@ public abstract class PolarisAuthzTestBase {
         MetaStoreManagerFactory metaStoreManagerFactory,
         TaskExecutor taskExecutor,
         FileIOFactory fileIOFactory,
-        PolarisEventListener polarisEventListener) {
+        PolarisEventListener polarisEventListener,
+        PolarisStorageIntegrationProvider storageIntegrationProvider,
+        CatalogPrefixParser prefixParser,
+        UriInfo uriInfo) {
       super(
           diagnostics,
           resolverFactory,
           metaStoreManagerFactory,
           taskExecutor,
           fileIOFactory,
-          polarisEventListener);
+          polarisEventListener,
+          storageIntegrationProvider,
+          prefixParser,
+          uriInfo);
     }
 
     @Override

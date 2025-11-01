@@ -22,16 +22,26 @@ package org.apache.polaris.service.catalog.io;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.UriInfo;
+import java.net.URI;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,13 +59,22 @@ public class AccessConfigProvider {
 
   private final StorageCredentialCache storageCredentialCache;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final CatalogPrefixParser prefixParser;
+  private final UriInfo uriInfo;
 
   @Inject
   public AccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      CatalogPrefixParser prefixParser,
+      UriInfo uriInfo) {
     this.storageCredentialCache = storageCredentialCache;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.storageIntegrationProvider = storageIntegrationProvider;
+    this.prefixParser = prefixParser;
+    this.uriInfo = uriInfo;
   }
 
   /**
@@ -71,27 +90,29 @@ public class AccessConfigProvider {
    * @return {@link AccessConfig} with scoped credentials and metadata; empty if no storage config
    *     found
    */
-  public AccessConfig getAccessConfig(
+  public AccessConfig getAccessConfigForCredentialsVending(
       @Nonnull CallContext callContext,
       @Nonnull TableIdentifier tableIdentifier,
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull Optional<String> refreshCredentialsEndpoint,
       @Nonnull PolarisResolvedPathWrapper resolvedPath) {
-    LOGGER
-        .atDebug()
-        .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("tableLocation", tableLocations)
-        .log("Fetching client credentials for table");
+
     Optional<PolarisEntity> storageInfo = FileIOUtil.findStorageInfoFromHierarchy(resolvedPath);
     if (storageInfo.isEmpty()) {
       LOGGER
           .atWarn()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Table entity has no storage configuration in its hierarchy");
-      return AccessConfig.builder().supportsCredentialVending(false).build();
+      return AccessConfig.EMPTY;
     }
-    return FileIOUtil.refreshAccessConfig(
+
+    LOGGER
+        .atDebug()
+        .addKeyValue("tableIdentifier", tableIdentifier)
+        .addKeyValue("tableLocation", tableLocations)
+        .log("Fetching client credentials for table");
+    return FileIOUtil.refreshAccessConfigWithCredentialSubscoping(
         callContext,
         storageCredentialCache,
         metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext()),
@@ -100,5 +121,74 @@ public class AccessConfigProvider {
         storageActions,
         storageInfo.get(),
         refreshCredentialsEndpoint);
+  }
+
+  /**
+   * Generates a remote signing configuration for accessing table storage at explicit locations.
+   *
+   * @param callContext the call context containing realm, principal, and security context
+   * @param catalogName the name of the catalog
+   * @param tableIdentifier the table identifier, used for logging and refresh endpoint construction
+   * @param tableLocations set of storage location URIs to scope credentials to
+   * @param storageActions the storage operations (READ, WRITE, LIST, DELETE) to scope credentials
+   *     to
+   * @param resolvedPath the entity hierarchy to search for storage configuration
+   * @return {@link AccessConfig} with scoped credentials and metadata; empty if no storage config
+   *     found
+   */
+  public AccessConfig getAccessConfigForRemoteSigning(
+      @Nonnull CallContext callContext,
+      @Nonnull String catalogName,
+      @Nonnull TableIdentifier tableIdentifier,
+      @Nonnull Set<String> tableLocations,
+      @Nonnull Set<PolarisStorageActions> storageActions, // FIXME add RBAC checks
+      @Nonnull PolarisResolvedPathWrapper resolvedPath) {
+
+    Optional<PolarisEntity> storageInfo = FileIOUtil.findStorageInfoFromHierarchy(resolvedPath);
+    if (storageInfo.isEmpty()) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Table entity has no storage configuration in its hierarchy");
+      return AccessConfig.EMPTY;
+    }
+
+    LOGGER
+        .atDebug()
+        .addKeyValue("tableIdentifier", tableIdentifier)
+        .addKeyValue("tableLocation", tableLocations)
+        .log("Fetching remote signing config for table");
+
+    Optional<PolarisStorageConfigurationInfo> configurationInfo =
+        storageInfo
+            .map(PolarisEntity::getInternalPropertiesAsMap)
+            .map(info -> info.get(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+            .map(PolarisStorageConfigurationInfo::deserialize);
+
+    if (configurationInfo.isEmpty()) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Table entity has no storage configuration in its hierarchy");
+      return AccessConfig.EMPTY;
+    }
+
+    PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
+        storageIntegrationProvider.getStorageIntegrationForConfig(configurationInfo.get());
+
+    if (!(storageIntegration
+        instanceof AwsCredentialsStorageIntegration awsCredentialsStorageIntegration)) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Table entity storage integration is not an AWS credentials storage integration");
+      return AccessConfig.EMPTY;
+    }
+
+    String prefix = prefixParser.catalogNameToPrefix(callContext.getRealmContext(), catalogName);
+    URI signerUri = uriInfo.getBaseUri().resolve("api/");
+    String signerEndpoint = new PolarisResourcePaths(prefix).s3RemoteSigning(tableIdentifier);
+
+    return awsCredentialsStorageIntegration.getRemoteSigningAccessConfig(signerUri, signerEndpoint);
   }
 }

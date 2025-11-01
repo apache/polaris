@@ -22,6 +22,7 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -29,6 +30,7 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.storage.StorageConfiguration;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @ApplicationScoped
@@ -38,8 +40,12 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
   private final FileIOFactory defaultFileIOFactory;
 
   @Inject
-  public WasbTranslatingFileIOFactory(AccessConfigProvider accessConfigProvider) {
-    defaultFileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+  public WasbTranslatingFileIOFactory(
+      AccessConfigProvider accessConfigProvider,
+      StorageConfiguration storageConfiguration,
+      Clock clock) {
+    defaultFileIOFactory =
+        new DefaultFileIOFactory(accessConfigProvider, storageConfiguration, clock);
   }
 
   @Override

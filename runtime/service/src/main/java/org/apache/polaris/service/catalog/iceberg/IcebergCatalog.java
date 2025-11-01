@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -121,8 +122,10 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.LocationUtils;
@@ -167,6 +170,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final TaskExecutor taskExecutor;
   private final SecurityContext securityContext;
   private final PolarisEventListener polarisEventListener;
+  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final CatalogPrefixParser prefixParser;
+  private final UriInfo uriInfo;
+
   private final AtomicBoolean loggedPrefixOverlapWarning = new AtomicBoolean(false);
 
   private String ioImplClassName;
@@ -196,7 +203,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
-      PolarisEventListener polarisEventListener) {
+      PolarisEventListener polarisEventListener,
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      CatalogPrefixParser prefixParser,
+      UriInfo uriInfo) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.callContext = callContext;
@@ -205,6 +215,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.securityContext = securityContext;
     this.taskExecutor = taskExecutor;
+    this.storageIntegrationProvider = storageIntegrationProvider;
+    this.prefixParser = prefixParser;
+    this.uriInfo = uriInfo;
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
     this.fileIOFactory = fileIOFactory;
