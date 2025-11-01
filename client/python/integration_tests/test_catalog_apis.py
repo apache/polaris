@@ -19,28 +19,29 @@
 
 import json
 import os.path
-import time
-
 import pytest
+import time
+from pyiceberg.catalog import Catalog as PyIcebergCatalog
+from pyiceberg.schema import Schema
 
-from integration_tests.conftest import format_namespace
-from polaris.catalog import (
+from apache_polaris.sdk.catalog import (
     CreateNamespaceRequest,
     CreateTableRequest,
     ModelSchema,
     TableIdentifier,
     IcebergCatalogAPI,
 )
-from polaris.catalog.models.attach_policy_request import AttachPolicyRequest
-from polaris.catalog.models.create_policy_request import CreatePolicyRequest
-from polaris.catalog.models.detach_policy_request import DetachPolicyRequest
-from polaris.catalog.models.policy_attachment_target import PolicyAttachmentTarget
-from polaris.catalog.models.update_policy_request import UpdatePolicyRequest
-from polaris.catalog.exceptions import NotFoundException
-from polaris.catalog.api.policy_api import PolicyAPI
-from pyiceberg.schema import Schema
-from polaris.management import Catalog
-from pyiceberg.catalog import Catalog as PyIcebergCatalog
+from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
+from apache_polaris.sdk.catalog.exceptions import NotFoundException
+from apache_polaris.sdk.catalog.models.attach_policy_request import AttachPolicyRequest
+from apache_polaris.sdk.catalog.models.create_policy_request import CreatePolicyRequest
+from apache_polaris.sdk.catalog.models.detach_policy_request import DetachPolicyRequest
+from apache_polaris.sdk.catalog.models.policy_attachment_target import (
+    PolicyAttachmentTarget,
+)
+from apache_polaris.sdk.catalog.models.update_policy_request import UpdatePolicyRequest
+from apache_polaris.sdk.management import Catalog
+from integration_tests.conftest import format_namespace
 
 
 def test_create_namespace(
