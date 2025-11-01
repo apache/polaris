@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.events.jsonEventListener;
 
+import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -32,6 +33,9 @@ import org.apache.polaris.service.events.listeners.PolarisEventListener;
  */
 public abstract class PropertyMapEventListener implements PolarisEventListener {
   protected abstract void transformAndSendEvent(HashMap<String, Object> properties);
+
+  @Nullable
+  protected abstract String getRequestId();
 
   @Override
   public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
