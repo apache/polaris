@@ -105,6 +105,7 @@ public record TestServices(
     MetaStoreManagerFactory metaStoreManagerFactory,
     RealmContext realmContext,
     RealmConfig realmConfig,
+    PolarisPrincipal principal,
     SecurityContext securityContext,
     PolarisMetaStoreManager metaStoreManager,
     FileIOFactory fileIOFactory,
@@ -211,12 +212,12 @@ public record TestServices(
       EntityCache entityCache =
           metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
       ResolverFactory resolverFactory =
-          (securityContext, referenceCatalogName) ->
+          (_principal, referenceCatalogName) ->
               new Resolver(
                   diagnostics,
                   callContext.getPolarisCallContext(),
                   metaStoreManager,
-                  securityContext,
+                  _principal,
                   entityCache,
                   referenceCatalogName);
 
@@ -324,13 +325,12 @@ public record TestServices(
 
       PolarisAdminService adminService =
           new PolarisAdminService(
-              diagnostics,
               callContext,
               resolutionManifestFactory,
               metaStoreManager,
               userSecretsManager,
               serviceIdentityProvider,
-              securityContext,
+              principal,
               authorizer,
               reservedProperties);
       PolarisCatalogsApi catalogsApi =
@@ -352,6 +352,7 @@ public record TestServices(
           metaStoreManagerFactory,
           realmContext,
           realmConfig,
+          principal,
           securityContext,
           metaStoreManager,
           fileIOFactory,

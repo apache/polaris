@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence.resolver;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -116,7 +115,7 @@ public class Resolver {
    *
    * @param polarisCallContext the polaris call context
    * @param polarisMetaStoreManager meta store manager
-   * @param securityContext The {@link SecurityContext} for the current request
+   * @param principal The {@link PolarisPrincipal} for the current request
    * @param cache shared entity cache
    * @param referenceCatalogName if not null, specifies the name of the reference catalog. The
    *     reference catalog is the catalog used to resolve catalog roles and catalog path. Also, if a
@@ -130,7 +129,7 @@ public class Resolver {
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull PolarisCallContext polarisCallContext,
       @Nonnull PolarisMetaStoreManager polarisMetaStoreManager,
-      @Nonnull SecurityContext securityContext,
+      @Nonnull PolarisPrincipal principal,
       @Nullable EntityCache cache,
       @Nullable String referenceCatalogName) {
     this.polarisCallContext = polarisCallContext;
@@ -143,16 +142,9 @@ public class Resolver {
     this.diagnostics.checkNotNull(polarisCallContext, "unexpected_null_polarisCallContext");
     this.diagnostics.checkNotNull(
         polarisMetaStoreManager, "unexpected_null_polarisMetaStoreManager");
-    this.diagnostics.checkNotNull(securityContext, "security_context_must_be_specified");
-    this.diagnostics.checkNotNull(
-        securityContext.getUserPrincipal(), "principal_must_be_specified");
-    this.diagnostics.check(
-        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
-        "unexpected_principal_type",
-        "class={}",
-        securityContext.getUserPrincipal().getClass().getName());
+    this.diagnostics.checkNotNull(principal, "principal_must_be_specified");
 
-    this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
+    this.polarisPrincipal = principal;
     // paths to resolve
     this.pathsToResolve = new ArrayList<>();
     this.resolvedPaths = new ArrayList<>();

@@ -32,6 +32,8 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
+import java.security.Principal;
 import java.time.Clock;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
@@ -40,6 +42,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -175,12 +178,12 @@ public class ServiceProducers {
       PolarisMetaStoreManager polarisMetaStoreManager) {
     EntityCache entityCache =
         metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
-    return (securityContext, referenceCatalogName) ->
+    return (principal, referenceCatalogName) ->
         new Resolver(
             diagnostics,
             callContext.getPolarisCallContext(),
             polarisMetaStoreManager,
-            securityContext,
+            principal,
             entityCache,
             referenceCatalogName);
   }
@@ -190,6 +193,20 @@ public class ServiceProducers {
   public ResolutionManifestFactory resolutionManifestFactory(
       PolarisDiagnostics diagnostics, RealmContext realmContext, ResolverFactory resolverFactory) {
     return new ResolutionManifestFactoryImpl(diagnostics, realmContext, resolverFactory);
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisPrincipal polarisPrincipal(
+      PolarisDiagnostics diagnostics, @Context SecurityContext securityContext) {
+    Principal userPrincipal = securityContext.getUserPrincipal();
+    diagnostics.checkNotNull(userPrincipal, "null_security_context_principal");
+    diagnostics.check(
+        userPrincipal instanceof PolarisPrincipal,
+        "unexpected_principal_type",
+        "class={}",
+        userPrincipal.getClass().getName());
+    return (PolarisPrincipal) userPrincipal;
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans
