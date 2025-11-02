@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Authentification Development Details
+title: Authentication Development Details
 linkTitle: Development Details
 type: docs
 weight: 301

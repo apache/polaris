@@ -171,7 +171,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
    * @param cleanupAction If non-null, additional action to run to "undo" a previous success action
    *     in case the action has side effects. Called before revoking the sufficient privilege;
    *     either the cleanup privileges must be latent, or the cleanup action could be run with
-   *     PRINCIPAL_ROLE2 while runnint {@code action} with PRINCIPAL_ROLE1.
+   *     PRINCIPAL_ROLE2 while running {@code action} with PRINCIPAL_ROLE1.
    */
   protected void doTestSufficientPrivileges(
       List<PolarisPrivilege> sufficientPrivileges, Runnable action, Runnable cleanupAction) {
@@ -946,7 +946,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivileges(
         List.of(
             // TODO: Once we give different creds for read/write privilege, move this
-            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expet
+            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
             // to receive a read-only credential.
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
@@ -1007,7 +1007,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivileges(
         List.of(
             // TODO: Once we give different creds for read/write privilege, move this
-            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expet
+            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
             // to receive a read-only credential.
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,

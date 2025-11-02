@@ -51,7 +51,7 @@ public class PolarisCatalogUtils {
   }
 
   /**
-   * For tables whose location is manged by Spark Session Catalog, there will be no location or path
+   * For tables whose location is managed by Spark Session Catalog, there will be no location or path
    * in the properties.
    */
   public static boolean isTableWithSparkManagedLocation(Map<String, String> properties) {

@@ -438,7 +438,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
                                                   snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Using snowman, create namespaces and a table. Insert into the table in multiple operations and update existing records
-  to generate multiple metadata.json files and manfiests. Drop the table with purge=true. Poll S3 and validate all of
+  to generate multiple metadata.json files and manifests. Drop the table with purge=true. Poll S3 and validate all of
   the files are deleted.
 
   Using the reader principal's credentials verify read access. Validate the reader cannot insert into the table.

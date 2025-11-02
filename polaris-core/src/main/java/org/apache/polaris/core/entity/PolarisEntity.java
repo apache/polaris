@@ -36,7 +36,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
  * direct members should be added to this class; rather, they should reside in the PolarisBaseEntity
  * and this class should just contain the relevant builder methods, etc. The intention when using
  * this class is to use "immutable" semantics as much as possible, for example constructing new
- * copies with the Builder pattern when "mutating" fields rather than ever chaing fields in-place.
+ * copies with the Builder pattern when "mutating" fields rather than directly changing fields in-place.
  * Currently, code that intends to operate directly on a PolarisBaseEntity may not adhere to
  * immutability semantics, and may modify the entity in-place.
  *

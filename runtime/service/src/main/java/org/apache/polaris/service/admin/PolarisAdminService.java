@@ -134,7 +134,7 @@ import org.slf4j.LoggerFactory;
  * Namespaces, Tables and Views, abstracted away from Iceberg REST objects, this class represents
  * the logical model for managing realm-level Catalogs, Principals, Roles, and Grants.
  *
- * <p>Different API implementors could expose different REST, gRPC, etc., interfaces that delegate
+ * <p>Different API implementers could expose different REST, gRPC, etc., interfaces that delegate
  * to this logical model without being tightly coupled to a single frontend protocol, and can
  * provide different implementations of PolarisEntityManager to abstract away the implementation of
  * the persistence layer.
