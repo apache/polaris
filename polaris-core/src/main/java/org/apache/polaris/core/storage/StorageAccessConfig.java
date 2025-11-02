@@ -26,7 +26,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
 @PolarisImmutable
-public interface AccessConfig {
+public interface StorageAccessConfig {
   Map<String, String> credentials();
 
   Map<String, String> extraProperties();
@@ -57,8 +57,8 @@ public interface AccessConfig {
     }
   }
 
-  static AccessConfig.Builder builder() {
-    return ImmutableAccessConfig.builder();
+  static StorageAccessConfig.Builder builder() {
+    return ImmutableStorageAccessConfig.builder();
   }
 
   interface Builder {
@@ -89,6 +89,6 @@ public interface AccessConfig {
       }
     }
 
-    AccessConfig build();
+    StorageAccessConfig build();
   }
 }

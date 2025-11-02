@@ -29,8 +29,8 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,15 +43,15 @@ import org.slf4j.LoggerFactory;
  * primary entrypoint to get sub-scoped credentials for accessing table data.
  */
 @ApplicationScoped
-public class AccessConfigProvider {
+public class StorageAccessConfigProvider {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AccessConfigProvider.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(StorageAccessConfigProvider.class);
 
   private final StorageCredentialCache storageCredentialCache;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
   @Inject
-  public AccessConfigProvider(
+  public StorageAccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
       MetaStoreManagerFactory metaStoreManagerFactory) {
     this.storageCredentialCache = storageCredentialCache;
@@ -68,10 +68,10 @@ public class AccessConfigProvider {
    *     to
    * @param refreshCredentialsEndpoint optional endpoint URL for clients to refresh credentials
    * @param resolvedPath the entity hierarchy to search for storage configuration
-   * @return {@link AccessConfig} with scoped credentials and metadata; empty if no storage config
-   *     found
+   * @return {@link StorageAccessConfig} with scoped credentials and metadata; empty if no storage
+   *     config found
    */
-  public AccessConfig getAccessConfig(
+  public StorageAccessConfig getStorageAccessConfig(
       @Nonnull CallContext callContext,
       @Nonnull TableIdentifier tableIdentifier,
       @Nonnull Set<String> tableLocations,
@@ -89,7 +89,7 @@ public class AccessConfigProvider {
           .atWarn()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Table entity has no storage configuration in its hierarchy");
-      return AccessConfig.builder().supportsCredentialVending(false).build();
+      return StorageAccessConfig.builder().supportsCredentialVending(false).build();
     }
     return FileIOUtil.refreshAccessConfig(
         callContext,

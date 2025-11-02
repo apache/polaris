@@ -38,8 +38,8 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
   private final FileIOFactory defaultFileIOFactory;
 
   @Inject
-  public WasbTranslatingFileIOFactory(AccessConfigProvider accessConfigProvider) {
-    defaultFileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+  public WasbTranslatingFileIOFactory(StorageAccessConfigProvider storageAccessConfigProvider) {
+    defaultFileIOFactory = new DefaultFileIOFactory(storageAccessConfigProvider);
   }
 
   @Override

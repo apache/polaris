@@ -99,14 +99,14 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -139,7 +139,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final PolarisEventListener polarisEventListener;
-  private final AccessConfigProvider accessConfigProvider;
+  private final StorageAccessConfigProvider storageAccessConfigProvider;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -164,7 +164,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener,
-      AccessConfigProvider accessConfigProvider) {
+      StorageAccessConfigProvider storageAccessConfigProvider) {
     super(
         diagnostics,
         callContext,
@@ -179,7 +179,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.polarisEventListener = polarisEventListener;
-    this.accessConfigProvider = accessConfigProvider;
+    this.storageAccessConfigProvider = storageAccessConfigProvider;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -812,15 +812,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         validateRemoteTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
       }
 
-      AccessConfig accessConfig =
-          accessConfigProvider.getAccessConfig(
+      StorageAccessConfig storageAccessConfig =
+          storageAccessConfigProvider.getStorageAccessConfig(
               callContext,
               tableIdentifier,
               tableLocations,
               actions,
               refreshCredentialsEndpoint,
               resolvedStoragePath);
-      Map<String, String> credentialConfig = accessConfig.credentials();
+      Map<String, String> credentialConfig = storageAccessConfig.credentials();
       if (delegationModes.contains(VENDED_CREDENTIALS)) {
         if (!credentialConfig.isEmpty()) {
           responseBuilder.addAllConfig(credentialConfig);
@@ -833,12 +833,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           Boolean skipCredIndirection =
               realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
           Preconditions.checkArgument(
-              !accessConfig.supportsCredentialVending() || skipCredIndirection,
+              !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
               "Credential vending was requested for table %s, but no credentials are available",
               tableIdentifier);
         }
       }
-      responseBuilder.addAllConfig(accessConfig.extraProperties());
+      responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
     }
 
     return responseBuilder;
