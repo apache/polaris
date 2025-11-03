@@ -36,15 +36,9 @@ public class PolarisAdminTool extends BaseCommand {
 
   @Override
   public Integer call() {
-    return info();
-  }
-
-  private int info() {
     PrintWriter out = spec.commandLine().getOut();
-
     out.println("Polaris administration & maintenance tool.");
-    out.println("Use the 'help' command.");
     out.println();
-    return 0;
+    return spec.commandLine().execute("help");
   }
 }
