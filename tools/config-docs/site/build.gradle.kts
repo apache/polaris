@@ -53,6 +53,7 @@ val generatedMarkdownDocs = tasks.register<JavaExec>("generatedMarkdownDocs") {
 
   mainClass = "org.apache.polaris.docs.generator.ReferenceConfigDocsGenerator"
 
+  outputs.cacheIf { true }
   outputs.dir(generatedMarkdownDocsDir)
   inputs.files(doclet)
   inputs.files(genProjects)
