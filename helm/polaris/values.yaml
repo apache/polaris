@@ -30,8 +30,6 @@ image:
   tag: "latest"
   # -- The path to the directory where the application.properties file, and other configuration
   # files, if any, should be mounted.
-  # Note: if you are using EclipseLink, then this value must be at least two folders down to the
-  # root folder, e.g. `/deployments/config` is OK, whereas `/deployments` is not.
   configDir: /deployments/config
 
 # -- References to secrets in the same namespace to use for pulling any of the images used by this
@@ -537,7 +535,6 @@ features:
 # -- Polaris persistence configuration.
 persistence:
   # -- The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc.
-  # The eclipse-link type is also supported but is deprecated.
   type: in-memory  # relational-jdbc
   # -- The configuration for the relational-jdbc persistence manager.
   relationalJdbc:

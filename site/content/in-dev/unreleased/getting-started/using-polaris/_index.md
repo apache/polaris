@@ -163,9 +163,9 @@ Finally, note that we include the `iceberg-aws-bundle` package here. If your tab
 
 Refresh the Docker container with the user's credentials:
 ```shell
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml stop spark-sql
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml rm -f spark-sql
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml up -d --no-deps spark-sql
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml stop spark-sql
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml rm -f spark-sql
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml up -d --no-deps spark-sql
 ```
 
 Attach to the running spark-sql container:
@@ -226,9 +226,9 @@ org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quicksta
 Refresh the Docker container with the user's credentials:
 
 ```shell
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml stop trino
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml rm -f trino
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml up -d --no-deps trino
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml stop trino
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml rm -f trino
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml up -d --no-deps trino
 ```
 
 Attach to the running Trino container:

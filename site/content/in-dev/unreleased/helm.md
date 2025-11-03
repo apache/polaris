@@ -232,7 +232,7 @@ ct install --namespace polaris --charts ./helm/polaris
 | features.realmOverrides | object | `{}` | Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used. |
 | fileIo | object | `{"type":"default"}` | Polaris FileIO configuration. |
 | fileIo.type | string | `"default"` | The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones. |
-| image.configDir | string | `"/deployments/config"` | The path to the directory where the application.properties file, and other configuration files, if any, should be mounted. Note: if you are using EclipseLink, then this value must be at least two folders down to the root folder, e.g. `/deployments/config` is OK, whereas `/deployments` is not. |
+| image.configDir | string | `"/deployments/config"` | The path to the directory where the application.properties file, and other configuration files, if any, should be mounted. |
 | image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
 | image.repository | string | `"apache/polaris"` | The image repository to pull from. |
 | image.tag | string | `"latest"` | The image tag. |
@@ -310,7 +310,7 @@ ct install --namespace polaris --charts ./helm/polaris
 | persistence.relationalJdbc.secret.name | string | `nil` | The secret name to pull database connection properties from |
 | persistence.relationalJdbc.secret.password | string | `"password"` | The secret key holding the database password for authentication |
 | persistence.relationalJdbc.secret.username | string | `"username"` | The secret key holding the database username for authentication |
-| persistence.type | string | `"in-memory"` | The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc. The eclipse-link type is also supported but is deprecated. |
+| persistence.type | string | `"in-memory"` | The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc. |
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |

@@ -53,7 +53,6 @@ dependencies {
 
     api(project(":polaris-core"))
 
-    api(project(":polaris-eclipselink"))
     api(project(":polaris-relational-jdbc"))
 
     api(project(":polaris-extensions-auth-opa"))

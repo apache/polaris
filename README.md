@@ -61,7 +61,6 @@ Apache Polaris is organized into the following modules:
       - `polaris-runtime-spark-tests` - Integration tests for the Polaris Spark plugin
       - `polaris-runtime-test-common` - Test utilities
   - Persistence modules:
-      - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface (deprecated for removal)
       - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
   - Extensions modules:
       - `polaris-extensions-federation-hadoop` - The Hadoop federation extension
