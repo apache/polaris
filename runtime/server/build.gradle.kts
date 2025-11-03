@@ -40,7 +40,6 @@ val distributionElements by
 dependencies {
   implementation(project(":polaris-runtime-service"))
 
-  runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
