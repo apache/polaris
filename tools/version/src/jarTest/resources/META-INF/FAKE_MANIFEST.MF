@@ -1,6 +1,0 @@
-Manifest-Version: 1.0
-Apache-Polaris-Version: 0.1.2-incubating-SNAPSHOT
-Apache-Polaris-Is-Release: true
-Apache-Polaris-Build-Git-Head: 27cf81929cbb08e545c8fcb1ed27a53d7ef1af79
-Apache-Polaris-Build-Git-Describe: foo-tag-bar
-Apache-Polaris-Build-Java-Specification-Version: 21
