@@ -387,7 +387,7 @@ def _patch_generated_models() -> None:
     `apache_polaris.sdk.catalog.models.LoadPolicyResponse`.
 
     However, the generator fails to add the necessary `import` statements
-    to the `polaris/catalog/models/__init__.py` file. This means that even
+    to the `apache_polaris/sdk/catalog/models/__init__.py` file. This means that even
     though the model files exist (e.g., `load_policy_response.py`), the classes
     are not part of the `apache_polaris.sdk.catalog.models` namespace.
 
