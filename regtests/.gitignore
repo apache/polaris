@@ -1,4 +1,0 @@
-.venv
-t_pyspark/src/__pycache__
-.pytest_cache
-.python-version
