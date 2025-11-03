@@ -5,9 +5,8 @@
 
 ## Checklist
 - [ ] 🛡️ Don't disclose security issues! (contact security@apache.org)
-- [ ] 🔗 Related issue(s): Fixes #
-- [ ] 🧪 Added/updated tests with good coverage
+- [ ] 🔗 Clearly explained why the changes are needed, or linked related issues: Fixes #
+- [ ] 🧪 Added/updated tests with good coverage, or manually tested (and explained how)
 - [ ] 💡 Added comments for complex logic
-- [ ] ⚙️ Tested my changes with `./gradlew spotlessApply check`
 - [ ] 🧾 Updated `CHANGELOG.md` (if needed)
 - [ ] 📚 Updated documentation in `site/content/in-dev/unreleased` (if needed)
