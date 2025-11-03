@@ -128,20 +128,15 @@ in the request.
 ### Polaris Server Header
 
 Polaris can emit an informational `Server` HTTP response header using Quarkus' built-in header
-configuration. The default configuration keeps the header disabled by pointing it at a path that does
-not match any request.
+configuration. Add the following property to one of the supported configuration sources (for example,
+`application.properties`) to enable it with the Polaris version string:
 
 ```properties
 quarkus.http.header."Server".value=Polaris/${quarkus.application.version}
-quarkus.http.header."Server".path=/__disabled__
 ```
 
-To enable the header for production traffic, override the header path for the desired profile (for
-example, `%prod`).
-
-```properties
-%prod.quarkus.http.header."Server".path=/*
-```
+If you prefer to scope the header to specific environments, only set the property for the desired
+profile (for example, `%prod`).
 
 ### Metastore Configuration
 
