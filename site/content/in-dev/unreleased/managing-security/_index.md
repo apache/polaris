@@ -25,4 +25,4 @@ weight: 550
 
 ## [Access Control]({{< relref "access-control" >}})
 
-## [Authentification and Identity Providers]({{< relref "external-idp" >}})
+## [Authentication and Identity Providers]({{< relref "external-idp" >}})

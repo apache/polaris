@@ -74,7 +74,7 @@ public class PolicyCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
    * @param cleanupAction If non-null, additional action to run to "undo" a previous success action
    *     in case the action has side effects. Called before revoking the sufficient privilege;
    *     either the cleanup privileges must be latent, or the cleanup action could be run with
-   *     PRINCIPAL_ROLE2 while runnint {@code action} with PRINCIPAL_ROLE1.
+   *     PRINCIPAL_ROLE2 while running {@code action} with PRINCIPAL_ROLE1.
    */
   private void doTestSufficientPrivileges(
       List<PolarisPrivilege> sufficientPrivileges, Runnable action, Runnable cleanupAction) {

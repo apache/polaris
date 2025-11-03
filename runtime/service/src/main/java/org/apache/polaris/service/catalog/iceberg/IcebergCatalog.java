@@ -877,7 +877,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (!optimizedSiblingCheck) {
         throw new IllegalStateException(
             String.format(
-                "%s and %s are both disabled, which means that table location overlap checkes are being"
+                "%s and %s are both disabled, which means that table location overlap checks are being"
                     + " performed, but only within each namespace. However, %s is enabled, which indicates"
                     + " that tables may be created outside of their parent namespace. This is not a safe"
                     + " combination of configurations.",

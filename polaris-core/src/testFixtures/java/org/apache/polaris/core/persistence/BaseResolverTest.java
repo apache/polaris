@@ -102,7 +102,7 @@ public abstract class BaseResolverTest {
   // polaris call context
   protected abstract PolarisCallContext callCtx();
 
-  // utility to bootstrap the mata store
+  // utility to bootstrap the meta store
   protected abstract PolarisTestMetaStoreManager tm();
 
   // the meta store manager

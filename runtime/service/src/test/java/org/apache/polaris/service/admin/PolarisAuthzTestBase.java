@@ -579,7 +579,7 @@ public abstract class PolarisAuthzTestBase {
    * @param cleanupAction If non-null, additional action to run to "undo" a previous success action
    *     in case the action has side effects. Called before revoking the sufficient privilege;
    *     either the cleanup privileges must be latent, or the cleanup action could be run with
-   *     PRINCIPAL_ROLE2 while runnint {@code action} with PRINCIPAL_ROLE1.
+   *     PRINCIPAL_ROLE2 while running {@code action} with PRINCIPAL_ROLE1.
    * @param principalName the name expected to appear in forbidden errors
    * @param grantAction the grantPrivilege action to use for each test privilege that will apply the
    *     privilege to whatever context is used in the {@code action}

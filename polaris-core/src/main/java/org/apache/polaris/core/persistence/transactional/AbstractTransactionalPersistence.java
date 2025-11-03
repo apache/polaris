@@ -245,7 +245,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
             // safe to use for entityVersion and grantRecordsVersion right now. Once we refactor
             // the writeEntities[] methods to take something like PolarisEntityCore
             // for originalEntity and force the callsites such as BasePolarisCatalog to actually
-            // provide the original values, this will be correct. For now, the API does't support
+            // provide the original values, this will be correct. For now, the API doesn't support
             // bulk renames anyways.
             boolean nameOrParentChanged =
                 originalEntity == null
@@ -612,7 +612,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       // safe to use for entityVersion and grantRecordsVersion right now. Once we refactor
       // the writeEntities[] methods to take something like PolarisEntityCore
       // for originalEntity and force the callsites such as BasePolarisCatalog to actually
-      // provide the original values, this will be correct. For now, the API does't support
+      // provide the original values, this will be correct. For now, the API doesn't support
       // bulk renames anyways.
       boolean nameOrParentChanged =
           originalEntity == null

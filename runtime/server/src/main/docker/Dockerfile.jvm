@@ -36,7 +36,7 @@ ENV USER=polaris
 ENV UID=10000
 ENV HOME=/home/polaris
 
-# We make four distinct layers so if there are application changes the library layers can be re-used
+# We make four distinct layers so if there are application changes the library layers can be reused
 COPY --chown=polaris:polaris build/quarkus-app/lib/ /deployments/lib/
 COPY --chown=polaris:polaris build/quarkus-app/*.jar /deployments/
 COPY --chown=polaris:polaris build/quarkus-app/app/ /deployments/app/

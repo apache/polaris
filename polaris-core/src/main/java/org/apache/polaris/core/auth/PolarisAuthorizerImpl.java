@@ -865,7 +865,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
    * permissions matching {@code privilege} on any entity in the resolvedPath of the resolvedPath.
    *
    * <p>The caller is responsible for translating these checks into either behavioral actions (e.g.
-   * returning 404 instead of 403, checking other root privileges that supercede the checked
+   * returning 404 instead of 403, checking other root privileges that supersede the checked
    * privilege, choosing whether to vend credentials) or throwing relevant Unauthorized
    * errors/exceptions.
    */

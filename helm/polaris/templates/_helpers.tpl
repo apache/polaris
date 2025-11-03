@@ -157,7 +157,7 @@ line breaks, they will be escaped and a multi-line option will be printed.
 Escapes a property key to be used in a configmap, conforming with the Java parsisng rules for
 property files: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Properties.html#load(java.io.Reader)
 - Escapes all backslashes.
-- Escapes all key termination charaters: '=', ':' and whitespace.
+- Escapes all key termination characters: '=', ':' and whitespace.
 */}}
 {{- define "polaris.escapeConfigOptionKey" -}}
 {{- $key := . -}}
@@ -204,7 +204,7 @@ Converts a Kubernetes quantity to a number (int64 if possible or float64 otherwi
 It handles raw numbers as well as quantities with suffixes
 like m, k, M, G, T, P, E, ki, Mi, Gi, Ti, Pi, Ei.
 It also handles scientific notation.
-Quantities should be positive, so negative values, zero, or any unparseable number
+Quantities should be positive, so negative values, zero, or any unparsable number
 will result in a failure.
 https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/
 */}}
