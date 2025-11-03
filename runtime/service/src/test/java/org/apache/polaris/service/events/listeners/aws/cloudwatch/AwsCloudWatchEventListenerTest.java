@@ -17,12 +17,14 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
+package org.apache.polaris.service.events.listeners.aws.cloudwatch;
 
 import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpecHelper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import io.quarkus.runtime.configuration.MemorySize;
 import jakarta.ws.rs.core.SecurityContext;
@@ -33,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -40,6 +43,9 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.json.mixins.IcebergMixins;
+import org.apache.polaris.service.events.json.mixins.PolarisEventBaseMixin;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,17 +92,22 @@ class AwsCloudWatchEventListenerTest {
 
   private ExecutorService executorService;
   private AutoCloseable mockitoContext;
+  private ObjectMapper objectMapper;
 
   @BeforeEach
   void setUp() {
     mockitoContext = MockitoAnnotations.openMocks(this);
     executorService = Executors.newSingleThreadExecutor();
 
+    // Build the test mapper and apply the same customizations Quarkus would
+    objectMapper = new ObjectMapper();
+
     // Configure the mocks
     when(config.awsCloudWatchLogGroup()).thenReturn(LOG_GROUP);
     when(config.awsCloudWatchLogStream()).thenReturn(LOG_STREAM);
     when(config.awsCloudWatchRegion()).thenReturn("us-east-1");
-    when(config.synchronousMode()).thenReturn(false); // Default to async mode
+    when(config.synchronousMode()).thenReturn(false); // default async
+    when(config.eventTypes()).thenReturn(java.util.Optional.empty()); // handle all events
   }
 
   @AfterEach
@@ -130,7 +141,7 @@ class AwsCloudWatchEventListenerTest {
 
   private AwsCloudWatchEventListener createListener(CloudWatchLogsAsyncClient client) {
     AwsCloudWatchEventListener listener =
-        new AwsCloudWatchEventListener(config, clock, customizer) {
+        new AwsCloudWatchEventListener(config, clock, customizer, objectMapper) {
           @Override
           protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
             return client;
@@ -201,7 +212,8 @@ class AwsCloudWatchEventListenerTest {
     listener.start();
     try {
       // Create and send a test event
-      TableIdentifier testTable = TableIdentifier.of("test_namespace", "test_table");
+      Namespace namespaceTest = Namespace.of("test_namespace.test1", "test1a");
+      TableIdentifier testTable = TableIdentifier.of(namespaceTest, "test_table");
       listener.onAfterRefreshTable(
           new IcebergRestCatalogEvents.AfterRefreshTableEvent("test_catalog", testTable));
 
@@ -236,12 +248,18 @@ class AwsCloudWatchEventListenerTest {
           .satisfies(
               logEvent -> {
                 String message = logEvent.message();
+                JsonNode root = objectMapper.readTree(message);
+                JsonNode event = root.path("event").isMissingNode() ? root : root.path("event");
                 assertThat(message).contains(REALM);
                 assertThat(message)
                     .contains(
                         IcebergRestCatalogEvents.AfterRefreshTableEvent.class.getSimpleName());
                 assertThat(message).contains(TEST_USER);
-                assertThat(message).contains(testTable.toString());
+                // table_identifier object
+                JsonNode tableId = event.path("table_identifier");
+                assertThat(tableId.isObject()).isTrue();
+                assertThat(tableId.path("name").asText()).isEqualTo("test_table");
+                assertThat(tableId.path("namespace").isArray()).isTrue();
               });
     } finally {
       // Clean up
@@ -309,17 +327,49 @@ class AwsCloudWatchEventListenerTest {
 
   @Test
   void ensureObjectMapperCustomizerIsApplied() {
-    AwsCloudWatchEventListener listener = createListener(createCloudWatchAsyncClient());
-    listener.start();
+
+    AwsCloudWatchEventListener listener =
+        new AwsCloudWatchEventListener(config, clock, customizer, objectMapper);
 
     assertThat(listener.objectMapper.getPropertyNamingStrategy())
         .isInstanceOf(PropertyNamingStrategies.KebabCaseStrategy.class);
     assertThat(listener.objectMapper.getFactory().streamReadConstraints().getMaxDocumentLength())
         .isEqualTo(MAX_BODY_SIZE.longValue());
+
+    assertThat(objectMapper.findMixInClassFor(Namespace.class))
+        .as("Namespace mixin should be registered")
+        .isEqualTo(IcebergMixins.NamespaceMixin.class);
+
+    assertThat(objectMapper.findMixInClassFor(TableIdentifier.class))
+        .as("TableIdentifier mixin should be registered")
+        .isEqualTo(IcebergMixins.TableIdentifierMixin.class);
+
+    assertThat(objectMapper.findMixInClassFor(PolarisEvent.class))
+        .as("Namespace mixin should be registered")
+        .isEqualTo(PolarisEventBaseMixin.class);
+  }
+
+  @Test
+  void shouldListenToAllEventTypesWhenConfigNotProvided() {
+    // given: config.eventTypes() is empty → listen to all events
+    when(config.eventTypes()).thenReturn(java.util.Optional.empty());
+
+    AwsCloudWatchEventListener listener =
+        new AwsCloudWatchEventListener(config, clock, customizer, objectMapper);
+
+    // This is any random PolarisEvent — if the listener listens to all types,
+    // shouldHandle(event) should return true
+    PolarisEvent randomEvent =
+        new IcebergRestCatalogEvents.AfterRefreshTableEvent(
+            "test_catalog", TableIdentifier.of("db", "table"));
+
+    boolean shouldHandle = listener.shouldHandle(randomEvent);
+    assertThat(shouldHandle)
+        .as("Listener should handle all events when no eventTypes are configured")
+        .isTrue();
   }
 
   private void verifyLogGroupAndStreamExist(CloudWatchLogsAsyncClient client) {
-    // Verify log group exists
     DescribeLogGroupsResponse groups =
         client
             .describeLogGroups(
