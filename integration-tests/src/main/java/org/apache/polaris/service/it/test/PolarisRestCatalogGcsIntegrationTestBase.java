@@ -18,32 +18,23 @@
  */
 package org.apache.polaris.service.it.test;
 
-import com.google.common.base.Strings;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
-/** Runs PolarisRestCatalogViewIntegrationTest on AWS. */
-public class PolarisRestCatalogViewAwsIntegrationTest
-    extends PolarisRestCatalogViewIntegrationBase {
-  public static final String ROLE_ARN =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN")) // Backward compatibility
-          .orElse(System.getenv("INTEGRATION_TEST_S3_ROLE_ARN"));
-  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_S3_PATH");
+/** Runs PolarisRestCatalogIntegrationBase test on GCP. */
+public abstract class PolarisRestCatalogGcsIntegrationTestBase
+    extends PolarisRestCatalogIntegrationBase {
+  public static final String SERVICE_ACCOUNT =
+      System.getenv("INTEGRATION_TEST_GCS_SERVICE_ACCOUNT");
+  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_GCS_PATH");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
-    return AwsStorageConfigInfo.builder()
-        .setRoleArn(ROLE_ARN)
-        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+    return GcpStorageConfigInfo.builder()
+        .setGcsServiceAccount(SERVICE_ACCOUNT)
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
         .setAllowedLocations(List.of(BASE_LOCATION))
         .build();
-  }
-
-  @Override
-  protected boolean shouldSkip() {
-    return Stream.of(BASE_LOCATION, ROLE_ARN).anyMatch(Strings::isNullOrEmpty);
   }
 }

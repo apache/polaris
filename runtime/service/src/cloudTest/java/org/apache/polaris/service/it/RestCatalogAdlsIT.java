@@ -19,9 +19,9 @@
 package org.apache.polaris.service.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisRestCatalogGcpIntegrationTestBase;
+import org.apache.polaris.service.it.test.PolarisRestCatalogAdlsIntegrationTestBase;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @QuarkusIntegrationTest
-@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_GCS_PATH", matches = ".+")
-public class RestCatalogGcpIT extends PolarisRestCatalogGcpIntegrationTestBase {}
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_AZURE_PATH", matches = ".+")
+public class RestCatalogAdlsIT extends PolarisRestCatalogAdlsIntegrationTestBase {}

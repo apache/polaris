@@ -18,15 +18,13 @@
  */
 package org.apache.polaris.service.it.test;
 
-import com.google.common.base.Strings;
 import java.util.List;
-import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
-/** Runs PolarisRestCatalogViewIntegrationTest on Azure. */
-public class PolarisRestCatalogViewAzureIntegrationTest
-    extends PolarisRestCatalogViewIntegrationBase {
+/** Runs PolarisRestCatalogIntegrationBase test on Azure. */
+public abstract class PolarisRestCatalogAdlsIntegrationTestBase
+    extends PolarisRestCatalogIntegrationBase {
   public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_AZURE_TENANT_ID");
   public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_AZURE_PATH");
 
@@ -37,10 +35,5 @@ public class PolarisRestCatalogViewAzureIntegrationTest
         .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
         .setAllowedLocations(List.of(BASE_LOCATION))
         .build();
-  }
-
-  @Override
-  protected boolean shouldSkip() {
-    return Stream.of(BASE_LOCATION, TENANT_ID).anyMatch(Strings::isNullOrEmpty);
   }
 }
