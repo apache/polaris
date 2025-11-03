@@ -215,7 +215,7 @@ jobs:
           ./gradlew \
             intTest \
             -x :polaris-runtime-service:intTest \
-            -x :polaris-helm:intTest \
+            -x :polaris-helm:check \
             --continue
         env:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}

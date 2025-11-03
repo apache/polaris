@@ -28,7 +28,7 @@ weight: 675
   Do not modify the README.md file directly, please modify README.md.gotmpl instead.
   To re-generate the README.md file, install helm-docs then run from the repo root:
   helm-docs --chart-search-root=helm
-  Alternatively, run ./gradlew helmDocs from the repo root.
+  Alternatively, run `./gradlew helmDocs` or `make helm-doc-generate` from the repo root.
 -->
 
 ![Version: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/Version-1.2.0--incubating--SNAPSHOT-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.2.0--incubating--SNAPSHOT-informational?style=flat-square)
@@ -144,7 +144,13 @@ The following tools are required to run the tests:
 * [Helm Unit Test](https://github.com/helm-unittest/helm-unittest)
 * [Chart Testing](https://github.com/helm/chart-testing)
 
-Quick installation of all required tools on macOS:
+Quick installation instructions for these tools:
+```bash
+helm plugin install https://github.com/helm-unittest/helm-unittest.git
+brew install chart-testing
+```
+
+Alternatively, on macOS, you can also run the following make targets:
 
 ```bash
 make install-dependencies-brew
@@ -185,7 +191,7 @@ Integration tests are run with the Chart Testing tool:
 ct install --namespace polaris --charts ./helm/polaris
 ```
 
-### Running tets with Gradle
+### Running tests with Gradle
 
 Both unit and integration tests can be run with Gradle. From the Polaris repo root:
 
@@ -321,6 +327,11 @@ Both unit and integration tests can be run with Gradle. From the Polaris repo ro
 | persistence.relationalJdbc.secret.username | string | `"username"` | The secret key holding the database username for authentication |
 | persistence.type | string | `"in-memory"` | The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc. The eclipse-link type is also supported but is deprecated. |
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
+| podDisruptionBudget | object | `{"annotations":{},"enabled":false,"maxUnavailable":null,"minAvailable":null}` | Pod disruption budget settings. |
+| podDisruptionBudget.annotations | object | `{}` | Annotations to add to the pod disruption budget. |
+| podDisruptionBudget.enabled | bool | `false` | Specifies whether a pod disruption budget should be created. |
+| podDisruptionBudget.maxUnavailable | string | `nil` | The maximum number of pods that can be unavailable during disruptions. Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%). IMPORTANT: Cannot be used simultaneously with minAvailable. |
+| podDisruptionBudget.minAvailable | string | `nil` | The minimum number of pods that should remain available during disruptions. Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%). IMPORTANT: Cannot be used simultaneously with maxUnavailable. |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
 | podSecurityContext.fsGroup | int | `10001` | GID 10001 is compatible with Polaris OSS default images; change this if you are using a different image. |

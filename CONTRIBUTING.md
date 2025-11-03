@@ -133,7 +133,11 @@ These tools are required for basic building and testing:
   * [SDKMAN!](https://sdkman.io/) - Run `sdk list java` to see available distributions, then `sdk install java <identifier>` to install.
   * [jEnv](https://www.jenv.be/) - You can also use jEnv to manage Java versions.
 
-* **Docker**: Required for integration tests and building container images.
+* **Container Runtime**: A container runtime like [Docker] or [Podman] is required for integration tests, regression tests 
+  and building container images.
+
+[Docker]: https://www.docker.com/
+[Podman]: https://podman.io/
 
 ### Helm Chart Testing Requirements
 

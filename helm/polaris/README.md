@@ -28,7 +28,7 @@ weight: 675
   Do not modify the README.md file directly, please modify README.md.gotmpl instead.
   To re-generate the README.md file, install helm-docs then run from the repo root:
   helm-docs --chart-search-root=helm
-  Alternatively, run ./gradlew helmDocs from the repo root.
+  Alternatively, run `./gradlew helmDocs` or `make helm-doc-generate` from the repo root.
 -->
 
 ![Version: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/Version-1.2.0--incubating--SNAPSHOT-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.2.0--incubating--SNAPSHOT-informational?style=flat-square)
@@ -142,7 +142,13 @@ The following tools are required to run the tests:
 * [Helm Unit Test](https://github.com/helm-unittest/helm-unittest)
 * [Chart Testing](https://github.com/helm/chart-testing)
 
-Quick installation of all required tools on macOS:
+Quick installation instructions for these tools:
+```bash
+helm plugin install https://github.com/helm-unittest/helm-unittest.git
+brew install chart-testing
+```
+
+Alternatively, on macOS, you can also run the following make targets:
 
 ```bash
 make install-dependencies-brew
@@ -183,7 +189,7 @@ Integration tests are run with the Chart Testing tool:
 ct install --namespace polaris --charts ./helm/polaris
 ```
 
-### Running tets with Gradle
+### Running tests with Gradle
 
 Both unit and integration tests can be run with Gradle. From the Polaris repo root:
 
