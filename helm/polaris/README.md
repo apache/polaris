@@ -28,6 +28,7 @@ weight: 675
   Do not modify the README.md file directly, please modify README.md.gotmpl instead.
   To re-generate the README.md file, install helm-docs then run from the repo root:
   helm-docs --chart-search-root=helm
+  Alternatively, run ./gradlew helmDocs from the repo root.
 -->
 
 ![Version: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/Version-1.2.0--incubating--SNAPSHOT-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.2.0--incubating--SNAPSHOT-informational?style=flat-square)
@@ -55,8 +56,6 @@ eval $(minikube docker-env)
 ./gradlew \
   :polaris-server:assemble \
   :polaris-server:quarkusAppPartsBuild --rerun \
-  :polaris-admin:assemble \
-  :polaris-admin:quarkusAppPartsBuild --rerun \
   -Dquarkus.container-image.build=true
 ```
 
@@ -143,10 +142,11 @@ The following tools are required to run the tests:
 * [Helm Unit Test](https://github.com/helm-unittest/helm-unittest)
 * [Chart Testing](https://github.com/helm/chart-testing)
 
-Quick installation instructions for these tools:
+Quick installation of all required tools on macOS:
+
 ```bash
-helm plugin install https://github.com/helm-unittest/helm-unittest.git
-brew install chart-testing
+make install-dependencies-brew
+make install-optional-dependencies-brew
 ```
 
 The integration tests also require some fixtures to be deployed. The `ci/fixtures` directory
@@ -181,6 +181,15 @@ a local cluster.
 Integration tests are run with the Chart Testing tool:
 ```bash
 ct install --namespace polaris --charts ./helm/polaris
+```
+
+### Running tets with Gradle
+
+Both unit and integration tests can be run with Gradle. From the Polaris repo root:
+
+```bash
+./gradlew :polaris-helm:test
+./gradlew :polaris-helm:intTest
 ```
 
 ## Values

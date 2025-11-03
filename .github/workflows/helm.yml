@@ -98,8 +98,6 @@ jobs:
           ./gradlew \
             :polaris-server:assemble \
             :polaris-server:quarkusAppPartsBuild --rerun \
-            :polaris-admin:assemble \
-            :polaris-admin:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true
           minikube image ls
 

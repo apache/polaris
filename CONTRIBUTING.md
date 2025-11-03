@@ -119,12 +119,82 @@ Tips:
 * Keep in mind that the Git commit subject and message is going to be read by other people, potentially even after years. The Git commit subject and message will appear "as is" in release notes.
 * Make sure the subject and message are properly formatted and contains a concise description of the changes in way that someone who has no prior knowledge can understand the rationale of the change and the change itself. Remove information that's of no use for someone reading the Git commit log, for example single intermediate commit messages like `formatting` or `fix test`.
 
-## Java version requirements
+## Build Prerequisites and Required Tools
 
-The Apache Polaris build currently requires Java 21 or later. There are a few tools that help you running the right Java version:
+Apache Polaris (incubating) requires several tools to run a full build, including tests and documentation generation.
 
-* [SDKMAN!](https://sdkman.io/) follow the installation instructions, then run `sdk list java` to see the available distributions and versions, then run `sdk install java <identifier from list>` using the identifier for the distribution and version (>= 21) of your choice.
-* [jenv](https://www.jenv.be/) If on a Mac you can use jenv to set the appropriate SDK.
+### Core Build Requirements
+
+These tools are required for basic building and testing:
+
+* **Git**: Required for cloning the repository and version control.
+
+* **Java 21+**: The build requires Java 21 or later. Suggested installers:
+  * [SDKMAN!](https://sdkman.io/) - Run `sdk list java` to see available distributions, then `sdk install java <identifier>` to install.
+  * [jEnv](https://www.jenv.be/) - You can also use jEnv to manage Java versions.
+
+* **Docker**: Required for integration tests and building container images.
+
+### Helm Chart Testing Requirements
+
+These tools are required to run Helm chart tests (part of `./gradlew test` and `./gradlew intTest`):
+
+* **Helm**: Kubernetes package manager, required for template validation and unit tests.
+  * macOS: `brew install helm`
+  * See [Helm installation instructions](https://helm.sh/docs/intro/install/)
+
+* **Helm Unittest Plugin**: Required for running Helm unit tests.
+  * Install: `helm plugin install https://github.com/helm-unittest/helm-unittest.git`
+
+* **helm-docs**: Required for generating Helm chart documentation.
+  * macOS: `brew install norwoodj/tap/helm-docs`
+  * See [helm-docs installation instructions](https://github.com/norwoodj/helm-docs)
+
+* **chart-testing (ct)**: Required for linting and testing Helm charts.
+  * macOS: `brew install chart-testing`
+  * See [chart-testing installation instructions](https://github.com/helm/chart-testing)
+
+* **Minikube**: Required for running Helm chart integration tests.
+  * macOS: `brew install minikube`
+  * See [Minikube installation instructions](https://minikube.sigs.k8s.io/docs/start/)
+
+* **kubectl**: Kubernetes command-line tool, required for Helm integration tests.
+  * macOS: `brew install kubectl`
+  * See [kubectl installation instructions](https://kubernetes.io/docs/tasks/tools/)
+
+### Other Tools
+
+These tools are helpful but not strictly required:
+
+* **jq**: JSON processor, useful for working with Polaris APIs and scripts.
+  * macOS: `brew install jq`
+  * See [jq installation instructions](https://jqlang.github.io/jq/download/)
+
+### Quick Installation (macOS)
+
+For macOS users with Homebrew, you can install all dependencies at once using the provided Makefile:
+
+```bash
+make install-dependencies-brew
+make install-optional-dependencies-brew
+```
+
+To check which dependencies are installed:
+```bash
+make check-dependencies
+```
+
+### Skipping Specific Tests
+
+If you don't have all the Helm-related tools installed, you can skip those tests:
+
+```bash
+# Run checks excluding Helm tests
+./gradlew check -x :polaris-helm:test
+
+# Run build excluding Helm integration tests
+./gradlew build -x :polaris-helm:intTest
+```
 
 ## Code Contribution Guidelines
 
