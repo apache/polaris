@@ -124,6 +124,7 @@ polaris.realm-context.require-header=true
 
 This will cause Polaris to also return a `404 Not Found` response if the realm header is not present
 in the request.
+
 ### Metastore Configuration
 
 A metastore should be configured with an implementation that durably persists Polaris entities. By
