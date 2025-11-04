@@ -39,11 +39,10 @@ import org.hawkular.agent.prometheus.types.Summary;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(TestEnvironmentExtension.class)
@@ -72,26 +71,23 @@ public abstract class MetricsTestBase {
     registry.clear();
   }
 
-  private Map<String, MetricFamily> fetchMetrics(String endpoint) {
+  private Map<String, MetricFamily> fetchMetrics() {
     AtomicReference<Map<String, MetricFamily>> value = new AtomicReference<>();
     Awaitility.await()
         .atMost(Duration.ofMinutes(2))
         .untilAsserted(
             () -> {
-              value.set(
-                  TestMetricsUtil.fetchMetrics(
-                      fixture.client, testEnv.baseManagementUri(), endpoint));
+              value.set(TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri()));
               assertThat(value.get()).containsKey(API_METRIC_NAME);
               assertThat(value.get()).containsKey(HTTP_METRIC_NAME);
             });
     return value.get();
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
-  public void testMetricsEmittedOnSuccessfulRequest(String endpoint) {
+  @Test
+  public void testMetricsEmittedOnSuccessfulRequest() {
     sendSuccessfulRequest();
-    Map<String, MetricFamily> allMetrics = fetchMetrics(endpoint);
+    Map<String, MetricFamily> allMetrics = fetchMetrics();
     assertThat(allMetrics).containsKey(API_METRIC_NAME);
     assertThat(allMetrics.get(API_METRIC_NAME).getMetrics())
         .satisfiesOnlyOnce(
@@ -143,11 +139,10 @@ public abstract class MetricsTestBase {
             });
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
-  public void testMetricsEmittedOnFailedRequest(String endpoint) {
+  @Test
+  public void testMetricsEmittedOnFailedRequest() {
     sendFailingRequest();
-    Map<String, MetricFamily> allMetrics = fetchMetrics(endpoint);
+    Map<String, MetricFamily> allMetrics = fetchMetrics();
     assertThat(allMetrics).containsKey(API_METRIC_NAME);
     assertThat(allMetrics.get(API_METRIC_NAME).getMetrics())
         .satisfiesOnlyOnce(

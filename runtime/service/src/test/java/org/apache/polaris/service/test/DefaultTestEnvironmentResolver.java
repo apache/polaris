@@ -29,7 +29,7 @@ public class DefaultTestEnvironmentResolver implements TestEnvironmentResolver {
   @Override
   public TestEnvironment resolveTestEnvironment(ExtensionContext extensionContext) {
     return new TestEnvironment(
-        String.format("http://localhost:%d", localPort),
-        String.format("http://localhost:%d", localManagementPort));
+        String.format("http://localhost:%d/", localPort),
+        String.format("http://localhost:%d/", localManagementPort));
   }
 }
