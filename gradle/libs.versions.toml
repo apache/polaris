@@ -75,6 +75,7 @@ jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api",
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.14.1" }
+junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version = "2.3.0" }
 keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.7" }
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
