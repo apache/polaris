@@ -83,7 +83,7 @@ This is because Ozone does not support the STS API and consequently cannot produ
 credentials to be vended to Polaris clients.
 
 The lack of STS API is represented in the Catalog storage configuration by the 
-`stsUnavailable=false` property.
+`stsUnavailable=true` property.
 
 ## S3 Credentials
 
