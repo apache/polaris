@@ -48,6 +48,10 @@ dependencies {
     api(project(":polaris-nodes-impl"))
     api(project(":polaris-nodes-spi"))
 
+    api(project(":polaris-tasks-api"))
+    api(project(":polaris-tasks-spi"))
+    api(project(":polaris-tasks-store"))
+
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
