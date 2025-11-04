@@ -87,7 +87,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
           .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
-          callContext.getRealmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+          realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
 
       GenericTableCatalog federatedCatalog;
       ConnectionType connectionType =
