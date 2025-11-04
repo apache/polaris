@@ -38,7 +38,7 @@ WORKDIR /home/spark/polaris
 
 COPY --chown=spark:spark ./v3.5 /home/spark/polaris/v3.5
 
-# /home/spark/regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
+# /home/spark/.../regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
 RUN chmod -R 777 /home/spark/polaris/v3.5/regtests
 
 USER spark
