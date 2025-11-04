@@ -124,20 +124,6 @@ polaris.realm-context.require-header=true
 
 This will cause Polaris to also return a `404 Not Found` response if the realm header is not present
 in the request.
-
-### Polaris Server Header
-
-Polaris can emit an informational `Server` HTTP response header using Quarkus' built-in header
-configuration. Add the following property to one of the supported configuration sources (for example,
-`application.properties`) to enable it with the Polaris version string:
-
-```properties
-quarkus.http.header."Server".value=Polaris/${quarkus.application.version}
-```
-
-If you prefer to scope the header to specific environments, only set the property for the desired
-profile (for example, `%prod`).
-
 ### Metastore Configuration
 
 A metastore should be configured with an implementation that durably persists Polaris entities. By
@@ -229,6 +215,19 @@ but **not recommended for production**. To disable it, set the supported storage
 polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES" = [ "S3", "Azure" ]
 ```
 Leave out `FILE` to prevent its use. Only include the storage types your setup needs.
+
+### Polaris Server Header
+
+Polaris can emit an informational `Server` HTTP response header using Quarkus' built-in header
+configuration. Add the following property to one of the supported configuration sources (for example,
+`application.properties`) to enable it with the Polaris version string:
+
+```properties
+quarkus.http.header."Server".value=Polaris/${quarkus.application.version}
+```
+
+If you prefer to scope the header to specific environments, only set the property for the desired
+profile (for example, `%prod`).
 
 ### Upgrade Considerations
 
