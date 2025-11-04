@@ -1,0 +1,225 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+services:
+
+  # Helper service to fix permissions on the data volume
+  polaris-init:
+    image: apache/polaris:latest
+    user: "0:0"
+    volumes:
+      - polaris-data:/var/polaris/data
+    command: >
+      sh -c "mkdir -p /var/polaris/data && chown -R 10000:10001 /var/polaris/data && echo 'Permissions fixed'"
+
+  polaris:
+    image: apache/polaris:latest
+    depends_on:
+      polaris-init:
+        condition: service_completed_successfully
+    ports:
+      # API port
+      - "8181:8181"
+      # Management port (metrics and health checks)
+      - "8182:8182"
+    environment:
+      # Bootstrap credentials: realm,client_id,client_secret
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,${ROOT_CLIENT_ID:-root},${ROOT_CLIENT_SECRET:-s3cr3t}
+      # Realm configuration
+      POLARIS_REALM_CONTEXT_REALMS: ${POLARIS_REALM:-POLARIS}
+      # Disable OpenTelemetry for simplicity
+      QUARKUS_OTEL_SDK_DISABLED: "true"
+      # Enable file-based storage (insecure, for development only)
+      polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
+      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\"]"
+      # Ignore severe issues for quickstart (not for production!)
+      polaris.readiness.ignore-severe-issues: "true"
+      # Enable purge operations
+      polaris.features."DROP_WITH_PURGE_ENABLED": "true"
+    volumes:
+      # Persist catalog data on the host
+      - polaris-data:/var/polaris/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8182/q/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  polaris-setup:
+    image: alpine/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      - CLIENT_ID=${ROOT_CLIENT_ID:-root}
+      - CLIENT_SECRET=${ROOT_CLIENT_SECRET:-s3cr3t}
+      - STORAGE_LOCATION=file:///var/polaris/data/
+      - CATALOG_NAME=${CATALOG_NAME:-quickstart_catalog}
+      - REALM=${POLARIS_REALM:-POLARIS}
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -e
+        apk add --no-cache jq
+
+        echo "Obtaining root access token..."
+        TOKEN_RESPONSE=$$(curl -s -X POST http://polaris:8181/api/catalog/v1/oauth/tokens \
+          -H 'Content-Type: application/x-www-form-urlencoded' \
+          -d "grant_type=client_credentials&client_id=$${CLIENT_ID}&client_secret=$${CLIENT_SECRET}&scope=PRINCIPAL_ROLE:ALL")
+
+        TOKEN=$$(echo $$TOKEN_RESPONSE | jq -r '.access_token')
+        echo "Obtained access token"
+
+        echo "Creating catalog '$$CATALOG_NAME' in realm $$REALM..."
+        PAYLOAD='{
+          "catalog": {
+            "name": "'$$CATALOG_NAME'",
+            "type": "INTERNAL",
+            "readOnly": false,
+            "properties": {
+              "default-base-location": "'$$STORAGE_LOCATION'"
+            },
+            "storageConfigInfo": {
+              "storageType": "FILE",
+              "allowedLocations": ["'$$STORAGE_LOCATION'"]
+            }
+          }
+        }'
+
+        curl -s -X POST http://polaris:8181/api/management/v1/catalogs \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H "Accept: application/json" \
+          -H "Content-Type: application/json" \
+          -H "Polaris-Realm: $$REALM" \
+          -d "$$PAYLOAD" > /dev/null
+
+        echo "✅ Catalog created"
+
+        echo ""
+        echo "Creating principal 'quickstart_user'..."
+        PRINCIPAL_RESPONSE=$$(curl -s -X POST http://polaris:8181/api/management/v1/principals \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H "Polaris-Realm: $$REALM" \
+          -H "Content-Type: application/json" \
+          -d '{"principal": {"name": "quickstart_user", "properties": {}}}')
+
+        USER_CLIENT_ID=$$(echo $$PRINCIPAL_RESPONSE | jq -r '.credentials.clientId')
+        USER_CLIENT_SECRET=$$(echo $$PRINCIPAL_RESPONSE | jq -r '.credentials.clientSecret')
+
+        echo "✅ Principal created with clientId: $$USER_CLIENT_ID"
+
+        echo "Creating principal role 'quickstart_user_role'..."
+        curl -s -X POST http://polaris:8181/api/management/v1/principal-roles \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H "Polaris-Realm: $$REALM" \
+          -H "Content-Type: application/json" \
+          -d '{"principalRole": {"name": "quickstart_user_role", "properties": {}}}' > /dev/null
+
+        echo "✅ Principal role created"
+
+        echo "Creating catalog role 'quickstart_catalog_role'..."
+        curl -s -X POST http://polaris:8181/api/management/v1/catalogs/$$CATALOG_NAME/catalog-roles \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H "Polaris-Realm: $$REALM" \
+          -H "Content-Type: application/json" \
+          -d '{"catalogRole": {"name": "quickstart_catalog_role", "properties": {}}}' > /dev/null
+
+        echo "✅ Catalog role created"
+
+        echo "Assigning principal role to principal..."
+        curl -s -X PUT http://polaris:8181/api/management/v1/principals/quickstart_user/principal-roles \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H "Polaris-Realm: $$REALM" \
+          -H "Content-Type: application/json" \
+          -d '{"principalRole": {"name": "quickstart_user_role"}}' > /dev/null
+
+        echo "✅ Principal role assigned"
+
+        echo "Assigning catalog role to principal role..."
+        curl -s -X PUT http://polaris:8181/api/management/v1/principal-roles/quickstart_user_role/catalog-roles/$$CATALOG_NAME \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H "Polaris-Realm: $$REALM" \
+          -H "Content-Type: application/json" \
+          -d '{"catalogRole": {"name": "quickstart_catalog_role"}}' > /dev/null
+
+        echo "✅ Catalog role assigned"
+
+        echo "Granting CATALOG_MANAGE_CONTENT privilege..."
+        curl -s -X PUT http://polaris:8181/api/management/v1/catalogs/$$CATALOG_NAME/catalog-roles/quickstart_catalog_role/grants \
+          -H "Authorization: Bearer $$TOKEN" \
+          -H "Polaris-Realm: $$REALM" \
+          -H "Content-Type: application/json" \
+          -d '{"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}' > /dev/null
+
+        echo "✅ Privileges granted"
+
+        echo ""
+        echo "=========================================="
+        echo "🎉 Polaris Quickstart Setup Complete!"
+        echo "=========================================="
+        echo ""
+        echo "Catalog: $$CATALOG_NAME"
+        echo "  Location: $$STORAGE_LOCATION"
+        echo ""
+        echo "Root credentials:"
+        echo "  Client ID:     $$CLIENT_ID"
+        echo "  Client Secret: $$CLIENT_SECRET"
+        echo ""
+        echo "User credentials:"
+        echo "  Client ID:     $$USER_CLIENT_ID"
+        echo "  Client Secret: $$USER_CLIENT_SECRET"
+        echo ""
+        echo "Polaris API: http://localhost:8181"
+        echo "Health check: http://localhost:8182/q/health"
+        echo ""
+        echo "To get started with Spark:"
+        echo "  spark-sql \\"
+        echo "    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.0 \\"
+        echo "    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \\"
+        echo "    --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \\"
+        echo "    --conf spark.sql.catalog.polaris.type=rest \\"
+        echo "    --conf spark.sql.catalog.polaris.warehouse=$$CATALOG_NAME \\"
+        echo "    --conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \\"
+        echo "    --conf spark.sql.catalog.polaris.credential=$$USER_CLIENT_ID:$$USER_CLIENT_SECRET \\"
+        echo "    --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \\"
+        echo "    --conf spark.sql.defaultCatalog=polaris"
+        echo ""
+        echo "To get started with REST API:"
+        echo "  # Get a token"
+        echo "  export TOKEN=\$$(curl -s -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \\"
+        echo "    -H 'Content-Type: application/x-www-form-urlencoded' \\"
+        echo "    -d 'grant_type=client_credentials&client_id=$$USER_CLIENT_ID&client_secret=$$USER_CLIENT_SECRET&scope=PRINCIPAL_ROLE:ALL' \\"
+        echo "    | jq -r '.access_token')"
+        echo ""
+        echo "  # Create a namespace"
+        echo "  curl -X POST http://localhost:8181/api/catalog/v1/$$CATALOG_NAME/namespaces \\"
+        echo "    -H \"Authorization: Bearer \$$TOKEN\" \\"
+        echo "    -H 'Content-Type: application/json' \\"
+        echo "    -d '{\"namespace\": [\"my_namespace\"], \"properties\": {}}'"
+        echo ""
+        echo "  # List namespaces"
+        echo "  curl -X GET http://localhost:8181/api/catalog/v1/$$CATALOG_NAME/namespaces \\"
+        echo "    -H \"Authorization: Bearer \$$TOKEN\""
+        echo ""
+        echo "=========================================="
+
+volumes:
+  polaris-data:
