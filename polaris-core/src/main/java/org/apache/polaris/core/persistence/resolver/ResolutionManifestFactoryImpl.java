@@ -21,8 +21,8 @@ package org.apache.polaris.core.persistence.resolver;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
 
 public class ResolutionManifestFactoryImpl implements ResolutionManifestFactory {
@@ -43,8 +43,8 @@ public class ResolutionManifestFactoryImpl implements ResolutionManifestFactory 
   @Nonnull
   @Override
   public PolarisResolutionManifest createResolutionManifest(
-      @Nonnull SecurityContext securityContext, @Nullable String referenceCatalogName) {
+      @Nonnull PolarisPrincipal principal, @Nullable String referenceCatalogName) {
     return new PolarisResolutionManifest(
-        diagnostics, realmContext, resolverFactory, securityContext, referenceCatalogName);
+        diagnostics, realmContext, resolverFactory, principal, referenceCatalogName);
   }
 }

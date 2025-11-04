@@ -28,7 +28,6 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -90,6 +89,7 @@ import org.apache.iceberg.view.ViewProperties;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -166,7 +166,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
-  private final SecurityContext securityContext;
+  private final PolarisPrincipal principal;
   private final PolarisEventListener polarisEventListener;
   private final AtomicBoolean loggedPrefixOverlapWarning = new AtomicBoolean(false);
 
@@ -195,7 +195,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       TaskExecutor taskExecutor,
       AccessConfigProvider accessConfigProvider,
       FileIOFactory fileIOFactory,
@@ -206,7 +206,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.realmConfig = callContext.getRealmConfig();
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
-    this.securityContext = securityContext;
+    this.principal = principal;
     this.taskExecutor = taskExecutor;
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
@@ -1163,7 +1163,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             diagnostics,
             callContext.getRealmContext(),
             resolverFactory,
-            securityContext,
+            principal,
             parentPath.getFirst().getName());
     siblingTables.forEach(
         tbl ->

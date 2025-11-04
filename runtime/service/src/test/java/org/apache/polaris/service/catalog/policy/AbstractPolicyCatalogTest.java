@@ -31,7 +31,6 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -146,7 +145,6 @@ public abstract class AbstractPolicyCatalogTest {
   private FileIOFactory fileIOFactory;
   private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
-  private SecurityContext securityContext;
   private AccessConfigProvider accessConfigProvider;
 
   @BeforeAll
@@ -186,21 +184,17 @@ public abstract class AbstractPolicyCatalogTest {
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
-    securityContext = Mockito.mock(SecurityContext.class);
-    when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
-
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     adminService =
         new PolarisAdminService(
-            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             serviceIdentityProvider,
-            securityContext,
+            authenticatedRoot,
             authorizer,
             reservedProperties);
 
@@ -231,7 +225,7 @@ public abstract class AbstractPolicyCatalogTest {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            resolutionManifestFactory, securityContext, CATALOG_NAME);
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     this.fileIOFactory = new DefaultFileIOFactory();
 
@@ -263,7 +257,7 @@ public abstract class AbstractPolicyCatalogTest {
             metaStoreManager,
             polarisContext,
             passthroughView,
-            securityContext,
+            authenticatedRoot,
             taskExecutor,
             accessConfigProvider,
             fileIOFactory,

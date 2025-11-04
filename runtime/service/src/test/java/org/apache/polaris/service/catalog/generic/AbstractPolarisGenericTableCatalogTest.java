@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -120,7 +119,6 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   private FileIOFactory fileIOFactory;
   private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
-  private SecurityContext securityContext;
   private AccessConfigProvider accessConfigProvider;
 
   protected static final Schema SCHEMA =
@@ -165,21 +163,17 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
-    securityContext = Mockito.mock(SecurityContext.class);
-    when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
-
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     adminService =
         new PolarisAdminService(
-            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             serviceIdentityProvider,
-            securityContext,
+            authenticatedRoot,
             authorizer,
             reservedProperties);
 
@@ -212,7 +206,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            resolutionManifestFactory, securityContext, CATALOG_NAME);
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     this.fileIOFactory = new DefaultFileIOFactory();
 
@@ -246,7 +240,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             metaStoreManager,
             polarisContext,
             passthroughView,
-            securityContext,
+            authenticatedRoot,
             taskExecutor,
             accessConfigProvider,
             fileIOFactory,

@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.service.catalog;
 
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -41,20 +41,20 @@ import org.apache.polaris.service.types.PolicyIdentifier;
  */
 public class PolarisPassthroughResolutionView implements PolarisResolutionManifestCatalogView {
   private final ResolutionManifestFactory resolutionManifestFactory;
-  private final SecurityContext securityContext;
+  private final PolarisPrincipal polarisPrincipal;
   private final String catalogName;
 
   public PolarisPassthroughResolutionView(
       ResolutionManifestFactory resolutionManifestFactory,
-      SecurityContext securityContext,
+      PolarisPrincipal polarisPrincipal,
       String catalogName) {
     this.resolutionManifestFactory = resolutionManifestFactory;
-    this.securityContext = securityContext;
+    this.polarisPrincipal = polarisPrincipal;
     this.catalogName = catalogName;
   }
 
   private PolarisResolutionManifest newResolutionManifest() {
-    return resolutionManifestFactory.createResolutionManifest(securityContext, catalogName);
+    return resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
   }
 
   @Override
