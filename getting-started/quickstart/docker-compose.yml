@@ -19,48 +19,66 @@
 
 services:
 
-  # Helper service to fix permissions on the data volume
-  polaris-init:
-    image: apache/polaris:latest
-    user: "0:0"
-    volumes:
-      - polaris-data:/var/polaris/data
-    command: >
-      sh -c "mkdir -p /var/polaris/data && chown -R 10000:10001 /var/polaris/data && echo 'Permissions fixed'"
+  minio:
+    image: quay.io/minio/minio:latest
+    ports:
+      # API port
+      - "9000:9000"
+      # UI port
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minio_root
+      MINIO_ROOT_PASSWORD: m1n1opwd
+    command:
+      - "server"
+      - "/data"
+      - "--console-address"
+      - ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 1s
+      timeout: 10s
 
   polaris:
     image: apache/polaris:latest
-    depends_on:
-      polaris-init:
-        condition: service_completed_successfully
     ports:
       # API port
       - "8181:8181"
-      # Management port (metrics and health checks)
-      - "8182:8182"
+      # Optional, allows attaching a debugger to the Polaris JVM
+      - "5005:5005"
+    depends_on:
+      minio:
+        condition: service_healthy
     environment:
-      # Bootstrap credentials: realm,client_id,client_secret
+      JAVA_DEBUG: true
+      JAVA_DEBUG_PORT: "*:5005"
+      AWS_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: minio_root
+      AWS_SECRET_ACCESS_KEY: m1n1opwd
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,${ROOT_CLIENT_ID:-root},${ROOT_CLIENT_SECRET:-s3cr3t}
-      # Realm configuration
-      POLARIS_REALM_CONTEXT_REALMS: ${POLARIS_REALM:-POLARIS}
-      # Disable OpenTelemetry for simplicity
-      QUARKUS_OTEL_SDK_DISABLED: "true"
-      # Enable file-based storage (insecure, for development only)
-      polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
-      polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\"]"
-      # Ignore severe issues for quickstart (not for production!)
-      polaris.readiness.ignore-severe-issues: "true"
-      # Enable purge operations
-      polaris.features."DROP_WITH_PURGE_ENABLED": "true"
-    volumes:
-      # Persist catalog data on the host
-      - polaris-data:/var/polaris/data
+      polaris.realm-context.realms: ${POLARIS_REALM:-POLARIS}
+      quarkus.otel.sdk.disabled: "true"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8182/q/health"]
+      test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 10
       start_period: 10s
+
+  setup_bucket:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        echo Creating MinIO bucket...;
+        mc alias set pol http://minio:9000 minio_root m1n1opwd;
+        mc mb pol/bucket123;
+        mc ls pol;
+        echo Bucket setup complete.;
 
   polaris-setup:
     image: alpine/curl
@@ -70,7 +88,6 @@ services:
     environment:
       - CLIENT_ID=${ROOT_CLIENT_ID:-root}
       - CLIENT_SECRET=${ROOT_CLIENT_SECRET:-s3cr3t}
-      - STORAGE_LOCATION=file:///var/polaris/data/
       - CATALOG_NAME=${CATALOG_NAME:-quickstart_catalog}
       - REALM=${POLARIS_REALM:-POLARIS}
     entrypoint: /bin/sh
@@ -95,11 +112,14 @@ services:
             "type": "INTERNAL",
             "readOnly": false,
             "properties": {
-              "default-base-location": "'$$STORAGE_LOCATION'"
+              "default-base-location": "s3://bucket123"
             },
             "storageConfigInfo": {
-              "storageType": "FILE",
-              "allowedLocations": ["'$$STORAGE_LOCATION'"]
+              "storageType": "S3",
+              "allowedLocations": ["s3://bucket123"],
+              "endpoint": "http://localhost:9000",
+              "endpointInternal": "http://minio:9000",
+              "pathStyleAccess": true
             }
           }
         }'
@@ -177,7 +197,9 @@ services:
         echo "=========================================="
         echo ""
         echo "Catalog: $$CATALOG_NAME"
-        echo "  Location: $$STORAGE_LOCATION"
+        echo "  Storage: S3 (MinIO)"
+        echo "  Location: s3://bucket123"
+        echo "  MinIO UI: http://localhost:9001"
         echo ""
         echo "Root credentials:"
         echo "  Client ID:     $$CLIENT_ID"
@@ -192,7 +214,7 @@ services:
         echo ""
         echo "To get started with Spark:"
         echo "  spark-sql \\"
-        echo "    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.0 \\"
+        echo "    --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.0,org.apache.iceberg:iceberg-aws-bundle:1.10.0 \\"
         echo "    --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \\"
         echo "    --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \\"
         echo "    --conf spark.sql.catalog.polaris.type=rest \\"
@@ -200,6 +222,11 @@ services:
         echo "    --conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \\"
         echo "    --conf spark.sql.catalog.polaris.credential=$$USER_CLIENT_ID:$$USER_CLIENT_SECRET \\"
         echo "    --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \\"
+        echo "    --conf spark.sql.catalog.polaris.s3.endpoint=http://localhost:9000 \\"
+        echo "    --conf spark.sql.catalog.polaris.s3.path-style-access=true \\"
+        echo "    --conf spark.sql.catalog.polaris.s3.access-key-id=minio_root \\"
+        echo "    --conf spark.sql.catalog.polaris.s3.secret-access-key=m1n1opwd \\"
+        echo "    --conf spark.sql.catalog.polaris.client.region=irrelevant \\"
         echo "    --conf spark.sql.defaultCatalog=polaris"
         echo ""
         echo "To get started with REST API:"
@@ -220,6 +247,3 @@ services:
         echo "    -H \"Authorization: Bearer \$$TOKEN\""
         echo ""
         echo "=========================================="
-
-volumes:
-  polaris-data:

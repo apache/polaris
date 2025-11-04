@@ -36,7 +36,7 @@ curl -s https://raw.githubusercontent.com/apache/polaris/main/getting-started/qu
 
 ```
 This command will:
-1. Create a Catalog named `quickstart_catalog` with file-based storage.
+1. Create a Catalog named `quickstart_catalog` with MinIO-backed storage.
 2. Create a user principal `quickstart_user` with full access to the catalog.
 
 Once the command has been run, you will see examples on how to interact with this Polaris server in the logs.
