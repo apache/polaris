@@ -34,6 +34,107 @@ dependencies { runtimeServerDistribution(project(":polaris-server", "distributio
 
 val helmTestReportsDir = layout.buildDirectory.dir("reports")
 
+private val missingDependencyExitCode = -42
+
+val helmChecks =
+  """
+        echo "====== Check if helm is installed ======"
+        if ! command -v helm >/dev/null 2>&1; then
+          echo "helm is not installed."
+          # Check if we're on macOS
+          if [[ "${'$'}(uname -s)" == "Darwin" ]]; then
+            # Check if brew is available
+            if command -v brew >/dev/null 2>&1; then
+              echo "Installing helm using Homebrew..."
+              brew install helm
+            else
+              echo "WARNING: Homebrew is not installed. Cannot auto-install helm."
+              echo "Please install Homebrew from https://brew.sh/ or install helm manually."
+              exit $missingDependencyExitCode
+            fi
+          else
+            echo "WARNING: helm is not installed."
+            echo "To install helm, see https://helm.sh/docs/intro/install/"
+            exit $missingDependencyExitCode
+          fi
+        fi
+    """
+
+val chartTestingChecks =
+  """
+    echo "====== Check if chart-testing is installed ======"
+    if ! command -v ct >/dev/null 2>&1; then
+      echo "chart-testing is not installed."
+      # Check if we're on macOS
+      if [[ "${'$'}(uname -s)" == "Darwin" ]]; then
+        # Check if brew is available
+        if command -v brew >/dev/null 2>&1; then
+          echo "Installing chart-testing using Homebrew..."
+          brew install chart-testing
+        else
+          echo "WARNING: Homebrew is not installed. Cannot auto-install chart-testing."
+          echo "Please install Homebrew from https://brew.sh/ or install chart-testing manually."
+          exit $missingDependencyExitCode
+        fi
+      else
+        echo "WARNING: chart-testing is not installed."
+        echo "To install chart-testing, see https://github.com/helm/chart-testing."
+        exit $missingDependencyExitCode
+      fi
+    fi
+    """
+
+val minikubeChecks =
+  """ 
+    echo "====== Check if Minikube is installed ======"
+    if ! command -v minikube >/dev/null 2>&1; then
+      echo "Minikube is not installed."
+      echo "To install minikube, see https://minikube.sigs.k8s.io/docs/start/."
+      exit $missingDependencyExitCode
+    fi
+
+    echo "====== Check if Minikube is running ======"
+    if ! minikube status >/dev/null 2>&1; then
+      echo "Minikube is not running. Starting minikube..."
+      minikube start
+    fi
+   """
+
+val kubectlChecks =
+  """
+    echo "====== Check if kubectl is installed ======"
+    if ! command -v kubectl >/dev/null 2>&1; then
+      echo "kubectl is not installed."
+      echo "To install kubectl, see https://kubernetes.io/docs/tasks/tools/"
+      exit $missingDependencyExitCode
+    fi
+  """
+
+val helmDocsChecks =
+  """
+    echo "====== Check if helm-docs is installed ======"
+      if ! command -v helm-docs >/dev/null 2>&1; then
+        echo "helm-docs is not installed."
+
+        # Check if we're on macOS
+        if [[ "${'$'}(uname -s)" == "Darwin" ]]; then
+          # Check if brew is available
+          if command -v brew >/dev/null 2>&1; then
+            echo "Installing helm-docs using Homebrew..."
+            brew install norwoodj/tap/helm-docs
+          else
+            echo "WARNING: Homebrew is not installed. Cannot auto-install helm-docs."
+            echo "Please install Homebrew from https://brew.sh/ or install helm-docs manually."
+            exit $missingDependencyExitCode
+          fi
+        else
+          echo "WARNING: helm-docs is not installed. Skipping documentation generation."
+          echo "To install helm-docs on Linux, download from: https://github.com/norwoodj/helm-docs/releases"
+          exit $missingDependencyExitCode
+        fi
+      fi
+      """
+
 val helmTemplateValidation by
   tasks.registering(Exec::class) {
     group = "verification"
@@ -44,6 +145,7 @@ val helmTemplateValidation by
     runShellScript(
       """
           set -e
+          ${helmChecks.trimIndent()}
           for f in values.yaml ci/*.yaml; do
             echo "Validating helm template with ${'$'}f"
             helm template --debug --namespace polaris-ns --values ${'$'}f .
@@ -69,6 +171,7 @@ val helmUnitTest by
     runShellScript(
       """
           set -e
+          ${helmChecks.trimIndent()}
           echo "====== Install helm-unittest plugin ======"
           helm plugin install https://github.com/helm-unittest/helm-unittest.git || true
 
@@ -95,6 +198,8 @@ val chartTestingLint by
     runShellScript(
       """
           set -e
+          ${helmChecks.trimIndent()}
+          ${chartTestingChecks.trimIndent()}
           ct lint --debug --charts .
         """,
       outputFile,
@@ -126,11 +231,8 @@ val buildMinikubeImages by
     runShellScript(
       """
     set -e
-    echo "====== Check if minikube is running ======"
-    if ! minikube status >/dev/null 2>&1; then
-      echo "Minikube is not running. Starting minikube..."
-      minikube start
-    fi
+
+    ${minikubeChecks.trimIndent()}
 
     echo "====== Set up docker environment and build images ======"
     eval $(minikube -p minikube docker-env)
@@ -166,11 +268,11 @@ val chartTestingInstall by
     runShellScript(
       """
           set -eo pipefail
-          echo "====== Check if minikube is running ======"
-          if ! minikube status >/dev/null 2>&1; then
-            echo "Minikube is not running. Starting minikube..."
-            minikube start
-          fi
+          
+          ${helmChecks.trimIndent()}
+          ${minikubeChecks.trimIndent()}
+          ${chartTestingChecks.trimIndent()}
+          ${kubectlChecks.trimIndent()}
 
           echo "====== Create namespace if it doesn't exist ======"
           kubectl create namespace polaris-ns --dry-run=client -o yaml | kubectl apply -f -
@@ -204,27 +306,8 @@ val helmDocs by
       """
           set -e
 
-          echo "====== Check if helm-docs is installed ======"
-          if ! command -v helm-docs >/dev/null 2>&1; then
-            echo "helm-docs is not installed."
-
-            # Check if we're on macOS
-            if [[ "${'$'}(uname -s)" == "Darwin" ]]; then
-              # Check if brew is available
-              if command -v brew >/dev/null 2>&1; then
-                echo "Installing helm-docs using Homebrew..."
-                brew install norwoodj/tap/helm-docs
-              else
-                echo "WARNING: Homebrew is not installed. Cannot auto-install helm-docs."
-                echo "Please install Homebrew from https://brew.sh/ or install helm-docs manually."
-                exit 0
-              fi
-            else
-              echo "WARNING: helm-docs is not installed. Skipping documentation generation."
-              echo "To install helm-docs on Linux, download from: https://github.com/norwoodj/helm-docs/releases"
-              exit 0
-            fi
-          fi
+          ${helmChecks.trimIndent()}
+          ${helmDocsChecks.trimIndent()}
 
           echo "====== Generate Helm documentation ======"
           helm-docs --chart-search-root=.
@@ -263,14 +346,19 @@ fun Exec.runShellScript(script: String, outputFile: File) {
     standardOutput = outStream
     errorOutput = outStream
   }
-  commandLine = listOf("sh", "-c", script.trimIndent())
+  commandLine = listOf("bash", "-c", script.trimIndent())
   this.isIgnoreExitValue = true
   doLast {
     val exitValue = executionResult.get().exitValue
     if (exitValue != 0) {
-      this.logger.error("Shell script failed with exit code $exitValue:\n")
-      outputFile.readLines().forEach { this.logger.error(it) }
-      throw GradleException("Shell script failed with exit code $exitValue")
+      if (exitValue == missingDependencyExitCode) {
+        this.logger.warn("Missing required executable, skipping task:")
+        outputFile.readLines().forEach { this.logger.warn(it) }
+      } else {
+        this.logger.error("Shell script failed with exit code $exitValue:\n")
+        outputFile.readLines().forEach { this.logger.error(it) }
+        throw GradleException("Shell script failed with exit code $exitValue")
+      }
     }
   }
 }
