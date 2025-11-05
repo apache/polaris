@@ -244,9 +244,8 @@ fun Exec.runShellScript(script: String, outputFile: File) {
   doLast {
     val exitValue = executionResult.get().exitValue
     if (exitValue != 0) {
-      this.logger.error("Shell script failed with exit code $exitValue.")
-      this.logger.error("To identify the cause of the failure, inspect the logs:")
-      this.logger.error(outputFile.absolutePath)
+      this.logger.error("Shell script failed with exit code $exitValue:\n")
+      outputFile.readLines().forEach { this.logger.error(it) }
       throw GradleException("Shell script failed with exit code $exitValue")
     }
   }
