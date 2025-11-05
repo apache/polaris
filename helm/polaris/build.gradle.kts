@@ -203,6 +203,30 @@ val helmDocs by
     runShellScript(
       """
           set -e
+
+          echo "====== Check if helm-docs is installed ======"
+          if ! command -v helm-docs >/dev/null 2>&1; then
+            echo "helm-docs is not installed."
+
+            # Check if we're on macOS
+            if [[ "${'$'}(uname -s)" == "Darwin" ]]; then
+              # Check if brew is available
+              if command -v brew >/dev/null 2>&1; then
+                echo "Installing helm-docs using Homebrew..."
+                brew install norwoodj/tap/helm-docs
+              else
+                echo "WARNING: Homebrew is not installed. Cannot auto-install helm-docs."
+                echo "Please install Homebrew from https://brew.sh/ or install helm-docs manually."
+                exit 0
+              fi
+            else
+              echo "WARNING: helm-docs is not installed. Skipping documentation generation."
+              echo "To install helm-docs on Linux, download from: https://github.com/norwoodj/helm-docs/releases"
+              exit 0
+            fi
+          fi
+
+          echo "====== Generate Helm documentation ======"
           helm-docs --chart-search-root=.
         """,
       outputFile,
