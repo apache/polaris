@@ -89,15 +89,15 @@ public class AwsCloudWatchEventListener extends AllEventsForwardingListener {
   }
 
   @Override
-  protected boolean shouldHandle(Object event) {
-    if (!(event instanceof PolarisEvent polarisEvent)) {
+  protected boolean shouldHandle(PolarisEvent event) {
+    if (event == null) {
       return false;
     }
 
     if (this.listenToAllEvents) {
       return true;
     }
-    Class<? extends PolarisEvent> actualType = polarisEvent.getClass();
+    Class<? extends PolarisEvent> actualType = event.getClass();
     return allowedEventTypes.stream().anyMatch(cfg -> cfg.isAssignableFrom(actualType));
   }
 

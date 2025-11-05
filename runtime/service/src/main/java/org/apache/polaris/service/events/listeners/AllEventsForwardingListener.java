@@ -43,7 +43,7 @@ public abstract class AllEventsForwardingListener implements PolarisEventListene
   protected abstract void handle(PolarisEvent event);
 
   /** Optional filter (config-based). Default: handle all. */
-  protected boolean shouldHandle(Object event) {
+  protected boolean shouldHandle(PolarisEvent event) {
     return true;
   }
 
