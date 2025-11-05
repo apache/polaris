@@ -44,6 +44,8 @@ services:
     ports:
       # API port
       - "8181:8181"
+      # Management port (metrics and health checks)
+      - "8182:8182"
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
     depends_on:
