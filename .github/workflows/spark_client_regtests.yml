@@ -58,7 +58,7 @@ jobs:
           # publishToMavenLocal causes a GH API requests, use the token for those requests
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-        run: ./gradlew assemble publishToMavenLocal
+        run: ./gradlew assemble publishToMavenLocal -x :polaris-helm:assemble
 
       - name: Image build
         env:
