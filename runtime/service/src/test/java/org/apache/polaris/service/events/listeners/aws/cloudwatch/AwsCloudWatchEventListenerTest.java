@@ -92,15 +92,15 @@ class AwsCloudWatchEventListenerTest {
 
   private ExecutorService executorService;
   private AutoCloseable mockitoContext;
-  private ObjectMapper objectMapper;
+  private static final ObjectMapper objectMapper = new ObjectMapper();
+  ;
 
   @BeforeEach
   void setUp() {
     mockitoContext = MockitoAnnotations.openMocks(this);
     executorService = Executors.newSingleThreadExecutor();
 
-    // Build the test mapper and apply the same customizations Quarkus would
-    objectMapper = new ObjectMapper();
+    customizer.customize(objectMapper);
 
     // Configure the mocks
     when(config.awsCloudWatchLogGroup()).thenReturn(LOG_GROUP);
@@ -141,7 +141,7 @@ class AwsCloudWatchEventListenerTest {
 
   private AwsCloudWatchEventListener createListener(CloudWatchLogsAsyncClient client) {
     AwsCloudWatchEventListener listener =
-        new AwsCloudWatchEventListener(config, clock, customizer, objectMapper) {
+        new AwsCloudWatchEventListener(config, clock, objectMapper) {
           @Override
           protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
             return client;
@@ -329,7 +329,7 @@ class AwsCloudWatchEventListenerTest {
   void ensureObjectMapperCustomizerIsApplied() {
 
     AwsCloudWatchEventListener listener =
-        new AwsCloudWatchEventListener(config, clock, customizer, objectMapper);
+        new AwsCloudWatchEventListener(config, clock, objectMapper);
 
     assertThat(listener.objectMapper.getPropertyNamingStrategy())
         .isInstanceOf(PropertyNamingStrategies.KebabCaseStrategy.class);
@@ -355,7 +355,7 @@ class AwsCloudWatchEventListenerTest {
     when(config.eventTypes()).thenReturn(java.util.Optional.empty());
 
     AwsCloudWatchEventListener listener =
-        new AwsCloudWatchEventListener(config, clock, customizer, objectMapper);
+        new AwsCloudWatchEventListener(config, clock, objectMapper);
 
     // This is any random PolarisEvent — if the listener listens to all types,
     // shouldHandle(event) should return true

@@ -31,7 +31,7 @@ import org.apache.polaris.service.events.PrincipalRolesServiceEvents;
 import org.apache.polaris.service.events.PrincipalsServiceEvents;
 
 /**
- * Base class for event listeners that with to generically forward all {@link PolarisEvent
+ * Base class for event listeners that wish to generically forward all {@link PolarisEvent
  * PolarisEvents} to an external sink.
  *
  * <p>This design follows the Template Method pattern, centralizing shared control flow in the base

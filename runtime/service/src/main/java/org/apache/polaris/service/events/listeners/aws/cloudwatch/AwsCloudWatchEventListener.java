@@ -39,7 +39,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.listeners.AllEventsForwardingListener;
 import org.slf4j.Logger;
@@ -76,22 +75,17 @@ public class AwsCloudWatchEventListener extends AllEventsForwardingListener {
 
   @Inject
   public AwsCloudWatchEventListener(
-      AwsCloudWatchConfiguration config,
-      Clock clock,
-      PolarisIcebergObjectMapperCustomizer customizer,
-      ObjectMapper mapper) {
+      AwsCloudWatchConfiguration config, Clock clock, ObjectMapper mapper) {
     this.logStream = config.awsCloudWatchLogStream();
     this.logGroup = config.awsCloudWatchLogGroup();
     this.region = Region.of(config.awsCloudWatchRegion());
     this.synchronousMode = config.synchronousMode();
     this.clock = clock;
     this.objectMapper = mapper;
-    customizer.customize(this.objectMapper);
+    this.allowedEventTypes = config.eventTypes().orElse(Set.of());
     this.listenToAllEvents =
-        config.eventTypes().isEmpty()
-            || config.eventTypes().map(Set::isEmpty).orElse(true)
-            || config.eventTypes().get().stream().anyMatch(e -> e == PolarisEvent.class);
-    this.allowedEventTypes = listenToAllEvents ? Set.of() : Set.copyOf(config.eventTypes().get());
+        allowedEventTypes.isEmpty()
+            || allowedEventTypes.stream().anyMatch(c -> c == PolarisEvent.class);
   }
 
   @Override
@@ -116,14 +110,6 @@ public class AwsCloudWatchEventListener extends AllEventsForwardingListener {
   void start() {
     this.client = createCloudWatchAsyncClient();
     ensureLogGroupAndStream();
-  }
-
-  @PostConstruct
-  void verifyMapper() {
-    LOGGER.info(
-        "ObjectMapper hash={}, mixins={}",
-        System.identityHashCode(objectMapper),
-        objectMapper.mixInCount());
   }
 
   protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
