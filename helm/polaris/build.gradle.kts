@@ -1,3 +1,5 @@
+import java.io.OutputStream
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -34,7 +36,7 @@ dependencies { runtimeServerDistribution(project(":polaris-server", "distributio
 
 val helmTestReportsDir = layout.buildDirectory.dir("reports")
 
-private val missingDependencyExitCode = -42
+private val missingDependencyExitCode = 42
 
 val helmChecks =
   """
@@ -340,15 +342,18 @@ tasks.named("check") { dependsOn(test, intTest) }
 tasks.named("assemble") { dependsOn(helmDocs) }
 
 fun Exec.runShellScript(script: String, outputFile: File) {
+  var outStream: OutputStream? = null
   doFirst {
     outputFile.parentFile.mkdirs()
-    val outStream = outputFile.outputStream()
+    outStream = outputFile.outputStream()
     standardOutput = outStream
     errorOutput = outStream
   }
   commandLine = listOf("bash", "-c", script.trimIndent())
   this.isIgnoreExitValue = true
   doLast {
+    // Close the output stream before reading the file to avoid race conditions
+    outStream?.close()
     val exitValue = executionResult.get().exitValue
     if (exitValue != 0) {
       if (exitValue == missingDependencyExitCode) {
