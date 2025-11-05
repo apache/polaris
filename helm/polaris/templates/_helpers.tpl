@@ -142,7 +142,7 @@ line breaks, they will be escaped and a multi-line option will be printed.
 {{- $value := index . 1 -}}
 {{- $global := index . 2 -}}
 {{- $valAsString := "" -}}
-{{- if ne $value nil -}}
+{{- if $value -}}
 {{- $valAsString = tpl (toString $value) $global -}}
 {{- if contains "\r\n" $valAsString -}}
 {{- $valAsString = $valAsString | nindent 4 | replace "\r\n" "\\\r\n" -}}
