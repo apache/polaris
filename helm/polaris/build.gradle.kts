@@ -236,7 +236,6 @@ fun Exec.runShellScript(script: String, outputFile: File) {
   commandLine = listOf("bash", "-c", script.trimIndent())
   this.isIgnoreExitValue = true
   doLast {
-    // Close the output stream before reading the file to avoid race conditions
     outStream?.close()
     val exitValue = executionResult.get().exitValue
     if (exitValue != 0) {
