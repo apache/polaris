@@ -41,28 +41,16 @@ val helmTemplateValidation by
 
     val outputFile = helmTestReportsDir.get().file("helm-template/validation.log").asFile
 
-    doFirst {
-      outputFile.parentFile.mkdirs()
-      val outStream = outputFile.outputStream()
-      standardOutput = outStream
-      errorOutput = outStream
-    }
-
-    commandLine =
-      listOf(
-        "sh",
-        "-c",
-        """
+    runShellScript(
+      """
           set -e
           for f in values.yaml ci/*.yaml; do
             echo "Validating helm template with ${'$'}f"
             helm template --debug --namespace polaris-ns --values ${'$'}f .
           done
-        """
-          .trimIndent(),
-      )
-
-    checkExitCode(outputFile)
+        """,
+      outputFile,
+    )
 
     inputs.files(
       fileTree(projectDir) { include("Chart.yaml", "values.yaml", "ci/*.yaml", "templates/**/*") }
@@ -78,29 +66,17 @@ val helmUnitTest by
 
     val outputFile = helmTestReportsDir.get().file("helm-unit/test.log").asFile
 
-    doFirst {
-      outputFile.parentFile.mkdirs()
-      val outStream = outputFile.outputStream()
-      standardOutput = outStream
-      errorOutput = outStream
-    }
-
-    commandLine =
-      listOf(
-        "sh",
-        "-c",
-        """
+    runShellScript(
+      """
           set -e
           echo "====== Install helm-unittest plugin ======"
           helm plugin install https://github.com/helm-unittest/helm-unittest.git || true
 
           echo "====== Run helm unit tests ======"
           helm unittest .
-        """
-          .trimIndent(),
-      )
-
-    checkExitCode(outputFile)
+        """,
+      outputFile,
+    )
 
     inputs.files(
       fileTree(projectDir) { include("Chart.yaml", "values.yaml", "templates/**/*", "tests/**/*") }
@@ -116,25 +92,13 @@ val chartTestingLint by
 
     val outputFile = helmTestReportsDir.get().file("ct/lint.log").asFile
 
-    doFirst {
-      outputFile.parentFile.mkdirs()
-      val outStream = outputFile.outputStream()
-      standardOutput = outStream
-      errorOutput = outStream
-    }
-
-    commandLine =
-      listOf(
-        "sh",
-        "-c",
-        """
+    runShellScript(
+      """
           set -e
           ct lint --debug --charts .
-        """
-          .trimIndent(),
-      )
-
-    checkExitCode(outputFile)
+        """,
+      outputFile,
+    )
 
     inputs.files(
       fileTree(projectDir) { include("Chart.yaml", "values.yaml", "ci/*.yaml", "templates/**/*") }
@@ -157,19 +121,10 @@ val buildMinikubeImages by
     val digestFile = helmTestReportsDir.get().file("minikube-images/build.sha256").asFile
     val dockerFile = project(":polaris-server").projectDir.resolve("src/main/docker/Dockerfile.jvm")
 
-    doFirst {
-      outputFile.parentFile.mkdirs()
-      digestFile.parentFile.mkdirs()
-      val outStream = outputFile.outputStream()
-      standardOutput = outStream
-      errorOutput = outStream
-    }
+    digestFile.parentFile.mkdirs()
 
-    commandLine =
-      listOf(
-        "sh",
-        "-c",
-        """
+    runShellScript(
+      """
     set -e
     echo "====== Check if minikube is running ======"
     if ! minikube status >/dev/null 2>&1; then
@@ -188,11 +143,9 @@ val buildMinikubeImages by
     {
       docker inspect --format='{{.Id}}' apache/polaris:latest
     } > ${digestFile.relativeTo(workingDir)}
-  """
-          .trimIndent(),
-      )
-
-    checkExitCode(outputFile)
+  """,
+      outputFile,
+    )
 
     dependsOn(":polaris-server:quarkusBuild")
 
@@ -210,18 +163,8 @@ val chartTestingInstall by
 
     val outputFile = helmTestReportsDir.get().file("ct/install.log").asFile
 
-    doFirst {
-      outputFile.parentFile.mkdirs()
-      val outStream = outputFile.outputStream()
-      standardOutput = outStream
-      errorOutput = outStream
-    }
-
-    commandLine =
-      listOf(
-        "sh",
-        "-c",
-        """
+    runShellScript(
+      """
           set -eo pipefail
           echo "====== Check if minikube is running ======"
           if ! minikube status >/dev/null 2>&1; then
@@ -233,15 +176,13 @@ val chartTestingInstall by
           kubectl create namespace polaris-ns --dry-run=client -o yaml | kubectl apply -f -
 
           echo "===== Install fixtures ======"
-          kubectl apply --namespace polaris-ns -f helm/polaris/ci/fixtures
+          kubectl apply --namespace polaris-ns -f ci/fixtures
 
           echo "===== Run chart-testing install ======"
           ct install --namespace polaris-ns --debug --charts .
-        """
-          .trimIndent(),
-      )
-
-    checkExitCode(outputFile)
+        """,
+      outputFile,
+    )
 
     dependsOn(buildMinikubeImages)
 
@@ -259,25 +200,13 @@ val helmDocs by
 
     val outputFile = helmTestReportsDir.get().file("helm-docs/build.log").asFile
 
-    doFirst {
-      outputFile.parentFile.mkdirs()
-      val outStream = outputFile.outputStream()
-      standardOutput = outStream
-      errorOutput = outStream
-    }
-
-    commandLine =
-      listOf(
-        "sh",
-        "-c",
-        """
+    runShellScript(
+      """
           set -e
           helm-docs --chart-search-root=.
-        """
-          .trimIndent(),
-      )
-
-    checkExitCode(outputFile)
+        """,
+      outputFile,
+    )
 
     inputs.files(fileTree(projectDir) { include("Chart.yaml", "values.yaml", "README.md.gotmpl") })
 
@@ -303,14 +232,21 @@ tasks.named("check") { dependsOn(test, intTest) }
 
 tasks.named("assemble") { dependsOn(helmDocs) }
 
-fun Exec.checkExitCode(outputFile: File) {
-  isIgnoreExitValue = true
+fun Exec.runShellScript(script: String, outputFile: File) {
+  doFirst {
+    outputFile.parentFile.mkdirs()
+    val outStream = outputFile.outputStream()
+    standardOutput = outStream
+    errorOutput = outStream
+  }
+  commandLine = listOf("sh", "-c", script.trimIndent())
+  this.isIgnoreExitValue = true
   doLast {
     val exitValue = executionResult.get().exitValue
     if (exitValue != 0) {
-      logger.error("Shell script failed with exit code $exitValue.")
-      logger.error("To identify the cause of the failure, inspect the logs:")
-      logger.error(outputFile.absolutePath)
+      this.logger.error("Shell script failed with exit code $exitValue.")
+      this.logger.error("To identify the cause of the failure, inspect the logs:")
+      this.logger.error(outputFile.absolutePath)
       throw GradleException("Shell script failed with exit code $exitValue")
     }
   }
