@@ -27,6 +27,7 @@ import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.iceberg.catalog.Namespace;
@@ -101,10 +102,10 @@ public class FileIOFactoryTest {
                 .build());
 
     // Spy FileIOFactory and check if the credentials are passed to the FileIO
-    TestServices.FileIOFactorySupplier fileIOFactorySupplier =
-        (accessConfigProvider) ->
+    Supplier<FileIOFactory> fileIOFactorySupplier =
+        () ->
             Mockito.spy(
-                new DefaultFileIOFactory(accessConfigProvider) {
+                new DefaultFileIOFactory() {
                   @Override
                   FileIO loadFileIOInternal(
                       @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
@@ -149,14 +150,7 @@ public class FileIOFactoryTest {
 
     // 1. BasePolarisCatalog:doCommit: for writing the table during the creation
     Mockito.verify(testServices.fileIOFactory(), Mockito.times(1))
-        .loadFileIO(
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any());
+        .loadFileIO(Mockito.any(), Mockito.any(), Mockito.any());
   }
 
   @ParameterizedTest
@@ -175,7 +169,8 @@ public class FileIOFactoryTest {
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     FileIO fileIO =
-        new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, TABLE, callContext);
+        new TaskFileIOSupplier(testServices.fileIOFactory(), testServices.accessConfigProvider())
+            .apply(taskEntity, TABLE, callContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
         .isInstanceOf(InMemoryFileIO.class);
@@ -184,14 +179,7 @@ public class FileIOFactoryTest {
     // 2. BasePolarisCatalog:doRefresh: for reading the table during the drop
     // 3. TaskFileIOSupplier:apply: for clean up metadata files and merge files
     Mockito.verify(testServices.fileIOFactory(), Mockito.times(3))
-        .loadFileIO(
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any(),
-            Mockito.any());
+        .loadFileIO(Mockito.any(), Mockito.any(), Mockito.any());
   }
 
   IcebergCatalog createCatalog(TestServices services, String scheme) {
@@ -218,7 +206,7 @@ public class FileIOFactoryTest {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            services.resolutionManifestFactory(), services.securityContext(), CATALOG_NAME);
+            services.resolutionManifestFactory(), services.principal(), CATALOG_NAME);
     IcebergCatalog polarisCatalog =
         new IcebergCatalog(
             services.polarisDiagnostics(),
@@ -226,8 +214,9 @@ public class FileIOFactoryTest {
             services.metaStoreManager(),
             callContext,
             passthroughView,
-            services.securityContext(),
+            services.principal(),
             services.taskExecutor(),
+            services.accessConfigProvider(),
             services.fileIOFactory(),
             services.polarisEventListener());
     polarisCatalog.initialize(

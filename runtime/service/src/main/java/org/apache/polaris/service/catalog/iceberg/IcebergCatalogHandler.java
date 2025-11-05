@@ -28,7 +28,6 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -80,6 +79,7 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -156,7 +156,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       PolarisCredentialManager credentialManager,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer,
@@ -169,7 +169,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         diagnostics,
         callContext,
         resolutionManifestFactory,
-        securityContext,
+        principal,
         catalogName,
         authorizer,
         credentialManager,
@@ -269,7 +269,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.baseCatalog =
           catalogFactory.createCallContextCatalog(
-              callContext, polarisPrincipal, securityContext, resolutionManifest);
+              callContext, polarisPrincipal, resolutionManifest);
     }
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;

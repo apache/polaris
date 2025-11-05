@@ -38,7 +38,12 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- The legacy management endpoints at `/metrics` and `/healthcheck` have been removed. Please use the
+  standard management endpoints at `/q/metrics` and `/q/health` instead.
+
 ### Breaking changes
+
+- The EclipseLink Persistence implementation has been completely removed.
 
 ### New Features
 

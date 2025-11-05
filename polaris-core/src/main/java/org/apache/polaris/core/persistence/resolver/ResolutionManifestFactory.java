@@ -21,11 +21,11 @@ package org.apache.polaris.core.persistence.resolver;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.ws.rs.core.SecurityContext;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 
 public interface ResolutionManifestFactory {
 
   @Nonnull
   PolarisResolutionManifest createResolutionManifest(
-      @Nonnull SecurityContext securityContext, @Nullable String referenceCatalogName);
+      @Nonnull PolarisPrincipal principal, @Nullable String referenceCatalogName);
 }

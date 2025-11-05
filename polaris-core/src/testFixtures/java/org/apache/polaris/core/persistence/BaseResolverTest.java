@@ -20,8 +20,6 @@ package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.ws.rs.core.SecurityContext;
-import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -102,7 +100,7 @@ public abstract class BaseResolverTest {
   // polaris call context
   protected abstract PolarisCallContext callCtx();
 
-  // utility to bootstrap the mata store
+  // utility to bootstrap the meta store
   protected abstract PolarisTestMetaStoreManager tm();
 
   // the meta store manager
@@ -442,29 +440,7 @@ public abstract class BaseResolverTest {
         diagServices,
         callCtx(),
         metaStoreManager(),
-        new SecurityContext() {
-          @Override
-          public Principal getUserPrincipal() {
-            return authenticatedPrincipal;
-          }
-
-          @Override
-          public boolean isUserInRole(String role) {
-            return roleEntities
-                .map(l -> l.stream().map(PrincipalRoleEntity::getName).anyMatch(role::equals))
-                .orElse(allRoles);
-          }
-
-          @Override
-          public boolean isSecure() {
-            return false;
-          }
-
-          @Override
-          public String getAuthenticationScheme() {
-            return "";
-          }
-        },
+        authenticatedPrincipal,
         this.shouldUseCache ? this.cache : null,
         referenceCatalogName);
   }

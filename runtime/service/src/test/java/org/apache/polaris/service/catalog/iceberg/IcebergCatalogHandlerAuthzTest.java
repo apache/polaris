@@ -23,7 +23,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -127,7 +126,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
-        securityContext(authenticatedPrincipal),
+        authenticatedPrincipal,
         factory,
         catalogName,
         polarisAuthorizer,
@@ -171,7 +170,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
    * @param cleanupAction If non-null, additional action to run to "undo" a previous success action
    *     in case the action has side effects. Called before revoking the sufficient privilege;
    *     either the cleanup privileges must be latent, or the cleanup action could be run with
-   *     PRINCIPAL_ROLE2 while runnint {@code action} with PRINCIPAL_ROLE1.
+   *     PRINCIPAL_ROLE2 while running {@code action} with PRINCIPAL_ROLE1.
    */
   protected void doTestSufficientPrivileges(
       List<PolarisPrivilege> sufficientPrivileges, Runnable action, Runnable cleanupAction) {
@@ -267,7 +266,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             credentialManager,
-            securityContext(authenticatedPrincipal),
+            authenticatedPrincipal,
             callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer,
@@ -305,7 +304,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolutionManifestFactory,
             metaStoreManager,
             credentialManager,
-            securityContext(authenticatedPrincipal1),
+            authenticatedPrincipal1,
             callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer,
@@ -946,7 +945,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivileges(
         List.of(
             // TODO: Once we give different creds for read/write privilege, move this
-            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expet
+            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
             // to receive a read-only credential.
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
@@ -1007,7 +1006,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     doTestSufficientPrivileges(
         List.of(
             // TODO: Once we give different creds for read/write privilege, move this
-            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expet
+            // TABLE_READ_DATA into a special-case test; with only TABLE_READ_DATA we'd expect
             // to receive a read-only credential.
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
@@ -1125,9 +1124,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     CallContextCatalogFactory mockFactory = Mockito.mock(CallContextCatalogFactory.class);
 
     // Mock the catalog factory to return our regular catalog but with mocked config
-    Mockito.when(
-            mockFactory.createCallContextCatalog(
-                Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
+    Mockito.when(mockFactory.createCallContextCatalog(Mockito.any(), Mockito.any(), Mockito.any()))
         .thenReturn(baseCatalog);
 
     return newWrapperWithFineLevelAuthDisabled(Set.of(), CATALOG_NAME, mockFactory, false);
@@ -1185,7 +1182,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
-        securityContext(authenticatedPrincipal),
+        authenticatedPrincipal,
         factory,
         catalogName,
         polarisAuthorizer,
@@ -1899,17 +1896,16 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             resolverFactory,
             managerFactory,
             Mockito.mock(),
-            new DefaultFileIOFactory(accessConfigProvider),
+            accessConfigProvider,
+            new DefaultFileIOFactory(),
             polarisEventListener) {
           @Override
           public Catalog createCallContextCatalog(
               CallContext context,
               PolarisPrincipal polarisPrincipal,
-              SecurityContext securityContext,
               PolarisResolutionManifest resolvedManifest) {
             Catalog catalog =
-                super.createCallContextCatalog(
-                    context, polarisPrincipal, securityContext, resolvedManifest);
+                super.createCallContextCatalog(context, polarisPrincipal, resolvedManifest);
             String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));

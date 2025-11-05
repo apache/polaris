@@ -23,12 +23,8 @@ import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
-import java.util.Set;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.AccessConfig;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @ApplicationScoped
@@ -38,27 +34,16 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
   private final FileIOFactory defaultFileIOFactory;
 
   @Inject
-  public WasbTranslatingFileIOFactory(AccessConfigProvider accessConfigProvider) {
-    defaultFileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+  public WasbTranslatingFileIOFactory() {
+    defaultFileIOFactory = new DefaultFileIOFactory();
   }
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull CallContext callContext,
+      @Nonnull AccessConfig accessConfig,
       @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties,
-      @Nonnull TableIdentifier identifier,
-      @Nonnull Set<String> tableLocations,
-      @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
+      @Nonnull Map<String, String> properties) {
     return new WasbTranslatingFileIO(
-        defaultFileIOFactory.loadFileIO(
-            callContext,
-            ioImplClassName,
-            properties,
-            identifier,
-            tableLocations,
-            storageActions,
-            resolvedEntityPath));
+        defaultFileIOFactory.loadFileIO(accessConfig, ioImplClassName, properties));
   }
 }

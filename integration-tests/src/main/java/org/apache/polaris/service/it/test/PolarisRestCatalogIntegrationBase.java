@@ -1054,7 +1054,7 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     Transaction t2Transaction = catalog().loadTable(identifier2).newTransaction();
     t2Transaction.updateSchema().renameColumn("data", "new-column").commit();
 
-    // delete the colum that is being renamed in the above TX to cause a conflict
+    // delete the column that is being renamed in the above TX to cause a conflict
     table2.updateSchema().deleteColumn("data").commit();
     Schema updatedSchemaTwo = table2.schema();
 

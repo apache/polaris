@@ -43,8 +43,6 @@ public class AdminToolProducers {
     return metaStoreManagerFactories.select(Identifier.Literal.of(persistenceType)).get();
   }
 
-  // CDI dependencies of EclipseLink's MetaStoreManagerFactory:
-
   @Produces
   @ApplicationScoped
   public Clock clock() {

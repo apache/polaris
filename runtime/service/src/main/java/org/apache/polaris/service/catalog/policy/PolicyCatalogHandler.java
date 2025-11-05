@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.policy;
 import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +32,7 @@ import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
@@ -68,7 +68,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       String catalogName,
       PolarisAuthorizer authorizer,
       PolarisCredentialManager polarisCredentialManager,
@@ -77,7 +77,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
         diagnostics,
         callContext,
         resolutionManifestFactory,
-        securityContext,
+        principal,
         catalogName,
         authorizer,
         polarisCredentialManager,

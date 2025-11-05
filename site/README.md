@@ -17,13 +17,11 @@
   under the License.
 -->
 
-Links:
-* Hugo: https://gohugo.io/
-* Docsy theme: https://www.docsy.dev/docs/ and https://github.com/google/docsy/
-* Asciidoc help: https://docs.asciidoctor.org/asciidoc/latest/
-* Fontawesome logos/icons: https://fontawesome.com/v6/search?o=r&m=free
+# Polaris Website
 
-# Quickstart
+This folder contains the source for the Apache Polaris website, built using [Hugo](https://gohugo.io/) and (the Docsy theme)[https://www.docsy.dev/docs/].
+
+## Quickstart
 
 Just run the following command to let Hugo serve files from the Polaris `site/`.
 ```bash
@@ -35,7 +33,7 @@ Then point your browser to http://localhost:1313/
 Then edit files from your IDE - you will see the changes in your browser. When changing the site structure,
 it is often necessary to restart Hugo - just run `site/bin/run-hugo-in-docker.sh` again. 
 
-## Dealing with `--userns and --pod cannot be used together` errors
+### Dealing with `--userns and --pod cannot be used together` errors
 
 The scripts in the `bin/` directory are built to work with both Docker and podman. There are nuances in how
 both behave, especially wrt docker/podman-compose. Some local environment specifics require the use of
@@ -49,10 +47,9 @@ DOCKER=docker
 COMPOSE=docker-compose
 ```
 
+## Building the static site
 
-# Building the static site
-
-## Building a static site - served at http://localhost:8080/
+### Building a static site - served at http://localhost:8080/
 
 This builds the static Apache Polaris site into `site/build/localhost-site` to be served using a http daemon.
 The base URL will be `https://localhost:8080/`, which is the URL to be used when running the command below.
@@ -63,7 +60,7 @@ Run
 site/bin/create-static-site.sh --local
 ```
 
-## Building the Apache Polaris site
+### Building the Apache Polaris site
 
 This builds the static Apache Polaris site into `site/build/apache-site`. The base URL will be
 `https://polaris.apache.org/` (as configured in `hugo.yaml`).
@@ -74,7 +71,7 @@ Run
 site/bin/create-static-site.sh
 ```
 
-# Versioned docs
+## Versioned docs
 
 (See [`/releases/` page](content/releases/_index.adoc) as well.)
 
@@ -93,14 +90,14 @@ ability to use relative links that still work when the docs are in an `/releases
 Within a release's versioned docs folder, the release version number can be included in the markdown using the
 custom Hugo shortcode `{{< releaseVersion >}}`.
 
-## Git worktree
+### Git worktree
 
 The `content/releases/` folder is maintained in the separate `versioned-docs` branch. The whole `content/releases/`
 folder is `.gitignore`d in the main source tree, otherwise Git complains about `content/releases` not being versioned
 and if added to the main source tree (possible, Git allows that), the `git worktree add` below would complain about
 the existing directory.
 
-### Initial setup
+#### Initial setup
 
 ```bash
 cd site/
@@ -113,7 +110,7 @@ git add .
 git commit -m "Initial set of releases"
 ```
 
-### Locally
+#### Locally
 
 Use the following script to checkout the versioned release docs
 ```bash
@@ -124,7 +121,7 @@ bin/checkout-releases.sh
 
 `bin/remove-releases.sh` removes the `content/releases` folder, if it does not contain uncommitted changes.
 
-## New release
+### New release
 
 When a release is created, a bunch of things would happen via an automated GitHub workflow calling a shell script
 in the main source tree:
@@ -145,7 +142,7 @@ in the main source tree:
 8. Changes pushed to GitHub - both the `main` and the `versioned-docs` folder
 9. The last step triggers the job to publish the web site
 
-# Web site publishing (production)
+## Website Publishing (Production)
 
 To build a site locally (not required for `hugo serve -D`, but required for `hugo`) - with your local user.
 
@@ -167,7 +164,7 @@ This would be a GitHub workflow.
    ``` 
 7. Publish the contents of the `public` folder to the website.
 
-## Test statically built web site locally
+### Test statically built website locally
 
 The statically built web site in `public` _does not_ work when opened from the file system.
 
@@ -179,7 +176,7 @@ Instead, do something like this:
    ```
 2. Then use your web browser to open http://localhost:8080/
 
-# Noteworthy
+## Noteworthy
 
 * The `redoc` shortcode works fine with `hugo serve` and on the static site configured via the `baseURL` in `hugo.yaml`.
   To test the static build result locally, it is mandatory to pass the `--baseURL` option to `hugo`.
@@ -188,11 +185,11 @@ Instead, do something like this:
 * Some changes, especially those that change the site structure, requires a restart of `hugo serve -D`. This is also
   true when the layout for the `robots.txt` is changed.
 
-# Install Hugo + asciidoctor locally
+## Install Hugo + asciidoctor locally
 
 https://gohugo.io/installation/
 
-## Ubuntu
+### Ubuntu
 
 To develop the site locally (aka `hugo serve -D`), install the following dependencies using the `root` user:
 ```bash
@@ -207,7 +204,7 @@ npm i -D postcss postcss-cli autoprefixer
 npm install http-server -g
 ```
 
-## macOS
+### macOS
 
 To develop the site locally (aka `hugo serve -D`), install the following dependencies:
 ```bash
@@ -223,3 +220,9 @@ brew install npm
 npm -i -D postcss postcss-cli autoprefixer
 npm install http-server -g
 ```
+
+## Links
+* Hugo: https://gohugo.io/
+* Docsy theme: https://www.docsy.dev/docs/ and https://github.com/google/docsy/
+* Asciidoc help: https://docs.asciidoctor.org/asciidoc/latest/
+* Fontawesome logos/icons: https://fontawesome.com/v6/search?o=r&m=free

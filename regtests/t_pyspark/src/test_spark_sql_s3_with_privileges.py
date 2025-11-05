@@ -438,7 +438,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
                                                   snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Using snowman, create namespaces and a table. Insert into the table in multiple operations and update existing records
-  to generate multiple metadata.json files and manfiests. Drop the table with purge=true. Poll S3 and validate all of
+  to generate multiple metadata.json files and manifests. Drop the table with purge=true. Poll S3 and validate all of
   the files are deleted.
 
   Using the reader principal's credentials verify read access. Validate the reader cannot insert into the table.
@@ -495,15 +495,28 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
                       aws_secret_access_key=response.config['s3.secret-access-key'],
                       aws_session_token=response.config['s3.session-token'])
 
+    # Extract the table location from the metadata_location in the response
+    # metadata_location format: s3://bucket/path/to/table/metadata/v1.metadata.json
+    # We need to extract the base table path (everything before /metadata/)
+    metadata_location = response.metadata_location
+    assert metadata_location.startswith('s3://')
+    # Remove s3:// prefix and bucket name to get the path
+    path_without_scheme = metadata_location[5:]  # Remove 's3://'
+    path_parts = path_without_scheme.split('/', 1)  # Split bucket and path
+    bucket_from_metadata = path_parts[0]
+    full_path = path_parts[1] if len(path_parts) > 1 else ''
+    # Extract table base path (everything before /metadata/)
+    table_base_path = full_path.rsplit('/metadata/', 1)[0] if '/metadata/' in full_path else ''
+
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/data/')
+                              Prefix=f'{table_base_path}/data/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) >= 4  # it varies - at least one file for each insert and one for the update
     print(f"Found {len(objects['Contents'])} data files in S3 before drop")
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/metadata/')
+                              Prefix=f'{table_base_path}/metadata/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
@@ -523,14 +536,14 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
     while 'Contents' in objects and len(objects['Contents']) > 0 and attempts < 60:
       time.sleep(1)  # seconds, not milliseconds ;)
       objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                                Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/data/')
+                                Prefix=f'{table_base_path}/data/')
       attempts = attempts + 1
 
     if 'Contents' in objects and len(objects['Contents']) > 0:
       pytest.fail(f"Expected all data to be deleted, but found metadata files {objects['Contents']}")
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/data/')
+                              Prefix=f'{table_base_path}/data/')
     if 'Contents' in objects and len(objects['Contents']) > 0:
       pytest.fail(f"Expected all data to be deleted, but found data files {objects['Contents']}")
 

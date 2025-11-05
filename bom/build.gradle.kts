@@ -48,13 +48,16 @@ dependencies {
     api(project(":polaris-nodes-impl"))
     api(project(":polaris-nodes-spi"))
 
+    api(project(":polaris-persistence-nosql-api"))
+
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
     api(project(":polaris-core"))
 
-    api(project(":polaris-eclipselink"))
     api(project(":polaris-relational-jdbc"))
+
+    api(project(":polaris-extensions-auth-opa"))
 
     api(project(":polaris-admin"))
     api(project(":polaris-runtime-common"))

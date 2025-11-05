@@ -28,7 +28,6 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -90,6 +89,7 @@ import org.apache.iceberg.view.ViewProperties;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -108,7 +108,6 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -120,12 +119,14 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.common.LocationUtils;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
@@ -165,7 +166,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
-  private final SecurityContext securityContext;
+  private final PolarisPrincipal principal;
   private final PolarisEventListener polarisEventListener;
   private final AtomicBoolean loggedPrefixOverlapWarning = new AtomicBoolean(false);
 
@@ -178,6 +179,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private long catalogId = -1;
   private String defaultBaseLocation;
   private Map<String, String> catalogProperties;
+  private final AccessConfigProvider accessConfigProvider;
   private FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
 
@@ -193,8 +195,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       TaskExecutor taskExecutor,
+      AccessConfigProvider accessConfigProvider,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
     this.diagnostics = diagnostics;
@@ -203,10 +206,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.realmConfig = callContext.getRealmConfig();
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
-    this.securityContext = securityContext;
+    this.principal = principal;
     this.taskExecutor = taskExecutor;
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
+    this.accessConfigProvider = accessConfigProvider;
     this.fileIOFactory = fileIOFactory;
     this.metaStoreManager = metaStoreManager;
     this.polarisEventListener = polarisEventListener;
@@ -877,7 +881,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (!optimizedSiblingCheck) {
         throw new IllegalStateException(
             String.format(
-                "%s and %s are both disabled, which means that table location overlap checkes are being"
+                "%s and %s are both disabled, which means that table location overlap checks are being"
                     + " performed, but only within each namespace. However, %s is enabled, which indicates"
                     + " that tables may be created outside of their parent namespace. This is not a safe"
                     + " combination of configurations.",
@@ -1159,7 +1163,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             diagnostics,
             callContext.getRealmContext(),
             resolverFactory,
-            securityContext,
+            principal,
             parentPath.getFirst().getName());
     siblingTables.forEach(
         tbl ->
@@ -2076,16 +2080,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedStorageEntity,
       Map<String, String> tableProperties,
       Set<PolarisStorageActions> storageActions) {
-    // Reload fileIO based on table specific context
-    FileIO fileIO =
-        fileIOFactory.loadFileIO(
+    AccessConfig accessConfig =
+        accessConfigProvider.getAccessConfig(
             callContext,
-            ioImplClassName,
-            tableProperties,
             identifier,
             readLocations,
             storageActions,
+            Optional.empty(),
             resolvedStorageEntity);
+    // Reload fileIO based on table specific context
+    FileIO fileIO = fileIOFactory.loadFileIO(accessConfig, ioImplClassName, tableProperties);
     // ensure the new fileIO is closed when the catalog is closed
     closeableGroup.addCloseable(fileIO);
     return fileIO;
@@ -2593,26 +2597,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     return listResult
         .getPage()
         .map(record -> TableIdentifier.of(parentNamespace, record.getName()));
-  }
-
-  /**
-   * Load FileIO with provided impl and properties
-   *
-   * @param ioImpl full class name of a custom FileIO implementation
-   * @param properties used to initialize the FileIO implementation
-   * @return FileIO object
-   */
-  protected FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
-    IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(catalogEntity);
-    TableIdentifier identifier = icebergTableLikeEntity.getTableIdentifier();
-    Set<String> locations = Set.of(catalogEntity.getBaseLocation());
-    ResolvedPolarisEntity resolvedCatalogEntity =
-        new ResolvedPolarisEntity(catalogEntity, List.of(), List.of());
-    PolarisResolvedPathWrapper resolvedPath =
-        new PolarisResolvedPathWrapper(List.of(resolvedCatalogEntity));
-    Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
-    return fileIOFactory.loadFileIO(
-        callContext, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
   }
 
   private int getMaxMetadataRefreshRetries() {

@@ -24,7 +24,11 @@ import org.gradle.kotlin.dsl.extra
  * Container to memoize Git information retrieved via `git` command executions across all Gradle
  * projects.
  */
-class GitInfo(val gitHead: String, val gitDescribe: String) {
+class GitInfo(val gitHead: String, val gitDescribe: String, private val rawLinkRef: String) {
+
+  fun rawGithubLink(file: String): String =
+    "https://raw.githubusercontent.com/apache/polaris/$rawLinkRef/$file"
+
   companion object {
     private fun execGit(rootProject: Project, vararg args: Any): String {
       val out =
@@ -56,7 +60,8 @@ class GitInfo(val gitHead: String, val gitDescribe: String) {
               execGit(rootProject, "describe", "--always", "--dirty")
             }
           else ""
-        val gitInfo = GitInfo(gitHead, gitDescribe)
+        val rawLinkRef = if (isRelease) gitDescribe else "HEAD"
+        val gitInfo = GitInfo(gitHead, gitDescribe, rawLinkRef)
         rootProject.extra["gitInfo"] = gitInfo
         return gitInfo
       }
