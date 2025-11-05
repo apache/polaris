@@ -83,7 +83,7 @@ public class PolarisAdminServiceTest {
   void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.getRealmConfig()).thenReturn(realmConfig);
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
 
     // Default feature configuration - enabled by default
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
