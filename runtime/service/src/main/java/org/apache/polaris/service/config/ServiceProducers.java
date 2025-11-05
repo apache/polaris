@@ -83,6 +83,8 @@ import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
+import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
+import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
 import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
@@ -440,5 +442,12 @@ public class ServiceProducers {
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();
+  }
+
+  @Produces
+  @ApplicationScoped
+  public PolarisMetricsReporter metricsReporter(
+      MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
+    return reporters.select(Identifier.Literal.of(config.type())).get();
   }
 }
