@@ -32,7 +32,6 @@ dependencies {
 
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
-  runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("org.postgresql:postgresql")
 
@@ -54,7 +53,6 @@ dependencies {
   testFixturesApi("org.testcontainers:testcontainers")
   testFixturesApi("org.testcontainers:postgresql")
 
-  testRuntimeOnly(project(":polaris-eclipselink"))
   testRuntimeOnly("org.postgresql:postgresql")
 }
 

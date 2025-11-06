@@ -31,7 +31,7 @@ export CLIENT_ID=YOUR_CLIENT_ID
 export CLIENT_SECRET=YOUR_CLIENT_SECRET
 ```
 
-Refer to the [Creating a Catalog]({{% ref "creating-a-catalog" %}}) page for instructions on defining a
+Refer to the [Creating a Catalog]({{% ref "../creating-a-catalog" %}}) page for instructions on defining a
 catalog for your specific storage type. The following examples assume the catalog's name is `quickstart_catalog`.
 
 In Polaris, the [catalog]({{% relref "../../entities#catalog" %}}) is the top-level entity that objects like [tables]({{% relref "../../entities#table" %}}) and [views]({{% relref "../../entities#view" %}}) are organized under.
@@ -163,9 +163,9 @@ Finally, note that we include the `iceberg-aws-bundle` package here. If your tab
 
 Refresh the Docker container with the user's credentials:
 ```shell
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml stop spark-sql
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml rm -f spark-sql
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml up -d --no-deps spark-sql
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml stop spark-sql
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml rm -f spark-sql
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml up -d --no-deps spark-sql
 ```
 
 Attach to the running spark-sql container:
@@ -226,9 +226,9 @@ org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quicksta
 Refresh the Docker container with the user's credentials:
 
 ```shell
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml stop trino
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml rm -f trino
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml up -d --no-deps trino
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml stop trino
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml rm -f trino
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml up -d --no-deps trino
 ```
 
 Attach to the running Trino container:

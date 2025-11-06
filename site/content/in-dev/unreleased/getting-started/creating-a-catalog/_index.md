@@ -30,6 +30,7 @@ The following Object Storage providers can be configured as storage backends for
 - [Azure Blob Storage]({{< ref "catalog-azure.md" >}})
 - Local file system (By default for testing only)
 
+Catalogs may also be created from [migrating existing Iceberg catalogs]({{< ref "catalog-migration.md" >}}).
 
 ## Create a catalog using polaris CLI
 

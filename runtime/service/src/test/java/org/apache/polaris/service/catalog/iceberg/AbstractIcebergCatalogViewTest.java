@@ -18,12 +18,9 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.mockito.Mockito.when;
-
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -171,22 +168,17 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
 
-    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-    when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
-    when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
-
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     PolarisAdminService adminService =
         new PolarisAdminService(
-            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             serviceIdentityProvider,
-            securityContext,
+            authenticatedRoot,
             authorizer,
             reservedProperties);
     adminService.createCatalog(
@@ -209,8 +201,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            resolutionManifestFactory, securityContext, CATALOG_NAME);
-    FileIOFactory fileIOFactory = new DefaultFileIOFactory(accessConfigProvider);
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
+    FileIOFactory fileIOFactory = new DefaultFileIOFactory();
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     testPolarisEventListener.clear();
@@ -221,8 +213,9 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             metaStoreManager,
             polarisContext,
             passthroughView,
-            securityContext,
+            authenticatedRoot,
             Mockito.mock(),
+            accessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     Map<String, String> properties =

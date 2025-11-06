@@ -30,7 +30,6 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
@@ -38,7 +37,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Catalog;
@@ -69,7 +67,6 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
@@ -77,7 +74,6 @@ import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -264,13 +260,12 @@ public abstract class PolarisAuthzTestBase {
 
     this.adminService =
         new PolarisAdminService(
-            diagServices,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             serviceIdentityProvider,
-            securityContext(authenticatedRoot),
+            authenticatedRoot,
             polarisAuthorizer,
             reservedProperties);
 
@@ -461,37 +456,6 @@ public abstract class PolarisAuthzTestBase {
     Assertions.assertThat(result.isSuccess()).isTrue();
   }
 
-  protected @Nonnull SecurityContext securityContext(PolarisPrincipal p) {
-    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-    Mockito.when(securityContext.getUserPrincipal()).thenReturn(p);
-    Set<String> principalRoleNames = loadPrincipalRolesNames(p);
-    Mockito.when(securityContext.isUserInRole(Mockito.anyString()))
-        .thenAnswer(invocation -> principalRoleNames.contains(invocation.getArgument(0)));
-    return securityContext;
-  }
-
-  protected @Nonnull Set<String> loadPrincipalRolesNames(PolarisPrincipal p) {
-    PolarisBaseEntity principal =
-        metaStoreManager
-            .findPrincipalByName(callContext.getPolarisCallContext(), p.getName())
-            .orElseThrow();
-    return metaStoreManager
-        .loadGrantsToGrantee(callContext.getPolarisCallContext(), principal)
-        .getGrantRecords()
-        .stream()
-        .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
-        .map(
-            gr ->
-                metaStoreManager.loadEntity(
-                    callContext.getPolarisCallContext(),
-                    0L,
-                    gr.getSecurableId(),
-                    PolarisEntityType.PRINCIPAL_ROLE))
-        .map(EntityResult::getEntity)
-        .map(PolarisBaseEntity::getName)
-        .collect(Collectors.toSet());
-  }
-
   protected @Nonnull PrincipalEntity rotateAndRefreshPrincipal(
       PolarisMetaStoreManager metaStoreManager,
       String principalName,
@@ -522,12 +486,9 @@ public abstract class PolarisAuthzTestBase {
         throw new RuntimeException(e);
       }
     }
-    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-    Mockito.when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
-    Mockito.when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            resolutionManifestFactory, securityContext, CATALOG_NAME);
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     this.baseCatalog =
         new IcebergCatalog(
             diagServices,
@@ -535,8 +496,9 @@ public abstract class PolarisAuthzTestBase {
             metaStoreManager,
             callContext,
             passthroughView,
-            securityContext,
+            authenticatedRoot,
             Mockito.mock(),
+            accessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     this.baseCatalog.initialize(
@@ -562,10 +524,10 @@ public abstract class PolarisAuthzTestBase {
     @Inject
     public TestPolarisCallContextCatalogFactory(
         PolarisDiagnostics diagnostics,
-        StorageCredentialCache storageCredentialCache,
         ResolverFactory resolverFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
         TaskExecutor taskExecutor,
+        AccessConfigProvider accessConfigProvider,
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener) {
       super(
@@ -573,6 +535,7 @@ public abstract class PolarisAuthzTestBase {
           resolverFactory,
           metaStoreManagerFactory,
           taskExecutor,
+          accessConfigProvider,
           fileIOFactory,
           polarisEventListener);
     }
@@ -581,13 +544,10 @@ public abstract class PolarisAuthzTestBase {
     public Catalog createCallContextCatalog(
         CallContext context,
         PolarisPrincipal polarisPrincipal,
-        SecurityContext securityContext,
         final PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
-      Catalog catalog =
-          super.createCallContextCatalog(
-              context, polarisPrincipal, securityContext, resolvedManifest);
+      Catalog catalog = super.createCallContextCatalog(context, polarisPrincipal, resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(
@@ -608,7 +568,7 @@ public abstract class PolarisAuthzTestBase {
    * @param cleanupAction If non-null, additional action to run to "undo" a previous success action
    *     in case the action has side effects. Called before revoking the sufficient privilege;
    *     either the cleanup privileges must be latent, or the cleanup action could be run with
-   *     PRINCIPAL_ROLE2 while runnint {@code action} with PRINCIPAL_ROLE1.
+   *     PRINCIPAL_ROLE2 while running {@code action} with PRINCIPAL_ROLE1.
    * @param principalName the name expected to appear in forbidden errors
    * @param grantAction the grantPrivilege action to use for each test privilege that will apply the
    *     privilege to whatever context is used in the {@code action}

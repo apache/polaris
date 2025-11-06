@@ -26,7 +26,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,7 +46,6 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -134,7 +132,7 @@ import org.slf4j.LoggerFactory;
  * Namespaces, Tables and Views, abstracted away from Iceberg REST objects, this class represents
  * the logical model for managing realm-level Catalogs, Principals, Roles, and Grants.
  *
- * <p>Different API implementors could expose different REST, gRPC, etc., interfaces that delegate
+ * <p>Different API implementers could expose different REST, gRPC, etc., interfaces that delegate
  * to this logical model without being tightly coupled to a single frontend protocol, and can
  * provide different implementations of PolarisEntityManager to abstract away the implementation of
  * the persistence layer.
@@ -146,7 +144,6 @@ public class PolarisAdminService {
   private final CallContext callContext;
   private final RealmConfig realmConfig;
   private final ResolutionManifestFactory resolutionManifestFactory;
-  private final SecurityContext securityContext;
   private final PolarisPrincipal polarisPrincipal;
   private final PolarisAuthorizer authorizer;
   private final PolarisMetaStoreManager metaStoreManager;
@@ -156,28 +153,19 @@ public class PolarisAdminService {
 
   @Inject
   public PolarisAdminService(
-      @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull CallContext callContext,
       @Nonnull ResolutionManifestFactory resolutionManifestFactory,
       @Nonnull PolarisMetaStoreManager metaStoreManager,
       @Nonnull UserSecretsManager userSecretsManager,
       @Nonnull ServiceIdentityProvider serviceIdentityProvider,
-      @Nonnull SecurityContext securityContext,
+      @Nonnull PolarisPrincipal principal,
       @Nonnull PolarisAuthorizer authorizer,
       @Nonnull ReservedProperties reservedProperties) {
     this.callContext = callContext;
     this.realmConfig = callContext.getRealmConfig();
     this.resolutionManifestFactory = resolutionManifestFactory;
     this.metaStoreManager = metaStoreManager;
-    this.securityContext = securityContext;
-    diagnostics.checkNotNull(securityContext, "null_security_context");
-    diagnostics.checkNotNull(securityContext.getUserPrincipal(), "null_security_context");
-    diagnostics.check(
-        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
-        "unexpected_principal_type",
-        "class={}",
-        securityContext.getUserPrincipal().getClass().getName());
-    this.polarisPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
+    this.polarisPrincipal = principal;
     this.authorizer = authorizer;
     this.userSecretsManager = userSecretsManager;
     this.serviceIdentityProvider = serviceIdentityProvider;
@@ -197,7 +185,7 @@ public class PolarisAdminService {
   }
 
   private PolarisResolutionManifest newResolutionManifest(@Nullable String catalogName) {
-    return resolutionManifestFactory.createResolutionManifest(securityContext, catalogName);
+    return resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
   }
 
   private static PrincipalEntity getPrincipalByName(
@@ -530,10 +518,8 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(
             identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE, true);
     boolean rbacForFederatedCatalogsEnabled =
-        getCurrentPolarisContext()
-            .getRealmConfig()
-            .getConfig(
-                FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS, catalogEntity);
+        realmConfig.getConfig(
+            FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS, catalogEntity);
     if (!(resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled)
         && !subTypes.contains(tableLikeWrapper.getRawLeafEntity().getSubType())) {
       CatalogHandler.throwNotFoundExceptionForTableLikeEntity(identifier, subTypes);
@@ -1710,11 +1696,8 @@ public class PolarisAdminService {
     if (resolvedPathWrapper == null
         || !resolvedPathWrapper.isFullyResolvedNamespace(catalogName, namespace)) {
       boolean rbacForFederatedCatalogsEnabled =
-          getCurrentPolarisContext()
-              .getRealmConfig()
-              .getConfig(
-                  FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS,
-                  catalogEntity);
+          realmConfig.getConfig(
+              FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS, catalogEntity);
       if (resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled) {
         resolvedPathWrapper =
             createSyntheticNamespaceEntities(
@@ -2152,11 +2135,8 @@ public class PolarisAdminService {
     if (resolvedPathWrapper == null
         || !subTypes.contains(resolvedPathWrapper.getRawLeafEntity().getSubType())) {
       boolean rbacForFederatedCatalogsEnabled =
-          getCurrentPolarisContext()
-              .getRealmConfig()
-              .getConfig(
-                  FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS,
-                  catalogEntity);
+          realmConfig.getConfig(
+              FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS, catalogEntity);
       if (resolutionManifest.getIsPassthroughFacade() && rbacForFederatedCatalogsEnabled) {
         resolvedPathWrapper =
             createSyntheticTableLikeEntities(

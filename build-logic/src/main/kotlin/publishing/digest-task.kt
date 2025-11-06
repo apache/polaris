@@ -19,40 +19,52 @@
 
 package publishing
 
+import java.io.File
 import java.security.MessageDigest
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
+import org.gradle.api.Project
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.OutputFiles
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.TaskProvider
+import org.gradle.internal.extensions.stdlib.capitalized
 import org.gradle.work.DisableCachingByDefault
 
 @DisableCachingByDefault
 abstract class GenerateDigest @Inject constructor(objectFactory: ObjectFactory) : DefaultTask() {
 
-  @get:InputFile val file = objectFactory.fileProperty()
+  @get:InputFiles val files = objectFactory.fileCollection()
+
   @get:Input val algorithm = objectFactory.property(String::class.java).convention("SHA-512")
-  @get:OutputFile
-  val outputFile =
-    objectFactory.fileProperty().convention {
-      val input = file.get().asFile
-      val algo = algorithm.get()
-      input.parentFile.resolve("${input.name}.${algo.replace("-", "").lowercase()}")
-    }
+
+  @Suppress("unused", "UnstableApiUsage")
+  @get:OutputFiles
+  val outputFiles =
+    objectFactory.fileCollection().convention(files.map { file -> digestFileForInput(file) })
 
   @TaskAction
   fun generate() {
-    val input = file.get().asFile
-    val digestFile = outputFile.get().asFile
-    val md = MessageDigest.getInstance(algorithm.get())
+    files.files.forEach { input -> digest(input) }
+  }
+
+  private fun digestFileForInput(input: File): File {
+    val algo = algorithm.get()
+    return input.parentFile.resolve("${input.name}.${algo.replace("-", "").lowercase()}")
+  }
+
+  private fun digest(input: File) {
+    val algo = algorithm.get()
+    logger.info("Generating {} digest for '{}'", algo, input)
+    val digestFile = digestFileForInput(input)
+    val md = MessageDigest.getInstance(algo)
     input.inputStream().use {
-      val buffered = it.buffered(8192)
       val buf = ByteArray(8192)
       var rd: Int
       while (true) {
-        rd = buffered.read(buf)
+        rd = it.read(buf)
         if (rd == -1) break
         md.update(buf, 0, rd)
       }
@@ -63,4 +75,14 @@ abstract class GenerateDigest @Inject constructor(objectFactory: ObjectFactory) 
       )
     }
   }
+}
+
+fun Project.digestTaskOutputs(task: TaskProvider<*>): TaskProvider<GenerateDigest> {
+  val digestTask = tasks.register("digest${task.name.capitalized()}", GenerateDigest::class.java)
+  digestTask.configure {
+    dependsOn(task)
+    this.files.from(task.map { t -> t.outputs.files }.get())
+  }
+  task.configure { finalizedBy(digestTask) }
+  return digestTask
 }

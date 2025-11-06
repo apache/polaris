@@ -72,7 +72,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * or push down the return status enums from PolarisMetaStoreManager into this layer and document
    * accordingly.
    *
-   * <p>TODO: Change originalEntity to be just the set of members taht participate in conditions,
+   * <p>TODO: Change originalEntity to be just the set of members that participate in conditions,
    * similar to PolarisEntityCore, and make the callsites in BasePolarisCatalog actually plumb
    * through correctly, in particular for values the PolarisMetaStoreManagerImpl doesn't have access
    * to such as the original name and parentId in renames.
@@ -108,7 +108,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
    * <p>TODO: Push down the multi-entity commit from PolarisMetaStoreManagerImpl to use this instead
    * of running single writeEntity actions within a transaction.
    *
-   * <p>TODO: Change originalEntity to be just the set of members taht participate in conditions,
+   * <p>TODO: Change originalEntity to be just the set of members that participate in conditions,
    * similar to PolarisEntityCore, and make the callsites in BasePolarisCatalog actually plumb
    * through correctly, in particular for values the PolarisMetaStoreManagerImpl doesn't have access
    * to such as the original name and parentId in renames.
@@ -326,7 +326,7 @@ public interface BasePersistence extends PolicyMappingPersistence {
 
   /**
    * Lookup the current entityGrantRecordsVersion for the specified entity. That version is changed
-   * everytime a grant record is added or removed on a base securable or added to a grantee.
+   * every time a grant record is added or removed on a base securable or added to a grantee.
    *
    * @param callCtx call context
    * @param catalogId catalog id or NULL_ID

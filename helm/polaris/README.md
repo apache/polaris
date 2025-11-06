@@ -230,7 +230,7 @@ ct install --namespace polaris --charts ./helm/polaris
 | features.realmOverrides | object | `{}` | Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used. |
 | fileIo | object | `{"type":"default"}` | Polaris FileIO configuration. |
 | fileIo.type | string | `"default"` | The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones. |
-| image.configDir | string | `"/deployments/config"` | The path to the directory where the application.properties file, and other configuration files, if any, should be mounted. Note: if you are using EclipseLink, then this value must be at least two folders down to the root folder, e.g. `/deployments/config` is OK, whereas `/deployments` is not. |
+| image.configDir | string | `"/deployments/config"` | The path to the directory where the application.properties file, and other configuration files, if any, should be mounted. |
 | image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
 | image.repository | string | `"apache/polaris"` | The image repository to pull from. |
 | image.tag | string | `"latest"` | The image tag. |
@@ -247,7 +247,7 @@ ct install --namespace polaris --charts ./helm/polaris
 | livenessProbe.successThreshold | int | `1` | Minimum consecutive successes for the probe to be considered successful after having failed. Minimum value is 1. |
 | livenessProbe.terminationGracePeriodSeconds | int | `30` | Optional duration in seconds the pod needs to terminate gracefully upon probe failure. Minimum value is 1. |
 | livenessProbe.timeoutSeconds | int | `10` | Number of seconds after which the probe times out. Minimum value is 1. |
-| logging | object | `{"categories":{"org.apache.iceberg.rest":"INFO","org.apache.polaris":"INFO"},"console":{"enabled":true,"format":"%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n","json":false,"threshold":"ALL"},"file":{"enabled":false,"fileName":"polaris.log","format":"%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n","json":false,"logsDir":"/deployments/logs","rotation":{"fileSuffix":null,"maxBackupIndex":5,"maxFileSize":"100Mi"},"storage":{"className":"standard","selectorLabels":{},"size":"512Gi"},"threshold":"ALL"},"level":"INFO","mdc":{},"requestIdHeaderName":"Polaris-Request-Id"}` | Logging configuration. |
+| logging | object | `{"categories":{"org.apache.iceberg.rest":"INFO","org.apache.polaris":"INFO"},"console":{"enabled":true,"format":"%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n","json":false,"threshold":"ALL"},"file":{"enabled":false,"fileName":"polaris.log","format":"%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n","json":false,"logsDir":"/deployments/logs","rotation":{"fileSuffix":null,"maxBackupIndex":5,"maxFileSize":"100Mi"},"storage":{"className":"standard","selectorLabels":{},"size":"512Gi"},"threshold":"ALL"},"level":"INFO","mdc":{},"requestIdHeaderName":"X-Request-ID"}` | Logging configuration. |
 | logging.categories | object | `{"org.apache.iceberg.rest":"INFO","org.apache.polaris":"INFO"}` | Configuration for specific log categories. |
 | logging.console | object | `{"enabled":true,"format":"%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n","json":false,"threshold":"ALL"}` | Configuration for the console appender. |
 | logging.console.enabled | bool | `true` | Whether to enable the console appender. |
@@ -271,7 +271,7 @@ ct install --namespace polaris --charts ./helm/polaris
 | logging.file.threshold | string | `"ALL"` | The log level of the file appender. |
 | logging.level | string | `"INFO"` | The log level of the root category, which is used as the default log level for all categories. |
 | logging.mdc | object | `{}` | Configuration for MDC (Mapped Diagnostic Context). Values specified here will be added to the log context of all incoming requests and can be used in log patterns. |
-| logging.requestIdHeaderName | string | `"Polaris-Request-Id"` | The header name to use for the request ID. |
+| logging.requestIdHeaderName | string | `"X-Request-ID"` | The header name to use for the request ID. |
 | managementService | object | `{"annotations":{},"clusterIP":"None","externalTrafficPolicy":null,"internalTrafficPolicy":null,"ports":[{"name":"polaris-mgmt","nodePort":null,"port":8182,"protocol":null,"targetPort":null}],"sessionAffinity":null,"trafficDistribution":null,"type":"ClusterIP"}` | Management service settings. These settings are used to configure liveness and readiness probes, and to configure the dedicated headless service that will expose health checks and metrics, e.g. for metrics scraping and service monitoring. |
 | managementService.annotations | object | `{}` | Annotations to add to the service. |
 | managementService.clusterIP | string | `"None"` | By default, the management service is headless, i.e. it does not have a cluster IP. This is generally the right option for exposing health checks and metrics, e.g. for metrics scraping and service monitoring. |
@@ -308,7 +308,7 @@ ct install --namespace polaris --charts ./helm/polaris
 | persistence.relationalJdbc.secret.name | string | `nil` | The secret name to pull database connection properties from |
 | persistence.relationalJdbc.secret.password | string | `"password"` | The secret key holding the database password for authentication |
 | persistence.relationalJdbc.secret.username | string | `"username"` | The secret key holding the database username for authentication |
-| persistence.type | string | `"in-memory"` | The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc. The eclipse-link type is also supported but is deprecated. |
+| persistence.type | string | `"in-memory"` | The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc. |
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
 | podDisruptionBudget | object | `{"annotations":{},"enabled":false,"maxUnavailable":null,"minAvailable":null}` | Pod disruption budget settings. |
 | podDisruptionBudget.annotations | object | `{}` | Annotations to add to the pod disruption budget. |

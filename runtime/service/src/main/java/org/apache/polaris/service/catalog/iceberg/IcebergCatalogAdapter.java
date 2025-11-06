@@ -87,6 +87,7 @@ import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
+import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -150,6 +151,7 @@ public class IcebergCatalogAdapter
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
   private final PolarisEventListener polarisEventListener;
   private final AccessConfigProvider accessConfigProvider;
+  private final PolarisMetricsReporter metricsReporter;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -167,7 +169,8 @@ public class IcebergCatalogAdapter
       CatalogHandlerUtils catalogHandlerUtils,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       PolarisEventListener polarisEventListener,
-      AccessConfigProvider accessConfigProvider) {
+      AccessConfigProvider accessConfigProvider,
+      PolarisMetricsReporter metricsReporter) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -184,6 +187,7 @@ public class IcebergCatalogAdapter
     this.externalCatalogFactories = externalCatalogFactories;
     this.polarisEventListener = polarisEventListener;
     this.accessConfigProvider = accessConfigProvider;
+    this.metricsReporter = metricsReporter;
   }
 
   /**
@@ -208,7 +212,7 @@ public class IcebergCatalogAdapter
 
   @VisibleForTesting
   IcebergCatalogHandler newHandlerWrapper(SecurityContext securityContext, String catalogName) {
-    validatePrincipal(securityContext);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
 
     return new IcebergCatalogHandler(
         diagnostics,
@@ -216,7 +220,7 @@ public class IcebergCatalogAdapter
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
-        securityContext,
+        principal,
         catalogFactory,
         catalogName,
         polarisAuthorizer,
@@ -755,6 +759,11 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    Namespace ns = decodeNamespace(namespace);
+    TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+
+    metricsReporter.reportMetric(catalogName, tableIdentifier, reportMetricsRequest.report());
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
@@ -799,7 +808,7 @@ public class IcebergCatalogAdapter
     if (warehouse == null) {
       throw new BadRequestException("Please specify a warehouse");
     }
-    Resolver resolver = resolverFactory.createResolver(securityContext, warehouse);
+    Resolver resolver = resolverFactory.createResolver(authenticatedPrincipal, warehouse);
     ResolverStatus resolverStatus = resolver.resolveAll();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", warehouse);

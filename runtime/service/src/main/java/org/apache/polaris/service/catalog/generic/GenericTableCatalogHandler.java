@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.generic;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
@@ -28,6 +27,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -59,7 +59,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       String catalogName,
       PolarisAuthorizer authorizer,
       PolarisCredentialManager polarisCredentialManager,
@@ -68,7 +68,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
         diagnostics,
         callContext,
         resolutionManifestFactory,
-        securityContext,
+        principal,
         catalogName,
         authorizer,
         polarisCredentialManager,
@@ -87,7 +87,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
           .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
-          callContext.getRealmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+          realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
 
       GenericTableCatalog federatedCatalog;
       ConnectionType connectionType =
