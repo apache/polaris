@@ -441,7 +441,7 @@ logging:
   # -- The log level of the root category, which is used as the default log level for all categories.
   level: INFO
   # -- The header name to use for the request ID.
-  requestIdHeaderName: Polaris-Request-Id
+  requestIdHeaderName: X-Request-ID
   # -- Configuration for the console appender.
   console:
     # -- Whether to enable the console appender.
