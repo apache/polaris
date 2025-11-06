@@ -17,7 +17,3 @@
 # under the License.
 #
 
-.python-version
-.pytest_cache
-t_pyspark/src/spark-warehouse
-t_pyspark/src/.pytest_cache

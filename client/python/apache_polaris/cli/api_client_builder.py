@@ -22,7 +22,7 @@ from argparse import Namespace
 from functools import cached_property
 from typing import Optional, Dict
 
-from cli.constants import (
+from apache_polaris.cli.constants import (
   CONFIG_FILE,
   CLIENT_PROFILE_ENV,
   CLIENT_ID_ENV,
@@ -33,8 +33,8 @@ from cli.constants import (
   DEFAULT_HOSTNAME,
   DEFAULT_PORT
 )
-from cli.options.option_tree import Argument
-from polaris.management import ApiClient, Configuration
+from apache_polaris.cli.options.option_tree import Argument
+from apache_polaris.sdk.management import ApiClient, Configuration
 
 
 def _load_profiles() -> Dict[str, str]:

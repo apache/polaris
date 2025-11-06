@@ -18,16 +18,15 @@
 #
 import json
 from dataclasses import dataclass
+from pydantic import StrictStr
 from typing import Dict, Optional, List
 
-from pydantic import StrictStr
-
-from cli.command import Command
-from cli.command.utils import get_catalog_api_client
-from cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
-from cli.options.option_tree import Argument
-from polaris.catalog import IcebergCatalogAPI, CreateNamespaceRequest
-from polaris.management import PolarisDefaultApi
+from apache_polaris.cli.command import Command
+from apache_polaris.cli.command.utils import get_catalog_api_client
+from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
+from apache_polaris.cli.options.option_tree import Argument
+from apache_polaris.sdk.catalog import IcebergCatalogAPI, CreateNamespaceRequest
+from apache_polaris.sdk.management import PolarisDefaultApi
 
 
 @dataclass

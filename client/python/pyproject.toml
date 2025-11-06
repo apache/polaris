@@ -18,7 +18,7 @@
 #
 
 [project]
-name = "polaris"
+name = "apache-polaris"
 version = "1.2.0"
 description = "Apache Polaris"
 authors = [
@@ -42,13 +42,16 @@ homepage = "https://polaris.apache.org/"
 repository = "https://github.com/apache/polaris/"
 
 [project.scripts]
-polaris = "cli.polaris_cli:main"
+polaris = "apache_polaris.cli.polaris_cli:main"
 
 [tool.poetry]
 requires-poetry = "==2.2.1"
+packages = [
+    { include = "apache_polaris" }
+]
 include = [
-    { path = "polaris/**", format = ["sdist", "wheel"] },
-    { path = "cli/**", format = ["sdist", "wheel"] },
+    { path = "apache_polaris/cli", format = ["sdist", "wheel"] },
+    { path = "apache_polaris/sdk", format = ["sdist", "wheel"] },
     { path = "templates/**", format = "sdist" },
     { path = "spec/**", format = "sdist" },
 ]

@@ -19,8 +19,9 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from cli.constants import StorageType, CatalogType, PrincipalType, Hints, Commands, Arguments, Subcommands, Actions, \
-    CatalogConnectionType, AuthenticationType, ServiceIdentityType
+from apache_polaris.cli.constants import StorageType, CatalogType, \
+  PrincipalType, Hints, Commands, Arguments, Subcommands, Actions, \
+  CatalogConnectionType, AuthenticationType, ServiceIdentityType
 
 
 @dataclass
