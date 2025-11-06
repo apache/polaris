@@ -62,7 +62,7 @@ mypy = ">=1.18, <=1.18.2"
 pyiceberg = "==0.10.0"
 pre-commit = "==4.3.0"
 openapi-generator-cli = "==7.17.0"
-pip-licenses-cli = "==3.0.0"
+pip-licenses-cli = "==3.0.1"
 
 [tool.pip-licenses]
 partial-match = true
