@@ -142,6 +142,10 @@ line breaks, they will be escaped and a multi-line option will be printed.
 {{- $value := index . 1 -}}
 {{- $global := index . 2 -}}
 {{- $valAsString := "" -}}
+{{/* Note: We really need the statement below to be "if ne $value nil". This is unusual, but here we
+need to distinguish other zero-values from nil. For example, "someProperty: false" or
+"someProperty: 0" should result in the config property "someProperty" being included in the
+ConfigMap, with value false or 0.*/}}
 {{- if ne $value nil -}}
 {{- $valAsString = tpl (toString $value) $global -}}
 {{- if contains "\r\n" $valAsString -}}
