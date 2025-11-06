@@ -50,6 +50,7 @@ dependencies {
 
     api(project(":polaris-persistence-nosql-api"))
     api(project(":polaris-persistence-nosql-impl"))
+    api(project(":polaris-persistence-nosql-standalone"))
     api(project(":polaris-persistence-nosql-testextension"))
 
     api(project(":polaris-persistence-nosql-inmemory"))
