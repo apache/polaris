@@ -22,17 +22,17 @@ type: docs
 weight: 650
 ---
 
-Apache Polaris now provides Catalog support for Generic Tables (non-Iceberg tables), please check out
-the [Polaris Catalog OpenAPI Spec]({{% ref "polaris-api-specs/polaris-catalog-api.md" %}}) for Generic Table API specs.
+Polaris provides a Spark client to manage non-Iceberg tables through [Generic Tables]({{% ref "generic-table.md" %}}).
 
-Along with the Generic Table Catalog support, Polaris is also releasing a Spark client, which helps to
-provide an end-to-end solution for Apache Spark to manage Delta tables using Polaris.
+{{< alert note >}}
+The Spark client can manage Iceberg tables and non-Iceberg tables.
 
-Note the Polaris Spark client is able to handle both Iceberg and Delta tables, not just Delta.
+Users who only use Iceberg tables can use Spark without this client.
+{{< /alert >}}
 
 This page documents how to connect Spark with Polaris Service using the Polaris Spark client.
 
-## Quick Start with Local Polaris service
+## Quick Start with Local Polaris Service
 If you want to quickly try out the functionality with a local Polaris service, simply check out the Polaris repo
 and follow the instructions in the Spark plugin getting-started
 [README](https://github.com/apache/polaris/blob/main/plugins/spark/v3.5/getting-started/README.md).
@@ -42,7 +42,7 @@ Check out the Polaris repo:
 git clone https://github.com/apache/polaris.git ~/polaris
 ```
 
-## Start Spark against a deployed Polaris service
+## Start Spark against a Deployed Polaris Service
 Before starting, ensure that the deployed Polaris service supports Generic Tables, and that Spark 3.5(version 3.5.3 or later is installed).
 Spark 3.5.6 is recommended, and you can follow the instructions below to get a Spark 3.5.6 distribution.
 ```shell
@@ -53,7 +53,7 @@ tar xzvf spark-3.5.6-bin-hadoop3.tgz -C spark-3.5 --strip-components=1
 cd spark-3.5
 ```
 
-### Connecting with Spark using the Polaris Spark client
+### Connecting with Spark using the Polaris Spark Client
 The following CLI command can be used to start the Spark with connection to the deployed Polaris service using
 a released Polaris Spark client.
 
@@ -102,7 +102,7 @@ spark = SparkSession.builder
 Similar as the CLI command, make sure the corresponding fields are replaced correctly.
 
 ### Create tables with Spark
-After Spark is started, you can use it to create and access Iceberg and Delta tables, for example:
+After Spark is started, you can use it to create and access Iceberg and Delta tables. For example:
 ```python
 spark.sql("USE polaris")
 spark.sql("CREATE NAMESPACE IF NOT EXISTS DELTA_NS")
@@ -120,10 +120,15 @@ build a Spark client jar locally from source. Please check out the Polaris repo 
 [README](https://github.com/apache/polaris/blob/main/plugins/spark/README.md) for detailed instructions.
 
 ## Limitations
-The Polaris Spark client has the following functionality limitations:
-1) Create table as select (CTAS) is not supported for Delta tables. As a result, the `saveAsTable` method of `Dataframe`
+The following describes the current limitations of the Polaris Spark client:
+
+### General Limitations
+1. The Polaris Spark client only supports Iceberg and Delta Lake tables. It does not support other table formats like CSV, JSON, etc.
+2. Generic tables (non-Iceberg tables) do not currently support credential vending.
+
+### Delta Lake Limitations
+1. Create table as select (CTAS) is not supported for Delta Lake tables. As a result, the `saveAsTable` method of `Dataframe`
    is also not supported, since it relies on the CTAS support.
-2) Create a Delta table without explicit location is not supported.
-3) Rename a Delta table is not supported.
-4) ALTER TABLE ... SET LOCATION is not supported for DELTA table.
-5) For other non-Iceberg tables like csv, it is not supported.
+2. Create a Delta Lake table without explicit location is not supported.
+3. Rename a Delta Lake table is not supported.
+4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.

@@ -21,12 +21,16 @@
 
 The Polaris Spark plugin provides a SparkCatalog class, which communicates with the Polaris
 REST endpoints, and provides implementations for Apache Spark's
-[TableCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java),
-[ViewCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java) classes.
-[SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java),
+- [TableCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java)
+- [ViewCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java)
+- [SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java)
 
-Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 and 2.13,
-and depends on iceberg-spark-runtime 1.9.1.
+Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 and 2.13, and depends on iceberg-spark-runtime 1.9.1.
+
+The Polaris Spark client supports catalog management for both Iceberg and Delta Lake tables. It routes all Iceberg table
+requests to the Iceberg REST endpoints and routes all Delta Lake table requests to the Generic Table REST endpoints.
+
+The Spark Client requires at least delta 3.2.1 to work with Delta Lake tables, which requires at least Apache Spark 3.5.3.
 
 # Start Spark with local Polaris service using the Polaris Spark plugin
 The following command starts a Polaris server for local testing, it runs on localhost:8181 with default
@@ -113,14 +117,15 @@ bin/spark-shell \
 ```
 
 # Limitations
-The Polaris Spark client supports catalog management for both Iceberg and Delta tables, it routes all Iceberg table
-requests to the Iceberg REST endpoints, and routes all Delta table requests to the Generic Table REST endpoints.
+The following describes the current limitations of the Polaris Spark client:
 
-The Spark Client requires at least delta 3.2.1 to work with Delta tables, which requires at least Apache Spark 3.5.3.
-Following describes the current functionality limitations of the Polaris Spark client:
-1) Create table as select (CTAS) is not supported for Delta tables. As a result, the `saveAsTable` method of `Dataframe`
-   is also not supported, since it relies on the CTAS support.
-2) Create a Delta table without explicit location is not supported.
-3) Rename a Delta table is not supported.
-4) ALTER TABLE ... SET LOCATION is not supported for DELTA table.
-5) For other non-Iceberg tables like csv, it is not supported today.
+## General Limitations
+1. The Polaris Spark client only supports Iceberg and Delta Lake tables. It does not support other table formats like CSV, JSON, etc.
+2. Generic tables (non-Iceberg tables) do not currently support credential vending.
+
+## Delta Lake Limitations
+1. Create table as select (CTAS) is not supported for Delta Lake tables. As a result, the `saveAsTable` method of `Dataframe`
+   is also not supported, since it relies on the CTAS support. 
+2. Create a Delta Lake table without explicit location is not supported. 
+3. Rename a Delta Lake table is not supported. 
+4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.

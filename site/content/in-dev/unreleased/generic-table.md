@@ -22,17 +22,19 @@ type: docs
 weight: 435
 ---
 
-The Generic Table in Apache Polaris is designed to provide support for non-Iceberg tables across different table formats includes delta, csv etc. It currently provides the following capabilities:
+The generic tables framework provides support for non-Iceberg table formats including Delta Lake, CSV, etc. With this framework, you can:
 - Create a generic table under a namespace
 - Load a generic table
 - Drop a generic table
 - List all generic tables under a namespace
 
-**NOTE** The current generic table is in beta release. Please use it with caution and report any issue if encountered.
+{{< alert important >}}
+Generic tables are in beta. Please use it with caution and report any issue if encountered.
+{{< /alert >}}
 
 ## What is a Generic Table?
 
-A generic table in Polaris is an entity that defines the following fields:
+A generic table is an entity that defines the following fields:
 
 - **name** (required): A unique identifier for the table within a namespace
 - **format** (required): The format for the generic table, i.e. "delta", "csv"
@@ -47,8 +49,8 @@ A generic table in Polaris is an entity that defines the following fields:
 
 ## Generic Table API Vs. Iceberg Table API
 
-Generic Table provides a different set of APIs to operate on the generic table entities while Iceberg APIs operates on
-the Iceberg table entities.
+Polaris provides a set of generic table APIs different from the Iceberg APIs. The following table
+shows the comparison between the two APIs:
 
 | Operations   | **Iceberg Table API**                                                                                                                                               | **Generic Table API**                                                                                                         |
 |--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
@@ -57,8 +59,7 @@ the Iceberg table entities.
 | Drop Table   | Drop an Iceberg table. Similar as load table, if the table to drop is a Generic table, a tableNotFoundException will be thrown.                                     | Drop a generic table. Drop an Iceberg table through Generic table endpoint will thrown an TableNotFound Exception             |
 | List Table   | List all Iceberg tables                                                                                                                                             | List all generic tables                                                                                                       |
 
-Note that generic table shares the same namespace with Iceberg tables, the table name has to be unique under the same namespace. Furthermore, since
-there is currently no support for Update Generic Table, any update to the existing table requires a drop and re-create.
+Note that generic table shares the same namespace with Iceberg tables, the table name has to be unique under the same namespace.
 
 ## Working with Generic Table
 
@@ -157,13 +158,10 @@ curl -X DELETE http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namesp
 
 For the complete and up-to-date API specification, see the [Catalog API Spec](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/generated/bundled-polaris-catalog-service.yaml).
 
-## Limitations
+## Known Limitations
 
-Current limitations of Generic Table support:
-1) Limited spec information. Currently, there is no spec for information like Schema, Partition etc.
-2) No commit coordination or update capability provided at the catalog service level.
-
-Therefore, the catalog itself is unaware of anything about the underlying table except some of the loosely defined metadata.
-It is the responsibility of the engine (and plugins used by the engine) to determine exactly how loading or committing data
-should look like based on the metadata. For example, with the delta support, th delta log serialization, deserialization
-and update all happens at client side.
+There are some known limitations for the generic table support:
+1. Generic tables provide limited spec information. For example, there is no spec for Schema or Partition. 
+2. There is no commit coordination provided by Polaris. It is the responsibility of the engine to coordinate commits.
+3. There is no update capability provided by Polaris. Any update to a generic table must be done through a drop and create.
+4. Generic tables do not support credential vending.

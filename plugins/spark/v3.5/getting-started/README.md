@@ -17,12 +17,12 @@
   under the License.
 -->
 
-# Getting Started with Apache Spark and Apache Polaris With Delta and Iceberg
+# Getting Started with Apache Spark and Apache Polaris With Delta Lake and Iceberg
 
 This getting started guide provides a `docker-compose` file to set up [Apache Spark](https://spark.apache.org/) with Apache Polaris using
-the new Polaris Spark Client. 
+the new Polaris Spark Client.
 
-The Polaris Spark Client enables manage of both Delta and Iceberg tables using Apache Polaris.
+The Polaris Spark Client enables manage of both Delta Lake and Iceberg tables using Apache Polaris.
 
 A Jupyter notebook is started to run PySpark, and Polaris Python client is also installed to call Polaris APIs
 directly through Python Client.
@@ -48,7 +48,7 @@ To start the `docker-compose` file, run this command from the repo's root direct
 docker-compose -f plugins/spark/v3.5/getting-started/docker-compose.yml up
 ```
 
-This will spin up 2 container services
+This will spin up 2 container services:
 * The `polaris` service for running Apache Polaris using an in-memory metastore
 * The `jupyter` service for running Jupyter notebook with PySpark
 

@@ -28,6 +28,19 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Helper class for integrating Delta Lake table functionality with Polaris Spark Catalog.
+ *
+ * <p>This class is responsible for dynamically loading and configuring a Delta Catalog
+ * implementation to work with Polaris. It sets up the Delta Catalog as a delegating catalog
+ * extension with Polaris Spark Catalog as the delegate, enabling Delta Lake table operations
+ * through Polaris.
+ *
+ * <p>The class uses reflection to configure the Delta Catalog to behave identically to Unity
+ * Catalog, as the current Delta Catalog implementation is hardcoded for Unity Catalog. This is a
+ * temporary workaround until Delta extends support for other catalog implementations (see
+ * https://github.com/delta-io/delta/issues/4306).
+ */
 public class DeltaHelper {
   private static final Logger LOG = LoggerFactory.getLogger(DeltaHelper.class);
 
