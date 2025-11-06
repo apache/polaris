@@ -17,28 +17,26 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Getting Started with Apache Polaris
-linkTitle: Getting Started
+Title: Quickstart
 type: docs
-weight: 101
+weight: 99
 ---
+Use this guide to quickly start running Polaris. This is not intended for production use.
 
-There are several options for getting started with Apache Polaris.
+## Prerequisites
 
-To quickly try out Apache Polaris, please use the [quickstart guide](./quick-start). For other examples, please see below.
+- Have Docker (with Docker Compose v2) installed & running on your machine
 
-## Docker Compose Examples
-Each of the proceeding Docker Compose examples provides a complete working environment with detailed instructions.
+## Running
 
-### Next Steps
+Run the following command:
 
-1. Check & install dependencies
-2. Choose the way you want to deploy Polaris
-3. Create a catalog
-4. Check Using Polaris page
+```bash
+curl -s https://raw.githubusercontent.com/apache/polaris/main/getting-started/quickstart/docker-compose.yml | docker compose -f - up
 
-### Getting Help
+```
+This command will:
+1. Create a Catalog named `quickstart_catalog` with MinIO-backed storage.
+2. Create a user principal `quickstart_user` with full access to the catalog.
 
-- Documentation: https://polaris.apache.org
-- GitHub Issues: https://github.com/apache/polaris/issues
-- Slack: [Join Apache Polaris Community](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
+Once the command has been run, you will see examples on how to interact with this Polaris server in the logs.
