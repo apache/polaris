@@ -38,6 +38,7 @@ import org.gradle.kotlin.dsl.registering
 import org.gradle.kotlin.dsl.withType
 import org.gradle.plugins.signing.SigningExtension
 import org.gradle.plugins.signing.SigningPlugin
+import sbom.configureCycloneDx
 
 /**
  * Release-publishing helper plugin to generate publications that pass Sonatype validations,
@@ -94,6 +95,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
 
       apply(plugin = "maven-publish")
       apply(plugin = "signing")
+      apply(plugin = "org.cyclonedx.bom")
 
       // Generate a source tarball for a release to be uploaded to
       // https://dist.apache.org/repos/dist/dev/<name>/apache-<name>-<version-with-rc>/
@@ -175,5 +177,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
           }
         }
       }
+
+      configureCycloneDx()
     }
 }
