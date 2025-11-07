@@ -27,7 +27,7 @@ Several S3 compatible storage providers can be configured as backends for your P
 Refer to child pages under this documentation section for some of the possible options. 
 
 For the `polaris catalogs create` [command]({{% ref "../../../command-line-interface#create" %}})
-there are a few s3-only options
+there are a few s3-only options:
 
 ```text
 --storage-type s3
