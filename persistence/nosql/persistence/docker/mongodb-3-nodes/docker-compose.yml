@@ -34,7 +34,7 @@
 # TO THE HOST'S /etc/hosts FILE
 #
 # Once done (after `docker compose down`):
-#   podman volume rm mongodb-3-nodes_mongo1_config mongodb-3-nodes_mongo1_data mongodb-3-nodes_mongo2_config mongodb-3-nodes_mongo2_data mongodb-3-nodes_mongo3_config mongodb-3-nodes_mongo3_data
+#   docker volume rm mongodb-3-nodes_mongo1_config mongodb-3-nodes_mongo1_data mongodb-3-nodes_mongo2_config mongodb-3-nodes_mongo2_data mongodb-3-nodes_mongo3_config mongodb-3-nodes_mongo3_data
 
 version: '3'
 
