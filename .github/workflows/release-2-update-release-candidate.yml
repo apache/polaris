@@ -168,8 +168,11 @@ jobs:
           source "${LIBS_DIR}/_exec.sh"
 
           # Commit version files and changelog
-          exec_process git add "$VERSION_FILE" "$HELM_CHART_YAML_FILE" "$HELM_README_FILE"
-          exec_process git add "$CHANGELOG_FILE"
+          exec_process git add \
+            "$VERSION_FILE" \
+            "$HELM_CHART_YAML_FILE" \
+            "$HELM_README_FILE" \
+            "$CHANGELOG_FILE"
           exec_process git commit -m "[chore] Bump version to ${version_without_rc} for release candidate ${rc_number}"
 
           # Push the changes

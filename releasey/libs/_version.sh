@@ -100,7 +100,7 @@ function update_version_txt {
   # redirection, we cannot use exec_process with the exact command that will be
   # executed.
   if [[ ${DRY_RUN:-1} -ne 1 ]]; then
-    exec_process echo ${version} >$VERSION_FILE
+    exec_process echo "${version}" >$VERSION_FILE
   else
     exec_process "echo ${version} > $VERSION_FILE"
   fi
