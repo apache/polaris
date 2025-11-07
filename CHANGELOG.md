@@ -53,6 +53,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Changes
 
 - `client.region` is no longer considered a "credential" property (related to Iceberg REST Catalog API).
+- Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
 
 ### Deprecations
 
