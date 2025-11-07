@@ -34,7 +34,7 @@ function exec_process {
 
 function calculate_sha512 {
   local source_file="$1"
-  local target_file="$2"
+  local target_file="${source_file}.sha512"
   # This function is only there for dry-run support.  Because of the
   # redirection, we cannot use exec_process with the exact command that will be
   # executed.

@@ -333,9 +333,9 @@ jobs:
           exec_process cd helm
           exec_process helm package polaris
           exec_process helm gpg sign polaris-${version_without_rc}.tgz
-          calculate_sha512 polaris-${version_without_rc}.tgz polaris-${version_without_rc}.tgz.sha512
+          calculate_sha512 polaris-${version_without_rc}.tgz
           exec_process gpg --armor --output polaris-${version_without_rc}.tgz.asc --detach-sig polaris-${version_without_rc}.tgz
-          calculate_sha512 polaris-${version_without_rc}.tgz.prov polaris-${version_without_rc}.tgz.prov.sha512
+          calculate_sha512 polaris-${version_without_rc}.tgz.prov
           exec_process gpg --armor --output polaris-${version_without_rc}.tgz.prov.asc --detach-sig polaris-${version_without_rc}.tgz.prov
 
       - name: Stage Helm chart to Apache dist dev repository
