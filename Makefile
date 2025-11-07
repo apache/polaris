@@ -119,7 +119,7 @@ client-install-dependencies: $(VENV_DIR)
 	@if [ ! -f "$(VENV_DIR)/bin/poetry" ]; then \
 		$(VENV_DIR)/bin/pip install --upgrade "poetry$(POETRY_VERSION)"; \
 	fi
-	@$(ACTIVATE_AND_CD) && poetry install --all-extras
+	@$(ACTIVATE_AND_CD) && poetry lock && poetry install --all-extras
 	@echo "Poetry and dependencies installed."
 
 .PHONY: client-setup-env
@@ -144,7 +144,7 @@ client-unit-test: client-setup-env ## Run client unit tests
 	@echo "--- Client unit tests complete ---"
 
 .PHONY: client-integration-test
-client-integration-test: client-setup-env ## Run client integration tests
+client-integration-test: build-server client-setup-env ## Run client integration tests
 	@echo "--- Starting client integration tests ---"
 	@echo "Ensuring Docker Compose services are stopped and removed..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml kill || true # `|| true` prevents make from failing if containers don't exist
@@ -162,11 +162,28 @@ client-integration-test: client-setup-env ## Run client integration tests
 	@echo "Tearing down Docker Compose services..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
 
+.PHONY: client-license-check
+client-license-check: client-setup-env ## Run license compliance check
+	@echo "--- Starting license compliance check ---"
+	@$(ACTIVATE_AND_CD) && pip-licenses
+	@echo "--- License compliance check complete ---"
+
 .PHONY: client-build
-client-build: client-setup-env ## Build client distribution
+client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist or FORMAT=wheel to build a specific format.
 	@echo "--- Building client distribution ---"
-	@$(ACTIVATE_AND_CD) && poetry build -f wheel
+	@if [ -n "$(FORMAT)" ]; then \
+		if [ "$(FORMAT)" != "sdist" ] && [ "$(FORMAT)" != "wheel" ]; then \
+			echo "Error: Invalid format '$(FORMAT)'. Supported formats are 'sdist' and 'wheel'." >&2; \
+			exit 1; \
+		fi; \
+		echo "Building with format: $(FORMAT)"; \
+		$(ACTIVATE_AND_CD) && poetry build --format $(FORMAT); \
+	else \
+		echo "Building default distribution (sdist and wheel)"; \
+		$(ACTIVATE_AND_CD) && poetry build; \
+	fi
 	@echo "--- Client distribution build complete ---"
+
 
 .PHONY: client-cleanup
 client-cleanup: ## Cleanup virtual environment and Python cache files

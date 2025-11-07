@@ -17,11 +17,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-Title: Deploying Polaris on Cloud Providers
+title: Deploying Polaris
+linkTitle: Deploying Polaris
 type: docs
-weight: 300
+weight: 200
 ---
 
-We will now demonstrate how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).
+Here you can find the guides of how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).
 
-Locally, Polaris can be deployed using both Docker and local build. On the cloud, this tutorial will deploy Polaris using Docker only - but local builds can also be executed.
+Locally, Polaris can be deployed using both docker and local build. 
+On the cloud, the following tutorials will deploy Polaris using docker environment.

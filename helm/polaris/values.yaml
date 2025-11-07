@@ -30,8 +30,6 @@ image:
   tag: "latest"
   # -- The path to the directory where the application.properties file, and other configuration
   # files, if any, should be mounted.
-  # Note: if you are using EclipseLink, then this value must be at least two folders down to the
-  # root folder, e.g. `/deployments/config` is OK, whereas `/deployments` is not.
   configDir: /deployments/config
 
 # -- References to secrets in the same namespace to use for pulling any of the images used by this
@@ -443,7 +441,7 @@ logging:
   # -- The log level of the root category, which is used as the default log level for all categories.
   level: INFO
   # -- The header name to use for the request ID.
-  requestIdHeaderName: Polaris-Request-Id
+  requestIdHeaderName: X-Request-ID
   # -- Configuration for the console appender.
   console:
     # -- Whether to enable the console appender.
@@ -537,7 +535,6 @@ features:
 # -- Polaris persistence configuration.
 persistence:
   # -- The type of persistence to use. Two built-in types are supported: in-memory and relational-jdbc.
-  # The eclipse-link type is also supported but is deprecated.
   type: in-memory  # relational-jdbc
   # -- The configuration for the relational-jdbc persistence manager.
   relationalJdbc:
@@ -579,9 +576,6 @@ authentication:
   type: internal
   # -- The `Authenticator` implementation to use. Only one built-in type is supported: default.
   authenticator:
-    type: default
-  # -- The `ActiveRolesProvider` implementation to use. Only one built-in type is supported: default.
-  activeRolesProvider:
     type: default
   # -- The token service (`IcebergRestOAuth2ApiService`) implementation to use. Two built-in types are supported: default and disabled.
   # Only relevant when using internal (or mixed) authentication. When using external authentication, the token service is always disabled.
@@ -671,7 +665,7 @@ oidc:
     filter: ~  # ^(?!profile$|email$).*
     # -- A list of regex mappings that will be applied to each role name in the identity. This can
     # be used to transform the role names in the identity into role names as expected by Polaris.
-    # The default ActiveRolesProvider expects the security identity to expose role names in the
+    # The default Authenticator expects the security identity to expose role names in the
     # format `POLARIS_ROLE:<role name>`.
     mappings: []
       # - regex: role_(.*)

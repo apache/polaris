@@ -21,7 +21,6 @@ package org.apache.polaris.service.catalog.policy;
 import com.google.common.base.Strings;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -33,9 +32,11 @@ import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -45,7 +46,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.exceptions.NoSuchPolicyException;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
@@ -68,19 +68,19 @@ public class PolicyCatalogHandler extends CatalogHandler {
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       String catalogName,
       PolarisAuthorizer authorizer,
-      UserSecretsManager userSecretsManager,
+      PolarisCredentialManager polarisCredentialManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(
         diagnostics,
         callContext,
         resolutionManifestFactory,
-        securityContext,
+        principal,
         catalogName,
         authorizer,
-        userSecretsManager,
+        polarisCredentialManager,
         externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
   }
@@ -165,9 +165,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
   private void authorizeBasicPolicyOperationOrThrow(
       PolarisAuthorizableOperation op, PolicyIdentifier identifier) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),
@@ -215,9 +213,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
   }
 
   private void authorizeBasicCatalogOperationOrThrow(PolarisAuthorizableOperation op) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.resolveAll();
 
     PolarisResolvedPathWrapper targetCatalog =
@@ -237,9 +233,7 @@ public class PolicyCatalogHandler extends CatalogHandler {
 
   private void authorizePolicyMappingOperationOrThrow(
       PolicyIdentifier identifier, PolicyAttachmentTarget target, boolean isAttach) {
-    resolutionManifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    resolutionManifest = newResolutionManifest();
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.identifierToList(identifier.getNamespace(), identifier.getName()),

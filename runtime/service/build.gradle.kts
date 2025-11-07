@@ -87,6 +87,7 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation("software.amazon.awssdk:kms")
   implementation("software.amazon.awssdk:cloudwatchlogs")
   implementation("software.amazon.awssdk:apache-client") {
     exclude("commons-logging", "commons-logging")
@@ -104,6 +105,8 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind")
 
   implementation(libs.jakarta.servlet.api)
+
+  runtimeOnly(project(":polaris-async-vertx"))
 
   testFixturesApi(project(":polaris-tests")) {
     // exclude all spark dependencies
@@ -128,22 +131,24 @@ dependencies {
   testImplementation("io.quarkus:quarkus-junit5-mockito")
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
+  testImplementation("io.quarkus:quarkus-jdbc-h2")
+
   testImplementation("io.rest-assured:rest-assured")
-  testImplementation(libs.localstack)
-  testImplementation("org.testcontainers:testcontainers")
+
+  testImplementation(platform(libs.testcontainers.bom))
+  testImplementation("org.testcontainers:testcontainers-localstack")
+
+  testImplementation(project(":polaris-runtime-test-common"))
   testImplementation(project(":polaris-container-spec-helper"))
 
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
 
-  testImplementation(project(":polaris-runtime-test-common"))
-
-  testImplementation("io.quarkus:quarkus-junit5")
   testImplementation(libs.awaitility)
+
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:postgresql")
-  testImplementation("org.postgresql:postgresql")
 
   testFixturesImplementation(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-api-management-model"))
@@ -170,6 +175,7 @@ dependencies {
   testFixturesImplementation("software.amazon.awssdk:sts")
   testFixturesImplementation("software.amazon.awssdk:iam-policy-builder")
   testFixturesImplementation("software.amazon.awssdk:s3")
+  testFixturesImplementation("software.amazon.awssdk:kms")
 
   testFixturesImplementation(platform(libs.azuresdk.bom))
   testFixturesImplementation("com.azure:azure-core")
@@ -184,7 +190,6 @@ dependencies {
 tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.withType(Test::class.java).configureEach {
-  forkEvery = 1
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
@@ -195,15 +200,6 @@ tasks.withType(Test::class.java).configureEach {
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
   // "getSubject is supported only if a security manager is allowed".
   systemProperty("java.security.manager", "allow")
-}
-
-tasks.named<Test>("test").configure {
-  maxParallelForks = 4
-  // enlarge the max heap size to avoid out of memory error
-  maxHeapSize = "4g"
-  // Silence the 'OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader
-  // classes because bootstrap classpath has been appended' warning from OpenJDK.
-  jvmArgs("-Xshare:off")
 }
 
 listOf("intTest", "cloudTest")

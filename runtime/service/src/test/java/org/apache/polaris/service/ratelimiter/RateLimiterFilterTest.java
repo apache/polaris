@@ -32,7 +32,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import org.apache.polaris.service.events.BeforeRequestRateLimitedEvent;
+import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterTest.Profile;
@@ -148,9 +148,9 @@ public class RateLimiterFilterTest {
     }
     requestAsserter.accept(Status.TOO_MANY_REQUESTS);
 
-    BeforeRequestRateLimitedEvent event =
+    BeforeLimitRequestRateEvent event =
         ((TestPolarisEventListener) polarisEventListener)
-            .getLatest(BeforeRequestRateLimitedEvent.class);
+            .getLatest(BeforeLimitRequestRateEvent.class);
     assertThat(event.method()).isEqualTo("GET");
 
     // Examples of expected metrics:
@@ -158,7 +158,7 @@ public class RateLimiterFilterTest {
     // polaris_principal_roles_listPrincipalRoles_seconds_count{application="Polaris",class="org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi",environment="prod",exception="none",method="listPrincipalRoles"} 50.0
 
     Map<String, MetricFamily> metrics =
-        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), "%s/q/metrics");
+        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri());
 
     assertThat(metrics)
         .isNotEmpty()

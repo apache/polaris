@@ -35,8 +35,8 @@ import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.secrets.SecretReference;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 
 /**
  * The internal persistence-object counterpart to OAuthClientCredentialsParameters defined in the
@@ -96,20 +96,14 @@ public class OAuthClientCredentialsParametersDpo extends AuthenticationParameter
         Objects.requireNonNullElse(scopes, List.of(OAuth2Properties.CATALOG_SCOPE)));
   }
 
-  @JsonIgnore
-  private @Nonnull String getCredentialAsConcatenatedString(UserSecretsManager secretsManager) {
-    String clientSecret = secretsManager.readSecret(getClientSecretReference());
-    return COLON_JOINER.join(clientId, clientSecret);
-  }
-
   @Override
   public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager) {
+      PolarisCredentialManager credentialManager) {
+    // Return only metadata properties - credentials are handled by ConnectionCredentialVendor
     HashMap<String, String> properties = new HashMap<>();
     if (getTokenUri() != null) {
       properties.put(OAuth2Properties.OAUTH2_SERVER_URI, getTokenUri());
     }
-    properties.put(OAuth2Properties.CREDENTIAL, getCredentialAsConcatenatedString(secretsManager));
     properties.put(OAuth2Properties.SCOPE, getScopesAsString());
     return properties;
   }

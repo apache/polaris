@@ -18,12 +18,11 @@
  */
 package org.apache.polaris.service.catalog;
 
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -42,35 +41,32 @@ import org.apache.polaris.service.types.PolicyIdentifier;
  */
 public class PolarisPassthroughResolutionView implements PolarisResolutionManifestCatalogView {
   private final ResolutionManifestFactory resolutionManifestFactory;
-  private final CallContext callContext;
-  private final SecurityContext securityContext;
+  private final PolarisPrincipal polarisPrincipal;
   private final String catalogName;
 
   public PolarisPassthroughResolutionView(
-      CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
-      SecurityContext securityContext,
+      PolarisPrincipal polarisPrincipal,
       String catalogName) {
     this.resolutionManifestFactory = resolutionManifestFactory;
-    this.callContext = callContext;
-    this.securityContext = securityContext;
+    this.polarisPrincipal = polarisPrincipal;
     this.catalogName = catalogName;
+  }
+
+  private PolarisResolutionManifest newResolutionManifest() {
+    return resolutionManifestFactory.createResolutionManifest(polarisPrincipal, catalogName);
   }
 
   @Override
   public PolarisResolvedPathWrapper getResolvedReferenceCatalogEntity() {
-    PolarisResolutionManifest manifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    PolarisResolutionManifest manifest = newResolutionManifest();
     manifest.resolveAll();
     return manifest.getResolvedReferenceCatalogEntity();
   }
 
   @Override
   public PolarisResolvedPathWrapper getResolvedPath(Object key) {
-    PolarisResolutionManifest manifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    PolarisResolutionManifest manifest = newResolutionManifest();
 
     if (key instanceof Namespace namespace) {
       manifest.addPath(
@@ -88,9 +84,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   @Override
   public PolarisResolvedPathWrapper getResolvedPath(
       Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
-    PolarisResolutionManifest manifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    PolarisResolutionManifest manifest = newResolutionManifest();
 
     if (key instanceof TableIdentifier identifier) {
       manifest.addPath(
@@ -117,9 +111,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
 
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key) {
-    PolarisResolutionManifest manifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    PolarisResolutionManifest manifest = newResolutionManifest();
 
     if (key instanceof Namespace namespace) {
       manifest.addPassthroughPath(
@@ -136,9 +128,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
       Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
-    PolarisResolutionManifest manifest =
-        resolutionManifestFactory.createResolutionManifest(
-            callContext, securityContext, catalogName);
+    PolarisResolutionManifest manifest = newResolutionManifest();
 
     if (key instanceof TableIdentifier identifier) {
       manifest.addPassthroughPath(

@@ -32,9 +32,10 @@ import java.util.function.Supplier;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.BasePersistence;
@@ -74,6 +75,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
+  @Inject PolarisConfigurationStore configurationStore;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -98,7 +100,11 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     // RealmContext (request-scoped bean) can still create a JdbcBasePersistenceImpl
     String realmId = realmContext.getRealmIdentifier();
     // determine schemaVersion once per realm
-    final int schemaVersion = JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations);
+    final int schemaVersion =
+        JdbcBasePersistenceImpl.loadSchemaVersion(
+            datasourceOperations,
+            configurationStore.getConfiguration(
+                realmContext, BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
     sessionSupplierMap.put(
         realmId,
         () ->
@@ -148,12 +154,27 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realm)) {
         DatasourceOperations datasourceOperations = getDatasourceOperations();
+        int currentSchemaVersion =
+            JdbcBasePersistenceImpl.loadSchemaVersion(
+                datasourceOperations,
+                configurationStore.getConfiguration(
+                    realmContext, BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
+        int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
+        int effectiveSchemaVersion =
+            JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+                currentSchemaVersion,
+                requestedSchemaVersion,
+                JdbcBasePersistenceImpl.entityTableExists(datasourceOperations));
+        LOGGER.info(
+            "Effective schema version: {} for bootstrapping realm: {}",
+            effectiveSchemaVersion,
+            realm);
         try {
           // Run the set-up script to create the tables.
           datasourceOperations.executeScript(
               datasourceOperations
                   .getDatabaseType()
-                  .openInitScriptResource(bootstrapOptions.schemaOptions()));
+                  .openInitScriptResource(effectiveSchemaVersion));
         } catch (SQLException e) {
           throw new RuntimeException(
               String.format("Error executing sql script: %s", e.getMessage()), e);
@@ -250,11 +271,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    return metaStoreManager.loadPrincipalSecrets(
-        polarisContext,
-        rootPrincipal
-            .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getClientIdPropertyName()));
+    return metaStoreManager.loadPrincipalSecrets(polarisContext, rootPrincipal.getClientId());
   }
 
   /**

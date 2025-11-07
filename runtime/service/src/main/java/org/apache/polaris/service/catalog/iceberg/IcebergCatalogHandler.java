@@ -18,7 +18,9 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
@@ -26,12 +28,12 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -77,11 +79,13 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -95,14 +99,16 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageUtil;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
+import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.events.AfterTableCreatedEvent;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -133,6 +139,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final PolarisEventListener polarisEventListener;
+  private final AccessConfigProvider accessConfigProvider;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -148,35 +155,37 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
-      UserSecretsManager userSecretsManager,
-      SecurityContext securityContext,
+      PolarisCredentialManager credentialManager,
+      PolarisPrincipal principal,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories,
-      PolarisEventListener polarisEventListener) {
+      PolarisEventListener polarisEventListener,
+      AccessConfigProvider accessConfigProvider) {
     super(
         diagnostics,
         callContext,
         resolutionManifestFactory,
-        securityContext,
+        principal,
         catalogName,
         authorizer,
-        userSecretsManager,
+        credentialManager,
         externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.polarisEventListener = polarisEventListener;
+    this.accessConfigProvider = accessConfigProvider;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
-    PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
-    diagnostics.checkNotNull(catalogPath, "No catalog available");
-    return CatalogEntity.of(catalogPath.getRawLeafEntity());
+    CatalogEntity catalogEntity = resolutionManifest.getResolvedCatalogEntity();
+    diagnostics.checkNotNull(catalogEntity, "No catalog available");
+    return catalogEntity;
   }
 
   /**
@@ -246,17 +255,21 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         federatedCatalog =
             externalCatalogFactory
                 .get()
-                .createCatalog(connectionConfigInfoDpo, getUserSecretsManager());
+                .createCatalog(connectionConfigInfoDpo, getPolarisCredentialManager());
       } else {
         throw new UnsupportedOperationException(
             "External catalog factory for type '" + connectionType + "' is unavailable.");
       }
+      // TODO: if the remote catalog is not RestCatalog, the corresponding table operation will use
+      // environment to load the table metadata, the env may not contain credentials to access the
+      // storage. In the future, we could leverage PolarisCredentialManager to inject storage
+      // credentials for non-rest remote catalog
       this.baseCatalog = federatedCatalog;
     } else {
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.baseCatalog =
           catalogFactory.createCallContextCatalog(
-              callContext, polarisPrincipal, securityContext, resolutionManifest);
+              callContext, polarisPrincipal, resolutionManifest);
     }
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
@@ -375,28 +388,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
   public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
-    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
-
-    CatalogEntity catalog = getResolvedCatalogEntity();
-    if (catalog.isStaticFacade()) {
-      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
-    }
-    CreateTableRequest requestWithoutReservedProperties =
-        CreateTableRequest.builder()
-            .withName(request.name())
-            .withLocation(request.location())
-            .withPartitionSpec(request.spec())
-            .withSchema(request.schema())
-            .withWriteOrder(request.writeOrder())
-            .setProperties(reservedProperties.removeReservedProperties(request.properties()))
-            .build();
-    LoadTableResponse resp =
-        catalogHandlerUtils.createTable(baseCatalog, namespace, requestWithoutReservedProperties);
-    polarisEventListener.onAfterTableCreated(
-        new AfterTableCreatedEvent(catalogName, identifier, resp.tableMetadata()));
-    return resp;
+    return createTableDirect(
+        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
   }
 
   /**
@@ -410,15 +403,39 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       Namespace namespace,
       CreateTableRequest request,
       Optional<String> refreshCredentialsEndpoint) {
-    PolarisAuthorizableOperation op =
-        PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    return createTableDirect(
+        namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
+  }
+
+  public void authorizeCreateTableDirect(
+      Namespace namespace,
+      CreateTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes) {
+    if (delegationModes.isEmpty()) {
+      TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          PolarisAuthorizableOperation.CREATE_TABLE_DIRECT, identifier);
+    } else {
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION,
+          TableIdentifier.of(namespace, request.name()));
+    }
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
+    checkAllowExternalCatalogCredentialVending(delegationModes);
+  }
+
+  public LoadTableResponse createTableDirect(
+      Namespace namespace,
+      CreateTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<String> refreshCredentialsEndpoint) {
+
+    authorizeCreateTableDirect(namespace, request, delegationModes);
+
     request.validate();
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
@@ -444,11 +461,11 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       return buildLoadTableResponseWithDelegationCredentials(
               tableIdentifier,
               tableMetadata,
+              delegationModes,
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
                   PolarisStorageActions.LIST),
-              SNAPSHOTS_ALL,
               refreshCredentialsEndpoint)
           .build();
     } else if (table instanceof BaseMetadataTable) {
@@ -504,39 +521,55 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadTableResponse createTableStaged(Namespace namespace, CreateTableRequest request) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_STAGED;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
-
-    CatalogEntity catalog = getResolvedCatalogEntity();
-    if (catalog.isStaticFacade()) {
-      throw new BadRequestException("Cannot create table on static-facade external catalogs.");
-    }
-    TableMetadata metadata = stageTableCreateHelper(namespace, request);
-    return LoadTableResponse.builder().withTableMetadata(metadata).build();
+    return createTableStaged(
+        namespace, request, EnumSet.noneOf(AccessDelegationMode.class), Optional.empty());
   }
 
   public LoadTableResponse createTableStagedWithWriteDelegation(
       Namespace namespace,
       CreateTableRequest request,
       Optional<String> refreshCredentialsEndpoint) {
-    PolarisAuthorizableOperation op =
-        PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    return createTableStaged(
+        namespace, request, EnumSet.of(VENDED_CREDENTIALS), refreshCredentialsEndpoint);
+  }
+
+  private void authorizeCreateTableStaged(
+      Namespace namespace,
+      CreateTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes) {
+    if (delegationModes.isEmpty()) {
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          PolarisAuthorizableOperation.CREATE_TABLE_STAGED,
+          TableIdentifier.of(namespace, request.name()));
+    } else {
+      authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+          PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION,
+          TableIdentifier.of(namespace, request.name()));
+    }
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot create table on static-facade external catalogs.");
     }
+    checkAllowExternalCatalogCredentialVending(delegationModes);
+  }
+
+  public LoadTableResponse createTableStaged(
+      Namespace namespace,
+      CreateTableRequest request,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<String> refreshCredentialsEndpoint) {
+
+    authorizeCreateTableStaged(namespace, request, delegationModes);
+
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(
             ident,
             metadata,
+            delegationModes,
             Set.of(PolarisStorageActions.ALL),
-            SNAPSHOTS_ALL,
             refreshCredentialsEndpoint)
         .build();
   }
@@ -620,32 +653,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    */
   public Optional<LoadTableResponse> loadTableIfStale(
       TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
-    authorizeBasicTableLikeOperationOrThrow(
-        op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
-
-    if (ifNoneMatch != null) {
-      // Perform freshness-aware table loading if caller specified ifNoneMatch.
-      IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-      if (tableEntity == null || tableEntity.getMetadataLocation() == null) {
-        LOGGER
-            .atWarn()
-            .addKeyValue("tableIdentifier", tableIdentifier)
-            .addKeyValue("tableEntity", tableEntity)
-            .log("Failed to getMetadataLocation to generate ETag when loading table");
-      } else {
-        // TODO: Refactor null-checking into the helper method once we create a more canonical
-        // interface for associate etags with entities.
-        String tableEntityTag =
-            IcebergHttpUtil.generateETagForMetadataFileLocation(tableEntity.getMetadataLocation());
-        if (ifNoneMatch.anyMatch(tableEntityTag)) {
-          return Optional.empty();
-        }
-      }
-    }
-
-    LoadTableResponse rawResponse = catalogHandlerUtils.loadTable(baseCatalog, tableIdentifier);
-    return Optional.of(filterResponseToSnapshots(rawResponse, snapshots));
+    return loadTable(
+        tableIdentifier,
+        snapshots,
+        ifNoneMatch,
+        EnumSet.noneOf(AccessDelegationMode.class),
+        Optional.empty());
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
@@ -672,6 +685,24 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       IfNoneMatch ifNoneMatch,
       String snapshots,
       Optional<String> refreshCredentialsEndpoint) {
+    return loadTable(
+        tableIdentifier,
+        snapshots,
+        ifNoneMatch,
+        EnumSet.of(VENDED_CREDENTIALS),
+        refreshCredentialsEndpoint);
+  }
+
+  private Set<PolarisStorageActions> authorizeLoadTable(
+      TableIdentifier tableIdentifier, EnumSet<AccessDelegationMode> delegationModes) {
+    if (delegationModes.isEmpty()) {
+      authorizeBasicTableLikeOperationOrThrow(
+          PolarisAuthorizableOperation.LOAD_TABLE,
+          PolarisEntitySubType.ICEBERG_TABLE,
+          tableIdentifier);
+      return Set.of();
+    }
+
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -695,23 +726,20 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           read, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
     }
 
-    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+    checkAllowExternalCatalogCredentialVending(delegationModes);
 
-    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
-    LOGGER.info(
-        "allow external catalog credential vending: {}",
-        realmConfig.getConfig(
-            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
-    if (catalogEntity
-            .getCatalogType()
-            .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
-        && !realmConfig.getConfig(
-            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
-      throw new ForbiddenException(
-          "Access Delegation is not enabled for this catalog. Please consult applicable "
-              + "documentation for the catalog config property '%s' to enable this feature",
-          FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
-    }
+    return actionsRequested;
+  }
+
+  public Optional<LoadTableResponse> loadTable(
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      IfNoneMatch ifNoneMatch,
+      EnumSet<AccessDelegationMode> delegationModes,
+      Optional<String> refreshCredentialsEndpoint) {
+
+    Set<PolarisStorageActions> actionsRequested =
+        authorizeLoadTable(tableIdentifier, delegationModes);
 
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
@@ -739,14 +767,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
     if (table instanceof BaseTable baseTable) {
       TableMetadata tableMetadata = baseTable.operations().current();
-      return Optional.of(
+      LoadTableResponse response =
           buildLoadTableResponseWithDelegationCredentials(
                   tableIdentifier,
                   tableMetadata,
+                  delegationModes,
                   actionsRequested,
-                  snapshots,
                   refreshCredentialsEndpoint)
-              .build());
+              .build();
+      return Optional.of(filterResponseToSnapshots(response, snapshots));
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -758,32 +787,88 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
+      EnumSet<AccessDelegationMode> delegationModes,
       Set<PolarisStorageActions> actions,
-      String snapshots,
       Optional<String> refreshCredentialsEndpoint) {
     LoadTableResponse.Builder responseBuilder =
         LoadTableResponse.builder().withTableMetadata(tableMetadata);
-    if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-      LOGGER
-          .atDebug()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .addKeyValue("tableLocation", tableMetadata.location())
-          .log("Fetching client credentials for table");
-      AccessConfig accessConfig =
-          credentialDelegation.getAccessConfig(
-              tableIdentifier, tableMetadata, actions, refreshCredentialsEndpoint);
-      Map<String, String> credentialConfig = accessConfig.credentials();
-      responseBuilder.addAllConfig(credentialConfig);
-      responseBuilder.addAllConfig(accessConfig.extraProperties());
-      if (!credentialConfig.isEmpty()) {
-        responseBuilder.addCredential(
-            ImmutableCredential.builder()
-                .prefix(tableMetadata.location())
-                .config(credentialConfig)
-                .build());
-      }
+    PolarisResolvedPathWrapper resolvedStoragePath =
+        CatalogUtils.findResolvedStorageEntity(resolutionManifest, tableIdentifier);
+
+    if (resolvedStoragePath == null) {
+      LOGGER.debug(
+          "Unable to find storage configuration information for table {}", tableIdentifier);
+      return responseBuilder;
     }
+
+    if (baseCatalog instanceof IcebergCatalog
+        || realmConfig.getConfig(
+            ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING, getResolvedCatalogEntity())) {
+
+      Set<String> tableLocations = StorageUtil.getLocationsUsedByTable(tableMetadata);
+
+      // For non polaris' catalog, validate that table locations are within allowed locations
+      if (!(baseCatalog instanceof IcebergCatalog)) {
+        validateRemoteTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
+      }
+
+      AccessConfig accessConfig =
+          accessConfigProvider.getAccessConfig(
+              callContext,
+              tableIdentifier,
+              tableLocations,
+              actions,
+              refreshCredentialsEndpoint,
+              resolvedStoragePath);
+      Map<String, String> credentialConfig = accessConfig.credentials();
+      if (delegationModes.contains(VENDED_CREDENTIALS)) {
+        if (!credentialConfig.isEmpty()) {
+          responseBuilder.addAllConfig(credentialConfig);
+          responseBuilder.addCredential(
+              ImmutableCredential.builder()
+                  .prefix(tableMetadata.location())
+                  .config(credentialConfig)
+                  .build());
+        } else {
+          Boolean skipCredIndirection =
+              realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+          Preconditions.checkArgument(
+              !accessConfig.supportsCredentialVending() || skipCredIndirection,
+              "Credential vending was requested for table %s, but no credentials are available",
+              tableIdentifier);
+        }
+      }
+      responseBuilder.addAllConfig(accessConfig.extraProperties());
+    }
+
     return responseBuilder;
+  }
+
+  private void validateRemoteTableLocations(
+      TableIdentifier tableIdentifier,
+      Set<String> tableLocations,
+      PolarisResolvedPathWrapper resolvedStoragePath) {
+
+    try {
+      // Delegate to common validation logic
+      CatalogUtils.validateLocationsForTableLike(
+          realmConfig, tableIdentifier, tableLocations, resolvedStoragePath);
+
+      LOGGER
+          .atInfo()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue("tableLocations", tableLocations)
+          .log("Validated federated table locations");
+    } catch (ForbiddenException e) {
+      LOGGER
+          .atError()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .addKeyValue("tableLocations", tableLocations)
+          .log("Federated table locations validation failed");
+      throw new ForbiddenException(
+          "Table '%s' in remote catalog has locations outside catalog's allowed locations: %s",
+          tableIdentifier, e.getMessage());
+    }
   }
 
   private UpdateTableRequest applyUpdateFilters(UpdateTableRequest request) {
@@ -796,8 +881,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
             .map(
                 update -> {
                   if (baseCatalog instanceof IcebergCatalog
-                      && update instanceof MetadataUpdate.SetLocation) {
-                    String requestedLocation = ((MetadataUpdate.SetLocation) update).location();
+                      && update instanceof MetadataUpdate.SetLocation setLocation) {
+                    String requestedLocation = setLocation.location();
                     String filteredLocation =
                         ((IcebergCatalog) baseCatalog)
                             .transformTableLikeLocation(identifier, requestedLocation);
@@ -812,9 +897,16 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public LoadTableResponse updateTable(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_TABLE;
-    authorizeBasicTableLikeOperationOrThrow(
-        op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+
+    // Ensure resolution manifest is initialized so we can determine whether
+    // fine grained authz model is enabled at the catalog level
+    ensureResolutionManifestForTable(tableIdentifier);
+
+    EnumSet<PolarisAuthorizableOperation> authorizableOperations =
+        getUpdateTableAuthorizableOperations(request);
+
+    authorizeBasicTableLikeOperationsOrThrow(
+        authorizableOperations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
@@ -912,7 +1004,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         .forEach(
             change -> {
               Table table = baseCatalog.loadTable(change.identifier());
-              if (!(table instanceof BaseTable)) {
+              if (!(table instanceof BaseTable baseTable)) {
                 throw new IllegalStateException(
                     "Cannot wrap catalog that does not produce BaseTable");
               }
@@ -922,7 +1014,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                     change);
               }
 
-              TableOperations tableOps = ((BaseTable) table).operations();
+              TableOperations tableOps = baseTable.operations();
               TableMetadata currentMetadata = tableOps.current();
 
               // Validate requirements; any CommitFailedExceptions will fail the overall request
@@ -937,10 +1029,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                         // support validation within a single multi-table transaction as well, but
                         // will need to update the TransactionWorkspaceMetaStoreManager to better
                         // expose the concept of being able to read uncommitted updates.
-                        if (singleUpdate instanceof MetadataUpdate.SetLocation) {
-                          if (!currentMetadata
-                                  .location()
-                                  .equals(((MetadataUpdate.SetLocation) singleUpdate).location())
+                        if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
+                          if (!currentMetadata.location().equals(setLocation.location())
                               && !realmConfig.getConfig(
                                   FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
                             throw new BadRequestException(
@@ -1081,6 +1171,98 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           .build();
     } else {
       throw new IllegalArgumentException("Unrecognized snapshots: " + snapshots);
+    }
+  }
+
+  private EnumSet<PolarisAuthorizableOperation> getUpdateTableAuthorizableOperations(
+      UpdateTableRequest request) {
+    boolean useFineGrainedOperations =
+        realmConfig.getConfig(
+            FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES,
+            getResolvedCatalogEntity());
+
+    if (useFineGrainedOperations) {
+      EnumSet<PolarisAuthorizableOperation> actions =
+          request.updates().stream()
+              .map(
+                  update ->
+                      switch (update) {
+                        case MetadataUpdate.AssignUUID assignUuid ->
+                            PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
+                        case MetadataUpdate.UpgradeFormatVersion upgradeFormat ->
+                            PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
+                        case MetadataUpdate.AddSchema addSchema ->
+                            PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
+                        case MetadataUpdate.SetCurrentSchema setCurrentSchema ->
+                            PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
+                        case MetadataUpdate.AddPartitionSpec addPartitionSpec ->
+                            PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
+                        case MetadataUpdate.AddSortOrder addSortOrder ->
+                            PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
+                        case MetadataUpdate.SetDefaultSortOrder setDefaultSortOrder ->
+                            PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
+                        case MetadataUpdate.AddSnapshot addSnapshot ->
+                            PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
+                        case MetadataUpdate.SetSnapshotRef setSnapshotRef ->
+                            PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
+                        case MetadataUpdate.RemoveSnapshots removeSnapshots ->
+                            PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
+                        case MetadataUpdate.RemoveSnapshotRef removeSnapshotRef ->
+                            PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
+                        case MetadataUpdate.SetLocation setLocation ->
+                            PolarisAuthorizableOperation.SET_TABLE_LOCATION;
+                        case MetadataUpdate.SetProperties setProperties ->
+                            PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
+                        case MetadataUpdate.RemoveProperties removeProperties ->
+                            PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
+                        case MetadataUpdate.SetStatistics setStatistics ->
+                            PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
+                        case MetadataUpdate.RemoveStatistics removeStatistics ->
+                            PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
+                        case MetadataUpdate.RemovePartitionSpecs removePartitionSpecs ->
+                            PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
+                        default ->
+                            PolarisAuthorizableOperation
+                                .UPDATE_TABLE; // Fallback for unknown update types
+                      })
+              .collect(
+                  () -> EnumSet.noneOf(PolarisAuthorizableOperation.class),
+                  EnumSet::add,
+                  EnumSet::addAll);
+
+      // If there are no MetadataUpdates, then default to the UPDATE_TABLE operation.
+      if (actions.isEmpty()) {
+        actions.add(PolarisAuthorizableOperation.UPDATE_TABLE);
+      }
+
+      return actions;
+    } else {
+      return EnumSet.of(PolarisAuthorizableOperation.UPDATE_TABLE);
+    }
+  }
+
+  private void checkAllowExternalCatalogCredentialVending(
+      EnumSet<AccessDelegationMode> delegationModes) {
+
+    if (delegationModes.isEmpty()) {
+      return;
+    }
+    CatalogEntity catalogEntity = getResolvedCatalogEntity();
+
+    LOGGER.info("Catalog type: {}", catalogEntity.getCatalogType());
+    LOGGER.info(
+        "allow external catalog credential vending: {}",
+        realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity));
+    if (catalogEntity
+            .getCatalogType()
+            .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
+        && !realmConfig.getConfig(
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING, catalogEntity)) {
+      throw new ForbiddenException(
+          "Access Delegation is not enabled for this catalog. Please consult applicable "
+              + "documentation for the catalog config property '%s' to enable this feature",
+          FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
   }
 

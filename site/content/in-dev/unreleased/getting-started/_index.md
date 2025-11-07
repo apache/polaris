@@ -17,9 +17,28 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Getting Started'
+title: Getting Started with Apache Polaris
+linkTitle: Getting Started
 type: docs
 weight: 101
-build:
-  render: never
 ---
+
+There are several options for getting started with Apache Polaris.
+
+To quickly try out Apache Polaris, please use the [quickstart guide](./quick-start). For other examples, please see below.
+
+## Docker Compose Examples
+Each of the proceeding Docker Compose examples provides a complete working environment with detailed instructions.
+
+### Next Steps
+
+1. Check & install dependencies
+2. Choose the way you want to deploy Polaris
+3. Create a catalog
+4. Check Using Polaris page
+
+### Getting Help
+
+- Documentation: https://polaris.apache.org
+- GitHub Issues: https://github.com/apache/polaris/issues
+- Slack: [Join Apache Polaris Community](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)

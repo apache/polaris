@@ -39,26 +39,19 @@ public interface PolarisPrincipal extends Principal {
    * @param roles the set of roles associated with the principal
    */
   static PolarisPrincipal of(PrincipalEntity principalEntity, Set<String> roles) {
-    return of(
-        principalEntity.getId(),
-        principalEntity.getName(),
-        principalEntity.getInternalPropertiesAsMap(),
-        roles);
+    return of(principalEntity.getName(), principalEntity.getInternalPropertiesAsMap(), roles);
   }
 
   /**
    * Creates a new instance of {@link PolarisPrincipal} with the specified ID, name, roles, and
    * properties.
    *
-   * @param id the unique identifier of the principal
    * @param name the name of the principal
    * @param properties additional properties associated with the principal
    * @param roles the set of roles associated with the principal
    */
-  static PolarisPrincipal of(
-      long id, String name, Map<String, String> properties, Set<String> roles) {
+  static PolarisPrincipal of(String name, Map<String, String> properties, Set<String> roles) {
     return ImmutablePolarisPrincipal.builder()
-        .id(id)
         .name(name)
         .properties(properties)
         .roles(roles)
@@ -66,16 +59,11 @@ public interface PolarisPrincipal extends Principal {
   }
 
   /**
-   * Returns the unique identifier of the principal.
+   * Returns the set of activated principal role names.
    *
-   * <p>This identifier is used to uniquely identify the principal within a Polaris realm.
-   */
-  long getId();
-
-  /**
-   * Returns the set of activated principal role names. Activated role names are the roles that were
-   * explicitly requested by the client when authenticating, through JWT claims or other means. It
-   * may be a subset of the roles that the principal has in the system.
+   * <p>Activated role names are the roles that were explicitly requested by the client when
+   * authenticating, through JWT claims or other means. It may be a subset of the roles that the
+   * principal has in the system.
    */
   Set<String> getRoles();
 

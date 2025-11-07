@@ -34,7 +34,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -49,6 +51,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -253,12 +257,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // if it is a principal, we also need to drop the secrets
     if (entity.getType() == PolarisEntityType.PRINCIPAL) {
-      // get internal properties
-      Map<String, String> properties = entity.getInternalPropertiesAsMap();
-
-      // get client_id
-      String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
-
+      PrincipalEntity principalEntity = PrincipalEntity.of(entity);
+      String clientId = principalEntity.getClientId();
       // delete it from the secret slice
       ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, entity.getId());
     }
@@ -577,28 +577,22 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // role. The principal role will be granted to that root principal and the root catalog admin
     // of the root catalog will be granted to that principal role.
     long rootPrincipalId = ms.generateNewId(callCtx);
-    PolarisBaseEntity rootPrincipal =
-        new PolarisBaseEntity(
-            PolarisEntityConstants.getNullId(),
-            rootPrincipalId,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootEntityId(),
-            PolarisEntityConstants.getRootPrincipalName());
-
-    // create this principal
+    PrincipalEntity rootPrincipal =
+        new PrincipalEntity.Builder()
+            .setId(rootPrincipalId)
+            .setName(PolarisEntityConstants.getRootPrincipalName())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
     this.createPrincipal(callCtx, rootPrincipal);
 
     // now create the account admin principal role
     long serviceAdminPrincipalRoleId = ms.generateNewId(callCtx);
-    PolarisBaseEntity serviceAdminPrincipalRole =
-        new PolarisBaseEntity(
-            PolarisEntityConstants.getNullId(),
-            serviceAdminPrincipalRoleId,
-            PolarisEntityType.PRINCIPAL_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootEntityId(),
-            PolarisEntityConstants.getNameOfPrincipalServiceAdminRole());
+    PrincipalRoleEntity serviceAdminPrincipalRole =
+        new PrincipalRoleEntity.Builder()
+            .setId(serviceAdminPrincipalRoleId)
+            .setName(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
+            .setCreateTimestamp(System.currentTimeMillis())
+            .build();
     this.persistNewEntity(callCtx, ms, serviceAdminPrincipalRole);
 
     // we also need to grant usage on the account-admin principal to the principal
@@ -748,7 +742,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public @Nonnull CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PrincipalEntity principal) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -756,43 +750,20 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     getDiagnostics().checkNotNull(principal, "unexpected_null_principal");
 
     // check if that catalog has already been created
-    PolarisBaseEntity refreshPrincipal =
-        ms.lookupEntity(
-            callCtx, principal.getCatalogId(), principal.getId(), principal.getTypeCode());
+    PrincipalEntity refreshPrincipal =
+        PrincipalEntity.of(
+            ms.lookupEntity(
+                callCtx, principal.getCatalogId(), principal.getId(), principal.getTypeCode()));
 
     // if found, probably a retry, simply return the previously created principal
     // This can be done safely as a separate atomic operation before trying to create the principal
     // because same-id idempotent-retry collisions of this sort are necessarily sequential, so
     // there is no concurrency conflict for something else creating a principal of this same id.
     if (refreshPrincipal != null) {
-      // if found, ensure it is indeed a principal
+      String clientId = refreshPrincipal.getClientId();
+      getDiagnostics().checkNotNull(clientId, "null_client_id", "principal={}", refreshPrincipal);
       getDiagnostics()
-          .check(
-              principal.getTypeCode() == PolarisEntityType.PRINCIPAL.getCode(),
-              "not_a_principal",
-              "principal={}",
-              principal);
-
-      // get internal properties
-      Map<String, String> properties = refreshPrincipal.getInternalPropertiesAsMap();
-
-      // get client_id
-      String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
-
-      // should not be null
-      getDiagnostics()
-          .checkNotNull(
-              clientId,
-              "null_client_id",
-              "properties={}",
-              refreshPrincipal.getInternalProperties());
-      // ensure non null and non empty
-      getDiagnostics()
-          .check(
-              !clientId.isEmpty(),
-              "empty_client_id",
-              "properties={}",
-              refreshPrincipal.getInternalProperties());
+          .check(!clientId.isEmpty(), "empty_client_id", "principal={}", refreshPrincipal);
 
       // get the main and secondary secrets for that client
       PolarisPrincipalSecrets principalSecrets =
@@ -816,15 +787,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         ((IntegrationPersistence) ms)
             .generateNewPrincipalSecrets(callCtx, principal.getName(), principal.getId());
 
-    // generate properties
-    Map<String, String> internalProperties = principal.getInternalPropertiesAsMap();
-    internalProperties.put(
-        PolarisEntityConstants.getClientIdPropertyName(), principalSecrets.getPrincipalClientId());
-
     // remember client id
-    PolarisBaseEntity updatedPrincipal =
-        new PolarisBaseEntity.Builder(principal)
-            .internalPropertiesAsMap(internalProperties)
+    PrincipalEntity updatedPrincipal =
+        new PrincipalEntity.Builder(principal)
+            .setClientId(principalSecrets.getPrincipalClientId())
             .build();
     // now create and persist new catalog entity
     EntityResult lowLevelResult = this.persistNewEntity(callCtx, ms, updatedPrincipal);
@@ -878,14 +844,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     BasePersistence ms = callCtx.getMetaStore();
 
     // if not found, the principal must have been dropped
-    EntityResult loadEntityResult =
-        loadEntity(
-            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
-    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+    Optional<PrincipalEntity> principalLookup = findPrincipalById(callCtx, principalId);
+    if (principalLookup.isEmpty()) {
       return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
-    PolarisBaseEntity principal = loadEntityResult.getEntity();
+    PrincipalEntity principal = principalLookup.get();
     Map<String, String> internalProps = principal.getInternalPropertiesAsMap();
 
     boolean doReset =
@@ -929,11 +893,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       String customClientSecret) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
+
     // if not found, the principal must have been dropped
-    EntityResult loadEntityResult =
-        loadEntity(
-            callCtx, PolarisEntityConstants.getNullId(), principalId, PolarisEntityType.PRINCIPAL);
-    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
+    Optional<PrincipalEntity> principalEntity = findPrincipalById(callCtx, principalId);
+    if (principalEntity.isEmpty()) {
       return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
@@ -1204,16 +1167,35 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // the id of the catalog
       long catalogId = refreshEntityToDrop.getId();
 
-      // if not all namespaces are dropped, we cannot drop this catalog
-      // TODO: Come up with atomic solution to blocking dropping of container entities that
-      // have children; one option is reference-counting if all child creation/drop operations
-      // become two-entity bulk conditional updates that also update the refcount on the parent
-      // if not changed concurrently (else retry). In the meantime, there's a window of time
-      // where dropping a namespace or container is effectively "recursive" in deleting its
-      // children as well if those child entities were created within the short window of
-      // the race condition.
-      if (ms.hasChildren(callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
-        return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
+      CatalogEntity catalogEntityToDrop = CatalogEntity.of(refreshEntityToDrop);
+      // For passthrough facade catalogs, all catalog level entities, except catalog roles, are
+      // passthrough entities that are not source-of-truth
+      // TODO: Temporarily allow dropping a catalog with passthrough entities remaining, in the long
+      // term we need to cleanup them up to avoid accumulation in the metastore
+      if (!catalogEntityToDrop.isPassthroughFacade()
+          || !callCtx
+              .getRealmConfig()
+              .getConfig(
+                  FeatureConfiguration.ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG,
+                  catalogEntityToDrop)) {
+        // if not all namespaces are dropped, we cannot drop this catalog
+        // TODO: Come up with atomic solution to blocking dropping of container entities that
+        // have children; one option is reference-counting if all child creation/drop operations
+        // become two-entity bulk conditional updates that also update the refcount on the parent
+        // if not changed concurrently (else retry). In the meantime, there's a window of time
+        // where dropping a namespace or container is effectively "recursive" in deleting its
+        // children as well if those child entities were created within the short window of
+        // the race condition.
+        if (ms.hasChildren(callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
+          return new DropEntityResult(
+              BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY,
+              catalogEntityToDrop.isPassthroughFacade()
+                  ? String.format(
+                      "Set %s to true to drop non-empty passthrough facade catalogs",
+                      FeatureConfiguration.ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG
+                          .key())
+                  : null);
+        }
       }
 
       // get the list of catalog roles, at most 2

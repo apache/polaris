@@ -271,6 +271,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS")
+          .description(
+              "When enabled, allows RBAC operations to create synthetic entities for"
+                  + " entities in federated catalogs that don't exist in the local metastore.")
+          .catalogConfig("polaris.config.enable-sub-catalog-rbac-for-federated-catalogs")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ENABLE_POLICY_STORE =
       PolarisConfiguration.<Boolean>builder()
           .key("ENABLE_POLICY_STORE")
@@ -293,7 +303,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .defaultValue(
                   List.of(
                       AuthenticationParameters.AuthenticationTypeEnum.OAUTH.name(),
-                      AuthenticationParameters.AuthenticationTypeEnum.BEARER.name()))
+                      AuthenticationParameters.AuthenticationTypeEnum.BEARER.name(),
+                      AuthenticationParameters.AuthenticationTypeEnum.SIGV4.name()))
               .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> ICEBERG_COMMIT_MAX_RETRIES =
@@ -343,6 +354,16 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_OPTIMIZED_SIBLING_CHECK =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_OPTIMIZED_SIBLING_CHECK")
+          .description(
+              "When set to true, Polaris will permit enabling the feature OPTIMIZED_SIBLING_CHECK "
+                  + "for catalogs, this is done to prevent accidental enabling the feature in cases such as schema migrations, without backfill and hence leading to potential data integrity issues.\n"
+                  + "This will be removed in 2.0.0 when polaris ships with the necessary migrations to backfill the index.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> OPTIMIZED_SIBLING_CHECK =
       PolarisConfiguration.<Boolean>builder()
           .key("OPTIMIZED_SIBLING_CHECK")
@@ -374,6 +395,47 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "Flag to enable or disable the API to reset principal credentials. "
                   + "Defaults to enabled, but service providers may want to disable it.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean>
+      ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS =
+          PolarisConfiguration.<Boolean>builder()
+              .key("ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS")
+              .description(
+                  "If set to true (default), Polaris will allow setting or changing "
+                      + "catalog property polaris.config.enable-sub-catalog-rbac-for-federated-catalogs."
+                      + "If set to false, Polaris will disallow setting or changing the above catalog property")
+              .defaultValue(true)
+              .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean>
+      ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG =
+          PolarisConfiguration.<Boolean>builder()
+              .key("ALLOW_DROPPING_NON_EMPTY_PASSTHROUGH_FACADE_CATALOG")
+              .description(
+                  "If enabled, allow dropping a passthrough-facade catalog even if it contains namespaces or tables. "
+                      + "passthrough-facade catalogs may contain leftover entities when syncing with source catalog."
+                      + "In the short term these entities will be ignored, in the long term there will be method/background job to clean them up.")
+              .catalogConfig("polaris.config.allow-dropping-non-empty-passthrough-facade-catalog")
+              .defaultValue(false)
+              .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES")
+          .catalogConfig("polaris.config.enable-fine-grained-update-table-privileges")
+          .description(
+              "When true, enables finer grained update table privileges which are passed to the authorizer for update table operations")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING")
+          .catalogConfig("polaris.config.allow-federated-catalogs-credential-vending")
+          .description(
+              "If set to true (default), allow credential vending for external catalogs. Note this requires ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING to be true first.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 }

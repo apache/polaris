@@ -17,6 +17,10 @@
  * under the License.
  */
 
+import com.github.erizo.gradle.JcstressTask
+import java.io.FileOutputStream
+import java.nio.file.Files
+
 plugins {
   id("org.kordamp.gradle.jandex")
   alias(libs.plugins.jmh)
@@ -25,6 +29,8 @@ plugins {
 }
 
 description = "Polaris ID generation implementation"
+
+val jcstressRuntime by configurations.creating
 
 dependencies {
   implementation(project(":polaris-idgen-api"))
@@ -58,6 +64,8 @@ dependencies {
 
   jmhImplementation(libs.jmh.core)
   jmhAnnotationProcessor(libs.jmh.generator.annprocess)
+
+  jcstressRuntime(libs.jcstress.core)
 }
 
 tasks.named("jcstressJar") { dependsOn("jandex") }
@@ -67,3 +75,39 @@ tasks.named("compileJcstressJava") { dependsOn("jandex") }
 tasks.named("check") { dependsOn("jcstress") }
 
 jcstress { jcstressDependency = libs.jcstress.core.get().toString() }
+
+tasks.named<JcstressTask>("jcstress") {
+  inputs.properties(
+    System.getProperties()
+      .mapKeys { it.key.toString() }
+      .filterKeys {
+        setOf("os.name", "os.arch", "os.version", "java.runtime.name", "java.runtime.version")
+          .contains(it)
+      }
+  )
+  inputs.property("availableProcessors", Runtime.getRuntime().availableProcessors())
+  inputs.files(jcstressRuntime)
+  inputs.files(configurations.runtimeClasspath)
+  outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
+
+  if (!System.getProperty("jcstress-no-capture").toBoolean()) {
+    // Capture jcstress output in a log file, dump that in case of a failure.
+
+    val logDir = project.layout.buildDirectory.dir("reports/jcstress").get().asFile
+    val logFile = File(logDir, "jcstress.log")
+    var logStream: FileOutputStream? = null
+
+    actions.addFirst {
+      logStream = FileOutputStream(logFile)
+      standardOutput = logStream
+      errorOutput = logStream
+    }
+
+    actions.addLast {
+      logStream?.close()
+      if (state.failure != null) {
+        logger.error("jcstress output\n{}", Files.readString(logFile.toPath()))
+      }
+    }
+  }
+}

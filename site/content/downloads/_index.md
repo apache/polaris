@@ -30,12 +30,98 @@ params:
 ## Helm Chart
 Repo: https://downloads.apache.org/incubator/polaris/helm-chart
 
-## 1.0.1 release
+## 1.2.0
+| Artifact                                                                                                                                                                             | PGP Sig                                                                                                                                                  | SHA-512                                                                                                                                                        |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [source tar.gz](https://dlcdn.apache.org/incubator/polaris/1.2.0-incubating/apache-polaris-1.2.0-incubating.tar.gz)                                                                  | [.asc](https://downloads.apache.org/incubator/polaris/1.2.0-incubating/apache-polaris-1.2.0-incubating.tar.gz.asc)                                       | [.sha512](https://downloads.apache.org/incubator/polaris/1.2.0-incubating/apache-polaris-1.2.0-incubating.tar.gz.sha512)                                       |
+| [binary tgz](https://dlcdn.apache.org/incubator/polaris/1.2.0-incubating/polaris-bin-1.2.0-incubating.tgz)                                                                           | [.asc](https://downloads.apache.org/incubator/polaris/1.2.0-incubating/polaris-bin-1.2.0-incubating.tgz.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.2.0-incubating/polaris-bin-1.2.0-incubating.tgz.sha512)                                             |
+| [binary zip](https://dlcdn.apache.org/incubator/polaris/1.2.0-incubating/polaris-bin-1.2.0-incubating.zip)                                                                           | [.asc](https://downloads.apache.org/incubator/polaris/1.2.0-incubating/polaris-bin-1.2.0-incubating.zip.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.2.0-incubating/polaris-bin-1.2.0-incubating.zip.sha512)                                             |
+| [Spark 3.5 with Scala 2.12 Client Jar](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.2.0-incubating/polaris-spark-3.5_2.12-1.2.0-incubating-bundle.jar) | [.asc](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.2.0-incubating/polaris-spark-3.5_2.12-1.2.0-incubating-bundle.jar.asc) | [.sha512](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.2.0-incubating/polaris-spark-3.5_2.12-1.2.0-incubating-bundle.jar.sha512) |
+| [Spark 3.5 with Scala 2.13 Client Jar](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.2.0-incubating/polaris-spark-3.5_2.13-1.2.0-incubating-bundle.jar) | [.asc](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.2.0-incubating/polaris-spark-3.5_2.13-1.2.0-incubating-bundle.jar.asc) | [.sha512](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.2.0-incubating/polaris-spark-3.5_2.13-1.2.0-incubating-bundle.jar.sha512) |
+
+Apache Polaris 1.2.0-incubating was released on October 23rd, 2025.
+- **Upgrade Notes**
+  - Amazon RDS plugin enabled, this allows polaris to connect to AWS Aurora PostgreSQL using IAM authentication.
+
+- **Breaking changes**
+  - Creating or altering a namespace with a custom location outside its parent location is now prohibited by default. To restore the old behavior, set the `ALLOW_NAMESPACE_CUSTOM_LOCATION` flag to true.
+
+- **New Features**
+  - Added a finer grained authorization model for UpdateTable requests. Existing privileges continue to work for granting UpdateTable, such as `TABLE_WRITE_PROPERTIES`.
+  However, you can now instead grant privileges just for specific operations, such as `TABLE_ADD_SNAPSHOT`
+  - Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
+  - The `ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` was added to support sub-catalog (initially namespace and table) RBAC for federated catalogs.
+    The setting can be configured on a per-catalog basis by setting the catalog property: `polaris.config.enable-sub-catalog-rbac-for-federated-catalogs`.
+    The realm-level feature flag `ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` (default: true) controls whether this functionality can be enabled or modified at the catalog level.
+  - Added support for S3-compatible storage that does not have STS (use `stsUavailable: true` in catalog storage configuration)
+  - Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
+  - **Events Persistence (Preview)**: Introduced new event types and added support for persisting events to both Relational JDBC Persistence and AWS CloudWatch.
+  
+    **Note**: This is a preview feature. The persistence schema is subject to change in future releases, and previously stored event data MAY become unreadable (i.e., dropped) after an upgrade.
+
+- **Changes**
+  - The following APIs will now return the newly-created objects as part of the successful 201 response: createCatalog, createPrincipalRole, createCatalogRole.
+
+- **Deprecations**
+
+  - The property `polaris.active-roles-provider.type` is deprecated and has no effect anymore.
+  - The EclipseLink Persistence implementation has been deprecated since 1.0.0 and will be completely removed
+  in 1.3.0 or in 2.0.0 (whichever happens earlier).
+  - The legacy management endpoints at `/metrics` and `/healthcheck` have been deprecated in 1.2.0 and will be
+  completely removed in 1.3.0 or in 2.0.0 (whichever happens earlier). Please use the standard management
+  endpoints at `/q/metrics` and `/q/health` instead.
+
+
+## 1.1.0
 | Artifact                                                                                                                                                                                         | PGP Sig                                                                                                                                                  | SHA-512 |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|---|
-| [source tar.gz](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/apache-polaris-1.0.1-incubating.tar.gz)                                                              | [.asc](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/apache-polaris-1.0.1-incubating.tar.gz.asc)                                       | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/apache-polaris-1.0.1-incubating.tar.gz.sha512) |
-| [binary tgz](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.tgz)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.tgz.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.tgz.sha512) |
-| [binary zip](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.zip)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.zip.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.zip.sha512) |
+| [source tar.gz](https://dlcdn.apache.org/incubator/polaris/1.1.0-incubating/apache-polaris-1.1.0-incubating.tar.gz)                                                              | [.asc](https://downloads.apache.org/incubator/polaris/1.1.0-incubating/apache-polaris-1.1.0-incubating.tar.gz.asc)                                       | [.sha512](https://downloads.apache.org/incubator/polaris/1.1.0-incubating/apache-polaris-1.1.0-incubating.tar.gz.sha512) |
+| [binary tgz](https://dlcdn.apache.org/incubator/polaris/1.1.0-incubating/polaris-bin-1.1.0-incubating.tgz)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.1.0-incubating/polaris-bin-1.1.0-incubating.tgz.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.1.0-incubating/polaris-bin-1.1.0-incubating.tgz.sha512) |
+| [binary zip](https://dlcdn.apache.org/incubator/polaris/1.1.0-incubating/polaris-bin-1.1.0-incubating.zip)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.1.0-incubating/polaris-bin-1.1.0-incubating.zip.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.1.0-incubating/polaris-bin-1.1.0-incubating.zip.sha512) |
+| [Spark 3.5 with Scala 2.12 Client Jar](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.1.0-incubating/polaris-spark-3.5_2.12-1.1.0-incubating-bundle.jar) | [.asc](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.1.0-incubating/polaris-spark-3.5_2.12-1.1.0-incubating-bundle.jar.asc) | [.sha512](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.1.0-incubating/polaris-spark-3.5_2.12-1.1.0-incubating-bundle.jar.sha512) |
+| [Spark 3.5 with Scala 2.13 Client Jar](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.1.0-incubating/polaris-spark-3.5_2.13-1.1.0-incubating-bundle.jar) | [.asc](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.1.0-incubating/polaris-spark-3.5_2.13-1.1.0-incubating-bundle.jar.asc) | [.sha512](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.1.0-incubating/polaris-spark-3.5_2.13-1.1.0-incubating-bundle.jar.sha512) |
+
+Apache Polaris 1.1.0-incubating was released on September 19th, 2025. 
+- **New features & enhancements**
+  - HMS support
+  - IMPLICIT authentication type
+  - Support for non-AWS S3 compatible storage with STS: MinIO, s3a scheme support
+  - Use of Realm instead of RealmId
+  - Modularized Federation Architecture
+  - Federated Catalog Support in Polaris CLI
+  - Expanded External Identity Provider support
+  - Python package (official)
+  - Documentation improvements (release process, multi-realms configuration)
+- **Bug fixes**
+  - Fix drop view with default server configuration
+  - Fix MinIO support
+  - Remove ThreadLocal
+- **Breaking changes**
+  - Helm chart: the default value of the `authentication.tokenBroker.secret.symmetricKey.secretKey` property has changed 
+    from `symmetric.pem` to `symmetric.key`.
+  - For migrations from 1.0.x to 1.1.x, users using JDBC persistence and wanting to continue using v1 schema, must ensure
+    that they, run following SQL statement under `POLARIS_SCHEMA` to make sure version table exists:
+    ```sql 
+    CREATE TABLE IF NOT EXISTS version (
+       version_key TEXT PRIMARY KEY,
+       version_value INTEGER NOT NULL
+    );
+    INSERT INTO version (version_key, version_value)
+      VALUES ('version', 1)
+    ON CONFLICT (version_key) DO UPDATE
+                            SET version_value = EXCLUDED.version_value;
+    COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
+    
+    ALTER TABLE polaris_schema.entities ADD COLUMN IF NOT EXISTS location_without_scheme TEXT;
+    ```
+    - Please don't enable [OPTIMIZED_SIBLING_CHECK](https://github.com/apache/polaris/blob/740993963cb41c2c1b4638be5e04dd00f1263c98/polaris-core/src/main/java/org/apache/polaris/core/config/FeatureConfiguration.java#L346) feature configuration, once the above SQL statements are run. As it may lead to incorrect behavior, due to missing data for location_without_scheme column.
+
+## 1.0.1
+| Artifact                                                                                                                                                                                         | PGP Sig                                                                                                                                                  | SHA-512 |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|---|
+| [source tar.gz](https://dlcdn.apache.org/incubator/polaris/1.0.1-incubating/apache-polaris-1.0.1-incubating.tar.gz)                                                              | [.asc](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/apache-polaris-1.0.1-incubating.tar.gz.asc)                                       | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/apache-polaris-1.0.1-incubating.tar.gz.sha512) |
+| [binary tgz](https://dlcdn.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.tgz)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.tgz.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.tgz.sha512) |
+| [binary zip](https://dlcdn.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.zip)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.zip.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.1-incubating/polaris-bin-1.0.1-incubating.zip.sha512) |
 | [Spark 3.5 with Scala 2.12 Client Jar](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.0.1-incubating/polaris-spark-3.5_2.12-1.0.1-incubating-bundle.jar) | [.asc](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.0.1-incubating/polaris-spark-3.5_2.12-1.0.1-incubating-bundle.jar.asc) | [.sha512](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.0.1-incubating/polaris-spark-3.5_2.12-1.0.1-incubating-bundle.jar.sha512) |
 | [Spark 3.5 with Scala 2.13 Client Jar](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.0.1-incubating/polaris-spark-3.5_2.13-1.0.1-incubating-bundle.jar) | [.asc](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.0.1-incubating/polaris-spark-3.5_2.13-1.0.1-incubating-bundle.jar.asc) | [.sha512](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.0.1-incubating/polaris-spark-3.5_2.13-1.0.1-incubating-bundle.jar.sha512) |
 
@@ -43,12 +129,12 @@ Apache Polaris 1.0.1-incubating was released on August 16th, 2025. It's a mainte
 - remove db-kind in Helm Chart
 - add relational-jdbc to helm
 
-## 1.0.0 release
+## 1.0.0
 | Artifact                                                                                                                                                                                         | PGP Sig                                                                                                                                                  | SHA-512 |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|---|
-| [source tar.gz](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/apache-polaris-1.0.0-incubating.tar.gz)                                                              | [.asc](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/apache-polaris-1.0.0-incubating.tar.gz.asc)                                       | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/apache-polaris-1.0.0-incubating.tar.gz.sha512) |
-| [binary tgz](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz.sha512) |
-| [binary zip](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.zip)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.zip.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.zip.sha512) |
+| [source tar.gz](https://dlcdn.apache.org/incubator/polaris/1.0.0-incubating/apache-polaris-1.0.0-incubating.tar.gz)                                                              | [.asc](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/apache-polaris-1.0.0-incubating.tar.gz.asc)                                       | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/apache-polaris-1.0.0-incubating.tar.gz.sha512) |
+| [binary tgz](https://dlcdn.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz.sha512) |
+| [binary zip](https://dlcdn.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.zip)                                                                       | [.asc](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.zip.asc)                                             | [.sha512](https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.zip.sha512) |
 | [Spark 3.5 with Scala 2.12 Client Jar](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.0.0-incubating/polaris-spark-3.5_2.12-1.0.0-incubating-bundle.jar) | [.asc](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.0.0-incubating/polaris-spark-3.5_2.12-1.0.0-incubating-bundle.jar.asc) | [.sha512](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.12/1.0.0-incubating/polaris-spark-3.5_2.12-1.0.0-incubating-bundle.jar.sha512) |
 | [Spark 3.5 with Scala 2.13 Client Jar](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.0.0-incubating/polaris-spark-3.5_2.13-1.0.0-incubating-bundle.jar) | [.asc](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.0.0-incubating/polaris-spark-3.5_2.13-1.0.0-incubating-bundle.jar.asc) | [.sha512](https://repo1.maven.org/maven2/org/apache/polaris/polaris-spark-3.5_2.13/1.0.0-incubating/polaris-spark-3.5_2.13-1.0.0-incubating-bundle.jar.sha512) |
 
@@ -78,10 +164,10 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
     - **Server Configuration** – The format used to configure the Polaris service in 0.9 has changed with the migration to Quarkus and changes to configurations
     - **Bootstrap Flow** – The bootstrap flow used in 0.9 has changed with the migration to Quarkus and the new admin tool
 
-## 0.9.0 release
+## 0.9.0
 
 | Artifact                                                                                                                                 | PGP Sig | SHA-512 |
 |------------------------------------------------------------------------------------------------------------------------------------------|---|---|
-| [0.9.0-incubating source tar.gz](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) | [.asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) | [.sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) |
+| [0.9.0-incubating source tar.gz](https://dlcdn.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz) | [.asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc) | [.sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512) |
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release. 

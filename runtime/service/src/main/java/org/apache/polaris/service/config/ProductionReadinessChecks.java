@@ -33,6 +33,7 @@ import java.util.List;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
@@ -42,8 +43,7 @@ import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
-import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.credentials.connection.AuthType;
 import org.apache.polaris.service.metrics.MetricsConfiguration;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.eclipse.microprofile.config.Config;
@@ -220,18 +220,6 @@ public class ProductionReadinessChecks {
     return ProductionReadinessCheck.OK;
   }
 
-  @Produces
-  public ProductionReadinessCheck checkPolarisEventListener(
-      PolarisEventListener polarisEventListener) {
-    if (polarisEventListener instanceof TestPolarisEventListener) {
-      return ProductionReadinessCheck.of(
-          Error.of(
-              "TestPolarisEventListener is intended for tests only.",
-              "polaris.event-listener.type"));
-    }
-    return ProductionReadinessCheck.OK;
-  }
-
   private static String authRealmSegment(String realm) {
     return realm.equals(AuthenticationConfiguration.DEFAULT_REALM_KEY) ? "" : realm + ".";
   }
@@ -298,6 +286,99 @@ public class ProductionReadinessChecks {
                                   "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
                                   realmId, storageTypes.key()))));
         });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
+  public ProductionReadinessCheck checkOverlappingSiblingCheckSettings(
+      FeaturesConfiguration featureConfiguration) {
+    var optimizedSiblingCheck = FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
+    var allowOverlap = FeatureConfiguration.ALLOW_OPTIMIZED_SIBLING_CHECK;
+    var errors = new ArrayList<Error>();
+    if (Boolean.parseBoolean(featureConfiguration.defaults().get(optimizedSiblingCheck.key()))
+        && !Boolean.parseBoolean(featureConfiguration.defaults().get(allowOverlap.key()))) {
+      errors.add(
+          Error.ofSevere(
+              "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",
+              format("polaris.features.\"%s\"", optimizedSiblingCheck.key())));
+    }
+
+    featureConfiguration
+        .realmOverrides()
+        .forEach(
+            (realmId, overrides) -> {
+              if (Boolean.parseBoolean(overrides.overrides().get(optimizedSiblingCheck.key()))
+                  && !Boolean.parseBoolean(overrides.overrides().get(allowOverlap.key()))) {
+                errors.add(
+                    Error.ofSevere(
+                        "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",
+                        format(
+                            "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                            realmId, optimizedSiblingCheck.key())));
+              }
+            });
+    return errors.isEmpty()
+        ? ProductionReadinessCheck.OK
+        : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
+  }
+
+  @Produces
+  @SuppressWarnings("unchecked")
+  public ProductionReadinessCheck checkConnectionCredentialVendors(
+      Instance<ConnectionCredentialVendor> credentialVendors,
+      FeaturesConfiguration featureConfiguration) {
+    var mapper = new ObjectMapper();
+    var defaults = featureConfiguration.parseDefaults(mapper);
+    var realmOverrides = featureConfiguration.parseRealmOverrides(mapper);
+
+    var federationKey = FeatureConfiguration.ENABLE_CATALOG_FEDERATION.key();
+    var authTypesKey = FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES.key();
+    var federationEnabled =
+        Boolean.parseBoolean(defaults.getOrDefault(federationKey, false).toString());
+    var defaultAuthTypes = (List<String>) defaults.getOrDefault(authTypesKey, List.of());
+
+    var allAuthTypes = new java.util.HashSet<String>();
+    if (federationEnabled) allAuthTypes.addAll(defaultAuthTypes);
+
+    realmOverrides.forEach(
+        (id, overrides) -> {
+          if (Boolean.parseBoolean(
+              overrides.getOrDefault(federationKey, federationEnabled).toString())) {
+            allAuthTypes.addAll(
+                (List<String>)
+                    (overrides.containsKey(authTypesKey)
+                        ? overrides.get(authTypesKey)
+                        : defaultAuthTypes));
+          }
+        });
+
+    var errors = new ArrayList<Error>();
+    for (var name : allAuthTypes) {
+      try {
+        var type = org.apache.polaris.core.connection.AuthenticationType.valueOf(name);
+        if (credentialVendors.select(AuthType.Literal.of(type)).isUnsatisfied()) {
+          errors.add(
+              Error.ofSevere(
+                  format(
+                      "Catalog federation is enabled but no ConnectionCredentialVendor found for "
+                          + "authentication type '%s'. External catalog connections using this "
+                          + "authentication type will fail.",
+                      type),
+                  format("polaris.features.\"%s\"", authTypesKey)));
+        }
+      } catch (IllegalArgumentException e) {
+        errors.add(
+            Error.ofSevere(
+                format(
+                    "Invalid authentication type '%s' in SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES "
+                        + "configuration.",
+                    name),
+                format("polaris.features.\"%s\"", authTypesKey)));
+      }
+    }
+
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));

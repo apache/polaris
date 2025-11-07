@@ -92,6 +92,11 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("logs/**")
   excludes.add("**/*.lock")
 
+  // Binary files
+  excludes.add(
+    "persistence/nosql/persistence/index/src/testFixtures/resources/org/apache/polaris/persistence/indexes/words.gz"
+  )
+
   // Polaris service startup banner
   excludes.add("runtime/service/src/**/banner.txt")
 
@@ -133,6 +138,16 @@ tasks.named<RatTask>("rat").configure {
 
   // Rat can't scan binary images
   excludes.add("**/*.png")
+}
+
+tasks.register<Exec>("buildPythonClient") {
+  description = "Build the python client"
+
+  workingDir = project.projectDir
+  if (project.hasProperty("python.format")) {
+    environment("FORMAT", project.property("python.format") as String)
+  }
+  commandLine("make", "client-build")
 }
 
 // Pass environment variables:

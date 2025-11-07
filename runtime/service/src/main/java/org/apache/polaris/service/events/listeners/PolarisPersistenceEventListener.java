@@ -19,62 +19,23 @@
 
 package org.apache.polaris.service.events.listeners;
 
+import jakarta.annotation.Nullable;
 import java.util.Map;
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.PolarisEvent;
-import org.apache.polaris.service.events.AfterCatalogCreatedEvent;
-import org.apache.polaris.service.events.AfterTableCommitedEvent;
-import org.apache.polaris.service.events.AfterTableCreatedEvent;
-import org.apache.polaris.service.events.AfterTableRefreshedEvent;
-import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
-import org.apache.polaris.service.events.AfterViewCommitedEvent;
-import org.apache.polaris.service.events.AfterViewRefreshedEvent;
-import org.apache.polaris.service.events.BeforeRequestRateLimitedEvent;
-import org.apache.polaris.service.events.BeforeTableCommitedEvent;
-import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
-import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
-import org.apache.polaris.service.events.BeforeViewCommitedEvent;
-import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
+import org.apache.polaris.service.events.CatalogsServiceEvents;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 
-public abstract class PolarisPersistenceEventListener extends PolarisEventListener {
+public abstract class PolarisPersistenceEventListener implements PolarisEventListener {
 
-  // TODO: Ensure all events (except RateLimiter ones) call `addToBuffer`
-  @Override
-  public final void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {}
+  // TODO: Ensure all events (except RateLimiter ones) call `processEvent`
 
   @Override
-  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {}
-
-  @Override
-  public void onAfterTableCommited(AfterTableCommitedEvent event) {}
-
-  @Override
-  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {}
-
-  @Override
-  public void onAfterViewCommited(AfterViewCommitedEvent event) {}
-
-  @Override
-  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {}
-
-  @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {}
-
-  @Override
-  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {}
-
-  @Override
-  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {}
-
-  @Override
-  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {}
-
-  @Override
-  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {}
-
-  @Override
-  public void onAfterTableCreated(AfterTableCreatedEvent event) {
+  public void onAfterCreateTable(IcebergRestCatalogEvents.AfterCreateTableEvent event) {
     ContextSpecificInformation contextSpecificInformation = getContextSpecificInformation();
+    TableMetadata tableMetadata = event.loadTableResponse().tableMetadata();
     PolarisEvent polarisEvent =
         new PolarisEvent(
             event.catalogName(),
@@ -84,38 +45,39 @@ public abstract class PolarisPersistenceEventListener extends PolarisEventListen
             contextSpecificInformation.timestamp(),
             contextSpecificInformation.principalName(),
             PolarisEvent.ResourceType.TABLE,
-            event.identifier().toString());
+            TableIdentifier.of(event.namespace(), event.tableName()).toString());
     Map<String, String> additionalParameters =
         Map.of(
             "table-uuid",
-            event.metadata().uuid(),
+            tableMetadata.uuid(),
             "metadata",
-            TableMetadataParser.toJson(event.metadata()));
+            TableMetadataParser.toJson(tableMetadata));
     polarisEvent.setAdditionalProperties(additionalParameters);
     processEvent(polarisEvent);
   }
 
   @Override
-  public void onAfterCatalogCreated(AfterCatalogCreatedEvent event) {
+  public void onAfterCreateCatalog(CatalogsServiceEvents.AfterCreateCatalogEvent event) {
     ContextSpecificInformation contextSpecificInformation = getContextSpecificInformation();
     PolarisEvent polarisEvent =
         new PolarisEvent(
-            event.catalogName(),
+            event.catalog().getName(),
             org.apache.polaris.service.events.PolarisEvent.createEventId(),
             getRequestId(),
             event.getClass().getSimpleName(),
             contextSpecificInformation.timestamp(),
             contextSpecificInformation.principalName(),
             PolarisEvent.ResourceType.CATALOG,
-            event.catalogName());
+            event.catalog().getName());
     processEvent(polarisEvent);
   }
 
-  protected record ContextSpecificInformation(long timestamp, String principalName) {}
+  public record ContextSpecificInformation(long timestamp, @Nullable String principalName) {}
 
-  abstract ContextSpecificInformation getContextSpecificInformation();
+  protected abstract ContextSpecificInformation getContextSpecificInformation();
 
-  abstract String getRequestId();
+  @Nullable
+  protected abstract String getRequestId();
 
-  abstract void processEvent(PolarisEvent event);
+  protected abstract void processEvent(PolarisEvent event);
 }

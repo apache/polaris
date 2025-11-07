@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import io.quarkus.runtime.configuration.MemorySize;
 import jakarta.ws.rs.core.SecurityContext;
 import java.math.BigInteger;
-import java.security.Principal;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Set;
@@ -40,7 +39,7 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
-import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +49,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.localstack.LocalStackContainer;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -72,7 +71,7 @@ class AwsCloudWatchEventListenerTest {
       new LocalStackContainer(
               containerSpecHelper("localstack", AwsCloudWatchEventListenerTest.class)
                   .dockerImageName(null))
-          .withServices(LocalStackContainer.Service.CLOUDWATCHLOGS);
+          .withServices("logs");
 
   private static final String LOG_GROUP = "test-log-group";
   private static final String LOG_STREAM = "test-log-stream";
@@ -143,13 +142,13 @@ class AwsCloudWatchEventListenerTest {
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     RealmContext realmContext = Mockito.mock(RealmContext.class);
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-    Principal principal = Mockito.mock(PolarisPrincipal.class);
+    PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
     when(callContext.getRealmContext()).thenReturn(realmContext);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
     when(realmContext.getRealmIdentifier()).thenReturn(REALM);
     when(securityContext.getUserPrincipal()).thenReturn(principal);
     when(principal.getName()).thenReturn(TEST_USER);
-    when(((PolarisPrincipal) principal).getRoles()).thenReturn(Set.of("role1", "role2"));
+    when(principal.getRoles()).thenReturn(Set.of("role1", "role2"));
     listener.callContext = callContext;
     listener.securityContext = securityContext;
 
@@ -203,8 +202,8 @@ class AwsCloudWatchEventListenerTest {
     try {
       // Create and send a test event
       TableIdentifier testTable = TableIdentifier.of("test_namespace", "test_table");
-      AfterTableRefreshedEvent event = new AfterTableRefreshedEvent("test_catalog", testTable);
-      listener.onAfterTableRefreshed(event);
+      listener.onAfterRefreshTable(
+          new IcebergRestCatalogEvents.AfterRefreshTableEvent("test_catalog", testTable));
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))
@@ -238,7 +237,9 @@ class AwsCloudWatchEventListenerTest {
               logEvent -> {
                 String message = logEvent.message();
                 assertThat(message).contains(REALM);
-                assertThat(message).contains(AfterTableRefreshedEvent.class.getSimpleName());
+                assertThat(message)
+                    .contains(
+                        IcebergRestCatalogEvents.AfterRefreshTableEvent.class.getSimpleName());
                 assertThat(message).contains(TEST_USER);
                 assertThat(message).contains(testTable.toString());
               });
@@ -260,9 +261,8 @@ class AwsCloudWatchEventListenerTest {
     try {
       // Create and send a test event synchronously
       TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
-      AfterTableRefreshedEvent syncEvent =
-          new AfterTableRefreshedEvent("test_catalog", syncTestTable);
-      syncListener.onAfterTableRefreshed(syncEvent);
+      syncListener.onAfterRefreshTable(
+          new IcebergRestCatalogEvents.AfterRefreshTableEvent("test_catalog", syncTestTable));
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))
@@ -298,7 +298,7 @@ class AwsCloudWatchEventListenerTest {
               logEvent -> {
                 String message = logEvent.message();
                 assertThat(message).contains("test_table_sync");
-                assertThat(message).contains("AfterTableRefreshedEvent");
+                assertThat(message).contains("AfterRefreshTableEvent");
               });
     } finally {
       // Clean up

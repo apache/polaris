@@ -28,7 +28,6 @@ import jakarta.ws.rs.ext.Provider;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.context.RealmContextFilter;
-import org.apache.polaris.service.logging.LoggingMDCFilter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @PreMatching
@@ -47,10 +46,8 @@ public class TracingFilter implements ContainerRequestFilter {
   public void filter(ContainerRequestContext rc) {
     if (!sdkDisabled) {
       Span span = Span.current();
-      String requestId = (String) rc.getProperty(LoggingMDCFilter.REQUEST_ID_KEY);
-      if (requestId != null) {
-        span.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
-      }
+      String requestId = (String) rc.getProperty(RequestIdFilter.REQUEST_ID_KEY);
+      span.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
       RealmContext realmContext =
           (RealmContext) rc.getProperty(RealmContextFilter.REALM_CONTEXT_KEY);
       span.setAttribute(REALM_ID_ATTRIBUTE, realmContext.getRealmIdentifier());

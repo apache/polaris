@@ -20,7 +20,7 @@ package org.apache.polaris.core.connection.iceberg;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
-import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 
 /**
  * Configuration wrappers which ultimately translate their contents into Iceberg properties and
@@ -30,5 +30,8 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
  */
 public interface IcebergCatalogPropertiesProvider {
   @Nonnull
-  Map<String, String> asIcebergCatalogProperties(UserSecretsManager secretsManager);
+  default Map<String, String> asIcebergCatalogProperties(
+      PolarisCredentialManager credentialManager) {
+    return Map.of();
+  }
 }

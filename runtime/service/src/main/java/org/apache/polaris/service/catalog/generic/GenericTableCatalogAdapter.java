@@ -27,14 +27,15 @@ import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
@@ -60,7 +61,7 @@ public class GenericTableCatalogAdapter
   private final PolarisAuthorizer polarisAuthorizer;
   private final ReservedProperties reservedProperties;
   private final CatalogPrefixParser prefixParser;
-  private final UserSecretsManager userSecretsManager;
+  private final PolarisCredentialManager polarisCredentialManager;
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   @Inject
@@ -73,7 +74,7 @@ public class GenericTableCatalogAdapter
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
-      UserSecretsManager userSecretsManager,
+      PolarisCredentialManager polarisCredentialManager,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
@@ -84,7 +85,7 @@ public class GenericTableCatalogAdapter
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
-    this.userSecretsManager = userSecretsManager;
+    this.polarisCredentialManager = polarisCredentialManager;
     this.externalCatalogFactories = externalCatalogFactories;
   }
 
@@ -92,17 +93,17 @@ public class GenericTableCatalogAdapter
       SecurityContext securityContext, String prefix) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
         realmConfig, FeatureConfiguration.ENABLE_GENERIC_TABLES);
-    validatePrincipal(securityContext);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
 
     return new GenericTableCatalogHandler(
         diagnostics,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
-        securityContext,
+        principal,
         prefixParser.prefixToCatalogName(realmContext, prefix),
         polarisAuthorizer,
-        userSecretsManager,
+        polarisCredentialManager,
         externalCatalogFactories);
   }
 

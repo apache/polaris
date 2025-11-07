@@ -40,6 +40,11 @@ permissions:
   security-events: read
   statuses: read
 
+env:
+  GRADLE_TOS_ACCEPTED: ${{ vars.GRADLE_TOS_ACCEPTED }}
+  DEVELOCITY_SERVER: ${{ vars.DEVELOCITY_SERVER }}
+  DEVELOCITY_PROJECT_ID: ${{ vars.DEVELOCITY_PROJECT_ID }}
+
 jobs:
   nightly_build:
     runs-on: ubuntu-latest
@@ -52,14 +57,16 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
-        with:
-          validate-wrappers: false
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+      - name: Prepare Gradle build cache
+        uses: ./.github/actions/ci-incr-build-cache-prepare
       - name: Publish SNAPSHOTs to Apache Nexus Repository
         run: ./gradlew publishToApache
         env:
           # publishToApache causes a GH API requests, use the token for those requests
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.NEXUS_USER }}
-          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_PW }} 
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.NEXUS_PW }}
+          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}

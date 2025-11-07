@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.annotation.Nonnull;
@@ -31,7 +34,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -42,7 +45,10 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -64,19 +70,27 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
+import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
+import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.reporting.DefaultMetricsReporter;
 import org.apache.polaris.service.secrets.UnsafeInMemorySecretsManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
+import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
+import software.amazon.awssdk.services.sts.model.Credentials;
 
 public record TestServices(
     Clock clock,
@@ -92,18 +106,16 @@ public record TestServices(
     MetaStoreManagerFactory metaStoreManagerFactory,
     RealmContext realmContext,
     RealmConfig realmConfig,
+    PolarisPrincipal principal,
     SecurityContext securityContext,
     PolarisMetaStoreManager metaStoreManager,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
-    PolarisEventListener polarisEventListener) {
+    PolarisEventListener polarisEventListener,
+    AccessConfigProvider accessConfigProvider) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
-
-  @FunctionalInterface
-  public interface FileIOFactorySupplier
-      extends BiFunction<StorageCredentialCache, MetaStoreManagerFactory, FileIOFactory> {}
 
   private static class MockedConfigurationStore implements PolarisConfigurationStore {
     private final Map<String, Object> defaults;
@@ -129,10 +141,21 @@ public record TestServices(
     private PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
-    private StsClient stsClient = Mockito.mock(StsClient.class);
-    private FileIOFactorySupplier fileIOFactorySupplier = MeasuredFileIOFactory::new;
+    private StsClient stsClient;
+    private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
 
-    private Builder() {}
+    private Builder() {
+      stsClient = Mockito.mock(StsClient.class, RETURNS_DEEP_STUBS);
+      AssumeRoleResponse arr = Mockito.mock(AssumeRoleResponse.class, RETURNS_DEEP_STUBS);
+      Mockito.when(stsClient.assumeRole(any(AssumeRoleRequest.class))).thenReturn(arr);
+      Mockito.when(arr.credentials())
+          .thenReturn(
+              Credentials.builder()
+                  .accessKeyId("test-access-key-id-111")
+                  .secretAccessKey("test-secret-access-key-222")
+                  .sessionToken("test-session-token-333")
+                  .build());
+    }
 
     public Builder realmContext(RealmContext realmContext) {
       this.realmContext = realmContext;
@@ -144,7 +167,7 @@ public record TestServices(
       return this;
     }
 
-    public Builder fileIOFactorySupplier(FileIOFactorySupplier fileIOFactorySupplier) {
+    public Builder fileIOFactorySupplier(Supplier<FileIOFactory> fileIOFactorySupplier) {
       this.fileIOFactorySupplier = fileIOFactorySupplier;
       return this;
     }
@@ -186,22 +209,40 @@ public record TestServices(
       EntityCache entityCache =
           metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
       ResolverFactory resolverFactory =
-          (_callContext, securityContext, referenceCatalogName) ->
+          (_principal, referenceCatalogName) ->
               new Resolver(
                   diagnostics,
-                  _callContext.getPolarisCallContext(),
+                  callContext.getPolarisCallContext(),
                   metaStoreManager,
-                  securityContext,
+                  _principal,
                   entityCache,
                   referenceCatalogName);
 
       ResolutionManifestFactory resolutionManifestFactory =
-          new ResolutionManifestFactoryImpl(diagnostics, resolverFactory);
+          new ResolutionManifestFactoryImpl(diagnostics, realmContext, resolverFactory);
+
       UserSecretsManager userSecretsManager =
           userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
+      ServiceIdentityProvider serviceIdentityProvider = new DefaultServiceIdentityProvider();
 
-      FileIOFactory fileIOFactory =
-          fileIOFactorySupplier.apply(storageCredentialCache, metaStoreManagerFactory);
+      // Create credential vendors for testing
+      @SuppressWarnings("unchecked")
+      Instance<ConnectionCredentialVendor> mockCredentialVendors = Mockito.mock(Instance.class);
+      SigV4ConnectionCredentialVendor sigV4Vendor =
+          new SigV4ConnectionCredentialVendor((destination) -> stsClient, serviceIdentityProvider);
+      Mockito.when(
+              mockCredentialVendors.select(
+                  any(org.apache.polaris.service.credentials.connection.AuthType.Literal.class)))
+          .thenReturn(mockCredentialVendors);
+      Mockito.when(mockCredentialVendors.isUnsatisfied()).thenReturn(false);
+      Mockito.when(mockCredentialVendors.get()).thenReturn(sigV4Vendor);
+
+      PolarisCredentialManager credentialManager =
+          new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
+
+      AccessConfigProvider accessConfigProvider =
+          new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+      FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
@@ -209,10 +250,10 @@ public record TestServices(
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               diagnostics,
-              storageCredentialCache,
               resolverFactory,
               metaStoreManagerFactory,
               taskExecutor,
+              accessConfigProvider,
               fileIOFactory,
               polarisEventListener);
 
@@ -222,7 +263,7 @@ public record TestServices(
 
       @SuppressWarnings("unchecked")
       Instance<ExternalCatalogFactory> externalCatalogFactory = Mockito.mock(Instance.class);
-      Mockito.when(externalCatalogFactory.select(Mockito.any())).thenReturn(externalCatalogFactory);
+      Mockito.when(externalCatalogFactory.select(any())).thenReturn(externalCatalogFactory);
       Mockito.when(externalCatalogFactory.isUnsatisfied()).thenReturn(true);
 
       IcebergCatalogAdapter catalogService =
@@ -234,13 +275,15 @@ public record TestServices(
               resolverFactory,
               resolutionManifestFactory,
               metaStoreManager,
-              userSecretsManager,
+              credentialManager,
               authorizer,
               new DefaultCatalogPrefixParser(),
               reservedProperties,
               catalogHandlerUtils,
               externalCatalogFactory,
-              polarisEventListener);
+              polarisEventListener,
+              accessConfigProvider,
+              new DefaultMetricsReporter());
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
       IcebergRestConfigurationApi restConfigurationApi =
@@ -254,8 +297,7 @@ public record TestServices(
                   .setCreateTimestamp(Instant.now().toEpochMilli())
                   .setCredentialRotationRequiredState()
                   .build());
-      PolarisPrincipal principal =
-          PolarisPrincipal.of(PrincipalEntity.of(createdPrincipal.getPrincipal()), Set.of());
+      PolarisPrincipal principal = PolarisPrincipal.of(createdPrincipal.getPrincipal(), Set.of());
 
       SecurityContext securityContext =
           new SecurityContext() {
@@ -282,18 +324,18 @@ public record TestServices(
 
       PolarisAdminService adminService =
           new PolarisAdminService(
-              diagnostics,
               callContext,
               resolutionManifestFactory,
               metaStoreManager,
               userSecretsManager,
-              securityContext,
+              serviceIdentityProvider,
+              principal,
               authorizer,
               reservedProperties);
       PolarisCatalogsApi catalogsApi =
           new PolarisCatalogsApi(
               new PolarisServiceImpl(
-                  realmConfig, reservedProperties, polarisEventListener, adminService));
+                  realmConfig, reservedProperties, adminService, serviceIdentityProvider));
 
       return new TestServices(
           clock,
@@ -309,11 +351,13 @@ public record TestServices(
           metaStoreManagerFactory,
           realmContext,
           realmConfig,
+          principal,
           securityContext,
           metaStoreManager,
           fileIOFactory,
           taskExecutor,
-          polarisEventListener);
+          polarisEventListener,
+          accessConfigProvider);
     }
   }
 

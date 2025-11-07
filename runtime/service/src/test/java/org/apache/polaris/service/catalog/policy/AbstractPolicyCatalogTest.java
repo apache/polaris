@@ -31,7 +31,6 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -58,6 +57,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
@@ -78,6 +78,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -124,6 +125,7 @@ public abstract class AbstractPolicyCatalogTest {
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
+  @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -143,7 +145,7 @@ public abstract class AbstractPolicyCatalogTest {
   private FileIOFactory fileIOFactory;
   private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
-  private SecurityContext securityContext;
+  private AccessConfigProvider accessConfigProvider;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -175,26 +177,24 @@ public abstract class AbstractPolicyCatalogTest {
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
+    accessConfigProvider =
+        new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
-
-    securityContext = Mockito.mock(SecurityContext.class);
-    when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
-    when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     adminService =
         new PolarisAdminService(
-            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
-            securityContext,
+            serviceIdentityProvider,
+            authenticatedRoot,
             authorizer,
             reservedProperties);
 
@@ -221,13 +221,13 @@ public abstract class AbstractPolicyCatalogTest {
                         "true")
                     .setStorageConfigurationInfo(realmConfig, storageConfigModel, storageLocation)
                     .build()
-                    .asCatalog()));
+                    .asCatalog(serviceIdentityProvider)));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    this.fileIOFactory = new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+    this.fileIOFactory = new DefaultFileIOFactory();
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -253,13 +253,13 @@ public abstract class AbstractPolicyCatalogTest {
     this.icebergCatalog =
         new IcebergCatalog(
             diagServices,
-            storageCredentialCache,
             resolverFactory,
             metaStoreManager,
             polarisContext,
             passthroughView,
-            securityContext,
+            authenticatedRoot,
             taskExecutor,
+            accessConfigProvider,
             fileIOFactory,
             new NoOpPolarisEventListener());
     this.icebergCatalog.initialize(

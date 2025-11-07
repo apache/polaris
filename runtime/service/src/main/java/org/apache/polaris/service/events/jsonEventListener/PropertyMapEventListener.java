@@ -20,7 +20,7 @@
 package org.apache.polaris.service.events.jsonEventListener;
 
 import java.util.HashMap;
-import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 /**
@@ -30,11 +30,11 @@ import org.apache.polaris.service.events.listeners.PolarisEventListener;
  * {{@code @link#transformAndSendEvent(HashMap)}} method to define how the event data should be
  * transformed into a JSON string, transmitted, and/or stored.
  */
-public abstract class PropertyMapEventListener extends PolarisEventListener {
+public abstract class PropertyMapEventListener implements PolarisEventListener {
   protected abstract void transformAndSendEvent(HashMap<String, Object> properties);
 
   @Override
-  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
+  public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
     HashMap<String, Object> properties = new HashMap<>();
     properties.put("event_type", event.getClass().getSimpleName());
     properties.put("table_identifier", event.tableIdentifier().toString());

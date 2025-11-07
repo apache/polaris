@@ -24,9 +24,9 @@ from typing import List
 
 import pytest
 
-from polaris.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
-from polaris.catalog.api_client import ApiClient as CatalogApiClient
-from polaris.management import Catalog, AwsStorageConfigInfo, ApiClient, PolarisDefaultApi, Configuration, \
+from apache_polaris.sdk.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
+from apache_polaris.sdk.catalog.api_client import ApiClient as CatalogApiClient
+from apache_polaris.sdk.management import Catalog, AwsStorageConfigInfo, ApiClient, PolarisDefaultApi, Configuration, \
   CreateCatalogRequest, GrantCatalogRoleRequest, CatalogRole, ApiException, AddGrantRequest, CatalogGrant, \
   CatalogPrivilege, CreateCatalogRoleRequest, CatalogProperties
 
@@ -75,6 +75,7 @@ def test_bucket():
 @pytest.fixture
 def aws_role_arn():
   return os.getenv('AWS_ROLE_ARN')
+
 
 @pytest.fixture
 def aws_bucket_base_location_prefix():
@@ -178,3 +179,112 @@ def root_client(polaris_host, polaris_url):
                                    host=polaris_url))
   api = PolarisDefaultApi(client)
   return api
+
+# Helper function to create catalog with specific storage configuration
+def _create_catalog_with_storage(root_client, catalog_client, catalog_name, storage_config_info, base_location):
+  """
+  Internal helper to create a catalog with specific storage configuration.
+  
+  Args:
+    root_client: Management API client
+    catalog_client: Catalog API client  
+    catalog_name: Name for the catalog
+    storage_config_info: Storage configuration (S3 or FILE)
+    base_location: Base location for the catalog
+  """
+  from apache_polaris.sdk.management import AwsStorageConfigInfo
+  
+  # Build properties dict
+  catalog_properties = {
+    "default-base-location": base_location,
+    "polaris.config.drop-with-purge.enabled": "true"
+  }
+  
+  # Add AWS-specific properties if using S3 storage
+  if isinstance(storage_config_info, AwsStorageConfigInfo):
+    catalog_properties["client.credentials-provider"] = "software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider"
+  
+  catalog = Catalog(name=catalog_name, type='INTERNAL', 
+                    properties=CatalogProperties.from_dict(catalog_properties),
+                    storage_config_info=storage_config_info)
+  
+  try:
+    root_client.create_catalog(create_catalog_request=CreateCatalogRequest(catalog=catalog))
+    resp = root_client.get_catalog(catalog_name=catalog.name)
+    
+    # Set up basic catalog role with admin privileges
+    root_client.assign_catalog_role_to_principal_role(
+      principal_role_name='service_admin',
+      catalog_name=catalog_name,
+      grant_catalog_role_request=GrantCatalogRoleRequest(
+        catalog_role=CatalogRole(name='catalog_admin')
+      )
+    )
+    
+    writer_catalog_role = create_catalog_role(root_client, resp, 'admin_writer')
+    root_client.add_grant_to_catalog_role(
+      catalog_name, writer_catalog_role.name,
+      AddGrantRequest(grant=CatalogGrant(
+        catalog_name=catalog_name,
+        type='catalog',
+        privilege=CatalogPrivilege.CATALOG_MANAGE_CONTENT
+      ))
+    )
+    
+    root_client.assign_catalog_role_to_principal_role(
+      principal_role_name='service_admin',
+      catalog_name=catalog_name,
+      grant_catalog_role_request=GrantCatalogRoleRequest(catalog_role=writer_catalog_role)
+    )
+    
+    yield resp
+  finally:
+    # Cleanup
+    namespaces = catalog_client.list_namespaces(catalog_name)
+    for n in namespaces.namespaces:
+      clear_namespace(catalog_name, catalog_client, n)
+    catalog_roles = root_client.list_catalog_roles(catalog_name)
+    for r in catalog_roles.roles:
+      if r.name != 'catalog_admin':
+        root_client.delete_catalog_role(catalog_name, r.name)
+    root_client.delete_catalog(catalog_name=catalog_name)
+
+
+@pytest.fixture
+def file_catalog(root_client, catalog_client):
+  """
+  Catalog that always uses FILE storage for local testing.
+  This fixture runs in any environment without external dependencies.
+  """
+  from apache_polaris.sdk.management import FileStorageConfigInfo
+  
+  catalog_name = f'file_catalog_{str(uuid.uuid4())[-10:]}'
+  storage_config = FileStorageConfigInfo(storage_type="FILE", allowed_locations=["file:///tmp"])
+  base_location = "file:///tmp/polaris"
+  
+  yield from _create_catalog_with_storage(
+    root_client, catalog_client, catalog_name, storage_config, base_location
+  )
+
+
+@pytest.fixture  
+def s3_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucket_base_location_prefix):
+    """
+    Catalog that always uses S3 storage for AWS testing.
+    Tests using this fixture should include @pytest.mark.skipif for AWS_TEST_ENABLED.
+    """
+    from apache_polaris.sdk.management import AwsStorageConfigInfo
+    
+    catalog_name = f's3_catalog_{str(uuid.uuid4())[-10:]}'
+    storage_config = AwsStorageConfigInfo(
+      storage_type="S3",
+      allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
+      role_arn=aws_role_arn
+    )
+    base_location = f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/s3_catalog"
+    
+    yield from _create_catalog_with_storage(
+      root_client, catalog_client, catalog_name, storage_config, base_location
+    )
+
+

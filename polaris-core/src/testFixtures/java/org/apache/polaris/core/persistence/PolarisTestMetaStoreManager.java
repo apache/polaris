@@ -39,6 +39,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
@@ -403,18 +404,15 @@ public class PolarisTestMetaStoreManager {
   }
 
   /** Create a principal */
-  PolarisBaseEntity createPrincipal(String name) {
+  PrincipalEntity createPrincipal(String name) {
     // create new principal identity
-    PolarisBaseEntity principalEntity =
-        new PolarisBaseEntity.Builder()
-            .catalogId(PolarisEntityConstants.getNullId())
-            .id(polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId())
-            .typeCode(PolarisEntityType.PRINCIPAL.getCode())
-            .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
-            .parentId(PolarisEntityConstants.getRootEntityId())
-            .name(name)
-            .internalPropertiesAsMap(
+    PrincipalEntity principalEntity =
+        new PrincipalEntity.Builder()
+            .setId(polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId())
+            .setName(name)
+            .setInternalProperties(
                 Map.of(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true"))
+            .setCreateTimestamp(System.currentTimeMillis())
             .build();
 
     CreatePrincipalResult createPrincipalResult =
@@ -492,14 +490,11 @@ public class PolarisTestMetaStoreManager {
             .getPrincipalSecrets();
     Assertions.assertThat(secrets.getMainSecret()).isNotEqualTo(reloadSecrets.getMainSecret());
 
-    PolarisBaseEntity reloadPrincipal =
+    PrincipalEntity reloadPrincipal =
         polarisMetaStoreManager
-            .loadEntity(
-                this.polarisCallContext,
-                0L,
-                createPrincipalResult.getPrincipal().getId(),
-                createPrincipalResult.getPrincipal().getType())
-            .getEntity();
+            .findPrincipalById(
+                this.polarisCallContext, createPrincipalResult.getPrincipal().getId())
+            .orElseThrow();
     internalProperties = reloadPrincipal.getInternalPropertiesAsMap();
     Assertions.assertThat(
             internalProperties.get(
@@ -551,11 +546,10 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(reloadSecrets.getMainSecretHash()).isNotEqualTo(newMainSecretHash);
     Assertions.assertThat(reloadSecrets.getSecondarySecretHash()).isNotEqualTo(newMainSecretHash);
 
-    PolarisBaseEntity newPrincipal =
+    PrincipalEntity newPrincipal =
         polarisMetaStoreManager
-            .loadEntity(
-                this.polarisCallContext, 0L, principalEntity.getId(), principalEntity.getType())
-            .getEntity();
+            .findPrincipalById(this.polarisCallContext, principalEntity.getId())
+            .orElseThrow();
     internalProperties = newPrincipal.getInternalPropertiesAsMap();
     Assertions.assertThat(
             internalProperties.get(
@@ -584,11 +578,10 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(postResetCredentials.getSecondarySecretHash())
         .isNotEqualTo(reloadSecrets.getSecondarySecretHash());
 
-    PolarisBaseEntity finalPrincipal =
+    PrincipalEntity finalPrincipal =
         polarisMetaStoreManager
-            .loadEntity(
-                this.polarisCallContext, 0L, principalEntity.getId(), principalEntity.getType())
-            .getEntity();
+            .findPrincipalById(this.polarisCallContext, principalEntity.getId())
+            .orElseThrow();
     internalProperties = finalPrincipal.getInternalPropertiesAsMap();
     Assertions.assertThat(
             internalProperties.get(
@@ -1344,8 +1337,8 @@ public class PolarisTestMetaStoreManager {
     grantToGrantee(catalog, R2, PR2, PolarisPrivilege.CATALOG_ROLE_USAGE);
 
     // also create two new principals
-    PolarisBaseEntity P1 = this.createPrincipal("P1");
-    PolarisBaseEntity P2 = this.createPrincipal("P2");
+    PrincipalEntity P1 = this.createPrincipal("P1");
+    PrincipalEntity P2 = this.createPrincipal("P2");
 
     // assign PR1 and PR2 to this principal
     grantToGrantee(null, PR1, P1, PolarisPrivilege.PRINCIPAL_ROLE_USAGE);

@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.responses.ErrorResponse;
@@ -70,14 +71,13 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.AfterCatalogCreatedEvent;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.PolicyIdentifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,19 +91,19 @@ public class PolarisServiceImpl
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
   private final RealmConfig realmConfig;
   private final ReservedProperties reservedProperties;
-  private final PolarisEventListener polarisEventListener;
   private final PolarisAdminService adminService;
+  private final ServiceIdentityProvider serviceIdentityProvider;
 
   @Inject
   public PolarisServiceImpl(
       RealmConfig realmConfig,
       ReservedProperties reservedProperties,
-      PolarisEventListener polarisEventListener,
-      PolarisAdminService adminService) {
+      PolarisAdminService adminService,
+      ServiceIdentityProvider serviceIdentityProvider) {
     this.realmConfig = realmConfig;
     this.reservedProperties = reservedProperties;
-    this.polarisEventListener = polarisEventListener;
     this.adminService = adminService;
+    this.serviceIdentityProvider = serviceIdentityProvider;
   }
 
   private static Response toResponse(BaseResult result, Response.Status successStatus) {
@@ -129,10 +129,11 @@ public class PolarisServiceImpl
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
     validateExternalCatalog(catalog);
-    Catalog newCatalog = CatalogEntity.of(adminService.createCatalog(request)).asCatalog();
+    validateCatalogProperties(catalog.getProperties());
+    Catalog newCatalog =
+        CatalogEntity.of(adminService.createCatalog(request)).asCatalog(serviceIdentityProvider);
     LOGGER.info("Created new catalog {}", newCatalog);
-    polarisEventListener.onAfterCatalogCreated(new AfterCatalogCreatedEvent(newCatalog.getName()));
-    return Response.status(Response.Status.CREATED).build();
+    return Response.status(Response.Status.CREATED).entity(newCatalog).build();
   }
 
   private void validateClientId(String clientId) {
@@ -166,6 +167,10 @@ public class PolarisServiceImpl
             || s3Config.getEndpointInternal() != null) {
           throw new IllegalArgumentException("Explicitly setting S3 endpoints is not allowed.");
         }
+
+        if (s3Config.getStsUnavailable() != null) {
+          throw new IllegalArgumentException("Explicitly disabling STS is not allowed.");
+        }
       }
     }
   }
@@ -178,6 +183,23 @@ public class PolarisServiceImpl
           validateConnectionConfigInfo(connectionConfigInfo);
           validateAuthenticationParameters(connectionConfigInfo.getAuthenticationParameters());
         }
+      }
+    }
+  }
+
+  private void validateCatalogProperties(Map<String, String> catalogProperties) {
+    if (catalogProperties != null) {
+      if (!realmConfig.getConfig(
+              FeatureConfiguration.ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS)
+          && catalogProperties.containsKey(
+              FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS
+                  .catalogConfig())) {
+
+        throw new IllegalArgumentException(
+            String.format(
+                "Explicitly setting %s is not allowed because %s is set to false.",
+                FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS.catalogConfig(),
+                FeatureConfiguration.ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS.key()));
       }
     }
   }
@@ -220,7 +242,8 @@ public class PolarisServiceImpl
   @Override
   public Response getCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
-    return Response.ok(adminService.getCatalog(catalogName).asCatalog()).build();
+    return Response.ok(adminService.getCatalog(catalogName).asCatalog(serviceIdentityProvider))
+        .build();
   }
 
   /** From PolarisCatalogsApiService */
@@ -233,7 +256,12 @@ public class PolarisServiceImpl
     if (updateRequest.getStorageConfigInfo() != null) {
       validateStorageConfig(updateRequest.getStorageConfigInfo());
     }
-    return Response.ok(adminService.updateCatalog(catalogName, updateRequest).asCatalog()).build();
+    validateCatalogProperties(updateRequest.getProperties());
+    return Response.ok(
+            adminService
+                .updateCatalog(catalogName, updateRequest)
+                .asCatalog(serviceIdentityProvider))
+        .build();
   }
 
   /** From PolarisCatalogsApiService */
@@ -344,7 +372,7 @@ public class PolarisServiceImpl
     PrincipalRole newPrincipalRole =
         new PrincipalRoleEntity(adminService.createPrincipalRole(entity)).asPrincipalRole();
     LOGGER.info("Created new principalRole {}", newPrincipalRole);
-    return Response.status(Response.Status.CREATED).build();
+    return Response.status(Response.Status.CREATED).entity(newPrincipalRole).build();
   }
 
   /** From PolarisPrincipalRolesApiService */
@@ -400,7 +428,7 @@ public class PolarisServiceImpl
     CatalogRole newCatalogRole =
         new CatalogRoleEntity(adminService.createCatalogRole(catalogName, entity)).asCatalogRole();
     LOGGER.info("Created new catalogRole {}", newCatalogRole);
-    return Response.status(Response.Status.CREATED).build();
+    return Response.status(Response.Status.CREATED).entity(newCatalogRole).build();
   }
 
   /** From PolarisCatalogsApiService */
@@ -575,13 +603,13 @@ public class PolarisServiceImpl
         catalogRoleName,
         catalogName);
     PrivilegeResult result;
+    PolarisPrivilege privilege;
     switch (grantRequest.getGrant()) {
       // The per-securable-type Privilege enums must be exact String match for a subset of all
       // PolarisPrivilege values.
       case ViewGrant viewGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
           String viewName = viewGrant.getViewName();
           String[] namespaceParts = viewGrant.getNamespace().toArray(new String[0]);
           result =
@@ -594,8 +622,7 @@ public class PolarisServiceImpl
         }
       case TableGrant tableGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
           String tableName = tableGrant.getTableName();
           String[] namespaceParts = tableGrant.getNamespace().toArray(new String[0]);
           result =
@@ -608,8 +635,7 @@ public class PolarisServiceImpl
         }
       case NamespaceGrant namespaceGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
           String[] namespaceParts = namespaceGrant.getNamespace().toArray(new String[0]);
           result =
               adminService.grantPrivilegeOnNamespaceToRole(
@@ -618,16 +644,14 @@ public class PolarisServiceImpl
         }
       case CatalogGrant catalogGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
           result =
               adminService.grantPrivilegeOnCatalogToRole(catalogName, catalogRoleName, privilege);
           break;
         }
       case PolicyGrant policyGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
           String policyName = policyGrant.getPolicyName();
           String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
           result =
@@ -669,13 +693,13 @@ public class PolarisServiceImpl
     }
 
     PrivilegeResult result;
+    PolarisPrivilege privilege;
     switch (grantRequest.getGrant()) {
       // The per-securable-type Privilege enums must be exact String match for a subset of all
       // PolarisPrivilege values.
       case ViewGrant viewGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
           String viewName = viewGrant.getViewName();
           String[] namespaceParts = viewGrant.getNamespace().toArray(new String[0]);
           result =
@@ -688,8 +712,7 @@ public class PolarisServiceImpl
         }
       case TableGrant tableGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
           String tableName = tableGrant.getTableName();
           String[] namespaceParts = tableGrant.getNamespace().toArray(new String[0]);
           result =
@@ -702,8 +725,7 @@ public class PolarisServiceImpl
         }
       case NamespaceGrant namespaceGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
           String[] namespaceParts = namespaceGrant.getNamespace().toArray(new String[0]);
           result =
               adminService.revokePrivilegeOnNamespaceFromRole(
@@ -712,8 +734,7 @@ public class PolarisServiceImpl
         }
       case CatalogGrant catalogGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
           result =
               adminService.revokePrivilegeOnCatalogFromRole(
                   catalogName, catalogRoleName, privilege);
@@ -721,8 +742,7 @@ public class PolarisServiceImpl
         }
       case PolicyGrant policyGrant:
         {
-          PolarisPrivilege privilege =
-              PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
+          privilege = PolarisPrivilege.valueOf(policyGrant.getPrivilege().toString());
           String policyName = policyGrant.getPolicyName();
           String[] namespaceParts = policyGrant.getNamespace().toArray(new String[0]);
           result =

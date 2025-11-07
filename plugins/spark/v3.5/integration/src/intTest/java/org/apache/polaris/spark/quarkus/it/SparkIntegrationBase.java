@@ -181,8 +181,8 @@ public abstract class SparkIntegrationBase {
               }
 
               Object value = row.get(pos);
-              if (value instanceof Row) {
-                return toJava((Row) value);
+              if (value instanceof Row valueRow) {
+                return toJava(valueRow);
               } else if (value instanceof scala.collection.Seq) {
                 return row.getList(pos);
               } else if (value instanceof scala.collection.Map) {

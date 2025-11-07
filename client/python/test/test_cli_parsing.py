@@ -17,16 +17,15 @@
 # under the License.
 #
 
-import unittest
 import io
+import unittest
 from functools import reduce
 from typing import List
 from unittest.mock import patch, MagicMock
 
-from cli.command import Command
-from cli.options.parser import Parser
-from polaris.catalog import ApiClient
-from polaris.management import PolarisDefaultApi
+from apache_polaris.cli.command import Command
+from apache_polaris.cli.options.parser import Parser
+from apache_polaris.sdk.management import PolarisDefaultApi
 
 INVALID_ARGS = 2
 
@@ -141,8 +140,7 @@ class TestCliParsing(unittest.TestCase):
                 def _capture(*args, **kwargs):
                     client.call_tracker['_method'] = method_name
                     for i, arg in enumerate(args):
-                        if arg is not None:
-                            client.call_tracker[i] = arg
+                        client.call_tracker[i] = arg
 
                 return _capture
 
@@ -587,6 +585,48 @@ class TestCliParsing(unittest.TestCase):
                 (0, 'catalog.connection_config_info.authentication_parameters.authentication_type'): 'IMPLICIT',
                 (0, 'catalog.connection_config_info.uri'): 'u',
             })
+
+        check_arguments(
+            mock_execute(['principals', 'reset', 'test', '--new-client-id', 'e469c048cf866df1', '--new-client-secret', 'e469c048cf866dfae469c048cf866df1']),
+            'reset_credentials', {
+                (0, None): 'test',
+                (1, 'client_id'): 'e469c048cf866df1',
+                (1, 'client_secret'): 'e469c048cf866dfae469c048cf866df1',
+            })
+
+        check_arguments(
+            mock_execute(['principals', 'reset', 'test']),
+            'reset_credentials', {
+                (0, None): 'test',
+                (1, None): None,
+            })
+
+        check_arguments(
+            mock_execute(['principals', 'reset', 'test', '--new-client-id', 'e469c048cf866df1']),
+            'reset_credentials', {
+                (0, None): 'test',
+                (1, 'client_id'): 'e469c048cf866df1',
+                (1, 'client_secret'): None,
+            })
+
+        check_arguments(
+            mock_execute(['principals', 'reset', 'test', '--new-client-secret', 'e469c048cf866dfae469c048cf866df1']),
+            'reset_credentials', {
+                (0, None): 'test',
+                (1, 'client_id'): None,
+                (1, 'client_secret'): 'e469c048cf866dfae469c048cf866df1',
+            })
+
+    def test_policies_attach_parameters_parsed_to_dict(self):
+        options = Parser.parse([
+            'policies', 'attach', 'policy-name',
+            '--catalog', 'cat',
+            '--attachment-type', 'catalog',
+            '--parameters', 'key=value',
+        ])
+        command = Command.from_options(options)
+        self.assertIsInstance(command.parameters, dict)
+        self.assertEqual({'key': 'value'}, command.parameters)
 
 
 if __name__ == '__main__':

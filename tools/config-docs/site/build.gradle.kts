@@ -25,8 +25,8 @@ plugins {
 description = "Polaris site - reference docs"
 
 val genProjectPaths = listOf(
+  ":polaris-async-api",
   ":polaris-runtime-service",
-  ":polaris-eclipselink",
 )
 
 val genProjects by configurations.creating
@@ -52,6 +52,7 @@ val generatedMarkdownDocs = tasks.register<JavaExec>("generatedMarkdownDocs") {
 
   mainClass = "org.apache.polaris.docs.generator.ReferenceConfigDocsGenerator"
 
+  outputs.cacheIf { true }
   outputs.dir(generatedMarkdownDocsDir)
   inputs.files(doclet)
   inputs.files(genProjects)

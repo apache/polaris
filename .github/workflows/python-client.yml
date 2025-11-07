@@ -32,13 +32,18 @@ on:
   pull_request:
     branches: [ "main", "release/*" ]
 
+env:
+  GRADLE_TOS_ACCEPTED: ${{ vars.GRADLE_TOS_ACCEPTED }}
+  DEVELOCITY_SERVER: ${{ vars.DEVELOCITY_SERVER }}
+  DEVELOCITY_PROJECT_ID: ${{ vars.DEVELOCITY_PROJECT_ID }}
+
 jobs:
   build:
 
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout Polaris project
@@ -55,25 +60,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
       - name: Lint
         run: |
           make client-lint
+
+      - name: License Compliance Check
+        run: |
+          make client-license-check
 
       - name: Generated Client Tests
         run: |
           make client-unit-test
 
-      - name: Image build
-        run: |
-          ./gradlew \
-            :polaris-server:assemble \
-            :polaris-server:quarkusAppPartsBuild --rerun \
-            -Dquarkus.container-image.build=true
-
       - name: Integration Tests
         run: |
           make client-integration-test
 
-      - name: Run Polaris Client help maual
+      - name: Run Polaris Client help manual
         run: |
           ./polaris --help

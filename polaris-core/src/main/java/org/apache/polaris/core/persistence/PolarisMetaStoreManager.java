@@ -194,7 +194,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PrincipalEntity principal);
 
   /**
    * Create a new catalog. This not only creates the new catalog entity but also the initial admin
@@ -468,6 +468,20 @@ public interface PolarisMetaStoreManager
 
   default Optional<PrincipalEntity> findRootPrincipal(PolarisCallContext polarisCallContext) {
     return findPrincipalByName(polarisCallContext, PolarisEntityConstants.getRootPrincipalName());
+  }
+
+  default Optional<PrincipalEntity> findPrincipalById(
+      PolarisCallContext polarisCallContext, long principalId) {
+    EntityResult loadResult =
+        loadEntity(
+            polarisCallContext,
+            PolarisEntityConstants.getNullId(),
+            principalId,
+            PolarisEntityType.PRINCIPAL);
+    if (!loadResult.isSuccess()) {
+      return Optional.empty();
+    }
+    return Optional.of(loadResult.getEntity()).map(PrincipalEntity::of);
   }
 
   default Optional<PrincipalEntity> findPrincipalByName(

@@ -18,12 +18,9 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import static org.mockito.Mockito.when;
-
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -49,6 +46,7 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
@@ -59,13 +57,11 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
+import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.AfterViewCommitedEvent;
-import org.apache.polaris.service.events.AfterViewRefreshedEvent;
-import org.apache.polaris.service.events.BeforeViewCommitedEvent;
-import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -110,6 +106,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject UserSecretsManagerFactory userSecretsManagerFactory;
+  @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
@@ -124,6 +121,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
   private RealmConfig realmConfig;
+  private AccessConfigProvider accessConfigProvider;
 
   private TestPolarisEventListener testPolarisEventListener;
 
@@ -164,26 +162,23 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
-
+    accessConfigProvider =
+        new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
-
-    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-    when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
-    when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     ReservedProperties reservedProperties = ReservedProperties.NONE;
 
     PolarisAdminService adminService =
         new PolarisAdminService(
-            diagServices,
             polarisContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
-            securityContext,
+            serviceIdentityProvider,
+            authenticatedRoot,
             authorizer,
             reservedProperties);
     adminService.createCatalog(
@@ -202,25 +197,25 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
                         StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
                     "file://tmp")
                 .build()
-                .asCatalog()));
+                .asCatalog(serviceIdentityProvider)));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            polarisContext, resolutionManifestFactory, securityContext, CATALOG_NAME);
-    FileIOFactory fileIOFactory =
-        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
+    FileIOFactory fileIOFactory = new DefaultFileIOFactory();
 
     testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
+    testPolarisEventListener.clear();
     this.catalog =
         new IcebergCatalog(
             diagServices,
-            storageCredentialCache,
             resolverFactory,
             metaStoreManager,
             polarisContext,
             passthroughView,
-            securityContext,
+            authenticatedRoot,
             Mockito.mock(),
+            accessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     Map<String, String> properties =
@@ -270,20 +265,27 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     view.updateProperties().set(key, valOld).commit();
     view.updateProperties().set(key, valNew).commit();
 
-    var beforeRefreshEvent = testPolarisEventListener.getLatest(BeforeViewRefreshedEvent.class);
+    var beforeRefreshEvent =
+        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.BeforeRefreshViewEvent.class);
     Assertions.assertThat(beforeRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
 
-    var afterRefreshEvent = testPolarisEventListener.getLatest(AfterViewRefreshedEvent.class);
+    var afterRefreshEvent =
+        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.AfterRefreshViewEvent.class);
     Assertions.assertThat(afterRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
 
-    var beforeCommitEvent = testPolarisEventListener.getLatest(BeforeViewCommitedEvent.class);
+    var beforeCommitEvent =
+        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.BeforeCommitViewEvent.class);
     Assertions.assertThat(beforeCommitEvent.identifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(beforeCommitEvent.base().properties().get(key)).isEqualTo(valOld);
-    Assertions.assertThat(beforeCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
+    Assertions.assertThat(beforeCommitEvent.metadataBefore().properties().get(key))
+        .isEqualTo(valOld);
+    Assertions.assertThat(beforeCommitEvent.metadataAfter().properties().get(key))
+        .isEqualTo(valNew);
 
-    var afterCommitEvent = testPolarisEventListener.getLatest(AfterViewCommitedEvent.class);
+    var afterCommitEvent =
+        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.AfterCommitViewEvent.class);
     Assertions.assertThat(afterCommitEvent.identifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(afterCommitEvent.base().properties().get(key)).isEqualTo(valOld);
-    Assertions.assertThat(afterCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
+    Assertions.assertThat(afterCommitEvent.metadataBefore().properties().get(key))
+        .isEqualTo(valOld);
+    Assertions.assertThat(afterCommitEvent.metadataAfter().properties().get(key)).isEqualTo(valNew);
   }
 }

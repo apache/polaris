@@ -182,7 +182,7 @@ public class AzureCredentialsStorageIntegration
       Instant expiresAt,
       Optional<String> refreshCredentialsEndpoint) {
     AccessConfig.Builder accessConfig = AccessConfig.builder();
-    handleAzureCredential(accessConfig, sasToken, storageDnsName);
+    handleAzureCredential(accessConfig, sasToken, storageDnsName, expiresAt);
     accessConfig.put(
         StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
     refreshCredentialsEndpoint.ifPresent(
@@ -193,8 +193,11 @@ public class AzureCredentialsStorageIntegration
   }
 
   private static void handleAzureCredential(
-      AccessConfig.Builder config, String sasToken, String host) {
+      AccessConfig.Builder config, String sasToken, String host, Instant expiresAt) {
     config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + host, sasToken);
+    config.putCredential(
+        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX.getPropertyName() + host,
+        String.valueOf(expiresAt.toEpochMilli()));
 
     // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint
     if (host.endsWith(AzureLocation.ADLS_ENDPOINT)) {
