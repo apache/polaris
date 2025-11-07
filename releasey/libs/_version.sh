@@ -88,7 +88,8 @@ function validate_and_extract_polaris_version {
 
 function update_version {
   local version="$1"
-  local current_version=$(cat "$VERSION_FILE")
+  local current_version
+  current_version=$(cat "$VERSION_FILE")
   update_version_txt "${version}"
   update_helm_version "${current_version}" "${version}"
 }
