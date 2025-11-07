@@ -48,6 +48,9 @@ jobs:
           # Use a token with write permissions
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
       - name: Set up environment variables
         run: |
           echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
