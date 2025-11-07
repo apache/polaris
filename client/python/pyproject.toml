@@ -75,3 +75,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.build]
 generate-setup-file = false
 script = "generate_clients.py"
+
+[[tool.poetry.source]]
+name = "local"
+url = "https://bagofholding-pb.cse-cst.gc.ca/repository/pypi/simple"
+priority = "primary"

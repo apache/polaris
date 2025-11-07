@@ -106,3 +106,4 @@ hs_err_pid*
 
 # Python Virtual Env
 .venv
+venv

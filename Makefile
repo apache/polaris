@@ -57,6 +57,8 @@ build-server: DEPENDENCIES := java21 $(DOCKER)
 build-server: check-dependencies ## Build Polaris server and container image
 	@echo "--- Building Polaris server ---"
 	@./gradlew \
+		--info \
+		-Dorg.gradle.internal.http.socketTimeout=300000 -Dorg.gradle.internal.http.connectionTimeout=300000 \
 		:polaris-server:assemble \
 		:polaris-server:quarkusAppPartsBuild --rerun \
 		-Dquarkus.container-image.build=$(BUILD_IMAGE) \
