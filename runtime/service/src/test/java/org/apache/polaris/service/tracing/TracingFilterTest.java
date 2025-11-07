@@ -85,7 +85,7 @@ public class TracingFilterTest {
         // W3C headers
         .header("traceparent", traceparent)
         .header("tracestate", tracestate)
-        // Polaris correlation ID
+        // Polaris request ID
         .header("X-Request-ID", "12345")
         .when()
         .post()
