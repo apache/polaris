@@ -255,7 +255,7 @@ public class CatalogEntityTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"", "aws-cn"})
+  @ValueSource(strings = {"", "arn:aws:iam:0123456:role/jdoe", "aws-cn"})
   public void testInvalidArn(String roleArn) {
     String basedLocation = "s3://externally-owned-bucket";
     AwsStorageConfigInfo awsStorageConfigModel =
@@ -278,7 +278,7 @@ public class CatalogEntityTest {
         switch (roleArn) {
           case "" -> "ARN must not be empty";
           case "aws-cn" -> "AWS China is temporarily not supported";
-          default -> "Invalid role ARN format: arn:aws:iam::0123456:role/jdoe";
+          default -> "Invalid role ARN format: arn:aws:iam:0123456:role/jdoe";
         };
     Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
