@@ -315,6 +315,7 @@ jobs:
 
       - name: Install Helm GPG plugin
         run: |
+          # `|| true` makes installation idempotent in case plugins are pre-installed or installations are cached
           helm plugin install https://github.com/technosophos/helm-gpg || true
           helm plugin list
 
