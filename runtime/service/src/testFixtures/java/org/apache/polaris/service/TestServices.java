@@ -206,6 +206,39 @@ public record TestServices(
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
+      CreatePrincipalResult createdPrincipal =
+          metaStoreManager.createPrincipal(
+              callContext.getPolarisCallContext(),
+              new PrincipalEntity.Builder()
+                  .setName("test-principal")
+                  .setCreateTimestamp(Instant.now().toEpochMilli())
+                  .setCredentialRotationRequiredState()
+                  .build());
+      PolarisPrincipal principal = PolarisPrincipal.of(createdPrincipal.getPrincipal(), Set.of());
+
+      SecurityContext securityContext =
+          new SecurityContext() {
+            @Override
+            public Principal getUserPrincipal() {
+              return principal;
+            }
+
+            @Override
+            public boolean isUserInRole(String s) {
+              return false;
+            }
+
+            @Override
+            public boolean isSecure() {
+              return true;
+            }
+
+            @Override
+            public String getAuthenticationScheme() {
+              return "";
+            }
+          };
+
       EntityCache entityCache =
           metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
       ResolverFactory resolverFactory =
@@ -251,11 +284,13 @@ public record TestServices(
           new PolarisCallContextCatalogFactory(
               diagnostics,
               resolverFactory,
-              metaStoreManagerFactory,
               taskExecutor,
               accessConfigProvider,
               fileIOFactory,
-              polarisEventListener);
+              polarisEventListener,
+              metaStoreManager,
+              callContext,
+              principal);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
@@ -288,39 +323,6 @@ public record TestServices(
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
       IcebergRestConfigurationApi restConfigurationApi =
           new IcebergRestConfigurationApi(catalogService);
-
-      CreatePrincipalResult createdPrincipal =
-          metaStoreManager.createPrincipal(
-              callContext.getPolarisCallContext(),
-              new PrincipalEntity.Builder()
-                  .setName("test-principal")
-                  .setCreateTimestamp(Instant.now().toEpochMilli())
-                  .setCredentialRotationRequiredState()
-                  .build());
-      PolarisPrincipal principal = PolarisPrincipal.of(createdPrincipal.getPrincipal(), Set.of());
-
-      SecurityContext securityContext =
-          new SecurityContext() {
-            @Override
-            public Principal getUserPrincipal() {
-              return principal;
-            }
-
-            @Override
-            public boolean isUserInRole(String s) {
-              return false;
-            }
-
-            @Override
-            public boolean isSecure() {
-              return true;
-            }
-
-            @Override
-            public String getAuthenticationScheme() {
-              return "";
-            }
-          };
 
       PolarisAdminService adminService =
           new PolarisAdminService(
