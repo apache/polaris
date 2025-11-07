@@ -255,8 +255,7 @@ public class CatalogEntityTest {
   }
 
   @ParameterizedTest
-  @ValueSource(
-      strings = {"", ":aws:iam:0123456:role/jdoe", "arn:aws:iam:0123456:role/jdoe", "aws-cn"})
+  @ValueSource(strings = {"", "arn:aws:iam:0123456:role/jdoe", "aws-cn"})
   public void testInvalidArn(String roleArn) {
     String basedLocation = "s3://externally-owned-bucket";
     AwsStorageConfigInfo awsStorageConfigModel =
@@ -289,9 +288,9 @@ public class CatalogEntityTest {
   @ParameterizedTest
   @ValueSource(
       strings = {
-        "",
         "arn:aws:iam::012345678911:role/rollerblade",
-        "test:test:iam:region:accountid:role/rollerblade"
+        "test:test:iam:region:accountid:role/rollerblade",
+        "a::iam:::role/rollerblade"
       })
   public void testValidArn(String roleArn) {
     String basedLocation = "s3://externally-owned-bucket";
