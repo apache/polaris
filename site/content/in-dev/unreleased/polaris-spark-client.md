@@ -119,16 +119,16 @@ If you would like to use a version of the Spark client that is currently not yet
 build a Spark client jar locally from source. Please check out the Polaris repo and refer to the Spark plugin
 [README](https://github.com/apache/polaris/blob/main/plugins/spark/README.md) for detailed instructions.
 
-## Limitations
+## Known Limitations
 The following describes the current limitations of the Polaris Spark client:
 
 ### General Limitations
-1. The Polaris Spark client only supports Iceberg and Delta Lake tables. It does not support other table formats like CSV, JSON, etc.
+1. The Polaris Spark client only supports Iceberg and Delta tables. It does not support other table formats like CSV, JSON, etc.
 2. Generic tables (non-Iceberg tables) do not currently support credential vending.
 
-### Delta Lake Limitations
-1. Create table as select (CTAS) is not supported for Delta Lake tables. As a result, the `saveAsTable` method of `Dataframe`
+### Delta Table Limitations
+1. Create table as select (CTAS) is not supported for Delta tables. As a result, the `saveAsTable` method of `Dataframe`
    is also not supported, since it relies on the CTAS support.
-2. Create a Delta Lake table without explicit location is not supported.
-3. Rename a Delta Lake table is not supported.
+2. Create a Delta table without explicit location is not supported.
+3. Rename a Delta table is not supported.
 4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.
