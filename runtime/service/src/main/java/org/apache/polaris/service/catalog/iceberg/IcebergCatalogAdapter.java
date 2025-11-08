@@ -187,7 +187,7 @@ public class IcebergCatalogAdapter
     this.externalCatalogFactories = externalCatalogFactories;
     this.polarisEventListener = polarisEventListener;
     this.storageAccessConfigProvider = storageAccessConfigProvider;
-      this.metricsReporter = metricsReporter;
+    this.metricsReporter = metricsReporter;
   }
 
   /**

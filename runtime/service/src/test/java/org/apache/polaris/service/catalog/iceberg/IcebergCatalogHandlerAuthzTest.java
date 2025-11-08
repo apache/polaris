@@ -1894,7 +1894,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             diagServices,
             resolverFactory,
             Mockito.mock(),
-            accessConfigProvider,
+            storageAccessConfigProvider,
             new DefaultFileIOFactory(),
             polarisEventListener,
             metaStoreManager,

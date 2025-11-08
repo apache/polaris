@@ -126,9 +126,9 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -454,7 +454,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         passthroughView,
         authenticatedRoot,
         taskExecutor,
-        accessConfigProvider,
+        storageAccessConfigProvider,
         fileIOFactory,
         polarisEventListener);
   }
@@ -1914,7 +1914,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_ACCESS_KEY)
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), SESSION_TOKEN);
     FileIO fileIO =
-        new TaskFileIOSupplier(new DefaultFileIOFactory(), accessConfigProvider)
+        new TaskFileIOSupplier(new DefaultFileIOFactory(), storageAccessConfigProvider)
             .apply(taskEntity, TABLE, polarisContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
@@ -2083,14 +2083,14 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             new FileIOFactory() {
               @Override
               public FileIO loadFileIO(
-                  @Nonnull AccessConfig accessConfig,
+                  @Nonnull StorageAccessConfig accessConfig,
                   @Nonnull String ioImplClassName,
                   @Nonnull Map<String, String> properties) {
                 return measured.loadFileIO(
                     accessConfig, "org.apache.iceberg.inmemory.InMemoryFileIO", Map.of());
               }
             },
-            accessConfigProvider);
+            storageAccessConfigProvider);
 
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(

@@ -273,7 +273,7 @@ public record TestServices(
       PolarisCredentialManager credentialManager =
           new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
 
-        StorageAccessConfigProvider storageAccessConfigProvider  =
+      StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
@@ -285,7 +285,7 @@ public record TestServices(
               diagnostics,
               resolverFactory,
               taskExecutor,
-                  storageAccessConfigProvider,
+              storageAccessConfigProvider,
               fileIOFactory,
               polarisEventListener,
               metaStoreManager,
@@ -317,7 +317,7 @@ public record TestServices(
               catalogHandlerUtils,
               externalCatalogFactory,
               polarisEventListener,
-                  storageAccessConfigProvider,
+              storageAccessConfigProvider,
               new DefaultMetricsReporter());
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);

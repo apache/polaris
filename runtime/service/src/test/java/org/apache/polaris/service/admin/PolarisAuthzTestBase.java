@@ -499,7 +499,7 @@ public abstract class PolarisAuthzTestBase {
             passthroughView,
             authenticatedRoot,
             Mockito.mock(),
-            accessConfigProvider,
+            storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     this.baseCatalog.initialize(
@@ -527,7 +527,7 @@ public abstract class PolarisAuthzTestBase {
         PolarisDiagnostics diagnostics,
         ResolverFactory resolverFactory,
         TaskExecutor taskExecutor,
-        AccessConfigProvider accessConfigProvider,
+        StorageAccessConfigProvider accessConfigProvider,
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener,
         PolarisMetaStoreManager metaStoreManager,

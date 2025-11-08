@@ -119,7 +119,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   private FileIOFactory fileIOFactory;
   private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
-    private StorageAccessConfigProvider storageAccessConfigProvider;
+  private StorageAccessConfigProvider storageAccessConfigProvider;
 
   protected static final Schema SCHEMA =
       new Schema(
@@ -242,7 +242,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             passthroughView,
             authenticatedRoot,
             taskExecutor,
-            accessConfigProvider,
+            storageAccessConfigProvider,
             fileIOFactory,
             new NoOpPolarisEventListener());
     this.icebergCatalog.initialize(

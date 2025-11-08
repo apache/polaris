@@ -215,7 +215,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             passthroughView,
             authenticatedRoot,
             Mockito.mock(),
-            accessConfigProvider,
+            storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     Map<String, String> properties =

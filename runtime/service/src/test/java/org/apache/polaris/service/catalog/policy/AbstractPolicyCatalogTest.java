@@ -259,7 +259,7 @@ public abstract class AbstractPolicyCatalogTest {
             passthroughView,
             authenticatedRoot,
             taskExecutor,
-            accessConfigProvider,
+            storageAccessConfigProvider,
             fileIOFactory,
             new NoOpPolarisEventListener());
     this.icebergCatalog.initialize(

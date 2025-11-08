@@ -32,8 +32,8 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
@@ -46,7 +46,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
   private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
-  private final AccessConfigProvider accessConfigProvider;
+  private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final FileIOFactory fileIOFactory;
   private final ResolverFactory resolverFactory;
   private final PolarisEventListener polarisEventListener;
@@ -59,7 +59,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       PolarisDiagnostics diagnostics,
       ResolverFactory resolverFactory,
       TaskExecutor taskExecutor,
-      AccessConfigProvider accessConfigProvider,
+      StorageAccessConfigProvider storageAccessConfigProvider,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener,
       PolarisMetaStoreManager metaStoreManager,
@@ -68,7 +68,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.taskExecutor = taskExecutor;
-    this.accessConfigProvider = accessConfigProvider;
+    this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.fileIOFactory = fileIOFactory;
     this.polarisEventListener = polarisEventListener;
     this.metaStoreManager = metaStoreManager;
@@ -94,7 +94,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             resolvedManifest,
             principal,
             taskExecutor,
-            accessConfigProvider,
+            storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener);
 
