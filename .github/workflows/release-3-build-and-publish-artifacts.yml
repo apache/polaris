@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
           fetch-depth: 0
 
@@ -115,7 +115,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
           fetch-depth: 0
 
@@ -128,13 +128,13 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Java
-        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
         with:
           distribution: 'temurin'
           java-version: '21'
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
@@ -234,7 +234,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
           fetch-depth: 0
 
@@ -247,7 +247,7 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Java
-        uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -296,7 +296,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
           fetch-depth: 0
 
@@ -309,7 +309,7 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Helm
-        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: 'latest'
 
@@ -320,7 +320,7 @@ jobs:
           helm plugin list
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
