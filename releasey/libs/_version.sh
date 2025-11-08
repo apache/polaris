@@ -115,8 +115,8 @@ function update_helm_version {
   # We need a second `sed` command to ensure that the version replacement preserves this double-dash syntax.
   local current_version_with_dash
   local version_with_dash
-  current_version_with_dash="$(echo "${old_version//-/--}")"
-  version_with_dash="$(echo "$version//-/--}")"
+  current_version_with_dash="${old_version//-/--}"
+  version_with_dash="${version//-/--}"
   exec_process sed -i~ "s/${current_version_with_dash}/${version_with_dash}/" "$HELM_README_FILE"
 }
 
