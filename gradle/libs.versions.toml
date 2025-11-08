@@ -39,7 +39,7 @@ swagger = "1.6.16"
 # If a dependency is removed, check whether the LICENSE and/or NOTICE files need to be adopted
 # (aka mention of the dependency removed).
 #
-agrona = { module = "org.agrona:agrona", version = "2.3.1" }
+agrona = { module = "org.agrona:agrona", version = "2.3.2" }
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 apache-httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.5.1" }
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.6" }
