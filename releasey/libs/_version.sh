@@ -88,10 +88,8 @@ function validate_and_extract_polaris_version {
 
 function update_version {
   local version="$1"
-  local current_version
-  current_version=$(cat "$VERSION_FILE")
   update_version_txt "${version}"
-  update_helm_version "${current_version}" "${version}"
+  update_helm_version "${version}"
 }
 
 function update_version_txt {
@@ -107,17 +105,17 @@ function update_version_txt {
 }
 
 function update_helm_version {
-  local old_version="$1"
-  local new_version="$2"
-  exec_process sed -i~ "s/${old_version}/${new_version}/g" "$HELM_CHART_YAML_FILE"
-  exec_process sed -i~ "s/${old_version}/${new_version}/g" "$HELM_README_FILE"
+  local new_version="$1"
+  exec_process sed -E -i~ "s/^version: .+/version: ${new_version}/g" "$HELM_CHART_YAML_FILE"
+  exec_process sed -E -i~ "s/^appVersion: .+/appVersion: ${new_version}/g" "$HELM_CHART_YAML_FILE"
+  exec_process sed -E -i~ "s/[0-9]+[.][0-9]+([.][0-9]+)?(-incubating)-SNAPSHOT/${new_version}/g" "$HELM_README_FILE"
   # The readme file may contain version with double dash for shields.io badges
   # We need a second `sed` command to ensure that the version replacement preserves this double-dash syntax.
   local current_version_with_dash
   local version_with_dash
   current_version_with_dash="${old_version//-/--}"
   version_with_dash="${version//-/--}"
-  exec_process sed -i~ "s/${current_version_with_dash}/${version_with_dash}/" "$HELM_README_FILE"
+  exec_process sed -E -i~ "s/[0-9]+[.][0-9]+([.][0-9]+)?(--incubating)--SNAPSHOT/${version_with_dash}/g" "$HELM_README_FILE"
 }
 
 function find_next_rc_number {
