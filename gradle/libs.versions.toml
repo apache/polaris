@@ -51,7 +51,7 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.3
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.19.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.14.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.44.0" }
-google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.59.0" }
+google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.60.0" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.4.240" }
 dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
