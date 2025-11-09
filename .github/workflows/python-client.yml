@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout Polaris project
@@ -60,6 +60,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
       - name: Lint
         run: |
           make client-lint
@@ -71,15 +74,6 @@ jobs:
       - name: Generated Client Tests
         run: |
           make client-unit-test
-
-      - name: Image build
-        env:
-          DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-        run: |
-          ./gradlew \
-            :polaris-server:assemble \
-            :polaris-server:quarkusAppPartsBuild --rerun \
-            -Dquarkus.container-image.build=true
 
       - name: Integration Tests
         run: |

@@ -84,8 +84,7 @@ public class PolicyCatalog {
       PolarisResolutionManifestCatalogView resolvedEntityView) {
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
-    this.catalogEntity =
-        CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+    this.catalogEntity = resolvedEntityView.getResolvedCatalogEntity();
     this.catalogId = catalogEntity.getId();
     this.metaStoreManager = metaStoreManager;
   }
@@ -189,7 +188,7 @@ public class PolicyCatalog {
     }
     // with a policyType filter we need to load the full PolicyEntity to apply the filter
     return metaStoreManager
-        .loadEntitiesAll(
+        .listFullEntitiesAll(
             callContext.getPolarisCallContext(),
             catalogPath,
             PolarisEntityType.POLICY,

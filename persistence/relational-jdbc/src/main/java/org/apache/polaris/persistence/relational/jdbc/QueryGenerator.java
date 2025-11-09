@@ -113,12 +113,13 @@ public class QueryGenerator {
    * Builds a SELECT query using a list of entity ID pairs (catalog_id, id).
    *
    * @param realmId Realm to filter by.
+   * @param schemaVersion The schema version of entities table to query
    * @param entityIds List of PolarisEntityId pairs.
    * @return SELECT query to retrieve matching entities.
    * @throws IllegalArgumentException if entityIds is empty.
    */
   public static PreparedQuery generateSelectQueryWithEntityIds(
-      @Nonnull String realmId, @Nonnull List<PolarisEntityId> entityIds) {
+      @Nonnull String realmId, int schemaVersion, @Nonnull List<PolarisEntityId> entityIds) {
     if (entityIds.isEmpty()) {
       throw new IllegalArgumentException("Empty entity ids");
     }
@@ -131,7 +132,9 @@ public class QueryGenerator {
     params.add(realmId);
     String where = " WHERE (catalog_id, id) IN (" + placeholders + ") AND realm_id = ?";
     return new PreparedQuery(
-        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where, null).sql(),
+        generateSelectQuery(
+                ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, where, null)
+            .sql(),
         params);
   }
 
@@ -253,6 +256,14 @@ public class QueryGenerator {
     return new PreparedQuery("SELECT version_value FROM POLARIS_SCHEMA.VERSION", List.of());
   }
 
+  @VisibleForTesting
+  static PreparedQuery generateEntityTableExistQuery() {
+    return new PreparedQuery(
+        String.format(
+            "SELECT * FROM %s LIMIT 1", getFullyQualifiedTableName(ModelEntity.TABLE_NAME)),
+        List.of());
+  }
+
   /**
    * Generate a SELECT query to find any entities that have a given realm &amp; parent and that may
    * overlap with a given location. The check is performed without consideration for the scheme, so
@@ -260,13 +271,14 @@ public class QueryGenerator {
    * This should be combined with a check using `StorageLocation`.
    *
    * @param realmId A realm to search within
+   * @param schemaVersion The schema version of entities table to query
    * @param catalogId A catalog entity to search within
    * @param baseLocation The base location to look for overlap with, with or without a scheme
    * @return The list of possibly overlapping entities that meet the criteria
    */
   @VisibleForTesting
   public static PreparedQuery generateOverlapQuery(
-      String realmId, long catalogId, String baseLocation) {
+      String realmId, int schemaVersion, long catalogId, String baseLocation) {
     StorageLocation baseStorageLocation = StorageLocation.of(baseLocation);
     String locationWithoutScheme = baseStorageLocation.withoutScheme();
 
@@ -297,7 +309,11 @@ public class QueryGenerator {
 
     QueryFragment where = new QueryFragment(clause, finalParams);
     PreparedQuery query =
-        generateSelectQuery(ModelEntity.ALL_COLUMNS, ModelEntity.TABLE_NAME, where.sql(), null);
+        generateSelectQuery(
+            ModelEntity.getAllColumnNames(schemaVersion),
+            ModelEntity.TABLE_NAME,
+            where.sql(),
+            null);
     return new PreparedQuery(query.sql(), where.parameters());
   }
 

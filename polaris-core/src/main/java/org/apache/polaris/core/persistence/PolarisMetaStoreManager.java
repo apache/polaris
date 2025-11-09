@@ -47,6 +47,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
@@ -114,7 +115,7 @@ public interface PolarisMetaStoreManager
 
   /**
    * List lightweight information about entities matching the given criteria. If all properties of
-   * the entity are required,use {@link #loadEntities} instead.
+   * the entity are required,use {@link #listFullEntities} instead.
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
@@ -135,7 +136,7 @@ public interface PolarisMetaStoreManager
   /**
    * Load full entities matching the given criteria with pagination. If only the entity name/id/type
    * is required, use {@link #listEntities} instead. If no pagination is required, use {@link
-   * #loadEntitiesAll} instead.
+   * #listFullEntitiesAll} instead.
    *
    * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
@@ -145,7 +146,7 @@ public interface PolarisMetaStoreManager
    * @return paged list of matching entities
    */
   @Nonnull
-  Page<PolarisBaseEntity> loadEntities(
+  Page<PolarisBaseEntity> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
@@ -154,7 +155,7 @@ public interface PolarisMetaStoreManager
 
   /**
    * Load full entities matching the given criteria into an unpaged list. If pagination is required
-   * use {@link #loadEntities} instead. If only the entity name/id/type is required, use {@link
+   * use {@link #listFullEntities} instead. If only the entity name/id/type is required, use {@link
    * #listEntities} instead.
    *
    * @param callCtx call context
@@ -164,12 +165,13 @@ public interface PolarisMetaStoreManager
    * @param entitySubType subType of entities to list (or ANY_SUBTYPE)
    * @return list of all matching entities
    */
-  default @Nonnull List<PolarisBaseEntity> loadEntitiesAll(
+  default @Nonnull List<PolarisBaseEntity> listFullEntitiesAll(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType) {
-    return loadEntities(callCtx, catalogPath, entityType, entitySubType, PageToken.readEverything())
+    return listFullEntities(
+            callCtx, catalogPath, entityType, entitySubType, PageToken.readEverything())
         .items();
   }
 
@@ -194,7 +196,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PrincipalEntity principal);
 
   /**
    * Create a new catalog. This not only creates the new catalog entity but also the initial admin
@@ -417,6 +419,23 @@ public interface PolarisMetaStoreManager
       @Nonnull String entityName);
 
   /**
+   * Load a batch of resolved entities of a specified entity type given their {@link
+   * PolarisEntityId}. Will return an empty list if the input list is empty. Order in that returned
+   * list is the same as the input list. Some elements might be NULL if the entity has been dropped.
+   *
+   * @param callCtx call context
+   * @param entityType the type of entities to load
+   * @param entityIds the list of entity ids to load
+   * @return a non-null list of entities corresponding to the lookup keys. Some elements might be
+   *     NULL if the entity has been dropped.
+   */
+  @Nonnull
+  ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull List<PolarisEntityId> entityIds);
+
+  /**
    * Refresh a resolved entity from the backend store. Will return NULL if the entity does not
    * exist, i.e. has been purged or dropped. Else, will determine what has changed based on the
    * version information sent by the caller and will return only what has changed.
@@ -468,6 +487,20 @@ public interface PolarisMetaStoreManager
 
   default Optional<PrincipalEntity> findRootPrincipal(PolarisCallContext polarisCallContext) {
     return findPrincipalByName(polarisCallContext, PolarisEntityConstants.getRootPrincipalName());
+  }
+
+  default Optional<PrincipalEntity> findPrincipalById(
+      PolarisCallContext polarisCallContext, long principalId) {
+    EntityResult loadResult =
+        loadEntity(
+            polarisCallContext,
+            PolarisEntityConstants.getNullId(),
+            principalId,
+            PolarisEntityType.PRINCIPAL);
+    if (!loadResult.isSuccess()) {
+      return Optional.empty();
+    }
+    return Optional.of(loadResult.getEntity()).map(PrincipalEntity::of);
   }
 
   default Optional<PrincipalEntity> findPrincipalByName(

@@ -124,7 +124,7 @@ public class EntityWeigherTest {
                     "location",
                     "{\"a\": \"b\"}",
                     Optional.of("{\"c\": \"d\", \"e\": \"f\"}")));
-    Assertions.assertThat(preciseWeight).isEqualTo(1090);
+    Assertions.assertThat(preciseWeight).isEqualTo(1183); // :( this is hard-coded
   }
 
   private static Map<String, String> getPropertiesMap(String properties) {

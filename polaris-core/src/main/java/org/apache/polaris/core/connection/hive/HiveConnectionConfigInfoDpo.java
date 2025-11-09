@@ -24,14 +24,17 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
-import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 
 /**
  * The internal persistence-object counterpart to {@link
@@ -68,14 +71,20 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
 
   @Override
   public @Nonnull Map<String, String> asIcebergCatalogProperties(
-      UserSecretsManager secretsManager) {
+      PolarisCredentialManager polarisCredentialManager) {
     HashMap<String, String> properties = new HashMap<>();
     properties.put(CatalogProperties.URI, getUri());
     if (getWarehouse() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getWarehouse());
     }
     if (getAuthenticationParameters() != null) {
-      properties.putAll(getAuthenticationParameters().asIcebergCatalogProperties(secretsManager));
+      // Add authentication-specific metadata (non-credential properties)
+      properties.putAll(
+          getAuthenticationParameters().asIcebergCatalogProperties(polarisCredentialManager));
+      // Add connection credentials from Polaris credential manager
+      ConnectionCredentials connectionCredentials =
+          polarisCredentialManager.getConnectionCredentials(this);
+      properties.putAll(connectionCredentials.credentials());
     }
     return properties;
   }
@@ -88,13 +97,20 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
   }
 
   @Override
-  public ConnectionConfigInfo asConnectionConfigInfoModel() {
+  public ConnectionConfigInfo asConnectionConfigInfoModel(
+      ServiceIdentityProvider serviceIdentityProvider) {
     return HiveConnectionConfigInfo.builder()
         .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.HIVE)
         .setUri(getUri())
         .setWarehouse(getWarehouse())
         .setAuthenticationParameters(
             getAuthenticationParameters().asAuthenticationParametersModel())
+        .setServiceIdentity(
+            Optional.ofNullable(getServiceIdentity())
+                .map(
+                    serviceIdentityInfoDpo ->
+                        serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
+                .orElse(null))
         .build();
   }
 }

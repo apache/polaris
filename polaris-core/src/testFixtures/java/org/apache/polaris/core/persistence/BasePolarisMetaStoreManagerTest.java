@@ -68,7 +68,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   private PolarisTestMetaStoreManager polarisTestMetaStoreManager;
 
   @BeforeEach
-  public void setupPolariMetaStoreManager() {
+  public void setupPolarisMetaStoreManager() {
     this.polarisTestMetaStoreManager = createPolarisTestMetaStoreManager();
   }
 
@@ -118,7 +118,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
     List<PolarisBaseEntity> listedEntities =
-        metaStoreManager.loadEntitiesAll(
+        metaStoreManager.listFullEntitiesAll(
             polarisTestMetaStoreManager.polarisCallContext,
             null,
             PolarisEntityType.TASK,
@@ -236,6 +236,12 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   protected void testLookup() {
     polarisTestMetaStoreManager.testLookup();
+  }
+
+  /** test batch entity load */
+  @Test
+  protected void testLoadResolvedEntitiesById() {
+    polarisTestMetaStoreManager.testLoadResolvedEntitiesById();
   }
 
   /** Test the set of functions for the entity cache */

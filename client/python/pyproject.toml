@@ -18,21 +18,21 @@
 #
 
 [project]
-name = "polaris"
+name = "apache-polaris"
 version = "1.2.0"
 description = "Apache Polaris"
 authors = [
     {name = "Apache Software Foundation", email = "dev@polaris.apache.org"}
 ]
 readme = "README.md"
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.10,<4.0"
 license = "Apache-2.0"
 keywords = ["Apache Polaris", "Polaris", "Polaris Management Service", "Apache Iceberg REST Catalog API"]
 dynamic = ["classifiers"]
 dependencies = [
     "urllib3>=1.25.3,<3.0.0",
     "python-dateutil>=2.8.2",
-    "pydantic>=2.0.0",
+    "pydantic>=2.0.0,<2.12.0",
     "typing-extensions>=4.7.1",
     "boto3~=1.40.6",
 ]
@@ -42,13 +42,16 @@ homepage = "https://polaris.apache.org/"
 repository = "https://github.com/apache/polaris/"
 
 [project.scripts]
-polaris = "cli.polaris_cli:main"
+polaris = "apache_polaris.cli.polaris_cli:main"
 
 [tool.poetry]
-requires-poetry = "==2.1.4"
+requires-poetry = "==2.2.1"
+packages = [
+    { include = "apache_polaris" }
+]
 include = [
-    { path = "polaris/**", format = ["sdist", "wheel"] },
-    { path = "cli/**", format = ["sdist", "wheel"] },
+    { path = "apache_polaris/cli", format = ["sdist", "wheel"] },
+    { path = "apache_polaris/sdk", format = ["sdist", "wheel"] },
     { path = "templates/**", format = "sdist" },
     { path = "spec/**", format = "sdist" },
 ]
@@ -61,19 +64,15 @@ types-python-dateutil = ">= 2.8.19.14"
 mypy = ">=1.18, <=1.18.2"
 pyiceberg = "==0.10.0"
 pre-commit = "==4.3.0"
-openapi-generator-cli = "==7.15.0"
-pip-licenses-cli = "==v2.0.0"
-# pin virtualenv version to prevent poetry from upgrading to an incompatible version
-# see https://github.com/python-poetry/poetry/issues/10504#issuecomment-3176923981
-# 20.33.0 is the oldest version supported by poetry 2.2.0
-virtualenv = ">=20.33.0,<20.35.0"
+openapi-generator-cli = "==7.17.0"
+pip-licenses-cli = "==3.0.1"
 
 [tool.pip-licenses]
 partial-match = true
 allow-only = "Apache;BSD License;BSD-3-Clause;ISC;MIT;Mozilla Public License;PSF-2.0;Python Software Foundation License;The Unlicense"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0", "openapi-generator-cli==7.11.0.post0"]
+requires = ["poetry-core==2.2.1", "openapi-generator-cli==7.12.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]

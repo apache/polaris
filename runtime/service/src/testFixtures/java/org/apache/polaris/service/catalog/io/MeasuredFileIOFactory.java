@@ -25,15 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.core.storage.AccessConfig;
 
 /**
  * A FileIOFactory that measures the number of bytes read, files written, and files deleted. It can
@@ -52,22 +46,15 @@ public class MeasuredFileIOFactory implements FileIOFactory {
   private final FileIOFactory defaultFileIOFactory;
 
   @Inject
-  public MeasuredFileIOFactory(
-      StorageCredentialCache storageCredentialCache,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    defaultFileIOFactory =
-        new DefaultFileIOFactory(storageCredentialCache, metaStoreManagerFactory);
+  public MeasuredFileIOFactory() {
+    defaultFileIOFactory = new DefaultFileIOFactory();
   }
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull CallContext callContext,
+      @Nonnull AccessConfig accessConfig,
       @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties,
-      @Nonnull TableIdentifier identifier,
-      @Nonnull Set<String> tableLocations,
-      @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
+      @Nonnull Map<String, String> properties) {
     loadFileIOExceptionSupplier.ifPresent(
         s -> {
           throw s.get();
@@ -75,14 +62,7 @@ public class MeasuredFileIOFactory implements FileIOFactory {
 
     MeasuredFileIO wrapped =
         new MeasuredFileIO(
-            defaultFileIOFactory.loadFileIO(
-                callContext,
-                ioImplClassName,
-                properties,
-                identifier,
-                tableLocations,
-                storageActions,
-                resolvedEntityPath),
+            defaultFileIOFactory.loadFileIO(accessConfig, ioImplClassName, properties),
             newInputFileExceptionSupplier,
             newOutputFileExceptionSupplier,
             getLengthExceptionSupplier);

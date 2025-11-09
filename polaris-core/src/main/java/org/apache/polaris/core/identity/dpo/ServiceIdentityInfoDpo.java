@@ -23,18 +23,22 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.google.common.base.MoreObjects;
-import jakarta.annotation.Nonnull;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 
 /**
  * The internal persistence-object counterpart to ServiceIdentityInfo defined in the API model.
  * Important: JsonSubTypes must be kept in sync with {@link ServiceIdentityType}.
  *
- * <p>During the runtime, it will be resolved to an actual ResolvedServiceIdentityInfo object which
- * contains the actual service identity info and the corresponding credential.
+ * <p>This DPO stores only the identity type and a {@link SecretReference} that serves as a unique
+ * identifier for the service identity instance. The reference is used at runtime by a {@link
+ * ServiceIdentityProvider} to look up the configuration and retrieve the full {@link
+ * ServiceIdentityCredential} with credentials and metadata.
  */
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
@@ -72,10 +76,24 @@ public abstract class ServiceIdentityInfoDpo {
   }
 
   /**
-   * Converts this persistence object to the corresponding API model. During the conversion, some
-   * fields will be dropped, e.g. the reference to the service identity's credential
+   * Converts this persistence object to the corresponding API model.
+   *
+   * <p>The conversion uses the provided {@link ServiceIdentityProvider} to retrieve the user-facing
+   * identity information (e.g., AWS IAM ARN) without exposing sensitive credentials. The credential
+   * reference stored in this DPO is not included in the API model.
+   *
+   * @param serviceIdentityProvider the service identity provider used to retrieve display
+   *     information
+   * @return the API model representation, or null if the provider is null or cannot resolve the
+   *     identity
    */
-  public abstract @Nonnull ServiceIdentityInfo asServiceIdentityInfoModel();
+  public @Nullable ServiceIdentityInfo asServiceIdentityInfoModel(
+      ServiceIdentityProvider serviceIdentityProvider) {
+    Preconditions.checkNotNull(
+        serviceIdentityProvider,
+        "Need ServiceIdentityProvider to inject service identity info, should not be null");
+    return serviceIdentityProvider.getServiceIdentityInfo(this).orElse(null);
+  }
 
   @Override
   public String toString() {

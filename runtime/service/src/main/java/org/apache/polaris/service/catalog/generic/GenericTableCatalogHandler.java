@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.generic;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
@@ -28,18 +27,19 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
@@ -59,27 +59,26 @@ public class GenericTableCatalogHandler extends CatalogHandler {
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       String catalogName,
       PolarisAuthorizer authorizer,
-      UserSecretsManager userSecretsManager,
+      PolarisCredentialManager polarisCredentialManager,
       Instance<ExternalCatalogFactory> externalCatalogFactories) {
     super(
         diagnostics,
         callContext,
         resolutionManifestFactory,
-        securityContext,
+        principal,
         catalogName,
         authorizer,
-        userSecretsManager,
+        polarisCredentialManager,
         externalCatalogFactories);
     this.metaStoreManager = metaStoreManager;
   }
 
   @Override
   protected void initializeCatalog() {
-    CatalogEntity resolvedCatalogEntity =
-        CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+    CatalogEntity resolvedCatalogEntity = resolutionManifest.getResolvedCatalogEntity();
     ConnectionConfigInfoDpo connectionConfigInfoDpo =
         resolvedCatalogEntity.getConnectionConfigInfoDpo();
     if (connectionConfigInfoDpo != null) {
@@ -88,7 +87,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
           .addKeyValue("remoteUrl", connectionConfigInfoDpo.getUri())
           .log("Initializing federated catalog");
       FeatureConfiguration.enforceFeatureEnabledOrThrow(
-          callContext.getRealmConfig(), FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
+          realmConfig, FeatureConfiguration.ENABLE_CATALOG_FEDERATION);
 
       GenericTableCatalog federatedCatalog;
       ConnectionType connectionType =
@@ -102,7 +101,7 @@ public class GenericTableCatalogHandler extends CatalogHandler {
         federatedCatalog =
             externalCatalogFactory
                 .get()
-                .createGenericCatalog(connectionConfigInfoDpo, getUserSecretsManager());
+                .createGenericCatalog(connectionConfigInfoDpo, getPolarisCredentialManager());
       } else {
         throw new UnsupportedOperationException(
             "External catalog factory for type '" + connectionType + "' is unavailable.");

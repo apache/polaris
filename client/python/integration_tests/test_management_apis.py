@@ -1,3 +1,4 @@
+#
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
 #  distributed with this work for additional information
@@ -14,12 +15,9 @@
 #  KIND, either express or implied.  See the License for the
 #  specific language governing permissions and limitations
 #  under the License.
-from integration_tests.conftest import (
-    create_principal,
-    create_principal_role,
-    create_catalog_role,
-)
-from polaris.management import (
+#
+
+from apache_polaris.sdk.management import (
     GrantPrincipalRoleRequest,
     GrantCatalogRoleRequest,
     AddGrantRequest,
@@ -28,6 +26,12 @@ from polaris.management import (
     RevokeGrantRequest,
     PolarisDefaultApi,
     Catalog,
+    ResetPrincipalRequest,
+)
+from integration_tests.conftest import (
+    create_principal,
+    create_principal_role,
+    create_catalog_role,
 )
 
 
@@ -125,3 +129,101 @@ def test_grants(management_client: PolarisDefaultApi, test_catalog: Catalog) -> 
         assert len(grants.grants) == 0
     finally:
         management_client.delete_catalog_role(test_catalog.name, catalog_role.name)
+
+
+def test_reset_principal_credentials_default(
+    management_client: PolarisDefaultApi,
+) -> None:
+    principal_name = "test_principal_for_reset_creds_default"
+    principal_with_creds = create_principal(management_client, principal_name)
+    initial_client_id = principal_with_creds.principal.client_id
+    initial_client_secret = (
+        principal_with_creds.credentials.client_secret.get_secret_value()
+    )
+    try:
+        reset_request = ResetPrincipalRequest()
+        new_principal_with_creds = management_client.reset_credentials(
+            principal_name=principal_name, reset_principal_request=reset_request
+        )
+        current_client_id = new_principal_with_creds.principal.client_id
+        current_client_secret = (
+            new_principal_with_creds.credentials.client_secret.get_secret_value()
+        )
+
+        assert initial_client_id == current_client_id
+        assert initial_client_secret != current_client_secret
+    finally:
+        management_client.delete_principal(principal_name=principal_name)
+
+
+def test_reset_principal_credentials_custom(
+    management_client: PolarisDefaultApi,
+) -> None:
+    principal_name = "test_principal_for_reset_creds_custom"
+    create_principal(management_client, principal_name)
+    custom_client_id = "e469c048cf866df1"
+    custom_client_secret = "1f37adcd21bf1586ed090332eded9cd3"
+    try:
+        reset_request = ResetPrincipalRequest(
+            clientId=custom_client_id, clientSecret=custom_client_secret
+        )
+        new_principal_with_creds = management_client.reset_credentials(
+            principal_name=principal_name, reset_principal_request=reset_request
+        )
+        current_client_id = new_principal_with_creds.principal.client_id
+        current_client_secret = (
+            new_principal_with_creds.credentials.client_secret.get_secret_value()
+        )
+
+        assert current_client_id == custom_client_id
+        assert current_client_secret == custom_client_secret
+    finally:
+        management_client.delete_principal(principal_name=principal_name)
+
+
+def test_reset_principal_credentials_custom_client_id(
+    management_client: PolarisDefaultApi,
+) -> None:
+    principal_name = "test_principal_for_reset_creds_client_id"
+    principal_with_creds = create_principal(management_client, principal_name)
+    initial_client_secret = (
+        principal_with_creds.credentials.client_secret.get_secret_value()
+    )
+    custom_client_id = "e469c048cf866df1"
+    try:
+        reset_request = ResetPrincipalRequest(clientId=custom_client_id)
+        new_principal_with_creds = management_client.reset_credentials(
+            principal_name=principal_name, reset_principal_request=reset_request
+        )
+        current_client_id = new_principal_with_creds.principal.client_id
+        current_client_secret = (
+            new_principal_with_creds.credentials.client_secret.get_secret_value()
+        )
+
+        assert current_client_id == custom_client_id
+        assert initial_client_secret != current_client_secret
+    finally:
+        management_client.delete_principal(principal_name=principal_name)
+
+
+def test_reset_principal_credentials_custom_client_secret(
+    management_client: PolarisDefaultApi,
+) -> None:
+    principal_name = "test_principal_for_reset_creds_client_secret"
+    principal_with_creds = create_principal(management_client, principal_name)
+    initial_client_id = principal_with_creds.principal.client_id
+    custom_client_secret = "1f37adcd21bf1586ed090332eded9cd3"
+    try:
+        reset_request = ResetPrincipalRequest(clientSecret=custom_client_secret)
+        new_principal_with_creds = management_client.reset_credentials(
+            principal_name=principal_name, reset_principal_request=reset_request
+        )
+        current_client_id = new_principal_with_creds.principal.client_id
+        current_client_secret = (
+            new_principal_with_creds.credentials.client_secret.get_secret_value()
+        )
+
+        assert initial_client_id == current_client_id
+        assert current_client_secret == custom_client_secret
+    finally:
+        management_client.delete_principal(principal_name=principal_name)

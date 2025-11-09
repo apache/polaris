@@ -32,7 +32,6 @@ The requirements to run the script below are:
 * Assign a System-Assigned Managed Identity to the Azure VM.
 
 ```shell
-chmod +x getting-started/assets/cloud_providers/deploy-azure.sh
 export ASSETS_PATH=$(pwd)/getting-started/assets/
 export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
@@ -49,7 +48,7 @@ To shut down the Polaris server, run the following commands:
 
 ```shell
 export ASSETS_PATH=$(pwd)/getting-started/assets/
-docker compose -p polaris -f getting-started/eclipselink/docker-compose.yml down
+docker compose -p polaris -f getting-started/jdbc/docker-compose.yml down
 ```
 
 To deploy Polaris in a production setting, please review further recommendations at the [Configuring Polaris for Production]({{% relref "../../../configuring-polaris-for-production" %}}) page.

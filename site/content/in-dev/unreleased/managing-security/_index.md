@@ -20,5 +20,9 @@
 title: Managing Security
 linkTitle: Managing Security
 type: docs
-weight: 1001
+weight: 550
 ---
+
+## [Access Control]({{< relref "access-control" >}})
+
+## [Authentication and Identity Providers]({{< relref "external-idp" >}})

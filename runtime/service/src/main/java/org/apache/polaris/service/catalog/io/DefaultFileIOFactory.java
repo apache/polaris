@@ -25,83 +25,40 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import org.apache.iceberg.CatalogUtil;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
-import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
  * contextual table-level properties.
  *
  * <p>This class acts as a translation layer between Polaris properties and the properties required
- * by Iceberg's {@link FileIO}. For example, it evaluates storage actions and retrieves subscoped
- * credentials to initialize a {@link FileIO} instance with the most limited permissions necessary.
+ * by Iceberg's {@link FileIO}.
  */
 @ApplicationScoped
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
-  private final StorageCredentialCache storageCredentialCache;
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
-
   @Inject
-  public DefaultFileIOFactory(
-      StorageCredentialCache storageCredentialCache,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.storageCredentialCache = storageCredentialCache;
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
-  }
+  public DefaultFileIOFactory() {}
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull CallContext callContext,
+      @Nonnull AccessConfig accessConfig,
       @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties,
-      @Nonnull TableIdentifier identifier,
-      @Nonnull Set<String> tableLocations,
-      @Nonnull Set<PolarisStorageActions> storageActions,
-      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
-    RealmContext realmContext = callContext.getRealmContext();
-    PolarisCredentialVendor credentialVendor =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+      @Nonnull Map<String, String> properties) {
 
     // Get subcoped creds
     properties = new HashMap<>(properties);
-    Optional<PolarisEntity> storageInfoEntity =
-        FileIOUtil.findStorageInfoFromHierarchy(resolvedEntityPath);
-    Optional<AccessConfig> accessConfig =
-        storageInfoEntity.map(
-            storageInfo ->
-                FileIOUtil.refreshAccessConfig(
-                    callContext,
-                    storageCredentialCache,
-                    credentialVendor,
-                    identifier,
-                    tableLocations,
-                    storageActions,
-                    storageInfo,
-                    Optional.empty()));
 
     // Update the FileIO with the subscoped credentials
     // Update with properties in case there are table-level overrides the credentials should
     // always override table-level properties, since storage configuration will be found at
     // whatever entity defines it
-    if (accessConfig.isPresent()) {
-      properties.putAll(accessConfig.get().credentials());
-      properties.putAll(accessConfig.get().extraProperties());
-      properties.putAll(accessConfig.get().internalProperties());
-    }
+    properties.putAll(accessConfig.credentials());
+    properties.putAll(accessConfig.extraProperties());
+    properties.putAll(accessConfig.internalProperties());
 
     return loadFileIOInternal(ioImplClassName, properties);
   }

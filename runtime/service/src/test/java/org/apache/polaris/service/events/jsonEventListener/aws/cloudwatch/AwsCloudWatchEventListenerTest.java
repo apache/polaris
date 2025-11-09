@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import io.quarkus.runtime.configuration.MemorySize;
 import jakarta.ws.rs.core.SecurityContext;
 import java.math.BigInteger;
-import java.security.Principal;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Set;
@@ -50,7 +49,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.localstack.LocalStackContainer;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -72,7 +71,7 @@ class AwsCloudWatchEventListenerTest {
       new LocalStackContainer(
               containerSpecHelper("localstack", AwsCloudWatchEventListenerTest.class)
                   .dockerImageName(null))
-          .withServices(LocalStackContainer.Service.CLOUDWATCHLOGS);
+          .withServices("logs");
 
   private static final String LOG_GROUP = "test-log-group";
   private static final String LOG_STREAM = "test-log-stream";
@@ -143,13 +142,13 @@ class AwsCloudWatchEventListenerTest {
     PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     RealmContext realmContext = Mockito.mock(RealmContext.class);
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-    Principal principal = Mockito.mock(PolarisPrincipal.class);
+    PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
     when(callContext.getRealmContext()).thenReturn(realmContext);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
     when(realmContext.getRealmIdentifier()).thenReturn(REALM);
     when(securityContext.getUserPrincipal()).thenReturn(principal);
     when(principal.getName()).thenReturn(TEST_USER);
-    when(((PolarisPrincipal) principal).getRoles()).thenReturn(Set.of("role1", "role2"));
+    when(principal.getRoles()).thenReturn(Set.of("role1", "role2"));
     listener.callContext = callContext;
     listener.securityContext = securityContext;
 

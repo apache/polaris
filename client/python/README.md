@@ -23,7 +23,7 @@ The Apache Polaris Python package provides a client for interacting with the Apa
 ## Development
 
 ### Prerequisites
-- Python 3.9 or later
+- Python 3.10 or later
 - poetry >= 2.1
 
 ### Installation

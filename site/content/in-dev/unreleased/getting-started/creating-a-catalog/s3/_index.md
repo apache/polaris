@@ -23,16 +23,16 @@ type: docs
 weight: 100
 ---
 
-The following S3 compatible cloud providers can be configured as storage backends for your Polaris catalog:
+Several S3 compatible storage providers can be configured as backends for your Polaris catalog.
+Refer to child pages under this documentation section for some of the possible options. 
 
-- [AWS S3]({{< ref "catalog-aws.md" >}})
-- [MinIO]({{< ref "catalog-minio.md" >}})
-
-For the `polaris catalogs create` [command]({{% ref "../../../command-line-interface#create" %}}) there are few `s3` only options
+For the `polaris catalogs create` [command]({{% ref "../../../command-line-interface#create" %}})
+there are a few s3-only options:
 
 ```text
 --storage-type s3
---role-arn  (Required for S3) A role ARN to use when connecting to S3
+--role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
+--no-sts  (Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)
 --region  (Only for S3) The region to use when connecting to S3
 --external-id  (Only for S3) The external ID to use when connecting to S3
 ```

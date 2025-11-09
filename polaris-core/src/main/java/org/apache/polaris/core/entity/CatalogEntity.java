@@ -43,6 +43,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -108,6 +110,10 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   }
 
   public Catalog asCatalog() {
+    return this.asCatalog(null);
+  }
+
+  public Catalog asCatalog(ServiceIdentityProvider serviceIdentityProvider) {
     Map<String, String> internalProperties = getInternalPropertiesAsMap();
     Catalog.TypeEnum catalogType =
         Optional.ofNullable(internalProperties.get(CATALOG_TYPE_PROPERTY))
@@ -118,6 +124,12 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         CatalogProperties.builder(propertiesMap.get(DEFAULT_BASE_LOCATION_KEY))
             .putAll(propertiesMap)
             .build();
+
+    // Right now, only external catalog may use ServiceIdentityProvider to resolve identity
+    Preconditions.checkState(
+        catalogType != Catalog.TypeEnum.EXTERNAL || serviceIdentityProvider != null,
+        "%s catalog needs ServiceIdentityProvider to resolve service identities",
+        Catalog.TypeEnum.EXTERNAL);
     return catalogType == Catalog.TypeEnum.EXTERNAL
         ? ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
@@ -127,7 +139,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
-            .setConnectionConfigInfo(getConnectionInfo(internalProperties))
+            .setConnectionConfigInfo(getConnectionInfo(internalProperties, serviceIdentityProvider))
             .build()
         : PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -155,6 +167,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
             .setPathStyleAccess(awsConfig.getPathStyleAccess())
+            .setStsUnavailable(awsConfig.getStsUnavailable())
             .setEndpointInternal(awsConfig.getEndpointInternal())
             .build();
       }
@@ -186,11 +199,12 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return null;
   }
 
-  private ConnectionConfigInfo getConnectionInfo(Map<String, String> internalProperties) {
+  private ConnectionConfigInfo getConnectionInfo(
+      Map<String, String> internalProperties, ServiceIdentityProvider serviceIdentityProvider) {
     if (internalProperties.containsKey(
         PolarisEntityConstants.getConnectionConfigInfoPropertyName())) {
       ConnectionConfigInfoDpo configInfo = getConnectionConfigInfoDpo();
-      return configInfo.asConnectionConfigInfoModel();
+      return configInfo.asConnectionConfigInfoModel(serviceIdentityProvider);
     }
     return null;
   }
@@ -260,13 +274,13 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     }
 
     public Builder setDefaultBaseLocation(String defaultBaseLocation) {
-      // Note that this member lives in the main 'properties' map rather tha internalProperties.
+      // Note that this member lives in the main 'properties' map rather than internalProperties.
       properties.put(DEFAULT_BASE_LOCATION_KEY, defaultBaseLocation);
       return this;
     }
 
     public Builder setReplaceNewLocationPrefixWithCatalogDefault(String value) {
-      // Note that this member lives in the main 'properties' map rather tha internalProperties.
+      // Note that this member lives in the main 'properties' map rather than internalProperties.
       properties.put(REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, value);
       return this;
     }
@@ -299,6 +313,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .endpoint(awsConfigModel.getEndpoint())
                     .stsEndpoint(awsConfigModel.getStsEndpoint())
                     .pathStyleAccess(awsConfigModel.getPathStyleAccess())
+                    .stsUnavailable(awsConfigModel.getStsUnavailable())
                     .endpointInternal(awsConfigModel.getEndpointInternal())
                     .build();
             config = awsConfig;
@@ -350,11 +365,13 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     public Builder setConnectionConfigInfoDpoWithSecrets(
         ConnectionConfigInfo connectionConfigurationModel,
-        Map<String, SecretReference> secretReferences) {
+        Map<String, SecretReference> secretReferences,
+        ServiceIdentityInfoDpo serviceIdentityInfoDpo) {
       if (connectionConfigurationModel != null) {
         ConnectionConfigInfoDpo config =
             ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
-                connectionConfigurationModel, secretReferences);
+                    connectionConfigurationModel, secretReferences)
+                .withServiceIdentity(serviceIdentityInfoDpo);
         internalProperties.put(
             PolarisEntityConstants.getConnectionConfigInfoPropertyName(), config.serialize());
       }

@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,121 +17,27 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
 title: 'Getting Started'
-title: Getting Started with Apache Polaris
 linkTitle: Getting Started
 type: docs
 weight: 101
 ---
 
-# Getting Started with Apache Polaris Binary Distribution
+There are several options for getting started with Apache Polaris.
 
-Quickly start Apache Polaris by running the pre-built binary, no build needed.
+To quickly try out Apache Polaris, please use the [quickstart guide](./quick-start). For other examples, please see below.
 
----
+## Docker Compose Examples
+Each of the proceeding Docker Compose examples provides a complete working environment with detailed instructions.
 
-## Prerequisites
+### Next Steps
 
-- Java 21 or later installed. You can verify this by running:
-
-```bash
-java -version
-```
-
----
-
-## Step 1: Download the Apache Polaris Binary
-
-1. Visit the official Apache Polaris GitHub
-   [Releases page](https://github.com/apache/polaris/releases).
-
-2. Download the latest binary archive file, for example:
-
-```bash
-curl -L https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz | tar xz```
----
-
-## Step 2: Extract the Archive
-
-Extract the downloaded tar.gz file to your desired directory:
-
-```bash
-cd apache-polaris-1.0.0-incubating-bin
-```
-
----
-
-## Step 3: Configure Polaris (Optional)
-
-Edit the `application.properties` file if needed. For example:
-
-```bash
-polaris.storage.backend=local
-polaris.storage.local.path=/data/polaris
-```
-*(This is a configuration file, not a shell command. Adjust these values as needed.)*
-
----
-
-## Step 4: Run the Polaris Server
-
-Start the Polaris server using the provided script:
-
-```bash
-./bin/polaris-server.sh start
-```
-
-To tail the logs in a separate terminal, run:
-
-```bash
-tail -f logs/polaris.log
-```
-
----
-
-## Step 5: Verify the Server is Running
-
-Open your browser and navigate to:
-
-```bash
-curl http://localhost:8181/api/catalog/v1/health
-```
-
-You should see the Polaris server running or be able to access its REST API.
-
----
-
-## Step 6: Stop the Polaris Server
-
-To stop the server, run:
-
-```bash
-./bin/polaris-server.sh stop
-```
-
----
-
-## Additional Resources
-
-- See the [official Apache Polaris documentation](https://polaris.apache.org/docs/) for comprehensive information on configuration, deployment, and usage.
-- Use `./bin/polaris-admin` in the binary distribution for administrative and maintenance tasks.
-  
----
-
-Get started with Apache Polaris binaries. See the [repository](https://github.com/apache/polaris) for container images and more resources, or check out the [Quickstart guide](https://polaris.apache.org/in-dev/unreleased/getting-started/quickstart/) for developer instructions and advanced setup.
-
----
-The fastest way to get started is with our Docker Compose examples. Each example provides a complete working environment with detailed instructions.
-
-## Next Steps
-
-1. Check/Install dependencies
+1. Check & install dependencies
 2. Choose the way you want to deploy Polaris
 3. Create a catalog
-4. Check Using polaris page
+4. Check Using Polaris page
 
-## Getting Help
+### Getting Help
 
 - Documentation: https://polaris.apache.org
 - GitHub Issues: https://github.com/apache/polaris/issues

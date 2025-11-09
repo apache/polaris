@@ -29,7 +29,7 @@ import org.apache.polaris.core.connection.AuthenticationType;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hive.HiveConnectionConfigInfoDpo;
-import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +41,8 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
 
   @Override
   public Catalog createCatalog(
-      ConnectionConfigInfoDpo connectionConfigInfoDpo, UserSecretsManager userSecretsManager) {
+      ConnectionConfigInfoDpo connectionConfigInfoDpo,
+      PolarisCredentialManager polarisCredentialManager) {
     // Currently, Polaris supports Hive federation only via IMPLICIT authentication.
     // Hence, prior to initializing the configuration, ensure that the catalog uses
     // IMPLICIT authentication.
@@ -69,13 +70,13 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
     // Kerberos instances are not suitable because Kerberos ties a single identity to the server.
     HiveCatalog hiveCatalog = new HiveCatalog();
     hiveCatalog.initialize(
-        warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(userSecretsManager));
+        warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
     return hiveCatalog;
   }
 
   @Override
   public GenericTableCatalog createGenericCatalog(
-      ConnectionConfigInfoDpo connectionConfig, UserSecretsManager userSecretsManager) {
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
     // TODO implement
     throw new UnsupportedOperationException(
         "Generic table federation to this catalog is not supported.");

@@ -40,11 +40,11 @@ val distributionElements by
 dependencies {
   implementation(project(":polaris-runtime-service"))
 
-  runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
+  runtimeOnly(project(":polaris-extensions-auth-opa"))
 
   if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {
     runtimeOnly(project(":polaris-extensions-federation-hive"))
@@ -82,6 +82,7 @@ tasks.named<QuarkusRun>("quarkusRun") {
       "-Dpolaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"=true",
       "-Dpolaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"=[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]",
       "-Dpolaris.readiness.ignore-severe-issues=true",
+      "-Dpolaris.features.\"DROP_WITH_PURGE_ENABLED\"=true",
     )
 }
 

@@ -51,7 +51,7 @@ polaris.authentication.realm2.type=mixed
 
 ### Authenticator 
 
-The [`Authenticator`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/Authenticator.java) is a component responsible for resolving the principal and the principal roles, and for creating a `PolarisPrincipal` from the credentials provided by the authentication process. It is a central component and is invoked for all types of authentication.
+The `Authenticator` is a component responsible for resolving the principal and the principal roles, and for creating a `PolarisPrincipal` from the credentials provided by the authentication process. It is a central component and is invoked for all types of authentication.
 
 The `type` property is used to define the `Authenticator` implementation. It is overridable per realm: 
 
@@ -64,7 +64,7 @@ polaris.authentication.realm1.authenticator.type=custom
 
 ### Token Broker
 
-The [`TokenBroker`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) signs and verifies tokens to ensure that they can be validated and remain unaltered. 
+The `TokenBroker` signs and verifies tokens to ensure that they can be validated and remain unaltered. 
 
 ```properties
 polaris.authentication.token-broker.type=rsa-key-pair
@@ -138,7 +138,7 @@ quarkus.oidc.oidc-tenant1.client-id=client1
 quarkus.oidc.oidc-tenant1.application-type=service
 ```
 
-When using multiple OIDC tenants, it's your responsibility to configure tenant resolution appropriately. See the [Quarkus OpenID Connect Multitenany Guide](https://quarkus.io/guides/security-openid-connect-multitenancy#tenant-resolution).  
+When using multiple OIDC tenants, it's your responsibility to configure tenant resolution appropriately. See the [Quarkus OpenID Connect Multitenancy Guide](https://quarkus.io/guides/security-openid-connect-multitenancy#tenant-resolution).  
 
 ### Principal Mapping 
 
@@ -196,105 +196,6 @@ polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$1
 ```
 
 See more examples below. 
- 
-## Developer Architecture Notes 
-
-The following sections describe internal implementation details for developers who want to understand or extend Polaris authentication. 
-
-### Authentication Architecture 
-
-Polaris separates authentication into two logical phases using [Quarkus Security](https://quarkus.io/guides/security-overview): 
-
-1. Credential extraction – parsing headers and tokens 
-2. Credential authentication – validating identity and assigning roles 
-
-### Key Interfaces 
-
-- [`Authenticator`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/Authenticator.java): A core interface used to authenticate credentials and resolve principal and principal roles. Roles may be derived from OIDC claims or internal mappings. 
-- [`DecodedToken`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/DecodedToken.java): Used in internal auth and inherits from `PrincipalCredential`. 
-
-- The [`DefaultAuthenticator`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/DefaultAuthenticator.java) is used to implement realm-specific logic based on these abstractions. 
-
-### Token Broker Configuration 
-
-When internal authentication is enabled, Polaris uses token brokers to handle the decoding and validation of authentication tokens. These brokers are request-scoped and can be configured per realm. Each realm may use its own strategy, such as RSA key pairs or shared secrets, depending on security requirements. 
-
-## Developer Authentication Workflows 
-
-### Internal Authentication 
-
-1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/internal/InternalAuthenticationMechanism.java) parses the auth header. 
-2. Uses [`TokenBroker`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/TokenBroker.java) to decode the token. 
-3. Builds [`PrincipalAuthInfo`](https://github.com/apache/polaris/blob/main/service/common/src/main/java/org/apache/polaris/service/auth/PrincipalAuthInfo.java) and generates `SecurityIdentity` (Quarkus). 
-4. `Authenticator.authenticate()` validates the credential, resolves the principal and principal roles, then creates the `PolarisPrincipal`. 
-
-### External Authentication 
-
-1. `OidcAuthenticationMechanism` (Quarkus) processes the auth header. 
-2. [`OidcTenantResolvingAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/external/OidcTenantResolvingAugmentor.java) selects the OIDC tenant. 
-3. [`PrincipalAuthInfoAugmentor`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/external/PrincipalAuthInfoAugmentor.java) extracts JWT claims. 
-4. `Authenticator.authenticate()` validates the claims, resolves the principal and principal roles, then creates the `PolarisPrincipal`.
-
-### Mixed Authentication 
-
-1. [`InternalAuthenticationMechanism`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/internal/InternalAuthenticationMechanism.java) tries decoding. 
-2. If successful, proceed with internal authentication. 
-3. Otherwise, fall back to external (OIDC) authentication. 
-
-## OIDC Configuration Reference 
-
-### Principal Mapping 
-
-- Interface: [`PrincipalMapper`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/external/mapping/PrincipalMapper.java)
-
-  The `PrincipalMapper` is responsible for extracting the Polaris principal ID and display name from OIDC tokens. 
-
-- Implementation selector: 
-
-  This property selects the implementation of the `PrincipalMapper` interface. The default implementation extracts fields from specific claim paths. 
-
-  ```properties
-  polaris.oidc.principal-mapper.type=default
-  ```
-
-- Configuration properties for the default implementation: 
-
-  ```properties
-  polaris.oidc.principal-mapper.id-claim-path=polaris/principal_id 
-  polaris.oidc.principal-mapper.name-claim-path=polaris/principal_name
-  ```
-
-- It can be overridden per OIDC tenant. 
-
-### Roles Mapping 
-
-- Interface: [`PrincipalRolesMapper`](https://github.com/apache/polaris/blob/main/runtime/service/src/main/java/org/apache/polaris/service/quarkus/auth/external/mapping/PrincipalRolesMapper.java)
-
-  Polaris uses this component to transform role claims from OIDC tokens into Polaris roles. 
-
-- Quarkus OIDC configuration: 
-
-  This setting instructs Quarkus on where to locate roles within the OIDC token. 
-
-  ```properties
-  quarkus.oidc.roles.role-claim-path=polaris/roles
-  ```
-
-- Implementation selector: 
-
-  This property selects the implementation of `PrincipalRolesMapper`. The `default` implementation applies regular expression (regex) transformations to OIDC roles. 
-
-  ```properties
-  polaris.oidc.principal-roles-mapper.type=default
-  ```
-
-- Configuration properties for the default implementation: 
-
-  ```properties
-  polaris.oidc.principal-roles-mapper.filter=^(?!profile$|email$).* 
-  polaris.oidc.principal-roles-mapper.mappings[0].regex=^.*$ 
-  polaris.oidc.principal-roles-mapper.mappings[0].replacement=PRINCIPAL_ROLE:$0
-  ```
 
 ### Example JWT Mappings 
 
@@ -348,6 +249,7 @@ When internal authentication is enabled, Polaris uses token brokers to handle th
 
   Polaris roles: `PRINCIPAL_ROLE:service_admin` and `PRINCIPAL_ROLE:catalog_admin` 
 
-### Additional Examples 
+### Additional Links 
 
-For complete Keycloak integration example, see: [Keycloak External IDP Configuration Guide]({{< relref "keycloak-idp.md" >}})
+* For complete Keycloak integration example, see: [Keycloak External IDP Configuration Guide]({{< relref "../../getting-started/using-polaris/keycloak-idp.md" >}})
+* See [Developer Notes]({{< relref "idp-dev-notes.md" >}}) with internal implementation details for developers who want to understand or extend Polaris authentication.

@@ -161,12 +161,12 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePrincipalRequest"
-              example:
-                principal:
-                  name: "alice"
-                  properties:
-                    department: "engineering"
-                credentialRotationRequired: false
+            example:
+              principal:
+                name: "alice"
+                properties:
+                  department: "engineering"
+              credentialRotationRequired: false
       responses:
         201:
           description: "Successful response"
@@ -1053,7 +1053,7 @@ components:
 
     ImplicitAuthenticationParameters:
       type: object
-      description: Polaris does not explicity accept any authentication parameters for the connection. Authentication 
+      description: Polaris does not explicitly accept any authentication parameters for the connection. Authentication 
         parameters found in the environment and/or configuration files will be used for this connection.
       allOf:
         - $ref: '#/components/schemas/AuthenticationParameters'
@@ -1119,6 +1119,13 @@ components:
                 endpoint for STS requests made by the Polaris Server (optional). If not set, defaults to
                 'endpointInternal' (which in turn defaults to `endpoint`).
               example: "https://sts.example.com:1234"
+            stsUnavailable:
+              type: boolean
+              description: >-
+                if set to `true`, instructs Polaris Servers to avoid using the STS endpoints when obtaining credentials
+                for accessing data and metadata files within the related catalog. Setting this property to `true`
+                effectively disables vending storage credentials to clients. This setting is intended for configuring
+                catalogs with S3-compatible storage implementations that do not support STS.
             endpointInternal:
               type: string
               description: >-
@@ -1461,6 +1468,24 @@ components:
         - TABLE_FULL_METADATA
         - TABLE_ATTACH_POLICY
         - TABLE_DETACH_POLICY
+        - TABLE_ASSIGN_UUID
+        - TABLE_UPGRADE_FORMAT_VERSION
+        - TABLE_ADD_SCHEMA
+        - TABLE_SET_CURRENT_SCHEMA
+        - TABLE_ADD_PARTITION_SPEC
+        - TABLE_ADD_SORT_ORDER
+        - TABLE_SET_DEFAULT_SORT_ORDER
+        - TABLE_ADD_SNAPSHOT
+        - TABLE_SET_SNAPSHOT_REF
+        - TABLE_REMOVE_SNAPSHOTS
+        - TABLE_REMOVE_SNAPSHOT_REF
+        - TABLE_SET_LOCATION
+        - TABLE_SET_PROPERTIES
+        - TABLE_REMOVE_PROPERTIES
+        - TABLE_SET_STATISTICS
+        - TABLE_REMOVE_STATISTICS
+        - TABLE_REMOVE_PARTITION_SPECS
+        - TABLE_MANAGE_STRUCTURE
 
     PolicyPrivilege:
       type: string
@@ -1508,6 +1533,24 @@ components:
         - POLICY_FULL_METADATA
         - NAMESPACE_ATTACH_POLICY
         - NAMESPACE_DETACH_POLICY
+        - TABLE_ASSIGN_UUID
+        - TABLE_UPGRADE_FORMAT_VERSION
+        - TABLE_ADD_SCHEMA
+        - TABLE_SET_CURRENT_SCHEMA
+        - TABLE_ADD_PARTITION_SPEC
+        - TABLE_ADD_SORT_ORDER
+        - TABLE_SET_DEFAULT_SORT_ORDER
+        - TABLE_ADD_SNAPSHOT
+        - TABLE_SET_SNAPSHOT_REF
+        - TABLE_REMOVE_SNAPSHOTS
+        - TABLE_REMOVE_SNAPSHOT_REF
+        - TABLE_SET_LOCATION
+        - TABLE_SET_PROPERTIES
+        - TABLE_REMOVE_PROPERTIES
+        - TABLE_SET_STATISTICS
+        - TABLE_REMOVE_STATISTICS
+        - TABLE_REMOVE_PARTITION_SPECS
+        - TABLE_MANAGE_STRUCTURE
 
     CatalogPrivilege:
       type: string
@@ -1545,6 +1588,24 @@ components:
         - POLICY_FULL_METADATA
         - CATALOG_ATTACH_POLICY
         - CATALOG_DETACH_POLICY
+        - TABLE_ASSIGN_UUID
+        - TABLE_UPGRADE_FORMAT_VERSION
+        - TABLE_ADD_SCHEMA
+        - TABLE_SET_CURRENT_SCHEMA
+        - TABLE_ADD_PARTITION_SPEC
+        - TABLE_ADD_SORT_ORDER
+        - TABLE_SET_DEFAULT_SORT_ORDER
+        - TABLE_ADD_SNAPSHOT
+        - TABLE_SET_SNAPSHOT_REF
+        - TABLE_REMOVE_SNAPSHOTS
+        - TABLE_REMOVE_SNAPSHOT_REF
+        - TABLE_SET_LOCATION
+        - TABLE_SET_PROPERTIES
+        - TABLE_REMOVE_PROPERTIES
+        - TABLE_SET_STATISTICS
+        - TABLE_REMOVE_STATISTICS
+        - TABLE_REMOVE_PARTITION_SPECS
+        - TABLE_MANAGE_STRUCTURE
 
     AddGrantRequest:
       type: object

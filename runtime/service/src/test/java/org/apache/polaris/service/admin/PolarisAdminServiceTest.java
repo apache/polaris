@@ -26,26 +26,25 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -65,13 +64,12 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 public class PolarisAdminServiceTest {
-  private PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
   @Mock private CallContext callContext;
   @Mock private PolarisCallContext polarisCallContext;
   @Mock private ResolutionManifestFactory resolutionManifestFactory;
   @Mock private PolarisMetaStoreManager metaStoreManager;
   @Mock private UserSecretsManager userSecretsManager;
-  @Mock private SecurityContext securityContext;
+  @Mock private ServiceIdentityProvider identityProvider;
   @Mock private PolarisAuthorizer authorizer;
   @Mock private ReservedProperties reservedProperties;
   @Mock private PolarisPrincipal authenticatedPrincipal;
@@ -84,9 +82,8 @@ public class PolarisAdminServiceTest {
   @BeforeEach
   void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
-    when(securityContext.getUserPrincipal()).thenReturn(authenticatedPrincipal);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.getRealmConfig()).thenReturn(realmConfig);
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
 
     // Default feature configuration - enabled by default
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
@@ -95,19 +92,19 @@ public class PolarisAdminServiceTest {
             eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS), Mockito.any()))
         .thenReturn(true);
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), any()))
+    when(resolutionManifestFactory.createResolutionManifest(any(), any()))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
     when(resolutionManifest.getIsPassthroughFacade()).thenReturn(false);
 
     adminService =
         new PolarisAdminService(
-            diagnostics,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
-            securityContext,
+            identityProvider,
+            authenticatedPrincipal,
             authorizer,
             reservedProperties);
   }
@@ -144,14 +141,12 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("non-existent-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
-    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity =
@@ -177,14 +172,12 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("complete-ns", "incomplete-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG, 1L);
-    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
-    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity =
@@ -237,7 +230,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("non-existent-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -265,7 +258,7 @@ public class PolarisAdminServiceTest {
     Namespace namespace = Namespace.of("incomplete-ns");
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
 
@@ -297,10 +290,7 @@ public class PolarisAdminServiceTest {
     PolarisPrivilege privilege = PolarisPrivilege.NAMESPACE_FULL_METADATA;
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
-    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
-    when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity =
@@ -367,10 +357,7 @@ public class PolarisAdminServiceTest {
         .thenReturn(false);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
-    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
-    when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity =
@@ -404,6 +391,7 @@ public class PolarisAdminServiceTest {
     PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
     when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
     when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenCallRealMethod();
     when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -451,9 +439,7 @@ public class PolarisAdminServiceTest {
     PolarisPrivilege privilege = PolarisPrivilege.TABLE_WRITE_DATA;
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
-    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
     when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -534,9 +520,7 @@ public class PolarisAdminServiceTest {
         .thenReturn(false);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
-    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
     when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -581,9 +565,7 @@ public class PolarisAdminServiceTest {
     PolarisPrivilege privilege = PolarisPrivilege.TABLE_WRITE_DATA;
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
-    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
     when(resolutionManifest.getIsPassthroughFacade()).thenReturn(true);
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
@@ -689,15 +671,13 @@ public class PolarisAdminServiceTest {
   private void setupSuccessfulNamespaceResolution(
       String catalogName, String catalogRoleName, Namespace namespace) throws Exception {
 
-    when(resolutionManifestFactory.createResolutionManifest(any(), any(), eq(catalogName)))
+    when(resolutionManifestFactory.createResolutionManifest(any(), eq(catalogName)))
         .thenReturn(resolutionManifest);
     when(resolutionManifest.resolveAll()).thenReturn(createSuccessfulResolverStatus());
     when(resolutionManifest.getResolvedPath(eq(namespace))).thenReturn(resolvedPathWrapper);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
-    PolarisResolvedPathWrapper catalogWrapper = mock(PolarisResolvedPathWrapper.class);
-    when(catalogWrapper.getRawLeafEntity()).thenReturn(catalogEntity);
-    when(resolutionManifest.getResolvedReferenceCatalogEntity()).thenReturn(catalogWrapper);
+    when(resolutionManifest.getResolvedCatalogEntity()).thenReturn(CatalogEntity.of(catalogEntity));
 
     PolarisResolvedPathWrapper catalogRoleWrapper = mock(PolarisResolvedPathWrapper.class);
     PolarisEntity catalogRoleEntity =
