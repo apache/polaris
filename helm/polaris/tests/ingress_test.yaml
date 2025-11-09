@@ -152,14 +152,24 @@ tests:
               secretName: secret1
 
   # spec.rules (with ingress enabled)
-  - it: should set ingress TLS
+  - it: should set ingress hosts and paths
     set:
       ingress.enabled: true
       ingress.hosts:
         - host: chart-example.local
           paths:
-            - path: /
+            - path: /polaris
               pathType:  Prefix
+              backend:
+                service:
+                  name: polaris
+                  port: 8181
+            - path: /polaris-mgmt
+              pathType:  Prefix
+              backend:
+                service:
+                  name: polaris-mgmt
+                  port: 8182
     asserts:
       - equal:
           path: spec.rules
@@ -167,7 +177,40 @@ tests:
             - host: chart-example.local
               http:
                 paths:
-                  - path: /
+                  - path: /polaris
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: polaris
+                        port:
+                          number: 8181
+                  - path: /polaris-mgmt
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: polaris-mgmt
+                        port:
+                          number: 8182
+
+  # spec.rules (with ingress enabled) - default service name and port
+  - it: Set default service name and port when not provided
+    set:
+      ingress.enabled: true
+      ingress.hosts:
+        - host: chart-example.local
+          paths:
+            - path: /polaris
+              pathType:  Prefix
+              backend:
+                service: {}
+    asserts:
+      - equal:
+          path: spec.rules
+          value:
+            - host: chart-example.local
+              http:
+                paths:
+                  - path: /polaris
                     pathType: Prefix
                     backend:
                       service:
