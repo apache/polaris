@@ -192,6 +192,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         VIEW_DROP,
         List.of(CATALOG_MANAGE_CONTENT, CATALOG_MANAGE_METADATA, VIEW_DROP, VIEW_FULL_METADATA));
+    // List operations: removed CATALOG_MANAGE_CONTENT (too broad) and self-references
+    // Principals can list resources with any appropriate metadata or data access privilege
     SUPER_PRIVILEGES.putAll(
         NAMESPACE_LIST,
         List.of(
