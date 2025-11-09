@@ -192,39 +192,32 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         VIEW_DROP,
         List.of(CATALOG_MANAGE_CONTENT, CATALOG_MANAGE_METADATA, VIEW_DROP, VIEW_FULL_METADATA));
-SUPER_PRIVILEGES.putAll(
-    NAMESPACE_LIST,
-    List.of(
-        CATALOG_MANAGE_CONTENT,  
-        CATALOG_MANAGE_METADATA,
-        NAMESPACE_CREATE,
-        NAMESPACE_FULL_METADATA,
-        NAMESPACE_READ_PROPERTIES,  
-        NAMESPACE_WRITE_PROPERTIES  
-    ));
-
-SUPER_PRIVILEGES.putAll(
-    TABLE_LIST,
-    List.of(
-        CATALOG_MANAGE_CONTENT,  
-        CATALOG_MANAGE_METADATA,
-        TABLE_CREATE,
-        TABLE_FULL_METADATA,
-        TABLE_READ_PROPERTIES,   
-        TABLE_WRITE_PROPERTIES,  
-        TABLE_READ_DATA,         
-        TABLE_WRITE_DATA     
-    ));
-SUPER_PRIVILEGES.putAll(
-    VIEW_LIST,
-    List.of(
-        CATALOG_MANAGE_CONTENT,  
-        CATALOG_MANAGE_METADATA,
-        VIEW_CREATE,
-        VIEW_FULL_METADATA,
-        VIEW_READ_PROPERTIES,    
-        VIEW_WRITE_PROPERTIES    
-    ));
+    SUPER_PRIVILEGES.putAll(
+        NAMESPACE_LIST,
+        List.of(
+            CATALOG_MANAGE_METADATA,
+            NAMESPACE_CREATE,
+            NAMESPACE_FULL_METADATA,
+            NAMESPACE_READ_PROPERTIES,
+            NAMESPACE_WRITE_PROPERTIES));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_LIST,
+        List.of(
+            CATALOG_MANAGE_METADATA,
+            TABLE_CREATE,
+            TABLE_FULL_METADATA,
+            TABLE_READ_PROPERTIES,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_READ_DATA,
+            TABLE_WRITE_DATA));
+    SUPER_PRIVILEGES.putAll(
+        VIEW_LIST,
+        List.of(
+            CATALOG_MANAGE_METADATA,
+            VIEW_CREATE,
+            VIEW_FULL_METADATA,
+            VIEW_READ_PROPERTIES,
+            VIEW_WRITE_PROPERTIES));
     SUPER_PRIVILEGES.putAll(
         NAMESPACE_READ_PROPERTIES,
         List.of(
