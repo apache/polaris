@@ -33,21 +33,21 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 
 @ApplicationScoped
 public class TaskFileIOSupplier {
   private final FileIOFactory fileIOFactory;
-  private final AccessConfigProvider accessConfigProvider;
+  private final StorageAccessConfigProvider accessConfigProvider;
 
   @Inject
   public TaskFileIOSupplier(
-      FileIOFactory fileIOFactory, AccessConfigProvider accessConfigProvider) {
+      FileIOFactory fileIOFactory, StorageAccessConfigProvider storageAccessConfigProvider) {
     this.fileIOFactory = fileIOFactory;
-    this.accessConfigProvider = accessConfigProvider;
+    this.accessConfigProvider = storageAccessConfigProvider;
   }
 
   public FileIO apply(TaskEntity task, TableIdentifier identifier, CallContext callContext) {
@@ -62,14 +62,14 @@ public class TaskFileIOSupplier {
         new ResolvedPolarisEntity(task, List.of(), List.of());
     PolarisResolvedPathWrapper resolvedPath =
         new PolarisResolvedPathWrapper(List.of(resolvedTaskEntity));
-    AccessConfig accessConfig =
-        accessConfigProvider.getAccessConfig(
+    StorageAccessConfig storageAccessConfig =
+        accessConfigProvider.getStorageAccessConfig(
             callContext, identifier, locations, storageActions, Optional.empty(), resolvedPath);
 
     String ioImpl =
         properties.getOrDefault(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.io.ResolvingFileIO");
 
-    return fileIOFactory.loadFileIO(accessConfig, ioImpl, properties);
+    return fileIOFactory.loadFileIO(storageAccessConfig, ioImpl, properties);
   }
 }

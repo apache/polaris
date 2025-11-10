@@ -169,7 +169,8 @@ public class FileIOFactoryTest {
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     FileIO fileIO =
-        new TaskFileIOSupplier(testServices.fileIOFactory(), testServices.accessConfigProvider())
+        new TaskFileIOSupplier(
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider())
             .apply(taskEntity, TABLE, callContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
@@ -216,7 +217,7 @@ public class FileIOFactoryTest {
             passthroughView,
             services.principal(),
             services.taskExecutor(),
-            services.accessConfigProvider(),
+            services.storageAccessConfigProvider(),
             services.fileIOFactory(),
             services.polarisEventListener());
     polarisCatalog.initialize(

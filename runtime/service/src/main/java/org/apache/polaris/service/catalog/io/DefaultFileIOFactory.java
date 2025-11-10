@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
@@ -45,7 +45,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull AccessConfig accessConfig,
+      @Nonnull StorageAccessConfig storageAccessConfig,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties) {
 
@@ -56,9 +56,9 @@ public class DefaultFileIOFactory implements FileIOFactory {
     // Update with properties in case there are table-level overrides the credentials should
     // always override table-level properties, since storage configuration will be found at
     // whatever entity defines it
-    properties.putAll(accessConfig.credentials());
-    properties.putAll(accessConfig.extraProperties());
-    properties.putAll(accessConfig.internalProperties());
+    properties.putAll(storageAccessConfig.credentials());
+    properties.putAll(storageAccessConfig.extraProperties());
+    properties.putAll(storageAccessConfig.internalProperties());
 
     return loadFileIOInternal(ioImplClassName, properties);
   }

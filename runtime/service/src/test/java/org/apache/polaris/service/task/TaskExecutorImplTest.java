@@ -64,7 +64,7 @@ public class TaskExecutorImplTest {
             testServices.clock(),
             testServices.metaStoreManagerFactory(),
             new TaskFileIOSupplier(
-                testServices.fileIOFactory(), testServices.accessConfigProvider()),
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
             testServices.polarisEventListener(),
             null);
 

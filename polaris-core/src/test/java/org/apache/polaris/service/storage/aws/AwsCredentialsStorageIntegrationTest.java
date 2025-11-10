@@ -25,8 +25,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -84,7 +84,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = scheme + "://bucket/path/to/warehouse";
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(warehouseDir)
@@ -98,7 +98,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
                 Optional.of("/namespace/table/credentials"));
-    assertThat(accessConfig.credentials())
+    assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -106,7 +106,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .containsEntry(
             StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
-    assertThat(accessConfig.extraProperties())
+    assertThat(storageAccessConfig.extraProperties())
         .containsEntry(
             StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
             "/namespace/table/credentials");
@@ -254,7 +254,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
-        AccessConfig accessConfig =
+        StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(
                     AwsStorageConfigurationInfo.builder()
                         .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -269,7 +269,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
                     Optional.empty());
-        assertThat(accessConfig.credentials())
+        assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
             .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -355,7 +355,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -370,7 +370,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)),
                 Optional.empty());
-    assertThat(accessConfig.credentials())
+    assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -450,7 +450,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -465,7 +465,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
                 Optional.empty());
-    assertThat(accessConfig.credentials())
+    assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -517,7 +517,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -532,7 +532,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(),
                 Set.of(),
                 Optional.empty());
-    assertThat(accessConfig.credentials())
+    assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -578,7 +578,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
-        AccessConfig accessConfig =
+        StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(
                     AwsStorageConfigurationInfo.builder()
                         .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -593,7 +593,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(),
                     Set.of(),
                     Optional.empty());
-        assertThat(accessConfig.credentials())
+        assertThat(storageAccessConfig.credentials())
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
             .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
             .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
@@ -619,7 +619,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
     switch (awsPartition) {
       case AWS_PARTITION:
-        AccessConfig accessConfig =
+        StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(
                     AwsStorageConfigurationInfo.builder()
                         .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -633,7 +633,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(),
                     Set.of(),
                     Optional.empty());
-        assertThat(accessConfig.credentials())
+        assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
             .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
         break;

@@ -22,7 +22,7 @@ package org.apache.polaris.service;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 
 /** A FileIOFactory that always returns the same FileIO instance. */
@@ -36,7 +36,7 @@ public class TestFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull AccessConfig accessConfig,
+      @Nonnull StorageAccessConfig accessConfig,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties) {
     return fileIO;
