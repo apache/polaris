@@ -80,7 +80,7 @@ keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.20" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.21" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.16.0" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.20.0" }
