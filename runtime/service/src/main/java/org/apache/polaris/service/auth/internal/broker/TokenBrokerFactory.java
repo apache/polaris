@@ -19,7 +19,6 @@
 package org.apache.polaris.service.auth.internal.broker;
 
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 
 /**
@@ -28,7 +27,5 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
  */
 public interface TokenBrokerFactory {
   TokenBroker create(
-      RealmContext realmContext,
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext polarisCallContext);
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext polarisCallContext);
 }

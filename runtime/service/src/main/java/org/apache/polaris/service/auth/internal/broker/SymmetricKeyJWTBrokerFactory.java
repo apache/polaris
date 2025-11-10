@@ -53,9 +53,8 @@ public class SymmetricKeyJWTBrokerFactory implements TokenBrokerFactory {
 
   @Override
   public TokenBroker create(
-      RealmContext realmContext,
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext polarisCallContext) {
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext polarisCallContext) {
+    RealmContext realmContext = polarisCallContext.getRealmContext();
     AuthenticationRealmConfiguration config = authenticationConfiguration.forRealm(realmContext);
     Duration maxTokenGeneration = config.tokenBroker().maxTokenGeneration();
     Supplier<String> secretSupplier =
