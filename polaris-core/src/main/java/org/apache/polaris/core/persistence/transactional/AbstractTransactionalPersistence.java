@@ -389,7 +389,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public <T> Page<T> loadEntities(
+  public <T> Page<T> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,

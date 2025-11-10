@@ -22,7 +22,7 @@ checkstyle = "10.25.0"
 hadoop = "3.4.2"
 hive = "3.1.3"
 iceberg = "1.10.0" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
-quarkus = "3.29.0"
+quarkus = "3.29.2"
 immutables = "2.11.6"
 jmh = "1.37"
 picocli = "4.7.7"
@@ -39,19 +39,19 @@ swagger = "1.6.16"
 # If a dependency is removed, check whether the LICENSE and/or NOTICE files need to be adopted
 # (aka mention of the dependency removed).
 #
-quarkus-amazon-services-bom = { module = "io.quarkus.platform:quarkus-amazon-services-bom", version.ref="quarkus" }
+agrona = { module = "org.agrona:agrona", version = "2.3.2" }
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 apache-httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.5.1" }
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.6" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.37.3" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.38.2" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.3.2" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.3" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.19.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.14.0" }
-errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.43.0" }
-google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.59.0" }
+errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.44.0" }
+google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.60.0" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.4.240" }
 dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
@@ -81,22 +81,25 @@ jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.20" }
-micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.15.5" }
+micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.16.0" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.20.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.20.0" }
-opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.55.0" }
+mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5.6.1" }
+opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.56.0" }
+opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.37.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.8" }
-prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.4.2" }
+prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.4.3" }
+quarkus-amazon-services-bom = { module = "io.quarkus.platform:quarkus-amazon-services-bom", version.ref="quarkus" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
 scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref = "scala212" }
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
-s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.9.1" }
+s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.10.0" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
-smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.13.9" }
+smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.14.0" }
 smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.14.1" }
 smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.1" }
 spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark35" }

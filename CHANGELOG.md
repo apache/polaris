@@ -44,6 +44,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Breaking changes
 
 - The EclipseLink Persistence implementation has been completely removed.
+- The default request ID header name has changed from `Polaris-Request-Id` to `X-Request-ID`.
 
 ### New Features
 
@@ -52,6 +53,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### Changes
 
 - `client.region` is no longer considered a "credential" property (related to Iceberg REST Catalog API).
+- Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
+- Added checksum to helm deployment so that it will restart when the configmap has changed.
 
 ### Deprecations
 

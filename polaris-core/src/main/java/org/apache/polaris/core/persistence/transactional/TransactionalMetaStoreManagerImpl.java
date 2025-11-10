@@ -31,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -56,6 +57,7 @@ import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
@@ -71,6 +73,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -723,10 +726,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   /**
-   * See {@link PolarisMetaStoreManager#loadEntities(PolarisCallContext, List, PolarisEntityType,
-   * PolarisEntitySubType, PageToken)}
+   * See {@link PolarisMetaStoreManager#listFullEntities(PolarisCallContext, List,
+   * PolarisEntityType, PolarisEntitySubType, PageToken)}
    */
-  private @Nonnull Page<PolarisBaseEntity> loadEntities(
+  private @Nonnull Page<PolarisBaseEntity> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
@@ -756,7 +759,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull Page<PolarisBaseEntity> loadEntities(
+  public @Nonnull Page<PolarisBaseEntity> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
@@ -768,7 +771,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // run operation in a read transaction
     return ms.runInReadTransaction(
         callCtx,
-        () -> loadEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
+        () -> listFullEntities(callCtx, ms, catalogPath, entityType, entitySubType, pageToken));
   }
 
   /** {@link #createPrincipal(PolarisCallContext, PrincipalEntity)} */
@@ -2291,6 +2294,57 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                       callCtx, ms, entityCatalogId, parentId, entityType, entityName));
     }
     return result;
+  }
+
+  private static ResolvedEntitiesResult getResolvedEntitiesResult(
+      PolarisCallContext callCtx,
+      TransactionalPersistence ms,
+      List<PolarisEntityId> entityIds,
+      Function<Integer, PolarisEntityType> entityTypeForIndex) {
+    List<PolarisBaseEntity> entities = ms.lookupEntitiesInCurrentTxn(callCtx, entityIds);
+    // mimic the behavior of loadEntity above, return null if not found or type mismatch
+    List<ResolvedPolarisEntity> ret =
+        IntStream.range(0, entityIds.size())
+            .mapToObj(
+                i -> {
+                  if (entities.get(i) != null
+                      && !entities.get(i).getType().equals(entityTypeForIndex.apply(i))) {
+                    return null;
+                  } else {
+                    return entities.get(i);
+                  }
+                })
+            .map(e -> toResolvedPolarisEntity(callCtx, e, ms))
+            .collect(Collectors.toList());
+    return new ResolvedEntitiesResult(ret);
+  }
+
+  private static ResolvedPolarisEntity toResolvedPolarisEntity(
+      PolarisCallContext callCtx, PolarisBaseEntity e, TransactionalPersistence ms) {
+    if (e == null) {
+      return null;
+    } else {
+      // load the grant records
+      final List<PolarisGrantRecord> grantRecordsAsSecurable =
+          ms.loadAllGrantRecordsOnSecurableInCurrentTxn(callCtx, e.getCatalogId(), e.getId());
+      final List<PolarisGrantRecord> grantRecordsAsGrantee =
+          e.getType().isGrantee()
+              ? ms.loadAllGrantRecordsOnSecurableInCurrentTxn(callCtx, e.getCatalogId(), e.getId())
+              : List.of();
+      return new ResolvedPolarisEntity(
+          PolarisEntity.of(e), grantRecordsAsGrantee, grantRecordsAsSecurable);
+    }
+  }
+
+  @Nonnull
+  @Override
+  public ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull List<PolarisEntityId> entityIds) {
+    TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
+    return ms.runInReadTransaction(
+        callCtx, () -> getResolvedEntitiesResult(callCtx, ms, entityIds, i -> entityType));
   }
 
   /** {@inheritDoc} */

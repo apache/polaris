@@ -133,6 +133,8 @@ dependencies {
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.quarkus:quarkus-jdbc-h2")
 
+  testImplementation("io.opentelemetry:opentelemetry-sdk-testing")
+
   testImplementation("io.rest-assured:rest-assured")
 
   testImplementation(platform(libs.testcontainers.bom))

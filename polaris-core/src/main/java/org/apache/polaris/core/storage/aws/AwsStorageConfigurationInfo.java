@@ -44,9 +44,9 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     return ImmutableAwsStorageConfigurationInfo.builder();
   }
 
-  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
-  @JsonIgnore
-  public static final String ROLE_ARN_PATTERN = "^.+:(.*):iam:.*:(.*):role/.+$";
+  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$, but we've
+  // generalized it to support non-aws S3 implementations
+  @JsonIgnore public static final String ROLE_ARN_PATTERN = "^.+:(.*):iam:.*:(.*):role/.+$";
 
   private static final Pattern ROLE_ARN_PATTERN_COMPILED = Pattern.compile(ROLE_ARN_PATTERN);
 

@@ -27,14 +27,16 @@ from pyiceberg.catalog import Catalog as PyIcebergCatalog
 from pyiceberg.schema import Schema
 from pyiceberg.types import NestedField, StringType, IntegerType, BooleanType
 
-from polaris.catalog import OAuthTokenResponse
-from polaris.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
-from polaris.catalog.api.iceberg_o_auth2_api import IcebergOAuth2API
-from polaris.catalog.api.policy_api import PolicyAPI
-from polaris.catalog.api_client import ApiClient as CatalogApiClient
-from polaris.catalog.api_client import Configuration as CatalogApiClientConfiguration
+from apache_polaris.sdk.catalog import OAuthTokenResponse
+from apache_polaris.sdk.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
+from apache_polaris.sdk.catalog.api.iceberg_o_auth2_api import IcebergOAuth2API
+from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
+from apache_polaris.sdk.catalog.api_client import ApiClient as CatalogApiClient
+from apache_polaris.sdk.catalog.api_client import (
+    Configuration as CatalogApiClientConfiguration,
+)
 
-from polaris.management import (
+from apache_polaris.sdk.management import (
     Catalog,
     ApiClient,
     PolarisDefaultApi,
@@ -379,31 +381,37 @@ def format_namespace(namespace: List[str]) -> str:
 def _patch_generated_models() -> None:
     """
     The OpenAPI generator creates an `api_client` that dynamically looks up
-    model classes from the `polaris.catalog.models` module using `getattr()`.
+    model classes from the `apache_polaris.sdk.catalog.models` module using `getattr()`.
     For example, when a response for a `create_policy` call is received, the
     deserializer tries to find the `LoadPolicyResponse` class by looking for
-    `polaris.catalog.models.LoadPolicyResponse`.
+    `apache_polaris.sdk.catalog.models.LoadPolicyResponse`.
 
     However, the generator fails to add the necessary `import` statements
-    to the `polaris/catalog/models/__init__.py` file. This means that even
+    to the `apache_polaris/sdk/catalog/models/__init__.py` file. This means that even
     though the model files exist (e.g., `load_policy_response.py`), the classes
-    are not part of the `polaris.catalog.models` namespace.
+    are not part of the `apache_polaris.sdk.catalog.models` namespace.
 
     This fixture works around the bug in the generated code without modifying
     the source files. It runs once per test session, before any tests, and
     manually injects the missing response-side model classes into the
-    `polaris.catalog.models` namespace, allowing the deserializer to find them.
+    `apache_polaris.sdk.catalog.models` namespace, allowing the deserializer to find them.
     """
-    import polaris.catalog.models
-    from polaris.catalog.models.applicable_policy import ApplicablePolicy
-    from polaris.catalog.models.get_applicable_policies_response import (
+    import apache_polaris.sdk.catalog.models
+    from apache_polaris.sdk.catalog.models.applicable_policy import ApplicablePolicy
+    from apache_polaris.sdk.catalog.models.get_applicable_policies_response import (
         GetApplicablePoliciesResponse,
     )
-    from polaris.catalog.models.list_policies_response import ListPoliciesResponse
-    from polaris.catalog.models.load_policy_response import LoadPolicyResponse
-    from polaris.catalog.models.policy import Policy
-    from polaris.catalog.models.policy_attachment_target import PolicyAttachmentTarget
-    from polaris.catalog.models.policy_identifier import PolicyIdentifier
+    from apache_polaris.sdk.catalog.models.list_policies_response import (
+        ListPoliciesResponse,
+    )
+    from apache_polaris.sdk.catalog.models.load_policy_response import (
+        LoadPolicyResponse,
+    )
+    from apache_polaris.sdk.catalog.models.policy import Policy
+    from apache_polaris.sdk.catalog.models.policy_attachment_target import (
+        PolicyAttachmentTarget,
+    )
+    from apache_polaris.sdk.catalog.models.policy_identifier import PolicyIdentifier
 
     models_to_patch = {
         "ApplicablePolicy": ApplicablePolicy,
@@ -416,4 +424,4 @@ def _patch_generated_models() -> None:
     }
 
     for name, model_class in models_to_patch.items():
-        setattr(polaris.catalog.models, name, model_class)
+        setattr(apache_polaris.sdk.catalog.models, name, model_class)
