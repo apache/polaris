@@ -548,7 +548,20 @@ persistence:
       password: password
       # -- The secret key holding the database JDBC connection URL
       jdbcUrl: jdbcUrl
-
+bootstrap:
+  image:
+    repository: apache/polaris-admin-tool
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  realm: POLARIS
+  rootuser:
+    secret:
+      # -- The secret name to pull the root user credentials from.
+      name: ~
+      # -- The secret key holding the root username for polaris
+      username: rootuser
+      # -- The secret key holding the root password for polaris
+      password: rootpassword
 # -- Polaris FileIO configuration.
 fileIo:
     # -- The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones.

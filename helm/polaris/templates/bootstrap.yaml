@@ -1,0 +1,72 @@
+{{- if eq .Values.persistence.type "relational-jdbc" }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "polaris.fullname" . }}-bootstrap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    labels:
+    {{- include "polaris.labels" . | nindent 4 }}
+    {{- if .Values.podLabels }}
+    {{- tpl (toYaml .Values.podLabels) . | nindent 4 }}
+    {{- end }}
+  annotations:
+    # -- These annotations tell Helm to run this Job before installing the rest of the chart, and only run it after an install, not after an upgrade.
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "polaris.selectorLabels" . | nindent 8 }}
+        {{- if .Values.podLabels }}
+        {{- tpl (toYaml .Values.podLabels) . | nindent 8 }}
+        {{- end }}
+    spec:
+      containers:
+        - name: polaris-admin-tool
+          image: "{{ tpl .Values.bootstrap.image.repository . }}:{{ tpl .Values.bootstrap.image.tag . | default .Chart.Version }}"
+          imagePullPolicy: {{ tpl .Values.bootstrap.image.pullPolicy . }}
+          serviceAccountName: {{ include "polaris.serviceAccountName" . }}
+          {{- if .Values.podSecurityContext }}
+          securityContext:
+            {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}
+          {{- end }}
+          env:
+            - name: POLARIS_PERSISTENCE_TYPE
+              value: "relational-jdbc"
+            - name: QUARKUS_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.persistence.relationalJdbc.secret.name }}
+                  key: {{ get .Values.persistence.relationalJdbc.secret "username" }}
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.persistence.relationalJdbc.secret.name }}
+                  key: {{ get .Values.persistence.relationalJdbc.secret "password" }}
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.persistence.relationalJdbc.secret.name }}
+                  key: {{ get .Values.persistence.relationalJdbc.secret "jdbcUrl" }}
+            - name: ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bootstrap.rootuser.secret.name }}
+                  key: {{ get .Values.bootstrap.rootuser.secret "username" }}
+            - name: ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bootstrap.rootuser.secret.name }}
+                  key: {{ get .Values.bootstrap.rootuser.secret "password" }}
+            - name: REALM
+              value: {{ .Values.bootstrap.realm}}
+          args:
+            - bootstrap 
+            - -c 
+            - $(REALM),$(ROOT_USER),$(ROOT_PASSWORD)
+            - -r 
+            - $(REALM)
+      restartPolicy: OnFailure
+{{- end }}
