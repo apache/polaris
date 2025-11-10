@@ -27,16 +27,19 @@ release:
 
 templates:
   - deployment.yaml
+  - configmap.yaml
 
 tests:
 
   # metadata.name
   - it: should set deployment name
+    template: deployment.yaml
     asserts:
       - equal:
           path: metadata.name
           value: polaris-release
   - it: should set deployment name with override
+    template: deployment.yaml
     set:
       nameOverride: polaris-override
     asserts:
@@ -44,6 +47,7 @@ tests:
           path: metadata.name
           value: polaris-release-polaris-override
   - it: should set deployment name with full override
+    template: deployment.yaml
     set:
       fullnameOverride: polaris-override
     asserts:
@@ -53,6 +57,7 @@ tests:
 
   # metadata.namespace
   - it: should set deployment namespace
+    template: deployment.yaml
     asserts:
       - equal:
           path: metadata.namespace
@@ -60,6 +65,7 @@ tests:
 
   # metadata.labels
   - it: should set deployment default labels
+    template: deployment.yaml
     asserts:
       - isSubset:
           path: metadata.labels
@@ -70,6 +76,7 @@ tests:
             app.kubernetes.io/managed-by: Helm
             helm.sh/chart: polaris-1.2.3
   - it: should set podLabels in deployment labels
+    template: deployment.yaml
     set:
       podLabels:
         app.kubernetes.io/component: polaris
@@ -81,11 +88,13 @@ tests:
 
   # spec.replicas
   - it: should set default replicas
+    template: deployment.yaml
     asserts:
       - equal:
           path: spec.replicas
           value: 1
   - it: should set replicas
+    template: deployment.yaml
     set:
       replicaCount: 3
     asserts:
@@ -93,6 +102,7 @@ tests:
           path: spec.replicas
           value: 3
   - it: should not set replicas if autoscaling is enabled
+    template: deployment.yaml
     set:
       replicaCount: 3
       autoscaling:
@@ -103,22 +113,26 @@ tests:
 
   # spec.revisionHistoryLimit
   - it: should not set revisionHistoryLimit by default with null
+    template: deployment.yaml
     asserts:
       - notExists:
           path: spec.revisionHistoryLimit
   - it: should not set revisionHistoryLimit with quote empty string
+    template: deployment.yaml
     set:
       revisionHistoryLimit: ""
     asserts:
       - notExists:
           path: spec.revisionHistoryLimit
   - it: should not set revisionHistoryLimit with empty string
+    template: deployment.yaml
     set:
       revisionHistoryLimit:
     asserts:
       - notExists:
           path: spec.revisionHistoryLimit
   - it: should set revisionHistoryLimit
+    template: deployment.yaml
     set:
       revisionHistoryLimit: 1
     asserts:
@@ -126,6 +140,7 @@ tests:
           path: spec.revisionHistoryLimit
           value: 1
   - it: should set revisionHistoryLimit (disabled revision history)
+    template: deployment.yaml
     set:
       revisionHistoryLimit: 0
     asserts:
@@ -135,6 +150,7 @@ tests:
 
   # spec.selector.matchLabels + spec.template.metadata.labels
   - it: should set deployment selector labels
+    template: deployment.yaml
     asserts:
       - isSubset:
           path: spec.selector.matchLabels
@@ -147,6 +163,7 @@ tests:
             app.kubernetes.io/name: polaris
             app.kubernetes.io/instance: polaris-release
   - it: should include podLabels in spec.template.metadata.labels only
+    template: deployment.yaml
     set:
       podLabels:
         app.kubernetes.io/component: polaris
@@ -161,11 +178,16 @@ tests:
             app.kubernetes.io/component: polaris
 
   # spec.template.metadata.annotations
-  - it: should not set pod annotations by default
+  - it: should only set checksum annotation by default
+    template: deployment.yaml
     asserts:
-      - notExists:
-          path: spec.template.metadata.annotations
+      - exists:
+          path: spec.template.metadata.annotations.checksum/config
+      - matchRegex: 
+          path: spec.template.metadata.annotations.checksum/config
+          pattern: "^[a-f0-9]{64}$"
   - it: should set pod annotations
+    template: deployment.yaml
     set:
       podAnnotations:
         foo: bar
@@ -177,10 +199,12 @@ tests:
 
   # spec.template.spec.imagePullSecrets
   - it: should not set imagePullSecrets by default
+    template: deployment.yaml
     asserts:
       - notExists:
           path: spec.template.spec.imagePullSecrets
   - it: should set imagePullSecrets
+    template: deployment.yaml
     set:
       imagePullSecrets:
         - test-secret
@@ -192,11 +216,13 @@ tests:
 
   # spec.template.spec.serviceAccountName
   - it: should set default service account name
+    template: deployment.yaml
     asserts:
       - equal:
           path: spec.template.spec.serviceAccountName
           value: polaris-release
   - it: should set service account name when serviceAccount.create is true
+    template: deployment.yaml
     set:
       serviceAccount:
         create: true
@@ -205,6 +231,7 @@ tests:
           path: spec.template.spec.serviceAccountName
           value: polaris-release
   - it: should set custom service account name when serviceAccount.create is true
+    template: deployment.yaml
     set:
       serviceAccount:
         create: true
@@ -214,6 +241,7 @@ tests:
           path: spec.template.spec.serviceAccountName
           value: polaris-sa
   - it: should set service account name to default when serviceAccount.create is false
+    template: deployment.yaml
     set:
       serviceAccount:
         create: false
@@ -222,6 +250,7 @@ tests:
           path: spec.template.spec.serviceAccountName
           value: default
   - it: should set custom service account name when serviceAccount.create is false
+    template: deployment.yaml
     set:
       serviceAccount:
         create: false
@@ -233,6 +262,7 @@ tests:
 
   # spec.template.spec.securityContext
   - it: should set securityContext by default
+    template: deployment.yaml
     asserts:
       - isSubset:
           path: spec.template.spec.securityContext
@@ -241,6 +271,7 @@ tests:
             seccompProfile:
               type: RuntimeDefault
   - it: should set custom securityContext
+    template: deployment.yaml
     set:
       podSecurityContext:
         fsGroup: 1234
@@ -252,6 +283,7 @@ tests:
 
   # spec.template.spec.containers
   - it: should set container name
+    template: deployment.yaml
     asserts:
       - equal:
           path: spec.template.spec.containers[0].name
@@ -259,6 +291,7 @@ tests:
 
   # spec.template.spec.containers[0].securityContext
   - it: should set container securityContext by default
+    template: deployment.yaml
     asserts:
       - isSubset:
           path: spec.template.spec.containers[0].securityContext
@@ -271,6 +304,7 @@ tests:
             seccompProfile:
               type: RuntimeDefault
   - it: should set custom container securityContext
+    template: deployment.yaml
     set:
       containerSecurityContext:
         allowPrivilegeEscalation: true
@@ -286,6 +320,7 @@ tests:
 
   # spec.template.spec.containers[0].image
   - it: should set container image
+    template: deployment.yaml
     set:
       image:
         repository: test-repo
@@ -295,6 +330,7 @@ tests:
           path: spec.template.spec.containers[0].image
           value: test-repo:test-tag
   - it: should set container image with template
+    template: deployment.yaml
     set:
       image:
         repository: test-repo-{{ .Chart.Version }}
@@ -304,6 +340,7 @@ tests:
           path: spec.template.spec.containers[0].image
           value: test-repo-1.2.3:test-tag-polaris-release
   - it: should set container image with chart version if no tag provided
+    template: deployment.yaml
     set:
       image:
         repository: test-repo
@@ -315,6 +352,7 @@ tests:
 
   # spec.template.spec.containers[0].imagePullPolicy
   - it: should set container pull policy
+    template: deployment.yaml
     set:
       image:
         pullPolicy: Always
@@ -325,10 +363,12 @@ tests:
 
   # spec.template.spec.containers[0].env
   - it: should not set container env by default
+    template: deployment.yaml
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].env
   - it: should set container env
+    template: deployment.yaml
     set:
       extraEnv:
         - name: foo
@@ -342,6 +382,7 @@ tests:
 
   # spec.template.spec.containers[0].volumeMounts + spec.template.spec.volumes
   - it: should not set persistence volumes by default
+    template: deployment.yaml
     asserts:
       - lengthEqual:
           path: spec.template.spec.volumes
@@ -358,6 +399,7 @@ tests:
 
   # spec.template.spec.containers[0].ports
   - it: should set container ports by default
+    template: deployment.yaml
     asserts:
       - lengthEqual:
           path: spec.template.spec.containers[0].ports
@@ -376,6 +418,7 @@ tests:
             protocol: TCP
 
   - it: should set custom container ports
+    template: deployment.yaml
     set:
       service:
         ports:
@@ -415,6 +458,7 @@ tests:
             protocol: TCP
 
   - it: should use targetPort if defined
+    template: deployment.yaml
     set:
       service:
         ports:
@@ -456,6 +500,7 @@ tests:
             protocol: TCP
 
   - it: should fail if port name is not unique (#1)
+    template: deployment.yaml
     set:
       service:
         ports:
@@ -468,6 +513,7 @@ tests:
           errorPattern: "service.ports\\[\\d\\]: port name already taken: polaris-http"
 
   - it: should fail if port name is not unique (#2)
+    template: deployment.yaml
     set:
       managementService:
         ports:
@@ -480,6 +526,7 @@ tests:
           errorPattern: "managementService.ports\\[\\d\\]: port name already taken: polaris-mgmt"
 
   - it: should fail if port name is not unique (#3)
+    template: deployment.yaml
     set:
       service:
         ports:
@@ -494,6 +541,7 @@ tests:
           errorPattern: "managementService.ports\\[\\d\\]: port name already taken: polaris"
 
   - it: should not fail when extra service references the same port name and number
+    template: deployment.yaml
     set:
       extraServices:
         - nameSuffix: "-extra"
@@ -519,6 +567,7 @@ tests:
             protocol: TCP
 
   - it: should fail when extra service references the same port name with different number (#1)
+    template: deployment.yaml
     set:
       extraServices:
         - nameSuffix: "-extra"
@@ -531,6 +580,7 @@ tests:
             errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong port number for port polaris-http, expected 8181, got 9999"
 
   - it: should fail when extra service references the same port name with different number (#2)
+    template: deployment.yaml
     set:
       extraServices:
         - nameSuffix: "-extra"
@@ -543,6 +593,7 @@ tests:
             errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong port number for port polaris-mgmt, expected 8182, got 9999"
 
   - it: should fail when extra service references the same port name with different number (#3)
+    template: deployment.yaml
     set:
       service:
         ports:
@@ -561,6 +612,7 @@ tests:
             errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong port number for port polaris-https, expected 8043, got 9999"
 
   - it: should fail when extra service references the same port name with different protocol
+    template: deployment.yaml
     set:
       service:
         ports:
@@ -578,6 +630,7 @@ tests:
             errorPattern: "extraServices\\[\\d\\].ports\\[\\d\\]: wrong protocol for port polaris-http, expected TCP, got UDP"
 
   - it: should create 2 ports with same number
+    template: deployment.yaml
     set:
       service:
         ports:
@@ -602,6 +655,7 @@ tests:
             containerPort: 8181
             protocol: TCP
   - it: should create 2 ports with same number using targetPort
+    template: deployment.yaml
     set:
       service:
         ports:
@@ -628,6 +682,7 @@ tests:
             containerPort: 8181
             protocol: TCP
   - it: should set port protocols
+    template: deployment.yaml
     set:
       service:
         ports:
@@ -671,6 +726,7 @@ tests:
 
   # spec.template.spec.containers[0].livenessProbe
   - it: should set container livenessProbe by default
+    template: deployment.yaml
     set:
       managementService:
         ports:
@@ -700,6 +756,7 @@ tests:
 
   # spec.template.spec.containers[0].readinessProbe
   - it: should set container readinessProbe by default
+    template: deployment.yaml
     set:
       managementService:
         ports:
@@ -727,10 +784,12 @@ tests:
 
   # spec.template.spec.containers[0].resources
   - it: should not set container resources by default
+    template: deployment.yaml
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].resources
   - it: should set container resources
+    template: deployment.yaml
     set:
       resources:
         requests:
@@ -752,10 +811,12 @@ tests:
 
   # spec.template.spec.nodeSelector
   - it: should not set nodeSelector by default
+    template: deployment.yaml
     asserts:
       - notExists:
           path: spec.template.spec.nodeSelector
   - it: should set nodeSelector
+    template: deployment.yaml
     set:
       nodeSelector:
         disktype: ssd
@@ -767,10 +828,12 @@ tests:
 
   # spec.template.spec.affinity
   - it: should not set affinity by default
+    template: deployment.yaml
     asserts:
       - notExists:
           path: spec.template.spec.affinity
   - it: should set affinity
+    template: deployment.yaml
     set:
       affinity:
         nodeAffinity:
@@ -798,10 +861,12 @@ tests:
 
   # spec.template.spec.tolerations
   - it: should not set tolerations by default
+    template: deployment.yaml
     asserts:
       - notExists:
           path: spec.template.spec.tolerations
   - it: should set tolerations
+    template: deployment.yaml
     set:
       tolerations:
         - key: "key"
@@ -818,6 +883,7 @@ tests:
               effect: "NoSchedule"
 
   - it: should set storage credentials
+    template: deployment.yaml
     set:
       storage:
         secret:
@@ -852,6 +918,7 @@ tests:
                 key: gcpToken
 
   - it: should set extra env
+    template: deployment.yaml
     set:
       extraEnv:
         - name: foo
@@ -877,6 +944,7 @@ tests:
                 key: key
 
   - it: should set extra env + storage credentials
+    template: deployment.yaml
     set:
       storage:
         secret:
@@ -901,11 +969,13 @@ tests:
                 key: awsAccessKeyId
 
   - it: should not set any environment variables by default
+    template: deployment.yaml
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].env
 
   - it: should configure config volume
+    template: deployment.yaml
     set:
       image.configDir: /config/dir
     asserts:
@@ -928,6 +998,7 @@ tests:
                         path: application.properties
 
   - it: should configure config volume with token broker secret (rsa-key-pair - deprecation)
+    template: deployment.yaml
     set:
       image.configDir: /config/dir
       authentication:
@@ -970,6 +1041,7 @@ tests:
                         path: private.pem
 
   - it: should configure config volume with token broker secret (symmetric-key - deprecation)
+    template: deployment.yaml
     set:
       image.configDir: /config/dir
       authentication:
@@ -1010,6 +1082,7 @@ tests:
                         path: symmetric.key
 
   - it: should configure config volume with token broker secret (rsa-key-pair)
+    template: deployment.yaml
     set:
       image.configDir: /config/dir
       authentication:
@@ -1052,6 +1125,7 @@ tests:
                         path: private.pem
 
   - it: should configure config volume with token broker secret (symmetric-key)
+    template: deployment.yaml
     set:
       image.configDir: /config/dir
       authentication:
@@ -1092,6 +1166,7 @@ tests:
                         path: symmetric.key
 
   - it: should configure config volume with authentication including per-realm overrides
+    template: deployment.yaml
     set:
       image.configDir: /config/dir
       authentication:
@@ -1144,6 +1219,7 @@ tests:
                   path: REALM+2/private.pem
 
   - it: should set relational-jdbc persistence environment variables
+    template: deployment.yaml
     set:
       persistence: { type: "relational-jdbc", relationalJdbc: { secret: { name: "polaris-persistence", username: "username", password: "password", jdbcUrl: "jdbcUrl" } } }
     asserts:
@@ -1173,6 +1249,7 @@ tests:
                 key: jdbcUrl
 
   - it: should configure volume for file logging
+    template: deployment.yaml
     set:
       logging.file.enabled: true
       logging.file.logsDir: /custom/logs
@@ -1191,6 +1268,7 @@ tests:
               claimName: polaris-release-logs
 
   - it: should include extra volumes and volume mounts
+    template: deployment.yaml
     set:
       extraVolumes:
         - name: extra-volume
@@ -1213,6 +1291,7 @@ tests:
             emptyDir: {}
 
   - it: should set OIDC client secret
+    template: deployment.yaml
     set:
       oidc: { client: { secret: { name: polaris-oidc-secret, key: client-secret } } }
     asserts:
