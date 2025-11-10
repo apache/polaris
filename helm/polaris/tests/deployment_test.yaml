@@ -178,11 +178,14 @@ tests:
             app.kubernetes.io/component: polaris
 
   # spec.template.metadata.annotations
-  - it: should not set pod annotations by default
+  - it: should only set checksum annotation by default
     template: deployment.yaml
     asserts:
-      - notExists:
+      - lengthEqual:
           path: spec.template.metadata.annotations
+          count: 1
+      - exists:
+          path: spec.template.metadata.annotations.checksum/config
   - it: should set pod annotations
     template: deployment.yaml
     set:
