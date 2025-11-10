@@ -1124,8 +1124,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
     CallContextCatalogFactory mockFactory = Mockito.mock(CallContextCatalogFactory.class);
 
     // Mock the catalog factory to return our regular catalog but with mocked config
-    Mockito.when(mockFactory.createCallContextCatalog(Mockito.any(), Mockito.any(), Mockito.any()))
-        .thenReturn(baseCatalog);
+    Mockito.when(mockFactory.createCallContextCatalog(Mockito.any())).thenReturn(baseCatalog);
 
     return newWrapperWithFineLevelAuthDisabled(Set.of(), CATALOG_NAME, mockFactory, false);
   }
@@ -1894,18 +1893,16 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         new PolarisCallContextCatalogFactory(
             diagServices,
             resolverFactory,
-            managerFactory,
             Mockito.mock(),
             accessConfigProvider,
             new DefaultFileIOFactory(),
-            polarisEventListener) {
+            polarisEventListener,
+            metaStoreManager,
+            callContext,
+            authenticatedRoot) {
           @Override
-          public Catalog createCallContextCatalog(
-              CallContext context,
-              PolarisPrincipal polarisPrincipal,
-              PolarisResolutionManifest resolvedManifest) {
-            Catalog catalog =
-                super.createCallContextCatalog(context, polarisPrincipal, resolvedManifest);
+          public Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest) {
+            Catalog catalog = super.createCallContextCatalog(resolvedManifest);
             String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
