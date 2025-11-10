@@ -257,6 +257,7 @@ public abstract class PolarisAuthzTestBase {
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     this.authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    QuarkusMock.installMockForType(authenticatedRoot, PolarisPrincipal.class);
 
     this.adminService =
         new PolarisAdminService(
@@ -518,36 +519,37 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisCallContextCatalogFactory() {
-      this(null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
     public TestPolarisCallContextCatalogFactory(
         PolarisDiagnostics diagnostics,
         ResolverFactory resolverFactory,
-        MetaStoreManagerFactory metaStoreManagerFactory,
         TaskExecutor taskExecutor,
         AccessConfigProvider accessConfigProvider,
         FileIOFactory fileIOFactory,
-        PolarisEventListener polarisEventListener) {
+        PolarisEventListener polarisEventListener,
+        PolarisMetaStoreManager metaStoreManager,
+        CallContext callContext,
+        PolarisPrincipal principal) {
       super(
           diagnostics,
           resolverFactory,
-          metaStoreManagerFactory,
           taskExecutor,
           accessConfigProvider,
           fileIOFactory,
-          polarisEventListener);
+          polarisEventListener,
+          metaStoreManager,
+          callContext,
+          principal);
     }
 
     @Override
-    public Catalog createCallContextCatalog(
-        CallContext context,
-        PolarisPrincipal polarisPrincipal,
-        final PolarisResolutionManifest resolvedManifest) {
+    public Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
-      Catalog catalog = super.createCallContextCatalog(context, polarisPrincipal, resolvedManifest);
+      Catalog catalog = super.createCallContextCatalog(resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(
