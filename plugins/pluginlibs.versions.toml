@@ -20,5 +20,6 @@
 [versions]
 iceberg = "1.10.0"
 spark35 = "3.5.6"
+spark40 = "4.0.1"
 scala212 = "2.12.19"
 scala213 = "2.13.15"
