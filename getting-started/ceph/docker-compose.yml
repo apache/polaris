@@ -1,0 +1,227 @@
+networks:
+  cluster-net:
+    driver: bridge
+
+services:
+
+  mon1:
+    image: ${CEPH_CONTAINER_IMAGE}
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        set -ex;
+        mkdir -p /var/lib/ceph/osd/ceph-0;
+        ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *';
+        ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring \
+          --gen-key -n client.admin \
+          --cap mon 'allow *' --cap osd 'allow *' --cap mgr 'allow *' --cap mds 'allow *';
+        ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring \
+          --gen-key -n client.bootstrap-osd \
+          --cap mon 'profile bootstrap-osd' --cap mgr 'allow r';
+        ceph-authtool /tmp/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring;
+        ceph-authtool /tmp/ceph.mon.keyring --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring;
+        chown ceph:ceph /tmp/ceph.mon.keyring;
+        monmaptool --create --add mon1 ${MON_IP} --fsid ${FSID} /tmp/monmap --clobber;
+        sudo -u ceph ceph-mon --mkfs -i mon1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring;
+        ceph-mon -i mon1 -f -d;
+    environment:
+      MON_IP: ${MON_IP}
+      CEPH_PUBLIC_NETWORK: ${MON1_CEPH_PUBLIC_NETWORK}
+      FSID: ${FSID}
+    volumes:
+      - ./ceph-conf:/etc/ceph
+      - ./bootstrap-osd:/var/lib/ceph/bootstrap-osd
+      - ./osd1:/var/lib/ceph/osd/ceph-0/
+    networks:
+      - cluster-net
+
+  mgr:
+    image: ${CEPH_CONTAINER_IMAGE}
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        set -ex;
+        mkdir -p /var/lib/ceph/mgr/ceph-mgr;
+        ceph auth get-or-create mgr.mgr mon 'allow profile mgr' osd 'allow *' mds 'allow *' > /var/lib/ceph/mgr/ceph-mgr/keyring;
+        ceph-mgr -f -i mgr;
+    volumes:
+      - ./ceph-conf:/etc/ceph
+    depends_on:
+      - mon1
+    networks:
+      - cluster-net
+    ports:
+      - ${DASHBOARD_PORT}:${INTERNAL_DASHBOARD_PORT}
+
+  osd1:
+    pid: host
+    privileged: true
+    image: ${CEPH_CONTAINER_IMAGE}
+    environment:
+      OSD_UUID_1: ${OSD_UUID_1}
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        set -ex;
+        mkdir -p /var/lib/ceph/osd/ceph-0;
+        chown -R ceph:ceph /var/lib/ceph/osd/ceph-0;
+        ceph-authtool --create-keyring /var/lib/ceph/osd/ceph-0/keyring \
+          --gen-key -n osd.0 \
+            --cap osd 'allow *' \
+            --cap mon 'allow profile osd';
+        ceph auth del osd.0 || true;
+        ceph auth add osd.0 -i /var/lib/ceph/osd/ceph-0/keyring;
+        ceph osd new ${OSD_UUID_1} -n client.bootstrap-osd -k /var/lib/ceph/bootstrap-osd/ceph.keyring;
+        ceph-osd -i 0 --mkfs --osd-data /var/lib/ceph/osd/ceph-0 --osd-uuid ${OSD_UUID_1} \
+          --keyring /var/lib/ceph/osd/ceph-0/keyring;
+        ceph-osd -f -i 0;
+    volumes:
+      - ./ceph-conf:/etc/ceph
+      - ./bootstrap-osd:/var/lib/ceph/bootstrap-osd
+    depends_on:
+      - mon1
+    networks:
+      - cluster-net
+
+  mds1:
+    image: ${CEPH_CONTAINER_IMAGE}
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        set -ex;
+        mkdir -p /var/lib/ceph/mds/ceph-admin;
+        ceph-authtool --create-keyring /var/lib/ceph/mds/ceph-admin/keyring --gen-key -n mds. --cap mds 'allow *';
+        ceph-mds -f -i admin;
+    hostname: "ceph-mds1-host"
+    environment:
+      CEPHFS_CREATE: 1
+    volumes:
+      - ./ceph-conf:/etc/ceph
+    depends_on:
+      - osd1
+    networks:
+      - cluster-net
+  rgw1:
+    image: ${CEPH_CONTAINER_IMAGE}
+    container_name: rgw1
+    environment:
+      MON_IP: ${MON_IP}
+      CEPH_PUBLIC_NETWORK: ${MON1_CEPH_PUBLIC_NETWORK}
+      RGW_ACCESS_KEY: ${RGW_ACCESS_KEY}
+      RGW_SECRET_KEY: ${RGW_SECRET_KEY}
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        set -ex;
+        mkdir -p /var/lib/ceph/radosgw/ceph-rgw1;
+        ceph auth get-or-create client.rgw1 mon 'allow rw' osd 'allow rwx';
+        ceph auth caps client.rgw1 mon 'allow rw' osd 'allow rwx';
+        ceph-authtool --create-keyring /var/lib/ceph/radosgw/ceph-rgw1/keyring --gen-key -n client.rgw1 --cap osd 'allow *' --cap mon 'allow *';
+        ceph auth del client.rgw1 || true;
+        ceph auth add client.rgw1 -i /var/lib/ceph/radosgw/ceph-rgw1/keyring;
+        radosgw-admin user create --uid="polaris-user" \
+          --display-name="Polaris User" \
+          --access-key="${RGW_ACCESS_KEY}" \
+          --secret-key="${RGW_SECRET_KEY}" || true;
+        echo ">>> RGW user created (access=${RGW_ACCESS_KEY}, secret=${RGW_SECRET_KEY})";
+        radosgw -n client.rgw1 --rgw-frontends="beast port=7480" --foreground;
+    ports:
+      - "7480:7480"   # RGW HTTP endpoint (S3)
+      - "7481:7481"
+    volumes:
+      - ./ceph-conf:/etc/ceph
+    depends_on:
+      - osd1
+    networks:
+      - cluster-net
+
+  setup_bucket:
+    image: peakcom/s5cmd:latest
+    depends_on:
+      - rgw1
+    environment:
+      AWS_ACCESS_KEY_ID: ${RGW_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${RGW_SECRET_KEY}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
+      S3_REGION: ${S3_REGION}
+      S3_POLARIS_BUCKET: ${S3_POLARIS_BUCKET}
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        set -ex;
+        echo ">>> Waiting for RGW to become ready...";
+        sleep 5;
+        echo ">>> Create bucket if not exist...";
+        /s5cmd --endpoint-url ${S3_ENDPOINT_URL} mb s3://${S3_POLARIS_BUCKET} || true;
+        tail -f /dev/null;
+    networks:
+      - cluster-net
+
+  polaris:
+    image: apache/polaris:latest
+    ports:
+      # API port
+      - "8181:8181"
+      # Optional, allows attaching a debugger to the Polaris JVM
+      - "5005:5005"
+    depends_on:
+      - rgw1
+    environment:
+      JAVA_DEBUG: true
+      JAVA_DEBUG_PORT: "*:5005"
+      AWS_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: ${RGW_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${RGW_SECRET_KEY}
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      polaris.realm-context.realms: POLARIS
+      quarkus.otel.sdk.disabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+    networks:
+      - cluster-net
+
+  polaris-setup:
+    image: alpine/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      - CLIENT_ID=root
+      - CLIENT_SECRET=s3cr3t
+    volumes:
+      - ../assets/polaris/:/polaris
+    entrypoint: "/bin/sh"
+    command:
+      - "-c"
+      - >-
+        chmod +x /polaris/create-catalog.sh;
+        chmod +x /polaris/obtain-token.sh;
+        source /polaris/obtain-token.sh;
+        echo Creating catalog...;
+        export STORAGE_CONFIG_INFO='{"storageType":"S3",
+          "endpoint":"http://rgw1:7480",
+          "stsUnavailable":"true",
+          "pathStyleAccess":true}';
+        export STORAGE_LOCATION='s3://polaris-storage';
+        /polaris/create-catalog.sh POLARIS $$TOKEN;
+        echo Extra grants...;
+        curl -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
+          -X PUT \
+          http://polaris:8181/api/management/v1/catalogs/quickstart_catalog/catalog-roles/catalog_admin/grants \
+          -d '{"type":"catalog", "privilege":"CATALOG_MANAGE_CONTENT"}';
+        echo Done.;
+        curl -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
+          -X GET \
+          http://polaris:8181/api/management/v1/catalogs;
+    networks:
+      - cluster-net
