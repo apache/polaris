@@ -35,6 +35,14 @@ val scalaLibraryVersion =
     pluginlibs.versions.scala213.get()
   }
 
+configurations.all {
+  if (name != "checkstyle") {
+    resolutionStrategy {
+      force("org.antlr:antlr4-runtime:4.13.1") // Spark 4.0 and Delta 4.0 require ANTLR 4.13.1
+    }
+  }
+}
+
 dependencies {
   // must be enforced to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom)) {
@@ -97,7 +105,7 @@ dependencies {
   testImplementation(enforcedPlatform("org.scala-lang:scala-library:${scalaLibraryVersion}"))
   testImplementation(enforcedPlatform("org.scala-lang:scala-reflect:${scalaLibraryVersion}"))
   testImplementation(libs.javax.servlet.api)
-  testImplementation(libs.antlr4.runtime)
+  // ANTLR version is determined by Spark/Delta dependencies, not enforced
 }
 
 // Force jakarta.servlet-api to 5.0.0 for Spark 4.0 compatibility

@@ -40,7 +40,7 @@ swagger = "1.6.16"
 # (aka mention of the dependency removed).
 #
 agrona = { module = "org.agrona:agrona", version = "2.3.1" }
-antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.13.1" } # spark integration tests
+antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests - must match Spark/Delta version
 apache-httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.5.1" }
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.6" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
