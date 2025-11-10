@@ -1,0 +1,86 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+
+#### Instructions
+#
+# docker compose up
+#
+# ./gradlew :polaris-persistence-nosql-benchmark:jmhJar && \
+#   java \
+#     -Dpolaris.persistence.backend.type=MongoDb \
+#     -Dpolaris.persistence.backend.mongodb.connection-string=mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019/?replicaSet=rs0 \
+#     -Dpolaris.persistence.backend.mongodb.database-name=test \
+#     -jar persistence/benchmark/build/libs/polaris-persistence-nosql-benchmark-1.0.0-incubating-SNAPSHOT-jmh.jar
+#
+# MAKE SURE TO ADD
+#    127.0.0.1    host.docker.internal
+# TO THE HOST'S /etc/hosts FILE
+#
+# Once done (after `docker compose down`):
+#   docker volume rm mongodb-3-nodes_mongo1_config mongodb-3-nodes_mongo1_data mongodb-3-nodes_mongo2_config mongodb-3-nodes_mongo2_data mongodb-3-nodes_mongo3_config mongodb-3-nodes_mongo3_data
+
+version: '3'
+
+services:
+  mongo1:
+    image: mongo:8.2.1
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27017:27017"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017',priority:1},{_id:1,host:'host.docker.internal:27018',priority:0.5},{_id:2,host:'host.docker.internal:27019',priority:0.5}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      retries: 30
+    volumes:
+      - "mongo1_data:/data/db"
+      - "mongo1_config:/data/configdb"
+
+  mongo2:
+    image: mongo:8.2.1
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27018"]
+    ports:
+      - "27018:27018"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "mongo2_data:/data/db"
+      - "mongo2_config:/data/configdb"
+
+  mongo3:
+    image: mongo:8.2.1
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27019"]
+    ports:
+      - "27019:27019"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "mongo3_data:/data/db"
+      - "mongo3_config:/data/configdb"
+
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:
+  mongo1_config:
+  mongo2_config:
+  mongo3_config:
