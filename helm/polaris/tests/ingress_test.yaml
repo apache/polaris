@@ -163,13 +163,15 @@ tests:
               backend:
                 service:
                   name: polaris
-                  port: 8181
-            - path: /polaris-mgmt
+                  port:
+                    number: 8181
+            - path: /polaris-other-service
               pathType:  Prefix
               backend:
                 service:
-                  name: polaris-mgmt
-                  port: 8182
+                  name: polaris-other-service
+                  port:
+                    number: 8182
     asserts:
       - equal:
           path: spec.rules
@@ -184,36 +186,10 @@ tests:
                         name: polaris
                         port:
                           number: 8181
-                  - path: /polaris-mgmt
+                  - path: /polaris-other-service
                     pathType: Prefix
                     backend:
                       service:
-                        name: polaris-mgmt
+                        name: polaris-other-service
                         port:
                           number: 8182
-
-  # spec.rules (with ingress enabled) - default service name and port
-  - it: Set default service name and port when not provided
-    set:
-      ingress.enabled: true
-      ingress.hosts:
-        - host: chart-example.local
-          paths:
-            - path: /polaris
-              pathType:  Prefix
-              backend:
-                service: {}
-    asserts:
-      - equal:
-          path: spec.rules
-          value:
-            - host: chart-example.local
-              http:
-                paths:
-                  - path: /polaris
-                    pathType: Prefix
-                    backend:
-                      service:
-                        name: polaris-release
-                        port:
-                          number: 8181

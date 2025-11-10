@@ -50,14 +50,6 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
-            backend:
-              service:
-                name: {{ default $fullName .backend.service.name }}
-                port:
-                  number: {{ default $svcPort .backend.service.port }}
-          {{- end }}
+          {{ tpl (toYaml .paths) $ | nindent 10 }}
     {{- end }}
   {{- end }}
