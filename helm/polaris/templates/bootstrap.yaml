@@ -30,7 +30,7 @@ spec:
           serviceAccountName: {{ include "polaris.serviceAccountName" . }}
           {{- if .Values.podSecurityContext }}
           securityContext:
-            {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}
+            {{- tpl (toYaml .Values.podSecurityContext) . | nindent 12 }}
           {{- end }}
           env:
             - name: POLARIS_PERSISTENCE_TYPE
