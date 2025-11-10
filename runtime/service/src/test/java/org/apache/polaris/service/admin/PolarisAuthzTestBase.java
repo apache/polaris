@@ -87,8 +87,8 @@ import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
@@ -203,7 +203,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisConfigurationStore configurationStore;
   @Inject protected StorageCredentialCache storageCredentialCache;
   @Inject protected ResolverFactory resolverFactory;
-  @Inject protected AccessConfigProvider accessConfigProvider;
+  @Inject protected StorageAccessConfigProvider storageAccessConfigProvider;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -499,7 +499,7 @@ public abstract class PolarisAuthzTestBase {
             passthroughView,
             authenticatedRoot,
             Mockito.mock(),
-            accessConfigProvider,
+            storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     this.baseCatalog.initialize(
@@ -527,7 +527,7 @@ public abstract class PolarisAuthzTestBase {
         PolarisDiagnostics diagnostics,
         ResolverFactory resolverFactory,
         TaskExecutor taskExecutor,
-        AccessConfigProvider accessConfigProvider,
+        StorageAccessConfigProvider accessConfigProvider,
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener,
         PolarisMetaStoreManager metaStoreManager,
