@@ -49,11 +49,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 ### New Features
 
 - Support credential vending for federated catalogs. `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING` (default: true) was added to toggle this feature.
+- Added bootstrap to the helm chart to automatically bootstrap the Polaris realm. 
 
 ### Changes
 
 - `client.region` is no longer considered a "credential" property (related to Iceberg REST Catalog API).
 - Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
+- Added checksum to helm deployment so that it will restart when the configmap has changed.
 
 ### Deprecations
 
