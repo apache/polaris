@@ -27,6 +27,7 @@ release:
 
 templates:
   - deployment.yaml
+  - configmap.yaml
 
 tests:
 
