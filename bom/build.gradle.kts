@@ -48,6 +48,10 @@ dependencies {
     api(project(":polaris-nodes-impl"))
     api(project(":polaris-nodes-spi"))
 
+    api(project(":polaris-persistence-nosql-realms-api"))
+    api(project(":polaris-persistence-nosql-realms-impl"))
+    api(project(":polaris-persistence-nosql-realms-spi"))
+
     api(project(":polaris-persistence-nosql-api"))
     api(project(":polaris-persistence-nosql-impl"))
     api(project(":polaris-persistence-nosql-benchmark"))
