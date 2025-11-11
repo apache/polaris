@@ -19,7 +19,7 @@
 package org.apache.polaris.service.catalog.io;
 
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -27,7 +27,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 /**
  * Interface for providing a way to construct FileIO objects, such as for reading/writing S3.
  *
- * <p>Implementations are available via CDI as {@link ApplicationScoped @ApplicationScoped} beans.
+ * <p>Implementations are available via CDI as {@link RequestScoped @RequestScoped} beans.
  */
 public interface FileIOFactory {
 

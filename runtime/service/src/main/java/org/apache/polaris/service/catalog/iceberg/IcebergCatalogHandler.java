@@ -812,7 +812,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider.getStorageAccessConfig(
-              callContext,
               tableIdentifier,
               tableLocations,
               actions,

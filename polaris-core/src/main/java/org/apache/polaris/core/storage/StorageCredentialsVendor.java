@@ -16,24 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 
-/** Manage credentials for storage locations. */
-public interface PolarisCredentialVendor {
+public class StorageCredentialsVendor {
+
+  private final PolarisCredentialVendor polarisCredentialVendor;
+  private final CallContext callContext;
+
+  public StorageCredentialsVendor(
+      PolarisCredentialVendor polarisCredentialVendor, CallContext callContext) {
+    this.polarisCredentialVendor = polarisCredentialVendor;
+    this.callContext = callContext;
+  }
+
+  public RealmContext getRealmContext() {
+    return callContext.getRealmContext();
+  }
+
+  public RealmConfig getRealmConfig() {
+    return callContext.getRealmConfig();
+  }
+
   /**
-   * Get a sub-scoped credentials for an entity against the provided allowed read and write
-   * locations.
+   * Get sub-scoped credentials for an entity against the provided allowed read and write locations.
    *
-   * @param callCtx the polaris call context
-   * @param catalogId the catalog id
-   * @param entityId the entity id
+   * @param entity the entity
    * @param allowListOperation whether to allow LIST operation on the allowedReadLocations and
    *     allowedWriteLocations
    * @param allowedReadLocations a set of allowed to read locations
@@ -45,13 +62,20 @@ public interface PolarisCredentialVendor {
    * @return an enum map containing the scoped credentials
    */
   @Nonnull
-  ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      @Nonnull PolarisEntityType entityType,
+  public ScopedCredentialsResult getSubscopedCredsForEntity(
+      @Nonnull PolarisEntity entity,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint);
+      Optional<String> refreshCredentialsEndpoint) {
+    return polarisCredentialVendor.getSubscopedCredsForEntity(
+        callContext.getPolarisCallContext(),
+        entity.getCatalogId(),
+        entity.getId(),
+        entity.getType(),
+        allowListOperation,
+        allowedReadLocations,
+        allowedWriteLocations,
+        refreshCredentialsEndpoint);
+  }
 }

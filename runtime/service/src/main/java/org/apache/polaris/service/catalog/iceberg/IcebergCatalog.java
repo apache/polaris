@@ -1085,7 +1085,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK);
     if (useOptimizedSiblingCheck) {
       Optional<Optional<String>> directSiblingCheckResult =
-          getMetaStoreManager().hasOverlappingSiblings(callContext.getPolarisCallContext(), entity);
+          getMetaStoreManager().hasOverlappingSiblings(getCurrentPolarisContext(), entity);
       if (directSiblingCheckResult.isPresent()) {
         if (directSiblingCheckResult.get().isPresent()) {
           throw new org.apache.iceberg.exceptions.ForbiddenException(
@@ -2080,12 +2080,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Set<PolarisStorageActions> storageActions) {
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider.getStorageAccessConfig(
-            callContext,
-            identifier,
-            readLocations,
-            storageActions,
-            Optional.empty(),
-            resolvedStorageEntity);
+            identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
     // Reload fileIO based on table specific context
     FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, tableProperties);
     // ensure the new fileIO is closed when the catalog is closed
@@ -2099,11 +2094,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   private PolarisMetaStoreManager getMetaStoreManager() {
     return metaStoreManager;
-  }
-
-  @VisibleForTesting
-  public void setFileIOFactory(FileIOFactory newFactory) {
-    this.fileIOFactory = newFactory;
   }
 
   @VisibleForTesting

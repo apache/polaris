@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +28,6 @@ import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -38,7 +37,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 
-@ApplicationScoped
+@RequestScoped
 public class TaskFileIOSupplier {
   private final FileIOFactory fileIOFactory;
   private final StorageAccessConfigProvider accessConfigProvider;
@@ -50,8 +49,7 @@ public class TaskFileIOSupplier {
     this.accessConfigProvider = storageAccessConfigProvider;
   }
 
-  public FileIO apply(TaskEntity task, TableIdentifier identifier, CallContext callContext) {
-
+  public FileIO apply(TaskEntity task, TableIdentifier identifier) {
     Map<String, String> internalProperties = task.getInternalPropertiesAsMap();
     Map<String, String> properties = new HashMap<>(internalProperties);
 
@@ -64,7 +62,7 @@ public class TaskFileIOSupplier {
         new PolarisResolvedPathWrapper(List.of(resolvedTaskEntity));
     StorageAccessConfig storageAccessConfig =
         accessConfigProvider.getStorageAccessConfig(
-            callContext, identifier, locations, storageActions, Optional.empty(), resolvedPath);
+            identifier, locations, storageActions, Optional.empty(), resolvedPath);
 
     String ioImpl =
         properties.getOrDefault(

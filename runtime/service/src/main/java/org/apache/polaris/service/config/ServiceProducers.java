@@ -59,6 +59,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
@@ -220,6 +221,7 @@ public class ServiceProducers {
   }
 
   @Produces
+  @RequestScoped
   public FileIOFactory fileIOFactory(
       FileIOConfiguration config, @Any Instance<FileIOFactory> fileIOFactories) {
     return fileIOFactories.select(Identifier.Literal.of(config.type())).get();
@@ -244,6 +246,13 @@ public class ServiceProducers {
   public PolarisMetaStoreManager polarisMetaStoreManager(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  }
+
+  @Produces
+  @RequestScoped
+  public StorageCredentialsVendor storageCredentialsVendor(
+      PolarisMetaStoreManager metaStoreManager, CallContext callContext) {
+    return new StorageCredentialsVendor(metaStoreManager, callContext);
   }
 
   @Produces

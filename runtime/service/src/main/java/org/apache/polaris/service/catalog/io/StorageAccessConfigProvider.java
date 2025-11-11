@@ -20,17 +20,17 @@
 package org.apache.polaris.service.catalog.io;
 
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,26 +42,25 @@ import org.slf4j.LoggerFactory;
  * <p>This provider decouples credential vending from catalog implementations, and should be the
  * primary entrypoint to get sub-scoped credentials for accessing table data.
  */
-@ApplicationScoped
+@RequestScoped
 public class StorageAccessConfigProvider {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageAccessConfigProvider.class);
 
   private final StorageCredentialCache storageCredentialCache;
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final StorageCredentialsVendor storageCredentialsVendor;
 
   @Inject
   public StorageAccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
-      MetaStoreManagerFactory metaStoreManagerFactory) {
+      StorageCredentialsVendor storageCredentialsVendor) {
     this.storageCredentialCache = storageCredentialCache;
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.storageCredentialsVendor = storageCredentialsVendor;
   }
 
   /**
    * Vends credentials for accessing table storage at explicit locations.
    *
-   * @param callContext the call context containing realm, principal, and security context
    * @param tableIdentifier the table identifier, used for logging and refresh endpoint construction
    * @param tableLocations set of storage location URIs to scope credentials to
    * @param storageActions the storage operations (READ, WRITE, LIST, DELETE) to scope credentials
@@ -72,7 +71,6 @@ public class StorageAccessConfigProvider {
    *     config found
    */
   public StorageAccessConfig getStorageAccessConfig(
-      @Nonnull CallContext callContext,
       @Nonnull TableIdentifier tableIdentifier,
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
@@ -91,14 +89,47 @@ public class StorageAccessConfigProvider {
           .log("Table entity has no storage configuration in its hierarchy");
       return StorageAccessConfig.builder().supportsCredentialVending(false).build();
     }
-    return FileIOUtil.refreshAccessConfig(
-        callContext,
-        storageCredentialCache,
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext()),
-        tableIdentifier,
-        tableLocations,
-        storageActions,
-        storageInfo.get(),
-        refreshCredentialsEndpoint);
+    PolarisEntity storageInfoEntity = storageInfo.get();
+
+    boolean skipCredentialSubscopingIndirection =
+        storageCredentialsVendor
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
+    if (skipCredentialSubscopingIndirection) {
+      LOGGER
+          .atDebug()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Skipping generation of subscoped creds for table");
+      return StorageAccessConfig.builder().build();
+    }
+
+    boolean allowList =
+        storageActions.contains(PolarisStorageActions.LIST)
+            || storageActions.contains(PolarisStorageActions.ALL);
+    Set<String> writeLocations =
+        storageActions.contains(PolarisStorageActions.WRITE)
+                || storageActions.contains(PolarisStorageActions.DELETE)
+                || storageActions.contains(PolarisStorageActions.ALL)
+            ? tableLocations
+            : Set.of();
+    StorageAccessConfig accessConfig =
+        storageCredentialCache.getOrGenerateSubScopeCreds(
+            storageCredentialsVendor,
+            storageInfoEntity,
+            allowList,
+            tableLocations,
+            writeLocations,
+            refreshCredentialsEndpoint);
+
+    LOGGER
+        .atDebug()
+        .addKeyValue("tableIdentifier", tableIdentifier)
+        .addKeyValue("credentialKeys", accessConfig.credentials().keySet())
+        .addKeyValue("extraProperties", accessConfig.extraProperties())
+        .log("Loaded scoped credentials for table");
+    if (accessConfig.credentials().isEmpty()) {
+      LOGGER.debug("No credentials found for table");
+    }
+    return accessConfig;
   }
 }

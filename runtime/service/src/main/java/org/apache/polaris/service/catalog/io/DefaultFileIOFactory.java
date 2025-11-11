@@ -21,7 +21,7 @@ package org.apache.polaris.service.catalog.io;
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +36,7 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
  * <p>This class acts as a translation layer between Polaris properties and the properties required
  * by Iceberg's {@link FileIO}.
  */
-@ApplicationScoped
+@RequestScoped
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
