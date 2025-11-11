@@ -53,4 +53,7 @@ dependencies {
   testCompileOnly(libs.jakarta.enterprise.cdi.api)
 }
 
-tasks.withType<Javadoc> { isFailOnError = false }
+tasks.withType<Javadoc> {
+  isFailOnError = false
+  options.memberLevel = JavadocMemberLevel.PACKAGE
+}
