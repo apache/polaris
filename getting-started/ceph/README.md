@@ -34,11 +34,6 @@ See the [Spark Notebooks Example](../spark/README.md) for a more advanced Spark 
 
 Before starting the Ceph + Polaris stack, you’ll need to configure environment variables that define network settings, credentials, and cluster IDs.
 
-Copy the example environment file:
-```shell
-mv getting-started/ceph/.env.example getting-started/ceph/.env
-```
-
 The services are started **in sequence**:
 1. Monitor + Manager
 2. OSD
@@ -47,24 +42,38 @@ The services are started **in sequence**:
 
 Note: this example pulls the `apache/polaris:latest` image, but assumes the image is `1.2.0-incubating` or later. 
 
-
-### 1. Start monitor and manager
+### 1. Copy the example environment file
 ```shell
-docker compose up -d mon1 mgr
+cp getting-started/ceph/.env.example getting-started/ceph/.env
 ```
 
-### 2. Start OSD
+### 2. Prepare Network
 ```shell
-docker compose up -d osd1
+# Optional: force runtime (docker or podman)
+export RUNTIME=docker
+
+chmod +x getting-started/ceph/prepare-network.sh
+
+./getting-started/ceph/prepare-network.sh
 ```
 
-### 3. Start RGW
+### 3. Start monitor and manager
 ```shell
-docker compose up -d rgw1
+$RUNTIME compose up -d mon1 mgr
+```
+
+### 4. Start OSD
+```shell
+$RUNTIME compose up -d osd1
+```
+
+### 5. Start RGW
+```shell
+$RUNTIME compose up -d rgw1
 ```
 #### Check status
 ```shell
-docker exec --interactive --tty ceph-mon1-1 ceph -s
+$RUNTIME exec --interactive --tty ceph-mon1-1 ceph -s
 ```
 You should see something like:
 ```yaml
@@ -82,19 +91,19 @@ services:
   rgw: 1 daemon active (1 hosts, 1 zones)
 ```
 
-### 4. Create bucket for Polaris storage
+### 6. Create bucket for Polaris storage
 ```shell
-docker compose up -d setup_bucket
+$RUNTIME compose up -d setup_bucket
 ```
 
-### 5. Run Polaris service
+### 7. Run Polaris service
 ```shell
-docker compose up -d polaris
+$RUNTIME compose up -d polaris
 ```
 
-### 6. Setup polaris catalog
+### 8. Setup polaris catalog
 ```shell
-docker compose up -d polaris-setup
+$RUNTIME compose up -d polaris-setup
 ```
 
 ## Connecting From Spark
