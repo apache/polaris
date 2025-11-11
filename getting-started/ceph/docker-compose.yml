@@ -43,7 +43,7 @@ services:
         ceph-authtool /var/lib/ceph/tmp/ceph.mon.keyring --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring;
         chown ceph:ceph /var/lib/ceph/tmp/ceph.mon.keyring;
         monmaptool --create --add mon1 ${MON_IP} --fsid ${FSID} /var/lib/ceph/tmp/monmap --clobber;
-        sudo -u ceph ceph-mon --mkfs -i mon1 --monmap /var/lib/ceph/tmp/monmap --keyring /var/lib/ceph/tmp/ceph.mon.keyring;
+        ceph-mon --mkfs -i mon1 --monmap /var/lib/ceph/tmp/monmap --keyring /var/lib/ceph/tmp/ceph.mon.keyring;
         ceph-mon -i mon1 -f -d;
     environment:
       MON_IP: ${MON_IP}

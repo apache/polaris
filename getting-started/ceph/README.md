@@ -44,7 +44,7 @@ Note: this example pulls the `apache/polaris:latest` image, but assumes the imag
 
 ### 1. Copy the example environment file
 ```shell
-cp getting-started/ceph/.env.example getting-started/ceph/.env
+cp .env.example .env
 ```
 
 ### 2. Prepare Network
@@ -52,28 +52,26 @@ cp getting-started/ceph/.env.example getting-started/ceph/.env
 # Optional: force runtime (docker or podman)
 export RUNTIME=docker
 
-chmod +x getting-started/ceph/prepare-network.sh
-
 ./getting-started/ceph/prepare-network.sh
 ```
 
 ### 3. Start monitor and manager
 ```shell
-$RUNTIME compose up -d mon1 mgr
+docker compose up -d mon1 mgr
 ```
 
 ### 4. Start OSD
 ```shell
-$RUNTIME compose up -d osd1
+docker compose up -d osd1
 ```
 
 ### 5. Start RGW
 ```shell
-$RUNTIME compose up -d rgw1
+docker compose up -d rgw1
 ```
 #### Check status
 ```shell
-$RUNTIME exec --interactive --tty ceph-mon1-1 ceph -s
+docker exec --interactive --tty ceph-mon1-1 ceph -s
 ```
 You should see something like:
 ```yaml
@@ -93,17 +91,17 @@ services:
 
 ### 6. Create bucket for Polaris storage
 ```shell
-$RUNTIME compose up -d setup_bucket
+docker compose up -d setup_bucket
 ```
 
 ### 7. Run Polaris service
 ```shell
-$RUNTIME compose up -d polaris
+docker compose up -d polaris
 ```
 
 ### 8. Setup polaris catalog
 ```shell
-$RUNTIME compose up -d polaris-setup
+docker compose up -d polaris-setup
 ```
 
 ## Connecting From Spark
