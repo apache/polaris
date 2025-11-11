@@ -32,6 +32,13 @@ See the [Spark Notebooks Example](../spark/README.md) for a more advanced Spark 
 
 ## Starting the Example
 
+Before starting the Ceph + Polaris stack, you’ll need to configure environment variables that define network settings, credentials, and cluster IDs.
+
+Copy the example environment file:
+```shell
+mv getting-started/ceph/.env.example getting-started/ceph/.env
+```
+
 The services are started **in sequence**:
 1. Monitor + Manager
 2. OSD
@@ -43,21 +50,21 @@ Note: this example pulls the `apache/polaris:latest` image, but assumes the imag
 
 ### 1. Start monitor and manager
 ```shell
-docker-compose up -d mon1 mgr
+docker compose up -d mon1 mgr
 ```
 
 ### 2. Start OSD
 ```shell
-docker-compose up -d osd1
+docker compose up -d osd1
 ```
 
 ### 3. Start RGW
 ```shell
-docker-compose up -d rgw1
+docker compose up -d rgw1
 ```
 #### Check status
 ```shell
-docker exec -it cephpolaris-mon1-1 ceph -s
+docker exec --interactive --tty ceph-mon1-1 ceph -s
 ```
 You should see something like:
 ```yaml
@@ -77,17 +84,17 @@ services:
 
 ### 4. Create bucket for Polaris storage
 ```shell
-docker-compose up -d setup_bucket
+docker compose up -d setup_bucket
 ```
 
 ### 5. Run Polaris service
 ```shell
-docker-compose up -d polaris
+docker compose up -d polaris
 ```
 
 ### 6. Setup polaris catalog
 ```shell
-docker-compose up -d polaris-setup
+docker compose up -d polaris-setup
 ```
 
 ## Connecting From Spark
