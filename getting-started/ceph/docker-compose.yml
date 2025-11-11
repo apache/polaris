@@ -17,11 +17,6 @@
 # under the License.
 #
 
-networks:
-  cluster-net:
-    driver: bridge
-    external: true
-
 services:
 
   mon1:
@@ -47,14 +42,11 @@ services:
         ceph-mon -i mon1 -f -d;
     environment:
       MON_IP: ${MON_IP}
-      CEPH_PUBLIC_NETWORK: ${MON1_CEPH_PUBLIC_NETWORK}
       FSID: ${FSID}
     volumes:
       - ./ceph-conf:/etc/ceph
       - ./bootstrap-osd:/var/lib/ceph/bootstrap-osd
       - ./osd1:/var/lib/ceph/osd/ceph-0/
-    networks:
-      - cluster-net
 
   mgr:
     image: quay.io/ceph/ceph:v19.2.3
@@ -70,8 +62,6 @@ services:
       - ./ceph-conf:/etc/ceph
     depends_on:
       - mon1
-    networks:
-      - cluster-net
     ports:
       - ${DASHBOARD_PORT}:${INTERNAL_DASHBOARD_PORT}
 
@@ -103,34 +93,12 @@ services:
       - ./bootstrap-osd:/var/lib/ceph/bootstrap-osd
     depends_on:
       - mon1
-    networks:
-      - cluster-net
 
-  mds1:
-    image: quay.io/ceph/ceph:v19.2.3
-    entrypoint: "/bin/sh"
-    command:
-      - "-c"
-      - >-
-        set -ex;
-        mkdir -p /var/lib/ceph/mds/ceph-admin;
-        ceph-authtool --create-keyring /var/lib/ceph/mds/ceph-admin/keyring --gen-key -n mds. --cap mds 'allow *';
-        ceph-mds -f -i admin;
-    hostname: "ceph-mds1-host"
-    environment:
-      CEPHFS_CREATE: 1
-    volumes:
-      - ./ceph-conf:/etc/ceph
-    depends_on:
-      - osd1
-    networks:
-      - cluster-net
   rgw1:
     image: quay.io/ceph/ceph:v19.2.3
     container_name: rgw1
     environment:
       MON_IP: ${MON_IP}
-      CEPH_PUBLIC_NETWORK: ${MON1_CEPH_PUBLIC_NETWORK}
       RGW_ACCESS_KEY: ${RGW_ACCESS_KEY}
       RGW_SECRET_KEY: ${RGW_SECRET_KEY}
     entrypoint: "/bin/sh"
@@ -157,8 +125,6 @@ services:
       - ./ceph-conf:/etc/ceph
     depends_on:
       - osd1
-    networks:
-      - cluster-net
 
   setup_bucket:
     image: peakcom/s5cmd:latest
@@ -180,8 +146,6 @@ services:
         echo ">>> Create bucket if not exist...";
         /s5cmd --endpoint-url ${S3_ENDPOINT_URL} mb s3://${S3_POLARIS_BUCKET} || true;
         tail -f /dev/null;
-    networks:
-      - cluster-net
 
   polaris:
     image: apache/polaris:latest
@@ -207,8 +171,6 @@ services:
       timeout: 10s
       retries: 10
       start_period: 10s
-    networks:
-      - cluster-net
 
   polaris-setup:
     image: alpine/curl
@@ -243,5 +205,3 @@ services:
         curl -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' \
           -X GET \
           http://polaris:8181/api/management/v1/catalogs;
-    networks:
-      - cluster-net

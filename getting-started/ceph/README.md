@@ -47,25 +47,17 @@ Note: this example pulls the `apache/polaris:latest` image, but assumes the imag
 cp .env.example .env
 ```
 
-### 2. Prepare Network
-```shell
-# Optional: force runtime (docker or podman)
-export RUNTIME=docker
-
-./prepare-network.sh
-```
-
-### 3. Start monitor and manager
+### 2. Start monitor and manager
 ```shell
 docker compose up -d mon1 mgr
 ```
 
-### 4. Start OSD
+### 3. Start OSD
 ```shell
 docker compose up -d osd1
 ```
 
-### 5. Start RGW
+### 4. Start RGW
 ```shell
 docker compose up -d rgw1
 ```
@@ -89,17 +81,17 @@ services:
   rgw: 1 daemon active (1 hosts, 1 zones)
 ```
 
-### 6. Create bucket for Polaris storage
+### 5. Create bucket for Polaris storage
 ```shell
 docker compose up -d setup_bucket
 ```
 
-### 7. Run Polaris service
+### 6. Run Polaris service
 ```shell
 docker compose up -d polaris
 ```
 
-### 8. Setup polaris catalog
+### 7. Setup polaris catalog
 ```shell
 docker compose up -d polaris-setup
 ```
