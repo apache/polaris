@@ -131,6 +131,16 @@ client-lint: client-setup-env ## Run linting checks for Polaris client
 	@$(ACTIVATE_AND_CD) && poetry run pre-commit run --files integration_tests/* python/cli/*
 	@echo "--- Client linting checks complete ---"
 
+.PHONY: client-set-version
+client-set-version: client-setup-env ## Set Python client version using poetry. Usage: make client-set-version VERSION=<version>
+	@echo "--- Setting client version ---"
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required. Usage: make client-set-version VERSION=<version>" >&2; \
+		exit 1; \
+	fi
+	@$(ACTIVATE_AND_CD) && poetry version "$(VERSION)"
+	@echo "--- Client version set to $(VERSION) ---"
+
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code
 	@echo "--- Regenerating client code ---"
