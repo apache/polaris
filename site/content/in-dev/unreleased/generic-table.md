@@ -158,7 +158,7 @@ curl -X DELETE http://localhost:8181/api/catalog/polaris/v1/delta_catalog/namesp
 
 For the complete and up-to-date API specification, see the [Catalog API Spec](https://editor-next.swagger.io/?url=https://raw.githubusercontent.com/apache/polaris/refs/heads/main/spec/generated/bundled-polaris-catalog-service.yaml).
 
-## Known Limitations
+## Current Limitations
 
 There are some known limitations for the generic table support:
 1. Generic tables provide limited spec information. For example, there is no spec for Schema or Partition. 

@@ -27,7 +27,7 @@ Polaris provides a Spark client to manage non-Iceberg tables through [Generic Ta
 {{< alert note >}}
 The Spark client can manage Iceberg tables and non-Iceberg tables.
 
-Users who only use Iceberg tables can use Spark without this client.
+Users who only use Iceberg tables do not need to use this client and can use the Iceberg-provided Spark client.
 {{< /alert >}}
 
 This page documents how to connect Spark with Polaris Service using the Polaris Spark client.
@@ -119,7 +119,7 @@ If you would like to use a version of the Spark client that is currently not yet
 build a Spark client jar locally from source. Please check out the Polaris repo and refer to the Spark plugin
 [README](https://github.com/apache/polaris/blob/main/plugins/spark/README.md) for detailed instructions.
 
-## Known Limitations
+## Current Limitations
 The following describes the current limitations of the Polaris Spark client:
 
 ### General Limitations
