@@ -363,6 +363,9 @@ def main() -> None:
     else:
         logging.basicConfig(level=logging.INFO, format="%(message)s")
 
+    if os.environ.get("POLARIS_CLI_SKIP_CLIENT_GENERATION", "false").lower() == "true":
+        logger.info("POLARIS_CLI_SKIP_CLIENT_GENERATION is set to true, skipping client generation.")
+        return
     build()
 
 
