@@ -124,7 +124,7 @@ The following describes the current limitations of the Polaris Spark client:
 
 ### General Limitations
 1. The Polaris Spark client only supports Iceberg and Delta tables. It does not support other table formats like CSV, JSON, etc.
-2. Generic tables (non-Iceberg tables) do not currently support credential vending.
+2. Generic tables (non-Iceberg tables) APIs do not currently support credential vending.
 
 ### Delta Table Limitations
 1. Create table as select (CTAS) is not supported for Delta tables. As a result, the `saveAsTable` method of `Dataframe`

@@ -164,4 +164,4 @@ There are some known limitations for the generic table support:
 1. Generic tables provide limited spec information. For example, there is no spec for Schema or Partition. 
 2. There is no commit coordination provided by Polaris. It is the responsibility of the engine to coordinate loading and committing data. The catalog is only aware of the generic table fields above.
 3. There is no update capability provided by Polaris. Any update to a generic table must be done through a drop and create.
-4. Generic tables do not support credential vending.
+4. Generic tables APIs do not support credential vending.
