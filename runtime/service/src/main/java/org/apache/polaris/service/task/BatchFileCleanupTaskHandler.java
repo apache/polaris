@@ -53,7 +53,7 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
     BatchFileCleanupTask cleanupTask = task.readData(BatchFileCleanupTask.class);
     TableIdentifier tableId = cleanupTask.tableId();
     List<String> batchFiles = cleanupTask.batchFiles();
-    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId, callContext)) {
+    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, tableId)) {
       List<String> validFiles =
           batchFiles.stream().filter(file -> TaskUtils.exists(file, authorizedFileIO)).toList();
       if (validFiles.isEmpty()) {
