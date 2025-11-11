@@ -18,23 +18,25 @@
 #
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.23-6.1761164966
 
-LABEL org.opencontainers.image.source=https://github.com/apache/polaris
-LABEL org.opencontainers.image.description="Apache Polaris (incubating) Admin Tool"
-LABEL org.opencontainers.image.licenses=Apache-2.0
+LABEL org.opencontainers.image.source=https://github.com/apache/polaris \
+      org.opencontainers.image.description="Apache Polaris (incubating) Admin Tool" \
+      org.opencontainers.image.licenses=Apache-2.0
 
-ENV LANGUAGE='en_US:en'
+ENV LANGUAGE='en_US:en' \
+    USER=polaris \
+    UID=10000 \
+    HOME=/home/polaris
 
 USER root
-RUN groupadd --gid 10001 polaris \
-      && useradd --uid 10000 --gid polaris polaris \
-      && chown -R polaris:polaris /opt/jboss/container \
-      && chown -R polaris:polaris /deployments
+
+RUN groupadd --gid 10001 polaris && \
+    useradd --uid 10000 --gid polaris -m polaris && \
+    mkdir -p /deployments && \
+    chown -R polaris:polaris /deployments /opt/jboss/container
 
 USER polaris
+
 WORKDIR /home/polaris
-ENV USER=polaris
-ENV UID=10000
-ENV HOME=/home/polaris
 
 # We make four distinct layers so if there are application changes the library layers can be reused
 COPY --chown=polaris:polaris build/quarkus-app/lib/ /deployments/lib/

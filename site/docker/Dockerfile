@@ -21,23 +21,14 @@ FROM ubuntu:24.04 AS hugo
 
 ENV LANGUAGE='en_US:en'
 
-RUN apt-get update
-RUN apt-get install --yes golang hugo asciidoctor npm curl
-RUN apt-get clean
-# http-server is used when building the static site to manually check it locally
-# (via `site/bin/create-static-site.sh --local` at http://localhost:8080/)
-RUN npm install --global http-server
-
-# these dependencies are needed to build the static site
-#RUN npm install --global autoprefixer postcss postcss-cli http-server
-
-RUN mkdir /polaris
-RUN mkdir /polaris/site
-RUN mkdir /polaris/site/resources
+RUN apt-get update && \
+    apt-get install --yes --no-install-recommends golang hugo asciidoctor npm curl git && \
+    rm -rf /var/lib/apt/lists/* && \
+    npm install --global http-server && \
+    mkdir -p /polaris/site/resources
 
 COPY _run_in_docker.sh /hugo/run
 
-EXPOSE 1313
-EXPOSE 8080
+EXPOSE 1313 8080
 
 ENTRYPOINT ["/hugo/run"]
