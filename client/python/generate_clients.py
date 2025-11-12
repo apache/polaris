@@ -350,7 +350,7 @@ def fix_catalog_models_init() -> None:
 
     # Write the new __init__.py
     with open(init_py, "w") as f:
-        f.write("\n".join(imports))
+        f.write("\n".join(sorted(imports)))
     logger.info("Catalog models __init__.py fixed.")
 
 
