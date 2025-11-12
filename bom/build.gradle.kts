@@ -62,6 +62,10 @@ dependencies {
     api(project(":polaris-persistence-nosql-inmemory"))
     api(project(":polaris-persistence-nosql-mongodb"))
 
+    api(project(":polaris-persistence-nosql-maintenance-api"))
+    api(project(":polaris-persistence-nosql-maintenance-cel"))
+    api(project(":polaris-persistence-nosql-maintenance-spi"))
+
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
