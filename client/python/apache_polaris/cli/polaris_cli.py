@@ -47,49 +47,7 @@ class PolarisCli:
     DIRECT_AUTHENTICATION_ENABLED = False
 
     @staticmethod
-    def _patch_generated_models() -> None:
-        """
-        The OpenAPI generator creates an `api_client` that dynamically looks up
-        model classes from the `apache_polaris.sdk.catalog.models` module using `getattr()`.
-        For example, when a response for a `create_policy` call is received, the
-        deserializer tries to find the `LoadPolicyResponse` class by looking for
-        `apache_polaris.sdk.catalog.models.LoadPolicyResponse`.
-
-        However, the generator fails to add the necessary `import` statements
-        to the `apache_polaris/sdk/catalog/models/__init__.py` file. This means that even
-        though the model files exist (e.g., `load_policy_response.py`), the classes
-        are not part of the `apache_polaris.sdk.catalog.models` namespace.
-
-        This method works around the bug in the generated code without modifying
-        the source files. It runs once per CLI execution, before any commands, and
-        manually injects the missing response-side model classes into the
-        `apache_polaris.sdk.catalog.models` namespace, allowing the deserializer to find them.
-        """
-        import apache_polaris.sdk.catalog.models
-        from apache_polaris.sdk.catalog.models.applicable_policy import ApplicablePolicy
-        from apache_polaris.sdk.catalog.models.get_applicable_policies_response import GetApplicablePoliciesResponse
-        from apache_polaris.sdk.catalog.models.list_policies_response import ListPoliciesResponse
-        from apache_polaris.sdk.catalog.models.load_policy_response import LoadPolicyResponse
-        from apache_polaris.sdk.catalog.models.policy import Policy
-        from apache_polaris.sdk.catalog.models.policy_attachment_target import PolicyAttachmentTarget
-        from apache_polaris.sdk.catalog.models.policy_identifier import PolicyIdentifier
-
-        models_to_patch = {
-            "ApplicablePolicy": ApplicablePolicy,
-            "GetApplicablePoliciesResponse": GetApplicablePoliciesResponse,
-            "ListPoliciesResponse": ListPoliciesResponse,
-            "LoadPolicyResponse": LoadPolicyResponse,
-            "Policy": Policy,
-            "PolicyAttachmentTarget": PolicyAttachmentTarget,
-            "PolicyIdentifier": PolicyIdentifier,
-        }
-
-        for name, model_class in models_to_patch.items():
-            setattr(apache_polaris.sdk.catalog.models, name, model_class)
-
-    @staticmethod
     def execute(args=None):
-        PolarisCli._patch_generated_models()
         options = Parser.parse(args)
         if options.command == Commands.PROFILES:
             from apache_polaris.cli.command import Command
