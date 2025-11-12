@@ -102,7 +102,7 @@ s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", ve
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.14.0" }
 smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.14.1" }
-smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.1" }
+smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.2" }
 spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark35" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
