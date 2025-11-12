@@ -1,11 +1,13 @@
 package org.apache.polaris.service.reporting;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Date;
-import net.minidev.json.JSONObject;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.metrics.CommitMetricsResult;
@@ -18,9 +20,12 @@ import org.apache.iceberg.metrics.ScanReport;
 public class AuditingMetricsReporter implements PolarisMetricsReporter {
   private final SecurityContext securityContext;
 
+  private final ObjectMapper objectMapper;
+
   @Inject
   public AuditingMetricsReporter(SecurityContext securityContext) {
     this.securityContext = securityContext;
+    this.objectMapper = new ObjectMapper();
   }
 
   private String getUserName() {
@@ -31,8 +36,8 @@ public class AuditingMetricsReporter implements PolarisMetricsReporter {
     }
   }
 
-  private JSONObject startAuditObject(String user) {
-    JSONObject output = new JSONObject();
+  private ObjectNode startAuditObject(String user) {
+    ObjectNode output = objectMapper.createObjectNode();
     output.put("type", "audit"); // REQUIRED FOR AUDIT LOGS
     output.put("timestamp", new Date().toString());
     output.put("user", user);
@@ -41,7 +46,7 @@ public class AuditingMetricsReporter implements PolarisMetricsReporter {
 
   @Override
   public void reportMetric(String prefix, TableIdentifier table, MetricsReport report) {
-    JSONObject output = startAuditObject(getUserName());
+    ObjectNode output = startAuditObject(getUserName());
     if (report instanceof CommitReport commitReport) {
       output.put("record", "commit");
       output.put("table", commitReport.tableName());
@@ -60,12 +65,17 @@ public class AuditingMetricsReporter implements PolarisMetricsReporter {
       output.put("record", "scan");
       output.put("table", scanReport.tableName());
       output.put("query", scanReport.filter().toString());
-      output.put("fields", scanReport.projectedFieldNames());
+      scanReport.projectedFieldNames().forEach(field -> output.withArray("fields").add(field));
       output.put(
           "elapsedTime",
           scanReport.scanMetrics().totalPlanningDuration().totalDuration().toMillis());
       output.put("tableSnapshot", scanReport.snapshotId());
     }
-    System.out.println(output.toJSONString());
+    try {
+      System.out.println(objectMapper.writeValueAsString(output));
+    } catch (JsonProcessingException jpe) {
+      System.out.println("Could not process report.");
+      jpe.printStackTrace();
+    }
   }
 }
