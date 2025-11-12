@@ -22,7 +22,7 @@ type: docs
 weight: 999
 ---
 
-Polaris has a set of tools to help bolster the Polaris ecosystem and provide additional functionality to work with Polaris and data lakehouses. These include:
+Polaris has a set of tools to bolster the Polaris ecosystem and provide additional functionality to work with Polaris and data lakehouses. These include:
 
 | Tool                                                    | Description                                                                                                                                             |
 |---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
