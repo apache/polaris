@@ -28,6 +28,7 @@ dependencies {
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
+  implementation("com.fasterxml.jackson.module:jackson-module-jsonSchema")
   implementation(libs.guava)
   implementation(libs.slf4j.api)
   implementation(libs.auth0.jwt)
@@ -58,3 +59,64 @@ dependencies {
   testImplementation(project(":polaris-async-java"))
   testImplementation(project(":polaris-idgen-mocks"))
 }
+
+// Task to generate JSON Schema from model classes
+tasks.register<JavaExec>("generateOpaSchema") {
+  group = "documentation"
+  description = "Generates JSON Schema for OPA authorization input"
+  classpath = sourceSets["main"].runtimeClasspath
+  mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
+  args("${projectDir}/opa-input-schema.json")
+  dependsOn(tasks.compileJava, tasks.named("jandex"))
+}
+
+// Task to validate that the committed schema matches the generated schema
+tasks.register<JavaExec>("validateOpaSchema") {
+  group = "verification"
+  description = "Validates that the committed OPA schema matches the generated schema"
+
+  val tempSchemaFile = layout.buildDirectory.file("tmp/opa-input-schema-generated.json")
+  val committedSchemaFile = file("${projectDir}/opa-input-schema.json")
+
+  classpath = sourceSets["main"].runtimeClasspath
+  mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
+  args(tempSchemaFile.get().asFile.absolutePath)
+  dependsOn(tasks.compileJava, tasks.named("jandex"))
+
+  doFirst {
+    // Ensure temp directory exists
+    tempSchemaFile.get().asFile.parentFile.mkdirs()
+  }
+
+  doLast {
+    val generatedContent = tempSchemaFile.get().asFile.readText().trim()
+    val committedContent = committedSchemaFile.readText().trim()
+
+    if (generatedContent != committedContent) {
+      throw GradleException(
+        """
+        |
+        |❌ OPA Schema validation failed!
+        |
+        |The committed opa-input-schema.json does not match the generated schema.
+        |This means the schema is out of sync with the model classes.
+        |
+        |To fix this, run:
+        |  ./gradlew :polaris-extensions-auth-opa:generateOpaSchema
+        |
+        |Then commit the updated opa-input-schema.json file.
+        |
+        |Committed file: ${committedSchemaFile.absolutePath}
+        |Generated file: ${tempSchemaFile.get().asFile.absolutePath}
+        |
+      """
+          .trimMargin()
+      )
+    }
+
+    logger.lifecycle("✅ OPA schema validation passed - schema is up to date")
+  }
+}
+
+// Add schema validation to the check task
+tasks.named("check") { dependsOn("validateOpaSchema") }

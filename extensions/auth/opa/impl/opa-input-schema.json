@@ -1,0 +1,68 @@
+{
+  "type" : "object",
+  "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:OpaAuthorizationInput",
+  "properties" : {
+    "actor" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:Actor",
+      "properties" : {
+        "principal" : {
+          "type" : "string"
+        },
+        "roles" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "action" : {
+      "type" : "string"
+    },
+    "resource" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:Resource",
+      "properties" : {
+        "targets" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:ResourceEntity",
+            "properties" : {
+              "type" : {
+                "type" : "string"
+              },
+              "name" : {
+                "type" : "string"
+              },
+              "parents" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "$ref" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:ResourceEntity"
+                }
+              }
+            }
+          }
+        },
+        "secondaries" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "$ref" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:ResourceEntity"
+          }
+        }
+      }
+    },
+    "context" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:Context",
+      "properties" : {
+        "request_id" : {
+          "type" : "string"
+        }
+      }
+    }
+  }
+}
