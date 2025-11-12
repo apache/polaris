@@ -96,7 +96,7 @@ docker compose up -d polaris
 docker compose up -d polaris-setup
 ```
 
-## Connecting From Spark
+## 8. Connecting From Spark
 
 ```shell
 bin/spark-sql \
@@ -104,15 +104,15 @@ bin/spark-sql \
     --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
     --conf spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog \
     --conf spark.sql.catalog.polaris.type=rest \
-    --conf spark.sql.catalog.polaris.io-impl="org.apache.iceberg.aws.s3.S3FileIO" \
-    --conf spark.sql.catalog.polaris.uri=http://polaris:8181/api/catalog \
+    --conf spark.sql.catalog.polaris.io-impl=org.apache.iceberg.aws.s3.S3FileIO \
+    --conf spark.sql.catalog.polaris.uri=http://localhost:8181/api/catalog \
     --conf spark.sql.catalog.polaris.token-refresh-enabled=true \
     --conf spark.sql.catalog.polaris.warehouse=quickstart_catalog \
     --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
     --conf spark.sql.catalog.polaris.credential=root:s3cr3t \
     --conf spark.sql.catalog.polaris.client.region=irrelevant \
-    --conf spark.sql.catalog.polaris.s3.access-key-id=$RGW_ACCESS_KEY \
-    --conf spark.sql.catalog.polaris.s3.secret-access-key=$RGW_SECRET_KEY
+    --conf spark.sql.catalog.polaris.s3.access-key-id=POLARIS123ACCESS \
+    --conf spark.sql.catalog.polaris.s3.secret-access-key=POLARIS456SECRET
 ```
 
 Note: `s3cr3t` is defined as the password for the `root` user in the `docker-compose.yml` file.
@@ -120,7 +120,7 @@ Note: `s3cr3t` is defined as the password for the `root` user in the `docker-com
 Note: The `client.region` configuration is required for the AWS S3 client to work, but it is not used in this example
 since Ceph does not require a specific region.
 
-## Running Queries
+## 9. Running Queries
 
 Run inside the Spark SQL shell:
 
