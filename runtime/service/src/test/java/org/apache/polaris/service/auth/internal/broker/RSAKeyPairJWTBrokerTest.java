@@ -64,14 +64,14 @@ public class RSAKeyPairJWTBrokerTest {
     Mockito.when(metastoreManager.findPrincipalById(polarisCallContext, principalId))
         .thenReturn(Optional.of(principal));
     KeyProvider provider = new LocalRSAKeyProvider(keyPair);
-    TokenBroker tokenBroker = new RSAKeyPairJWTBroker(metastoreManager, 420, provider);
+    TokenBroker tokenBroker =
+        new RSAKeyPairJWTBroker(metastoreManager, polarisCallContext, 420, provider);
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
             clientId,
             mainSecret,
             TokenRequestValidator.CLIENT_CREDENTIALS,
             scope,
-            polarisCallContext,
             TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);

@@ -398,13 +398,14 @@ public class ServiceProducers {
   @RequestScoped
   public TokenBroker tokenBroker(
       AuthenticationRealmConfiguration config,
-      RealmContext realmContext,
-      @Any Instance<TokenBrokerFactory> tokenBrokerFactories) {
+      @Any Instance<TokenBrokerFactory> tokenBrokerFactories,
+      PolarisMetaStoreManager polarisMetaStoreManager,
+      CallContext callContext) {
     String type =
         config.type() == AuthenticationType.EXTERNAL ? "none" : config.tokenBroker().type();
     TokenBrokerFactory tokenBrokerFactory =
         tokenBrokerFactories.select(Identifier.Literal.of(type)).get();
-    return tokenBrokerFactory.apply(realmContext);
+    return tokenBrokerFactory.create(polarisMetaStoreManager, callContext.getPolarisCallContext());
   }
 
   // other beans
