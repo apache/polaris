@@ -49,6 +49,10 @@ dependencies {
     api(project(":polaris-nodes-spi"))
     api(project(":polaris-nodes-store-nosql"))
 
+    api(project(":polaris-persistence-nosql-authz-api"))
+    api(project(":polaris-persistence-nosql-authz-impl"))
+    api(project(":polaris-persistence-nosql-authz-spi"))
+
     api(project(":polaris-persistence-nosql-realms-api"))
     api(project(":polaris-persistence-nosql-realms-impl"))
     api(project(":polaris-persistence-nosql-realms-spi"))
