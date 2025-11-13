@@ -313,12 +313,6 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Install Helm GPG plugin
-        run: |
-          # `|| true` makes installation idempotent in case plugins are pre-installed or installations are cached
-          helm plugin install https://github.com/technosophos/helm-gpg || true
-          helm plugin list
-
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
@@ -328,16 +322,28 @@ jobs:
           git_commit_gpgsign: true
 
       - name: Create Helm package
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
+          echo "::add-mask::$GPG_PASSPHRASE"
+
           source "${LIBS_DIR}/_exec.sh"
 
+          gpg --export-secret-keys > $GNUPGHOME/secring.gpg
+          gpg --export > $GNUPGHOME/pubring.gpg
+          echo "$GPG_PASSPHRASE" > $GNUPGHOME/passphrase
+
           exec_process cd helm
-          exec_process helm package polaris
-          exec_process helm gpg sign polaris-${version_without_rc}.tgz
+          exec_process helm package polaris --sign --key "." --keyring $GNUPGHOME/secring.gpg --passphrase-file $GNUPGHOME/passphrase
+          exec_process helm verify polaris-${version_without_rc}.tgz
+
           calculate_sha512 polaris-${version_without_rc}.tgz
           exec_process gpg --armor --output polaris-${version_without_rc}.tgz.asc --detach-sig polaris-${version_without_rc}.tgz
           calculate_sha512 polaris-${version_without_rc}.tgz.prov
           exec_process gpg --armor --output polaris-${version_without_rc}.tgz.prov.asc --detach-sig polaris-${version_without_rc}.tgz.prov
+
+          # Clean up temporary GPG directory
+          exec_process rm -f $GNUPGHOME/secring.gpg $GNUPGHOME/pubring.gpg $GNUPGHOME/passphrase
 
       - name: Stage Helm chart to Apache dist dev repository
         env:
