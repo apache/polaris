@@ -329,6 +329,9 @@ jobs:
 
           source "${LIBS_DIR}/_exec.sh"
 
+          # Make sure these files are always deleted
+          trap "rm -f $GNUPGHOME/secring.gpg $GNUPGHOME/pubring.gpg $GNUPGHOME/passphrase" EXIT
+
           gpg --export-secret-keys > $GNUPGHOME/secring.gpg
           gpg --export > $GNUPGHOME/pubring.gpg
           echo "$GPG_PASSPHRASE" > $GNUPGHOME/passphrase
@@ -341,9 +344,6 @@ jobs:
           exec_process gpg --armor --output polaris-${version_without_rc}.tgz.asc --detach-sig polaris-${version_without_rc}.tgz
           calculate_sha512 polaris-${version_without_rc}.tgz.prov
           exec_process gpg --armor --output polaris-${version_without_rc}.tgz.prov.asc --detach-sig polaris-${version_without_rc}.tgz.prov
-
-          # Clean up temporary GPG directory
-          exec_process rm -f $GNUPGHOME/secring.gpg $GNUPGHOME/pubring.gpg $GNUPGHOME/passphrase
 
       - name: Stage Helm chart to Apache dist dev repository
         env:
