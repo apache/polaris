@@ -24,7 +24,8 @@ cascade:
   type: docs
 ---
 
-Polaris has a set of projects to bolster the Polaris ecosystem and provide additional functionality to work with Polaris and data lakehouses. These include:
+Polaris has a set of projects to bolster the Polaris ecosystem and provide additional functionality to work with Polaris and data lakehouses.
+These include:
 
 | Tool                                                    | Description                                                                                                                                             |
 |---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|

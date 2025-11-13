@@ -22,6 +22,7 @@ type: docs
 weight: 500
 ---
 
-Polaris Benchmarks is a tool to measure the performance of Polaris. It can be used for comparing the performance of different Polaris instances or for monitoring the performance of a Polaris instance over time.
+Polaris Benchmarks is a tool to measure the performance of Polaris.
+It can be used for comparing the performance of different Polaris instances or for monitoring the performance of a Polaris instance over time.
 
 To use this tool, please see this [guide](https://github.com/apache/polaris-tools/blob/main/benchmarks/README.md).
