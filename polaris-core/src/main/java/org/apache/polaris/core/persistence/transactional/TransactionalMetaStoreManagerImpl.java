@@ -876,7 +876,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull void deletePrincipalSecrets(
+  public void deletePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     // get metastore we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());

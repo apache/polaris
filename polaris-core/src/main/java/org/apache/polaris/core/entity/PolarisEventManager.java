@@ -25,7 +25,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.persistence.BasePersistence;
 
 public interface PolarisEventManager {
-  @Nonnull
   default void writeEvents(
       @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
     BasePersistence ms = callCtx.getMetaStore();
