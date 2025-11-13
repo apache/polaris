@@ -18,8 +18,10 @@
  */
 package org.apache.polaris.extension.auth.opa.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -32,12 +34,13 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableResource.class)
 @JsonDeserialize(as = ImmutableResource.class)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public interface Resource {
   /** The primary target entities being accessed. */
-  @JsonProperty("targets")
+  @JsonInclude(JsonInclude.Include.NON_EMPTY)
   List<ResourceEntity> targets();
 
   /** Secondary entities involved in the operation (e.g., source table in RENAME). */
-  @JsonProperty("secondaries")
+  @JsonInclude(JsonInclude.Include.NON_EMPTY)
   List<ResourceEntity> secondaries();
 }

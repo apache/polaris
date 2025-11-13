@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.extension.auth.opa.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.polaris.immutables.PolarisImmutable;
 
@@ -33,20 +34,17 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableOpaAuthorizationInput.class)
 @JsonDeserialize(as = ImmutableOpaAuthorizationInput.class)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public interface OpaAuthorizationInput {
   /** The actor making the authorization request. */
-  @JsonProperty("actor")
   Actor actor();
 
   /** The action being requested (e.g., "CREATE_NAMESPACE", "READ_TABLE"). */
-  @JsonProperty("action")
   String action();
 
   /** The resource(s) being accessed. */
-  @JsonProperty("resource")
   Resource resource();
 
   /** Additional context about the request. */
-  @JsonProperty("context")
   Context context();
 }

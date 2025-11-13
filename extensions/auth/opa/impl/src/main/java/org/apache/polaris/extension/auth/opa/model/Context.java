@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.extension.auth.opa.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.polaris.immutables.PolarisImmutable;
 
@@ -31,8 +32,8 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableContext.class)
 @JsonDeserialize(as = ImmutableContext.class)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public interface Context {
   /** A unique identifier for correlating this request with OPA server logs. */
-  @JsonProperty("request_id")
   String requestId();
 }

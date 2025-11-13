@@ -5,9 +5,11 @@
     "actor" : {
       "type" : "object",
       "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:Actor",
+      "required" : true,
       "properties" : {
         "principal" : {
-          "type" : "string"
+          "type" : "string",
+          "required" : true
         },
         "roles" : {
           "type" : "array",
@@ -18,11 +20,13 @@
       }
     },
     "action" : {
-      "type" : "string"
+      "type" : "string",
+      "required" : true
     },
     "resource" : {
       "type" : "object",
       "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:Resource",
+      "required" : true,
       "properties" : {
         "targets" : {
           "type" : "array",
@@ -31,10 +35,12 @@
             "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:ResourceEntity",
             "properties" : {
               "type" : {
-                "type" : "string"
+                "type" : "string",
+                "required" : true
               },
               "name" : {
-                "type" : "string"
+                "type" : "string",
+                "required" : true
               },
               "parents" : {
                 "type" : "array",
@@ -58,9 +64,11 @@
     "context" : {
       "type" : "object",
       "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:Context",
+      "required" : true,
       "properties" : {
         "request_id" : {
-          "type" : "string"
+          "type" : "string",
+          "required" : true
         }
       }
     }

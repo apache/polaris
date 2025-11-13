@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.extension.auth.opa.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -32,12 +33,11 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableActor.class)
 @JsonDeserialize(as = ImmutableActor.class)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public interface Actor {
   /** The principal name or identifier. */
-  @JsonProperty("principal")
   String principal();
 
   /** The list of roles associated with the principal. */
-  @JsonProperty("roles")
   List<String> roles();
 }

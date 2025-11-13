@@ -18,10 +18,11 @@
  */
 package org.apache.polaris.extension.auth.opa.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.immutables.PolarisImmutable;
 
@@ -33,13 +34,12 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableResourceEntity.class)
 @JsonDeserialize(as = ImmutableResourceEntity.class)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public interface ResourceEntity {
   /** The type of the resource (e.g., "CATALOG", "NAMESPACE", "TABLE"). */
-  @JsonProperty("type")
   String type();
 
   /** The name of the resource. */
-  @JsonProperty("name")
   String name();
 
   /**
@@ -47,7 +47,6 @@ public interface ResourceEntity {
    *
    * <p>For example, a table might have parents: [catalog, namespace].
    */
-  @Nullable
-  @JsonProperty("parents")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   List<ResourceEntity> parents();
 }
