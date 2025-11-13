@@ -23,8 +23,8 @@ type: docs
 weight: 100
 ---
 
-{{< alert warning "Experimental Feature" >}}
-**OPA integration is currently an experimental feature** and may undergo breaking changes in future versions. Use with caution in production environments.
+{{< alert warning "Preview Feature" >}}
+**OPA integration is currently an preview feature** and may undergo breaking changes in future versions. Use with caution in production environments.
 {{< /alert >}}
 
 This page describes how to integrate Apache Polaris (Incubating) with [Open Policy Agent (OPA)](https://www.openpolicyagent.org/) for external authorization.
@@ -231,6 +231,14 @@ Common examples include:
 - Catalog operations: `CREATE_CATALOG`, `UPDATE_CATALOG`, `DELETE_CATALOG`
 - Namespace operations: `CREATE_NAMESPACE`, `UPDATE_NAMESPACE_PROPERTIES`, `DROP_NAMESPACE`
 
+{{< alert warning "Important Policy Considerations" >}}
+**Handle All Data Operations Explicitly**: When writing OPA policies, explicitly handle all `PolarisAuthorizableOperation` values that enable catalog, namespace and table operations. Operations not covered by your policy rules will fall through to your default decision. We recommend:
+- Setting `default allow := false` to deny by default
+- Explicitly allowing only operations your users need
+
+**Internal-Only Operations**: Some operations like `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE` and `CREATE_POLICY` manage Polaris's internal privilege system. **These should always be denied in OPA policies** since privilege management should be handled through Polaris's native authorization system, not external policies.
+{{< /alert >}}
+
 #### Resource Object
 
 | Field | Type | Description |
@@ -269,17 +277,47 @@ import future.keywords.in
 
 default allow := false
 
-# Admin role can do anything
+# Admin role can perform all catalog, namespace, and table operations
 allow if {
     "ADMIN" in input.actor.roles
+    input.action in [
+        # Catalog operations
+        "CREATE_CATALOG",
+        "UPDATE_CATALOG",
+        "DELETE_CATALOG",
+        "LIST_CATALOGS",
+        
+        # Namespace operations
+        "CREATE_NAMESPACE",
+        "UPDATE_NAMESPACE_PROPERTIES",
+        "DROP_NAMESPACE",
+        "LIST_NAMESPACES",
+        
+        # Table operations
+        "CREATE_TABLE_DIRECT",
+        "LOAD_TABLE_WITH_READ_DELEGATION",
+        "LOAD_TABLE_WITH_WRITE_DELEGATION",
+        "UPDATE_TABLE",
+        "DROP_TABLE_WITHOUT_PURGE",
+        # Add other data operations as needed
+    ]
 }
 
-# Data engineers can create/read/update tables
+# Data engineers can create/read/update tables and namespaces
 allow if {
     "DATA_ENGINEER" in input.actor.roles
-    input.action in ["CREATE_TABLE", "LOAD_TABLE_WITH_READ_DELEGATION", "UPDATE_TABLE"]
-    some target in input.resource.targets
-    target.type == "TABLE"
+    input.action in [
+        # Table operations
+        "CREATE_TABLE_DIRECT",
+        "LOAD_TABLE_WITH_READ_DELEGATION",
+        "LOAD_TABLE_WITH_WRITE_DELEGATION",
+        "UPDATE_TABLE",
+        
+        # Namespace operations
+        "CREATE_NAMESPACE",
+        "UPDATE_NAMESPACE_PROPERTIES",
+        "LIST_NAMESPACES"
+    ]
 }
 
 # Analysts can only read tables
@@ -291,6 +329,10 @@ allow if {
 }
 ```
 
+{{< alert info "Best Practice" >}}
+**Explicit Allow Lists for Data Operations Only**: The example above uses an explicit allow-list approach where only catalog, namespace, and table operations are permitted. Policy and grant operations (like `ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE`, `CREATE_POLICY`) are automatically denied by the `default allow := false` since they're not in any allow rule. This ensures privilege management remains within Polaris's native authorization system, and new operations added in future Polaris versions will be denied by default until you explicitly allow them.
+{{< /alert >}}
+
 ### Testing Policies
 
 OPA supports policy testing using `opa test`. Create a test file (e.g., `polaris_test.rego`):
@@ -300,15 +342,15 @@ package polaris.authz
 
 import future.keywords.if
 
-test_admin_can_do_anything if {
+test_admin_can_create_catalog if {
     allow with input as {
         "actor": {"principal": "admin", "roles": ["ADMIN"]},
-        "action": "DELETE_TABLE",
+        "action": "CREATE_CATALOG",
         "resource": {
             "targets": [{
-                "type": "TABLE",
-                "name": "sensitive_table",
-                "parents": [{"type": "CATALOG", "name": "prod"}]
+                "type": "CATALOG",
+                "name": "new_catalog",
+                "parents": []
             }],
             "secondaries": []
         },
@@ -316,15 +358,15 @@ test_admin_can_do_anything if {
     }
 }
 
-test_analyst_cannot_delete if {
+test_admin_cannot_grant_privileges if {
     not allow with input as {
-        "actor": {"principal": "analyst", "roles": ["ANALYST"]},
-        "action": "DELETE_TABLE",
+        "actor": {"principal": "admin", "roles": ["ADMIN"]},
+        "action": "ADD_PRINCIPAL_GRANT_TO_PRINCIPAL_ROLE",
         "resource": {
             "targets": [{
-                "type": "TABLE",
-                "name": "table",
-                "parents": [{"type": "CATALOG", "name": "prod"}]
+                "type": "PRINCIPAL_ROLE",
+                "name": "some_role",
+                "parents": []
             }],
             "secondaries": []
         },
@@ -332,15 +374,72 @@ test_analyst_cannot_delete if {
     }
 }
 
-test_analyst_can_read if {
+test_data_engineer_can_create_table if {
+    allow with input as {
+        "actor": {"principal": "engineer", "roles": ["DATA_ENGINEER"]},
+        "action": "CREATE_TABLE_DIRECT",
+        "resource": {
+            "targets": [{
+                "type": "TABLE",
+                "name": "new_table",
+                "parents": [
+                    {"type": "CATALOG", "name": "prod"},
+                    {"type": "NAMESPACE", "name": "schema1"}
+                ]
+            }],
+            "secondaries": []
+        },
+        "context": {"request_id": "test"}
+    }
+}
+
+test_data_engineer_cannot_delete_catalog if {
+    not allow with input as {
+        "actor": {"principal": "engineer", "roles": ["DATA_ENGINEER"]},
+        "action": "DELETE_CATALOG",
+        "resource": {
+            "targets": [{
+                "type": "CATALOG",
+                "name": "prod",
+                "parents": []
+            }],
+            "secondaries": []
+        },
+        "context": {"request_id": "test"}
+    }
+}
+
+test_analyst_can_read_table if {
     allow with input as {
         "actor": {"principal": "analyst", "roles": ["ANALYST"]},
         "action": "LOAD_TABLE_WITH_READ_DELEGATION",
         "resource": {
             "targets": [{
                 "type": "TABLE",
-                "name": "table",
-                "parents": [{"type": "CATALOG", "name": "prod"}]
+                "name": "data_table",
+                "parents": [
+                    {"type": "CATALOG", "name": "prod"},
+                    {"type": "NAMESPACE", "name": "schema1"}
+                ]
+            }],
+            "secondaries": []
+        },
+        "context": {"request_id": "test"}
+    }
+}
+
+test_analyst_cannot_update_table if {
+    not allow with input as {
+        "actor": {"principal": "analyst", "roles": ["ANALYST"]},
+        "action": "UPDATE_TABLE",
+        "resource": {
+            "targets": [{
+                "type": "TABLE",
+                "name": "data_table",
+                "parents": [
+                    {"type": "CATALOG", "name": "prod"},
+                    {"type": "NAMESPACE", "name": "schema1"}
+                ]
             }],
             "secondaries": []
         },
