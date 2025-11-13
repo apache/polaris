@@ -32,7 +32,6 @@ dependencies {
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
-  implementation("com.fasterxml.jackson.module:jackson-module-jsonSchema")
   implementation(libs.guava)
   implementation(libs.slf4j.api)
   implementation(libs.auth0.jwt)
