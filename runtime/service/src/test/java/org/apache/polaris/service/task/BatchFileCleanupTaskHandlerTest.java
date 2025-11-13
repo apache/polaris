@@ -22,6 +22,8 @@ import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.IOException;
@@ -30,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -43,34 +46,43 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.TestFileIOFactory;
-import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @QuarkusTest
 public class BatchFileCleanupTaskHandlerTest {
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  private final RealmContext realmContext = () -> "realmName";
+  @Inject CallContext callContext;
+  @InjectMock TaskFileIOSupplier taskFileIOSupplier;
 
-  private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
-    return new TaskFileIOSupplier(
-        new TestFileIOFactory(fileIO), Mockito.mock(StorageAccessConfigProvider.class));
+  private final RealmContext realmContext = () -> "realmName";
+  private PolarisCallContext polarisCallContext;
+  private ExecutorService executor;
+
+  @BeforeEach
+  public void beforeEach() {
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    polarisCallContext = callContext.getPolarisCallContext();
+    executor = Executors.newSingleThreadExecutor();
   }
 
-  private PolarisCallContext newCallContext() {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore);
+  @AfterEach
+  public void afterEach() {
+    executor.shutdownNow();
+  }
+
+  private BatchFileCleanupTaskHandler newBatchFileCleanupTaskHandler(FileIO fileIO) {
+    Mockito.when(taskFileIOSupplier.apply(Mockito.any(), Mockito.any())).thenReturn(fileIO);
+    return new BatchFileCleanupTaskHandler(taskFileIOSupplier, executor);
   }
 
   @Test
   public void testMetadataFileCleanup() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -79,9 +91,7 @@ public class BatchFileCleanupTaskHandlerTest {
           }
         };
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-    BatchFileCleanupTaskHandler handler =
-        new BatchFileCleanupTaskHandler(
-            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
 
     long snapshotId1 = 100L;
     ManifestFile manifestFile1 =
@@ -179,12 +189,9 @@ public class BatchFileCleanupTaskHandlerTest {
 
   @Test
   public void testMetadataFileCleanupIfFileNotExist() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-    BatchFileCleanupTaskHandler handler =
-        new BatchFileCleanupTaskHandler(
-            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
@@ -219,7 +226,6 @@ public class BatchFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupWithRetries() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -240,9 +246,7 @@ public class BatchFileCleanupTaskHandlerTest {
           }
         };
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-    BatchFileCleanupTaskHandler handler =
-        new BatchFileCleanupTaskHandler(
-            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(

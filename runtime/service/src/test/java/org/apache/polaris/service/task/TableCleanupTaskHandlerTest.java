@@ -21,6 +21,7 @@ package org.apache.polaris.service.task;
 import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -48,8 +49,6 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.service.TestFileIOFactory;
-import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,13 +61,12 @@ class TableCleanupTaskHandlerTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject CallContext callContext;
+  @InjectMock TaskFileIOSupplier taskFileIOSupplier;
 
   private final RealmContext realmContext = () -> "realmName";
 
   private TableCleanupTaskHandler newTableCleanupTaskHandler(FileIO fileIO) {
-    TaskFileIOSupplier taskFileIOSupplier =
-        new TaskFileIOSupplier(
-            new TestFileIOFactory(fileIO), Mockito.mock(StorageAccessConfigProvider.class));
+    Mockito.when(taskFileIOSupplier.apply(Mockito.any(), Mockito.any())).thenReturn(fileIO);
     return new TableCleanupTaskHandler(
         Mockito.mock(), clock, metaStoreManagerFactory, taskFileIOSupplier);
   }

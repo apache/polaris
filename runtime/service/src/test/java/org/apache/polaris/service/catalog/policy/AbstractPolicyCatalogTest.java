@@ -76,7 +76,6 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
-import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -132,6 +131,7 @@ public abstract class AbstractPolicyCatalogTest {
   @Inject CallContext callContext;
   @Inject RealmConfig realmConfig;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
+  @Inject FileIOFactory fileIOFactory;
 
   private PolicyCatalog policyCatalog;
   private IcebergCatalog icebergCatalog;
@@ -139,7 +139,6 @@ public abstract class AbstractPolicyCatalogTest {
   private String realmName;
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
-  private FileIOFactory fileIOFactory;
   private PolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
 
@@ -214,7 +213,6 @@ public abstract class AbstractPolicyCatalogTest {
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
-    this.fileIOFactory = new DefaultFileIOFactory();
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
