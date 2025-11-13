@@ -23,35 +23,39 @@ type: docs
 weight: 600
 ---
 
-The default server configuration is intended for development and testing. When you deploy Polaris in production,
-review and apply the following checklist:
+The default server configuration is intended for development and testing. When you deploy Polaris in production, review
+and apply the following checklist:
+
 - [ ] Configure OAuth2 keys
 - [ ] Enforce realm header validation (`require-header=true`)
 - [ ] Use a durable metastore (JDBC + PostgreSQL)
 - [ ] Bootstrap valid realms in the metastore
 - [ ] Disable local FILE storage
+- [ ] Polaris Server Header
+- [ ] Upgrade considerations
+- [ ] Cloud Storage Specific Configuration
 
 ### Configure OAuth2
 
-Polaris authentication requires specifying a token broker factory type. Two implementations are
-supported out of the box:
+Polaris authentication requires specifying a token broker factory type. Two implementations are supported out of the
+box:
 
 - [rsa-key-pair] uses a pair of public and private keys;
 - [symmetric-key] uses a shared secret.
 
-[rsa-key-pair]: https://github.com/apache/polaris/blob/390f1fa57bb1af24a21aa95fdbff49a46e31add7/service/common/src/main/java/org/apache/polaris/service/auth/JWTRSAKeyPairFactory.java
-[symmetric-key]: https://github.com/apache/polaris/blob/390f1fa57bb1af24a21aa95fdbff49a46e31add7/service/common/src/main/java/org/apache/polaris/service/auth/JWTSymmetricKeyFactory.java
+[rsa-key-pair]:
+  https://github.com/apache/polaris/blob/390f1fa57bb1af24a21aa95fdbff49a46e31add7/service/common/src/main/java/org/apache/polaris/service/auth/JWTRSAKeyPairFactory.java
+[symmetric-key]:
+  https://github.com/apache/polaris/blob/390f1fa57bb1af24a21aa95fdbff49a46e31add7/service/common/src/main/java/org/apache/polaris/service/auth/JWTSymmetricKeyFactory.java
 
 By default, Polaris uses `rsa-key-pair`, with randomly generated keys.
 
-{{< alert important >}}
-The default `rsa-key-pair` configuration is not suitable when deploying many replicas of Polaris,
-as each replica will have its own set of keys. This will cause token validation to fail when a
-request is routed to a different replica than the one that issued the token.
-{{< /alert >}}
+{{< alert important >}} The default `rsa-key-pair` configuration is not suitable when deploying many replicas of
+Polaris, as each replica will have its own set of keys. This will cause token validation to fail when a request is
+routed to a different replica than the one that issued the token. {{< /alert >}}
 
-It is highly recommended to configure Polaris with previously-generated RSA keys. This can be done
-by setting the following properties:
+It is highly recommended to configure Polaris with previously-generated RSA keys. This can be done by setting the
+following properties:
 
 ```properties
 polaris.authentication.token-broker.type=rsa-key-pair
@@ -73,28 +77,25 @@ polaris.authentication.token-broker.type=symmetric-key
 polaris.authentication.token-broker.symmetric-key.file=/tmp/symmetric.key
 ```
 
-Note: it is also possible to set the symmetric key secret directly in the configuration file. If
-possible, pass the secret as an environment variable to avoid storing sensitive information in the
-configuration file:
+Note: it is also possible to set the symmetric key secret directly in the configuration file. If possible, pass the
+secret as an environment variable to avoid storing sensitive information in the configuration file:
 
 ```properties
 polaris.authentication.token-broker.symmetric-key.secret=${POLARIS_SYMMETRIC_KEY_SECRET}
 ```
 
-Finally, you can also configure the token broker to use a maximum lifespan by setting the following
-property:
+Finally, you can also configure the token broker to use a maximum lifespan by setting the following property:
 
 ```properties
 polaris.authentication.token-broker.max-token-generation=PT1H
 ```
 
-Typically, in Kubernetes, you would define the keys as a `Secret` and mount them as files in the
-container.
+Typically, in Kubernetes, you would define the keys as a `Secret` and mount them as files in the container.
 
 ### Realm Context Resolver
 
-By default, Polaris resolves realms based on incoming request headers. You can configure the realm
-context resolver by setting the following properties in `application.properties`:
+By default, Polaris resolves realms based on incoming request headers. You can configure the realm context resolver by
+setting the following properties in `application.properties`:
 
 ```properties
 polaris.realm-context.realms=POLARIS,MY-REALM
@@ -103,41 +104,38 @@ polaris.realm-context.header-name=Polaris-Realm
 
 Where:
 
-- `realms` is a comma-separated list of allowed realms. This setting _must_ be correctly configured.
-  At least one realm must be specified.
-- `header-name` is the name of the header used to resolve the realm; by default, it is
-  `Polaris-Realm`.
+- `realms` is a comma-separated list of allowed realms. This setting _must_ be correctly configured. At least one realm
+  must be specified.
+- `header-name` is the name of the header used to resolve the realm; by default, it is `Polaris-Realm`.
 
-If a request contains the specified header, Polaris will use the realm specified in the header. If
-the realm is not in the list of allowed realms, Polaris will return a `404 Not Found` response.
+If a request contains the specified header, Polaris will use the realm specified in the header. If the realm is not in
+the list of allowed realms, Polaris will return a `404 Not Found` response.
 
-If a request _does not_ contain the specified header, however, by default Polaris will use the first
-realm in the list as the default realm. In the above example, `POLARIS` is the default realm and
-would be used if the `Polaris-Realm` header is not present in the request.
+If a request _does not_ contain the specified header, however, by default Polaris will use the first realm in the list
+as the default realm. In the above example, `POLARIS` is the default realm and would be used if the `Polaris-Realm`
+header is not present in the request.
 
-This is not recommended for production use, as it may lead to security vulnerabilities. To avoid
-this, set the following property to `true`:
+This is not recommended for production use, as it may lead to security vulnerabilities. To avoid this, set the following
+property to `true`:
 
 ```properties
 polaris.realm-context.require-header=true
 ```
 
-This will cause Polaris to also return a `404 Not Found` response if the realm header is not present
-in the request.
+This will cause Polaris to also return a `404 Not Found` response if the realm header is not present in the request.
 
 ### Metastore Configuration
 
-A metastore should be configured with an implementation that durably persists Polaris entities. By
-default, Polaris uses an in-memory metastore.
+A metastore should be configured with an implementation that durably persists Polaris entities. By default, Polaris uses
+an in-memory metastore.
 
-{{< alert important >}}
-The default in-memory metastore is not suitable for production use, as it will lose all data
-when the server is restarted; it is also unusable when multiple Polaris replicas are used.
-{{< /alert >}}
+{{< alert important >}} The default in-memory metastore is not suitable for production use, as it will lose all data
+when the server is restarted; it is also unusable when multiple Polaris replicas are used. {{< /alert >}}
 
-To enable a durable metastore, configure your system to use the Relational JDBC-backed metastore.
-This implementation leverages Quarkus for datasource management and supports configuration through
-environment variables or JVM -D flags at startup. For more information, refer to the [Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
+To enable a durable metastore, configure your system to use the Relational JDBC-backed metastore. This implementation
+leverages Quarkus for datasource management and supports configuration through environment variables or JVM -D flags at
+startup. For more information, refer to the
+[Quarkus configuration reference](https://quarkus.io/guides/config-reference#env-file).
 
 Configure the metastore by setting the following ENV variables:
 
@@ -149,28 +147,24 @@ QUARKUS_DATASOURCE_PASSWORD=<your-password>
 QUARKUS_DATASOURCE_JDBC_URL=<jdbc-url-of-postgres>
 ```
 
+The relational JDBC metastore is a Quarkus-managed datasource and only supports Postgres and H2 as of now. Please refer
+to the documentation here: [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
 
-The relational JDBC metastore is a Quarkus-managed datasource and only supports Postgres and H2 as of now.
-Please refer to the documentation here:
-[Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
-
-{{< alert important >}}
-Be sure to secure your metastore backend since it will be storing sensitive data and catalog
-metadata.
-{{< /alert >}}
+{{< alert important >}} Be sure to secure your metastore backend since it will be storing sensitive data and catalog
+metadata. {{< /alert >}}
 
 Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
 
 ### Bootstrapping
 
-Before using Polaris, you must **bootstrap** the metastore. This is a manual operation that must be
-performed **only once** for each realm in order to prepare the metastore to integrate with Polaris.
+Before using Polaris, you must **bootstrap** the metastore. This is a manual operation that must be performed **only
+once** for each realm in order to prepare the metastore to integrate with Polaris.
 
-By default, when bootstrapping a new realm, Polaris will create randomised `CLIENT_ID` and
-`CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend.
+By default, when bootstrapping a new realm, Polaris will create randomised `CLIENT_ID` and `CLIENT_SECRET` for the
+`root` principal and store their hashes in the metastore backend.
 
-Depending on your database, this may not be convenient as the generated credentials are not stored
-in clear text in the database.
+Depending on your database, this may not be convenient as the generated credentials are not stored in clear text in the
+database.
 
 In order to provide your own credentials for `root` principal (so you can request tokens via
 `api/catalog/v1/oauth/tokens`), use the [Polaris Admin Tool]({{% ref "admin-tool" %}})
@@ -196,9 +190,9 @@ Which should return an access token:
 }
 ```
 
-If you used a non-default realm name, add the appropriate request header to the `curl` command,
-otherwise Polaris will resolve the realm to the first one in the configuration
-`polaris.realm-context.realms`. Here is an example to set realm header:
+If you used a non-default realm name, add the appropriate request header to the `curl` command, otherwise Polaris will
+resolve the realm to the first one in the configuration `polaris.realm-context.realms`. Here is an example to set realm
+header:
 
 ```bash
 curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
@@ -210,27 +204,39 @@ curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
 ```
 
 ### Disable FILE Storage Type
-By default, Polaris allows using the local file system (`FILE`) for catalog storage. This is fine for testing,
-but **not recommended for production**. To disable it, set the supported storage types like this:
+
+By default, Polaris allows using the local file system (`FILE`) for catalog storage. This is fine for testing, but **not
+recommended for production**. To disable it, set the supported storage types like this:
+
 ```hocon
 polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES" = [ "S3", "Azure" ]
 ```
+
 Leave out `FILE` to prevent its use. Only include the storage types your setup needs.
 
 ### Polaris Server Header
 
-Polaris can emit an informational `Server` HTTP response header using Quarkus' built-in header
-configuration. Add the following property to one of the supported configuration sources (for example,
-`application.properties`) to enable it with the Polaris version string:
+Polaris can emit an informational `Server` HTTP response header using Quarkus' built-in header configuration. Add the
+following property to one of the supported configuration sources (for example, `application.properties`) to enable it
+with the Polaris version string:
 
 ```properties
 quarkus.http.header."Server".value=Polaris/${quarkus.application.version}
 ```
 
-If you prefer to scope the header to specific environments, only set the property for the desired
-profile (for example, `%prod`).
+If you prefer to scope the header to specific environments, only set the property for the desired profile (for example,
+`%prod`).
+
+### Cloud Storage Specific Configuration
+
+GCS + Polaris: When using token vending for fine-grained access in Google Cloud Storage (GCS) with Apache Iceberg on
+Polaris, ensure that both IAM roles and HNS ACLs (if HNS is enabled) are properly configured. Even with the correct IAM
+role (e.g., `roles/storage.objectAdmin`), access to paths such as `gs://<bucket>/idsp_ns/sample_table4/` may fail with
+403 errors if HNS ACLs are missing for scoped tokens. The original access token may work, but scoped (vended) tokens
+require HNS ACLs on the base path or relevant subpath. Polaris does not require HNS to be enabled for basic operation,
+but if HNS is enabled and token vending is used, HNS ACLs are mandatory for scoped token access. Always verify HNS ACLs
+in addition to IAM roles when troubleshooting GCS access issues with token vending and HNS enabled.
 
 ### Upgrade Considerations
 
-The [Polaris Evolution](../evolution) page discusses backward compatibility and
-upgrade concerns.
+The [Polaris Evolution](../evolution) page discusses backward compatibility and upgrade concerns.
