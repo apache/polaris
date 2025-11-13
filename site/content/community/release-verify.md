@@ -17,9 +17,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: Release Manager Guide
+linkTitle: Release Verification Guide
 type: docs
 weight: 500
 ---
 
-{{< readfile "/release-guide.md" >}}
+{{< readfile "/release-verify.md" >}}
