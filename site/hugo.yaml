@@ -126,6 +126,11 @@ menu:
       parent: "releases"
       weight: 1000
 
+    - name: "Projects"
+      identifier: "projects"
+      url: "/projects"
+      weight: 150
+
     - name: "Downloads"
       identifier: "downloads"
       url: "/downloads"

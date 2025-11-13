@@ -24,5 +24,5 @@ weight: 300
 ---
 
 There are two ways to migrate an existing Iceberg catalog to Polaris:
-1. Using the [Iceberg Catalog Migrator tool](../../../tools/iceberg-catalog-migrator/): A command-line tool to migrate Iceberg tables from one Iceberg catalog to another. This tool works with any existing Iceberg catalog including Polaris.
-2. Using the [Polaris Synchronizer tool](../../../tools/polaris-synchronizer/): A tool to migrate entities from one Polaris instance to another. This tool is specific to Polaris.
+1. Using the [Iceberg Catalog Migrator tool](../../../../../projects/iceberg-catalog-migrator/): A command-line tool to migrate Iceberg tables from one Iceberg catalog to another. This tool works with any existing Iceberg catalog including Polaris.
+2. Using the [Polaris Synchronizer tool](../../../../../projects/polaris-synchronizer/): A tool to migrate entities from one Polaris instance to another. This tool is specific to Polaris.

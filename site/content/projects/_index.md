@@ -17,12 +17,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Tools
-type: docs
-weight: 999
+linkTitle: 'Projects'
+title: 'Polaris Projects'
+weight: 150
+cascade:
+  type: docs
 ---
 
-Polaris has a set of tools to bolster the Polaris ecosystem and provide additional functionality to work with Polaris and data lakehouses. These include:
+Polaris has a set of projects to bolster the Polaris ecosystem and provide additional functionality to work with Polaris and data lakehouses. These include:
 
 | Tool                                                    | Description                                                                                                                                             |
 |---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
