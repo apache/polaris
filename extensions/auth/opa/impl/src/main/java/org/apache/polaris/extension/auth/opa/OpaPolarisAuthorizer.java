@@ -29,10 +29,13 @@ import java.util.List;
 import java.util.Set;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpException;
 import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.iceberg.exceptions.ForbiddenException;
@@ -63,8 +66,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   /**
    * Public constructor that accepts a complete policy URI.
    *
-   * @param policyUri The required URI for the OPA endpoint. For example,
-   *     https://opa.example.com/v1/polaris/allow
+   * @param policyUri The required URI for the OPA endpoint. For example, {@code
+   *     https://opa.example.com/v1/polaris/allow}.
    * @param httpClient Apache HttpClient (required, injected by CDI). SSL configuration should be
    *     handled by the CDI producer.
    * @param objectMapper Jackson ObjectMapper for JSON serialization (required). Shared across
@@ -174,25 +177,33 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       httpPost.setEntity(new StringEntity(inputJson, ContentType.APPLICATION_JSON));
 
       // Execute request
-      try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-        int statusCode = response.getCode();
-        if (statusCode != 200) {
-          return false;
-        }
-
-        // Read and parse response
-        String responseBody;
-        try {
-          responseBody = EntityUtils.toString(response.getEntity());
-        } catch (ParseException e) {
-          throw new RuntimeException("Failed to parse OPA response", e);
-        }
-        ObjectNode respNode = (ObjectNode) objectMapper.readTree(responseBody);
-        return respNode.path("result").path("allow").asBoolean(false);
-      }
-    } catch (IOException e) {
+      return httpClientExecute(httpPost, this::queryOpaCheckResponse);
+    } catch (HttpException | IOException e) {
       throw new RuntimeException("OPA query failed", e);
     }
+  }
+
+  <T> T httpClientExecute(
+      ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
+      throws HttpException, IOException {
+    return httpClient.execute(request, responseHandler);
+  }
+
+  private boolean queryOpaCheckResponse(ClassicHttpResponse response) throws IOException {
+    int statusCode = response.getCode();
+    if (statusCode != 200) {
+      return false;
+    }
+
+    // Read and parse response
+    String responseBody;
+    try {
+      responseBody = EntityUtils.toString(response.getEntity());
+    } catch (ParseException e) {
+      throw new RuntimeException("Failed to parse OPA response", e);
+    }
+    ObjectNode respNode = (ObjectNode) objectMapper.readTree(responseBody);
+    return respNode.path("result").path("allow").asBoolean(false);
   }
 
   /**
