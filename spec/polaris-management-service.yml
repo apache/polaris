@@ -1103,10 +1103,16 @@ components:
               type: string
               description: the aws user arn used to assume the aws role
               example: "arn:aws:iam::123456789001:user/abc1-b-self1234"
-            kmsKeyArn:
+            currentKmsKey:
               type: string
               description: the aws kms key arn used to encrypt s3 data
               example: "arn:aws:kms::123456789001:key/01234578"
+            allowedKmsKeys:
+              type: array
+              description: the aws kms keys arn used to encrypt s3 data
+              items:
+                type: string
+              example: ["arn:aws:kms::123456789001:key/01234578"]
             region:
               type: string
               description: the aws region where data is stored

@@ -19,7 +19,6 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
@@ -54,6 +53,5 @@ public interface PolarisCredentialVendor {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint,
-      Map props);
+      Optional<String> refreshCredentialsEndpoint);
 }

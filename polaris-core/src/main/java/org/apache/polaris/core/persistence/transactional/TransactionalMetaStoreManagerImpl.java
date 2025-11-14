@@ -2095,8 +2095,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint,
-      Map props) {
+      Optional<String> refreshCredentialsEndpoint) {
 
     // get meta store session we should be using
     TransactionalPersistence ms = ((TransactionalPersistence) callCtx.getMetaStore());
@@ -2132,8 +2131,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
               allowListOperation,
               allowedReadLocations,
               allowedWriteLocations,
-              refreshCredentialsEndpoint,
-              props);
+              refreshCredentialsEndpoint);
       return new ScopedCredentialsResult(accessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(

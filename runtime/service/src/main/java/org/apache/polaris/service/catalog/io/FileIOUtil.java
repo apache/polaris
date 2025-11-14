@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog.io;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -83,8 +82,7 @@ public class FileIOUtil {
       Set<String> tableLocations,
       Set<PolarisStorageActions> storageActions,
       PolarisEntity entity,
-      Optional<String> refreshCredentialsEndpoint,
-      Map props) {
+      Optional<String> refreshCredentialsEndpoint) {
 
     boolean skipCredentialSubscopingIndirection =
         callContext
@@ -115,8 +113,7 @@ public class FileIOUtil {
             allowList,
             tableLocations,
             writeLocations,
-            refreshCredentialsEndpoint,
-            props);
+            refreshCredentialsEndpoint);
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)

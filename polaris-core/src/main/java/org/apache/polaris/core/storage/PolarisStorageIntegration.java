@@ -67,8 +67,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint,
-      Map props);
+      Optional<String> refreshCredentialsEndpoint);
 
   /**
    * Validate access for the provided operation actions and locations.

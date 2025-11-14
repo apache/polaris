@@ -77,8 +77,7 @@ public class GcpCredentialsStorageIntegration
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint,
-      Map props) {
+      Optional<String> refreshCredentialsEndpoint) {
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {

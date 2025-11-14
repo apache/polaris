@@ -71,7 +71,7 @@ public class AwsStorageConfigurationInfoTest {
   private static ImmutableAwsStorageConfigurationInfo.Builder newBuilder() {
     return AwsStorageConfigurationInfo.builder()
         .roleARN("arn:aws:iam::123456789012:role/polaris-test")
-        .kmsKeyArn("arn:aws:kms:us-east-1:012345678901:key/444343245");
+        .currentKmsKey("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test
