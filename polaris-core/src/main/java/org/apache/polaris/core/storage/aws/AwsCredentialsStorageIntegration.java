@@ -29,8 +29,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
@@ -76,7 +76,7 @@ public class AwsCredentialsStorageIntegration
 
   /** {@inheritDoc} */
   @Override
-  public AccessConfig getSubscopedCreds(
+  public StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
@@ -86,8 +86,7 @@ public class AwsCredentialsStorageIntegration
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
     String region = storageConfig.getRegion();
-    String accountId = storageConfig.getAwsAccountId();
-    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
     if (shouldUseSts(storageConfig)) {
       AssumeRoleRequest.Builder request =
@@ -97,7 +96,7 @@ public class AwsCredentialsStorageIntegration
               .roleSessionName("PolarisAwsCredentialsStorageIntegration")
               .policy(
                   policyString(
-                          storageConfig,
+                          storageConfig.getAwsPartition(),
                           allowListOperation,
                           allowedReadLocations,
                           allowedWriteLocations,
@@ -173,7 +172,7 @@ public class AwsCredentialsStorageIntegration
    * and just assuming the role with full privileges.
    */
   private IamPolicy policyString(
-      AwsStorageConfigurationInfo storageConfigurationInfo,
+      String awsPartition,
       boolean allowList,
       Set<String> readLocations,
       Set<String> writeLocations,
@@ -188,10 +187,9 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
-    String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
-    String currentKmsKey = storageConfigurationInfo.currentKmsKey();
-    List<String> allowedKmsKeys = storageConfigurationInfo.allowedKmsKeys();
-
+    String arnPrefix = arnPrefixForPartition(awsPartition);
+      String currentKmsKey = storageConfigurationInfo.currentKmsKey();
+      List<String> allowedKmsKeys = storageConfigurationInfo.allowedKmsKeys();
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(

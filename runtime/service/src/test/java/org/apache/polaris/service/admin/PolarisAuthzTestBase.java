@@ -87,8 +87,8 @@ import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
@@ -203,7 +203,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisConfigurationStore configurationStore;
   @Inject protected StorageCredentialCache storageCredentialCache;
   @Inject protected ResolverFactory resolverFactory;
-  @Inject protected AccessConfigProvider accessConfigProvider;
+  @Inject protected StorageAccessConfigProvider storageAccessConfigProvider;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -257,6 +257,7 @@ public abstract class PolarisAuthzTestBase {
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     this.authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    QuarkusMock.installMockForType(authenticatedRoot, PolarisPrincipal.class);
 
     this.adminService =
         new PolarisAdminService(
@@ -498,7 +499,7 @@ public abstract class PolarisAuthzTestBase {
             passthroughView,
             authenticatedRoot,
             Mockito.mock(),
-            accessConfigProvider,
+            storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     this.baseCatalog.initialize(
@@ -518,36 +519,37 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisCallContextCatalogFactory() {
-      this(null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
     public TestPolarisCallContextCatalogFactory(
         PolarisDiagnostics diagnostics,
         ResolverFactory resolverFactory,
-        MetaStoreManagerFactory metaStoreManagerFactory,
         TaskExecutor taskExecutor,
-        AccessConfigProvider accessConfigProvider,
+        StorageAccessConfigProvider accessConfigProvider,
         FileIOFactory fileIOFactory,
-        PolarisEventListener polarisEventListener) {
+        PolarisEventListener polarisEventListener,
+        PolarisMetaStoreManager metaStoreManager,
+        CallContext callContext,
+        PolarisPrincipal principal) {
       super(
           diagnostics,
           resolverFactory,
-          metaStoreManagerFactory,
           taskExecutor,
           accessConfigProvider,
           fileIOFactory,
-          polarisEventListener);
+          polarisEventListener,
+          metaStoreManager,
+          callContext,
+          principal);
     }
 
     @Override
-    public Catalog createCallContextCatalog(
-        CallContext context,
-        PolarisPrincipal polarisPrincipal,
-        final PolarisResolutionManifest resolvedManifest) {
+    public Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
-      Catalog catalog = super.createCallContextCatalog(context, polarisPrincipal, resolvedManifest);
+      Catalog catalog = super.createCallContextCatalog(resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(

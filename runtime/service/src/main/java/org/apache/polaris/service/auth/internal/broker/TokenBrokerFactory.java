@@ -18,11 +18,14 @@
  */
 package org.apache.polaris.service.auth.internal.broker;
 
-import java.util.function.Function;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 
 /**
  * Factory that creates a {@link TokenBroker} for generating and parsing. The {@link TokenBroker} is
  * created based on the realm context.
  */
-public interface TokenBrokerFactory extends Function<RealmContext, TokenBroker> {}
+public interface TokenBrokerFactory {
+  TokenBroker create(
+      PolarisMetaStoreManager metaStoreManager, PolarisCallContext polarisCallContext);
+}

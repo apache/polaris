@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -67,6 +68,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
 import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.pagination.Page;
@@ -75,9 +77,9 @@ import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyMappingUtil;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -705,7 +707,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull Page<PolarisBaseEntity> loadEntities(
+  public @Nonnull Page<PolarisBaseEntity> listFullEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
@@ -728,7 +730,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // with sensitive data; but the window of inconsistency is only the duration of a single
     // in-flight request (the cache-based resolution follows a different path entirely).
 
-    return ms.loadEntities(
+    return ms.listFullEntities(
         callCtx,
         catalogId,
         parentId,
@@ -1200,7 +1202,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
-          ms.loadEntities(
+          ms.listFullEntities(
                   callCtx,
                   catalogId,
                   catalogId,
@@ -1520,7 +1522,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // find all available tasks
     Page<PolarisBaseEntity> availableTasks =
-        ms.loadEntities(
+        ms.listFullEntities(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
@@ -1594,7 +1596,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
-      PolarisEntityType entityType,
+      @Nonnull PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
@@ -1633,14 +1635,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             entityId);
 
     try {
-      AccessConfig accessConfig =
+      StorageAccessConfig storageAccessConfig =
           storageIntegration.getSubscopedCreds(
               callCtx.getRealmConfig(),
               allowListOperation,
               allowedReadLocations,
               allowedWriteLocations,
               refreshCredentialsEndpoint);
-      return new ScopedCredentialsResult(accessConfig);
+      return new ScopedCredentialsResult(storageAccessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(
           BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
@@ -1758,6 +1760,56 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
           this.loadResolvedEntityByName(callCtx, entityCatalogId, parentId, entityType, entityName);
     }
     return result;
+  }
+
+  @Nonnull
+  @Override
+  public ResolvedEntitiesResult loadResolvedEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull List<PolarisEntityId> entityIds) {
+    BasePersistence ms = callCtx.getMetaStore();
+    return getResolvedEntitiesResult(callCtx, ms, entityIds, i -> entityType);
+  }
+
+  private static ResolvedEntitiesResult getResolvedEntitiesResult(
+      PolarisCallContext callCtx,
+      BasePersistence ms,
+      List<PolarisEntityId> entityIds,
+      Function<Integer, PolarisEntityType> entityTypeForIndex) {
+    List<PolarisBaseEntity> entities = ms.lookupEntities(callCtx, entityIds);
+    // mimic the behavior of loadEntity above, return null if not found or type mismatch
+    List<ResolvedPolarisEntity> ret =
+        IntStream.range(0, entityIds.size())
+            .mapToObj(
+                i -> {
+                  if (entities.get(i) != null
+                      && !entities.get(i).getType().equals(entityTypeForIndex.apply(i))) {
+                    return null;
+                  } else {
+                    return entities.get(i);
+                  }
+                })
+            .map(e -> toResolvedPolarisEntity(callCtx, e, ms))
+            .collect(Collectors.toList());
+    return new ResolvedEntitiesResult(ret);
+  }
+
+  private static ResolvedPolarisEntity toResolvedPolarisEntity(
+      PolarisCallContext callCtx, PolarisBaseEntity e, BasePersistence ms) {
+    if (e == null) {
+      return null;
+    } else {
+      // load the grant records
+      final List<PolarisGrantRecord> grantRecordsAsSecurable =
+          ms.loadAllGrantRecordsOnSecurable(callCtx, e.getCatalogId(), e.getId());
+      final List<PolarisGrantRecord> grantRecordsAsGrantee =
+          e.getType().isGrantee()
+              ? ms.loadAllGrantRecordsOnGrantee(callCtx, e.getCatalogId(), e.getId())
+              : List.of();
+      return new ResolvedPolarisEntity(
+          PolarisEntity.of(e), grantRecordsAsGrantee, grantRecordsAsSecurable);
+    }
   }
 
   /** {@inheritDoc} */

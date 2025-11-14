@@ -32,6 +32,7 @@ import fnmatch
 import logging
 import argparse
 import shutil
+import ast
 
 # Paths
 CLIENT_DIR = Path(__file__).parent
@@ -44,9 +45,11 @@ OPEN_API_GENERATOR_IGNORE = os.path.join(CLIENT_DIR, ".openapi-generator-ignore"
 
 # Open API Generator Configs
 PACKAGE_NAME_POLARIS_MANAGEMENT = (
-    "--additional-properties=packageName=polaris.management"
+  "--additional-properties=packageName=apache_polaris.sdk.management"
 )
-PACKAGE_NAME_POLARIS_CATALOG = "--additional-properties=packageName=polaris.catalog"
+PACKAGE_NAME_POLARIS_CATALOG = (
+  "--additional-properties=packageName=apache_polaris.sdk.catalog"
+)
 PYTHON_VERSION = "--additional-properties=pythonVersion=3.10"
 
 # Cleanup
@@ -59,14 +62,15 @@ EXCLUDE_PATHS = [
     Path(".openapi-generator-ignore"),
     Path(".pytest_cache/"),
     Path("test/test_cli_parsing.py"),
-    Path("cli/"),
-    Path("polaris/__pycache__/"),
-    Path("polaris/catalog/__pycache__/"),
-    Path("polaris/catalog/models/__pycache__/"),
-    Path("polaris/catalog/api/__pycache__/"),
-    Path("polaris/management/__pycache__/"),
-    Path("polaris/management/models/__pycache__/"),
-    Path("polaris/management/api/__pycache__/"),
+    Path("apache_polaris/__pycache__/"),
+    Path("apache_polaris/cli/"),
+    Path("apache_polaris/sdk/__pycache__/"),
+    Path("apache_polaris/sdk/catalog/__pycache__/"),
+    Path("apache_polaris/sdk/catalog/models/__pycache__/"),
+    Path("apache_polaris/sdk/catalog/api/__pycache__/"),
+    Path("apache_polaris/sdk/management/__pycache__/"),
+    Path("apache_polaris/sdk/management/models/__pycache__/"),
+    Path("apache_polaris/sdk/management/api/__pycache__/"),
     Path("integration_tests/"),
     Path(".github/workflows/python.yml"),
     Path(".gitlab-ci.yml"),
@@ -303,7 +307,51 @@ def build() -> None:
     generate_polaris_management_client()
     generate_polaris_catalog_client()
     generate_iceberg_catalog_client()
+    fix_catalog_models_init()
     prepend_licenses()
+
+
+def fix_catalog_models_init() -> None:
+    """
+    Regenerate the `apache_polaris.sdk.catalog.models.__init__.py` file by consolidating
+    imports for all model classes found under `apache_polaris/sdk/catalog/models`.
+
+    This ensures that rerunning the OpenAPI Generator (which overwrites `__init__.py`)
+    does not cause missing imports for earlier generated model files.
+    """
+    logger.info("Fixing catalog models __init__.py...")
+    models_dir = CLIENT_DIR / "apache_polaris" / "sdk" / "catalog" / "models"
+    init_py = models_dir / "__init__.py"
+
+    # Get all python files in the models directory except __init__.py
+    model_files = [
+        f for f in models_dir.glob("*.py") if f.is_file() and f.name != "__init__.py"
+    ]
+
+    # Generate import statements
+    imports = []
+    for model_file in sorted(model_files):
+        module_name = model_file.stem
+        with open(model_file, "r") as f:
+            tree = ast.parse(f.read())
+        class_name = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                # Find the first class that doesn't start with an underscore
+                if not node.name.startswith("_"):
+                    class_name = node.name
+                    break
+        if class_name:
+            imports.append(
+                f"from apache_polaris.sdk.catalog.models.{module_name} import {class_name}"
+            )
+        else:
+            logger.warning(f"Could not find a suitable class in {model_file}")
+
+    # Write the new __init__.py
+    with open(init_py, "w") as f:
+        f.write("\n".join(sorted(imports)))
+    logger.info("Catalog models __init__.py fixed.")
 
 
 def main():

@@ -51,7 +51,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.TestFileIOFactory;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,7 +72,7 @@ class TableCleanupTaskHandlerTest {
   private TableCleanupTaskHandler newTableCleanupTaskHandler(FileIO fileIO) {
     TaskFileIOSupplier taskFileIOSupplier =
         new TaskFileIOSupplier(
-            new TestFileIOFactory(fileIO), Mockito.mock(AccessConfigProvider.class));
+            new TestFileIOFactory(fileIO), Mockito.mock(StorageAccessConfigProvider.class));
     return new TableCleanupTaskHandler(
         Mockito.mock(), clock, metaStoreManagerFactory, taskFileIOSupplier);
   }

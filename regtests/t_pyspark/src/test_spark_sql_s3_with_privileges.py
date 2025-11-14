@@ -30,13 +30,13 @@ from py4j.protocol import Py4JJavaError
 
 
 from iceberg_spark import IcebergSparkSession
-from polaris.catalog import CreateNamespaceRequest, CreateTableRequest, ModelSchema
-from polaris.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
-from polaris.catalog.api.iceberg_o_auth2_api import IcebergOAuth2API
-from polaris.catalog.api_client import ApiClient as CatalogApiClient
-from polaris.catalog.configuration import Configuration
-from polaris.management import ApiClient as ManagementApiClient
-from polaris.management import PolarisDefaultApi, Principal, PrincipalRole, CatalogRole, \
+from apache_polaris.sdk.catalog import CreateNamespaceRequest, CreateTableRequest, ModelSchema
+from apache_polaris.sdk.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
+from apache_polaris.sdk.catalog.api.iceberg_o_auth2_api import IcebergOAuth2API
+from apache_polaris.sdk.catalog.api_client import ApiClient as CatalogApiClient
+from apache_polaris.sdk.catalog.configuration import Configuration
+from apache_polaris.sdk.management import ApiClient as ManagementApiClient
+from apache_polaris.sdk.management import PolarisDefaultApi, Principal, PrincipalRole, CatalogRole, \
   CatalogGrant, CatalogPrivilege, ApiException, CreateCatalogRoleRequest, CreatePrincipalRoleRequest, \
   CreatePrincipalRequest, AddGrantRequest, GrantCatalogRoleRequest, GrantPrincipalRoleRequest, UpdateCatalogRequest
 

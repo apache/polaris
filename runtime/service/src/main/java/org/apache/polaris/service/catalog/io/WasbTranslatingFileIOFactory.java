@@ -24,7 +24,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @ApplicationScoped
@@ -40,7 +40,7 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull AccessConfig accessConfig,
+      @Nonnull StorageAccessConfig accessConfig,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties) {
     return new WasbTranslatingFileIO(

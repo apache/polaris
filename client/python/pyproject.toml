@@ -18,7 +18,7 @@
 #
 
 [project]
-name = "polaris"
+name = "apache-polaris"
 version = "1.2.0"
 description = "Apache Polaris"
 authors = [
@@ -42,13 +42,16 @@ homepage = "https://polaris.apache.org/"
 repository = "https://github.com/apache/polaris/"
 
 [project.scripts]
-polaris = "cli.polaris_cli:main"
+polaris = "apache_polaris.cli.polaris_cli:main"
 
 [tool.poetry]
 requires-poetry = "==2.2.1"
+packages = [
+    { include = "apache_polaris" }
+]
 include = [
-    { path = "polaris/**", format = ["sdist", "wheel"] },
-    { path = "cli/**", format = ["sdist", "wheel"] },
+    { path = "apache_polaris/cli", format = ["sdist", "wheel"] },
+    { path = "apache_polaris/sdk", format = ["sdist", "wheel"] },
     { path = "templates/**", format = "sdist" },
     { path = "spec/**", format = "sdist" },
 ]
@@ -60,9 +63,9 @@ flake8 = ">= 4.0.0"
 types-python-dateutil = ">= 2.8.19.14"
 mypy = ">=1.18, <=1.18.2"
 pyiceberg = "==0.10.0"
-pre-commit = "==4.3.0"
+pre-commit = "==4.4.0"
 openapi-generator-cli = "==7.17.0"
-pip-licenses-cli = "==3.0.0"
+pip-licenses-cli = "==3.0.1"
 
 [tool.pip-licenses]
 partial-match = true

@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.context.catalog;
 
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,57 +28,60 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@RequestScoped
 public class PolarisCallContextCatalogFactory implements CallContextCatalogFactory {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);
 
   private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
-  private final AccessConfigProvider accessConfigProvider;
+  private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final FileIOFactory fileIOFactory;
   private final ResolverFactory resolverFactory;
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final PolarisEventListener polarisEventListener;
+  private final PolarisMetaStoreManager metaStoreManager;
+  private final CallContext callContext;
+  private final PolarisPrincipal principal;
 
   @Inject
   public PolarisCallContextCatalogFactory(
       PolarisDiagnostics diagnostics,
       ResolverFactory resolverFactory,
-      MetaStoreManagerFactory metaStoreManagerFactory,
       TaskExecutor taskExecutor,
-      AccessConfigProvider accessConfigProvider,
+      StorageAccessConfigProvider storageAccessConfigProvider,
       FileIOFactory fileIOFactory,
-      PolarisEventListener polarisEventListener) {
+      PolarisEventListener polarisEventListener,
+      PolarisMetaStoreManager metaStoreManager,
+      CallContext callContext,
+      PolarisPrincipal principal) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.taskExecutor = taskExecutor;
-    this.accessConfigProvider = accessConfigProvider;
+    this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.fileIOFactory = fileIOFactory;
     this.polarisEventListener = polarisEventListener;
+    this.metaStoreManager = metaStoreManager;
+    this.callContext = callContext;
+    this.principal = principal;
   }
 
   @Override
-  public Catalog createCallContextCatalog(
-      CallContext context,
-      PolarisPrincipal polarisPrincipal,
-      final PolarisResolutionManifest resolvedManifest) {
+  public Catalog createCallContextCatalog(final PolarisResolutionManifest resolvedManifest) {
     CatalogEntity catalog = resolvedManifest.getResolvedCatalogEntity();
     String catalogName = catalog.getName();
 
-    String realm = context.getRealmContext().getRealmIdentifier();
+    String realm = callContext.getRealmContext().getRealmIdentifier();
     String catalogKey = realm + "/" + catalogName;
     LOGGER.debug("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
@@ -86,12 +89,12 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
         new IcebergCatalog(
             diagnostics,
             resolverFactory,
-            metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
-            context,
+            metaStoreManager,
+            callContext,
             resolvedManifest,
-            polarisPrincipal,
+            principal,
             taskExecutor,
-            accessConfigProvider,
+            storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener);
 

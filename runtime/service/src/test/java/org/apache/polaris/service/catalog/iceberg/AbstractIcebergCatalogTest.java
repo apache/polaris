@@ -126,21 +126,22 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -252,7 +253,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   private PolarisPrincipal authenticatedRoot;
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
-  private AccessConfigProvider accessConfigProvider;
+  private StorageAccessConfigProvider storageAccessConfigProvider;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -290,8 +291,11 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
-    accessConfigProvider =
-        new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+    StorageCredentialsVendor storageCredentialsVendor =
+        new StorageCredentialsVendor(metaStoreManager, polarisContext);
+    storageAccessConfigProvider =
+        new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
+
     EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =
         (principal, referenceCatalogName) ->
@@ -454,7 +458,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         passthroughView,
         authenticatedRoot,
         taskExecutor,
-        accessConfigProvider,
+        storageAccessConfigProvider,
         fileIOFactory,
         polarisEventListener);
   }
@@ -1905,7 +1909,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),
                 Optional.empty())
-            .getAccessConfig()
+            .getStorageAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)
         .isNotNull()
@@ -1914,8 +1918,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), SECRET_ACCESS_KEY)
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), SESSION_TOKEN);
     FileIO fileIO =
-        new TaskFileIOSupplier(new DefaultFileIOFactory(), accessConfigProvider)
-            .apply(taskEntity, TABLE, polarisContext);
+        new TaskFileIOSupplier(new DefaultFileIOFactory(), storageAccessConfigProvider)
+            .apply(taskEntity, TABLE);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
     Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
         .isInstanceOf(InMemoryFileIO.class);
@@ -2083,14 +2087,14 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             new FileIOFactory() {
               @Override
               public FileIO loadFileIO(
-                  @Nonnull AccessConfig accessConfig,
+                  @Nonnull StorageAccessConfig accessConfig,
                   @Nonnull String ioImplClassName,
                   @Nonnull Map<String, String> properties) {
                 return measured.loadFileIO(
                     accessConfig, "org.apache.iceberg.inmemory.InMemoryFileIO", Map.of());
               }
             },
-            accessConfigProvider);
+            storageAccessConfigProvider);
 
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(

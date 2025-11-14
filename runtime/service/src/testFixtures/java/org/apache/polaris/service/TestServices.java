@@ -60,6 +60,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -70,9 +71,9 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
@@ -112,7 +113,7 @@ public record TestServices(
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
     PolarisEventListener polarisEventListener,
-    AccessConfigProvider accessConfigProvider) {
+    StorageAccessConfigProvider storageAccessConfigProvider) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -206,6 +207,39 @@ public record TestServices(
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
 
+      CreatePrincipalResult createdPrincipal =
+          metaStoreManager.createPrincipal(
+              callContext.getPolarisCallContext(),
+              new PrincipalEntity.Builder()
+                  .setName("test-principal")
+                  .setCreateTimestamp(Instant.now().toEpochMilli())
+                  .setCredentialRotationRequiredState()
+                  .build());
+      PolarisPrincipal principal = PolarisPrincipal.of(createdPrincipal.getPrincipal(), Set.of());
+
+      SecurityContext securityContext =
+          new SecurityContext() {
+            @Override
+            public Principal getUserPrincipal() {
+              return principal;
+            }
+
+            @Override
+            public boolean isUserInRole(String s) {
+              return false;
+            }
+
+            @Override
+            public boolean isSecure() {
+              return true;
+            }
+
+            @Override
+            public String getAuthenticationScheme() {
+              return "";
+            }
+          };
+
       EntityCache entityCache =
           metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
       ResolverFactory resolverFactory =
@@ -240,8 +274,10 @@ public record TestServices(
       PolarisCredentialManager credentialManager =
           new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
 
-      AccessConfigProvider accessConfigProvider =
-          new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+      StorageCredentialsVendor storageCredentialsVendor =
+          new StorageCredentialsVendor(metaStoreManager, callContext);
+      StorageAccessConfigProvider storageAccessConfigProvider =
+          new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
@@ -251,11 +287,13 @@ public record TestServices(
           new PolarisCallContextCatalogFactory(
               diagnostics,
               resolverFactory,
-              metaStoreManagerFactory,
               taskExecutor,
-              accessConfigProvider,
+              storageAccessConfigProvider,
               fileIOFactory,
-              polarisEventListener);
+              polarisEventListener,
+              metaStoreManager,
+              callContext,
+              principal);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
@@ -282,45 +320,12 @@ public record TestServices(
               catalogHandlerUtils,
               externalCatalogFactory,
               polarisEventListener,
-              accessConfigProvider,
+              storageAccessConfigProvider,
               new DefaultMetricsReporter());
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
       IcebergRestConfigurationApi restConfigurationApi =
           new IcebergRestConfigurationApi(catalogService);
-
-      CreatePrincipalResult createdPrincipal =
-          metaStoreManager.createPrincipal(
-              callContext.getPolarisCallContext(),
-              new PrincipalEntity.Builder()
-                  .setName("test-principal")
-                  .setCreateTimestamp(Instant.now().toEpochMilli())
-                  .setCredentialRotationRequiredState()
-                  .build());
-      PolarisPrincipal principal = PolarisPrincipal.of(createdPrincipal.getPrincipal(), Set.of());
-
-      SecurityContext securityContext =
-          new SecurityContext() {
-            @Override
-            public Principal getUserPrincipal() {
-              return principal;
-            }
-
-            @Override
-            public boolean isUserInRole(String s) {
-              return false;
-            }
-
-            @Override
-            public boolean isSecure() {
-              return true;
-            }
-
-            @Override
-            public String getAuthenticationScheme() {
-              return "";
-            }
-          };
 
       PolarisAdminService adminService =
           new PolarisAdminService(
@@ -357,7 +362,7 @@ public record TestServices(
           fileIOFactory,
           taskExecutor,
           polarisEventListener,
-          accessConfigProvider);
+          storageAccessConfigProvider);
     }
   }
 

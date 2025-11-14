@@ -19,18 +19,9 @@
 package org.apache.polaris.service.catalog.io;
 
 import java.util.Optional;
-import java.util.Set;
-import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.storage.AccessConfig;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
-import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,69 +51,5 @@ public class FileIOUtil {
                         .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
             .findFirst();
     return storageInfoEntity;
-  }
-
-  /**
-   * Refreshes or generates subscoped creds for accessing table storage based on the params.
-   *
-   * <p>Use cases:
-   *
-   * <ul>
-   *   <li>In {@link IcebergCatalog}, subscoped credentials are generated or refreshed when the
-   *       client sends a loadTable request to vend credentials.
-   *   <li>In {@link DefaultFileIOFactory}, subscoped credentials are obtained to access the storage
-   *       and read/write metadata JSON files.
-   * </ul>
-   */
-  public static AccessConfig refreshAccessConfig(
-      CallContext callContext,
-      StorageCredentialCache storageCredentialCache,
-      PolarisCredentialVendor credentialVendor,
-      TableIdentifier tableIdentifier,
-      Set<String> tableLocations,
-      Set<PolarisStorageActions> storageActions,
-      PolarisEntity entity,
-      Optional<String> refreshCredentialsEndpoint) {
-
-    boolean skipCredentialSubscopingIndirection =
-        callContext
-            .getRealmConfig()
-            .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
-    if (skipCredentialSubscopingIndirection) {
-      LOGGER
-          .atDebug()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log("Skipping generation of subscoped creds for table");
-      return AccessConfig.builder().build();
-    }
-
-    boolean allowList =
-        storageActions.contains(PolarisStorageActions.LIST)
-            || storageActions.contains(PolarisStorageActions.ALL);
-    Set<String> writeLocations =
-        storageActions.contains(PolarisStorageActions.WRITE)
-                || storageActions.contains(PolarisStorageActions.DELETE)
-                || storageActions.contains(PolarisStorageActions.ALL)
-            ? tableLocations
-            : Set.of();
-    AccessConfig accessConfig =
-        storageCredentialCache.getOrGenerateSubScopeCreds(
-            credentialVendor,
-            callContext.getPolarisCallContext(),
-            entity,
-            allowList,
-            tableLocations,
-            writeLocations,
-            refreshCredentialsEndpoint);
-    LOGGER
-        .atDebug()
-        .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("credentialKeys", accessConfig.credentials().keySet())
-        .addKeyValue("extraProperties", accessConfig.extraProperties())
-        .log("Loaded scoped credentials for table");
-    if (accessConfig.credentials().isEmpty()) {
-      LOGGER.debug("No credentials found for table");
-    }
-    return accessConfig;
   }
 }

@@ -44,8 +44,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -144,20 +144,20 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     return BlobInfo.newBuilder(blobId).build();
   }
 
-  private Storage createStorageClient(AccessConfig accessConfig) {
+  private Storage createStorageClient(StorageAccessConfig storageAccessConfig) {
     AccessToken accessToken =
         new AccessToken(
-            accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN),
+            storageAccessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN),
             new Date(
                 Long.parseLong(
-                    accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT))));
+                    storageAccessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT))));
     return StorageOptions.newBuilder()
         .setCredentials(GoogleCredentials.create(accessToken))
         .build()
         .getService();
   }
 
-  private AccessConfig subscopedCredsForOperations(
+  private StorageAccessConfig subscopedCredsForOperations(
       List<String> allowedReadLoc, List<String> allowedWriteLoc, boolean allowListAction)
       throws IOException {
     GcpStorageConfigurationInfo gcpConfig =
@@ -302,10 +302,10 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .isNotNull()
         .isNotEmpty();
 
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         subscopedCredsForOperations(
             List.of("gs://bucket1/path/to/data"), List.of("gs://bucket1/path/to/data"), true);
-    assertThat(accessConfig.get(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT))
+    assertThat(storageAccessConfig.get(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT))
         .isEqualTo(REFRESH_ENDPOINT);
   }
 

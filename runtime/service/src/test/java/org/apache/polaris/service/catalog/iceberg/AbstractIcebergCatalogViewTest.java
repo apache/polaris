@@ -53,13 +53,14 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -121,7 +122,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
   private RealmConfig realmConfig;
-  private AccessConfigProvider accessConfigProvider;
+  private StorageAccessConfigProvider storageAccessConfigProvider;
 
   private TestPolarisEventListener testPolarisEventListener;
 
@@ -162,8 +163,11 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             metaStoreManagerFactory.getOrCreateSession(realmContext),
             configurationStore);
     realmConfig = polarisContext.getRealmConfig();
-    accessConfigProvider =
-        new AccessConfigProvider(storageCredentialCache, metaStoreManagerFactory);
+    StorageCredentialsVendor storageCredentialsVendor =
+        new StorageCredentialsVendor(metaStoreManager, polarisContext);
+    storageAccessConfigProvider =
+        new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
+
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     PolarisPrincipal authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
@@ -215,7 +219,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             passthroughView,
             authenticatedRoot,
             Mockito.mock(),
-            accessConfigProvider,
+            storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener);
     Map<String, String> properties =
