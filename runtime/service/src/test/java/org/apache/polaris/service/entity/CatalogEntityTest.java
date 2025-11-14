@@ -321,7 +321,7 @@ public class CatalogEntityTest {
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/test-role")
             .setExternalId("externalId")
-            .setKmsKeyArn("arn:aws:kms:us-east-1:012345678901:key/444343245")
+            .setCurrentKmsKey("arn:aws:kms:us-east-1:012345678901:key/444343245")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(baseLocation))
@@ -335,7 +335,7 @@ public class CatalogEntityTest {
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
-    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getKmsKeyArn())
+    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getCurrentKmsKey())
         .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
@@ -345,7 +345,7 @@ public class CatalogEntityTest {
     AwsStorageConfigInfo storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/test-role")
-            .setKmsKeyArn("arn:aws:kms:us-east-1:012345678901:key/444343245")
+            .setCurrentKmsKey("arn:aws:kms:us-east-1:012345678901:key/444343245")
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -361,7 +361,7 @@ public class CatalogEntityTest {
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
-    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getKmsKeyArn())
+    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getCurrentKmsKey())
         .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
