@@ -27,10 +27,10 @@ import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputDirectory
-import org.gradle.api.tasks.SourceSetContainer
-import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskAction
+import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.provideDelegate
+import org.gradle.kotlin.dsl.withType
 
 @CacheableTask
 abstract class GeneratePomProperties : DefaultTask() {
@@ -76,37 +76,29 @@ fun addAdditionalJarContent(project: Project): Unit =
       val generatePomProperties =
         tasks.register("generatePomProperties", GeneratePomProperties::class.java) {}
 
-      val additionalJarContent =
-        tasks.register("additionalJarContent", Sync::class.java) {
-          // Have to manually declare the inputs of this task here on top of the from/include below
-          inputs.files(
-            rootProject.layout.files("gradle/jar-licenses/LICENSE", "gradle/jar-licenses/NOTICE")
-          )
-          inputs.property("GAV", "${project.group}:${project.name}:${project.version}")
-          dependsOn("generatePomFileForMavenPublication")
-          if (!project.file("src/main/resources/META-INF/LICENSE").exists()) {
-            from(rootProject.rootDir).include("gradle/jar-licenses/LICENSE").eachFile {
-              this.path = "META-INF/$sourceName"
-            }
+      tasks.withType(Jar::class).configureEach {
+        if (!project.file("src/main/resources/META-INF/LICENSE").exists()) {
+          from(rootProject.rootDir).include("gradle/jar-licenses/LICENSE").eachFile {
+            this.path = "META-INF/$sourceName"
           }
-          if (!project.file("src/main/resources/META-INF/NOTICE").exists()) {
-            from(rootProject.rootDir).include("gradle/jar-licenses/NOTICE").eachFile {
-              this.path = "META-INF/$sourceName"
-            }
-          }
-          from(tasks.named("generatePomFileForMavenPublication")) {
-            include("pom-default.xml")
-            eachFile { this.path = "META-INF/maven/${project.group}/${project.name}/pom.xml" }
-          }
-          into(layout.buildDirectory.dir("license-for-jar"))
+        } else if (name == "javadocJar") {
+          from("src/main/resources").include("META-INF/LICENSE")
         }
-
-      tasks.named("processResources") { dependsOn("additionalJarContent") }
-
-      val sourceSets: SourceSetContainer by project
-      sourceSets.named("main") {
-        resources.srcDir(additionalJarContent)
-        resources.srcDir(generatePomProperties)
+        if (!project.file("src/main/resources/META-INF/NOTICE").exists()) {
+          from(rootProject.rootDir).include("gradle/jar-licenses/NOTICE").eachFile {
+            this.path = "META-INF/$sourceName"
+          }
+        } else if (name == "javadocJar") {
+          from("src/main/resources").include("META-INF/NOTICE")
+        }
+        from(tasks.named("generatePomFileForMavenPublication")) {
+          include("pom-default.xml")
+          eachFile { this.path = "META-INF/maven/${project.group}/${project.name}/pom.xml" }
+        }
+        from(generatePomProperties) {
+          include("**")
+          eachFile { path = sourcePath }
+        }
       }
     }
   }

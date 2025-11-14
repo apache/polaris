@@ -78,19 +78,12 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
     project.run {
       extensions.create("publishingHelper", PublishingHelperExtension::class.java)
 
-      val isRelease = project.hasProperty("release")
-
-      // Adds Git/Build/System related information to the generated jars, if the `release` project
-      // property is present. Do not add that information in development builds, so that the
-      // generated jars are still cacheable for Gradle.
-      if (isRelease || project.hasProperty("jarWithGitInfo")) {
-        // Runs `git`, considered expensive, so guarded behind project properties.
-        tasks.withType<Jar>().configureEach {
-          manifest { MemoizedJarInfo.applyJarManifestAttributes(rootProject, attributes) }
-        }
-
-        addAdditionalJarContent(this)
+      tasks.withType<Jar>().configureEach {
+        System.err.println("CONFIGURE on $path")
+        manifest { MemoizedJarInfo.applyJarManifestAttributes(rootProject, attributes) }
       }
+
+      addAdditionalJarContent(this)
 
       apply(plugin = "maven-publish")
       apply(plugin = "signing")
