@@ -79,11 +79,8 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
       extensions.create("publishingHelper", PublishingHelperExtension::class.java)
 
       tasks.withType<Jar>().configureEach {
-        System.err.println("CONFIGURE on $path")
         manifest { MemoizedJarInfo.applyJarManifestAttributes(rootProject, attributes) }
       }
-
-      addAdditionalJarContent(this)
 
       apply(plugin = "maven-publish")
       apply(plugin = "signing")
@@ -168,5 +165,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
           }
         }
       }
+
+      addAdditionalJarContent(this)
     }
 }
