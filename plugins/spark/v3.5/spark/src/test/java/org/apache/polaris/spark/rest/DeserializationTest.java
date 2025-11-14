@@ -22,6 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -66,11 +69,11 @@ public class DeserializationTest {
   @ParameterizedTest
   @MethodSource("genericTableTestCases")
   public void testLoadGenericTableRESTResponse(
-      String baseLocation, String doc, Map<String, String> properties)
+      String baseLocation, String doc, Map<String, String> properties, String format)
       throws JsonProcessingException {
     GenericTable.Builder tableBuilder =
         GenericTable.builder()
-            .setFormat("delta")
+            .setFormat(format)
             .setName("test-table")
             .setProperties(properties)
             .setDoc(doc);
@@ -82,7 +85,7 @@ public class DeserializationTest {
     String json = mapper.writeValueAsString(response);
     LoadGenericTableRESTResponse deserializedResponse =
         mapper.readValue(json, LoadGenericTableRESTResponse.class);
-    assertThat(deserializedResponse.getTable().getFormat()).isEqualTo("delta");
+    assertThat(deserializedResponse.getTable().getFormat()).isEqualTo(format);
     assertThat(deserializedResponse.getTable().getName()).isEqualTo("test-table");
     assertThat(deserializedResponse.getTable().getDoc()).isEqualTo(doc);
     assertThat(deserializedResponse.getTable().getProperties().size()).isEqualTo(properties.size());
@@ -92,13 +95,13 @@ public class DeserializationTest {
   @ParameterizedTest
   @MethodSource("genericTableTestCases")
   public void testCreateGenericTableRESTRequest(
-      String baseLocation, String doc, Map<String, String> properties)
+      String baseLocation, String doc, Map<String, String> properties, String format)
       throws JsonProcessingException {
     CreateGenericTableRESTRequest request =
         new CreateGenericTableRESTRequest(
             CreateGenericTableRequest.builder()
                 .setName("test-table")
-                .setFormat("delta")
+                .setFormat(format)
                 .setDoc(doc)
                 .setBaseLocation(baseLocation)
                 .setProperties(properties)
@@ -107,7 +110,7 @@ public class DeserializationTest {
     CreateGenericTableRESTRequest deserializedRequest =
         mapper.readValue(json, CreateGenericTableRESTRequest.class);
     assertThat(deserializedRequest.getName()).isEqualTo("test-table");
-    assertThat(deserializedRequest.getFormat()).isEqualTo("delta");
+    assertThat(deserializedRequest.getFormat()).isEqualTo(format);
     assertThat(deserializedRequest.getDoc()).isEqualTo(doc);
     assertThat(deserializedRequest.getProperties().size()).isEqualTo(properties.size());
     assertThat(deserializedRequest.getBaseLocation()).isEqualTo(baseLocation);
@@ -159,11 +162,14 @@ public class DeserializationTest {
     var properties = Maps.newHashMap();
     properties.put("location", "s3://path/to/table/");
     var baseLocation = "s3://path/to/table/";
-    return Stream.of(
-        Arguments.of(null, doc, properties),
-        Arguments.of(baseLocation, doc, properties),
-        Arguments.of(null, null, Maps.newHashMap()),
-        Arguments.of(baseLocation, doc, Maps.newHashMap()),
-        Arguments.of(baseLocation, null, properties));
+    List<Arguments> args = new ArrayList<>();
+    for (String format : Arrays.asList("delta", "hudi")) {
+      args.add(Arguments.of(null, doc, properties, format));
+      args.add(Arguments.of(baseLocation, doc, properties, format));
+      args.add(Arguments.of(null, null, Maps.newHashMap(), format));
+      args.add(Arguments.of(baseLocation, doc, Maps.newHashMap(), format));
+      args.add(Arguments.of(baseLocation, null, properties, format));
+    }
+    return args.stream();
   }
 }
