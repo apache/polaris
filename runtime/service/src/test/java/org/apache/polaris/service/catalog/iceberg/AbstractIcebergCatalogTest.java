@@ -38,6 +38,7 @@ import io.quarkus.test.junit.QuarkusMock;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
@@ -135,6 +136,7 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
@@ -237,6 +239,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
+  @Inject CatalogPrefixParser prefixParser;
 
   private IcebergCatalog catalog;
   private String realmName;
@@ -294,7 +297,12 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     StorageCredentialsVendor storageCredentialsVendor =
         new StorageCredentialsVendor(metaStoreManager, polarisContext);
     storageAccessConfigProvider =
-        new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
+        new StorageAccessConfigProvider(
+            storageCredentialCache,
+            storageCredentialsVendor,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock(UriInfo.class));
 
     EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =

@@ -80,7 +80,8 @@ public class AwsCredentialsStorageIntegration
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
     String region = storageConfig.getRegion();
-    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
+    StorageAccessConfig.Builder accessConfig =
+        StorageAccessConfig.builder().supportsCredentialVending(true).supportsRemoteSigning(false);
 
     if (shouldUseSts(storageConfig)) {
       AssumeRoleRequest.Builder request =
@@ -120,6 +121,31 @@ public class AwsCredentialsStorageIntegration
               });
     }
 
+    addCommonProperties(region, accessConfig, storageConfig, refreshCredentialsEndpoint);
+
+    return accessConfig.build();
+  }
+
+  public StorageAccessConfig getRemoteSigningAccessConfig(URI signerUri, String signerEndpoint) {
+
+    AwsStorageConfigurationInfo storageConfig = config();
+    StorageAccessConfig.Builder accessConfig =
+        StorageAccessConfig.builder().supportsCredentialVending(false).supportsRemoteSigning(true);
+
+    accessConfig.put(StorageAccessProperty.AWS_REMOTE_SIGNING_ENABLED, Boolean.TRUE.toString());
+    accessConfig.put(StorageAccessProperty.AWS_REMOTE_SIGNER_URI, signerUri.toString());
+    accessConfig.put(StorageAccessProperty.AWS_REMOTE_SIGNER_ENDPOINT, signerEndpoint);
+
+    addCommonProperties(storageConfig.getRegion(), accessConfig, storageConfig, Optional.empty());
+
+    return accessConfig.build();
+  }
+
+  private static void addCommonProperties(
+      String region,
+      StorageAccessConfig.Builder accessConfig,
+      AwsStorageConfigurationInfo storageConfig,
+      Optional<String> refreshCredentialsEndpoint) {
     if (region != null) {
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
@@ -148,8 +174,6 @@ public class AwsCredentialsStorageIntegration
           String.format(
               "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
     }
-
-    return accessConfig.build();
   }
 
   private boolean shouldUseSts(AwsStorageConfigurationInfo storageConfig) {

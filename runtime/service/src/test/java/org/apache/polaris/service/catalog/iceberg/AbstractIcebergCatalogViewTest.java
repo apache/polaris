@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog.iceberg;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -53,9 +54,11 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
@@ -114,6 +117,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject PolarisEventListener polarisEventListener;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject CatalogPrefixParser prefixParser;
 
   private IcebergCatalog catalog;
 
@@ -166,7 +171,12 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     StorageCredentialsVendor storageCredentialsVendor =
         new StorageCredentialsVendor(metaStoreManager, polarisContext);
     storageAccessConfigProvider =
-        new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
+        new StorageAccessConfigProvider(
+            storageCredentialCache,
+            storageCredentialsVendor,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock(UriInfo.class));
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

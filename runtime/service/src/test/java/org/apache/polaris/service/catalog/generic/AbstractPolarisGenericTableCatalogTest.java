@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -65,6 +66,7 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
@@ -107,6 +109,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject PolarisDiagnostics diagServices;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject CatalogPrefixParser prefixParser;
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
@@ -160,7 +163,12 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     StorageCredentialsVendor storageCredentialsVendor =
         new StorageCredentialsVendor(metaStoreManager, polarisContext);
     storageAccessConfigProvider =
-        new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
+        new StorageAccessConfigProvider(
+            storageCredentialCache,
+            storageCredentialsVendor,
+            storageIntegrationProvider,
+            prefixParser,
+            Mockito.mock(UriInfo.class));
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

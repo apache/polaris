@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -41,7 +42,7 @@ public class LocationRestrictions {
    * <p>All locations in this list have been validated to conform to the storage type's URI scheme
    * requirements during construction.
    */
-  private final List<String> allowedLocations;
+  private final Collection<String> allowedLocations;
 
   /**
    * The parent location for structured table enforcement.
@@ -54,13 +55,21 @@ public class LocationRestrictions {
 
   public LocationRestrictions(
       @Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo, String parentLocation) {
-    this.allowedLocations = storageConfigurationInfo.getAllowedLocations();
+    this(storageConfigurationInfo.getAllowedLocations(), parentLocation);
     allowedLocations.forEach(storageConfigurationInfo::validatePrefixForStorageType);
-    this.parentLocation = parentLocation;
   }
 
   public LocationRestrictions(@Nonnull PolarisStorageConfigurationInfo storageConfigurationInfo) {
     this(storageConfigurationInfo, null);
+  }
+
+  public LocationRestrictions(Collection<String> allowedLocations, String parentLocation) {
+    this.allowedLocations = allowedLocations;
+    this.parentLocation = parentLocation;
+  }
+
+  public LocationRestrictions(Collection<String> allowedLocations) {
+    this(allowedLocations, null);
   }
 
   /**
@@ -94,7 +103,7 @@ public class LocationRestrictions {
 
   private void validateLocations(
       RealmConfig realmConfig,
-      List<String> allowedLocations,
+      Collection<String> allowedLocations,
       Set<String> requestLocations,
       TableIdentifier identifier) {
     var validationResults =
