@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
@@ -77,21 +78,6 @@ class InMemoryStorageIntegrationTest {
             Map.of(
                 PolarisStorageActions.READ,
                 new PolarisStorageIntegration.ValidationResult(false, "")));
-  }
-
-  @Test
-  public void testAwsAccountIdParsing() {
-    AwsStorageConfigurationInfo awsConfig =
-        AwsStorageConfigurationInfo.builder()
-            .addAllowedLocation("s3://bucket/path/to/warehouse")
-            .roleARN("arn:aws:iam::012345678901:role/jdoe")
-            .region("us-east-2")
-            .build();
-
-    String expectedAccountId = "012345678901";
-    String actualAccountId = awsConfig.getAwsAccountId();
-
-    Assertions.assertThat(actualAccountId).isEqualTo(expectedAccountId);
   }
 
   @ParameterizedTest
@@ -208,11 +194,12 @@ class InMemoryStorageIntegrationTest {
     }
 
     @Override
-    public AccessConfig getSubscopedCreds(
+    public StorageAccessConfig getSubscopedCreds(
         @Nonnull RealmConfig realmConfig,
         boolean allowListOperation,
         @Nonnull Set<String> allowedReadLocations,
-        @Nonnull Set<String> allowedWriteLocations) {
+        @Nonnull Set<String> allowedWriteLocations,
+        Optional<String> refreshCredentialsEndpoint) {
       return null;
     }
   }

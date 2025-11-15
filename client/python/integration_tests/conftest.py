@@ -1,3 +1,4 @@
+#
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
 #  distributed with this work for additional information
@@ -14,6 +15,7 @@
 #  KIND, either express or implied.  See the License for the
 #  specific language governing permissions and limitations
 #  under the License.
+#
 
 import codecs
 import os
@@ -25,12 +27,16 @@ from pyiceberg.catalog import Catalog as PyIcebergCatalog
 from pyiceberg.schema import Schema
 from pyiceberg.types import NestedField, StringType, IntegerType, BooleanType
 
-from polaris.catalog import OAuthTokenResponse
-from polaris.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
-from polaris.catalog.api.iceberg_o_auth2_api import IcebergOAuth2API
-from polaris.catalog.api_client import ApiClient as CatalogApiClient
-from polaris.catalog.api_client import Configuration as CatalogApiClientConfiguration
-from polaris.management import (
+from apache_polaris.sdk.catalog import OAuthTokenResponse
+from apache_polaris.sdk.catalog.api.iceberg_catalog_api import IcebergCatalogAPI
+from apache_polaris.sdk.catalog.api.iceberg_o_auth2_api import IcebergOAuth2API
+from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
+from apache_polaris.sdk.catalog.api_client import ApiClient as CatalogApiClient
+from apache_polaris.sdk.catalog.api_client import (
+    Configuration as CatalogApiClientConfiguration,
+)
+
+from apache_polaris.sdk.management import (
     Catalog,
     ApiClient,
     PolarisDefaultApi,
@@ -195,8 +201,23 @@ def test_catalog_client(
 
     return IcebergCatalogAPI(
         CatalogApiClient(
-            Configuration(
+            CatalogApiClientConfiguration(
                 access_token=test_principal_token.access_token, host=polaris_catalog_url
+            )
+        )
+    )
+
+
+@pytest.fixture
+def test_policy_api(
+    polaris_catalog_url: str,
+    test_principal_token: OAuthTokenResponse,
+) -> PolicyAPI:
+    return PolicyAPI(
+        CatalogApiClient(
+            CatalogApiClientConfiguration(
+                access_token=test_principal_token.access_token,
+                host=polaris_catalog_url,
             )
         )
     )

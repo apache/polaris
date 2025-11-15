@@ -17,11 +17,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Getting Started'
+title: Getting Started with Apache Polaris
+linkTitle: Getting Started
 type: docs
 weight: 101
-build:
-  render: never
 ---
 
 # Getting Started with Apache Polaris Binary Distribution
@@ -48,7 +47,9 @@ java -version
 2. Download the latest binary archive file, for example:
 
 ```bash
-curl -L https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz | tar xz```
+curl -L https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz | tar xz
+```
+
 ---
 
 ## Step 2: Extract the Archive
@@ -69,6 +70,7 @@ Edit the `application.properties` file if needed. For example:
 polaris.storage.backend=local
 polaris.storage.local.path=/data/polaris
 ```
+
 *(This is a configuration file, not a shell command. Adjust these values as needed.)*
 
 ---
@@ -115,9 +117,19 @@ To stop the server, run:
 
 - See the [official Apache Polaris documentation](https://polaris.apache.org/docs/) for comprehensive information on configuration, deployment, and usage.
 - Use `./bin/polaris-admin` in the binary distribution for administrative and maintenance tasks.
-  
----
-
-Get started with Apache Polaris binaries. See the [repository](https://github.com/apache/polaris) for container images and more resources, or check out the [Quickstart guide](https://polaris.apache.org/in-dev/unreleased/getting-started/quickstart/) for developer instructions and advanced setup.
 
 ---
+
+## Other Getting Started Options
+
+For building and running Polaris from source code, check out the [Quickstart guide](./quick-start/).
+
+For Docker Compose examples and other deployment options, please see the [documentation](https://polaris.apache.org).
+
+---
+
+### Getting Help
+
+- Documentation: https://polaris.apache.org
+- GitHub Issues: https://github.com/apache/polaris/issues
+- Slack: [Join Apache Polaris Community](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)

@@ -46,8 +46,7 @@ This ensures that each realm's data is stored separately.
 
 **RealmContext:**  It is a key concept used to identify and resolve the context in which operations are performed. For example `DefaultRealmContextResolver`, a realm is resolved from request headers, and operations are performed based on the resolved realm identifier.
 
-**Authentication and Authorization:** For example, in `BasePolarisAuthenticator`, `RealmContext` is used to provide context about the current security domain, which is used to retrieve the correct `PolarisMetastoreManager` that manages all Polaris entities and associated grant records metadata for
+**Authentication and Authorization:** For example, in `DefaultAuthenticator`, `RealmContext` is used to provide context about the current security domain, which is used to retrieve the correct `PolarisMetastoreManager` that manages all Polaris entities and associated grant records metadata for
 authorization.
 
-**Isolation:** In methods like `createEntityManagerFactory(@Nonnull RealmContext realmContext)` from `PolarisEclipseLinkPersistenceUnit` interface, the realm context influence how resources are created or managed based on the security policies of that realm.
-An example of this is the way a realm name can be used to create a database connection url so that you have one database instance per realm, when applicable. Or it can be more granular and applied at primary key level (within the same database instance).
+**Isolation:** In classes like `JdbcBasePersistenceImpl`, the realm id from the realm context is part of the primary key to manage entities of realms in isolation (within the same database instance).

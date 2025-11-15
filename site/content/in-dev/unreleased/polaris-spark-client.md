@@ -23,7 +23,7 @@ weight: 650
 ---
 
 Apache Polaris now provides Catalog support for Generic Tables (non-Iceberg tables), please check out
-the [Catalog API Spec]({{% ref "polaris-catalog-service" %}}) for Generic Table API specs.
+the [Polaris Catalog OpenAPI Spec]({{% ref "polaris-api-specs/polaris-catalog-api.md" %}}) for Generic Table API specs.
 
 Along with the Generic Table Catalog support, Polaris is also releasing a Spark client, which helps to
 provide an end-to-end solution for Apache Spark to manage Delta tables using Polaris.
@@ -59,7 +59,7 @@ a released Polaris Spark client.
 
 ```shell
 bin/spark-shell \
---packages <polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1 \
+--packages <polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<spark-catalog-name>.warehouse=<polaris-catalog-name> \
@@ -87,7 +87,7 @@ You can also start the connection by programmatically initialize a SparkSession,
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder
-  .config("spark.jars.packages", "<polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.9.1,io.delta:delta-spark_2.12:3.3.1")
+  .config("spark.jars.packages", "<polaris-spark-client-package>,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1")
   .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
   .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension")
   .config("spark.sql.catalog.<spark-catalog-name>", "org.apache.polaris.spark.SparkCatalog")

@@ -41,22 +41,16 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 |===
 | Date | Time
 
-| 2025-08-07 | 9:00 AM PST
-18:00 CET
-
-| 2025-08-21 | 9:00 AM PST
+| 2025-11-27 | 9:00 AM PST
 | 18:00 CET
 
-| 2025-09-04 | 9:00 AM PST
+| 2025-12-11 | 9:00 AM PST
 | 18:00 CET
 
-| 2025-09-18 | 9:00 AM PST
+| 2026-01-08 | 9:00 AM PST
 | 18:00 CET
 
-| 2025-10-02 | 9:00 AM PST
-| 18:00 CET
-
-| 2025-10-16 | 9:00 AM PST
+| 2026-01-22 | 9:00 AM PST
 | 18:00 CET
 
 | ... |
@@ -68,64 +62,112 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 |===
 | Date | Notes | Recording
 
+| 2025-11-13
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.yar07l2oges0[Meeting Notes] 
+| https://drive.google.com/file/d/17UrOH4VMgbxfcmQv7adLxS2FmFu8dVb8/view?usp=sharing
+
+| 2025-10-30
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.j5miqyoq5zsa[Meeting Notes]
+| https://drive.google.com/file/d/1R00BdUB10VyT1coVUCn_byg8OIRWOGHu/view?usp=sharing
+
+| 2025-10-16
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.pa3twuaouip8[Meeting Notes]
+| https://drive.google.com/file/d/1aQMLoCst118Wq8tjQbxR9uNZVN5JPxuc/view?usp=sharing
+
+| 2025-10-02
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.ulk7g8985k5j[Meeting Notes]
+| https://drive.google.com/file/d/1OxTamHXBy1y2XxvzQQ0qTdrX-QS4ohM4/view?usp=sharing
+
+| 2025-09-18
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.2q38f4csaqv3[Meeting Notes]
+| https://drive.google.com/file/d/1Kv09o_874V8UrzPr8gJVOh77duvyJYXN/view?usp=sharing
+
+| 2025-09-04
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.953wlax7ug7u[Meeting Notes]
+| 
+
+| 2025-08-28
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.9lmro14js5p2[Meeting Notes]
+| https://drive.google.com/file/d/139GiJqOaLOUea9e2CKyD3aBMhKR6IUu6/view?usp=sharing
+
+| 2025-08-21
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.1kkteu5gqxqy[Meeting Notes]
+| 
+
+| 2025-08-07
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.e9miftm8r4jh[Meeting Notes]
+| 
+
 | 2025-07-24
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.so9ui7xnrp4p[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.vum9jrwdrk9o[Meeting Notes]
 | https://drive.google.com/file/d/1MZfz_yr1y20BbZf6MSqFidPpSNfBKEzr/view?usp=sharing
 
+| 2025-07-10
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.esi4z5e6rk1r[Meeting Notes]
+| 
+
 | 2025-06-26
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.pnvo802xxv0e[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.x10bwmxesg6t[Meeting Notes]
 | https://drive.google.com/file/d/15xPXCGVSKmfc5HWI4CYbfiBC5HnUtR16/view?usp=sharing
 
 | 2025-06-12
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?pli=1&tab=t.0#heading=h.5uuvx1b2337n[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.a2jinaemw9u9[Meeting Notes]
 | https://drive.google.com/file/d/1QjMpC87ML6kH4EC2Ni5j29W71yBsHigo/view?usp=sharing
 
+| 2025-05-15
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.ruh00t9la96k[Meeting Notes]
+| 
+
+| 2025-05-01
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.f7v2a53f9pdx[Meeting Notes]
+|
+
 | 2025-04-17
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.eiizsjmxfku0[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.6j2ra99y8r1u[Meeting Notes]
 | https://drive.google.com/file/d/1EOxaC7kia7tzvvM0Tlkz8foX6HAWPm_f/view?usp=sharing
 
 | 2025-04-03
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.v0mdrj9jcx6[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.ntcp1kaknolu[Meeting Notes]
 | https://drive.google.com/file/d/1fiiusq6_0De42Mo3HZw8V84SG_W3RmGT/view?usp=sharing
 
 | 2025-03-20
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.l6joklbsu47m[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.paoxqwi7ajp9[Meeting Notes]
 | https://drive.google.com/file/d/1O2EO7ekFUnfpk2OY7yzP3WybNQ-hG5Zv/view?usp=sharing
 
 | 2025-03-06
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.6gu54yfnttkk[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.dcggc814gr2x[Meeting Notes]
 | https://drive.google.com/file/d/1Wopf6oUboprb0wtFTvO-R0ul-EtYC6kH/view?usp=sharing
 
 | 2025-02-20
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.id5duukeme15[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.x62amo46uz8n[Meeting Notes]
 | https://drive.google.com/file/d/1HZaGnQV-MhFGDGjgmk9JFDeNq0899AEo/view?usp=sharing
 
-| 2025-02-07
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.qiszvigy44bi[Meeting Notes]
+| 2025-02-06
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.h5e472i92e3f[Meeting Notes]
 | https://drive.google.com/file/d/1pRfyRpQGjWglEg8OTanBz2UQAO5ObFOl/view?usp=sharing
 
 | 2025-01-23
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.kf4agp8flxjb[Meeting Notes] 
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.vp5oez9ie91k[Meeting Notes] 
 | https://drive.google.com/file/d/1AXy-WkUNP4Fo73ijXYFDk3cRFKiBQ-XI/view?usp=sharing
 
 | 2025-01-09
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.kf4agp8flxjb[Meeting Notes] 
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.c3anrcddra22[Meeting Notes] 
 | https://drive.google.com/file/d/1p1OFXwIiBXo_qiQoP_T-qNn9tkBXkq_p/view?usp=sharing
 
 | 2024-12-12
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.kf4agp8flxjb[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.1xs66nz2rb93[Meeting Notes]
 | https://drive.google.com/file/d/1OJiOnn9otN36tgibTMk73wSl01wEak9M/view?usp=sharing
 
 | 2024-11-14
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.kf4agp8flxjb[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.3on3k2agk1jj[Meeting Notes]
 | https://drive.google.com/file/d/1a2B5c0hychdRuIcNSl2ltEkoH3VcR0J1/view?usp=sharing
 
 | 2024-10-31
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.kf4agp8flxjb[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.oni76sadplgp[Meeting Notes]
 | https://drive.google.com/file/d/1yZkcs8iif2QOFqWhr6rWOKyGJAoIR8aX/view?usp=drive_link
 
 | 2024-10-17
-| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.kf4agp8flxjb[Meeting Notes]
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.l1h3m05g0ti5[Meeting Notes]
 | (no recording)
 |===
 ////

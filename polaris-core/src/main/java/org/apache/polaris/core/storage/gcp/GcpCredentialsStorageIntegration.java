@@ -35,12 +35,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.slf4j.Logger;
@@ -71,11 +72,12 @@ public class GcpCredentialsStorageIntegration
   }
 
   @Override
-  public AccessConfig getSubscopedCreds(
+  public StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {
@@ -107,11 +109,17 @@ public class GcpCredentialsStorageIntegration
 
     // If expires_in missing, use source credential's expire time, which require another api call to
     // get.
-    AccessConfig.Builder accessConfig = AccessConfig.builder();
+    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
     accessConfig.put(StorageAccessProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
     accessConfig.put(
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
         String.valueOf(token.getExpirationTime().getTime()));
+
+    refreshCredentialsEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+        });
+
     return accessConfig.build();
   }
 

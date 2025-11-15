@@ -44,10 +44,11 @@ supported out of the box:
 
 By default, Polaris uses `rsa-key-pair`, with randomly generated keys.
 
-> [!IMPORTANT]
-> The default `rsa-key-pair` configuration is not suitable when deploying many replicas of Polaris,
-> as each replica will have its own set of keys. This will cause token validation to fail when a
-> request is routed to a different replica than the one that issued the token.
+{{< alert important >}}
+The default `rsa-key-pair` configuration is not suitable when deploying many replicas of Polaris,
+as each replica will have its own set of keys. This will cause token validation to fail when a
+request is routed to a different replica than the one that issued the token.
+{{< /alert >}}
 
 It is highly recommended to configure Polaris with previously-generated RSA keys. This can be done
 by setting the following properties:
@@ -58,10 +59,10 @@ polaris.authentication.token-broker.rsa-key-pair.public-key-file=/tmp/public.key
 polaris.authentication.token-broker.rsa-key-pair.private-key-file=/tmp/private.key
 ```
 
-To generate an RSA key pair, you can use the following commands:
+To generate an RSA key pair in PKCS#8 format, you can use the following commands:
 
 ```shell
-openssl genrsa -out private.key 2048
+openssl genpkey -algorithm RSA -out private.key -pkeyopt rsa_keygen_bits:2048
 openssl rsa -in private.key -pubout -out public.key
 ```
 
@@ -129,9 +130,10 @@ in the request.
 A metastore should be configured with an implementation that durably persists Polaris entities. By
 default, Polaris uses an in-memory metastore.
 
-> [!IMPORTANT]
-> The default in-memory metastore is not suitable for production use, as it will lose all data
-> when the server is restarted; it is also unusable when multiple Polaris replicas are used.
+{{< alert important >}}
+The default in-memory metastore is not suitable for production use, as it will lose all data
+when the server is restarted; it is also unusable when multiple Polaris replicas are used.
+{{< /alert >}}
 
 To enable a durable metastore, configure your system to use the Relational JDBC-backed metastore.
 This implementation leverages Quarkus for datasource management and supports configuration through
@@ -152,9 +154,10 @@ The relational JDBC metastore is a Quarkus-managed datasource and only supports 
 Please refer to the documentation here:
 [Configure data sources in Quarkus](https://quarkus.io/guides/datasource)
 
-> [!IMPORTANT]
-> Be sure to secure your metastore backend since it will be storing sensitive data and catalog
-> metadata.
+{{< alert important >}}
+Be sure to secure your metastore backend since it will be storing sensitive data and catalog
+metadata.
+{{< /alert >}}
 
 Note: Polaris will always create schema 'polaris_schema' during bootstrap under the configured database.
 
@@ -213,6 +216,19 @@ but **not recommended for production**. To disable it, set the supported storage
 polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES" = [ "S3", "Azure" ]
 ```
 Leave out `FILE` to prevent its use. Only include the storage types your setup needs.
+
+### Polaris Server Header
+
+Polaris can emit an informational `Server` HTTP response header using Quarkus' built-in header
+configuration. Add the following property to one of the supported configuration sources (for example,
+`application.properties`) to enable it with the Polaris version string:
+
+```properties
+quarkus.http.header."Server".value=Polaris/${quarkus.application.version}
+```
+
+If you prefer to scope the header to specific environments, only set the property for the desired
+profile (for example, `%prod`).
 
 ### Upgrade Considerations
 

@@ -142,6 +142,10 @@ line breaks, they will be escaped and a multi-line option will be printed.
 {{- $value := index . 1 -}}
 {{- $global := index . 2 -}}
 {{- $valAsString := "" -}}
+{{/* Note: We really need the statement below to be "if ne $value nil". This is unusual, but here we
+need to distinguish other zero-values from nil. For example, "someProperty: false" or
+"someProperty: 0" should result in the config property "someProperty" being included in the
+ConfigMap, with value false or 0.*/}}
 {{- if ne $value nil -}}
 {{- $valAsString = tpl (toString $value) $global -}}
 {{- if contains "\r\n" $valAsString -}}
@@ -157,7 +161,7 @@ line breaks, they will be escaped and a multi-line option will be printed.
 Escapes a property key to be used in a configmap, conforming with the Java parsisng rules for
 property files: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Properties.html#load(java.io.Reader)
 - Escapes all backslashes.
-- Escapes all key termination charaters: '=', ':' and whitespace.
+- Escapes all key termination characters: '=', ':' and whitespace.
 */}}
 {{- define "polaris.escapeConfigOptionKey" -}}
 {{- $key := . -}}
@@ -176,9 +180,9 @@ Prints the config volume definition for deployments and jobs.
           items:
             - key: application.properties
               path: application.properties
-      {{- include "polaris.configVolumeAuthenticationOptions" (list "" .Values.authentication) | nindent 6 }}
+      {{- include "polaris.configVolumeAuthenticationOptions" (list "" .Values.authentication .) | nindent 6 }}
       {{- range $realm, $auth := .Values.authentication.realmOverrides -}}
-      {{- include "polaris.configVolumeAuthenticationOptions" (list $realm $auth) | nindent 6 }}
+      {{- include "polaris.configVolumeAuthenticationOptions" (list $realm $auth $) | nindent 6 }}
       {{- end -}}
 {{- end -}}
 
@@ -204,7 +208,7 @@ Converts a Kubernetes quantity to a number (int64 if possible or float64 otherwi
 It handles raw numbers as well as quantities with suffixes
 like m, k, M, G, T, P, E, ki, Mi, Gi, Ti, Pi, Ei.
 It also handles scientific notation.
-Quantities should be positive, so negative values, zero, or any unparseable number
+Quantities should be positive, so negative values, zero, or any unparsable number
 will result in a failure.
 https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/
 */}}
@@ -316,8 +320,6 @@ Sets the configmap authentication options for a given realm.
 {{- end -}}
 {{- $_ := set $map (printf "%s.type" $prefix) $authType -}}
 {{- $_ = set $map (printf "%s.authenticator.type" $prefix) (dig "authenticator" "type" "default" $auth) -}}
-{{- $_ = set $map (printf "%s.active-roles-provider.type" $prefix) (dig "activeRolesProvider" "type" "default" $auth) -}}
-{{- $_ = set $map (printf "%s.active-roles-provider.type" $prefix) (dig "activeRolesProvider" "type" "default" $auth) -}}
 {{- if (or (eq $authType "mixed") (eq $authType "internal")) -}}
 {{- $tokenBrokerType := dig "tokenBroker" "type" "rsa-key-pair" $auth -}}
 {{- $_ = set $map (printf "%s.token-service.type" $prefix) (dig "tokenService" "type" "default" $auth) -}}
@@ -343,6 +345,7 @@ Sets authentication options for a given realm in the projected config volume.
 {{- define "polaris.configVolumeAuthenticationOptions" -}}
 {{- $realm := index . 0 -}}
 {{- $auth := index . 1 -}}
+{{- $global := index . 2 -}}
 {{- $authType := coalesce $auth.type "internal" -}}
 {{- if (or (eq $authType "mixed") (eq $authType "internal")) }}
 {{- $secretName := dig "tokenBroker" "secret" "name" "" $auth -}}
@@ -350,22 +353,22 @@ Sets authentication options for a given realm in the projected config volume.
 {{- $tokenBrokerType := dig "tokenBroker" "type" "rsa-key-pair" $auth -}}
 {{- $subpath := empty $realm | ternary "" (printf "%s/" (urlquery $realm)) -}}
 - secret:
-    name: {{ tpl $secretName . }}
+    name: {{ tpl $secretName $global }}
     items:
     {{- if eq $tokenBrokerType "rsa-key-pair" }}
       {{- /* Backward compatibility for publicKey: new takes precedence */ -}}
       {{- $publicKey := coalesce (dig "tokenBroker" "secret" "rsaKeyPair" "publicKey" "" $auth) (dig "tokenBroker" "secret" "publicKey" "public.pem" $auth) }}
       {{- /* Backward compatibility for privateKey: new takes precedence */ -}}
       {{- $privateKey := coalesce (dig "tokenBroker" "secret" "rsaKeyPair" "privateKey" "" $auth) (dig "tokenBroker" "secret" "privateKey" "private.pem" $auth) }}
-      - key: {{ tpl $publicKey . }}
+      - key: {{ tpl $publicKey $global }}
         path: {{ $subpath }}public.pem
-      - key: {{ tpl $privateKey . }}
+      - key: {{ tpl $privateKey $global }}
         path: {{ $subpath }}private.pem
     {{- end }}
     {{- if eq $tokenBrokerType "symmetric-key" }}
       {{- /* Backward compatibility for symmetricKey: new takes precedence */ -}}
       {{- $secretKey := coalesce (dig "tokenBroker" "secret" "symmetricKey" "secretKey" "" $auth) (dig "tokenBroker" "secret" "secretKey" "symmetric.key" $auth) }}
-      - key: {{ tpl $secretKey . }}
+      - key: {{ tpl $secretKey $global }}
         path: {{ $subpath }}symmetric.key
     {{- end }}
 {{- end }}

@@ -32,11 +32,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,7 +52,12 @@ public class DatasourceOperations {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
+  // PG STATUS CODES
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
+  private static final String RELATION_DOES_NOT_EXIST = "42P01";
+
+  // H2 STATUS CODES
+  private static final String H2_RELATION_DOES_NOT_EXIST = "90079";
 
   // POSTGRES RETRYABLE EXCEPTIONS
   private static final String SERIALIZATION_FAILURE_SQL_CODE = "40001";
@@ -197,6 +204,63 @@ public class DatasourceOperations {
   }
 
   /**
+   * Executes the INSERT/UPDATE Queries in batches. Requires that all SQL queries have the same
+   * parameterized form.
+   *
+   * @param preparedQueries : queries to be executed
+   * @return : Number of rows modified / inserted.
+   * @throws SQLException : Exception during Query Execution.
+   */
+  public int executeBatchUpdate(QueryGenerator.PreparedBatchQuery preparedQueries)
+      throws SQLException {
+    if (preparedQueries.parametersList().isEmpty() || preparedQueries.sql().isEmpty()) {
+      return 0;
+    }
+    int batchSize = 100;
+    AtomicInteger successCount = new AtomicInteger();
+    return withRetries(
+        () -> {
+          try (Connection connection = borrowConnection();
+              PreparedStatement statement = connection.prepareStatement(preparedQueries.sql())) {
+            boolean autoCommit = connection.getAutoCommit();
+            boolean success = false;
+            connection.setAutoCommit(false);
+
+            try {
+              for (int i = 1; i <= preparedQueries.parametersList().size(); i++) {
+                List<Object> params = preparedQueries.parametersList().get(i - 1);
+                for (int j = 0; j < params.size(); j++) {
+                  statement.setObject(j + 1, params.get(j));
+                }
+
+                statement.addBatch(); // Add to batch
+
+                if (i % batchSize == 0) {
+                  successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
+                }
+              }
+
+              // Execute remaining queries in the batch
+              successCount.addAndGet(Arrays.stream(statement.executeBatch()).sum());
+              success = true;
+            } finally {
+              try {
+                if (success) {
+                  connection.commit();
+                } else {
+                  connection.rollback();
+                  successCount.set(0);
+                }
+              } finally {
+                connection.setAutoCommit(autoCommit);
+              }
+            }
+          }
+          return successCount.get();
+        });
+  }
+
+  /**
    * Transaction callback to be executed.
    *
    * @param callback : TransactionCallback to be executed within transaction
@@ -333,6 +397,12 @@ public class DatasourceOperations {
 
   public boolean isConstraintViolation(SQLException e) {
     return CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
+  }
+
+  public boolean isRelationDoesNotExist(SQLException e) {
+    return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
+            && databaseType == DatabaseType.POSTGRES)
+        || (H2_RELATION_DOES_NOT_EXIST.equals(e.getSQLState()) && databaseType == DatabaseType.H2);
   }
 
   private Connection borrowConnection() throws SQLException {

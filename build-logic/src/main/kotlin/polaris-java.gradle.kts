@@ -18,11 +18,15 @@
  */
 
 import java.util.Properties
+import kotlin.jvm.java
 import net.ltgt.gradle.errorprone.CheckSeverity
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
+import org.gradle.kotlin.dsl.assign
 import org.gradle.kotlin.dsl.named
+import org.kordamp.gradle.plugin.jandex.JandexExtension
+import org.kordamp.gradle.plugin.jandex.JandexPlugin
 import publishing.PublishingHelperPlugin
 
 plugins {
@@ -32,11 +36,26 @@ plugins {
   `jvm-test-suite`
   checkstyle
   id("polaris-spotless")
+  id("polaris-reproducible")
   id("jacoco-report-aggregation")
   id("net.ltgt.errorprone")
 }
 
 apply<PublishingHelperPlugin>()
+
+plugins.withType<JandexPlugin>().configureEach {
+  extensions.getByType(JandexExtension::class).run {
+    version =
+      versionCatalogs
+        .named("libs")
+        .findLibrary("smallrye-jandex")
+        .orElseThrow { GradleException("jandex version not found in libs.versions.toml") }
+        .get()
+        .version
+    // https://smallrye.io/jandex/jandex/3.4.0/index.html#persistent_index_format_versions
+    indexVersion = 12
+  }
+}
 
 checkstyle {
   val checkstyleVersion =
@@ -107,11 +126,13 @@ testing {
       dependencies {
         implementation(project())
         implementation(testFixtures(project()))
-        runtimeOnly(
-          libs.findLibrary("logback-classic").orElseThrow {
-            GradleException("logback-classic not declared in libs.versions.toml")
-          }
-        )
+        if (!plugins.hasPlugin("io.quarkus")) {
+          implementation(
+            libs.findLibrary("logback-classic").orElseThrow {
+              GradleException("logback-classic not declared in libs.versions.toml")
+            }
+          )
+        }
         implementation(
           libs.findLibrary("assertj-core").orElseThrow {
             GradleException("assertj-core not declared in libs.versions.toml")
@@ -138,6 +159,8 @@ testing {
   }
 }
 
+val mockitoAgent = configurations.create("mockitoAgent")
+
 dependencies {
   val libs = versionCatalogs.named("libs")
   testFixturesImplementation(
@@ -153,11 +176,14 @@ dependencies {
       GradleException("assertj-core not declared in libs.versions.toml")
     }
   )
-  testFixturesImplementation(
+  val mockitoCoreLib =
     libs.findLibrary("mockito-core").orElseThrow {
       GradleException("mockito-core not declared in libs.versions.toml")
     }
-  )
+
+  testFixturesImplementation(mockitoCoreLib)
+
+  mockitoAgent(mockitoCoreLib) { isTransitive = false }
 }
 
 tasks.withType<Test>().configureEach {
@@ -165,6 +191,9 @@ tasks.withType<Test>().configureEach {
   systemProperty("user.language", "en")
   systemProperty("user.country", "US")
   systemProperty("user.variant", "")
+  jvmArgumentProviders.add(
+    CommandLineArgumentProvider { listOf("-javaagent:${mockitoAgent.asPath}") }
+  )
 }
 
 tasks.withType<Jar>().configureEach {
@@ -227,9 +256,34 @@ configurations.all {
     }
 }
 
-// ensure jars conform to reproducible builds
-// (https://docs.gradle.org/current/userguide/working_with_files.html#sec:reproducible_archives)
-tasks.withType<AbstractArchiveTask>().configureEach {
-  isPreserveFileTimestamps = false
-  isReproducibleFileOrder = true
+gradle.sharedServices.registerIfAbsent(
+  "intTestParallelismConstraint",
+  TestingParallelismHelper::class.java,
+) {
+  val intTestParallelism =
+    Integer.getInteger(
+      "polaris.intTestParallelism",
+      (Runtime.getRuntime().availableProcessors() / 4).coerceAtLeast(1),
+    )
+  maxParallelUsages = intTestParallelism
+}
+
+gradle.sharedServices.registerIfAbsent(
+  "testParallelismConstraint",
+  TestingParallelismHelper::class.java,
+) {
+  val testParallelism =
+    Integer.getInteger(
+      "polaris.testParallelism",
+      (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1),
+    )
+  maxParallelUsages = testParallelism
+}
+
+abstract class TestingParallelismHelper : BuildService<BuildServiceParameters.None>
+
+tasks.withType<Test>().configureEach {
+  val constraintName =
+    if ("test" == name) "testParallelismConstraint" else "intTestParallelismConstraint"
+  usesService(gradle.sharedServices.registrations.named(constraintName).get().service)
 }

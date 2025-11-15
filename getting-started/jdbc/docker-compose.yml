@@ -67,7 +67,7 @@ services:
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   spark-sql:
-    image: apache/spark:3.5.6-java17-python3
+    image: apache/spark:3.5.7-java17-python3
     depends_on:
       polaris-setup:
         condition: service_completed_successfully
@@ -81,7 +81,7 @@ services:
       retries: 15
     command: [
       /opt/spark/bin/spark-sql,
-      --packages, "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.1,org.apache.iceberg:iceberg-aws-bundle:1.9.1,org.apache.iceberg:iceberg-gcp-bundle:1.9.1,org.apache.iceberg:iceberg-azure-bundle:1.9.1",
+      --packages, "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.0,org.apache.iceberg:iceberg-aws-bundle:1.10.0,org.apache.iceberg:iceberg-gcp-bundle:1.10.0,org.apache.iceberg:iceberg-azure-bundle:1.10.0",
       --conf, "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
       --conf, "spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog",
       --conf, "spark.sql.catalog.polaris.type=rest",

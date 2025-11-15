@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.connection;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -26,17 +27,22 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.HadoopConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.HiveConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
+import org.apache.polaris.core.connection.hive.HiveConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergCatalogPropertiesProvider;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +57,7 @@ import org.slf4j.LoggerFactory;
 @JsonSubTypes({
   @JsonSubTypes.Type(value = IcebergRestConnectionConfigInfoDpo.class, name = "1"),
   @JsonSubTypes.Type(value = HadoopConnectionConfigInfoDpo.class, name = "2"),
+  @JsonSubTypes.Type(value = HiveConnectionConfigInfoDpo.class, name = "3"),
 })
 public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertiesProvider {
   private static final Logger logger = LoggerFactory.getLogger(ConnectionConfigInfoDpo.class);
@@ -64,22 +71,29 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   // The authentication parameters for the connection
   private final AuthenticationParametersDpo authenticationParameters;
 
+  // The Polaris service identity info of the connection
+  private final ServiceIdentityInfoDpo serviceIdentity;
+
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
-      @JsonProperty(value = "authenticationParameters", required = true) @Nonnull
-          AuthenticationParametersDpo authenticationParameters) {
-    this(connectionTypeCode, uri, authenticationParameters, true);
+      @JsonProperty(value = "authenticationParameters", required = true) @Nullable
+          AuthenticationParametersDpo authenticationParameters,
+      @JsonProperty(value = "serviceIdentity", required = false) @Nullable
+          ServiceIdentityInfoDpo serviceIdentity) {
+    this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, true);
   }
 
   protected ConnectionConfigInfoDpo(
       int connectionTypeCode,
       @Nonnull String uri,
-      @Nonnull AuthenticationParametersDpo authenticationParameters,
+      @Nullable AuthenticationParametersDpo authenticationParameters,
+      @Nullable ServiceIdentityInfoDpo serviceIdentity,
       boolean validateUri) {
     this.connectionTypeCode = connectionTypeCode;
     this.uri = uri;
     this.authenticationParameters = authenticationParameters;
+    this.serviceIdentity = serviceIdentity;
     if (validateUri) {
       validateUri(uri);
     }
@@ -87,6 +101,11 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   public int getConnectionTypeCode() {
     return connectionTypeCode;
+  }
+
+  @JsonIgnore
+  public ConnectionType getConnectionType() {
+    return ConnectionType.fromCode(connectionTypeCode);
   }
 
   public String getUri() {
@@ -97,11 +116,15 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return authenticationParameters;
   }
 
+  public @Nullable ServiceIdentityInfoDpo getServiceIdentity() {
+    return serviceIdentity;
+  }
+
   private static final ObjectMapper DEFAULT_MAPPER;
 
   static {
     DEFAULT_MAPPER = new ObjectMapper();
-    DEFAULT_MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    DEFAULT_MAPPER.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
     DEFAULT_MAPPER.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
   }
 
@@ -125,6 +148,11 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   protected void validateUri(String uri) {
     try {
       URI uriObj = URI.create(uri);
+      if (connectionTypeCode == ConnectionType.HIVE.getCode()
+          && uriObj.getScheme().equals("thrift")) {
+        // Hive metastore runs a thrift server.
+        return;
+      }
       URL url = uriObj.toURL();
     } catch (IllegalArgumentException | MalformedURLException e) {
       throw new IllegalArgumentException("Invalid remote URI: " + uri, e);
@@ -138,7 +166,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
    */
   public static ConnectionConfigInfoDpo fromConnectionConfigInfoModelWithSecrets(
       ConnectionConfigInfo connectionConfigurationModel,
-      Map<String, UserSecretReference> secretReferences) {
+      Map<String, SecretReference> secretReferences) {
     ConnectionConfigInfoDpo config = null;
     final AuthenticationParametersDpo authenticationParameters;
     switch (connectionConfigurationModel.getConnectionType()) {
@@ -152,6 +180,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
             new IcebergRestConnectionConfigInfoDpo(
                 icebergRestConfigModel.getUri(),
                 authenticationParameters,
+                null /*Service Identity Info*/,
                 icebergRestConfigModel.getRemoteCatalogName());
         break;
       case HADOOP:
@@ -164,7 +193,21 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
             new HadoopConnectionConfigInfoDpo(
                 hadoopConfigModel.getUri(),
                 authenticationParameters,
+                null /*Service Identity Info*/,
                 hadoopConfigModel.getWarehouse());
+        break;
+      case HIVE:
+        HiveConnectionConfigInfo hiveConfigModel =
+            (HiveConnectionConfigInfo) connectionConfigurationModel;
+        authenticationParameters =
+            AuthenticationParametersDpo.fromAuthenticationParametersModelWithSecrets(
+                hiveConfigModel.getAuthenticationParameters(), secretReferences);
+        config =
+            new HiveConnectionConfigInfoDpo(
+                hiveConfigModel.getUri(),
+                authenticationParameters,
+                hiveConfigModel.getWarehouse(),
+                null /*Service Identity Info*/);
         break;
       default:
         throw new IllegalStateException(
@@ -174,9 +217,19 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   }
 
   /**
-   * Produces the correponding API-model ConnectionConfigInfo for this persistence object; many
+   * Creates a new copy of the ConnectionConfigInfoDpo with the given service identity info.
+   *
+   * @param serviceIdentityInfo The service identity info to set.
+   * @return A new copy of the ConnectionConfigInfoDpo with the given service identity info.
+   */
+  public abstract ConnectionConfigInfoDpo withServiceIdentity(
+      @Nonnull ServiceIdentityInfoDpo serviceIdentityInfo);
+
+  /**
+   * Produces the corresponding API-model ConnectionConfigInfo for this persistence object; many
    * fields are one-to-one direct mappings, but some fields, such as secretReferences, might only be
    * applicable/present in the persistence object, but not the API model object.
    */
-  public abstract ConnectionConfigInfo asConnectionConfigInfoModel();
+  public abstract ConnectionConfigInfo asConnectionConfigInfoModel(
+      ServiceIdentityProvider serviceIdentityProvider);
 }

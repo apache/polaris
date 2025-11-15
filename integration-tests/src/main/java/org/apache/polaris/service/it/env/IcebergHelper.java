@@ -20,32 +20,26 @@ package org.apache.polaris.service.it.env;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
-import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 
 public final class IcebergHelper {
   private IcebergHelper() {}
 
   public static RESTCatalog restCatalog(
-      PolarisClient client,
       PolarisApiEndpoints endpoints,
-      PrincipalWithCredentials credentials,
       String catalog,
-      Map<String, String> extraProperties) {
-    String authToken = client.obtainToken(credentials);
+      Map<String, String> extraProperties,
+      String authToken) {
     RESTCatalog restCatalog = new RESTCatalog();
 
     ImmutableMap.Builder<String, String> propertiesBuilder =
         ImmutableMap.<String, String>builder()
-            .put(
-                org.apache.iceberg.CatalogProperties.URI, endpoints.catalogApiEndpoint().toString())
+            .put(CatalogProperties.URI, endpoints.catalogApiEndpoint().toString())
             .put(OAuth2Properties.TOKEN, authToken)
-            .put(
-                org.apache.iceberg.CatalogProperties.FILE_IO_IMPL,
-                "org.apache.iceberg.inmemory.InMemoryFileIO")
             .put("warehouse", catalog)
-            .put("header." + endpoints.realmHeaderName(), endpoints.realmId())
+            .putAll(endpoints.extraHeaders("header."))
             .putAll(extraProperties);
 
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());

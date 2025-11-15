@@ -32,6 +32,27 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Configure Gradle cache retention settings
+      # Without these settings, the Gradle Setup action will evict effectively all "restored incremental" entries,
+      # as it will remove all cache entries created before the start-time of the "Store Gradle Cache" job.
+      # The total size of GitHub caches for each repository is limited to 10GB, which means that we have to use
+      # more aggressive retention settings to keep the size of the Gradle cache stored in GitHub at an appropriate
+      # size.
+      shell: bash
+      run: |
+        mkdir -p ~/.gradle/init.d
+        cat > ~/.gradle/init.d/cache-settings.gradle.kts <<!
+        beforeSettings {
+          caches {
+            releasedWrappers.setRemoveUnusedEntriesAfterDays(5)
+            snapshotWrappers.setRemoveUnusedEntriesAfterDays(1)
+            downloadedResources.setRemoveUnusedEntriesAfterDays(2)
+            createdResources.setRemoveUnusedEntriesAfterDays(5)
+            buildCache.setRemoveUnusedEntriesAfterDays(5)
+          }
+        }
+        !
+
     - name: Prep env
       shell: bash
       run: |
@@ -45,7 +66,7 @@ runs:
         fi
 
     - name: Gradle / Setup
-      uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4
+      uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2 # v5
       with:
         cache-read-only: ${{ inputs.cache-read-only }}
         validate-wrappers: false
@@ -55,7 +76,7 @@ runs:
       run: ./gradlew -h
 
     - name: Download existing workflow artifacts
-      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
       # Just in case, don't know the exact inner workings of Gradle's build cache and whether
       # the download-action complains about duplicate files.
       continue-on-error: true
@@ -71,12 +92,12 @@ runs:
         if [[ -d ~/downloaded-artifacts/ ]] ; then
           find ~/downloaded-artifacts/ -type f -name "ci-gradle-caches-*-${{ inputs.java-version }}.tar" | while read arch ; do
             echo "Adding archive content from $arch ..."
-            (cd ~/.gradle/caches/ ; tar xf $arch)
+            (cd ~/.gradle/caches/ ; tar xf $arch --atime-preserve)
           done
         else
           echo "No previous build cache artifacts downloaded."
         fi
-        
+
         date +%s > ~/caches-prepared-at-epoch
 
         echo "::endgroup::"

@@ -46,10 +46,11 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,11 +73,12 @@ public class AzureCredentialsStorageIntegration
   }
 
   @Override
-  public AccessConfig getSubscopedCreds(
+  public StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
     String loc =
         !allowedWriteLocations.isEmpty()
             ? allowedWriteLocations.stream().findAny().orElse(null)
@@ -169,21 +171,33 @@ public class AzureCredentialsStorageIntegration
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
 
-    return toAccessConfig(sasToken, storageDnsName, sanitizedEndTime.toInstant());
+    return toAccessConfig(
+        sasToken, storageDnsName, sanitizedEndTime.toInstant(), refreshCredentialsEndpoint);
   }
 
   @VisibleForTesting
-  static AccessConfig toAccessConfig(String sasToken, String storageDnsName, Instant expiresAt) {
-    AccessConfig.Builder accessConfig = AccessConfig.builder();
-    handleAzureCredential(accessConfig, sasToken, storageDnsName);
+  static StorageAccessConfig toAccessConfig(
+      String sasToken,
+      String storageDnsName,
+      Instant expiresAt,
+      Optional<String> refreshCredentialsEndpoint) {
+    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
+    handleAzureCredential(accessConfig, sasToken, storageDnsName, expiresAt);
     accessConfig.put(
         StorageAccessProperty.EXPIRATION_TIME, String.valueOf(expiresAt.toEpochMilli()));
+    refreshCredentialsEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+        });
     return accessConfig.build();
   }
 
   private static void handleAzureCredential(
-      AccessConfig.Builder config, String sasToken, String host) {
+      StorageAccessConfig.Builder config, String sasToken, String host, Instant expiresAt) {
     config.putCredential(StorageAccessProperty.AZURE_SAS_TOKEN.getPropertyName() + host, sasToken);
+    config.putCredential(
+        StorageAccessProperty.AZURE_SAS_TOKEN_EXPIRES_AT_MS_PREFIX.getPropertyName() + host,
+        String.valueOf(expiresAt.toEpochMilli()));
 
     // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint
     if (host.endsWith(AzureLocation.ADLS_ENDPOINT)) {

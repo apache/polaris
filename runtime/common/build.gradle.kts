@@ -18,12 +18,13 @@
  */
 
 plugins {
-  alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
-  id("polaris-runtime")
+  id("org.kordamp.gradle.jandex")
+  id("polaris-server")
 }
 
 dependencies {
   compileOnly(libs.smallrye.config.core)
   implementation(project(":polaris-relational-jdbc"))
+  implementation(platform(libs.quarkus.amazon.services.bom))
+  implementation("io.quarkiverse.amazonservices:quarkus-amazon-rds")
 }

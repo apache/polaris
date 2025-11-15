@@ -204,28 +204,28 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.netty Name: netty-buffer Version: 4.1.121.Final
-Group: io.netty Name: netty-codec Version: 4.1.121.Final
-Group: io.netty Name: netty-codec-dns Version: 4.1.121.Final
-Group: io.netty Name: netty-codec-haproxy Version: 4.1.121.Final
-Group: io.netty Name: netty-codec-http Version: 4.1.121.Final
-Group: io.netty Name: netty-codec-http2 Version: 4.1.121.Final
-Group: io.netty Name: netty-codec-socks Version: 4.1.121.Final
-Group: io.netty Name: netty-common Version: 4.1.121.Final
-Group: io.netty Name: netty-handler Version: 4.1.121.Final
-Group: io.netty Name: netty-handler-proxy Version: 4.1.121.Final
-Group: io.netty Name: netty-resolver Version: 4.1.121.Final
-Group: io.netty Name: netty-resolver-dns Version: 4.1.121.Final
-Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.121.Final
-Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.121.Final
+Group: io.netty Name: netty-buffer Version: 4.1.127.Final
+Group: io.netty Name: netty-codec Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-dns Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-haproxy Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-http Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-http2 Version: 4.1.127.Final
+Group: io.netty Name: netty-codec-socks Version: 4.1.127.Final
+Group: io.netty Name: netty-common Version: 4.1.127.Final
+Group: io.netty Name: netty-handler Version: 4.1.127.Final
+Group: io.netty Name: netty-handler-proxy Version: 4.1.127.Final
+Group: io.netty Name: netty-resolver Version: 4.1.127.Final
+Group: io.netty Name: netty-resolver-dns Version: 4.1.127.Final
+Group: io.netty Name: netty-resolver-dns-classes-macos Version: 4.1.127.Final
+Group: io.netty Name: netty-resolver-dns-native-macos Version: 4.1.127.Final
 Group: io.netty Name: netty-tcnative-boringssl-static Version: 2.0.70.Final
-Group: io.netty Name: netty-tcnative-classes Version: 2.0.70.Final
-Group: io.netty Name: netty-transport Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-native-epoll Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.121.Final
-Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.121.Final
+Group: io.netty Name: netty-tcnative-classes Version: 2.0.73.Final
+Group: io.netty Name: netty-transport Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-classes-epoll Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-classes-kqueue Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-native-epoll Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-native-kqueue Version: 4.1.127.Final
+Group: io.netty Name: netty-transport-native-unix-common Version: 4.1.127.Final
 
 NOTICE:
 | 
@@ -563,10 +563,10 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: io.smallrye.config Name: smallrye-config Version: 3.13.1
-Group: io.smallrye.config Name: smallrye-config-common Version: 3.13.1
-Group: io.smallrye.config Name: smallrye-config-core Version: 3.13.1
-Group: io.smallrye.config Namee: smallrye-config-validator Version: 3.13.1
+Group: io.smallrye.config Name: smallrye-config Version: 3.13.4
+Group: io.smallrye.config Name: smallrye-config-common Version: 3.13.4
+Group: io.smallrye.config Name: smallrye-config-core Version: 3.13.4
+Group: io.smallrye.config Namee: smallrye-config-validator Version: 3.13.4
 
 NOTICE:
 | Copyright 2009-2017 Mark Struberg
@@ -590,8 +590,8 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.18.3
-Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.18.3
+Group: com.fasterxml.jackson.core Name: jackson-annotations Version: 2.20
+Group: com.fasterxml.jackson.core Name: jackson-databind Version: 2.20.0
 
 NOTICE:
 | # Jackson JSON processor
@@ -618,7 +618,7 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.core Name: jackson-core Version: 2.18.2
+Group: com.fasterxml.jackson.core Name: jackson-core Version: 2.20.0
 
 NOTICE:
 | # Jackson JSON processor
@@ -656,7 +656,7 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-yaml Version: 2.18.2
+Group: com.fasterxml.jackson.dataformat Name: jackson-dataformat-yaml Version: 2.20.0
 
 NOTICE:
 | # Jackson JSON processor
@@ -683,9 +683,9 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jdk8 Version: 2.18.2
-Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jsr310 Version: 2.18.2
-Group: com.fasterxml.jackson.module Name: jackson-module-parameter-names Version: 2.18.2
+Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jdk8 Version: 2.20.0
+Group: com.fasterxml.jackson.datatype Name: jackson-datatype-jsr310 Version: 2.20.0
+Group: com.fasterxml.jackson.module Name: jackson-module-parameter-names Version: 2.20.0
 
 NOTICE:
 | # Jackson JSON processor
@@ -850,15 +850,15 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: org.eclipse.jetty Name: jetty-http Version: 9.4.53.v20231009
-Group: org.eclipse.jetty Name: jetty-io Version: 9.4.53.v20231009
-Group: org.eclipse.jetty Name: jetty-security Version: 9.4.53.v20231009
-Group: org.eclipse.jetty Name: jetty-server Version: 9.4.53.v20231009
-Group: org.eclipse.jetty Name: jetty-servlet Version: 9.4.53.v20231009
-Group: org.eclipse.jetty Name: jetty-util Version: 9.4.53.v20231009
-Group: org.eclipse.jetty Name: jetty-util-ajax Version: 9.4.53.v20231009
-Group: org.eclipse.jetty Name: jetty-webapp Version: 9.4.53.v20231009
-Group: org.eclipse.jetty Name: jetty-xml Version: 9.4.53.v20231009
+Group: org.eclipse.jetty Name: jetty-http Version: 9.4.57.v20241219
+Group: org.eclipse.jetty Name: jetty-io Version: 9.4.57.v20241219
+Group: org.eclipse.jetty Name: jetty-security Version: 9.4.57.v20241219
+Group: org.eclipse.jetty Name: jetty-server Version: 9.4.57.v20241219
+Group: org.eclipse.jetty Name: jetty-servlet Version: 9.4.57.v20241219
+Group: org.eclipse.jetty Name: jetty-util Version: 9.4.57.v20241219
+Group: org.eclipse.jetty Name: jetty-util-ajax Version: 9.4.57.v20241219
+Group: org.eclipse.jetty Name: jetty-webapp Version: 9.4.57.v20241219
+Group: org.eclipse.jetty Name: jetty-xml Version: 9.4.57.v20241219
 
 NOTICE:
 | Notices for Eclipse Jetty
@@ -1042,36 +1042,41 @@ NOTICE:
 
 --------------------------------------------------------------------------------
 
-Group: software.amazon.awssdk Name: apache-client Version: 2.31.59
-Group: software.amazon.awssdk Name: arns Version: 2.31.59
-Group: software.amazon.awssdk Name: auth Version: 2.31.59
-Group: software.amazon.awssdk Name: aws-core Version: 2.31.59
-Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.31.59
-Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.31.59
-Group: software.amazon.awssdk Name: checksums Version: 2.31.59
-Group: software.amazon.awssdk Name: checksums-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: crt-core Version: 2.31.59
-Group: software.amazon.awssdk Name: endpoints-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: http-auth Version: 2.31.59
-Group: software.amazon.awssdk Name: http-auth-aws Version: 2.31.59
-Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.31.59
-Group: software.amazon.awssdk Name: http-auth-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: http-client-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.31.59
-Group: software.amazon.awssdk Name: identity-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: json-utils Version: 2.31.59
-Group: software.amazon.awssdk Name: metrics-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: netty-nio-client Version: 2.31.59
-Group: software.amazon.awssdk Name: profiles Version: 2.31.59
-Group: software.amazon.awssdk Name: protocol-core Version: 2.31.59
-Group: software.amazon.awssdk Name: regions Version: 2.31.59
-Group: software.amazon.awssdk Name: retries Version: 2.31.59
-Group: software.amazon.awssdk Name: retries-spi Version: 2.31.59
-Group: software.amazon.awssdk Name: s3 Version: 2.31.59
-Group: software.amazon.awssdk Name: sdk-core Version: 2.31.59
-Group: software.amazon.awssdk Name: sts Version: 2.31.59
-Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.31.59
-Group: software.amazon.awssdk Name: utils Version: 2.31.59
+Group: software.amazon.awssdk Name: annotations Version: 2.35.0
+Group: software.amazon.awssdk Name: apache-client Version: 2.35.0
+Group: software.amazon.awssdk Name: arns Version: 2.35.0
+Group: software.amazon.awssdk Name: auth Version: 2.35.0
+Group: software.amazon.awssdk Name: aws-core Version: 2.35.0
+Group: software.amazon.awssdk Name: aws-json-protocol Version: 2.35.0
+Group: software.amazon.awssdk Name: aws-query-protocol Version: 2.35.0
+Group: software.amazon.awssdk Name: aws-xml-protocol Version: 2.35.0
+Group: software.amazon.awssdk Name: checksums Version: 2.35.0
+Group: software.amazon.awssdk Name: checksums-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: crt-core Version: 2.35.0
+Group: software.amazon.awssdk Name: endpoints-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: http-auth Version: 2.35.0
+Group: software.amazon.awssdk Name: http-auth-aws Version: 2.35.0
+Group: software.amazon.awssdk Name: http-auth-aws-eventstream Version: 2.35.0
+Group: software.amazon.awssdk Name: http-auth-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: http-client-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: iam-policy-builder Version: 2.35.0
+Group: software.amazon.awssdk Name: identity-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: json-utils Version: 2.35.0
+Group: software.amazon.awssdk Name: kms Version: 2.35.0
+Group: software.amazon.awssdk Name: metrics-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: netty-nio-client Version: 2.35.0
+Group: software.amazon.awssdk Name: profiles Version: 2.35.0
+Group: software.amazon.awssdk Name: protocol-core Version: 2.35.0
+Group: software.amazon.awssdk Name: rds Version: 2.35.0
+Group: software.amazon.awssdk Name: regions Version: 2.35.0
+Group: software.amazon.awssdk Name: retries Version: 2.35.0
+Group: software.amazon.awssdk Name: retries-spi Version: 2.35.0
+Group: software.amazon.awssdk Name: s3 Version: 2.35.0
+Group: software.amazon.awssdk Name: sdk-core Version: 2.35.0
+Group: software.amazon.awssdk Name: sts Version: 2.35.0
+Group: software.amazon.awssdk Name: third-party-jackson-core Version: 2.35.0
+Group: software.amazon.awssdk Name: utils Version: 2.35.0
+Group: software.amazon.awssdk Name: utils-lite Version: 2.35.0
 
 NOTICE:
 | AWS SDK for Java

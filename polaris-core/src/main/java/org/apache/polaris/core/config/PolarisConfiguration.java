@@ -174,7 +174,7 @@ public abstract class PolarisConfiguration<T> {
     }
 
     /**
-     * Used to support backwards compatability before there were reserved properties. Usage of this
+     * Used to support backwards compatibility before there were reserved properties. Usage of this
      * method should be removed over time.
      *
      * @deprecated Use {@link #catalogConfig()} instead.
@@ -209,10 +209,6 @@ public abstract class PolarisConfiguration<T> {
 
     public BehaviorChangeConfiguration<T> buildBehaviorChangeConfiguration() {
       validateOrThrow();
-      if (catalogConfig.isPresent() || catalogConfigUnsafe.isPresent()) {
-        throw new IllegalArgumentException(
-            "catalog configs are not valid for behavior change configs");
-      }
       BehaviorChangeConfiguration<T> config =
           new BehaviorChangeConfiguration<>(
               key, description, defaultValue, catalogConfig, catalogConfigUnsafe);

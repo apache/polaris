@@ -98,43 +98,16 @@ public final class PolarisVersion {
   }
 
   /**
-   * Returns the Java version used during the build as in the jar manifest, if {@linkplain
-   * #isReleaseBuild() build-time Git information} is available, when Polaris has been built with
-   * the Gradle {@code -Prelease} project property.
+   * Returns the Java <em>specification</em> version used during the build as in the jar manifest,
+   * if {@linkplain #isReleaseBuild() build-time Git information} is available, when Polaris has
+   * been built with the Gradle {@code -Prelease} project property.
    *
-   * <p>Example value: {@code 21.0.5}
-   *
-   * @see #isReleaseBuild()
-   */
-  public static Optional<String> getBuildJavaVersion() {
-    return PolarisVersionJarInfo.buildInfo(MF_BUILD_JAVA_VERSION);
-  }
-
-  /**
-   * Returns information about the system that performed the build, if {@linkplain #isReleaseBuild()
-   * build-time Git information} is available, when Polaris has been built with the Gradle {@code
-   * -Prelease} project property.
-   *
-   * <p>Example value: {@code Linux myawesomehost 6.12.6 #81 SMP PREEMPT_DYNAMIC Fri Dec 20 09:22:38
-   * CET 2024 x86_64 x86_64 x86_64 GNU/Linux}
+   * <p>Example value: {@code 21}
    *
    * @see #isReleaseBuild()
    */
-  public static Optional<String> getBuildSystem() {
-    return PolarisVersionJarInfo.buildInfo(MF_BUILD_SYSTEM);
-  }
-
-  /**
-   * Returns the build timestamp as in the jar manifest, if {@linkplain #isReleaseBuild() build-time
-   * Git information} is available, when Polaris has been built with the Gradle {@code -Prelease}
-   * project property.
-   *
-   * <p>Example value: {@code 2024-12-16-11:54:05+01:00}
-   *
-   * @see #isReleaseBuild()
-   */
-  public static Optional<String> getBuildTimestamp() {
-    return PolarisVersionJarInfo.buildInfo(MF_BUILD_TIMESTAMP);
+  public static Optional<String> getBuildJavaSpecificationVersion() {
+    return PolarisVersionJarInfo.buildInfo(MF_BUILD_JAVA_SPECIFICATION_VERSION);
   }
 
   public static String readNoticeFile() {
@@ -155,18 +128,15 @@ public final class PolarisVersion {
   private static final String MF_IS_RELEASE = "Apache-Polaris-Is-Release";
   private static final String MF_BUILD_GIT_HEAD = "Apache-Polaris-Build-Git-Head";
   private static final String MF_BUILD_GIT_DESCRIBE = "Apache-Polaris-Build-Git-Describe";
-  private static final String MF_BUILD_TIMESTAMP = "Apache-Polaris-Build-Timestamp";
-  private static final String MF_BUILD_SYSTEM = "Apache-Polaris-Build-System";
-  private static final String MF_BUILD_JAVA_VERSION = "Apache-Polaris-Build-Java-Version";
+  private static final String MF_BUILD_JAVA_SPECIFICATION_VERSION =
+      "Apache-Polaris-Build-Java-Specification-Version";
   private static final List<String> MF_ALL =
       List.of(
           MF_VERSION,
           MF_IS_RELEASE,
           MF_BUILD_GIT_HEAD,
           MF_BUILD_GIT_DESCRIBE,
-          MF_BUILD_TIMESTAMP,
-          MF_BUILD_SYSTEM,
-          MF_BUILD_JAVA_VERSION);
+          MF_BUILD_JAVA_SPECIFICATION_VERSION);
 
   static String readResource(String resource) {
     var fullResource = format("/META-INF/resources/apache-polaris/%s.txt", resource);

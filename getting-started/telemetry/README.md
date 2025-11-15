@@ -49,15 +49,15 @@ This example requires `jq` to be installed on your machine.
     ```
 
 4. Then, use the access token in the Authorization header when accessing Polaris; you can also test
-   the `Polairs-Request-Id` header; you should see it in all logs and traces:
+   the `X-Request-ID` header; you should see it in all logs and traces:
 
     ```shell
     curl -v 'http://localhost:8181/api/management/v1/principal-roles' \
       -H "Authorization: Bearer $POLARIS_TOKEN" \
-      -H "Polaris-Request-Id: 1234"
+      -H "X-Request-ID: 1234"
     curl -v 'http://localhost:8181/api/catalog/v1/config?warehouse=quickstart_catalog' \
       -H "Authorization: Bearer $POLARIS_TOKEN" \
-      -H "Polaris-Request-Id: 5678"
+      -H "X-Request-ID: 5678"
     ```
 
 5. Access the following services:

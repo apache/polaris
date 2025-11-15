@@ -35,20 +35,28 @@ import picocli.CommandLine;
     description = "Bootstraps realms and root principal credentials.")
 public class BootstrapCommand extends BaseCommand {
 
-  @CommandLine.ArgGroup(multiplicity = "1")
-  InputOptions inputOptions;
+  @CommandLine.Mixin InputOptions inputOptions;
 
   static class InputOptions {
 
-    @CommandLine.ArgGroup(multiplicity = "1", exclusive = false)
-    StandardInputOptions stdinOptions;
-
+    // This ArgGroup enforces the mandatory, exclusive choice.
     @CommandLine.ArgGroup(multiplicity = "1")
-    FileInputOptions fileOptions;
+    RootCredentialsOptions rootCredentialsOptions;
 
-    @CommandLine.ArgGroup(multiplicity = "1")
-    SchemaInputOptions schemaInputOptions;
+    // This @Mixin provides independent, optional schema flags.
+    @CommandLine.Mixin SchemaInputOptions schemaInputOptions = new SchemaInputOptions();
 
+    // This static inner class encapsulates the mutually exclusive choices.
+    static class RootCredentialsOptions {
+
+      @CommandLine.ArgGroup(exclusive = false, heading = "Standard Input Options:%n")
+      StandardInputOptions stdinOptions;
+
+      @CommandLine.ArgGroup(exclusive = false, heading = "File Input Options:%n")
+      FileInputOptions fileOptions;
+    }
+
+    // Option container classes
     static class StandardInputOptions {
 
       @CommandLine.Option(
@@ -83,16 +91,8 @@ public class BootstrapCommand extends BaseCommand {
       @CommandLine.Option(
           names = {"-v", "--schema-version"},
           paramLabel = "<schema version>",
-          description = "The version of the schema to load in [1, 2, LATEST].")
+          description = "The version of the schema to load in [1, 2, 3, LATEST].")
       Integer schemaVersion;
-
-      @CommandLine.Option(
-          names = {"--schema-file"},
-          paramLabel = "<schema file>",
-          description =
-              "A schema file to bootstrap from. If unset, the bundled files will be used.",
-          defaultValue = "")
-      String schemaFile;
     }
   }
 
@@ -100,22 +100,24 @@ public class BootstrapCommand extends BaseCommand {
   public Integer call() {
     try {
       RootCredentialsSet rootCredentialsSet;
-      List<String> realms; // TODO Iterable
+      Iterable<String> realms;
 
-      if (inputOptions.fileOptions != null) {
+      if (inputOptions.rootCredentialsOptions.fileOptions != null) {
         rootCredentialsSet =
-            RootCredentialsSet.fromUrl(inputOptions.fileOptions.file.toUri().toURL());
-        realms = rootCredentialsSet.credentials().keySet().stream().toList();
+            RootCredentialsSet.fromUri(
+                inputOptions.rootCredentialsOptions.fileOptions.file.toUri());
+        realms = rootCredentialsSet.credentials().keySet();
       } else {
-        realms = inputOptions.stdinOptions.realms;
+        realms = inputOptions.rootCredentialsOptions.stdinOptions.realms;
         rootCredentialsSet =
-            inputOptions.stdinOptions.credentials == null
-                    || inputOptions.stdinOptions.credentials.isEmpty()
+            inputOptions.rootCredentialsOptions.stdinOptions.credentials == null
+                    || inputOptions.rootCredentialsOptions.stdinOptions.credentials.isEmpty()
                 ? RootCredentialsSet.EMPTY
-                : RootCredentialsSet.fromList(inputOptions.stdinOptions.credentials);
-        if (inputOptions.stdinOptions.credentials == null
-            || inputOptions.stdinOptions.credentials.isEmpty()) {
-          if (!inputOptions.stdinOptions.printCredentials) {
+                : RootCredentialsSet.fromList(
+                    inputOptions.rootCredentialsOptions.stdinOptions.credentials);
+        if (inputOptions.rootCredentialsOptions.stdinOptions.credentials == null
+            || inputOptions.rootCredentialsOptions.stdinOptions.credentials.isEmpty()) {
+          if (!inputOptions.rootCredentialsOptions.stdinOptions.printCredentials) {
             spec.commandLine()
                 .getErr()
                 .println(
@@ -128,11 +130,13 @@ public class BootstrapCommand extends BaseCommand {
 
       final SchemaOptions schemaOptions;
       if (inputOptions.schemaInputOptions != null) {
-        schemaOptions =
-            ImmutableSchemaOptions.builder()
-                .schemaFile(inputOptions.schemaInputOptions.schemaFile)
-                .schemaVersion(inputOptions.schemaInputOptions.schemaVersion)
-                .build();
+        ImmutableSchemaOptions.Builder builder = ImmutableSchemaOptions.builder();
+
+        if (inputOptions.schemaInputOptions.schemaVersion != null) {
+          builder.schemaVersion(inputOptions.schemaInputOptions.schemaVersion);
+        }
+
+        schemaOptions = builder.build();
       } else {
         schemaOptions = ImmutableSchemaOptions.builder().build();
       }
@@ -154,7 +158,8 @@ public class BootstrapCommand extends BaseCommand {
         if (result.getValue().isSuccess()) {
           String realm = result.getKey();
           spec.commandLine().getOut().printf("Realm '%s' successfully bootstrapped.%n", realm);
-          if (inputOptions.stdinOptions != null && inputOptions.stdinOptions.printCredentials) {
+          if (inputOptions.rootCredentialsOptions.stdinOptions != null
+              && inputOptions.rootCredentialsOptions.stdinOptions.printCredentials) {
             String msg =
                 String.format(
                     "realm: %1s root principal credentials: %2s:%3s",

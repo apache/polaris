@@ -85,6 +85,15 @@ project, just run:
 env POLARIS_HOST=localhost ./regtests/run.sh
 ```
 
+The catalog federation tests and some cloud providers test rely on the following configurations in `application.properties` to
+be set in order to succeed.
+
+```
+polaris.features."ENABLE_CATALOG_FEDERATION"=true
+polaris.features."ALLOW_OVERLAPPING_CATALOG_URLS"=true
+polaris.features."ALLOW_NAMESPACE_CUSTOM_LOCATION"=true
+```
+
 To run the tests in verbose mode, with test stdout printing to console, set the `VERBOSE`
 environment variable to `1`; you can also choose to run only a subset of tests by specifying the
 test directories as arguments to `run.sh`. For example, to run only the `t_spark_sql` tests in
@@ -176,30 +185,10 @@ Other commands are available in the `regtests/t_spark_sql/src` directory.
 ## Python Tests
 
 Python tests are based on `pytest`. They rely on a python Polaris client, which is generated from the openapi spec.
-The client can be generated using two commands:
+The client can be generated using make command:
 
 ```shell
-# generate the management api client
-docker run --rm \
-  -v ${PWD}:/local openapitools/openapi-generator-cli generate \
-  -i /local/spec/polaris-management-service.yml \
-  -g python \
-  -o /local/client/python --additional-properties=packageName=polaris.management --additional-properties=apiNamePrefix=polaris
-
-# generate the iceberg rest client
-docker run --rm \
-  -v ${PWD}:/local openapitools/openapi-generator-cli generate \
-  -i /local/spec/polaris-catalog-service.yaml \
-  -g python \
-  -o /local/client/python --additional-properties=packageName=polaris.catalog --additional-properties=apiNameSuffix="" --additional-properties=apiNamePrefix=Iceberg
-```
-
-Tests rely on Python 3.9 or higher. `pyenv` can be used to install a current version and mapped to the local directory
-by using
-
-```shell
-pyenv install 3.9
-pyenv local 3.9
+make client-regenerate
 ```
 
 Once you've done that, you can run `setup.sh` to generate a python virtual environment (installed at `~/polaris-venv`)

@@ -128,8 +128,9 @@ public class MinioExtension
     String accessKey = nonDefault(minio.accessKey());
     String secretKey = nonDefault(minio.secretKey());
     String bucket = nonDefault(minio.bucket());
+    String region = nonDefault(minio.region());
     MinioContainer container =
-        new MinioContainer(null, accessKey, secretKey, bucket).withStartupAttempts(5);
+        new MinioContainer(null, accessKey, secretKey, bucket, region).withStartupAttempts(5);
     container.start();
     return container;
   }

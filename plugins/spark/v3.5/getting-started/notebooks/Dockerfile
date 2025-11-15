@@ -17,31 +17,33 @@
 # under the License.
 #
 
-FROM jupyter/all-spark-notebook:spark-3.5.0
+FROM docker.io/apache/spark:3.5.6-java17
 
-ENV LANGUAGE='en_US:en'
+ENV PYSPARK_PYTHON=/home/spark/venv/bin/python \
+    PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:/home/spark/venv/lib/python3.10/site-packages"
 
 USER root
 
-# Generic table support requires delta 3.2.1
-# Install Spark 3.5.6
-RUN wget -q https://www.apache.org/dyn/closer.lua/spark/spark-3.5.6/spark-3.5.6-bin-hadoop3.tgz?action=download \
-    && tar -xzf spark-3.5.6-bin-hadoop3.tgz \
-    && mv spark-3.5.6-bin-hadoop3 /opt/spark \
-    && rm spark-3.5.6-bin-hadoop3.tgz
+RUN apt-get update -y && \
+    apt-get install -y python3-venv && \
+    mkdir -p /home/spark && \
+    chown -R spark /home/spark
 
-# Set environment variables
-ENV SPARK_HOME=/opt/spark
-ENV PATH=$SPARK_HOME/bin:$PATH
+USER spark
 
-USER jovyan
+WORKDIR /home/spark
 
-COPY --chown=jovyan client /home/jovyan/client
-COPY --chown=jovyan regtests/requirements.txt /tmp
-COPY --chown=jovyan plugins/spark/v3.5/spark/build/2.12/libs /home/jovyan/polaris_libs
-RUN pip install -r /tmp/requirements.txt
-RUN cd client/python && poetry lock && \
-    python3 -m poetry install && \
-    pip install -e .
+COPY --chown=spark client /home/spark/client
+COPY --chown=spark regtests/requirements.txt /tmp
+COPY --chown=spark regtests/notebook_requirements.txt /tmp
+COPY --chown=spark plugins/spark/v3.5/spark/build/2.12/libs/*bundle.jar /opt/spark/jars/
 
-WORKDIR /home/jovyan/
+RUN python3 -m venv /home/spark/venv && \
+    . /home/spark/venv/bin/activate && \
+    pip install -r /tmp/requirements.txt -r /tmp/notebook_requirements.txt && \
+    cd client/python && \
+    poetry lock && \
+    poetry install --all-extras
+
+EXPOSE 8888
+CMD ["/home/spark/venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--NotebookApp.token=''"]

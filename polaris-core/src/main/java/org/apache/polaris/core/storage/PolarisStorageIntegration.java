@@ -20,6 +20,7 @@ package org.apache.polaris.core.storage;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.config.RealmConfig;
 
@@ -55,13 +56,18 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    *     locations
    * @param allowedReadLocations a set of allowed to read locations
    * @param allowedWriteLocations a set of allowed to write locations
+   * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
+   *     supported by the storage type it will be returned to the client in the appropriate
+   *     properties. The endpoint may be relative to the base URI and the client is responsible for
+   *     handling the relative path
    * @return An enum map including the scoped credentials
    */
-  public abstract AccessConfig getSubscopedCreds(
+  public abstract StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations);
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint);
 
   /**
    * Validate access for the provided operation actions and locations.

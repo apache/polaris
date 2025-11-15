@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,9 +36,9 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
  * direct members should be added to this class; rather, they should reside in the PolarisBaseEntity
  * and this class should just contain the relevant builder methods, etc. The intention when using
  * this class is to use "immutable" semantics as much as possible, for example constructing new
- * copies with the Builder pattern when "mutating" fields rather than ever chaing fields in-place.
- * Currently, code that intends to operate directly on a PolarisBaseEntity may not adhere to
- * immutability semantics, and may modify the entity in-place.
+ * copies with the Builder pattern when "mutating" fields rather than directly changing fields
+ * in-place. Currently, code that intends to operate directly on a PolarisBaseEntity may not adhere
+ * to immutability semantics, and may modify the entity in-place.
  *
  * <p>TODO: Combine this fully into PolarisBaseEntity, refactor all callsites to use strict
  * immutability semantics, and remove all mutator methods from PolarisBaseEntity.
@@ -151,14 +152,14 @@ public class PolarisEntity extends PolarisBaseEntity {
         entityVersion);
   }
 
-  public static PolarisEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable PolarisEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new PolarisEntity(sourceEntity);
     }
     return null;
   }
 
-  public static PolarisEntity of(EntityResult result) {
+  public static @Nullable PolarisEntity of(EntityResult result) {
     if (result.isSuccess()) {
       return new PolarisEntity(result.getEntity());
     }
@@ -221,11 +222,6 @@ public class PolarisEntity extends PolarisBaseEntity {
   @Override
   public PolarisEntitySubType getSubType() {
     return PolarisEntitySubType.fromCode(getSubTypeCode());
-  }
-
-  @JsonIgnore
-  public NameAndId nameAndId() {
-    return new NameAndId(name, id);
   }
 
   @Override
@@ -415,7 +411,7 @@ public class PolarisEntity extends PolarisBaseEntity {
       return (B) this;
     }
 
-    public B setInternalProperties(Map<String, String> internalProperties) {
+    public B setInternalProperties(@Nonnull Map<String, String> internalProperties) {
       this.internalProperties = new HashMap<>(internalProperties);
       return (B) this;
     }

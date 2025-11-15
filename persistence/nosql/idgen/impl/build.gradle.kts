@@ -1,0 +1,113 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+import com.github.erizo.gradle.JcstressTask
+import java.io.FileOutputStream
+import java.nio.file.Files
+
+plugins {
+  id("org.kordamp.gradle.jandex")
+  alias(libs.plugins.jmh)
+  alias(libs.plugins.jcstress)
+  id("polaris-server")
+}
+
+description = "Polaris ID generation implementation"
+
+val jcstressRuntime by configurations.creating
+
+dependencies {
+  implementation(project(":polaris-idgen-api"))
+  implementation(project(":polaris-idgen-spi"))
+
+  implementation(libs.guava)
+  implementation(libs.slf4j.api)
+
+  compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jakarta.validation.api)
+  compileOnly(libs.jakarta.inject.api)
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+
+  compileOnly(libs.smallrye.config.core)
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-core")
+
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
+  implementation(platform(libs.jackson.bom))
+  implementation("com.fasterxml.jackson.core:jackson-databind")
+
+  testFixturesCompileOnly(platform(libs.jackson.bom))
+  testFixturesCompileOnly("com.fasterxml.jackson.core:jackson-databind")
+
+  testFixturesCompileOnly(libs.jakarta.inject.api)
+  testFixturesCompileOnly(libs.jakarta.enterprise.cdi.api)
+
+  testImplementation(project(":polaris-idgen-mocks"))
+
+  jmhImplementation(libs.jmh.core)
+  jmhAnnotationProcessor(libs.jmh.generator.annprocess)
+
+  jcstressRuntime(libs.jcstress.core)
+}
+
+tasks.named("jcstressJar") { dependsOn("jandex") }
+
+tasks.named("compileJcstressJava") { dependsOn("jandex") }
+
+tasks.named("check") { dependsOn("jcstress") }
+
+jcstress { jcstressDependency = libs.jcstress.core.get().toString() }
+
+tasks.named<JcstressTask>("jcstress") {
+  inputs.properties(
+    System.getProperties()
+      .mapKeys { it.key.toString() }
+      .filterKeys {
+        setOf("os.name", "os.arch", "os.version", "java.runtime.name", "java.runtime.version")
+          .contains(it)
+      }
+  )
+  inputs.property("availableProcessors", Runtime.getRuntime().availableProcessors())
+  inputs.files(jcstressRuntime)
+  inputs.files(configurations.runtimeClasspath)
+  outputs.dir(layout.buildDirectory.dir("reports/jcstress"))
+
+  if (!System.getProperty("jcstress-no-capture").toBoolean()) {
+    // Capture jcstress output in a log file, dump that in case of a failure.
+
+    val logDir = project.layout.buildDirectory.dir("reports/jcstress").get().asFile
+    val logFile = File(logDir, "jcstress.log")
+    var logStream: FileOutputStream? = null
+
+    actions.addFirst {
+      logStream = FileOutputStream(logFile)
+      standardOutput = logStream
+      errorOutput = logStream
+    }
+
+    actions.addLast {
+      logStream?.close()
+      if (state.failure != null) {
+        logger.error("jcstress output\n{}", Files.readString(logFile.toPath()))
+      }
+    }
+  }
+}

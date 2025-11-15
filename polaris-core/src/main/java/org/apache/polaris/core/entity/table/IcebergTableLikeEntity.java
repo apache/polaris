@@ -19,6 +19,11 @@
 package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Preconditions;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -27,6 +32,7 @@ import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
 /**
@@ -44,11 +50,51 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
   public static final String LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY =
       "last-notification-timestamp";
 
+  /*
+   * The following constants are copied from the TableMetadataParser in Iceberg
+   * They represent the keys used in the table metadata JSON file.
+   */
+
+  public static final String FORMAT_VERSION = "format-version";
+  public static final String TABLE_UUID = "table-uuid";
+  public static final String LOCATION = "location";
+  public static final String LAST_SEQUENCE_NUMBER = "last-sequence-number";
+  public static final String LAST_UPDATED_MILLIS = "last-updated-ms";
+  public static final String LAST_COLUMN_ID = "last-column-id";
+  public static final String SCHEMA = "schema";
+  public static final String SCHEMAS = "schemas";
+  public static final String CURRENT_SCHEMA_ID = "current-schema-id";
+  public static final String PARTITION_SPEC = "partition-spec";
+  public static final String PARTITION_SPECS = "partition-specs";
+  public static final String DEFAULT_SPEC_ID = "default-spec-id";
+  public static final String LAST_PARTITION_ID = "last-partition-id";
+  public static final String DEFAULT_SORT_ORDER_ID = "default-sort-order-id";
+  public static final String SORT_ORDERS = "sort-orders";
+  public static final String PROPERTIES = "properties";
+  public static final String CURRENT_SNAPSHOT_ID = "current-snapshot-id";
+  public static final String REFS = "refs";
+  public static final String SNAPSHOTS = "snapshots";
+  public static final String SNAPSHOT_ID = "snapshot-id";
+  public static final String TIMESTAMP_MS = "timestamp-ms";
+  public static final String SNAPSHOT_LOG = "snapshot-log";
+  public static final String METADATA_FILE = "metadata-file";
+  public static final String METADATA_LOG = "metadata-log";
+  public static final String STATISTICS = "statistics";
+  public static final String PARTITION_STATISTICS = "partition-statistics";
+  public static final String ENCRYPTION_KEYS = "encryption-keys";
+  public static final String NEXT_ROW_ID = "next-row-id";
+
   public IcebergTableLikeEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    PolarisEntitySubType subType = getSubType();
+    Preconditions.checkState(
+        subType == PolarisEntitySubType.ICEBERG_TABLE
+            || subType == PolarisEntitySubType.ICEBERG_VIEW,
+        "Invalid entity sub type: %s",
+        subType);
   }
 
-  public static IcebergTableLikeEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable IcebergTableLikeEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new IcebergTableLikeEntity(sourceEntity);
     }
@@ -74,9 +120,29 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<IcebergTableLikeEntity, Builder> {
-    public Builder(TableIdentifier identifier, String metadataLocation) {
+
+    public Builder(
+        PolarisEntitySubType subType,
+        TableIdentifier identifier,
+        Map<String, String> properties,
+        Map<String, String> internalProperties,
+        String metadataLocation) {
       super();
       setType(PolarisEntityType.TABLE_LIKE);
+      setSubType(subType);
+      setProperties(properties);
+      setInternalProperties(internalProperties);
+      // order here matters. properties and internal properties must be set prior to the following
+      // properties, which merely update the map, whereas the above calls replace the map entirely.
+      setTableIdentifier(identifier);
+      setMetadataLocation(metadataLocation);
+    }
+
+    public Builder(
+        PolarisEntitySubType subType, TableIdentifier identifier, String metadataLocation) {
+      super();
+      setType(PolarisEntityType.TABLE_LIKE);
+      setSubType(subType);
       setTableIdentifier(identifier);
       setMetadataLocation(metadataLocation);
     }
@@ -108,6 +174,29 @@ public class IcebergTableLikeEntity extends TableLikeEntity {
     public Builder setBaseLocation(String location) {
       properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
       return this;
+    }
+
+    @Override
+    public Builder setInternalProperties(@Nonnull Map<String, String> internalProperties) {
+      // ensure we carry forward the parent namespace and metadata location if already set.
+      // however, we allow for overriding them if explicitly specified in the provided map.
+      Map<String, String> newInternalProperties = new HashMap<>();
+      if (this.internalProperties.get(NamespaceEntity.PARENT_NAMESPACE_KEY) != null) {
+        newInternalProperties.put(
+            NamespaceEntity.PARENT_NAMESPACE_KEY,
+            this.internalProperties.get(NamespaceEntity.PARENT_NAMESPACE_KEY));
+      }
+      if (this.internalProperties.get(METADATA_LOCATION_KEY) != null) {
+        newInternalProperties.put(
+            METADATA_LOCATION_KEY, this.internalProperties.get(METADATA_LOCATION_KEY));
+      }
+      if (this.internalProperties.get(LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY) != null) {
+        newInternalProperties.put(
+            LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY,
+            this.internalProperties.get(LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY));
+      }
+      newInternalProperties.putAll(internalProperties);
+      return super.setInternalProperties(newInternalProperties);
     }
 
     public Builder setMetadataLocation(String location) {

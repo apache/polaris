@@ -18,12 +18,8 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
-import jakarta.annotation.Nonnull;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
-import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 
 public enum DatabaseType {
   POSTGRES("postgres"),
@@ -52,25 +48,16 @@ public enum DatabaseType {
    * Open an InputStream that contains data from an init script. This stream should be closed by the
    * caller.
    */
-  public InputStream openInitScriptResource(@Nonnull SchemaOptions schemaOptions) {
-    if (schemaOptions.schemaFile() != null) {
-      try {
-        return new FileInputStream(schemaOptions.schemaFile());
-      } catch (IOException e) {
-        throw new IllegalArgumentException("Unable to load file " + schemaOptions.schemaFile(), e);
-      }
-    } else {
-      final String schemaSuffix;
-      switch (schemaOptions.schemaVersion()) {
-        case null -> schemaSuffix = "schema-v2.sql";
-        case 1 -> schemaSuffix = "schema-v1.sql";
-        case 2 -> schemaSuffix = "schema-v2.sql";
-        default ->
-            throw new IllegalArgumentException(
-                "Unknown schema version " + schemaOptions.schemaVersion());
-      }
-      ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
-      return classLoader.getResourceAsStream(this.getDisplayName() + "/" + schemaSuffix);
+  public InputStream openInitScriptResource(int schemaVersion) {
+    // Preconditions check is simpler and more direct than a switch default
+    if (schemaVersion <= 0 || schemaVersion > 3) {
+      throw new IllegalArgumentException("Unknown or invalid schema version " + schemaVersion);
     }
+
+    final String resourceName =
+        String.format("%s/schema-v%d.sql", this.getDisplayName(), schemaVersion);
+
+    ClassLoader classLoader = DatasourceOperations.class.getClassLoader();
+    return classLoader.getResourceAsStream(resourceName);
   }
 }

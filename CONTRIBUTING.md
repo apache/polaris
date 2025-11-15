@@ -123,11 +123,20 @@ Tips:
 
 The Apache Polaris build currently requires Java 21 or later. There are a few tools that help you running the right Java version:
 
-* [SDKMAN!](https://sdkman.io/) follow the installation instructions, then run `sdk list java` to see the available distributions and versions, then run `sdk install java <identifer from list>` using the identifier for the distribution and version (>= 21) of your choice.
+* [SDKMAN!](https://sdkman.io/) follow the installation instructions, then run `sdk list java` to see the available distributions and versions, then run `sdk install java <identifier from list>` using the identifier for the distribution and version (>= 21) of your choice.
 * [jenv](https://www.jenv.be/) If on a Mac you can use jenv to set the appropriate SDK.
 
-## Good Practices
+## Code Contribution Guidelines
 
+To ensure smooth collaboration and to maintain a high-quality codebase, please adhere to the following guidelines when make code contributions:
+
+* Follow the existing code style and conventions used.
+* Write clear, concise, and well-documented code. This includes providing inline comments when necessary.
+* Keep your changes focused and granular. Separate unrelated changes into multiple pull requests.
+* Write unit tests for your code changes, whenever applicable, and make sure the existing tests pass successfully.
+* Make sure your code compiles without any errors or warnings.
+* Avoid introducing unnecessary dependencies. If you need to include a new dependency, please justify it and discuss with the community first (using the dev mailing list).
+* Be responsive and open to feedback during the code review process.
 * Change of public interface (or more generally speaking Polaris extension point) should be discussed and approved on the dev mailing list.
   The discussion on the dev mailing list should happen before having a "ready-for-review" Pull Request.
 * `git log` can help you find the original/relevant authors of the code you are modifying. If you need, feel free to tag the author in your Pull Request comment if you need assistance or review.

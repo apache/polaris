@@ -23,21 +23,26 @@ The Apache Polaris Python package provides a client for interacting with the Apa
 ## Development
 
 ### Prerequisites
-- Python 3.9 or later
+- Python 3.10 or later
 - poetry >= 2.1
 
 ### Installation
-First we need to generate the OpenAPI client code from the OpenAPI specification.
-```
-make regenerate-client
+First we need to generate the OpenAPI client code from the OpenAPI specification by running the following command **from the project root directory**:
+```bash
+make client-regenerate
 ```
 
 ### Auto-formatting and Linting
-```
-make lint
+```bash
+make client-lint
 ```
 
 ### Running Integration Tests
+```bash
+make client-integration-test
 ```
-make test-integration
+
+### Generating client distributions
+```bash
+make client-build
 ```

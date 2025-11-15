@@ -65,6 +65,9 @@ params:
   # at the very right in the navbar.
   active_releases:
     # Mention all active releases here, in semver descending order
+    - "1.2.0"
+    - "1.1.0"
+    - "1.0.1"
     - "1.0.0"
     - "0.9.0"
 
@@ -101,15 +104,27 @@ menu:
     - name: "In Development"
       url: "/in-dev/unreleased/"
       parent: "releases"
-      weight: 10
+      weight: 1
+    - name: "1.2.0"
+      url: "/releases/1.2.0/"
+      parent: "releases"
+      weight: 996
+    - name: "1.1.0"
+      url: "/releases/1.1.0/"
+      parent: "releases"
+      weight: 997
+    - name: "1.0.1"
+      url: "/releases/1.0.1/"
+      parent: "releases"
+      weight: 998
     - name: "1.0.0"
       url: "/releases/1.0.0/"
       parent: "releases"
-      weight: 20
+      weight: 999
     - name: "0.9.0"
       url: "/releases/0.9.0/"
       parent: "releases"
-      weight: 30
+      weight: 1000
 
     - name: "Downloads"
       identifier: "downloads"
@@ -131,22 +146,30 @@ menu:
       parent: "community"
       url: "/community/proposals"
       weight: 30
-    - name: "Code Of Conduct"
-      parent: "community"
-      url: "/community/code-of-conduct"
-      weight: 40
     - name: "Chat Bylaws"
       parent: "community"
       url: "/community/chat-bylaws"
-      weight: 50
+      weight: 40
     - name: "Contributing Guidelines"
       parent: "community"
       url: "/community/contributing-guidelines"
-      weight: 60
+      weight: 50
+    - name: "Community Guidelines"
+      parent: "community"
+      url: "/community/community-guidelines"
+      weight : 60
+    - name: "Security Report"
+      parent: "community"
+      url: "/community/security-report"
+      weight: 70
     - name: "Release Guide"
       parent: "community"
       url: "/community/release-guide"
-      wieght: 70
+      weight: 80
+    - name: "Blogs"
+      parent: "community"
+      url: "/blog"
+      weight: 00
 
     - name: "GitHub"
       url: "https://github.com/apache/polaris"
@@ -173,38 +196,45 @@ menu:
       params:
         rel: "external"
         external: true
+    - name: "Code of Conduct"
+      parent: "asf"
+      url: "https://www.apache.org/foundation/policies/conduct"
+      weight: 43
+      params:
+        rel: "external"
+        external: true
     - name: "Events"
       parent: "asf"
       url: "https://www.apache.org/events/current-event.html"
-      weight: 43
+      weight: 44
       params:
         rel: "external"
         external: true
     - name: "Privacy"
       parent: "asf"
       url: "https://privacy.apache.org/policies/privacy-policy-public.html"
-      weight: 44
+      weight: 45
       params:
         rel: "external"
         external: true
     - name: "Security"
       parent: "asf"
       url: "https://github.com/apache/polaris/blob/main/SECURITY.md"
-      weight: 45
+      weight: 46
       params:
         rel: "external"
         external: true
     - name: "Sponsorship"
       parent: "asf"
       url: "https://www.apache.org/foundation/sponsorship.html"
-      weight: 46
+      weight: 47
       params:
         rel: "external"
         external: true
     - name: "Thanks"
       parent: "asf"
       url: "https://www.apache.org/foundation/thanks.html"
-      weight: 47
+      weight: 48
       params:
         rel: "external"
         external: true

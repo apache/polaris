@@ -36,7 +36,10 @@ options:
 --client-id
 --client-secret
 --access-token
+--realm
+--header
 --profile
+--proxy
 ```
 
 `COMMAND` must be one of the following:
@@ -47,7 +50,8 @@ options:
 5. namespaces
 6. privileges
 7. profiles
-8. repair
+8. policies
+9. repair
 
 Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important.
 
@@ -60,6 +64,7 @@ polaris catalogs update --property foo=bar some_other_catalog
 polaris catalogs update another_catalog --property k=v
 polaris privileges namespace grant --namespace some.schema --catalog fourth_catalog --catalog-role some_catalog_role TABLE_READ_DATA
 polaris profiles list
+polaris policies list --catalog some_catalog --namespace some.schema
 polaris repair
 ```
 
@@ -81,6 +86,11 @@ If the `--host` and `--port` options are not provided, the CLI will default to c
 
 Alternatively, the `--base-url` option can be used instead of `--host` and `--port`, but both options cannot be used simultaneously. This allows specifying arbitrary Polaris URLs, including HTTPS ones, that have additional base prefixes before the `/api/*/v1` subpaths.
 
+If your Polaris server is configured to use a realm other than the default, you can use the `--realm` option to specify a realm. If `--realm` is not provided, the CLI will check the `REALM` environment variable. If neither is provided, the CLI will not send the realm context header.
+Also, if your Polaris server uses a custom realm header name, you can use the `--header` option to specify it. If `--header` is not provided, the CLI will check the `HEADER` environment variable. If neither is provided, the CLI will use default header name `Polaris-Realm`.
+
+Read [here]({{% ref "./configuration.md" %}}) more about configuring polaris server to work with multiple realms. 
+
 ### PATH
 
 These examples assume the Polaris CLI is on the PATH and so can be invoked just by the command `polaris`. You can add the CLI to your PATH environment variable with a command like the following:
@@ -99,7 +109,7 @@ Alternatively, you can run the CLI by providing a path to it, such as with the f
 
 Each of the commands `catalogs`, `principals`, `principal-roles`, `catalog-roles`, and `privileges` is used to manage a different type of entity within Polaris.
 
-In addition to these, the `profiles` command is available for managing stored authentication profiles, allowing login credentials to be configured for reuse. This provides an alternative to passing authentication details with every command.
+In addition to these, the `profiles` command is available for managing stored authentication profiles, allowing login credentials to be configured for reuse. This provides an alternative to passing authentication details with every command. By default, profiles are stored in a `.polaris.json` file within the `~/.polaris` directory. The location of this directory can be overridden by setting the `POLARIS_HOME` environment variable.
 
 To find details on the options that can be provided to a particular command or subcommand ad-hoc, you may wish to use the `--help` flag. For example:
 
@@ -133,8 +143,12 @@ options:
       --type  The type of catalog to create in [INTERNAL, EXTERNAL]. INTERNAL by default.
       --storage-type  (Required) The type of storage to use for the catalog
       --default-base-location  (Required) Default base location of the catalog
+      --endpoint  (Only for S3) The S3 endpoint to use when connecting to S3
+      --endpoint-internal  (Only for S3) The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use
+      --sts-endpoint  (Only for S3) The STS endpoint to use when connecting to STS
+      --path-style-access  (Only for S3) Whether to use path-style-access for S3
       --allowed-location  An allowed location for files tracked by the catalog. Multiple locations can be provided by specifying this option more than once.
-      --role-arn  (Required for S3) A role ARN to use when connecting to S3
+      --role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
       --region  (Only for S3) The region to use when connecting to S3
       --external-id  (Only for S3) The external ID to use when connecting to S3
       --tenant-id  (Required for Azure) A tenant ID to use when connecting to Azure Storage
@@ -142,10 +156,10 @@ options:
       --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
       --service-account  (Only for GCS) The service account to use when connecting to GCS
       --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
-      --catalog-connection-type  The type of external catalog in [ICEBERG, HADOOP].
+      --catalog-connection-type  The type of external catalog in [iceberg-rest, hadoop].
       --iceberg-remote-catalog-name  The remote catalog name when federating to an Iceberg REST catalog
       --hadoop-warehouse  The warehouse to use when federating to a HADOOP catalog
-      --catalog-authentication-type  The type of authentication in [OAUTH, BEARER, SIGV4]
+      --catalog-authentication-type  The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]
       --catalog-service-identity-type  The type of service identity in [AWS_IAM]
       --catalog-service-identity-iam-arn  When using the AWS_IAM service identity type, this is the ARN of the IAM user or IAM role Polaris uses to assume roles and then access external resources.
       --catalog-uri  The URI of the external catalog
@@ -283,6 +297,7 @@ The `principals` command is used to manage principals within Polaris.
 5. rotate-credentials
 6. update
 7. access
+8. reset
 
 #### create
 
@@ -416,6 +431,32 @@ options:
 
 ```
 polaris principals access quickstart_user
+```
+
+#### reset
+
+The `reset` subcommand is used to reset principal credentials.
+
+```
+input: polaris principals reset --help
+options:
+  reset
+    Named arguments:
+      --new-client-id  The new client ID for the principal
+      --new-client-secret  The new client secret for the principal
+    Positional arguments:
+      principal
+```
+
+##### Examples
+
+```
+polaris principals create some_user
+
+polaris principals reset some_user
+polaris principals reset --new-client-id ${NEW_CLIENT_ID} some_user
+polaris principals reset --new-client-secret ${NEW_CLIENT_SECRET} some_user
+polaris principals reset --new-client-id ${NEW_CLIENT_ID} --new-client-secret ${NEW_CLIENT_SECRET} some_user
 ```
 
 ### Principal Roles
@@ -1185,6 +1226,192 @@ options:
 
 ```
 polaris profiles update dev
+```
+
+### Policies
+
+The `policies` command is used to manage policies within Polaris.
+
+`policies` supports the following subcommands:
+
+1. attach
+2. create
+3. delete
+4. detach
+5. get
+6. list
+7. update
+
+#### attach
+
+The `attach` subcommand is used to create a mapping between a policy and a resource entity.
+
+```
+input: polaris policies attach --help
+options:
+  attach
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+      --attachment-type  The type of entity to attach the policy to, e.g., 'catalog', 'namespace', or table-like.
+      --attachment-path  The path of the entity to attach the policy to, e.g., 'ns1.tb1'. Not required for catalog-level attachment.
+      --parameters  Optional key-value pairs for the attachment/detachment, e.g., key=value. Can be specified multiple times.
+    Positional arguments:
+      policy
+```
+
+##### Examples
+
+```
+polaris policies attach --catalog some_catalog --namespace some.schema --attachment-type namespace --attachment-path some.schema some_policy
+
+polaris policies attach --catalog some_catalog --namespace some.schema --attachment-type table-like --attachment-path some.schema.t some_table_policy
+```
+
+#### create
+
+The `create` subcommand is used to create a policy.
+
+```
+input: polaris policies create --help
+options:
+  create
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+      --policy-file  The path to a JSON file containing the policy definition
+      --policy-type  The type of the policy, e.g., 'system.data-compaction'
+      --policy-description  An optional description for the policy.
+    Positional arguments:
+      policy
+```
+
+##### Examples
+
+```
+polaris policies create --catalog some_catalog --namespace some.schema --policy-file some_policy.json --policy-type system.data-compaction some_policy
+
+polaris policies create --catalog some_catalog --namespace some.schema --policy-file some_snapshot_expiry_policy.json --policy-type system.snapshot-expiry some_snapshot_expiry_policy
+```
+
+#### delete
+
+The `delete` subcommand is used to delete a policy.
+
+```
+input: polaris policies delete --help
+options:
+  delete
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+      --detach-all  When set to true, the policy will be deleted along with all its attached mappings.
+    Positional arguments:
+      policy
+```
+
+##### Examples
+
+```
+polaris policies delete --catalog some_catalog --namespace some.schema some_policy
+
+polaris policies delete --catalog some_catalog --namespace some.schema --detach-all some_policy
+```
+
+#### detach
+
+The `detach` subcommand is used to remove a mapping between a policy and a target entity
+
+```
+input: polaris policies detach --help
+options:
+  detach
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+      --attachment-type  The type of entity to attach the policy to, e.g., 'catalog', 'namespace', or table-like.
+      --attachment-path  The path of the entity to attach the policy to, e.g., 'ns1.tb1'. Not required for catalog-level attachment.
+      --parameters  Optional key-value pairs for the attachment/detachment, e.g., key=value. Can be specified multiple times.
+    Positional arguments:
+      policy
+```
+
+##### Examples
+
+```
+polaris policies detach --catalog some_catalog --namespace some.schema --attachment-type namespace --attachment-path some.schema some_policy
+
+polaris policies detach --catalog some_catalog --namespace some.schema --attachment-type catalog --attachment-path some_catalog some_policy
+```
+
+#### get
+
+The `get` subcommand is used to load a policy from the catalog.
+
+```
+input: polaris policies get --help
+options:
+  get
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+    Positional arguments:
+      policy
+```
+
+##### Examples
+
+```
+polaris policies get --catalog some_catalog --namespace some.schema some_policy
+```
+
+#### list
+
+The `list` subcommand is used to get all policy identifiers under this namespace and all applicable policies for a specified entity.
+
+```
+input: polaris policies list --help
+options:
+  list
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+      --target-name  The name of the target entity (e.g., table name, namespace name).
+      --applicable  When set, lists policies applicable to the target entity (considering inheritance) instead of policies defined directly in the target.
+      --policy-type  The type of the policy, e.g., 'system.data-compaction'
+```
+
+##### Examples
+
+```
+polaris policies list --catalog some_catalog
+
+polaris policies list --catalog some_catalog --applicable
+```
+
+#### update
+
+The `update` subcommand is used to update a policy.
+
+```
+input: polaris policies update --help
+options:
+  update
+    Named arguments:
+      --catalog  The name of an existing catalog
+      --namespace  A period-delimited namespace
+      --policy-file  The path to a JSON file containing the policy definition
+      --policy-description  An optional description for the policy.
+    Positional arguments:
+      policy
+```
+
+##### Examples
+
+```
+polaris policies update --catalog some_catalog --namespace some.schema --policy-file my_updated_policy.json my_policy
+
+polaris policies update --catalog some_catalog --namespace some.schema --policy-file my_updated_policy.json --policy-description "Updated policy description" my_policy
 ```
 
 ### repair

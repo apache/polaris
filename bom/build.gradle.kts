@@ -34,16 +34,46 @@ dependencies {
     api(project(":polaris-immutables"))
     api(project(":polaris-misc-types"))
     api(project(":polaris-version"))
-    api(project(":polaris-persistence-varint"))
+    api(project(":polaris-persistence-nosql-varint"))
+
+    api(project(":polaris-async-api"))
+    api(project(":polaris-async-java"))
+    api(project(":polaris-async-vertx"))
+
+    api(project(":polaris-idgen-api"))
+    api(project(":polaris-idgen-impl"))
+    api(project(":polaris-idgen-spi"))
+
+    api(project(":polaris-nodes-api"))
+    api(project(":polaris-nodes-impl"))
+    api(project(":polaris-nodes-spi"))
+
+    api(project(":polaris-persistence-nosql-realms-api"))
+    api(project(":polaris-persistence-nosql-realms-impl"))
+    api(project(":polaris-persistence-nosql-realms-spi"))
+
+    api(project(":polaris-persistence-nosql-api"))
+    api(project(":polaris-persistence-nosql-impl"))
+    api(project(":polaris-persistence-nosql-benchmark"))
+    api(project(":polaris-persistence-nosql-correctness"))
+    api(project(":polaris-persistence-nosql-standalone"))
+    api(project(":polaris-persistence-nosql-testextension"))
+
+    api(project(":polaris-persistence-nosql-inmemory"))
+    api(project(":polaris-persistence-nosql-mongodb"))
+
+    api(project(":polaris-persistence-nosql-maintenance-api"))
+    api(project(":polaris-persistence-nosql-maintenance-cel"))
+    api(project(":polaris-persistence-nosql-maintenance-spi"))
 
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
     api(project(":polaris-core"))
-    api(project(":polaris-service-common"))
 
-    api(project(":polaris-eclipselink"))
     api(project(":polaris-relational-jdbc"))
+
+    api(project(":polaris-extensions-auth-opa"))
 
     api(project(":polaris-admin"))
     api(project(":polaris-runtime-common"))

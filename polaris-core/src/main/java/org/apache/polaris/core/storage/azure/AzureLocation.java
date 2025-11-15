@@ -126,4 +126,19 @@ public class AzureLocation extends StorageLocation {
     Matcher matcher = URI_PATTERN.matcher(location);
     return matcher.matches();
   }
+
+  @Override
+  public int hashCode() {
+    return withoutScheme().hashCode();
+  }
+
+  /** Checks if two AzureLocation instances represent the same physical location. */
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof AzureLocation) {
+      return withoutScheme().equals(((StorageLocation) obj).withoutScheme());
+    } else {
+      return false;
+    }
+  }
 }

@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -28,6 +31,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /** Aws Polaris Storage Configuration information */
 @PolarisImmutable
@@ -40,9 +44,9 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     return ImmutableAwsStorageConfigurationInfo.builder();
   }
 
-  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
-  @JsonIgnore
-  public static final String ROLE_ARN_PATTERN = "^arn:(aws|aws-us-gov):iam::(\\d{12}):role/.+$";
+  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$, but we've
+  // generalized it to support non-aws S3 implementations
+  @JsonIgnore public static final String ROLE_ARN_PATTERN = "^.+:(.*):iam:.*:(.*):role/.+$";
 
   private static final Pattern ROLE_ARN_PATTERN_COMPILED = Pattern.compile(ROLE_ARN_PATTERN);
 
@@ -56,19 +60,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     return "org.apache.iceberg.aws.s3.S3FileIO";
   }
 
-  public static void validateArn(String arn) {
-    if (arn == null || arn.isEmpty()) {
-      throw new IllegalArgumentException("ARN cannot be null or empty");
-    }
-    // specifically throw errors for China
-    if (arn.contains("aws-cn")) {
-      throw new IllegalArgumentException("AWS China is temporarily not supported");
-    }
-    if (!Pattern.matches(ROLE_ARN_PATTERN, arn)) {
-      throw new IllegalArgumentException("Invalid role ARN format");
-    }
-  }
-
+  @Nullable
   public abstract String getRoleARN();
 
   /** AWS external ID, optional */
@@ -106,6 +98,12 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   /** Flag indicating whether path-style bucket access should be forced in S3 clients. */
   public abstract @Nullable Boolean getPathStyleAccess();
 
+  /**
+   * Flag indicating whether STS is available or not. It is modeled in the negative to simplify
+   * support for unset values ({@code null} being interpreted as {@code false}).
+   */
+  public abstract @Nullable Boolean getStsUnavailable();
+
   /** Endpoint URI for STS API calls */
   @Nullable
   public abstract String getStsEndpoint();
@@ -118,32 +116,54 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   }
 
   @JsonIgnore
+  @Nullable
   public String getAwsAccountId() {
-    return parseAwsAccountId(getRoleARN());
+    String arn = getRoleARN();
+    if (arn != null) {
+      Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
+      checkState(matcher.matches());
+      return matcher.group(2);
+    }
+    return null;
   }
 
   @JsonIgnore
+  @Nullable
   public String getAwsPartition() {
-    return parseAwsPartition(getRoleARN());
-  }
-
-  private static String parseAwsAccountId(String arn) {
-    validateArn(arn);
-    Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
-    if (matcher.matches()) {
-      return matcher.group(2);
-    } else {
-      throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
-    }
-  }
-
-  private static String parseAwsPartition(String arn) {
-    validateArn(arn);
-    Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
-    if (matcher.matches()) {
+    String arn = getRoleARN();
+    if (arn != null) {
+      Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
+      checkState(matcher.matches());
       return matcher.group(1);
-    } else {
-      throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
     }
+    return null;
+  }
+
+  @Value.Check
+  @Override
+  protected void check() {
+    super.check();
+    String arn = getRoleARN();
+    validateArn(arn);
+    if (arn != null) {
+      Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
+      if (!matcher.matches()) {
+        throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
+      }
+    }
+  }
+
+  public static void validateArn(String arn) {
+    if (arn == null) {
+      return;
+    }
+    if (arn.isEmpty()) {
+      throw new IllegalArgumentException("ARN must not be empty");
+    }
+    // specifically throw errors for China
+    if (arn.contains("aws-cn")) {
+      throw new IllegalArgumentException("AWS China is temporarily not supported");
+    }
+    checkArgument(Pattern.matches(ROLE_ARN_PATTERN, arn), "Invalid role ARN format: %s", arn);
   }
 }

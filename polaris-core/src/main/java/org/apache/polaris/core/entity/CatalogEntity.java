@@ -20,6 +20,7 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Collection;
@@ -40,9 +41,11 @@ import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.secrets.UserSecretReference;
+import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
+import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -60,26 +63,39 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   // catalog, stored in the "properties" map.
   public static final String DEFAULT_BASE_LOCATION_KEY = "default-base-location";
 
-  // Specifies a prefix that will be replaced with the catalog's default-base-location whenever
-  // it matches a specified new table or view location. For example, if the catalog base location
-  // is "s3://my-bucket/base/location" and the prefix specified here is "file:/tmp" then any
-  // new table attempting to specify a base location of "file:/tmp/ns1/ns2/table1" will be
-  // translated into "s3://my-bucket/base/location/ns1/ns2/table1".
+  /**
+   * Test-only property that specifies a prefix that will be replaced with the catalog's
+   * default-base-location whenever it matches a specified new table or view location.
+   *
+   * <p>For example, if the catalog base location is "s3://my-bucket/base/location" and the prefix
+   * specified here is "file:/tmp" then any new table attempting to specify a base location of
+   * "file:/tmp/ns1/ns2/table1" will be translated into
+   * "s3://my-bucket/base/location/ns1/ns2/table1".
+   *
+   * <p><strong>WARNING:</strong> This property is intended for testing purposes only and should not
+   * be used in production environments.
+   */
   public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
       "replace-new-location-prefix-with-catalog-default";
 
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+    Preconditions.checkState(
+        getType() == PolarisEntityType.CATALOG, "Invalid entity type: %s", getType());
+    Preconditions.checkState(
+        getSubType() == PolarisEntitySubType.NULL_SUBTYPE,
+        "Invalid entity sub type: %s",
+        getSubType());
   }
 
-  public static CatalogEntity of(PolarisBaseEntity sourceEntity) {
+  public static @Nullable CatalogEntity of(@Nullable PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
       return new CatalogEntity(sourceEntity);
     }
     return null;
   }
 
-  public static CatalogEntity fromCatalog(CallContext callContext, Catalog catalog) {
+  public static CatalogEntity fromCatalog(RealmConfig realmConfig, Catalog catalog) {
     Builder builder =
         new Builder()
             .setName(catalog.getName())
@@ -89,11 +105,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     internalProperties.put(CATALOG_TYPE_PROPERTY, catalog.getType().name());
     builder.setInternalProperties(internalProperties);
     builder.setStorageConfigurationInfo(
-        callContext, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
+        realmConfig, catalog.getStorageConfigInfo(), getBaseLocation(catalog));
     return builder.build();
   }
 
   public Catalog asCatalog() {
+    return this.asCatalog(null);
+  }
+
+  public Catalog asCatalog(ServiceIdentityProvider serviceIdentityProvider) {
     Map<String, String> internalProperties = getInternalPropertiesAsMap();
     Catalog.TypeEnum catalogType =
         Optional.ofNullable(internalProperties.get(CATALOG_TYPE_PROPERTY))
@@ -104,6 +124,12 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         CatalogProperties.builder(propertiesMap.get(DEFAULT_BASE_LOCATION_KEY))
             .putAll(propertiesMap)
             .build();
+
+    // Right now, only external catalog may use ServiceIdentityProvider to resolve identity
+    Preconditions.checkState(
+        catalogType != Catalog.TypeEnum.EXTERNAL || serviceIdentityProvider != null,
+        "%s catalog needs ServiceIdentityProvider to resolve service identities",
+        Catalog.TypeEnum.EXTERNAL);
     return catalogType == Catalog.TypeEnum.EXTERNAL
         ? ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
@@ -113,7 +139,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setLastUpdateTimestamp(getLastUpdateTimestamp())
             .setEntityVersion(getEntityVersion())
             .setStorageConfigInfo(getStorageInfo(internalProperties))
-            .setConnectionConfigInfo(getConnectionInfo(internalProperties))
+            .setConnectionConfigInfo(getConnectionInfo(internalProperties, serviceIdentityProvider))
             .build()
         : PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -141,6 +167,8 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setEndpoint(awsConfig.getEndpoint())
             .setStsEndpoint(awsConfig.getStsEndpoint())
             .setPathStyleAccess(awsConfig.getPathStyleAccess())
+            .setStsUnavailable(awsConfig.getStsUnavailable())
+            .setEndpointInternal(awsConfig.getEndpointInternal())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -171,11 +199,12 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return null;
   }
 
-  private ConnectionConfigInfo getConnectionInfo(Map<String, String> internalProperties) {
+  private ConnectionConfigInfo getConnectionInfo(
+      Map<String, String> internalProperties, ServiceIdentityProvider serviceIdentityProvider) {
     if (internalProperties.containsKey(
         PolarisEntityConstants.getConnectionConfigInfoPropertyName())) {
       ConnectionConfigInfoDpo configInfo = getConnectionConfigInfoDpo();
-      return configInfo.asConnectionConfigInfoModel();
+      return configInfo.asConnectionConfigInfoModel(serviceIdentityProvider);
     }
     return null;
   }
@@ -204,9 +233,17 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
         .orElse(null);
   }
 
+  public boolean isExternal() {
+    return getCatalogType() == Catalog.TypeEnum.EXTERNAL;
+  }
+
   public boolean isPassthroughFacade() {
     return getInternalPropertiesAsMap()
         .containsKey(PolarisEntityConstants.getConnectionConfigInfoPropertyName());
+  }
+
+  public boolean isStaticFacade() {
+    return isExternal() && !isPassthroughFacade();
   }
 
   public ConnectionConfigInfoDpo getConnectionConfigInfoDpo() {
@@ -237,19 +274,19 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     }
 
     public Builder setDefaultBaseLocation(String defaultBaseLocation) {
-      // Note that this member lives in the main 'properties' map rather tha internalProperties.
+      // Note that this member lives in the main 'properties' map rather than internalProperties.
       properties.put(DEFAULT_BASE_LOCATION_KEY, defaultBaseLocation);
       return this;
     }
 
     public Builder setReplaceNewLocationPrefixWithCatalogDefault(String value) {
-      // Note that this member lives in the main 'properties' map rather tha internalProperties.
+      // Note that this member lives in the main 'properties' map rather than internalProperties.
       properties.put(REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, value);
       return this;
     }
 
     public Builder setStorageConfigurationInfo(
-        CallContext callContext, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
+        RealmConfig realmConfig, StorageConfigInfo storageConfigModel, String defaultBaseLocation) {
       if (storageConfigModel != null) {
         PolarisStorageConfigurationInfo config;
         Set<String> allowedLocations = new HashSet<>(storageConfigModel.getAllowedLocations());
@@ -263,7 +300,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
           throw new BadRequestException("Must specify default base location");
         }
         allowedLocations.add(defaultBaseLocation);
-        validateMaxAllowedLocations(callContext, allowedLocations);
+        validateMaxAllowedLocations(realmConfig, allowedLocations);
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
@@ -276,9 +313,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .endpoint(awsConfigModel.getEndpoint())
                     .stsEndpoint(awsConfigModel.getStsEndpoint())
                     .pathStyleAccess(awsConfigModel.getPathStyleAccess())
+                    .stsUnavailable(awsConfigModel.getStsUnavailable())
                     .endpointInternal(awsConfigModel.getEndpointInternal())
                     .build();
-            awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
           case AZURE:
@@ -315,11 +352,9 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     /** Validate the number of allowed locations not exceeding the max value. */
     private void validateMaxAllowedLocations(
-        CallContext callContext, Collection<String> allowedLocations) {
+        RealmConfig realmConfig, Collection<String> allowedLocations) {
       int maxAllowedLocations =
-          callContext
-              .getRealmConfig()
-              .getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
+          realmConfig.getConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS);
       if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
         throw new IllegalArgumentException(
             String.format(
@@ -330,14 +365,24 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
 
     public Builder setConnectionConfigInfoDpoWithSecrets(
         ConnectionConfigInfo connectionConfigurationModel,
-        Map<String, UserSecretReference> secretReferences) {
+        Map<String, SecretReference> secretReferences,
+        ServiceIdentityInfoDpo serviceIdentityInfoDpo) {
       if (connectionConfigurationModel != null) {
         ConnectionConfigInfoDpo config =
             ConnectionConfigInfoDpo.fromConnectionConfigInfoModelWithSecrets(
-                connectionConfigurationModel, secretReferences);
+                    connectionConfigurationModel, secretReferences)
+                .withServiceIdentity(serviceIdentityInfoDpo);
         internalProperties.put(
             PolarisEntityConstants.getConnectionConfigInfoPropertyName(), config.serialize());
       }
+      return this;
+    }
+
+    public Builder setConnectionConfigInfoDpo(
+        @Nonnull ConnectionConfigInfoDpo connectionConfigInfoDpo) {
+      internalProperties.put(
+          PolarisEntityConstants.getConnectionConfigInfoPropertyName(),
+          connectionConfigInfoDpo.serialize());
       return this;
     }
 

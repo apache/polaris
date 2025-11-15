@@ -19,7 +19,7 @@
 
 plugins {
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
 }
 
@@ -52,6 +52,8 @@ dependencies {
 
   testImplementation(project(":polaris-api-management-model"))
 
+  testImplementation(project(":polaris-runtime-test-common"))
+
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies. Explicit dependencies for the log4j libraries are
     // enforced below to ensure the version compatibility
@@ -62,8 +64,7 @@ dependencies {
   }
   // enforce the usage of log4j 2.24.3. This is for the log4j-api compatibility
   // of spark-sql dependency
-  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.25.1")
-  testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.25.1")
+  testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.25.2")
 
   testImplementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
 
@@ -94,13 +95,11 @@ dependencies {
 }
 
 tasks.named<Test>("intTest").configure {
-  maxParallelForks = 1
-  systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
   // Note: the test secrets are referenced in
-  // org.apache.polaris.service.quarkus.it.QuarkusServerManager
+  // org.apache.polaris.service.it.ServerManager
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work

@@ -36,7 +36,5 @@ this directory. Each example has detailed instructions.
 - [Telemetry](telemetry): An example that includes Prometheus and Jaeger to collect metrics and
   traces from Apache Polaris. This example automatically creates a `polaris_demo` catalog.
 
-- [Eclipselink](eclipselink): An example that uses an Eclipselink metastore and a Postgres
-  database. The realm is bootstrapped with the Polaris Admin tool. This example also creates a
-  `polaris_quickstart` catalog, and offers the ability to run Spark SQL and Trino queries. Finally, it shows how to
-  attach a debugger to the Polaris server.
+- [Keycloak](keycloak): An example that uses Keycloak as an external identity provider (IDP) for
+  authentication.

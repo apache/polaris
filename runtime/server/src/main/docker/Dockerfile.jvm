@@ -16,27 +16,31 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.22-1.1753981256
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.23-6.1762870925
 
-LABEL org.opencontainers.image.source=https://github.com/apache/polaris
-LABEL org.opencontainers.image.description="Apache Polaris (incubating)"
-LABEL org.opencontainers.image.licenses=Apache-2.0
+LABEL org.opencontainers.image.source=https://github.com/apache/polaris \
+      org.opencontainers.image.description="Apache Polaris (incubating)" \
+      org.opencontainers.image.licenses=Apache-2.0
 
-ENV LANGUAGE='en_US:en'
+ENV LANGUAGE='en_US:en' \
+    USER=polaris \
+    UID=10000 \
+    HOME=/home/polaris \
+    AB_JOLOKIA_OFF="" \
+    JAVA_APP_JAR="/deployments/quarkus-run.jar"
 
 USER root
-RUN groupadd --gid 10001 polaris \
-      && useradd --uid 10000 --gid polaris polaris \
-      && chown -R polaris:polaris /opt/jboss/container \
-      && chown -R polaris:polaris /deployments
+
+RUN groupadd --gid 10001 polaris && \
+    useradd --uid 10000 --gid polaris polaris && \
+    chown -R polaris:polaris /opt/jboss/container && \
+    chown -R polaris:polaris /deployments
 
 USER polaris
-WORKDIR /home/polaris
-ENV USER=polaris
-ENV UID=10000
-ENV HOME=/home/polaris
 
-# We make four distinct layers so if there are application changes the library layers can be re-used
+WORKDIR /home/polaris
+
+# We make four distinct layers so if there are application changes the library layers can be reused
 COPY --chown=polaris:polaris build/quarkus-app/lib/ /deployments/lib/
 COPY --chown=polaris:polaris build/quarkus-app/*.jar /deployments/
 COPY --chown=polaris:polaris build/quarkus-app/app/ /deployments/app/
@@ -45,8 +49,4 @@ COPY --chown=polaris:polaris distribution/LICENSE /deployments/
 COPY --chown=polaris:polaris distribution/NOTICE /deployments/
 COPY --chown=polaris:polaris distribution/DISCLAIMER /deployments/
 
-EXPOSE 8181
-EXPOSE 8182
-
-ENV AB_JOLOKIA_OFF=""
-ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
+EXPOSE 8181 8182

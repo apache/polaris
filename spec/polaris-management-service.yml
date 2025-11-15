@@ -63,6 +63,10 @@ paths:
       responses:
         201:
           description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Catalog"
         403:
           description: "The caller does not have permission to create a catalog"
         404:
@@ -157,12 +161,12 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePrincipalRequest"
-              example:
-                principal:
-                  name: "alice"
-                  properties:
-                    department: "engineering"
-                credentialRotationRequired: false
+            example:
+              principal:
+                name: "alice"
+                properties:
+                  department: "engineering"
+              credentialRotationRequired: false
       responses:
         201:
           description: "Successful response"
@@ -260,6 +264,41 @@ paths:
           description: "The caller does not have permission to rotate credentials"
         404:
           description: "The principal does not exist"
+
+  /principals/{principalName}/reset:
+    parameters:
+      - name: principalName
+        in: path
+        description: The principal's name
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+    post:
+      operationId: resetCredentials
+      description: >-
+        Reset a principal's credentials to a new set. By default, the system generates random credentials unless
+        explicitly allowed to accept user-provided credentials via configuration.  
+        This API is *not* idempotent and will return the newly created credentials.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPrincipalRequest'
+      responses:
+        200:
+          description: The principal details along with the newly reset credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrincipalWithCredentials"
+        403:
+          description: The caller does not have permission to reset credentials
+        404:
+          description: The principal does not exist
 
   /principals/{principalName}/principal-roles:
     parameters:
@@ -365,6 +404,10 @@ paths:
       responses:
         201:
           description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrincipalRole"
         403:
           description: "The caller does not have permission to add a principal role"
 
@@ -578,6 +621,10 @@ paths:
       responses:
         201:
           description: "Successful response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogRole"
         403:
           description: "The principal is not authorized to create roles"
         404:
@@ -869,6 +916,7 @@ components:
           enum:
             - ICEBERG_REST
             - HADOOP
+            - HIVE
           description: The type of remote catalog service represented by this connection
         uri:
           type: string
@@ -884,6 +932,7 @@ components:
         mapping:
           ICEBERG_REST: "#/components/schemas/IcebergRestConnectionConfigInfo"
           HADOOP: "#/components/schemas/HadoopConnectionConfigInfo"
+          HIVE: "#/components/schemas/HiveConnectionConfigInfo"
 
     IcebergRestConnectionConfigInfo:
       type: object
@@ -906,6 +955,16 @@ components:
         warehouse:
           type: string
           description: The file path to where this catalog should store tables
+    
+    HiveConnectionConfigInfo:
+      type: object
+      description: Configuration necessary for connecting to a Hive Catalog
+      allOf:
+        - $ref: '#/components/schemas/ConnectionConfigInfo'
+      properties:
+        warehouse:
+          type: string
+          description: The warehouse location for the hive catalog.
 
     AuthenticationParameters:
       type: object
@@ -994,7 +1053,7 @@ components:
 
     ImplicitAuthenticationParameters:
       type: object
-      description: Polaris does not explicity accept any authentication parameters for the connection. Authentication 
+      description: Polaris does not explicitly accept any authentication parameters for the connection. Authentication 
         parameters found in the environment and/or configuration files will be used for this connection.
       allOf:
         - $ref: '#/components/schemas/AuthenticationParameters'
@@ -1060,6 +1119,13 @@ components:
                 endpoint for STS requests made by the Polaris Server (optional). If not set, defaults to
                 'endpointInternal' (which in turn defaults to `endpoint`).
               example: "https://sts.example.com:1234"
+            stsUnavailable:
+              type: boolean
+              description: >-
+                if set to `true`, instructs Polaris Servers to avoid using the STS endpoints when obtaining credentials
+                for accessing data and metadata files within the related catalog. Setting this property to `true`
+                effectively disables vending storage credentials to clients. This setting is intended for configuring
+                catalogs with S3-compatible storage implementations that do not support STS.
             endpointInternal:
               type: string
               description: >-
@@ -1073,8 +1139,6 @@ components:
                 Whether S3 requests to files in this catalog should use 'path-style addressing for buckets'.
               example: true
               default: false
-          required:
-            - roleArn
 
     AzureStorageConfigInfo:
       type: object
@@ -1238,6 +1302,20 @@ components:
         - currentEntityVersion
         - properties
 
+    ResetPrincipalRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+          description: >
+            Optional client ID to set for the principal.
+            Must be a valid client ID previously generated by this service.
+        clientSecret:
+          type: string
+          description: >
+            Optional client secret to set for the principal.
+            Polaris service implementations may impose extra requirements on what is accepted as a secret (special chars, length, etc.)
+
     PrincipalRoles:
       type: object
       properties:
@@ -1390,6 +1468,24 @@ components:
         - TABLE_FULL_METADATA
         - TABLE_ATTACH_POLICY
         - TABLE_DETACH_POLICY
+        - TABLE_ASSIGN_UUID
+        - TABLE_UPGRADE_FORMAT_VERSION
+        - TABLE_ADD_SCHEMA
+        - TABLE_SET_CURRENT_SCHEMA
+        - TABLE_ADD_PARTITION_SPEC
+        - TABLE_ADD_SORT_ORDER
+        - TABLE_SET_DEFAULT_SORT_ORDER
+        - TABLE_ADD_SNAPSHOT
+        - TABLE_SET_SNAPSHOT_REF
+        - TABLE_REMOVE_SNAPSHOTS
+        - TABLE_REMOVE_SNAPSHOT_REF
+        - TABLE_SET_LOCATION
+        - TABLE_SET_PROPERTIES
+        - TABLE_REMOVE_PROPERTIES
+        - TABLE_SET_STATISTICS
+        - TABLE_REMOVE_STATISTICS
+        - TABLE_REMOVE_PARTITION_SPECS
+        - TABLE_MANAGE_STRUCTURE
 
     PolicyPrivilege:
       type: string
@@ -1437,6 +1533,24 @@ components:
         - POLICY_FULL_METADATA
         - NAMESPACE_ATTACH_POLICY
         - NAMESPACE_DETACH_POLICY
+        - TABLE_ASSIGN_UUID
+        - TABLE_UPGRADE_FORMAT_VERSION
+        - TABLE_ADD_SCHEMA
+        - TABLE_SET_CURRENT_SCHEMA
+        - TABLE_ADD_PARTITION_SPEC
+        - TABLE_ADD_SORT_ORDER
+        - TABLE_SET_DEFAULT_SORT_ORDER
+        - TABLE_ADD_SNAPSHOT
+        - TABLE_SET_SNAPSHOT_REF
+        - TABLE_REMOVE_SNAPSHOTS
+        - TABLE_REMOVE_SNAPSHOT_REF
+        - TABLE_SET_LOCATION
+        - TABLE_SET_PROPERTIES
+        - TABLE_REMOVE_PROPERTIES
+        - TABLE_SET_STATISTICS
+        - TABLE_REMOVE_STATISTICS
+        - TABLE_REMOVE_PARTITION_SPECS
+        - TABLE_MANAGE_STRUCTURE
 
     CatalogPrivilege:
       type: string
@@ -1474,6 +1588,24 @@ components:
         - POLICY_FULL_METADATA
         - CATALOG_ATTACH_POLICY
         - CATALOG_DETACH_POLICY
+        - TABLE_ASSIGN_UUID
+        - TABLE_UPGRADE_FORMAT_VERSION
+        - TABLE_ADD_SCHEMA
+        - TABLE_SET_CURRENT_SCHEMA
+        - TABLE_ADD_PARTITION_SPEC
+        - TABLE_ADD_SORT_ORDER
+        - TABLE_SET_DEFAULT_SORT_ORDER
+        - TABLE_ADD_SNAPSHOT
+        - TABLE_SET_SNAPSHOT_REF
+        - TABLE_REMOVE_SNAPSHOTS
+        - TABLE_REMOVE_SNAPSHOT_REF
+        - TABLE_SET_LOCATION
+        - TABLE_SET_PROPERTIES
+        - TABLE_REMOVE_PROPERTIES
+        - TABLE_SET_STATISTICS
+        - TABLE_REMOVE_STATISTICS
+        - TABLE_REMOVE_PARTITION_SPECS
+        - TABLE_MANAGE_STRUCTURE
 
     AddGrantRequest:
       type: object

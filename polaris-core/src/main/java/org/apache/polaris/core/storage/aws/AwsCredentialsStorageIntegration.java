@@ -28,8 +28,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
@@ -70,55 +70,64 @@ public class AwsCredentialsStorageIntegration
 
   /** {@inheritDoc} */
   @Override
-  public AccessConfig getSubscopedCreds(
+  public StorageAccessConfig getSubscopedCreds(
       @Nonnull RealmConfig realmConfig,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedWriteLocations,
+      Optional<String> refreshCredentialsEndpoint) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
-    AssumeRoleRequest.Builder request =
-        AssumeRoleRequest.builder()
-            .externalId(storageConfig.getExternalId())
-            .roleArn(storageConfig.getRoleARN())
-            .roleSessionName("PolarisAwsCredentialsStorageIntegration")
-            .policy(
-                policyString(
-                        storageConfig.getRoleARN(),
-                        allowListOperation,
-                        allowedReadLocations,
-                        allowedWriteLocations)
-                    .toJson())
-            .durationSeconds(storageCredentialDurationSeconds);
-    credentialsProvider.ifPresent(
-        cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
-
     String region = storageConfig.getRegion();
-    @SuppressWarnings("resource")
-    // Note: stsClientProvider returns "thin" clients that do not need closing
-    StsClient stsClient =
-        stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
+    StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
-    AssumeRoleResponse response = stsClient.assumeRole(request.build());
-    AccessConfig.Builder accessConfig = AccessConfig.builder();
-    accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
-    accessConfig.put(
-        StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
-    accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
-    Optional.ofNullable(response.credentials().expiration())
-        .ifPresent(
-            i -> {
-              accessConfig.put(
-                  StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
-              accessConfig.put(
-                  StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                  String.valueOf(i.toEpochMilli()));
-            });
+    if (shouldUseSts(storageConfig)) {
+      AssumeRoleRequest.Builder request =
+          AssumeRoleRequest.builder()
+              .externalId(storageConfig.getExternalId())
+              .roleArn(storageConfig.getRoleARN())
+              .roleSessionName("PolarisAwsCredentialsStorageIntegration")
+              .policy(
+                  policyString(
+                          storageConfig.getAwsPartition(),
+                          allowListOperation,
+                          allowedReadLocations,
+                          allowedWriteLocations)
+                      .toJson())
+              .durationSeconds(storageCredentialDurationSeconds);
+      credentialsProvider.ifPresent(
+          cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
+
+      @SuppressWarnings("resource")
+      // Note: stsClientProvider returns "thin" clients that do not need closing
+      StsClient stsClient =
+          stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
+
+      AssumeRoleResponse response = stsClient.assumeRole(request.build());
+      accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
+      accessConfig.put(
+          StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
+      accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
+      Optional.ofNullable(response.credentials().expiration())
+          .ifPresent(
+              i -> {
+                accessConfig.put(
+                    StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
+                accessConfig.put(
+                    StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                    String.valueOf(i.toEpochMilli()));
+              });
+    }
 
     if (region != null) {
       accessConfig.put(StorageAccessProperty.CLIENT_REGION, region);
     }
+
+    refreshCredentialsEndpoint.ifPresent(
+        endpoint -> {
+          accessConfig.put(StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT, endpoint);
+        });
 
     URI endpointUri = storageConfig.getEndpointUri();
     if (endpointUri != null) {
@@ -134,13 +143,17 @@ public class AwsCredentialsStorageIntegration
       accessConfig.put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, Boolean.TRUE.toString());
     }
 
-    if (storageConfig.getAwsPartition().equals("aws-us-gov") && region == null) {
+    if ("aws-us-gov".equals(storageConfig.getAwsPartition()) && region == null) {
       throw new IllegalArgumentException(
           String.format(
               "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
     }
 
     return accessConfig.build();
+  }
+
+  private boolean shouldUseSts(AwsStorageConfigurationInfo storageConfig) {
+    return !Boolean.TRUE.equals(storageConfig.getStsUnavailable());
   }
 
   /**
@@ -152,7 +165,10 @@ public class AwsCredentialsStorageIntegration
    */
   // TODO - add KMS key access
   private IamPolicy policyString(
-      String roleArn, boolean allowList, Set<String> readLocations, Set<String> writeLocations) {
+      String awsPartition,
+      boolean allowList,
+      Set<String> readLocations,
+      Set<String> writeLocations) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
     IamStatement.Builder allowGetObjectStatementBuilder =
         IamStatement.builder()
@@ -162,7 +178,7 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
-    String arnPrefix = getArnPrefixFor(roleArn);
+    String arnPrefix = arnPrefixForPartition(awsPartition);
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
@@ -226,14 +242,8 @@ public class AwsCredentialsStorageIntegration
     return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
   }
 
-  private String getArnPrefixFor(String roleArn) {
-    if (roleArn.contains("aws-cn")) {
-      return "arn:aws-cn:s3:::";
-    } else if (roleArn.contains("aws-us-gov")) {
-      return "arn:aws-us-gov:s3:::";
-    } else {
-      return "arn:aws:s3:::";
-    }
+  private static String arnPrefixForPartition(String awsPartition) {
+    return String.format("arn:%s:s3:::", awsPartition != null ? awsPartition : "aws");
   }
 
   private static @Nonnull String parseS3Path(URI uri) {

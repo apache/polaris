@@ -18,7 +18,7 @@
  */
 
 plugins {
-  alias(libs.plugins.jandex)
+  id("org.kordamp.gradle.jandex")
   id("polaris-server")
 }
 
@@ -28,6 +28,7 @@ dependencies {
 
   api(platform(libs.awssdk.bom))
   api("software.amazon.awssdk:s3")
+  api("software.amazon.awssdk:kms")
 
   implementation(project(":polaris-container-spec-helper"))
   implementation("software.amazon.awssdk:url-connection-client")

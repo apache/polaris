@@ -17,15 +17,32 @@
 # under the License.
 #
 
-FROM jupyter/all-spark-notebook:spark-3.5.0
+FROM docker.io/apache/spark:3.5.6-java17
 
-ENV LANGUAGE='en_US:en'
+ENV PYSPARK_PYTHON=/home/spark/venv/bin/python \
+    PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:/home/spark/venv/lib/python3.10/site-packages"
 
-COPY --chown=jovyan client /home/jovyan/client
-COPY --chown=jovyan regtests/requirements.txt /tmp
-RUN pip install -r /tmp/requirements.txt && \
-    cd client/python && poetry lock && \
-    python3 -m poetry install && \
-    pip install -e .
+USER root
 
-WORKDIR /home/jovyan/
+RUN apt-get update -y && \
+    apt-get install -y python3-venv && \
+    mkdir -p /home/spark && \
+    chown -R spark /home/spark
+
+USER spark
+
+WORKDIR /home/spark
+
+COPY --chown=spark client /home/spark/client
+COPY --chown=spark regtests/requirements.txt /tmp
+COPY --chown=spark regtests/notebook_requirements.txt /tmp
+
+RUN python3 -m venv /home/spark/venv && \
+    . /home/spark/venv/bin/activate && \
+    pip install -r /tmp/requirements.txt -r /tmp/notebook_requirements.txt && \
+    cd client/python && \
+    poetry lock && \
+    poetry install --all-extras
+
+EXPOSE 8888
+CMD ["/home/spark/venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--NotebookApp.token=''"]

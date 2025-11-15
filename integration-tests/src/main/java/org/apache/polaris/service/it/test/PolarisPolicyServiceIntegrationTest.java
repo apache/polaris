@@ -22,11 +22,9 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
@@ -64,6 +62,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.policy.exceptions.PolicyInUseException;
+import org.apache.polaris.service.it.env.CatalogConfig;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IcebergHelper;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
@@ -71,6 +70,7 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.PolicyApi;
+import org.apache.polaris.service.it.env.RestCatalogConfig;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.polaris.service.types.ApplicablePolicy;
 import org.apache.polaris.service.types.AttachPolicyRequest;
@@ -119,8 +119,7 @@ public class PolarisPolicyServiceIntegrationTest {
 
   private static URI s3BucketBase;
   private static String principalRoleName;
-  private static ClientCredentials adminCredentials;
-  private static PrincipalWithCredentials principalCredentials;
+  private static String adminToken;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
@@ -132,40 +131,27 @@ public class PolarisPolicyServiceIntegrationTest {
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
 
-  private static final String[] DEFAULT_CATALOG_PROPERTIES = {
-    "polaris.config.allow.unstructured.table.location", "true",
-    "polaris.config.allow.external.table.location", "true"
-  };
-
-  @Retention(RetentionPolicy.RUNTIME)
-  private @interface CatalogConfig {
-    Catalog.TypeEnum value() default Catalog.TypeEnum.INTERNAL;
-
-    String[] properties() default {
-      "polaris.config.allow.unstructured.table.location", "true",
-      "polaris.config.allow.external.table.location", "true"
-    };
-  }
-
-  @Retention(RetentionPolicy.RUNTIME)
-  private @interface RestCatalogConfig {
-    String[] value() default {};
-  }
+  private static final Map<String, String> DEFAULT_CATALOG_PROPERTIES =
+      Map.of(
+          "polaris.config.allow.unstructured.table.location", "true",
+          "polaris.config.allow.external.table.location", "true");
 
   @BeforeAll
   public static void setup(
       PolarisApiEndpoints apiEndpoints, ClientCredentials credentials, @TempDir Path tempDir) {
-    adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    managementApi = client.managementApi(credentials);
+    adminToken = client.obtainToken(credentials);
+    managementApi = client.managementApi(adminToken);
     String principalName = client.newEntityName("snowman-rest");
     principalRoleName = client.newEntityName("rest-admin");
-    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    PrincipalWithCredentials principalCredentials =
+        managementApi.createPrincipalWithRole(principalName, principalRoleName);
     URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
     s3BucketBase = testRootUri.resolve("my-bucket");
 
-    policyApi = client.policyApi(principalCredentials);
+    String principalToken = client.obtainToken(principalCredentials);
+    policyApi = client.policyApi(principalToken);
   }
 
   @AfterAll
@@ -184,34 +170,29 @@ public class PolarisPolicyServiceIntegrationTest {
     currentCatalogName = client.newEntityName(method.getName());
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
-            .setRoleArn(TEST_ROLE_ARN)
-            .setExternalId("externalId")
-            .setUserArn("a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
-    Optional<PolarisPolicyServiceIntegrationTest.CatalogConfig> catalogConfig =
-        Optional.ofNullable(
-            method.getAnnotation(PolarisPolicyServiceIntegrationTest.CatalogConfig.class));
 
     CatalogProperties.Builder catalogPropsBuilder = CatalogProperties.builder(catalogBaseLocation);
-    String[] properties =
-        catalogConfig
-            .map(PolarisPolicyServiceIntegrationTest.CatalogConfig::properties)
-            .orElse(DEFAULT_CATALOG_PROPERTIES);
-    for (int i = 0; i < properties.length; i += 2) {
-      catalogPropsBuilder.addProperty(properties[i], properties[i + 1]);
-    }
+
+    Map<String, String> catalogProperties =
+        IntegrationTestsHelper.mergeFromAnnotatedElements(
+            testInfo, CatalogConfig.class, CatalogConfig::properties, DEFAULT_CATALOG_PROPERTIES);
+    catalogPropsBuilder.putAll(catalogProperties);
+
     if (!s3BucketBase.getScheme().equals("file")) {
       catalogPropsBuilder.addProperty(
           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
     }
+
+    Catalog.TypeEnum catalogType =
+        IntegrationTestsHelper.extractFromAnnotatedElements(
+            testInfo, CatalogConfig.class, CatalogConfig::value, Catalog.TypeEnum.INTERNAL);
+
     Catalog catalog =
         PolarisCatalog.builder()
-            .setType(
-                catalogConfig
-                    .map(PolarisPolicyServiceIntegrationTest.CatalogConfig::value)
-                    .orElse(Catalog.TypeEnum.INTERNAL))
+            .setType(catalogType)
             .setName(currentCatalogName)
             .setProperties(catalogPropsBuilder.build())
             .setStorageConfigInfo(
@@ -223,29 +204,14 @@ public class PolarisPolicyServiceIntegrationTest {
 
     managementApi.createCatalog(principalRoleName, catalog);
 
-    Optional<PolarisPolicyServiceIntegrationTest.RestCatalogConfig> restCatalogConfig =
-        testInfo
-            .getTestMethod()
-            .flatMap(
-                m ->
-                    Optional.ofNullable(
-                        m.getAnnotation(
-                            PolarisPolicyServiceIntegrationTest.RestCatalogConfig.class)));
-    ImmutableMap.Builder<String, String> extraPropertiesBuilder = ImmutableMap.builder();
-    restCatalogConfig.ifPresent(
-        config -> {
-          for (int i = 0; i < config.value().length; i += 2) {
-            extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
-          }
-        });
+    Map<String, String> restCatalogProperties =
+        IntegrationTestsHelper.mergeFromAnnotatedElements(
+            testInfo, RestCatalogConfig.class, RestCatalogConfig::value, Map.of());
 
+    String principalToken = client.obtainToken(principalCredentials);
     restCatalog =
         IcebergHelper.restCatalog(
-            client,
-            endpoints,
-            principalCredentials,
-            currentCatalogName,
-            extraPropertiesBuilder.build());
+            endpoints, currentCatalogName, restCatalogProperties, principalToken);
     CatalogGrant catalogGrant =
         new CatalogGrant(CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
     managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_1);
@@ -254,12 +220,18 @@ public class PolarisPolicyServiceIntegrationTest {
     managementApi.grantCatalogRoleToPrincipalRole(
         principalRoleName, currentCatalogName, catalogRole);
 
-    policyApi = client.policyApi(principalCredentials);
+    policyApi = client.policyApi(principalToken);
   }
 
   @AfterEach
-  public void cleanUp() {
-    client.cleanUp(adminCredentials);
+  public void cleanUp() throws IOException {
+    try {
+      if (restCatalog != null) {
+        restCatalog.close();
+      }
+    } finally {
+      client.cleanUp(adminToken);
+    }
   }
 
   @Test

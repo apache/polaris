@@ -46,7 +46,8 @@ class IcebergSparkSession:
       aws_region: str = None,
       catalog_name: str = None,
       polaris_url: str = None,
-      realm: str = 'POLARIS'
+      realm: str = 'POLARIS',
+      use_vended_credentials: bool = True
   ):
     """Constructor for Iceberg Spark session. Sets the member variables."""
     self.bearer_token = bearer_token
@@ -56,6 +57,7 @@ class IcebergSparkSession:
     self.catalog_name = catalog_name
     self.polaris_url = polaris_url
     self.realm = realm
+    self.use_vended_credentials = use_vended_credentials
 
   def get_catalog_name(self):
     """Get the catalog name of this spark session based on catalog_type."""
@@ -73,8 +75,8 @@ class IcebergSparkSession:
     """Initial method for Iceberg Spark session. Creates a Spark session with specified configs.
     """
     packages = [
-      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.9.1",
-      "org.apache.iceberg:iceberg-aws-bundle:1.9.1",
+      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.0",
+      "org.apache.iceberg:iceberg-aws-bundle:1.10.0",
     ]
     excludes = ["org.checkerframework:checker-qual", "com.google.errorprone:error_prone_annotations"]
 
@@ -101,7 +103,6 @@ class IcebergSparkSession:
       .config(
         f"spark.sql.catalog.{catalog_name}", "org.apache.iceberg.spark.SparkCatalog"
       )
-      .config(f"spark.sql.catalog.{catalog_name}.header.X-Iceberg-Access-Delegation", "vended-credentials")
       .config(f"spark.sql.catalog.{catalog_name}.type", "rest")
       .config(f"spark.sql.catalog.{catalog_name}.uri", self.polaris_url)
       .config(f"spark.sql.catalog.{catalog_name}.warehouse", self.catalog_name)
@@ -111,6 +112,17 @@ class IcebergSparkSession:
       .config(credConfig, creds)
       .config("spark.ui.showConsoleProgress", False)
     )
+
+    # Conditionally add vended credentials header
+    if self.use_vended_credentials:
+      spark_session_builder = spark_session_builder.config(
+          f"spark.sql.catalog.{catalog_name}.header.X-Iceberg-Access-Delegation", "vended-credentials"
+      )
+    else:
+      # Explicitly remove the header if it was set globally
+      spark_session_builder = spark_session_builder.config(
+          f"spark.sql.catalog.{catalog_name}.header.X-Iceberg-Access-Delegation", ""
+      )
 
     self.spark_session = spark_session_builder.getOrCreate()
     self.quiet_logs(self.spark_session.sparkContext)

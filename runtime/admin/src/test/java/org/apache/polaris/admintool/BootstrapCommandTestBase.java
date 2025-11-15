@@ -91,9 +91,7 @@ public abstract class BootstrapCommandTestBase {
   public void testBootstrapInvalidArguments(LaunchResult result) {
     assertThat(result.getErrorOutput())
         .contains(
-            "(-r=<realm> [-r=<realm>]... [-c=<realm,clientId,clientSecret>]... [-p]) and -f=<file> "
-                + "and (-v=<schema version> | [--schema-file=<schema file>]) are mutually exclusive "
-                + "(specify only one)");
+            "Error: [-r=<realm> [-r=<realm>]... [-c=<realm,clientId,clientSecret>]... [-p]] and [[-f=<file>]] are mutually exclusive (specify only one)");
   }
 
   @Test
@@ -121,7 +119,7 @@ public abstract class BootstrapCommandTestBase {
     LaunchResult result = launcher.launch("bootstrap", "-f", "/non/existing/file");
     assertThat(result.exitCode()).isEqualTo(EXIT_CODE_BOOTSTRAP_ERROR);
     assertThat(result.getErrorOutput())
-        .contains("Failed to read credentials file: file:/non/existing/file")
+        .contains("Failed to read credentials from file:///non/existing/file")
         .contains("Bootstrap encountered errors during operation.");
   }
 
