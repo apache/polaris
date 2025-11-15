@@ -24,8 +24,9 @@ import org.gradle.api.java.archives.Attributes
 import org.gradle.kotlin.dsl.extra
 
 /**
- * Helper class to generate Jar manifest attributes including Git commit SHA, Git describe, project
- * version and Java specification version.
+ * Helper class to generate Jar manifest attributes including project version and Java specification
+ * version. Git information like the commit SHA and Git describe output are only included for
+ * release builds, or if explicitly requested.
  */
 internal class MemoizedJarInfo {
   companion object {
@@ -39,21 +40,37 @@ internal class MemoizedJarInfo {
         @Suppress("UNCHECKED_CAST")
         rootProject.extra["gitReleaseInfo"] as Map<String, String>
       } else {
-        val isRelease =
-          rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")
-        val gi = GitInfo.memoized(rootProject)
-        val javaSpecificationVersion = System.getProperty("java.specification.version")
-
         val version = rootProject.version.toString()
+        val javaSpecificationVersion = System.getProperty("java.specification.version")
+        val includeGitInformation =
+          rootProject.hasProperty("release") || rootProject.hasProperty("jarWithGitInfo")
+
         val info =
-          mapOf(
-            "Implementation-Version" to version,
-            "Apache-Polaris-Version" to version,
-            "Apache-Polaris-Is-Release" to isRelease.toString(),
-            "Apache-Polaris-Build-Git-Head" to gi.gitHead,
-            "Apache-Polaris-Build-Git-Describe" to gi.gitDescribe,
-            "Apache-Polaris-Build-Java-Specification-Version" to javaSpecificationVersion,
-          )
+          if (includeGitInformation) {
+            val gi = GitInfo.memoized(rootProject)
+            mapOf(
+              "Implementation-Version" to version,
+              "Apache-Polaris-Version" to version,
+              "Apache-Polaris-Is-Release" to "true",
+              "Apache-Polaris-Build-Git-Head" to gi.gitHead,
+              "Apache-Polaris-Build-Git-Describe" to gi.gitDescribe,
+              "Apache-Polaris-Build-Java-Specification-Version" to javaSpecificationVersion,
+            )
+          } else {
+            // Not adding Git information here to keep Gradle's up-to-date functionality intact.
+            // Varying information in the manifest would change the MANIFEST.MF file and the jar.
+            // If the output changes, the input of dependent tasks is no longer up-to-date and would
+            // need to be rebuilt.
+            // This would render the Gradle build-cache ineffective for every Git commit,
+            // especially in CI, leading to unnecessary long builds.
+            mapOf(
+              "Implementation-Version" to version,
+              "Apache-Polaris-Version" to version,
+              "Apache-Polaris-Is-Release" to "false",
+              "Apache-Polaris-Build-Java-Specification-Version" to javaSpecificationVersion,
+            )
+          }
+
         rootProject.extra["gitReleaseInfo"] = info
         return info
       }
