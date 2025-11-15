@@ -23,12 +23,15 @@ import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iceberg.ManifestFile;
@@ -39,41 +42,47 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.TestFileIOFactory;
-import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @QuarkusTest
 class ManifestFileCleanupTaskHandlerTest {
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject CallContext callContext;
+  @InjectMock TaskFileIOSupplier taskFileIOSupplier;
 
   private final RealmContext realmContext = () -> "realmName";
+  private PolarisCallContext polarisCallContext;
+  private ExecutorService executor;
 
-  private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
-    return new TaskFileIOSupplier(
-        new TestFileIOFactory(fileIO), Mockito.mock(StorageAccessConfigProvider.class));
+  @BeforeEach
+  public void beforeEach() {
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    polarisCallContext = callContext.getPolarisCallContext();
+    executor = Executors.newSingleThreadExecutor();
   }
 
-  private PolarisCallContext newCallContext() {
-    BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore);
+  @AfterEach
+  public void afterEach() {
+    executor.shutdownNow();
+  }
+
+  private ManifestFileCleanupTaskHandler newManifestFileCleanupTaskHandler(FileIO fileIO) {
+    Mockito.when(taskFileIOSupplier.apply(Mockito.any(), Mockito.any())).thenReturn(fileIO);
+    return new ManifestFileCleanupTaskHandler(taskFileIOSupplier, executor);
   }
 
   @Test
   public void testCleanupFileNotExists() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
 
-    ManifestFileCleanupTaskHandler handler =
-        new ManifestFileCleanupTaskHandler(
-            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
             fileIO, "manifest1.avro", 1L, "dataFile1.parquet", "dataFile2.parquet");
@@ -93,12 +102,9 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFileManifestExistsDataFilesDontExist() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-    ManifestFileCleanupTaskHandler handler =
-        new ManifestFileCleanupTaskHandler(
-            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
             fileIO, "manifest1.avro", 100L, "dataFile1.parquet", "dataFile2.parquet");
@@ -117,7 +123,6 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFiles() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -126,9 +131,7 @@ class ManifestFileCleanupTaskHandlerTest {
           }
         };
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-    ManifestFileCleanupTaskHandler handler =
-        new ManifestFileCleanupTaskHandler(
-            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
     String dataFile1Path = "dataFile1.parquet";
     OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
     PositionOutputStream out1 = dataFile1.createOrOverwrite();
@@ -158,7 +161,6 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFilesWithRetries() throws IOException {
-    PolarisCallContext polarisCallContext = newCallContext();
     Map<String, AtomicInteger> retryCounter = new HashMap<>();
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -181,9 +183,7 @@ class ManifestFileCleanupTaskHandlerTest {
         };
 
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-    ManifestFileCleanupTaskHandler handler =
-        new ManifestFileCleanupTaskHandler(
-            buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+    ManifestFileCleanupTaskHandler handler = newManifestFileCleanupTaskHandler(fileIO);
     String dataFile1Path = "dataFile1.parquet";
     OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
     PositionOutputStream out1 = dataFile1.createOrOverwrite();
