@@ -1897,6 +1897,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             storageAccessConfigProvider,
             new DefaultFileIOFactory(),
             polarisEventListener,
+            eventMetadataFactory,
             metaStoreManager,
             callContext,
             authenticatedRoot) {

@@ -19,8 +19,6 @@
 
 package org.apache.polaris.service.events.listeners.inmemory;
 
-import static org.apache.polaris.service.tracing.RequestIdFilter.REQUEST_ID_KEY;
-
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.RemovalCause;
@@ -28,19 +26,13 @@ import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.smallrye.mutiny.operators.multi.processors.UnicastProcessor;
-import jakarta.annotation.Nullable;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.SecurityContext;
-import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEvent;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -56,13 +48,8 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
 
   private static final Logger LOGGER = LoggerFactory.getLogger(InMemoryBufferEventListener.class);
 
-  @Inject CallContext callContext;
-  @Inject Clock clock;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject InMemoryBufferEventListenerConfiguration configuration;
-
-  @Context SecurityContext securityContext;
-  @Context ContainerRequestContext requestContext;
 
   @VisibleForTesting
   final LoadingCache<String, UnicastProcessor<PolarisEvent>> processors =
@@ -74,27 +61,9 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
           .build(this::createProcessor);
 
   @Override
-  protected void processEvent(PolarisEvent event) {
-    var realmId = callContext.getRealmContext().getRealmIdentifier();
-    processEvent(realmId, event);
-  }
-
   protected void processEvent(String realmId, PolarisEvent event) {
     var processor = Objects.requireNonNull(processors.get(realmId));
     processor.onNext(event);
-  }
-
-  @Override
-  protected ContextSpecificInformation getContextSpecificInformation() {
-    var principal = securityContext.getUserPrincipal();
-    var principalName = principal == null ? null : principal.getName();
-    return new ContextSpecificInformation(clock.millis(), principalName);
-  }
-
-  @Nullable
-  @Override
-  protected String getRequestId() {
-    return (String) requestContext.getProperty(REQUEST_ID_KEY);
   }
 
   @PreDestroy

@@ -23,29 +23,27 @@ import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpec
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.runtime.configuration.MemorySize;
-import jakarta.ws.rs.core.SecurityContext;
 import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +65,7 @@ class AwsCloudWatchEventListenerTest {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AwsCloudWatchEventListenerTest.class);
 
-  private static final LocalStackContainer localStack =
+  private static final LocalStackContainer LOCAL_STACK =
       new LocalStackContainer(
               containerSpecHelper("localstack", AwsCloudWatchEventListenerTest.class)
                   .dockerImageName(null))
@@ -77,10 +75,16 @@ class AwsCloudWatchEventListenerTest {
   private static final String LOG_STREAM = "test-log-stream";
   private static final String REALM = "test-realm";
   private static final String TEST_USER = "test-user";
-  private static final Clock clock = Clock.systemUTC();
-  private static final BigInteger MAX_BODY_SIZE = BigInteger.valueOf(1024 * 1024);
-  private static final PolarisIcebergObjectMapperCustomizer customizer =
-      new PolarisIcebergObjectMapperCustomizer(new MemorySize(MAX_BODY_SIZE));
+  private static final PolarisPrincipal PRINCIPAL =
+      PolarisPrincipal.of(TEST_USER, Map.of(), Set.of("role1", "role2"));
+  private static final Clock CLOCK = Clock.systemUTC();
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+  static {
+    new PolarisIcebergObjectMapperCustomizer(new MemorySize(BigInteger.valueOf(1024 * 1024)))
+        .customize(OBJECT_MAPPER);
+  }
 
   @Mock private AwsCloudWatchConfiguration config;
 
@@ -110,49 +114,31 @@ class AwsCloudWatchEventListenerTest {
         LOGGER.warn("ExecutorService did not terminate in time");
       }
     }
-    if (localStack.isRunning()) {
-      localStack.stop();
+    if (LOCAL_STACK.isRunning()) {
+      LOCAL_STACK.stop();
     }
   }
 
   private CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
-    if (!localStack.isRunning()) {
-      localStack.start();
+    if (!LOCAL_STACK.isRunning()) {
+      LOCAL_STACK.start();
     }
     return CloudWatchLogsAsyncClient.builder()
-        .endpointOverride(localStack.getEndpoint())
+        .endpointOverride(LOCAL_STACK.getEndpoint())
         .credentialsProvider(
             StaticCredentialsProvider.create(
-                AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey())))
-        .region(Region.of(localStack.getRegion()))
+                AwsBasicCredentials.create(LOCAL_STACK.getAccessKey(), LOCAL_STACK.getSecretKey())))
+        .region(Region.of(LOCAL_STACK.getRegion()))
         .build();
   }
 
   private AwsCloudWatchEventListener createListener(CloudWatchLogsAsyncClient client) {
-    AwsCloudWatchEventListener listener =
-        new AwsCloudWatchEventListener(config, clock, customizer) {
-          @Override
-          protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
-            return client;
-          }
-        };
-
-    // Set up call context and security context
-    CallContext callContext = Mockito.mock(CallContext.class);
-    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
-    RealmContext realmContext = Mockito.mock(RealmContext.class);
-    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
-    PolarisPrincipal principal = Mockito.mock(PolarisPrincipal.class);
-    when(callContext.getRealmContext()).thenReturn(realmContext);
-    when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(realmContext.getRealmIdentifier()).thenReturn(REALM);
-    when(securityContext.getUserPrincipal()).thenReturn(principal);
-    when(principal.getName()).thenReturn(TEST_USER);
-    when(principal.getRoles()).thenReturn(Set.of("role1", "role2"));
-    listener.callContext = callContext;
-    listener.securityContext = securityContext;
-
-    return listener;
+    return new AwsCloudWatchEventListener(config, OBJECT_MAPPER, CLOCK) {
+      @Override
+      protected CloudWatchLogsAsyncClient createCloudWatchAsyncClient() {
+        return client;
+      }
+    };
   }
 
   @Test
@@ -203,7 +189,11 @@ class AwsCloudWatchEventListenerTest {
       // Create and send a test event
       TableIdentifier testTable = TableIdentifier.of("test_namespace", "test_table");
       listener.onAfterRefreshTable(
-          new IcebergRestCatalogEvents.AfterRefreshTableEvent("test_catalog", testTable));
+          new IcebergRestCatalogEvents.AfterRefreshTableEvent(
+              PolarisEvent.createEventId(),
+              PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
+              "test_catalog",
+              testTable));
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))
@@ -262,7 +252,11 @@ class AwsCloudWatchEventListenerTest {
       // Create and send a test event synchronously
       TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
       syncListener.onAfterRefreshTable(
-          new IcebergRestCatalogEvents.AfterRefreshTableEvent("test_catalog", syncTestTable));
+          new IcebergRestCatalogEvents.AfterRefreshTableEvent(
+              PolarisEvent.createEventId(),
+              PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
+              "test_catalog",
+              syncTestTable));
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))
@@ -305,17 +299,6 @@ class AwsCloudWatchEventListenerTest {
       syncListener.shutdown();
       client.close();
     }
-  }
-
-  @Test
-  void ensureObjectMapperCustomizerIsApplied() {
-    AwsCloudWatchEventListener listener = createListener(createCloudWatchAsyncClient());
-    listener.start();
-
-    assertThat(listener.objectMapper.getPropertyNamingStrategy())
-        .isInstanceOf(PropertyNamingStrategies.KebabCaseStrategy.class);
-    assertThat(listener.objectMapper.getFactory().streamReadConstraints().getMaxDocumentLength())
-        .isEqualTo(MAX_BODY_SIZE.longValue());
   }
 
   private void verifyLogGroupAndStreamExist(CloudWatchLogsAsyncClient client) {
