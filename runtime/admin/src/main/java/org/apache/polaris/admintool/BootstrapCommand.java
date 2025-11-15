@@ -33,7 +33,7 @@ import picocli.CommandLine;
     name = "bootstrap",
     mixinStandardHelpOptions = true,
     description = "Bootstraps realms and root principal credentials.")
-public class BootstrapCommand extends BaseCommand {
+public class BootstrapCommand extends BaseMetaStoreCommand {
 
   @CommandLine.Mixin InputOptions inputOptions;
 
