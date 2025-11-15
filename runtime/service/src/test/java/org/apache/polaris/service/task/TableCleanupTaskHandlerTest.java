@@ -37,8 +37,6 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -62,10 +60,8 @@ import org.slf4j.LoggerFactory;
 class TableCleanupTaskHandlerTest {
   @Inject Clock clock;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject PolarisConfigurationStore configurationStore;
-
-  private PolarisMetaStoreManager metaStoreManager;
-  private CallContext callContext;
+  @Inject PolarisMetaStoreManager metaStoreManager;
+  @Inject CallContext callContext;
 
   private final RealmContext realmContext = () -> "realmName";
 
@@ -80,13 +76,6 @@ class TableCleanupTaskHandlerTest {
   @BeforeEach
   void setup() {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
-
-    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    callContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            configurationStore);
   }
 
   @Test
