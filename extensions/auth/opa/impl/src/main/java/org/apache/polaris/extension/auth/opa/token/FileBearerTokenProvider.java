@@ -100,12 +100,12 @@ public class FileBearerTokenProvider implements BearerTokenProvider {
     this.clock = clock;
     this.asyncExec = asyncExec;
 
+    checkState(Files.isReadable(tokenFilePath), "OPA token file does not exist or is not readable");
+
     this.nextRefresh = Instant.MIN;
     this.lastRefresh = Instant.MIN;
     // start refreshing the token (immediately)
     scheduleRefreshAttempt(Duration.ZERO);
-
-    checkState(Files.isReadable(tokenFilePath), "OPA token file does not exist or is not readable");
 
     logger.debug(
         "Created file token provider for path: {} with refresh interval: {}, JWT expiration refresh: {}, JWT buffer: {}, next refresh: {}",
