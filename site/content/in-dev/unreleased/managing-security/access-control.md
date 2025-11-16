@@ -28,6 +28,10 @@ This section provides information about how access control works for Apache Pola
 Polaris uses a role-based access control (RBAC) model in which the Polaris administrator assigns access privileges to catalog roles
 and then grants access to resources to principals by assigning catalog roles to principal roles.
 
+{{% alert title="Note" color="primary" %}}
+For advanced authorization scenarios requiring external policy management or integration with existing policy infrastructure, Polaris supports integration with external Policy Decision Points (PDPs) such as Open Policy Agent (OPA). See [External Policy Decision Point](../external-pdp/) for more information.
+{{% /alert %}}
+
 These are the key concepts to understanding access control in Polaris:
 
 - **Securable object**
