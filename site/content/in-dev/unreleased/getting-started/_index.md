@@ -64,30 +64,25 @@ cd apache-polaris-1.0.0-incubating-bin
 
 ## Step 3: Configure Polaris (Optional)
 
-Edit the `application.properties` file if needed. For example:
+Configure Polaris using environment variables or system properties. For example:
 
 ```bash
-polaris.storage.backend=local
-polaris.storage.local.path=/data/polaris
+export POLARIS_JAVA_OPTS="-Dpolaris.storage.backend=local -Dpolaris.storage.local.path=/data/polaris"
 ```
 
-*(This is a configuration file, not a shell command. Adjust these values as needed.)*
+Alternatively, you can set options when starting the server in Step 4.
 
 ---
 
 ## Step 4: Run the Polaris Server
 
-Start the Polaris server using the provided script:
+Start the Polaris server:
 
 ```bash
-./bin/polaris-server.sh start
+bin/server
 ```
 
-To tail the logs in a separate terminal, run:
-
-```bash
-tail -f logs/polaris.log
-```
+The server will start on `http://localhost:8181` by default.
 
 ---
 
@@ -105,10 +100,10 @@ You should see the Polaris server running or be able to access its REST API.
 
 ## Step 6: Stop the Polaris Server
 
-To stop the server, run:
+To stop the server, use `Ctrl+C` in the terminal where it's running, or kill the process:
 
 ```bash
-./bin/polaris-server.sh stop
+pkill -f "java.*quarkus-run.jar"
 ```
 
 ---
@@ -116,7 +111,7 @@ To stop the server, run:
 ## Additional Resources
 
 - See the [official Apache Polaris documentation](https://polaris.apache.org/docs/) for comprehensive information on configuration, deployment, and usage.
-- Use `./bin/polaris-admin` in the binary distribution for administrative and maintenance tasks.
+- Use `bin/admin` in the binary distribution for administrative and maintenance tasks (e.g., `bin/admin bootstrap`, `bin/admin purge`).
 
 ---
 
