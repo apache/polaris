@@ -23,58 +23,51 @@ type: docs
 weight: 101
 ---
 
-# Getting Started with Apache Polaris Binary Distribution
-
-Quickly start Apache Polaris by running the pre-built binary, no build needed.
-
----
+This guide will help you get started with Apache Polaris using the binary distribution, which is the fastest way to set up a Polaris server.
 
 ## Prerequisites
 
-- Java 21 or later installed. You can verify this by running:
+Before you begin, ensure you have the following:
+
+- Java SE 21 or higher installed
+- Verify Java installation:
 
 ```bash
 java -version
 ```
 
----
+## Step 1: Download and Extract the Binary Distribution
 
-## Step 1: Download the Apache Polaris Binary
+1. Visit the [Apache Polaris downloads page](https://polaris.apache.org/downloads/).
 
-1. Visit the official Apache Polaris GitHub
-   [Releases page](https://github.com/apache/polaris/releases).
-
-2. Download the latest binary archive file, for example:
+2. Download the latest binary distribution (tar.gz file) and extract it to your desired directory:
 
 ```bash
-curl -L https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz | tar xz
+tar -xzf apache-polaris-1.0.0-incubating-bin.tar.gz
 ```
 
----
+## Step 2: Configure Polaris
 
-## Step 2: Extract the Archive
-
-Extract the downloaded tar.gz file to your desired directory:
+Navigate to the extracted directory:
 
 ```bash
 cd apache-polaris-1.0.0-incubating-bin
 ```
 
----
-
-## Step 3: Configure Polaris (Optional)
-
 Configure Polaris using environment variables or system properties. For example:
 
 ```bash
-export POLARIS_JAVA_OPTS="-Dpolaris.storage.backend=local -Dpolaris.storage.local.path=/data/polaris"
+# Configure server port
+export POLARIS_JAVA_OPTS="-Dquarkus.http.port=8080"
+
+# Configure persistence type
+export POLARIS_JAVA_OPTS="-Dpolaris.persistence.type=relational-jdbc"
+
+# You can also combine multiple options
+export POLARIS_JAVA_OPTS="-Xms512m -Xmx1g -Dquarkus.http.port=8080"
 ```
 
-Alternatively, you can set options when starting the server in Step 4.
-
----
-
-## Step 4: Run the Polaris Server
+## Step 3: Start Polaris Server
 
 Start the Polaris server:
 
@@ -82,49 +75,36 @@ Start the Polaris server:
 bin/server
 ```
 
-The server will start on `http://localhost:8181` by default.
+You should see output indicating that Polaris is starting up. When ready, you'll see messages similar to:
 
----
-
-## Step 5: Verify the Server is Running
-
-Open your browser and navigate to:
-
-```bash
-curl http://localhost:8181/api/catalog/v1/health
+```
+INFO  [io.quarkus] Apache Polaris Server (incubating) started in X.XXXs. Listening on: http://0.0.0.0:8181. Management interface listening on http://0.0.0.0:8182.
 ```
 
-You should see the Polaris server running or be able to access its REST API.
+## Step 4: Verify the Installation
 
----
-
-## Step 6: Stop the Polaris Server
-
-To stop the server, use `Ctrl+C` in the terminal where it's running, or kill the process:
+Verify that Polaris is running by checking the health endpoint:
 
 ```bash
-pkill -f "java.*quarkus-run.jar"
+curl http://localhost:8182/q/health
 ```
 
----
+You should receive a response indicating the server is healthy.
 
-## Additional Resources
+## Step 5: Stop Polaris Server
 
-- See the [official Apache Polaris documentation](https://polaris.apache.org/docs/) for comprehensive information on configuration, deployment, and usage.
-- Use `bin/admin` in the binary distribution for administrative and maintenance tasks (e.g., `bin/admin bootstrap`, `bin/admin purge`).
+To stop the Polaris server, press `Ctrl+C` in the terminal where it's running.
 
----
+## Admin Tool
 
-## Other Getting Started Options
+The binary distribution includes an admin tool for administrative and maintenance tasks:
 
-For building and running Polaris from source code, check out the [Quickstart guide](./quick-start/).
+```bash
+bin/admin --help              # Show admin commands
+bin/admin bootstrap -h        # Show bootstrap help
+bin/admin purge -h            # Show purge help
+```
 
-For Docker Compose examples and other deployment options, please see the [documentation](https://polaris.apache.org).
+## Next Steps
 
----
-
-### Getting Help
-
-- Documentation: https://polaris.apache.org
-- GitHub Issues: https://github.com/apache/polaris/issues
-- Slack: [Join Apache Polaris Community](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
+For instructions on building and running Polaris from source code, see the [Quickstart]({{% relref "quickstart" %}}) guide.
