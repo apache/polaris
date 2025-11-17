@@ -21,7 +21,6 @@ package org.apache.polaris.persistence.nosql.api.index;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Objects.requireNonNull;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -65,21 +64,30 @@ public final class IndexKey implements Comparable<IndexKey> {
   static final byte ESC = 0x02;
   static final byte EOF_ESCAPED = 0x03;
   static final byte ESC_ESCAPED = 0x04;
+  static final byte NULL_ESCAPED = 0x05;
 
   /** Maximum number of characters in a key. Note: characters can take up to 3 bytes via UTF-8. */
   public static final int MAX_LENGTH = 500;
 
   public static final IndexValueSerializer<IndexKey> INDEX_KEY_SERIALIZER =
       new IndexValueSerializer<>() {
+        private static final byte[] NULL_KEY = new byte[] {ESC, NULL_ESCAPED};
+
         @Override
         public int serializedSize(@Nullable IndexKey value) {
-          return requireNonNull(value).serializedSize();
+          if (value != null) {
+            return value.serializedSize();
+          }
+          return NULL_KEY.length;
         }
 
         @Override
         @Nonnull
         public ByteBuffer serialize(@Nullable IndexKey value, @Nonnull ByteBuffer target) {
-          return requireNonNull(value).serialize(target);
+          if (value != null) {
+            return value.serialize(target);
+          }
+          return target.put(NULL_KEY);
         }
 
         @Override
@@ -119,6 +127,7 @@ public final class IndexKey implements Comparable<IndexKey> {
     return new IndexKey(key);
   }
 
+  @Nullable
   public static IndexKey deserializeKey(ByteBuffer buffer) {
     var tmp = new byte[MAX_LENGTH];
     var l = 0;
@@ -130,6 +139,10 @@ public final class IndexKey implements Comparable<IndexKey> {
       if (b == ESC) {
         b = buffer.get();
         switch (b) {
+          case NULL_ESCAPED -> {
+            checkState(l == 0, "NULL escape position");
+            return null;
+          }
           case EOF_ESCAPED -> b = EOF;
           case ESC_ESCAPED -> b = ESC;
           default -> throw new IllegalArgumentException("Invalid escaped value " + b);
@@ -151,6 +164,10 @@ public final class IndexKey implements Comparable<IndexKey> {
         b = buffer.get();
         switch (b) {
           case EOF_ESCAPED, ESC_ESCAPED -> {}
+          case NULL_ESCAPED -> {
+            checkState(l == 0, "NULL escape position");
+            return;
+          }
           default -> throw new IllegalArgumentException("Invalid escaped value " + b);
         }
         l += 2;
