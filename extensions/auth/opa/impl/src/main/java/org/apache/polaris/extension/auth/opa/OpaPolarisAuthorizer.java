@@ -19,15 +19,16 @@
 package org.apache.polaris.extension.auth.opa;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.core5.http.ClassicHttpRequest;
@@ -45,6 +46,13 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.extension.auth.opa.model.ImmutableActor;
+import org.apache.polaris.extension.auth.opa.model.ImmutableContext;
+import org.apache.polaris.extension.auth.opa.model.ImmutableOpaAuthorizationInput;
+import org.apache.polaris.extension.auth.opa.model.ImmutableOpaRequest;
+import org.apache.polaris.extension.auth.opa.model.ImmutableResource;
+import org.apache.polaris.extension.auth.opa.model.ImmutableResourceEntity;
+import org.apache.polaris.extension.auth.opa.model.ResourceEntity;
 import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
 
 /**
@@ -211,8 +219,8 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
   /**
    * Builds the OPA input JSON for the authorization query.
    *
-   * <p>Assembles the actor, action, resource, and context sections into the expected OPA input
-   * format.
+   * <p>Uses type-safe model classes to construct the authorization input, ensuring consistency with
+   * the JSON schema.
    *
    * <p><strong>Note:</strong> OpaPolarisAuthorizer bypasses Polaris's built-in role-based
    * authorization system. This includes both principal roles and catalog roles that would normally
@@ -235,98 +243,93 @@ class OpaPolarisAuthorizer implements PolarisAuthorizer {
       List<PolarisResolvedPathWrapper> targets,
       List<PolarisResolvedPathWrapper> secondaries)
       throws IOException {
-    ObjectNode input = objectMapper.createObjectNode();
-    input.set("actor", buildActorNode(principal));
-    input.put("action", op.name());
-    input.set("resource", buildResourceNode(targets, secondaries));
-    input.set("context", buildContextNode());
-    ObjectNode root = objectMapper.createObjectNode();
-    root.set("input", input);
-    return objectMapper.writeValueAsString(root);
-  }
 
-  /**
-   * Builds the actor section of the OPA input JSON.
-   *
-   * <p>Includes principal name, and roles as a generic field.
-   *
-   * @param principal the principal requesting authorization
-   * @return the actor node for OPA input
-   */
-  private ObjectNode buildActorNode(PolarisPrincipal principal) {
-    ObjectNode actor = objectMapper.createObjectNode();
-    actor.put("principal", principal.getName());
-    ArrayNode roles = objectMapper.createArrayNode();
-    for (String role : principal.getRoles()) roles.add(role);
-    actor.set("roles", roles);
-    return actor;
-  }
+    // Build actor from principal
+    var actor =
+        ImmutableActor.builder()
+            .principal(principal.getName())
+            .addAllRoles(principal.getRoles())
+            .build();
 
-  /**
-   * Builds the resource section of the OPA input JSON.
-   *
-   * <p>Includes the main target entity under 'primary' and secondary entities under 'secondaries'.
-   *
-   * @param targets the list of main target entities
-   * @param secondaries the list of secondary entities
-   * @return the resource node for OPA input
-   */
-  private ObjectNode buildResourceNode(
-      List<PolarisResolvedPathWrapper> targets, List<PolarisResolvedPathWrapper> secondaries) {
-    ObjectNode resource = objectMapper.createObjectNode();
-    // Main targets as 'targets' array
-    ArrayNode targetsArray = objectMapper.createArrayNode();
-    if (targets != null && !targets.isEmpty()) {
-      for (PolarisResolvedPathWrapper targetWrapper : targets) {
-        targetsArray.add(buildSingleResourceNode(targetWrapper));
-      }
-    }
-    resource.set("targets", targetsArray);
-    // Secondaries as array
-    ArrayNode secondariesArray = objectMapper.createArrayNode();
-    if (secondaries != null && !secondaries.isEmpty()) {
-      for (PolarisResolvedPathWrapper secondaryWrapper : secondaries) {
-        secondariesArray.add(buildSingleResourceNode(secondaryWrapper));
-      }
-    }
-    resource.set("secondaries", secondariesArray);
-    return resource;
-  }
-
-  /** Helper to build a resource node for a single PolarisResolvedPathWrapper. */
-  private ObjectNode buildSingleResourceNode(PolarisResolvedPathWrapper wrapper) {
-    ObjectNode node = objectMapper.createObjectNode();
-    if (wrapper == null) return node;
-    var resolvedEntity = wrapper.getResolvedLeafEntity();
-    if (resolvedEntity != null) {
-      var entity = resolvedEntity.getEntity();
-      node.put("type", entity.getType().name());
-      node.put("name", entity.getName());
-      var parentPath = wrapper.getResolvedParentPath();
-      if (parentPath != null && !parentPath.isEmpty()) {
-        ArrayNode parentsArray = objectMapper.createArrayNode();
-        for (var parent : parentPath) {
-          ObjectNode parentNode = objectMapper.createObjectNode();
-          parentNode.put("type", parent.getEntity().getType().name());
-          parentNode.put("name", parent.getEntity().getName());
-          parentsArray.add(parentNode);
+    // Build resource entities for targets
+    List<ResourceEntity> targetEntities = new ArrayList<>();
+    if (targets != null) {
+      for (PolarisResolvedPathWrapper target : targets) {
+        ResourceEntity entity = buildResourceEntity(target);
+        if (entity != null) {
+          targetEntities.add(entity);
         }
-        node.set("parents", parentsArray);
       }
     }
-    return node;
+
+    // Build resource entities for secondaries
+    List<ResourceEntity> secondaryEntities = new ArrayList<>();
+    if (secondaries != null) {
+      for (PolarisResolvedPathWrapper secondary : secondaries) {
+        ResourceEntity entity = buildResourceEntity(secondary);
+        if (entity != null) {
+          secondaryEntities.add(entity);
+        }
+      }
+    }
+
+    // Build resource
+    var resource =
+        ImmutableResource.builder().targets(targetEntities).secondaries(secondaryEntities).build();
+
+    // Build context
+    var context = ImmutableContext.builder().requestId(UUID.randomUUID().toString()).build();
+
+    // Build complete authorization input
+    var input =
+        ImmutableOpaAuthorizationInput.builder()
+            .actor(actor)
+            .action(op.name())
+            .resource(resource)
+            .context(context)
+            .build();
+
+    // Wrap in OPA request
+    var request = ImmutableOpaRequest.builder().input(input).build();
+
+    return objectMapper.writeValueAsString(request);
   }
 
   /**
-   * Builds the context section of the OPA input JSON.
+   * Builds a resource entity from a resolved path wrapper.
    *
-   * <p>Includes a request ID for correlating OPA server requests with logs.
-   *
-   * @return the context node for OPA input
+   * @param wrapper the resolved path wrapper
+   * @return the resource entity, or null if wrapper is null or has no resolved entity
    */
-  private ObjectNode buildContextNode() {
-    ObjectNode context = objectMapper.createObjectNode();
-    context.put("request_id", java.util.UUID.randomUUID().toString());
-    return context;
+  @Nullable
+  private ResourceEntity buildResourceEntity(@Nullable PolarisResolvedPathWrapper wrapper) {
+    if (wrapper == null) {
+      return null;
+    }
+
+    var resolvedEntity = wrapper.getResolvedLeafEntity();
+    if (resolvedEntity == null) {
+      return null;
+    }
+
+    var entity = resolvedEntity.getEntity();
+    var builder =
+        ImmutableResourceEntity.builder().type(entity.getType().name()).name(entity.getName());
+
+    // Build parent hierarchy
+    var parentPath = wrapper.getResolvedParentPath();
+    if (parentPath != null && !parentPath.isEmpty()) {
+      List<ResourceEntity> parents = new ArrayList<>();
+      for (var parent : parentPath) {
+        parents.add(
+            ImmutableResourceEntity.builder()
+                .type(parent.getEntity().getType().name())
+                .name(parent.getEntity().getName())
+                .build());
+      }
+      builder.parents(parents);
+    }
+
+    return builder.build();
   }
 }

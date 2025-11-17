@@ -211,9 +211,6 @@ public class OpaPolarisAuthorizerTest {
       // Verify resource structure - this is the key part for hierarchical resources
       var resource = input.get("resource");
       assertThat(resource.has("targets")).as("Resource should have 'targets' field").isTrue();
-      assertThat(resource.has("secondaries"))
-          .as("Resource should have 'secondaries' field")
-          .isTrue();
 
       var targets = resource.get("targets");
       assertThat(targets.isArray()).as("Targets should be an array").isTrue();
@@ -255,9 +252,10 @@ public class OpaPolarisAuthorizerTest {
           .as("Namespace name should be sales_data")
           .isEqualTo("sales_data");
 
-      var secondaries = resource.get("secondaries");
-      assertThat(secondaries.isArray()).as("Secondaries should be an array").isTrue();
-      assertThat(secondaries.size()).as("Should have no secondaries in this test").isEqualTo(0);
+      // Secondaries field should be omitted when empty (NON_EMPTY serialization)
+      assertThat(resource.has("secondaries"))
+          .as("Secondaries should be omitted when empty")
+          .isFalse();
     } finally {
       server.stop(0);
     }
@@ -421,9 +419,10 @@ public class OpaPolarisAuthorizerTest {
           .as("Team name should be machine_learning")
           .isEqualTo("machine_learning");
 
-      var secondaries = resource.get("secondaries");
-      assertThat(secondaries.isArray()).as("Secondaries should be an array").isTrue();
-      assertThat(secondaries.size()).as("Should have no secondaries in this test").isEqualTo(0);
+      // Secondaries field should be omitted when empty (NON_EMPTY serialization)
+      assertThat(resource.has("secondaries"))
+          .as("Secondaries should be omitted when empty")
+          .isFalse();
     } finally {
       server.stop(0);
     }

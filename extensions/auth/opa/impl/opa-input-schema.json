@@ -1,0 +1,76 @@
+{
+  "type" : "object",
+  "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:OpaAuthorizationInput",
+  "properties" : {
+    "actor" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:Actor",
+      "required" : true,
+      "properties" : {
+        "principal" : {
+          "type" : "string",
+          "required" : true
+        },
+        "roles" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "action" : {
+      "type" : "string",
+      "required" : true
+    },
+    "resource" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:Resource",
+      "required" : true,
+      "properties" : {
+        "targets" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:ResourceEntity",
+            "properties" : {
+              "type" : {
+                "type" : "string",
+                "required" : true
+              },
+              "name" : {
+                "type" : "string",
+                "required" : true
+              },
+              "parents" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "$ref" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:ResourceEntity"
+                }
+              }
+            }
+          }
+        },
+        "secondaries" : {
+          "type" : "array",
+          "items" : {
+            "type" : "object",
+            "$ref" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:ResourceEntity"
+          }
+        }
+      }
+    },
+    "context" : {
+      "type" : "object",
+      "id" : "urn:jsonschema:org:apache:polaris:extension:auth:opa:model:Context",
+      "required" : true,
+      "properties" : {
+        "request_id" : {
+          "type" : "string",
+          "required" : true
+        }
+      }
+    }
+  }
+}
