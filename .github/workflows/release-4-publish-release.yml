@@ -78,6 +78,11 @@ jobs:
           fi
           echo "STAGING_REPOSITORY_ID=${staging_repo_id}" >> $GITHUB_ENV
 
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion
+
           echo "## Input Parameters" >> $GITHUB_STEP_SUMMARY
           echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
