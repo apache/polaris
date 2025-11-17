@@ -57,13 +57,8 @@ cd apache-polaris-1.0.0-incubating-bin
 Configure Polaris using environment variables or system properties. For example:
 
 ```bash
-# Configure server port
 export POLARIS_JAVA_OPTS="-Dquarkus.http.port=8080"
-
-# Configure persistence type
 export POLARIS_JAVA_OPTS="-Dpolaris.persistence.type=relational-jdbc"
-
-# You can also combine multiple options
 export POLARIS_JAVA_OPTS="-Xms512m -Xmx1g -Dquarkus.http.port=8080"
 ```
 
@@ -100,9 +95,9 @@ To stop the Polaris server, press `Ctrl+C` in the terminal where it's running.
 The binary distribution includes an admin tool for administrative and maintenance tasks:
 
 ```bash
-bin/admin --help              # Show admin commands
-bin/admin bootstrap -h        # Show bootstrap help
-bin/admin purge -h            # Show purge help
+bin/admin --help
+bin/admin bootstrap -h
+bin/admin purge -h
 ```
 
 ## Next Steps
