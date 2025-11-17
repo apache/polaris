@@ -193,7 +193,7 @@ jobs:
           source "${LIBS_DIR}/_exec.sh"
 
           # Publish artifacts to staging repository
-          exec_process ./gradlew publishToApache closeApacheStagingRepository -Prelease -PuseGpgAgent --info > gradle_publish_output.txt 2>&1
+          exec_process ./gradlew publishToApache closeApacheStagingRepository -Prelease -PuseGpgAgent --info 2>&1 | tee gradle_publish_output.txt
 
           # Extract staging repository ID and URL from Gradle output
           staging_repo_id=""
