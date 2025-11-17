@@ -99,8 +99,8 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -121,16 +121,13 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -230,30 +227,29 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
   @Inject Clock clock;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject PolarisConfigurationStore configurationStore;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
-  @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
+  @Inject PolarisMetaStoreManager metaStoreManager;
+  @Inject UserSecretsManager userSecretsManager;
+  @Inject CallContext callContext;
+  @Inject RealmConfig realmConfig;
+  @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject StorageAccessConfigProvider storageAccessConfigProvider;
 
   private IcebergCatalog catalog;
   private String realmName;
-  private PolarisMetaStoreManager metaStoreManager;
-  private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
-  private RealmConfig realmConfig;
   private PolarisAdminService adminService;
   private ResolverFactory resolverFactory;
-  private ResolutionManifestFactory resolutionManifestFactory;
   private FileIOFactory fileIOFactory;
   private InMemoryFileIO fileIO;
   private PolarisEntity catalogEntity;
   private PolarisPrincipal authenticatedRoot;
   private TestPolarisEventListener testPolarisEventListener;
   private ReservedProperties reservedProperties;
-  private StorageAccessConfigProvider storageAccessConfigProvider;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -283,18 +279,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
-    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            configurationStore);
-    realmConfig = polarisContext.getRealmConfig();
-    StorageCredentialsVendor storageCredentialsVendor =
-        new StorageCredentialsVendor(metaStoreManager, polarisContext);
-    storageAccessConfigProvider =
-        new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
+    polarisContext = callContext.getPolarisCallContext();
 
     EntityCache entityCache = createEntityCache(diagServices, realmConfig, metaStoreManager);
     resolverFactory =
@@ -307,9 +292,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 entityCache,
                 referenceCatalogName);
     QuarkusMock.installMockForType(resolverFactory, ResolverFactory.class);
-
-    resolutionManifestFactory =
-        new ResolutionManifestFactoryImpl(diagServices, realmContext, resolverFactory);
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

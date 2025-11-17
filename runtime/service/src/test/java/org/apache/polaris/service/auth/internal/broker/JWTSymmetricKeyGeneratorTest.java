@@ -39,7 +39,7 @@ public class JWTSymmetricKeyGeneratorTest {
   /** Sanity test to verify that we can generate a token */
   @Test
   public void testJWTSymmetricKeyGenerator() {
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, null);
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     long principalId = 123L;
     String mainSecret = "test_secret";
