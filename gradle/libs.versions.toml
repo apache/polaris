@@ -107,7 +107,7 @@ spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "2.0.2" }
-testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "3.9.0" }
+testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "4.0.0" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 weld-se-core = { module = "org.jboss.weld.se:weld-se-core", version = "6.0.3.Final" }
 weld-junit5 = { module = "org.jboss.weld:weld-junit5", version = "5.0.3.Final" }
