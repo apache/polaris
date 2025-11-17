@@ -199,6 +199,9 @@ public class FileBearerTokenProviderTest {
                     .close())
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("OPA token file does not exist or is not readable");
+
+    // No refresh tasks should be scheduled when construction fails fast.
+    assertThat(asyncExec.tasks()).isEmpty();
   }
 
   @Test
