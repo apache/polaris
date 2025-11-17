@@ -332,8 +332,8 @@ jobs:
           # Make sure these files are always deleted
           trap "rm -f /tmp/secring.gpg /tmp/pubring.gpg /tmp/passphrase" EXIT
 
-          gpg --export-secret-keys > /tmp/secring.gpg
-          gpg --export > /tmp/pubring.gpg
+          gpg --batch --pinentry-mode loopback --passphrase-file /tmp/passphrase --export-secret-keys > /tmp/secring.gpg
+          gpg --batch --pinentry-mode loopback --export > /tmp/pubring.gpg
           echo "$GPG_PASSPHRASE" > /tmp/passphrase
 
           exec_process cd helm
