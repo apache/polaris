@@ -265,7 +265,7 @@ jobs:
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=false \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
-            -Dquarkus.container-image.tag="${version}"
+            -Dquarkus.container-image.tag="${version_without_rc}"
 
       - name: Build Polaris Admin Tool Docker image
         run: |
@@ -275,7 +275,7 @@ jobs:
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=false \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
-            -Dquarkus.container-image.tag="${version}"
+            -Dquarkus.container-image.tag="${version_without_rc}"
 
           echo "## Docker Images Summary" >> $GITHUB_STEP_SUMMARY
           cat <<EOT >> $GITHUB_STEP_SUMMARY
