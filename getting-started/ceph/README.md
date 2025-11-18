@@ -109,6 +109,7 @@ bin/spark-sql \
     --conf spark.sql.catalog.polaris.token-refresh-enabled=true \
     --conf spark.sql.catalog.polaris.warehouse=quickstart_catalog \
     --conf spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL \
+    --conf spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation="" \
     --conf spark.sql.catalog.polaris.credential=root:s3cr3t \
     --conf spark.sql.catalog.polaris.client.region=irrelevant \
     --conf spark.sql.catalog.polaris.s3.access-key-id=POLARIS123ACCESS \

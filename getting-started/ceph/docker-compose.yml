@@ -191,7 +191,8 @@ services:
         source /polaris/obtain-token.sh;
         echo Creating catalog...;
         export STORAGE_CONFIG_INFO='{"storageType":"S3",
-          "endpoint":"http://rgw1:7480",
+          "endpoint":"http://localhost:7480",
+          "endpointInternal":"http://rgw1:7480",
           "stsUnavailable":"true",
           "pathStyleAccess":true}';
         export STORAGE_LOCATION='s3://polaris-storage';
