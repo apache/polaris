@@ -69,7 +69,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @AfterEach
   public void afterEach() {
-    executor.shutdownNow();
+    executor.close();
   }
 
   private ManifestFileCleanupTaskHandler newManifestFileCleanupTaskHandler(FileIO fileIO) {

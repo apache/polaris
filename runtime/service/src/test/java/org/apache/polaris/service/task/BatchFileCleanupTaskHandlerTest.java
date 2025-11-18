@@ -73,7 +73,7 @@ public class BatchFileCleanupTaskHandlerTest {
 
   @AfterEach
   public void afterEach() {
-    executor.shutdownNow();
+    executor.close();
   }
 
   private BatchFileCleanupTaskHandler newBatchFileCleanupTaskHandler(FileIO fileIO) {
