@@ -27,6 +27,7 @@ jobs:
   site:
 
     runs-on: ubuntu-latest
+    if: github.repository == 'apache/polaris'
 
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
