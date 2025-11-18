@@ -17,5 +17,5 @@
 # under the License.
 #
 
-jupyterlab==4.4.10
+jupyterlab==4.5.0
 ipykernel==7.1.0
