@@ -20,6 +20,7 @@ import com.github.jengelman.gradle.plugins.shadow.ShadowPlugin
 import javax.inject.Inject
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.component.AdhocComponentWithVariants
 import org.gradle.api.component.SoftwareComponentFactory
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -125,7 +126,17 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
                 if (project.plugins.hasPlugin(ShadowPlugin::class.java)) {
                   configureShadowPublishing(project, mavenPublication, softwareComponentFactory)
                 } else {
-                  from(components.firstOrNull { c -> c.name == "javaPlatform" || c.name == "java" })
+                  val component =
+                    components.firstOrNull { c -> c.name == "javaPlatform" || c.name == "java" }
+                  if (component is AdhocComponentWithVariants) {
+                    listOf("testFixturesApiElements", "testFixturesRuntimeElements").forEach { cfg
+                      ->
+                      configurations.findByName(cfg)?.apply {
+                        component.addVariantsFromConfiguration(this) { skip() }
+                      }
+                    }
+                  }
+                  from(component)
                 }
 
                 suppressPomMetadataWarningsFor("testFixturesApiElements")
