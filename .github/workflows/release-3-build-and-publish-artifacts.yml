@@ -354,7 +354,7 @@ jobs:
 
           exec_process cd helm
           exec_process helm package polaris --sign --key "." --keyring /tmp/secring.gpg --passphrase-file /tmp/passphrase
-          exec_process helm verify polaris-${version_without_rc}.tgz
+          exec_process helm verify polaris-${version_without_rc}.tgz --keyring /tmp/pubring.gpg
 
           calculate_sha512 polaris-${version_without_rc}.tgz
           exec_process gpg --armor --output polaris-${version_without_rc}.tgz.asc --detach-sig polaris-${version_without_rc}.tgz
