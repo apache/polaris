@@ -2383,6 +2383,12 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
     Assertions.assertThat(afterTableEvent.identifier()).isEqualTo(TestData.TABLE);
     Assertions.assertThat(afterTableEvent.metadataBefore().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(afterTableEvent.metadataAfter().properties().get(key)).isEqualTo(valNew);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                testPolarisEventListener.getLatest(
+                    IcebergRestCatalogEvents.StageCommitTableEvent.class))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   private static PageToken nextRequest(Page<?> previousPage) {

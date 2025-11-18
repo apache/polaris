@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.LocationBasedEntity;
@@ -88,6 +90,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   // to serve reads within the same transaction while also storing the ordered list of
   // pendingUpdates that ultimately need to be applied in order within the real MetaStoreManager.
   private final List<EntityWithPath> pendingUpdates = new ArrayList<>();
+  private final List<StageEvent> pendingEvents = new ArrayList<>();
 
   public TransactionWorkspaceMetaStoreManager(
       PolarisDiagnostics diagnostics, PolarisMetaStoreManager delegate) {
@@ -97,6 +100,10 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   public List<EntityWithPath> getPendingUpdates() {
     return ImmutableList.copyOf(pendingUpdates);
+  }
+
+  public List<StageEvent> getPendingEvents() {
+    return ImmutableList.copyOf(pendingEvents);
   }
 
   @Override
@@ -455,5 +462,47 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   public void writeEvents(
       @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEvent> polarisEvents) {
     diagnostics.fail("illegal_method_in_transaction_workspace", "writeEvents");
+  }
+
+  public void stageEvent(
+      String catalogName,
+      TableIdentifier identifier,
+      TableMetadata metadataBefore,
+      TableMetadata metadataAfter) {
+    pendingEvents.add(new StageEvent(catalogName, identifier, metadataBefore, metadataAfter));
+  }
+
+  public static class StageEvent {
+    private final String catalogName;
+    private final TableIdentifier identifier;
+    private final TableMetadata metadataBefore;
+    private final TableMetadata metadataAfter;
+
+    public StageEvent(
+        String catalogName,
+        TableIdentifier identifier,
+        TableMetadata metadataBefore,
+        TableMetadata metadataAfter) {
+      this.catalogName = catalogName;
+      this.identifier = identifier;
+      this.metadataBefore = metadataBefore;
+      this.metadataAfter = metadataAfter;
+    }
+
+    public String catalogName() {
+      return catalogName;
+    }
+
+    public TableIdentifier identifier() {
+      return identifier;
+    }
+
+    public TableMetadata metadataBefore() {
+      return metadataBefore;
+    }
+
+    public TableMetadata metadataAfter() {
+      return metadataAfter;
+    }
   }
 }

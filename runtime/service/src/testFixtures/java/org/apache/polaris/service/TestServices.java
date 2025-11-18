@@ -144,6 +144,7 @@ public record TestServices(
     private Map<String, Object> config = Map.of();
     private StsClient stsClient;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
+    private MetaStoreManagerFactory metaStoreManagerFactory = null;
 
     private Builder() {
       stsClient = Mockito.mock(StsClient.class, RETURNS_DEEP_STUBS);
@@ -178,6 +179,11 @@ public record TestServices(
       return this;
     }
 
+    public Builder metaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+      this.metaStoreManagerFactory = metaStoreManagerFactory;
+      return this;
+    }
+
     public TestServices build() {
       PolarisConfigurationStore configurationStore = new MockedConfigurationStore(config);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
@@ -188,9 +194,11 @@ public record TestServices(
               (destination) -> stsClient,
               Optional.empty(),
               () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())));
-      InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-          new InMemoryPolarisMetaStoreManagerFactory(
-              clock, diagnostics, storageIntegrationProvider);
+      MetaStoreManagerFactory metaStoreManagerFactory =
+          this.metaStoreManagerFactory == null
+              ? new InMemoryPolarisMetaStoreManagerFactory(
+                  clock, diagnostics, storageIntegrationProvider)
+              : this.metaStoreManagerFactory;
 
       StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
       StorageCredentialCache storageCredentialCache =
