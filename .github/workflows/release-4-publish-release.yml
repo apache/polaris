@@ -243,7 +243,15 @@ jobs:
           Final release tag \`${final_release_tag}\` created and pushed
           EOT
 
-
+      - name: Set up Docker Buildx
+        run: |
+          docker buildx use default
+          docker buildx create \
+          --platform linux/amd64,linux/arm64 \
+          --use \
+          --name polarisbuild \
+          --driver-opt network=host || docker buildx use polarisbuild
+          docker buildx inspect
 
       - name: Set up Java
         uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
