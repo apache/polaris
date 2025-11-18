@@ -30,7 +30,7 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "release/*" ]
 
 env:
   GRADLE_TOS_ACCEPTED: ${{ vars.GRADLE_TOS_ACCEPTED }}

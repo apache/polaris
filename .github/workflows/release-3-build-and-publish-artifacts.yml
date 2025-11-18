@@ -1,0 +1,400 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: Release - 3 - Build and Publish Release Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (check to enable, uncheck to perform actual operations)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  prerequisite-checks:
+    name: Prerequisite Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      dry_run: ${{ steps.set-outputs.outputs.dry_run }}
+      git_tag: ${{ steps.validate-tag.outputs.git_tag }}
+      version_without_rc: ${{ steps.validate-tag.outputs.version_without_rc }}
+      rc_number: ${{ steps.validate-tag.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Set up environment variables
+        id: set-outputs
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+          echo "## Mode" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+            echo "dry_run=1" >> $GITHUB_OUTPUT
+            echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+            echo "dry_run=0" >> $GITHUB_OUTPUT
+            echo "DRY_RUN mode disabled - Performing actual operations" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Validate release candidate tag
+        id: validate-tag
+        run: |
+          source "${LIBS_DIR}/_version.sh"
+
+          echo "## Parameters" >> $GITHUB_STEP_SUMMARY
+
+          if ! git_tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
+            echo "❌ Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Validate git tag format and extract version components
+          if ! validate_and_extract_git_tag_version "${git_tag}"; then
+            echo "❌ Invalid git tag format: \`${git_tag}\`. Expected format: apache-polaris-x.y.z-incubating-rcN." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Export variables for next steps and job outputs
+          echo "git_tag=${git_tag}" >> $GITHUB_ENV
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
+          echo "rc_number=${rc_number}" >> $GITHUB_ENV
+
+          echo "git_tag=${git_tag}" >> $GITHUB_OUTPUT
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_OUTPUT
+          echo "rc_number=${rc_number}" >> $GITHUB_OUTPUT
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          | Parameter | Value |
+          | --- | --- |
+          | Git tag | \`${git_tag}\` |
+          | Version | \`${version_without_rc}\` |
+          | RC number | \`${rc_number}\` |
+          EOT
+
+  build-and-publish-artifacts:
+    name: Build and Publish Release Artifacts
+    runs-on: ubuntu-latest
+    needs: prerequisite-checks
+    permissions:
+      contents: read
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Set up Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Build source and binary distributions
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew assemble sourceTarball -Prelease -PuseGpgAgent
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Build
+          Source and binary distributions built successfully
+          EOT
+
+      - name: Stage artifacts to Apache dist dev repository
+        env:
+          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          echo "::add-mask::$SVN_PASSWORD"
+
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
+          exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
+
+          version_dir="${dist_dev_dir}/${version_without_rc}"
+          exec_process mkdir -p "${version_dir}"
+          exec_process cp build/distributions/* "${version_dir}/"
+          exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
+
+          exec_process cd "${dist_dev_dir}"
+          exec_process svn add "${version_without_rc}"
+
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris ${version_without_rc} RC${rc_number}"
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Staging to dist dev
+          Artifacts staged to Apache dist dev repository
+          EOT
+
+      - name: Publish and close Apache Nexus staging repository
+        env:
+          ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
+          ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          # Publish artifacts to staging repository
+          exec_process ./gradlew publishToApache closeApacheStagingRepository -Prelease -PuseGpgAgent --info 2>&1 | tee gradle_publish_output.txt
+
+          # Extract staging repository ID and URL from Gradle output
+          staging_repo_id=""
+          staging_repo_url=""
+
+          # Look for staging repository ID in the output
+          if grep -q "Created staging repository" gradle_publish_output.txt; then
+            staging_repo_id=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\1/")
+            staging_repo_url=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\2/")
+          fi
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Nexus Staging Repository
+          Artifacts published and staging repository closed successfully
+
+          | Property | Value |
+          | --- | --- |
+          | Staging Repository ID | \`${staging_repo_id:-"Not extracted"}\` |
+          | Staging Repository URL | ${staging_repo_url:-"Not extracted"} |
+
+          ## Summary
+          🎉 Artifacts built and published successfully:
+
+          | Operation | Status |
+          | --- | --- |
+          | Build source and binary distributions | ✅ |
+          | Stage artifacts to Apache dist dev repository | ✅ |
+          | Stage artifacts to Apache Nexus staging repository | ✅ |
+          | Close Nexus staging repository | ✅ |
+          EOT
+
+  build-docker:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [prerequisite-checks, build-and-publish-artifacts]
+    permissions:
+      contents: read
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        run: |
+          docker buildx use default
+          docker buildx create \
+          --platform linux/amd64,linux/arm64 \
+          --use \
+          --name polarisbuild \
+          --driver-opt network=host || docker buildx use polarisbuild
+          docker buildx inspect
+
+      - name: Set up Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Build Polaris Server Docker image
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.push=false \
+            -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
+            -Dquarkus.container-image.tag="${version_without_rc}"
+
+      - name: Build Polaris Admin Tool Docker image
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.push=false \
+            -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
+            -Dquarkus.container-image.tag="${version_without_rc}"
+
+          echo "## Docker Images Summary" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Docker images built successfully:
+
+          | Component | Status |
+          | --- | --- |
+          | Polaris Server Docker image | ✅ Built |
+          | Polaris Admin Tool Docker image | ✅ Built |
+          EOT
+
+  build-and-stage-helm-chart:
+    name: Build and Stage Helm Chart
+    runs-on: ubuntu-latest
+    needs: [prerequisite-checks, build-docker]
+    permissions:
+      contents: read
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Set up Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: 'latest'
+
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Create Helm package
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "::add-mask::$GPG_PASSPHRASE"
+
+          source "${LIBS_DIR}/_exec.sh"
+
+          # Make sure these files are always deleted
+          trap "rm -f /tmp/secring.gpg /tmp/pubring.gpg /tmp/passphrase" EXIT
+
+          echo "$GPG_PASSPHRASE" > /tmp/passphrase
+          gpg --batch --pinentry-mode loopback --passphrase-file /tmp/passphrase --export-secret-keys > /tmp/secring.gpg
+          gpg --batch --pinentry-mode loopback --export > /tmp/pubring.gpg
+
+          exec_process cd helm
+          exec_process helm package polaris --sign --key "." --keyring /tmp/secring.gpg --passphrase-file /tmp/passphrase
+          exec_process helm verify polaris-${version_without_rc}.tgz --keyring /tmp/pubring.gpg
+
+          calculate_sha512 polaris-${version_without_rc}.tgz
+          exec_process gpg --armor --output polaris-${version_without_rc}.tgz.asc --detach-sig polaris-${version_without_rc}.tgz
+          calculate_sha512 polaris-${version_without_rc}.tgz.prov
+          exec_process gpg --armor --output polaris-${version_without_rc}.tgz.prov.asc --detach-sig polaris-${version_without_rc}.tgz.prov
+
+      - name: Stage Helm chart to Apache dist dev repository
+        env:
+          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          echo "::add-mask::$SVN_PASSWORD"
+
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
+          exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
+
+          exec_process mkdir -p "${dist_dev_dir}/helm-chart/${version_without_rc}"
+          exec_process cp helm/polaris-${version_without_rc}.tgz* "${dist_dev_dir}/helm-chart/${version_without_rc}/"
+
+          exec_process cd "${dist_dev_dir}/helm-chart"
+          exec_process helm repo index .
+
+          exec_process cd "${dist_dev_dir}"
+          exec_process svn add "helm-chart/${version_without_rc}"
+
+          exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Stage Apache Polaris Helm chart ${version_without_rc} RC${rc_number}"
+
+          echo "## Helm Chart Summary" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Helm chart built and staged successfully:
+
+          | Component | Status |
+          | --- | --- |
+          | Helm package | ✅ Created and signed |
+          | Apache dist dev repository | ✅ Staged |
+          EOT
