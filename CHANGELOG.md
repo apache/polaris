@@ -36,8 +36,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - Support for [Open Policy Agent (OPA)] integration has been added to Polaris. This enables delegating
   authorization decisions to external policy decision points, allowing organizations to centralize
-  policy management and implement complex authorization rules. OPA servers can be configured through
-  REST API endpoints with customizable policy paths for fine-grained access control.
+  policy management and implement complex authorization rules. OPA integration can be enabled by setting
+  `polaris.authorization.type=opa` in the Polaris configuration.
 
 [Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
 [Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
