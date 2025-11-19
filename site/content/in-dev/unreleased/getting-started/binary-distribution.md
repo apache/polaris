@@ -17,22 +17,35 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Getting Started with Apache Polaris
-linkTitle: Getting Started
+Title: Binary Distribution
 type: docs
-weight: 101
+weight: 100
 ---
+Use this guide to quickly start running Polaris using the pre-built binary distribution.
 
-Welcome to Apache Polaris! This section provides several ways to get started with Polaris.
+## Prerequisites
 
-## Quick Start Options
+- Java SE 21 or later installed on your machine
 
-Choose the method that best fits your needs:
+## Running
 
-- **[Binary Distribution]({{% relref "binary-distribution" %}})**: Download and run the pre-built binary distribution. This is the fastest way to get started with Polaris.
+Download and extract the binary distribution:
 
-- **[Quickstart]({{% relref "quick-start" %}})**: Use Docker Compose to quickly start Polaris with a pre-configured setup. This is ideal for trying out Polaris without installing dependencies.
+```bash
+curl -L https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz | tar xz
+cd polaris-distribution-1.0.0-incubating
+```
 
-## Getting Help
+Start the Polaris server:
 
-If you need help or have questions, please refer to the [documentation]({{% relref "../../" %}}) or reach out to the community.
+```bash
+bin/server
+```
+
+The server will start and listen on http://localhost:8181. Health and metrics endpoints are available under /q.
+
+You can verify the server is running by checking the health endpoint:
+
+```bash
+curl http://localhost:8181/q/health
+```
