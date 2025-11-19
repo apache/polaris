@@ -19,10 +19,13 @@
 package org.apache.polaris.service.it.test;
 
 import com.google.common.base.Strings;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on GCP. */
 public abstract class PolarisRestCatalogViewGcsIntegrationTestBase
@@ -44,4 +47,29 @@ public abstract class PolarisRestCatalogViewGcsIntegrationTestBase
   protected boolean shouldSkip() {
     return Stream.of(BASE_LOCATION, SERVICE_ACCOUNT).anyMatch(Strings::isNullOrEmpty);
   }
+
+  /**
+   * Disable tests that use @TempDir from ViewCatalogTests (Iceberg base class). These tests are
+   * disabled for now because they use @TempDir which internally goes through Paths.get, and we
+   * cannot make it point to a cloud storage path at the moment.
+   */
+  @Disabled("Test uses @TempDir which cannot point to cloud storage paths")
+  @Override
+  public void completeCreateView() {}
+
+  @Disabled("Test uses @TempDir which cannot point to cloud storage paths")
+  @Override
+  public void createViewWithCustomMetadataLocation() {}
+
+  @Disabled("Test uses @TempDir which cannot point to cloud storage paths")
+  @Override
+  public void createAndReplaceViewWithLocation() {}
+
+  @Disabled("Test uses @TempDir which cannot point to cloud storage paths")
+  @Override
+  public void updateViewLocation() {}
+
+  @Disabled("Test uses @TempDir which cannot point to cloud storage paths")
+  @Override
+  public void createViewWithCustomMetadataLocationUsingPolaris(@TempDir Path tempDir) {}
 }
