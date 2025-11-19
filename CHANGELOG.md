@@ -34,7 +34,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   set to `OFF` by default). Custom reporters can be implemented and configured to send metrics to
   external systems for further analysis and monitoring.
 
+- Support for [Open Policy Agent (OPA)] integration has been added to Polaris. This enables delegating
+  authorization decisions to external policy decision points, allowing organizations to centralize
+  policy management and implement complex authorization rules. OPA servers can be configured through
+  REST API endpoints with customizable policy paths for fine-grained access control.
+
 [Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
+[Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
 
 ### Upgrade notes
 
@@ -48,7 +54,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
-- Added support for external policy decision points through Open Policy Agent (OPA) integration. This allows delegating authorization decisions to an OPA server using configurable REST API endpoints and policy paths.
 - Added support for Apache Ozone object storage.
 - Added `--no-sts` flag to CLI to support S3-compatible storage systems that do not have Security Token Service available.
 - Support credential vending for federated catalogs. `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING` (default: true) was added to toggle this feature.
