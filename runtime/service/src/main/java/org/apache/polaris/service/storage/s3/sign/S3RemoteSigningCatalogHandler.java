@@ -86,8 +86,6 @@ public class S3RemoteSigningCatalogHandler extends CatalogHandler implements Aut
   public PolarisS3SignResponse signS3Request(
       PolarisS3SignRequest s3SignRequest, TableIdentifier tableIdentifier) {
 
-    LOGGER.debug("Requesting s3 signing for {}: {}", tableIdentifier, s3SignRequest);
-
     PolarisAuthorizableOperation authzOp =
         s3SignRequest.write()
             ? PolarisAuthorizableOperation.SIGN_S3_WRITE_REQUEST
@@ -101,10 +99,7 @@ public class S3RemoteSigningCatalogHandler extends CatalogHandler implements Aut
 
     validateLocations(s3SignRequest, tableIdentifier);
 
-    PolarisS3SignResponse s3SignResponse = s3RequestSigner.signRequest(s3SignRequest);
-    LOGGER.debug("S3 signing response: {}", s3SignResponse);
-
-    return s3SignResponse;
+    return s3RequestSigner.signRequest(s3SignRequest);
   }
 
   private void validateLocations(
