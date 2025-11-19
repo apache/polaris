@@ -357,6 +357,9 @@ jobs:
           gpg --batch --pinentry-mode loopback --export > /tmp/pubring.gpg
 
           exec_process cd helm
+          # Prerequisite for reproducible helm packages: file modification time must be deterministic
+          # Works with helm since version 4.0.0
+          exec_process find polaris -exec touch -d "1980-01-01 00:00:00" {} +
           exec_process helm package polaris --sign --key "." --keyring /tmp/secring.gpg --passphrase-file /tmp/passphrase
           exec_process helm verify polaris-${version_without_rc}.tgz --keyring /tmp/pubring.gpg
 
