@@ -54,7 +54,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
-- Added support for Apache Ozone object storage.
 - Added `--no-sts` flag to CLI to support S3-compatible storage systems that do not have Security Token Service available.
 - Support credential vending for federated catalogs. `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING` (default: true) was added to toggle this feature.
 - Enhanced catalog federation with SigV4 authentication support, additional authentication types for credential vending, and location-based access restrictions to block credential vending for remote tables outside allowed location lists.
