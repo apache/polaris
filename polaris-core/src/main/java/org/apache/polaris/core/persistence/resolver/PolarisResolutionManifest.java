@@ -68,12 +68,12 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   // Set when resolveAll is called
   private ResolverStatus primaryResolverStatus = null;
 
-  private ResolverStatus requirePrimaryResolverStatus() {
+  private boolean isResolveAllSucceeded() {
     diagnostics.checkNotNull(
         primaryResolverStatus,
         "resolver_not_run_before_access",
         "resolveAll() must be called before reading resolution results");
-    return primaryResolverStatus;
+    return primaryResolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS;
   }
 
   public PolarisResolutionManifest(
@@ -264,7 +264,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   }
 
   private @Nullable ResolvedPolarisEntity getResolvedRootContainerEntity() {
-    if (requirePrimaryResolverStatus().getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+    if (!isResolveAllSucceeded()) {
       return null;
     }
     ResolvedPolarisEntity resolvedEntity =
@@ -285,7 +285,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   public PolarisResolvedPathWrapper getResolvedReferenceCatalogEntity(
       boolean prependRootContainer) {
-    requirePrimaryResolverStatus();
     // This is a server error instead of being able to legitimately return null, since this means
     // a callsite failed to incorporate a reference catalog into its authorization flow but is
     // still trying to perform operations on the (nonexistence) reference catalog.
@@ -307,7 +306,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   }
 
   public PolarisEntitySubType getLeafSubType(Object key) {
-    requirePrimaryResolverStatus();
     diagnostics.check(
         pathLookup.containsKey(key),
         "never_registered_key_for_resolved_path",
@@ -330,7 +328,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    *     "optional"
    */
   public PolarisResolvedPathWrapper getResolvedPath(Object key, boolean prependRootContainer) {
-    requirePrimaryResolverStatus();
     diagnostics.check(
         pathLookup.containsKey(key),
         "never_registered_key_for_resolved_path",
@@ -338,7 +335,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         key,
         pathLookup);
 
-    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+    if (!isResolveAllSucceeded()) {
       return null;
     }
     int index = pathLookup.get(key);
@@ -395,7 +392,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   public PolarisResolvedPathWrapper getResolvedTopLevelEntity(
       String entityName, PolarisEntityType entityType) {
-    requirePrimaryResolverStatus();
     // For now, all top-level entities will have the root container prepended so we don't have
     // a variation of this method that allows specifying whether to prepend the root container.
     diagnostics.check(
@@ -406,7 +402,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         entityType,
         addedTopLevelNames);
 
-    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+    if (!isResolveAllSucceeded()) {
       return null;
     }
 
