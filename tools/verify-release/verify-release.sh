@@ -470,6 +470,9 @@ log_part_end
 
 log_part_start "Comparing helm chart artifacts"
 mkdir -p "${helm_work_dir}/local" "${helm_work_dir}/staged"
+# Prerequisite for reproducible helm packages: file modification time must be deterministic
+# Works with helm since version 4.0.0
+exec_process find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
 proc_exec "Helm packaging failed" helm package --destination "${helm_work_dir}" "${worktree_dir}/helm/polaris"
 helm_package_file="polaris-${version_full}.tgz"
 tar --warning=no-timestamp -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
