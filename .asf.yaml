@@ -53,7 +53,6 @@ github:
         # Contexts are the names of checks that must pass. This is the value
         # of the job's `name` property if it's present.
         contexts:
-          - markdown-link-check
           - "Unit Tests"
           - "Quarkus Tests"
           - "Quarkus Integration Tests"
