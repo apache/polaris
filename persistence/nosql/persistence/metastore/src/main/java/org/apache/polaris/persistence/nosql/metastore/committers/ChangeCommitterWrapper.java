@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore;
+package org.apache.polaris.persistence.nosql.metastore.committers;
 
 import static org.apache.polaris.persistence.nosql.api.index.IndexContainer.newUpdatableIndex;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
-import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.newContainerBuilderForEntityType;
 
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
@@ -31,6 +30,12 @@ import org.apache.polaris.persistence.nosql.api.commit.CommitException;
 import org.apache.polaris.persistence.nosql.api.commit.CommitRetryable;
 import org.apache.polaris.persistence.nosql.api.commit.CommitterState;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
+import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj;
+import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
+import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj;
+import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalRolesObj;
+import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
+import org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTasksObj;
 
 /**
  * Abstracts common {@link ContainerObj#stableIdToName()} and {@link ContainerObj#nameToObjRef()}
@@ -40,7 +45,7 @@ import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
  * @param <B> builder type for {@link REF_OBJ}
  * @param <RESULT> result of the commiting operation
  */
-record ChangeCommitterWrapper<
+public record ChangeCommitterWrapper<
         REF_OBJ extends ContainerObj, B extends ContainerObj.Builder<REF_OBJ, B>, RESULT>(
     ChangeCommitter<REF_OBJ, RESULT> changeCommitter, PolarisEntityType entityType)
     implements CommitRetryable<REF_OBJ, RESULT> {
@@ -78,5 +83,21 @@ record ChangeCommitterWrapper<
       return state.noCommit(result);
     }
     throw new IllegalStateException("" + r);
+  }
+
+  static ContainerObj.Builder<? extends ContainerObj, ? extends ContainerObj.Builder<?, ?>>
+      newContainerBuilderForEntityType(PolarisEntityType entityType) {
+    return switch (entityType) {
+      case CATALOG -> CatalogsObj.builder();
+      case PRINCIPAL -> PrincipalsObj.builder();
+      case PRINCIPAL_ROLE -> PrincipalRolesObj.builder();
+      case TASK -> ImmediateTasksObj.builder();
+
+      // per catalog
+      case CATALOG_ROLE -> CatalogRolesObj.builder();
+      case NAMESPACE, TABLE_LIKE, POLICY -> CatalogStateObj.builder();
+
+      default -> throw new IllegalArgumentException("Unsupported entity type: " + entityType);
+    };
   }
 }

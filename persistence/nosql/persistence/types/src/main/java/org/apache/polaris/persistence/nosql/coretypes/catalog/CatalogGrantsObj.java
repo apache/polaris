@@ -24,18 +24,17 @@ import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.obj.AbstractObjType;
 import org.apache.polaris.persistence.nosql.api.obj.ObjType;
 import org.apache.polaris.persistence.nosql.coretypes.acl.GrantsObj;
+import org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj;
 
 /**
  * Maintains the state of all catalog grants. The current version of this object is maintained via
- * the reference name pattern {@value #CATALOG_GRANTS_REF_NAME_PATTERN}, where {@code %d} is to be
- * replaced with the catalog's {@linkplain CatalogObj#stableId() stable ID}.
+ * the reference name pattern {@value RealmGrantsObj#REALM_GRANTS_REF_NAME}, where {@code %d} is to
+ * be replaced with the catalog's {@linkplain CatalogObj#stableId() stable ID}.
  */
 @PolarisImmutable
 @JsonSerialize(as = ImmutableCatalogGrantsObj.class)
 @JsonDeserialize(as = ImmutableCatalogGrantsObj.class)
 public interface CatalogGrantsObj extends GrantsObj {
-
-  String CATALOG_GRANTS_REF_NAME_PATTERN = "cat/%d/grants";
 
   ObjType TYPE = new CatalogGrantsObjType();
 

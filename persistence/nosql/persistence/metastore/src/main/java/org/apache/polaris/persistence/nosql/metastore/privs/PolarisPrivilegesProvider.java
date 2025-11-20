@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore;
+package org.apache.polaris.persistence.nosql.metastore.privs;
 
 import static org.apache.polaris.persistence.nosql.authz.api.Privilege.InheritablePrivilege.inheritablePrivilege;
 

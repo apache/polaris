@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore;
+package org.apache.polaris.persistence.nosql.metastore.indexaccess;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.polaris.persistence.nosql.metastore.containeraccess.IndexedContainerAccess.indexedAccessForCatalog;
-import static org.apache.polaris.persistence.nosql.metastore.containeraccess.IndexedContainerAccess.indexedAccessForEntityType;
-import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.isCatalogContent;
+import static org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexedContainerAccess.indexedAccessForCatalog;
+import static org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexedContainerAccess.indexedAccessForEntityType;
 
 import java.util.Map;
 import java.util.Optional;
@@ -35,20 +34,20 @@ import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
-import org.apache.polaris.persistence.nosql.metastore.containeraccess.IndexedContainerAccess;
+import org.apache.polaris.persistence.nosql.metastore.TypeMapping;
 
 /**
- * Memoizes {@link IndexedContainerAccess} instances for a {@link PersistenceMetaStore} instance.
+ * Memoizes {@link IndexedContainerAccess} instances for a {@code PersistenceMetaStore} instance.
  *
  * <p>Memoizing these instances avoids unnecessary {@link Reference} lookups and index
  * deserialization, even if backed by the persistence cache. Committing functions must
  * <em>always</em> call the appropriate {@code invalidate*()} functions.
  */
-final class MemoizedIndexedAccess {
+public final class MemoizedIndexedAccess {
   private final Persistence persistence;
 
   /**
-   * Memoizes objects already accessed by the holding {@link PersistenceMetaStore} instance.
+   * Memoizes objects already accessed by the holding {@code PersistenceMetaStore} instance.
    *
    * <p>The {@link Index} instances held via this map are thread-safe
    */
@@ -58,7 +57,7 @@ final class MemoizedIndexedAccess {
 
   private record Key(long catalogId, int entityTypeCode, boolean catalogContent) {}
 
-  static MemoizedIndexedAccess newMemoizedIndexedAccess(Persistence persistence) {
+  public static MemoizedIndexedAccess newMemoizedIndexedAccess(Persistence persistence) {
     return new MemoizedIndexedAccess(persistence);
   }
 
@@ -66,9 +65,9 @@ final class MemoizedIndexedAccess {
     this.persistence = persistence;
   }
 
-  <C extends ContainerObj> IndexedContainerAccess<C> indexedAccess(
+  public <C extends ContainerObj> IndexedContainerAccess<C> indexedAccess(
       long catalogId, int entityTypeCode) {
-    if (isCatalogContent(entityTypeCode)) {
+    if (TypeMapping.isCatalogContent(entityTypeCode)) {
       @SuppressWarnings("unchecked")
       var r = (IndexedContainerAccess<C>) catalogContent(catalogId);
       return r;
@@ -82,11 +81,11 @@ final class MemoizedIndexedAccess {
     return r;
   }
 
-  IndexedContainerAccess<?> indexedAccessDirect(ObjRef containerObjRef) {
+  public IndexedContainerAccess<?> indexedAccessDirect(ObjRef containerObjRef) {
     return IndexedContainerAccess.indexedAccessDirect(persistence, containerObjRef);
   }
 
-  IndexedContainerAccess<CatalogStateObj> catalogContent(long catalogId) {
+  public IndexedContainerAccess<CatalogStateObj> catalogContent(long catalogId) {
     checkArgument(catalogId != 0L && catalogId != -1L, "invalid catalogId");
     var key = new Key(catalogId, PolarisEntityType.CATALOG.getCode(), true);
     var access = map.computeIfAbsent(key, k -> indexedAccessForCatalog(persistence, catalogId));
@@ -95,22 +94,22 @@ final class MemoizedIndexedAccess {
     return r;
   }
 
-  <O extends BaseCommitObj> Optional<O> referenceHead(String refName, Class<O> type) {
+  public <O extends BaseCommitObj> Optional<O> referenceHead(String refName, Class<O> type) {
     return cast(
         grantsHeads.computeIfAbsent(refName, r -> cast(persistence.fetchReferenceHead(r, type))));
   }
 
-  void invalidateCatalogContent(long catalogId) {
+  public void invalidateCatalogContent(long catalogId) {
     var key = new Key(catalogId, PolarisEntityType.CATALOG.getCode(), true);
     map.remove(key);
   }
 
-  void invalidateIndexedAccess(long catalogId, int entityTypeCode) {
+  public void invalidateIndexedAccess(long catalogId, int entityTypeCode) {
     var key = new Key(catalogId, entityTypeCode, false);
     map.remove(key);
   }
 
-  void invalidateReferenceHead(String refName) {
+  public void invalidateReferenceHead(String refName) {
     grantsHeads.remove(refName);
   }
 

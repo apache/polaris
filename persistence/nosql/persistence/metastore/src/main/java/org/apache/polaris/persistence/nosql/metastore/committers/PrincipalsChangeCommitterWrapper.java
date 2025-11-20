@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore;
+package org.apache.polaris.persistence.nosql.metastore.committers;
 
 import static org.apache.polaris.persistence.nosql.api.index.IndexContainer.newUpdatableIndex;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_SERIALIZER;
@@ -37,7 +37,8 @@ import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
  *
  * @param <RESULT> result of the commiting operation
  */
-record PrincipalsChangeCommitterWrapper<RESULT>(PrincipalsChangeCommitter<RESULT> changeCommitter)
+public record PrincipalsChangeCommitterWrapper<RESULT>(
+    PrincipalsChangeCommitter<RESULT> changeCommitter)
     implements CommitRetryable<PrincipalsObj, RESULT> {
 
   @SuppressWarnings("DuplicatedCode")

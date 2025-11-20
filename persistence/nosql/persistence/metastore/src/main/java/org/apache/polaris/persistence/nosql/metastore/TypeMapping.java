@@ -87,7 +87,6 @@ import org.apache.polaris.persistence.nosql.coretypes.content.IcebergViewObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.LocalNamespaceObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.NamespaceObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.PolicyObj;
-import org.apache.polaris.persistence.nosql.coretypes.content.RemoteNamespaceObj;
 import org.apache.polaris.persistence.nosql.coretypes.content.TableLikeObj;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalObj;
 import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalRoleObj;
@@ -97,8 +96,12 @@ import org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTaskObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTasksObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.RootObj;
 
-class TypeMapping {
-  static ByteBuffer serializeStringCompressed(String entityAsJson) {
+public final class TypeMapping {
+  /**
+   * Compress a string, for task-entity data, which can be really huge, like full Iceberg
+   * manifest-files as base64 encoded in JSON and such.
+   */
+  private static ByteBuffer serializeStringCompressed(String entityAsJson) {
     try (var byteArrayOutputStream = new ByteArrayOutputStream()) {
       try (var gzip = new GZIPOutputStream(byteArrayOutputStream);
           var out = new DataOutputStream(gzip)) {
@@ -110,7 +113,11 @@ class TypeMapping {
     }
   }
 
-  static String deserializeStringCompressed(ByteBuffer bytes) {
+  /**
+   * Decompress a string, for task-entity data, which can be really huge, like full Iceberg
+   * manifest-files as base64 encoded in JSON and such.
+   */
+  private static String deserializeStringCompressed(ByteBuffer bytes) {
     var byteArray = new byte[bytes.remaining()];
     bytes.duplicate().get(byteArray);
     try (var in = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(byteArray)))) {
@@ -183,7 +190,6 @@ class TypeMapping {
               case NAMESPACE -> {
                 checkArgument(
                     subType == PolarisEntitySubType.NULL_SUBTYPE, "invalid subtype for %s", type);
-                // TODO RemoteNamespaceObj ?
                 yield LocalNamespaceObj.builder();
               }
               case ROOT -> {
@@ -263,7 +269,8 @@ class TypeMapping {
                                   Optional.ofNullable(
                                       internalProperties.remove(GenericTableEntity.DOC_KEY)));
                       default ->
-                          throw new IllegalArgumentException("Unknown or invalid subtype " + type);
+                          throw new IllegalArgumentException(
+                              "Unknown or invalid subtype " + subType + " for " + type);
                     };
 
                 Optional.ofNullable(internalProperties.remove(METADATA_LOCATION_KEY))
@@ -271,7 +278,7 @@ class TypeMapping {
 
                 yield tlBuilder;
               }
-              default -> throw new IllegalArgumentException("Unknown type " + type);
+              default -> throw new IllegalArgumentException("Unknown entity type " + type);
             });
 
     if (baseBuilder instanceof CatalogObjBase.Builder<?, ?> catalogObjBaseBuilder) {
@@ -308,43 +315,39 @@ class TypeMapping {
     return baseBuilder;
   }
 
-  static boolean isCatalogContent(int entityTypeCode) {
+  public static boolean isCatalogContent(int entityTypeCode) {
     return entityTypeCode == PolarisEntityType.NAMESPACE.getCode()
         || entityTypeCode == PolarisEntityType.TABLE_LIKE.getCode()
         || entityTypeCode == PolarisEntityType.POLICY.getCode();
   }
 
   static boolean isCatalogContent(PolarisEntityType entityType) {
-    return switch (entityType) {
-      case NAMESPACE, TABLE_LIKE, POLICY -> true;
-      default -> false;
-    };
+    return isCatalogContent(entityType.getCode());
   }
 
+  /**
+   * Returns the object type for a Polaris entity type and subtype that can be used for
+   * querying/filtering.
+   */
   static Class<? extends ObjBase> objTypeForPolarisTypeForFiltering(
       PolarisEntityType entityType, PolarisEntitySubType subType) {
-    return switch (entityType) {
-      case PRINCIPAL -> PrincipalObj.class;
-      case TASK -> ImmediateTaskObj.class;
-      case TABLE_LIKE ->
-          switch (subType) {
-            case ICEBERG_TABLE -> IcebergTableObj.class;
-            case ICEBERG_VIEW -> IcebergViewObj.class;
-            case GENERIC_TABLE -> GenericTableObj.class;
-            case ANY_SUBTYPE -> TableLikeObj.class;
-            default -> throw new IllegalArgumentException("Illegal subtype " + subType);
-          };
-      case NAMESPACE -> NamespaceObj.class;
-      case CATALOG -> CatalogObj.class;
-      case CATALOG_ROLE -> CatalogRoleObj.class;
-      case POLICY -> PolicyObj.class;
-      case PRINCIPAL_ROLE -> PrincipalRoleObj.class;
-      case ROOT -> RootObj.class;
-      case FILE -> FileObj.class;
-      default -> throw new IllegalArgumentException("Illegal entity type " + entityType);
-    };
+    switch (entityType) {
+      case NAMESPACE -> {
+        return NamespaceObj.class;
+      }
+      case TABLE_LIKE -> {
+        if (subType == PolarisEntitySubType.ANY_SUBTYPE) {
+          return TableLikeObj.class;
+        }
+      }
+      default -> {}
+    }
+    @SuppressWarnings("unchecked")
+    var clazz = (Class<? extends ObjBase>) objTypeForPolarisType(entityType, subType).targetClass();
+    return clazz;
   }
 
+  /** Returns the "exact" object type for a Polaris entity type and subtype. */
   static ObjType objTypeForPolarisType(PolarisEntityType entityType, PolarisEntitySubType subType) {
     return switch (entityType) {
       case PRINCIPAL -> PrincipalObj.TYPE;
@@ -354,7 +357,9 @@ class TypeMapping {
             case ICEBERG_TABLE -> IcebergTableObj.TYPE;
             case ICEBERG_VIEW -> IcebergViewObj.TYPE;
             case GENERIC_TABLE -> GenericTableObj.TYPE;
-            default -> throw new IllegalArgumentException("Illegal subtype " + subType);
+            default ->
+                throw new IllegalArgumentException(
+                    "Illegal subtype " + subType + " for " + entityType);
           };
       case NAMESPACE -> LocalNamespaceObj.TYPE;
       case CATALOG -> CatalogObj.TYPE;
@@ -367,15 +372,10 @@ class TypeMapping {
     };
   }
 
-  static Class<? extends ContainerObj> containerTypeForEntityType(
-      int entityTypeCode, boolean forCatalog) {
-    return containerTypeForEntityType(typeFromCode(entityTypeCode), forCatalog);
-  }
-
-  static Class<? extends ContainerObj> containerTypeForEntityType(
-      PolarisEntityType entityType, boolean forCatalog) {
+  /** Retrieve the objet type that <em>contains</em> the given entity type. */
+  static Class<? extends ContainerObj> containerTypeForEntityType(PolarisEntityType entityType) {
     return switch (entityType) {
-      case CATALOG -> forCatalog ? CatalogStateObj.class : CatalogsObj.class;
+      case CATALOG -> CatalogsObj.class;
       case PRINCIPAL -> PrincipalsObj.class;
       case PRINCIPAL_ROLE -> PrincipalRolesObj.class;
       case TASK -> ImmediateTasksObj.class;
@@ -388,31 +388,24 @@ class TypeMapping {
     };
   }
 
-  static ContainerObj.Builder<? extends ContainerObj, ? extends ContainerObj.Builder<?, ?>>
-      newContainerBuilderForEntityType(PolarisEntityType entityType) {
-    return switch (entityType) {
-      case CATALOG -> CatalogsObj.builder();
-      case PRINCIPAL -> PrincipalsObj.builder();
-      case PRINCIPAL_ROLE -> PrincipalRolesObj.builder();
-      case TASK -> ImmediateTasksObj.builder();
-
-      // per catalog
-      case CATALOG_ROLE -> CatalogRolesObj.builder();
-      case NAMESPACE, TABLE_LIKE, POLICY -> CatalogStateObj.builder();
-
-      default -> throw new IllegalArgumentException("Unsupported entity type: " + entityType);
-    };
-  }
-
-  static PolarisEntityType typeFromCode(int entityTypeCode) {
+  /** Return the {@link PolarisEntityType} for the given entity type code, never {@code null}. */
+  public static @Nonnull PolarisEntityType typeFromCode(int entityTypeCode) {
     return requireNonNull(PolarisEntityType.fromCode(entityTypeCode), "Invalid type code");
   }
 
+  /**
+   * Yields the given object, if it matches the given entity type, otherwise returns an empty
+   * optional.
+   */
   static <C extends ObjBase> Optional<C> filterIsEntityType(
       @Nonnull C objBase, int entityTypeCode) {
     return filterIsEntityType(objBase, typeFromCode(entityTypeCode));
   }
 
+  /**
+   * Yields the given object, if it matches the given entity type, otherwise returns an empty
+   * optional.
+   */
   static <C extends ObjBase> Optional<C> filterIsEntityType(
       @Nonnull C objBase, PolarisEntityType entityType) {
     return objTypeForPolarisTypeForFiltering(entityType, PolarisEntitySubType.ANY_SUBTYPE)
@@ -434,32 +427,27 @@ class TypeMapping {
         catalogMandatory(catalogId);
         type = PolarisEntityType.TABLE_LIKE;
         o.metadataLocation().ifPresent(v -> internalProperties.put(METADATA_LOCATION_KEY, v));
-        if (objBase instanceof IcebergTableObj) {
-          subType = ICEBERG_TABLE;
-        }
-        if (objBase instanceof IcebergViewObj) {
-          subType = ICEBERG_VIEW;
-        }
-        if (objBase instanceof GenericTableObj genericTableObj) {
-          subType = GENERIC_TABLE;
-          genericTableObj
-              .format()
-              .ifPresent(v -> internalProperties.put(GenericTableEntity.FORMAT_KEY, v));
-          genericTableObj
-              .doc()
-              .ifPresent(v -> internalProperties.put(GenericTableEntity.DOC_KEY, v));
+        switch (objBase) {
+          case IcebergTableObj ignored -> subType = ICEBERG_TABLE;
+          case IcebergViewObj ignored -> subType = ICEBERG_VIEW;
+          case GenericTableObj genericTableObj -> {
+            subType = GENERIC_TABLE;
+            genericTableObj
+                .format()
+                .ifPresent(v -> internalProperties.put(GenericTableEntity.FORMAT_KEY, v));
+            genericTableObj
+                .doc()
+                .ifPresent(v -> internalProperties.put(GenericTableEntity.DOC_KEY, v));
+          }
+          default -> {}
         }
       }
       case LocalNamespaceObj ignored -> {
         catalogMandatory(catalogId);
         type = PolarisEntityType.NAMESPACE;
       }
-      case RemoteNamespaceObj ignored -> {
-        catalogMandatory(catalogId);
-        // TODO RemoteNamespaceObj ?
-      }
       case CatalogObj o -> {
-        catalogId = realmMandatory(catalogId);
+        catalogId = 0L;
         type = PolarisEntityType.CATALOG;
         internalProperties.put(CATALOG_TYPE_PROPERTY, o.catalogType().name());
         o.defaultBaseLocation().ifPresent(v -> properties.put(DEFAULT_BASE_LOCATION_KEY, v));
@@ -477,11 +465,11 @@ class TypeMapping {
         type = PolarisEntityType.POLICY;
       }
       case RootObj ignored -> {
-        catalogId = realmMandatory(catalogId);
+        catalogId = 0L;
         type = PolarisEntityType.ROOT;
       }
       case ImmediateTaskObj o -> {
-        catalogId = realmMandatory(catalogId);
+        catalogId = 0L;
         o.serializedEntity()
             .map(TypeMapping::deserializeStringCompressed)
             .ifPresent(s -> properties.put("data", s));
@@ -503,7 +491,7 @@ class TypeMapping {
         type = PolarisEntityType.TASK;
       }
       case PrincipalObj o -> {
-        catalogId = realmMandatory(catalogId);
+        catalogId = 0L;
         type = PolarisEntityType.PRINCIPAL;
         if (o.credentialRotationRequired()) {
           internalProperties.put(PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE, "true");
@@ -520,7 +508,11 @@ class TypeMapping {
       }
       default ->
           throw new IllegalStateException(
-              "Cannot map " + objBase.type().targetClass().getSimpleName() + " to a PolarisEntity");
+              "Cannot map "
+                  + objBase.type().targetClass().getSimpleName()
+                  + " ("
+                  + objBase.type().name()
+                  + ") to a PolarisEntity");
     }
 
     if (objBase instanceof CatalogObjBase catalogObjBase) {
@@ -563,32 +555,26 @@ class TypeMapping {
     var subType = PolarisEntitySubType.NULL_SUBTYPE;
 
     switch (objBase) {
-      case TableLikeObj ignored -> {
+      case TableLikeObj ignoredTableLike -> {
         catalogMandatory(catalogStableId);
         type = PolarisEntityType.TABLE_LIKE;
-        if (objBase instanceof IcebergTableObj) {
-          subType = ICEBERG_TABLE;
-        }
-        if (objBase instanceof IcebergViewObj) {
-          subType = ICEBERG_VIEW;
-        }
-        if (objBase instanceof GenericTableObj) {
-          subType = GENERIC_TABLE;
+        switch (objBase) {
+          case IcebergTableObj ignored -> subType = ICEBERG_TABLE;
+          case IcebergViewObj ignored -> subType = ICEBERG_VIEW;
+          case GenericTableObj ignored -> subType = GENERIC_TABLE;
+          default -> {}
         }
       }
       case LocalNamespaceObj ignored -> {
         catalogMandatory(catalogStableId);
         type = PolarisEntityType.NAMESPACE;
       }
-      case RemoteNamespaceObj ignored -> {
-        // TODO RemoteNamespaceObj ?
-      }
       case PolicyObj ignored -> {
         catalogMandatory(catalogStableId);
         type = PolarisEntityType.POLICY;
       }
       case CatalogObj ignored -> {
-        catalogStableId = realmMandatory(catalogStableId);
+        catalogStableId = 0L;
         type = PolarisEntityType.CATALOG;
       }
       case CatalogRoleObj ignored -> {
@@ -596,26 +582,28 @@ class TypeMapping {
         type = PolarisEntityType.CATALOG_ROLE;
       }
       case RootObj ignored -> {
-        catalogStableId = realmMandatory(catalogStableId);
+        catalogStableId = 0L;
         type = PolarisEntityType.ROOT;
       }
       case ImmediateTaskObj ignored -> {
-        catalogStableId = realmMandatory(catalogStableId);
+        catalogStableId = 0L;
         type = PolarisEntityType.TASK;
       }
       case PrincipalObj ignored -> {
-        catalogStableId = realmMandatory(catalogStableId);
+        catalogStableId = 0L;
         type = PolarisEntityType.PRINCIPAL;
       }
       case PrincipalRoleObj ignored -> {
-        catalogStableId = realmMandatory(catalogStableId);
+        catalogStableId = 0L;
         type = PolarisEntityType.PRINCIPAL_ROLE;
       }
       default ->
           throw new IllegalStateException(
               "Cannot map "
                   + objBase.type().targetClass().getSimpleName()
-                  + " to a entity type/sub-type");
+                  + " ("
+                  + objBase.type().name()
+                  + ") to a entity type/sub-type");
     }
 
     // TODO
@@ -630,11 +618,6 @@ class TypeMapping {
         subType.getCode());
   }
 
-  @SuppressWarnings("unchecked")
-  private static <R> R cast(Object r) {
-    return (R) r;
-  }
-
   static String referenceName(PolarisEntityType entityType, Optional<CatalogObj> catalog) {
     var catalogStableId = catalog.map(ObjBase::stableId).orElse(0L);
     return referenceName(entityType, catalogStableId);
@@ -644,7 +627,7 @@ class TypeMapping {
     return referenceName(entityType, catalogId.orElse(0L));
   }
 
-  static String referenceName(PolarisEntityType entityType, long catalogStableId) {
+  public static String referenceName(PolarisEntityType entityType, long catalogStableId) {
     return switch (entityType) {
       case CATALOG -> CATALOGS_REF_NAME;
       case PRINCIPAL -> PRINCIPALS_REF_NAME;
@@ -653,22 +636,18 @@ class TypeMapping {
       case ROOT -> ROOT_REF_NAME;
 
       // per catalog
-      case CATALOG_ROLE -> format(CATALOG_ROLES_REF_NAME_PATTERN, catalogStableId);
-      case NAMESPACE, TABLE_LIKE, POLICY -> format(CATALOG_STATE_REF_NAME_PATTERN, catalogStableId);
+      case CATALOG_ROLE ->
+          format(CATALOG_ROLES_REF_NAME_PATTERN, catalogMandatory(catalogStableId));
+      case NAMESPACE, TABLE_LIKE, POLICY ->
+          format(CATALOG_STATE_REF_NAME_PATTERN, catalogMandatory(catalogStableId));
 
       default -> throw new IllegalArgumentException("Unsupported entity type: " + entityType);
     };
   }
 
-  static void catalogMandatory(long catalogStableId) {
+  static long catalogMandatory(long catalogStableId) {
     checkArgument(catalogStableId != 0L, "Mandatory catalog not present");
-  }
-
-  static long realmMandatory(long catalogStableId) {
-    // TODO BasePolarisMetaStoreManagerTest sadly gives us non-0 catalog-IDs for non-catalog
-    //  entities, so cannot do the following assertion, but instead blindly assume 0L.
-    // checkArgument(catalogStableId == 0L, "Catalog present");
-    return 0L;
+    return catalogStableId;
   }
 
   static String entitySubTypeCodeFromObjType(ObjRef objRef) {
@@ -708,5 +687,10 @@ class TypeMapping {
         principalObj.secretSalt().orElse(null),
         principalObj.mainSecretHash().orElse(null),
         principalObj.secondarySecretHash().orElse(null));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <R> R cast(Object r) {
+    return (R) r;
   }
 }

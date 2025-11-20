@@ -20,7 +20,6 @@ package org.apache.polaris.persistence.nosql.coretypes.maintenance;
 
 import static java.lang.String.format;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
-import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogGrantsObj.CATALOG_GRANTS_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj.CATALOGS_REF_NAME;
@@ -54,7 +53,6 @@ import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
-import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogGrantsObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
@@ -206,16 +204,6 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
                 CatalogRolesObj::nameToObjRef,
                 collector,
                 catalogRolesObj -> collector.indexRetain(catalogRolesObj.stableIdToName()));
-
-            perCatalog(
-                "catalog grants",
-                CATALOG_GRANTS_REF_NAME_PATTERN,
-                catalogObj,
-                catalogsMaintenanceConfig.immediateTasksRetain().orElse(DEFAULT_GRANTS_RETAIN),
-                CatalogGrantsObj.class,
-                CatalogGrantsObj::acls,
-                collector,
-                o -> {});
 
             LOGGER.info(
                 "Identifying catalog state for catalog '{}' ({})...",

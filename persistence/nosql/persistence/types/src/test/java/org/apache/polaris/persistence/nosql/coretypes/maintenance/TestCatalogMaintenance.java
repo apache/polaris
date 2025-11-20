@@ -67,7 +67,6 @@ import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.RealmPersistenceFactory;
 import org.apache.polaris.persistence.nosql.api.cache.CacheBackend;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
-import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogGrantsObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTasksObj;
@@ -393,23 +392,6 @@ public class TestCatalogMaintenance {
     persistence.updateReferencePointer(
         persistence.fetchReference(format(CATALOG_STATE_REF_NAME_PATTERN, catalogId)),
         objRef(catalogStateObj));
-
-    var catalogGrantsObj =
-        persistence.write(
-            CatalogGrantsObj.builder()
-                .id(persistence.generateId())
-                .acls(
-                    newUpdatableIndex(persistence, OBJ_REF_SERIALIZER)
-                        .toIndexed("", (x, o) -> fail()))
-                .createdAtMicros(persistence.currentTimeMicros())
-                .seq(1)
-                .tail()
-                .build(),
-            CatalogGrantsObj.class);
-    persistence.updateReferencePointer(
-        persistence.fetchReference(
-            format(CatalogGrantsObj.CATALOG_GRANTS_REF_NAME_PATTERN, catalogId)),
-        objRef(catalogGrantsObj));
   }
 
   private static void mandatoryRealmObjsForTestImpl(Persistence persistence) {

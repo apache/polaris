@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore;
+package org.apache.polaris.persistence.nosql.metastore.committers;
 
 import jakarta.annotation.Nonnull;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
@@ -29,7 +29,7 @@ import org.apache.polaris.persistence.nosql.coretypes.catalog.LongValues;
 import org.apache.polaris.persistence.nosql.coretypes.changes.Change;
 
 @FunctionalInterface
-interface CatalogChangeCommitter<RESULT> {
+public interface CatalogChangeCommitter<RESULT> {
   @Nonnull
   ChangeResult<RESULT> change(
       @Nonnull CommitterState<CatalogStateObj, RESULT> state,

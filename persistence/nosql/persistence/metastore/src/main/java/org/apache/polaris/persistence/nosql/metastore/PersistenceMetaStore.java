@@ -23,11 +23,20 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.core.entity.PolarisEntityConstants.ENTITY_BASE_LOCATION;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.CATALOG_NOT_EMPTY;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_UNDROPPABLE;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS;
 import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED;
 import static org.apache.polaris.persistence.nosql.api.index.IndexContainer.newUpdatableIndex;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
+import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.LongValues.LONG_VALUES_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.LongValues.longValues;
 import static org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj.PRINCIPALS_REF_NAME;
@@ -36,10 +45,11 @@ import static org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping
 import static org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj.REALM_GRANTS_REF_NAME;
 import static org.apache.polaris.persistence.nosql.coretypes.realm.RootObj.ROOT_REF_NAME;
 import static org.apache.polaris.persistence.nosql.coretypes.refs.References.catalogReferenceNames;
+import static org.apache.polaris.persistence.nosql.metastore.EntityUpdate.Operation.CREATE;
+import static org.apache.polaris.persistence.nosql.metastore.EntityUpdate.Operation.UPDATE;
 import static org.apache.polaris.persistence.nosql.metastore.Identifier.identifierFromLocationString;
 import static org.apache.polaris.persistence.nosql.metastore.Identifier.indexKeyToIdentifier;
 import static org.apache.polaris.persistence.nosql.metastore.Identifier.indexKeyToIdentifierBuilder;
-import static org.apache.polaris.persistence.nosql.metastore.MemoizedIndexedAccess.newMemoizedIndexedAccess;
 import static org.apache.polaris.persistence.nosql.metastore.MutationResults.newMutableMutationResults;
 import static org.apache.polaris.persistence.nosql.metastore.MutationResults.singleEntityResult;
 import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.containerTypeForEntityType;
@@ -53,6 +63,8 @@ import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.objType
 import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.objTypeForPolarisTypeForFiltering;
 import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.principalObjToPolarisPrincipalSecrets;
 import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.referenceName;
+import static org.apache.polaris.persistence.nosql.metastore.UpdateKeyForCatalogAndEntityType.updateKeyForCatalogAndEntityType;
+import static org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess.newMemoizedIndexedAccess;
 
 import com.google.common.collect.Streams;
 import jakarta.annotation.Nonnull;
@@ -151,6 +163,14 @@ import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMappingsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.RealmGrantsObj;
 import org.apache.polaris.persistence.nosql.coretypes.realm.RootObj;
+import org.apache.polaris.persistence.nosql.metastore.committers.CatalogChangeCommitterWrapper;
+import org.apache.polaris.persistence.nosql.metastore.committers.ChangeCommitter;
+import org.apache.polaris.persistence.nosql.metastore.committers.ChangeCommitterWrapper;
+import org.apache.polaris.persistence.nosql.metastore.committers.ChangeResult;
+import org.apache.polaris.persistence.nosql.metastore.committers.PrincipalsChangeCommitter;
+import org.apache.polaris.persistence.nosql.metastore.committers.PrincipalsChangeCommitterWrapper;
+import org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexedContainerAccess;
+import org.apache.polaris.persistence.nosql.metastore.indexaccess.MemoizedIndexedAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -264,7 +284,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
           if (catalogObj != null && catalogObj.stableId() != catalog.getId()) {
             // A catalog with the same name already exists (different ID)
             return new ChangeResult.NoChange<>(
-                new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
+                new CreateCatalogResult(ENTITY_ALREADY_EXISTS, null));
           }
           if (catalogObj == null) {
             catalogObj =
@@ -289,13 +309,16 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
 
           var catalogAdminRole = mapToEntity(catalogAdminRoleObj, catalogObj.stableId());
 
-          var grants = new ArrayList<Grant>();
+          var grants = new ArrayList<SecurableGranteePrivilegeTuple>();
 
           // grant the catalog admin role access-management on the catalog
-          grants.add(new Grant(catalog, catalogAdminRole, PolarisPrivilege.CATALOG_MANAGE_ACCESS));
+          grants.add(
+              new SecurableGranteePrivilegeTuple(
+                  catalog, catalogAdminRole, PolarisPrivilege.CATALOG_MANAGE_ACCESS));
           // grant the catalog admin role metadata-management on the catalog; this one is revocable
           grants.add(
-              new Grant(catalog, catalogAdminRole, PolarisPrivilege.CATALOG_MANAGE_METADATA));
+              new SecurableGranteePrivilegeTuple(
+                  catalog, catalogAdminRole, PolarisPrivilege.CATALOG_MANAGE_METADATA));
 
           var effRoles =
               principalRoles.isEmpty()
@@ -310,10 +333,12 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                   : principalRoles;
 
           for (PolarisBaseEntity effRole : effRoles) {
-            grants.add(new Grant(catalogAdminRole, effRole, PolarisPrivilege.CATALOG_ROLE_USAGE));
+            grants.add(
+                new SecurableGranteePrivilegeTuple(
+                    catalogAdminRole, effRole, PolarisPrivilege.CATALOG_ROLE_USAGE));
           }
 
-          persistGrantsOrRevokes(0L, true, grants.toArray(Grant[]::new));
+          persistGrantsOrRevokes(true, grants.toArray(SecurableGranteePrivilegeTuple[]::new));
 
           byName.put(nameKey, objRef(catalogObj));
           byId.put(idKey, nameKey);
@@ -324,8 +349,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                 new CreateCatalogResult(catalog, catalogAdminRole));
           }
           // retry
-          return new ChangeResult.NoChange<>(
-              new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
+          return new ChangeResult.NoChange<>(new CreateCatalogResult(ENTITY_ALREADY_EXISTS, null));
         }));
   }
 
@@ -401,18 +425,18 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
   EntityResult createEntity(PolarisBaseEntity entity) {
     LOGGER.atDebug().addArgument(() -> logEntityInfo(entity)).log("create entity: {}");
 
-    return createOrUpdateEntity(EntityUpdate.Operation.CREATE, entity);
+    return createOrUpdateEntity(CREATE, entity);
   }
 
   EntitiesResult createEntities(List<PolarisBaseEntity> entities) {
     LOGGER.atDebug().addArgument(() -> logEntitiesInfo(entities)).log("create entities: {}");
 
-    return createOrUpdateEntities(entities.stream(), EntityUpdate.Operation.CREATE);
+    return createOrUpdateEntities(entities.stream(), CREATE);
   }
 
   EntityResult updateEntity(PolarisBaseEntity entity) {
     LOGGER.atDebug().addArgument(() -> logEntityInfo(entity)).log("update entity: {}");
-    return createOrUpdateEntity(EntityUpdate.Operation.UPDATE, entity);
+    return createOrUpdateEntity(UPDATE, entity);
   }
 
   EntitiesResult updateEntities(List<EntityWithPath> entities) {
@@ -422,30 +446,29 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
             () -> logEntitiesInfo(entities.stream().map(EntityWithPath::getEntity).toList()))
         .log("update entities: {}");
 
-    return createOrUpdateEntities(
-        entities.stream().map(EntityWithPath::getEntity), EntityUpdate.Operation.UPDATE);
+    return createOrUpdateEntities(entities.stream().map(EntityWithPath::getEntity), UPDATE);
   }
 
   private EntityResult createOrUpdateEntity(EntityUpdate.Operation op, PolarisBaseEntity entity) {
     var mutationResults =
-        performEntityMutations(Concern.forEntity(entity), List.of(new EntityUpdate(op, entity)));
+        performEntityMutations(
+            updateKeyForCatalogAndEntityType(entity), List.of(new EntityUpdate(op, entity)));
     return (EntityResult) mutationResults.results().getFirst();
   }
 
   private EntitiesResult createOrUpdateEntities(
       Stream<PolarisBaseEntity> entitiesStream, EntityUpdate.Operation op) {
-    var byConcern =
+    var byCatalogAndEntityType =
         entitiesStream
             .map(e -> new EntityUpdate(op, e))
-            .collect(Collectors.groupingBy(u -> Concern.forEntity(u.entity())));
+            .collect(Collectors.groupingBy(u -> updateKeyForCatalogAndEntityType(u.entity())));
 
-    if (byConcern.size() > 1) {
-      // TODO remove this check??
-      throw new UnsupportedOperationException(
-          "Cannot atomically create entities against multiple targets: " + byConcern.keySet());
-    }
+    checkArgument(
+        byCatalogAndEntityType.size() <= 1,
+        "Cannot atomically create entities against multiple targets: %s",
+        byCatalogAndEntityType.keySet());
 
-    for (var concernChanges : byConcern.entrySet()) {
+    for (var concernChanges : byCatalogAndEntityType.entrySet()) {
       var results = performEntityMutations(concernChanges.getKey(), concernChanges.getValue());
       var firstFailure = results.firstFailure();
       if (firstFailure.isPresent()) {
@@ -472,7 +495,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
 
     var results =
         performEntityMutations(
-            Concern.forEntity(entityToDrop),
+            updateKeyForCatalogAndEntityType(entityToDrop),
             List.of(new EntityUpdate(EntityUpdate.Operation.DELETE, entityToDrop, cleanup)));
 
     if (cleanup && PolarisEntityType.POLICY == entityToDrop.getType()) {
@@ -509,8 +532,8 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
 
       try {
         performEntityMutations(
-            new Concern(PolarisEntityType.TASK, 0L, false),
-            List.of(new EntityUpdate(EntityUpdate.Operation.CREATE, taskEntity)));
+            new UpdateKeyForCatalogAndEntityType(PolarisEntityType.TASK, 0L, false),
+            List.of(new EntityUpdate(CREATE, taskEntity)));
 
         if (entityToDrop.getType() == PolarisEntityType.POLICY) {
           detachAllPolicyMappings(true, entityToDrop.getCatalogId(), entityToDrop.getId());
@@ -528,13 +551,18 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
     return (DropEntityResult) result;
   }
 
-  private MutationResults performEntityMutations(Concern concern, List<EntityUpdate> updates) {
+  private MutationResults performEntityMutations(
+      UpdateKeyForCatalogAndEntityType updateKeyForCatalogAndEntityType,
+      List<EntityUpdate> updates) {
     LOGGER
         .atDebug()
         .addArgument(updates.size())
-        .addArgument(concern.entityType())
-        .addArgument(concern.catalogId())
-        .addArgument(concern.catalogContent() ? "catalog-content" : "non-catalog-content")
+        .addArgument(updateKeyForCatalogAndEntityType.entityType())
+        .addArgument(updateKeyForCatalogAndEntityType.catalogId())
+        .addArgument(
+            updateKeyForCatalogAndEntityType.catalogContent()
+                ? "catalog-content"
+                : "non-catalog-content")
         .addArgument(
             () ->
                 updates.stream()
@@ -549,13 +577,11 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                     .collect(Collectors.joining("\n    ", "\n    ", "")))
         .log("Applying {} updates to {} entities in catalog id {} as {} : {}");
 
-    if (concern.entityType() == PolarisEntityType.ROOT) {
+    if (updateKeyForCatalogAndEntityType.entityType() == PolarisEntityType.ROOT) {
       checkArgument(updates.size() == 1, "Cannot write multiple root entities");
       try {
         var update = updates.getFirst();
-        checkArgument(
-            update.operation() == EntityUpdate.Operation.CREATE,
-            "Cannot update or delete the root entity");
+        checkArgument(update.operation() == CREATE, "Cannot update or delete the root entity");
         return persistence
             .createCommitter(ROOT_REF_NAME, RootObj.class, MutationResults.class)
             .synchronizingLocally()
@@ -569,32 +595,43 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
 
     var mutationResults = (MutationResults) null;
 
-    if (concern.catalogContent()) {
+    if (updateKeyForCatalogAndEntityType.catalogContent()) {
       try {
         var committer =
             persistence
                 .createCommitter(
-                    format(CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN, concern.catalogId()),
+                    format(
+                        CATALOG_STATE_REF_NAME_PATTERN,
+                        updateKeyForCatalogAndEntityType.catalogId()),
                     CatalogStateObj.class,
                     MutationResults.class)
                 .synchronizingLocally();
         var commitRetryable =
             new CatalogChangeCommitterWrapper<MutationResults>(
                 ((state, ref, byName, byId, changes, locations) ->
-                    mutationAttempt(concern, updates, state, byName, byId, changes, locations)));
+                    mutationAttempt(
+                        updateKeyForCatalogAndEntityType,
+                        updates,
+                        state,
+                        byName,
+                        byId,
+                        changes,
+                        locations)));
         mutationResults = committer.commitRuntimeException(commitRetryable).orElseThrow();
       } finally {
-        memoizedIndexedAccess.invalidateCatalogContent(concern.catalogId());
+        memoizedIndexedAccess.invalidateCatalogContent(
+            updateKeyForCatalogAndEntityType.catalogId());
       }
     } else {
       mutationResults =
           performChange(
-              concern.entityType(),
-              containerTypeForEntityType(concern.entityType(), false),
+              updateKeyForCatalogAndEntityType.entityType(),
+              containerTypeForEntityType(updateKeyForCatalogAndEntityType.entityType()),
               MutationResults.class,
-              concern.catalogId(),
+              updateKeyForCatalogAndEntityType.catalogId(),
               ((state, ref, byName, byId) ->
-                  mutationAttempt(concern, updates, state, byName, byId, null, null)));
+                  mutationAttempt(
+                      updateKeyForCatalogAndEntityType, updates, state, byName, byId, null, null)));
     }
 
     // TODO populate MutationResults.aclsToRemove and handle those, also need a maintenance
@@ -607,7 +644,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
   }
 
   private ChangeResult<MutationResults> mutationAttempt(
-      Concern concern,
+      UpdateKeyForCatalogAndEntityType updateKeyForCatalogAndEntityType,
       List<EntityUpdate> updates,
       CommitterState<? extends ContainerObj, MutationResults> state,
       UpdatableIndex<ObjRef> byName,
@@ -673,14 +710,14 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
             }
 
             mutationResults.entityResult(
-                BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
-                entitySubTypeCodeFromObjType(existingRef));
+                ENTITY_ALREADY_EXISTS, entitySubTypeCodeFromObjType(existingRef));
             break;
           }
 
           updateLocationsIndex(locations, null, entityObj);
 
-          mutationResults.entityResult(mapToEntity(entityObj, concern.catalogId()));
+          mutationResults.entityResult(
+              mapToEntity(entityObj, updateKeyForCatalogAndEntityType.catalogId()));
           state.writeOrReplace("entity-" + entityObj.stableId(), entityObj);
 
           byName.put(nameKey, objRef(entityObj));
@@ -701,12 +738,12 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
         }
         case UPDATE -> {
           if (originalNameKey == null) {
-            mutationResults.entityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+            mutationResults.entityResult(ENTITY_NOT_FOUND);
             break;
           }
           var originalRef = byName.get(originalNameKey);
           if (originalRef == null) {
-            mutationResults.entityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+            mutationResults.entityResult(ENTITY_NOT_FOUND);
             break;
           }
           var originalObj =
@@ -717,12 +754,11 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                           originalRef,
                           objTypeForPolarisType(entityType, entity.getSubType()).targetClass());
           if (originalObj == null) {
-            mutationResults.entityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+            mutationResults.entityResult(ENTITY_NOT_FOUND);
             break;
           }
           if (entity.getEntityVersion() != originalObj.entityVersion()) {
-            mutationResults.entityResult(
-                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+            mutationResults.entityResult(TARGET_ENTITY_CONCURRENTLY_MODIFIED);
             break;
           }
 
@@ -734,11 +770,11 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
 
           if (renameOrMove) {
             if (entity.cannotBeDroppedOrRenamed()) {
-              mutationResults.entityResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED);
+              mutationResults.entityResult(ENTITY_CANNOT_BE_RENAMED);
               break;
             }
             if (!byName.remove(originalNameKey)) {
-              mutationResults.entityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+              mutationResults.entityResult(ENTITY_NOT_FOUND);
               break;
             }
 
@@ -750,8 +786,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
             var existingRef = byName.get(newNameKey);
             if (existingRef != null) {
               mutationResults.entityResult(
-                  BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
-                  entitySubTypeCodeFromObjType(existingRef));
+                  ENTITY_ALREADY_EXISTS, entitySubTypeCodeFromObjType(existingRef));
               break;
             }
 
@@ -775,7 +810,8 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                   "Entity '%s' updated more than once",
                   newNameKey);
             }
-            mutationResults.entityResult(mapToEntity(entityObj, concern.catalogId()));
+            mutationResults.entityResult(
+                mapToEntity(entityObj, updateKeyForCatalogAndEntityType.catalogId()));
 
             LOGGER.debug(
                 "Renamed {} '{}' with ID {} to '{}'...",
@@ -805,7 +841,8 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                     "Entity '%s' updated more than once",
                     originalNameKey);
               }
-              mutationResults.entityResult(mapToEntity(entityObj, concern.catalogId()));
+              mutationResults.entityResult(
+                  mapToEntity(entityObj, updateKeyForCatalogAndEntityType.catalogId()));
 
               LOGGER.debug(
                   "Updated {} '{}' with ID {}...", entityType, originalNameKey, entity.getId());
@@ -822,12 +859,12 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
         }
         case DELETE -> {
           if (originalNameKey == null) {
-            mutationResults.dropResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+            mutationResults.dropResult(ENTITY_NOT_FOUND);
             break;
           }
           var originalRef = byName.get(originalNameKey);
           if (originalRef == null) {
-            mutationResults.dropResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+            mutationResults.dropResult(ENTITY_NOT_FOUND);
             break;
           }
           var originalObj =
@@ -838,15 +875,15 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                           originalRef,
                           objTypeForPolarisType(entityType, entity.getSubType()).targetClass());
           if (originalObj == null) {
-            mutationResults.dropResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+            mutationResults.dropResult(ENTITY_NOT_FOUND);
             break;
           }
           if (entity.getEntityVersion() != originalObj.entityVersion()) {
-            mutationResults.dropResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+            mutationResults.dropResult(TARGET_ENTITY_CONCURRENTLY_MODIFIED);
             break;
           }
           if (entity.cannotBeDroppedOrRenamed()) {
-            mutationResults.dropResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE);
+            mutationResults.dropResult(ENTITY_UNDROPPABLE);
             break;
           }
 
@@ -855,8 +892,9 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
           var ok =
               switch (entityType) {
                 case NAMESPACE -> {
-                  if (hasChildren(concern.catalogId(), byName, byId, entity.getId())) {
-                    mutationResults.dropResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY);
+                  if (hasChildren(
+                      updateKeyForCatalogAndEntityType.catalogId(), byName, byId, entity.getId())) {
+                    mutationResults.dropResult(NAMESPACE_NOT_EMPTY);
                     yield false;
                   }
                   yield true;
@@ -865,7 +903,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                   var catalogState = memoizedIndexedAccess.catalogContent(entity.getId());
 
                   if (catalogState.nameIndex().map(idx -> idx.iterator().hasNext()).orElse(false)) {
-                    mutationResults.dropResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY);
+                    mutationResults.dropResult(NAMESPACE_NOT_EMPTY);
                     yield false;
                   }
 
@@ -896,7 +934,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                   // If we have 2, we cannot drop the catalog. If only one left, better be the admin
                   // role
                   if (numCatalogRoles > 1) {
-                    mutationResults.dropResult(BaseResult.ReturnStatus.CATALOG_NOT_EMPTY);
+                    mutationResults.dropResult(CATALOG_NOT_EMPTY);
                     yield false;
                   }
                   // If 1, drop the last catalog role. Should be the catalog admin role but don't
@@ -921,8 +959,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                               var iter = index.iterator(prefixKey, prefixKey, false);
 
                               if (iter.hasNext() && !update.cleanup()) {
-                                mutationResults.dropResult(
-                                    BaseResult.ReturnStatus.POLICY_HAS_MAPPINGS);
+                                mutationResults.dropResult(POLICY_HAS_MAPPINGS);
                                 return false;
                               }
 
@@ -1088,7 +1125,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
     if (entityParentId != 0L && entityParentId != entity.getCatalogId()) {
       var parentNameKey = byId.get(IndexKey.key(entityParentId));
       if (parentNameKey == null) {
-        errorHandler.accept(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+        errorHandler.accept(ENTITY_NOT_FOUND);
         return null;
       }
       indexKeyToIdentifierBuilder(parentNameKey, identifierBuilder);
@@ -1121,7 +1158,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
     return switch (update.operation()) {
       case CREATE -> {
         if (refObj.isPresent()) {
-          yield state.noCommit(singleEntityResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS));
+          yield state.noCommit(singleEntityResult(ENTITY_ALREADY_EXISTS));
         }
         yield state.commitResult(singleEntityResult(entity), ref, refObj);
       }
@@ -1129,8 +1166,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
         if (refObj.isPresent()) {
           var rootObj = refObj.get();
           if (entity.getEntityVersion() != rootObj.entityVersion()) {
-            yield state.noCommit(
-                singleEntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED));
+            yield state.noCommit(singleEntityResult(TARGET_ENTITY_CONCURRENTLY_MODIFIED));
           }
         }
         yield state.commitResult(singleEntityResult(entity), ref, refObj);
@@ -1772,8 +1808,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
                           : memoizedIndexedAccess.catalogContent(targetCatalogId);
                   var targetOptional = targetCatalogAccess.byId(targetId);
                   if (targetOptional.isEmpty()) {
-                    return state.noCommit(
-                        new PolicyAttachmentResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null));
+                    return state.noCommit(new PolicyAttachmentResult(ENTITY_NOT_FOUND, null));
                   }
                 }
                 // else: against catalog, assume that it exists
@@ -1848,7 +1883,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
     if (entityType != null
         && entityType != PolarisEntityType.CATALOG
         && !isCatalogContent(entityType)) {
-      return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new LoadPolicyMappingsResult(ENTITY_NOT_FOUND, null);
     }
 
     return memoizedIndexedAccess
@@ -1910,7 +1945,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
       long policyId,
       Optional<PolicyType> policyType) {
     if (entityType != null && !isCatalogContent(entityType)) {
-      return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new LoadPolicyMappingsResult(ENTITY_NOT_FOUND, null);
     }
 
     return memoizedIndexedAccess
@@ -2105,7 +2140,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
 
   private void collectGrantRecords(
       long catalogStableId, String aclName, AclEntryHandler aclEntryConsumer) {
-    var refName = grantsRefName(catalogStableId);
+    var refName = REALM_GRANTS_REF_NAME;
 
     LOGGER.debug("Checking ACL '{}' on '{}'", aclName, refName);
 
@@ -2172,38 +2207,16 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
     }
   }
 
-  private static String grantsRefName(long catalogStableId) {
-    /*
-    TODO better move catalog-related ACLs to the catalog-grants (needs extensive testing!)
-
-    return catalogStableId != 0L
-        ? perCatalogReferenceName(CATALOG_GRANTS_REF_NAME_PATTERN, catalogStableId)
-        : REALM_GRANTS_REF_NAME;
-    */
-    return REALM_GRANTS_REF_NAME;
-  }
-
-  boolean persistGrantsOrRevokes(long catalogStableId, boolean grant, Grant... grants) {
-    /*
-    TODO better move catalog-related ACLs to the catalog-grants (needs extensive testing!)
-
-    if (catalogStableId != 0L) {
-      doPersistGrantsOrRevokes(
-          perCatalogReferenceName(
-              CatalogGrantsObj.CATALOG_GRANTS_REF_NAME_PATTERN, catalogStableId),
-          CatalogGrantsObj::builder,
-          grant,
-          grants);
-      return;
-    }
-    */
-
+  boolean persistGrantsOrRevokes(boolean grant, SecurableGranteePrivilegeTuple... grants) {
     return doPersistGrantsOrRevokes(REALM_GRANTS_REF_NAME, RealmGrantsObj::builder, grant, grants);
   }
 
   @SuppressWarnings("SameParameterValue")
   private <O extends GrantsObj, B extends GrantsObj.Builder<O, B>> boolean doPersistGrantsOrRevokes(
-      String refName, Supplier<B> builder, boolean doGrant, Grant... grants) {
+      String refName,
+      Supplier<B> builder,
+      boolean doGrant,
+      SecurableGranteePrivilegeTuple... grants) {
     LOGGER.debug(
         "Persisting {} on '{}' for '{}'",
         doGrant ? "grants" : "revokes",
@@ -2392,8 +2405,7 @@ class PersistenceMetaStore implements BasePersistence, IntegrationPersistence {
             return new ChangeResult.NoChange<>(
                 existing.equals(forComparison)
                     ? new CreatePrincipalResult(principal, secrets)
-                    : new CreatePrincipalResult(
-                        BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null));
+                    : new CreatePrincipalResult(ENTITY_ALREADY_EXISTS, null));
           }
 
           LOGGER.debug("Creating principal '{}' ...", principalName);

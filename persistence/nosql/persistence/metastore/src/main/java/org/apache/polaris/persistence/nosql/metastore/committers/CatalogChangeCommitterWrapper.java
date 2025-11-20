@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore;
+package org.apache.polaris.persistence.nosql.metastore.committers;
 
 import static org.apache.polaris.persistence.nosql.api.index.IndexContainer.newUpdatableIndex;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_SERIALIZER;
@@ -39,7 +39,7 @@ import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
  *
  * @param <RESULT> result of the commiting operation
  */
-record CatalogChangeCommitterWrapper<RESULT>(CatalogChangeCommitter<RESULT> changeCommitter)
+public record CatalogChangeCommitterWrapper<RESULT>(CatalogChangeCommitter<RESULT> changeCommitter)
     implements CommitRetryable<CatalogStateObj, RESULT> {
 
   @SuppressWarnings("DuplicatedCode")

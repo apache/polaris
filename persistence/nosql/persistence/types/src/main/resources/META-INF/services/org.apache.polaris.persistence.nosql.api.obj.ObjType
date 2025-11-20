@@ -30,7 +30,6 @@ org.apache.polaris.persistence.nosql.coretypes.content.IcebergTableObj$IcebergTa
 org.apache.polaris.persistence.nosql.coretypes.content.IcebergViewObj$IcebergViewObjType
 org.apache.polaris.persistence.nosql.coretypes.content.GenericTableObj$GenericTableObjType
 org.apache.polaris.persistence.nosql.coretypes.content.LocalNamespaceObj$LocalNamespaceObjType
-org.apache.polaris.persistence.nosql.coretypes.content.RemoteNamespaceObj$RemoteNamespaceObjType
 org.apache.polaris.persistence.nosql.coretypes.content.PolicyObj$CatalogPolicyObjType
 
 org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalObj$PrincipalObjType

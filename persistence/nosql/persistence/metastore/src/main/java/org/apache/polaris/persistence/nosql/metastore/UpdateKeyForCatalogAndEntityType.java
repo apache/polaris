@@ -24,8 +24,10 @@ import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
-record Concern(@Nonnull PolarisEntityType entityType, long catalogId, boolean catalogContent) {
-  static Concern forEntity(PolarisEntityCore entity) {
+record UpdateKeyForCatalogAndEntityType(
+    @Nonnull PolarisEntityType entityType, long catalogId, boolean catalogContent) {
+  static UpdateKeyForCatalogAndEntityType updateKeyForCatalogAndEntityType(
+      PolarisEntityCore entity) {
     var type = entity.getType();
     var catalogId = entity.getCatalogId();
     var catContent = TypeMapping.isCatalogContent(type);
@@ -33,6 +35,6 @@ record Concern(@Nonnull PolarisEntityType entityType, long catalogId, boolean ca
         (!catContent && type != PolarisEntityType.CATALOG_ROLE) || catalogId > 0L,
         "catalogId must be a positive integer for %s",
         type);
-    return new Concern(type, catalogId, catContent);
+    return new UpdateKeyForCatalogAndEntityType(type, catalogId, catContent);
   }
 }

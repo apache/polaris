@@ -17,16 +17,15 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.nosql.metastore.containeraccess;
+package org.apache.polaris.persistence.nosql.metastore.indexaccess;
 
+import java.util.Optional;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
-
-import java.util.Optional;
 
 final class IndexedContainerAccessEmpty<C extends ContainerObj> extends IndexedContainerAccess<C> {
   IndexedContainerAccessEmpty(Persistence persistence) {

@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore;
+package org.apache.polaris.persistence.nosql.metastore.committers;
 
-interface ChangeResult<RESULT> {
+public interface ChangeResult<RESULT> {
   @SuppressWarnings("unused")
   RESULT result();
 

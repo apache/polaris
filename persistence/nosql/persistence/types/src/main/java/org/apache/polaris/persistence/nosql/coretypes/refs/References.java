@@ -19,7 +19,6 @@
 package org.apache.polaris.persistence.nosql.coretypes.refs;
 
 import static java.lang.String.format;
-import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogGrantsObj.CATALOG_GRANTS_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogsObj.CATALOGS_REF_NAME;
@@ -47,10 +46,7 @@ public final class References {
           POLICY_MAPPINGS_REF_NAME);
 
   private static final Set<String> CATALOG_REFERENCE_PATTERNS =
-      Set.of(
-          CATALOG_ROLES_REF_NAME_PATTERN,
-          CATALOG_STATE_REF_NAME_PATTERN,
-          CATALOG_GRANTS_REF_NAME_PATTERN);
+      Set.of(CATALOG_ROLES_REF_NAME_PATTERN, CATALOG_STATE_REF_NAME_PATTERN);
 
   public static Set<String> realmReferenceNames() {
     return REALM_REFERENCE_NAMES;

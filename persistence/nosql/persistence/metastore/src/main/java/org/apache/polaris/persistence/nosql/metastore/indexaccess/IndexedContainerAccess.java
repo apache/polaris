@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.metastore.containeraccess;
+package org.apache.polaris.persistence.nosql.metastore.indexaccess;
 
 import static java.lang.String.format;
 import static org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN;
 
 import java.util.Optional;
-
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.Index;
@@ -145,5 +144,4 @@ public abstract class IndexedContainerAccess<C extends ContainerObj> {
   public abstract Optional<Index<IndexKey>> stableIdIndex();
 
   public abstract long catalogStableId();
-
 }

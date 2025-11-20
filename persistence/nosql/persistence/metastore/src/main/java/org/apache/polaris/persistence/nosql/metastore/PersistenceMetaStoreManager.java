@@ -20,6 +20,9 @@ package org.apache.polaris.persistence.nosql.metastore;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.ENTITY_NOT_FOUND;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.GRANT_NOT_FOUND;
+import static org.apache.polaris.core.persistence.dao.entity.BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR;
 import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.mapToEntity;
 import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.mapToEntityNameLookupRecord;
 import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.principalObjToPolarisPrincipalSecrets;
@@ -162,12 +165,12 @@ record PersistenceMetaStoreManager(
 
     // Persisting already existing grants is an idempotent operation
     ms.persistGrantsOrRevokes(
-        0L,
         true,
         // we also need to grant usage on the account-admin principal to the principal
-        new Grant(serviceAdminPrincipalRole, rootPrincipal, PolarisPrivilege.PRINCIPAL_ROLE_USAGE),
+        new SecurableGranteePrivilegeTuple(
+            serviceAdminPrincipalRole, rootPrincipal, PolarisPrivilege.PRINCIPAL_ROLE_USAGE),
         // grant SERVICE_MANAGE_ACCESS on the rootContainer to the serviceAdminPrincipalRole
-        new Grant(
+        new SecurableGranteePrivilegeTuple(
             rootContainer, serviceAdminPrincipalRole, PolarisPrivilege.SERVICE_MANAGE_ACCESS));
 
     return createPrincipalResult;
@@ -303,9 +306,7 @@ record PersistenceMetaStoreManager(
       parentId = catalogPath.getLast().getId();
     }
     var entity = ms.lookupEntityByName(catalogId, parentId, entityType.getCode(), name);
-    return entity != null
-        ? new EntityResult(entity)
-        : new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    return entity != null ? new EntityResult(entity) : new EntityResult(ENTITY_NOT_FOUND, null);
   }
 
   @Nonnull
@@ -391,7 +392,7 @@ record PersistenceMetaStoreManager(
 
     // if entity not found, return null
     if (entity == null) {
-      return new ResolvedEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new ResolvedEntityResult(ENTITY_NOT_FOUND, null);
     }
 
     // load the grant records
@@ -417,7 +418,7 @@ record PersistenceMetaStoreManager(
 
     // null if entity not found
     if (entity == null) {
-      return new ResolvedEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new ResolvedEntityResult(ENTITY_NOT_FOUND, null);
     }
 
     // load the grant records
@@ -504,8 +505,9 @@ record PersistenceMetaStoreManager(
     var ms = ms();
     var catalogId =
         catalogPath != null && !catalogPath.isEmpty() ? catalogPath.getFirst().getId() : 0L;
-    if (!ms.persistGrantsOrRevokes(catalogId, grant, new Grant(securable, grantee, privilege))) {
-      return new PrivilegeResult(BaseResult.ReturnStatus.GRANT_NOT_FOUND, "");
+    if (!ms.persistGrantsOrRevokes(
+        grant, new SecurableGranteePrivilegeTuple(securable, grantee, privilege))) {
+      return new PrivilegeResult(GRANT_NOT_FOUND, "");
     }
 
     var grantRecord =
@@ -551,9 +553,7 @@ record PersistenceMetaStoreManager(
       @Nonnull PolarisEntityType entityType) {
     var ms = ms();
     var entity = ms.lookupEntity(callCtx, entityCatalogId, entityId, entityType.getCode());
-    return (entity != null)
-        ? new EntityResult(entity)
-        : new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    return (entity != null) ? new EntityResult(entity) : new EntityResult(ENTITY_NOT_FOUND, null);
   }
 
   @Override
@@ -698,7 +698,7 @@ record PersistenceMetaStoreManager(
     var secrets = ms.loadPrincipalSecrets(clientId);
 
     return (secrets == null)
-        ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
+        ? new PrincipalSecretsResult(ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);
   }
 
@@ -740,7 +740,7 @@ record PersistenceMetaStoreManager(
                 return new PrincipalSecretsResult(principalSecrets);
               });
     } catch (PersistenceMetaStore.PrincipalNotFoundException ignore) {
-      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new PrincipalSecretsResult(ENTITY_NOT_FOUND, null);
     }
   }
 
@@ -770,7 +770,7 @@ record PersistenceMetaStoreManager(
                 return new PrincipalSecretsResult(principalSecrets);
               });
     } catch (PersistenceMetaStore.PrincipalNotFoundException ignore) {
-      return new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new PrincipalSecretsResult(ENTITY_NOT_FOUND, null);
     }
   }
 
@@ -839,8 +839,7 @@ record PersistenceMetaStoreManager(
               refreshCredentialsEndpoint);
       return new ScopedCredentialsResult(creds);
     } catch (Exception ex) {
-      return new ScopedCredentialsResult(
-          BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
+      return new ScopedCredentialsResult(SUBSCOPE_CREDS_ERROR, ex.getMessage());
     }
   }
 

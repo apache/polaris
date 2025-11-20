@@ -17,10 +17,19 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.nosql.metastore.containeraccess;
+package org.apache.polaris.persistence.nosql.metastore.indexaccess;
+
+import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootContainerName;
+import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootEntityId;
+import static org.apache.polaris.persistence.nosql.coretypes.realm.RootObj.ROOT_REF_NAME;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
@@ -28,18 +37,7 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Supplier;
-
-import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootContainerName;
-import static org.apache.polaris.core.entity.PolarisEntityConstants.getRootEntityId;
-import static org.apache.polaris.persistence.nosql.coretypes.realm.RootObj.ROOT_REF_NAME;
-
-final class IndexedContainerAccessRoot<C extends ContainerObj>
-    extends IndexedContainerAccess<C> {
+final class IndexedContainerAccessRoot<C extends ContainerObj> extends IndexedContainerAccess<C> {
   private static final IndexKey nameKey = IndexKey.key(getRootContainerName());
   private static final IndexKey idKey = IndexKey.key(getRootEntityId());
 
@@ -63,8 +61,7 @@ final class IndexedContainerAccessRoot<C extends ContainerObj>
   }
 
   @Override
-  public Optional<org.apache.polaris.persistence.nosql.api.index.Index<IndexKey>>
-      stableIdIndex() {
+  public Optional<org.apache.polaris.persistence.nosql.api.index.Index<IndexKey>> stableIdIndex() {
     return Optional.of(new SingletonIndex<>(idKey, () -> nameKey));
   }
 

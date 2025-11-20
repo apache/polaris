@@ -17,9 +17,15 @@
  * under the License.
  */
 
-package org.apache.polaris.persistence.nosql.metastore.containeraccess;
+package org.apache.polaris.persistence.nosql.metastore.indexaccess;
+
+import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_SERIALIZER;
+import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
+import static org.apache.polaris.persistence.nosql.metastore.Identifier.indexKeyToIdentifierBuilder;
 
 import com.google.common.base.Suppliers;
+import java.util.Optional;
+import java.util.function.Supplier;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.index.Index;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
@@ -29,17 +35,10 @@ import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
-import java.util.function.Supplier;
-
-import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_SERIALIZER;
-import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
-import static org.apache.polaris.persistence.nosql.metastore.Identifier.indexKeyToIdentifierBuilder;
-
 final class IndexedContainerAccessImpl<C extends ContainerObj> extends IndexedContainerAccess<C> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(
-          org.apache.polaris.persistence.nosql.metastore.containeraccess.IndexedContainerAccessImpl
+          org.apache.polaris.persistence.nosql.metastore.indexaccess.IndexedContainerAccessImpl
               .class);
 
   private final ObjRef containerObjRef;

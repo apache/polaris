@@ -21,6 +21,12 @@ package org.apache.polaris.persistence.nosql.metastore;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.polaris.persistence.nosql.coretypes.refs.References.realmReferenceNames;
+import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.ACTIVE;
+import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.CREATED;
+import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.INACTIVE;
+import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.INITIALIZING;
+import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.PURGED;
+import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.PURGING;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -192,19 +198,19 @@ class PersistenceMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
       var nextStatus =
           switch (existing.status()) {
-            case CREATED, LOADING, INITIALIZING, INACTIVE -> RealmDefinition.RealmStatus.PURGING;
-            case ACTIVE -> RealmDefinition.RealmStatus.INACTIVE;
+            case CREATED, LOADING, INITIALIZING, INACTIVE -> PURGING;
+            case ACTIVE -> INACTIVE;
             case PURGING ->
                 // TODO this state should really happen during maintenance!!
-                RealmDefinition.RealmStatus.PURGED;
-            case PURGED -> RealmDefinition.RealmStatus.PURGED;
+                PURGED;
+            case PURGED -> PURGED;
           };
 
       var update = RealmDefinition.builder().from(existing).status(nextStatus).build();
 
       var updated = realmManagement.update(existing, update);
 
-      if (updated.status() == RealmDefinition.RealmStatus.PURGED) {
+      if (updated.status() == PURGED) {
         realmManagement.delete(updated);
         break;
       }
@@ -234,26 +240,18 @@ class PersistenceMetaStoreManagerFactory implements MetaStoreManagerFactory {
               // Move realm from CREATED to INITIALIZING state
               desc =
                   realmManagement.update(
-                      desc,
-                      RealmDefinition.builder()
-                          .from(desc)
-                          .status(RealmDefinition.RealmStatus.INITIALIZING)
-                          .build());
+                      desc, RealmDefinition.builder().from(desc).status(INITIALIZING).build());
               return desc;
             });
 
-    if (realmDesc.status() == RealmDefinition.RealmStatus.CREATED) {
+    if (realmDesc.status() == CREATED) {
       realmDesc =
           realmManagement.update(
-              realmDesc,
-              RealmDefinition.builder()
-                  .from(realmDesc)
-                  .status(RealmDefinition.RealmStatus.INITIALIZING)
-                  .build());
+              realmDesc, RealmDefinition.builder().from(realmDesc).status(INITIALIZING).build());
     }
 
     checkState(
-        realmDesc.status() == RealmDefinition.RealmStatus.INITIALIZING,
+        realmDesc.status() == INITIALIZING,
         "Unexpected status '%s' for realm '%s'",
         realmDesc.status(),
         realmId);
@@ -275,11 +273,7 @@ class PersistenceMetaStoreManagerFactory implements MetaStoreManagerFactory {
             realmId, metaStoreManager, metaStore, rootCredentialsSet);
 
     realmManagement.update(
-        realmDesc,
-        RealmDefinition.builder()
-            .from(realmDesc)
-            .status(RealmDefinition.RealmStatus.ACTIVE)
-            .build());
+        realmDesc, RealmDefinition.builder().from(realmDesc).status(ACTIVE).build());
 
     LOGGER.info("Realm '{}' has been successfully bootstrapped.", realmId);
 

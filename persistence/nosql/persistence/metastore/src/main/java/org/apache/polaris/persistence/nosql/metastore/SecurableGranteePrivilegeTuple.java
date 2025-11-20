@@ -22,7 +22,7 @@ import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 
-record Grant(
+record SecurableGranteePrivilegeTuple(
     @Nonnull PolarisEntityCore securable,
     @Nonnull PolarisEntityCore grantee,
     @Nonnull PolarisPrivilege privilege) {}
