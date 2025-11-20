@@ -1109,7 +1109,7 @@ components:
               example: "arn:aws:kms::123456789001:key/01234578"
             allowedKmsKeys:
               type: array
-              description: the aws kms keys arn used to encrypt s3 data
+              description: The list of kms keys that this catalog and its clients are allow to use for reading s3 data
               items:
                 type: string
               example: ["arn:aws:kms::123456789001:key/01234578"]

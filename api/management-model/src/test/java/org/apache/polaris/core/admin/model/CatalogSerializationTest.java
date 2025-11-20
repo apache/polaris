@@ -60,6 +60,33 @@ public class CatalogSerializationTest {
             new CatalogProperties(TEST_LOCATION),
             AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
                 .setRoleArn(TEST_ROLE_ARN)
+                .build());
+
+    String json = mapper.writeValueAsString(catalog);
+
+    assertThat(json)
+        .isEqualTo(
+            "{\"type\":\"INTERNAL\","
+                + "\"name\":\"test-catalog\","
+                + "\"properties\":{\"default-base-location\":\"s3://test/\"},"
+                + "\"storageConfigInfo\":{"
+                + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-role\","
+                + "\"allowedKmsKeys\":[],"
+                + "\"pathStyleAccess\":false,"
+                + "\"storageType\":\"S3\","
+                + "\"allowedLocations\":[]"
+                + "}}");
+  }
+
+  @Test
+  public void testJsonFormatWithKmsProperties() throws JsonProcessingException {
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            TEST_CATALOG_NAME,
+            new CatalogProperties(TEST_LOCATION),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn(TEST_ROLE_ARN)
                 .setCurrentKmsKey(KMS_KEY)
                 .build());
 

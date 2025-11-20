@@ -189,8 +189,8 @@ public class AwsCredentialsStorageIntegration
     Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
     String arnPrefix = arnPrefixForPartition(storageConfigurationInfo.getAwsPartition());
-    String currentKmsKey = storageConfigurationInfo.currentKmsKey();
-    List<String> allowedKmsKeys = storageConfigurationInfo.allowedKmsKeys();
+    String currentKmsKey = storageConfigurationInfo.getCurrentKmsKey();
+    List<String> allowedKmsKeys = storageConfigurationInfo.getAllowedKmsKeys();
     Stream.concat(readLocations.stream(), writeLocations.stream())
         .distinct()
         .forEach(
@@ -254,20 +254,18 @@ public class AwsCredentialsStorageIntegration
     bucketGetLocationStatementBuilder
         .values()
         .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    var r = policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
-    LOGGER.info("Policies  {}", r);
-    return r;
+    return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
   }
 
   private static void addKmsKeyPolicy(
       String kmsKeyArn,
       List<String> allowedKmsKeys,
       IamPolicy.Builder policyBuilder,
-      boolean canEncrypt,
+      boolean canWrite,
       String region,
       String accountId) {
 
-    IamStatement.Builder allowKms = buildBaseKmsStatement(canEncrypt);
+    IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
     boolean hasCurrentKey = kmsKeyArn != null;
     boolean hasAllowedKeys = hasAllowedKmsKeys(allowedKmsKeys);
 
@@ -282,10 +280,13 @@ public class AwsCredentialsStorageIntegration
     // Add KMS statement if we have any KMS key configuration
     if (hasCurrentKey || hasAllowedKeys) {
       policyBuilder.addStatement(allowKms.build());
-    } else if (!canEncrypt) {
+    } else if (!canWrite) {
       // Only add wildcard KMS access for read-only operations when no specific keys are configured
-      addAllKeysResource(region, accountId, allowKms);
-      policyBuilder.addStatement(allowKms.build());
+      // this check is for minio because it doesn't have region or account id
+      if (region != null && accountId != null) {
+        addAllKeysResource(region, accountId, allowKms);
+        policyBuilder.addStatement(allowKms.build());
+      }
     }
   }
 
@@ -307,7 +308,7 @@ public class AwsCredentialsStorageIntegration
 
   private static void addKmsKeyResource(String kmsKeyArn, IamStatement.Builder allowKms) {
     if (kmsKeyArn != null) {
-      LOGGER.info("Adding KMS key policy for key {}", kmsKeyArn);
+      LOGGER.debug("Adding KMS key policy for key {}", kmsKeyArn);
       allowKms.addResource(IamResource.create(kmsKeyArn));
     }
   }
@@ -320,7 +321,7 @@ public class AwsCredentialsStorageIntegration
       List<String> allowedKmsKeys, IamStatement.Builder allowKms) {
     allowedKmsKeys.forEach(
         keyArn -> {
-          LOGGER.info("Adding allowed KMS key policy for key {}", keyArn);
+          LOGGER.debug("Adding allowed KMS key policy for key {}", keyArn);
           allowKms.addResource(IamResource.create(keyArn));
         });
   }
@@ -329,7 +330,7 @@ public class AwsCredentialsStorageIntegration
       String region, String accountId, IamStatement.Builder allowKms) {
     String allKeysArn = arnKeyAll(region, accountId);
     allowKms.addResource(IamResource.create(allKeysArn));
-    LOGGER.info("Adding KMS key policy for all keys in account {}", accountId);
+    LOGGER.debug("Adding KMS key policy for all keys in account {}", accountId);
   }
 
   private static String arnKeyAll(String region, String accountId) {

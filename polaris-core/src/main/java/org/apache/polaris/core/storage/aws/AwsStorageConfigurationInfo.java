@@ -66,11 +66,11 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
 
   /** KMS Key ARN for server-side encryption,used for writes, optional */
   @Nullable
-  public abstract String currentKmsKey();
+  public abstract String getCurrentKmsKey();
 
   /** Comma-separated list of allowed KMS Key ARNs, optional */
   @Nullable
-  public abstract List<String> allowedKmsKeys();
+  public abstract List<String> getAllowedKmsKeys();
 
   /** AWS external ID, optional */
   @Nullable
