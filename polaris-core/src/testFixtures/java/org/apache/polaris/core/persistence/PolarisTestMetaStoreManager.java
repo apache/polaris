@@ -2658,8 +2658,6 @@ public class PolarisTestMetaStoreManager {
         PolarisEntityConstants.getNullId(), principal.getId(), PolarisEntityType.PRINCIPAL_ROLE);
     this.ensureNotExistsById(
         PolarisEntityConstants.getNullId(), principal.getId(), PolarisEntityType.CATALOG);
-    this.ensureNotExistsById(
-        PolarisEntityConstants.getNullId(), principal.getId(), PolarisEntityType.CATALOG_ROLE);
 
     // create new catalog
     PolarisBaseEntity catalog =
@@ -2674,6 +2672,8 @@ public class PolarisTestMetaStoreManager {
         polarisMetaStoreManager.createCatalog(this.polarisCallContext, catalog, List.of());
     Assertions.assertThat(catalogCreated).isNotNull();
     catalog = catalogCreated.getCatalog();
+
+    this.ensureNotExistsById(catalog.getId(), principal.getId(), PolarisEntityType.CATALOG_ROLE);
 
     // now create all objects
     PolarisBaseEntity N1 = this.createEntity(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
