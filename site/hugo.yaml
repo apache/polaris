@@ -175,8 +175,7 @@ menu:
       url: "https://github.com/apache/polaris"
       weight: 400
 
-    - name: "ASF"
-      pre: "<i class='fa-solid fa-feather'></i>"
+    - name: "The ASF"
       identifier: "asf"
       weight: 900
       params:
