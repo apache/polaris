@@ -234,3 +234,7 @@ profile (for example, `%prod`).
 
 The [Polaris Evolution](../evolution) page discusses backward compatibility and
 upgrade concerns.
+
+### Configuring Polaris for Cloud Storages
+
+For guidance on configuring cloud storage providers (such as Google Cloud Storage, Amazon S3, and Azure Blob Storage) for use with Polaris—including credential vending, IAM roles, ACL requirements, and best practices—see [Configuring Cloud Storage](./configuring-cloud-storage-specific/).
