@@ -70,7 +70,6 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
         reservedProperties,
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
-        polarisEventListener,
         storageAccessConfigProvider);
   }
 

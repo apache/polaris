@@ -1,0 +1,122 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: Release - 1 - Create Release Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version without RC number (e.g., 1.0.0-incubating)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run mode (check to enable, uncheck to perform actual operations)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  create-release-branch:
+    name: Release - 1 - Create Release Branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          # Fetch full history for proper branch operations
+          fetch-depth: 0
+          # Use a token with write permissions
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+          echo "## Mode" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+            echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+            echo "DRY_RUN mode disabled - Performing actual operations" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate release parameters
+        run: |
+          source "${LIBS_DIR}/_version.sh"
+
+          # Extract release parameters from workflow inputs
+          version="${{ github.event.inputs.version }}"
+
+          echo "## Parameters" >> $GITHUB_STEP_SUMMARY
+
+          # Validate version format and extract components
+          if ! validate_and_extract_polaris_version "${version}"; then
+            echo "❌ Invalid version format. Expected: major.minor.patch-incubating, got: ${version}" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "Version: \`${version}\`" >> $GITHUB_STEP_SUMMARY
+
+          # Create branch name in major.minor.x format
+          branch_name="${major}.${minor}.x"
+
+          # Export parameters for next step
+          echo "version=${version}" >> $GITHUB_ENV
+          echo "branch_name=${branch_name}" >> $GITHUB_ENV
+
+      - name: Create release branch
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          release_branch="release/${branch_name}"
+
+          echo "## Summary" >> $GITHUB_STEP_SUMMARY
+
+          # Check if release branch already exists
+          if git show-ref --verify --quiet "refs/remotes/origin/${release_branch}"; then
+            echo "❌ Release branch ${release_branch} already exists. Delete the existing branch manually if you want to recreate it." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          exec_process git branch "${release_branch}"
+          exec_process git push origin "${release_branch}" --set-upstream
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Release branch created successfully:
+
+          | Name | Value |
+          | --- | --- |
+          | Release branch name | \`${release_branch}\` |
+          | Ref | \`$(git rev-parse HEAD)\` |
+          | Version | \`${version}\` |
+          EOT

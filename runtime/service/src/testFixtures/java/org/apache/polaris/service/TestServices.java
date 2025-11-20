@@ -319,7 +319,6 @@ public record TestServices(
               reservedProperties,
               catalogHandlerUtils,
               externalCatalogFactory,
-              polarisEventListener,
               storageAccessConfigProvider,
               new DefaultMetricsReporter());
 

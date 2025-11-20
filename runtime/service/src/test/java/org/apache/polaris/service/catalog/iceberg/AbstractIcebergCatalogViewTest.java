@@ -41,19 +41,16 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -105,24 +102,22 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
           CatalogProperties.VIEW_OVERRIDE_PREFIX + "key3", "catalog-override-key3",
           CatalogProperties.VIEW_OVERRIDE_PREFIX + "key4", "catalog-override-key4");
 
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject UserSecretsManagerFactory userSecretsManagerFactory;
   @Inject ServiceIdentityProvider serviceIdentityProvider;
-  @Inject PolarisConfigurationStore configurationStore;
   @Inject StorageCredentialCache storageCredentialCache;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject PolarisMetaStoreManager metaStoreManager;
+  @Inject UserSecretsManager userSecretsManager;
+  @Inject CallContext callContext;
+  @Inject RealmConfig realmConfig;
+  @Inject StorageAccessConfigProvider storageAccessConfigProvider;
 
   private IcebergCatalog catalog;
 
   private String realmName;
-  private PolarisMetaStoreManager metaStoreManager;
-  private UserSecretsManager userSecretsManager;
   private PolarisCallContext polarisContext;
-  private RealmConfig realmConfig;
-  private StorageAccessConfigProvider storageAccessConfigProvider;
 
   private TestPolarisEventListener testPolarisEventListener;
 
@@ -154,19 +149,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     bootstrapRealm(realmName);
     RealmContext realmContext = () -> realmName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
-
-    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    userSecretsManager = userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-    polarisContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            configurationStore);
-    realmConfig = polarisContext.getRealmConfig();
-    StorageCredentialsVendor storageCredentialsVendor =
-        new StorageCredentialsVendor(metaStoreManager, polarisContext);
-    storageAccessConfigProvider =
-        new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
+    polarisContext = callContext.getPolarisCallContext();
 
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();

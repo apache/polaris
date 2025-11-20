@@ -1,0 +1,206 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: Release - 2 - Update version and Changelog for Release Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (check to enable, uncheck to perform actual operations)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  update-release-candidate:
+    name: Release - 2 - Update version and Changelog for Release Candidate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          # Fetch full history. Branch operations require this.
+          fetch-depth: 0
+          # Use a token with write permissions
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+          echo "## Mode" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+            echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+            echo "DRY_RUN mode disabled - Performing actual operations" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Auto-determine release branch and next RC number
+        run: |
+          source "${LIBS_DIR}/_version.sh"
+
+          # Get the current branch name
+          current_branch=$(git branch --show-current)
+
+          echo "## Parameters" >> $GITHUB_STEP_SUMMARY
+
+          # Validate that we're on a release branch
+          if [[ ! "${current_branch}" =~ ^release/(.+)$ ]]; then
+            echo "❌ Invalid branch: \`${current_branch}\`. This workflow must be run from a release branch (release/major.minor.x)" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Extract version from release branch name
+          branch_version="${BASH_REMATCH[1]}"
+
+          # Validate branch version format and extract components
+          if ! validate_and_extract_branch_version "${branch_version}"; then
+            echo "❌ Invalid release branch version format: \`${branch_version}\`, expected: major.minor.x" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Find the next available patch number for this major.minor version
+          find_next_patch_number "${major}" "${minor}"
+
+          # Build the target version using branch major.minor and determined patch
+          version_without_rc="${major}.${minor}.${patch}-incubating"
+
+          # Find the next available RC number by checking existing tags
+          find_next_rc_number "${version_without_rc}"
+
+          # Build the new release tag
+          release_tag="apache-polaris-${version_without_rc}-rc${rc_number}"
+
+          # Export all variables for next steps
+          echo "release_tag=${release_tag}" >> $GITHUB_ENV
+          echo "major=${major}" >> $GITHUB_ENV
+          echo "minor=${minor}" >> $GITHUB_ENV
+          echo "patch=${patch}" >> $GITHUB_ENV
+          echo "rc_number=${rc_number}" >> $GITHUB_ENV
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
+          echo "release_branch=${current_branch}" >> $GITHUB_ENV
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          | Parameter | Value |
+          | --- | --- |
+          | Release branch | \`${current_branch}\` |
+          | Version without RC | \`${version_without_rc}\` |
+          | RC number | \`${rc_number}\` |
+          | Release tag | \`${release_tag}\` |
+          EOT
+
+      - name: Verify GitHub checks are passing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source "${LIBS_DIR}/_github.sh"
+
+          # Get the current HEAD commit SHA
+          current_commit=$(git rev-parse HEAD)
+
+          echo "## Validation" >> $GITHUB_STEP_SUMMARY
+
+          # Verify all GitHub checks are passing
+          if ! check_github_checks_passed "${current_commit}"; then
+            echo "❌ GitHub checks are not all passing for commit \`${current_commit}\`. Please ensure all checks pass before updating the release candidate." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "All GitHub checks are passing for commit \`${current_commit}\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Set up Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Update project versions
+        run: |
+          source "${LIBS_DIR}/_version.sh"
+
+          update_version "${version_without_rc}"
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Version update
+          All version files updated to \`${version_without_rc}\`
+          EOT
+
+      - name: Update changelog
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+          exec_process ./gradlew patchChangelog
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Changelog
+          Changelog patched successfully
+          EOT
+
+      - name: Commit and push changes
+        run: |
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          # Commit version files and changelog
+          exec_process git add \
+            "$VERSION_FILE" \
+            "$HELM_CHART_YAML_FILE" \
+            "$HELM_README_FILE" \
+            "$CHANGELOG_FILE"
+          exec_process git commit -m "[chore] Bump version to ${version_without_rc} for release candidate ${rc_number}"
+
+          # Push the changes
+          exec_process git push origin "${release_branch}"
+
+          # Get the new commit SHA after our changes
+          new_tag_ref=$(git rev-parse HEAD)
+          echo "new_tag_ref=${new_tag_ref}" >> $GITHUB_ENV
+
+      - name: Create RC tag at new commit
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          # Create the tag at the new commit
+          exec_process git tag "${release_tag}" "${new_tag_ref}"
+          exec_process git push origin "${release_tag}"
+
+          echo "## Summary" >> $GITHUB_STEP_SUMMARY
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          🎉 Release candidate tag created successfully:
+
+          | Name | Value |
+          | --- | --- |
+          | Release candidate tag | \`${release_tag}\` |
+          | Commit | \`${new_tag_ref}\` |
+          | Version | \`${version_without_rc}\` |
+          | RC number | \`${rc_number}\` |
+          EOT
