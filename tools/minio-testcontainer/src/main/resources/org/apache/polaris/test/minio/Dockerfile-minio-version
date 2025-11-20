@@ -19,5 +19,4 @@
 
 # Dockerfile to provide the image name and tag to a test.
 # Version is managed by Renovate - do not edit.
-#FROM quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z
-FROM jetae-publish.prod.aws.jpmchase.net/container-external/docker.io/minio/minio:RELEASE.2024-03-07T00-43-48Z
+FROM quay.io/minio/minio:RELEASE.2025-04-08T15-41-24Z
