@@ -17,13 +17,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Configuring Cloud Storage
-linkTitle: Configuring Cloud Storage
+title: Configuring GCS Cloud Storage
+linkTitle: Configuring GCS Cloud Storage
 type: docs
 weight: 600
 ---
 
-This page provides guidance for configuring cloud storage providers (such as Google Cloud Storage, Amazon S3, and Azure Blob Storage) for use with Polaris. 
+This page provides guidance for Configuring GCS Cloud Storage provider for use with Polaris. 
 It covers credential vending, IAM roles, ACL requirements, and best practices to ensure secure and reliable integration.
 
 #### GCS
