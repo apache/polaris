@@ -16,29 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.polaris.service;
+package org.apache.polaris.persistence.nosql.maintenance.impl;
 
 import jakarta.annotation.Nonnull;
-import java.util.Map;
-import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.service.catalog.io.FileIOFactory;
+import jakarta.enterprise.context.ApplicationScoped;
+import java.util.function.Function;
+import org.apache.polaris.persistence.nosql.maintenance.spi.PerRealmRetainedIdentifier;
+import org.apache.polaris.persistence.nosql.maintenance.spi.RetainedCollector;
 
-/** A FileIOFactory that always returns the same FileIO instance. */
-public class TestFileIOFactory implements FileIOFactory {
+@ApplicationScoped
+public class RealmIdentOne implements PerRealmRetainedIdentifier {
+  static Function<RetainedCollector, Boolean> testCallback;
 
-  private final FileIO fileIO;
-
-  public TestFileIOFactory(@Nonnull FileIO fileIO) {
-    this.fileIO = fileIO;
+  @Override
+  public String name() {
+    return "TEST RealmRetainedIdentifier ONE";
   }
 
   @Override
-  public FileIO loadFileIO(
-      @Nonnull StorageAccessConfig accessConfig,
-      @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties) {
-    return fileIO;
+  public boolean identifyRetained(@Nonnull RetainedCollector collector) {
+    return testCallback != null ? testCallback.apply(collector) : false;
   }
 }
