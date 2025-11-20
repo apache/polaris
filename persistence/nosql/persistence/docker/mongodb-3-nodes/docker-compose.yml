@@ -40,7 +40,7 @@ version: '3'
 
 services:
   mongo1:
-    image: mongo:8.2.1
+    image: mongo:8.2.2
     command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
     ports:
       - "27017:27017"
@@ -56,7 +56,7 @@ services:
       - "mongo1_config:/data/configdb"
 
   mongo2:
-    image: mongo:8.2.1
+    image: mongo:8.2.2
     command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27018"]
     ports:
       - "27018:27018"
@@ -67,7 +67,7 @@ services:
       - "mongo2_config:/data/configdb"
 
   mongo3:
-    image: mongo:8.2.1
+    image: mongo:8.2.2
     command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27019"]
     ports:
       - "27019:27019"
