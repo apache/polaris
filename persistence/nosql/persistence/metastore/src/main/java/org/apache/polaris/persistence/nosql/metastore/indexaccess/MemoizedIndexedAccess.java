@@ -19,8 +19,8 @@
 package org.apache.polaris.persistence.nosql.metastore;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.polaris.persistence.nosql.metastore.IndexedContainerAccess.indexedAccessForCatalog;
-import static org.apache.polaris.persistence.nosql.metastore.IndexedContainerAccess.indexedAccessForEntityType;
+import static org.apache.polaris.persistence.nosql.metastore.containeraccess.IndexedContainerAccess.indexedAccessForCatalog;
+import static org.apache.polaris.persistence.nosql.metastore.containeraccess.IndexedContainerAccess.indexedAccessForEntityType;
 import static org.apache.polaris.persistence.nosql.metastore.TypeMapping.isCatalogContent;
 
 import java.util.Map;
@@ -35,6 +35,7 @@ import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.apache.polaris.persistence.nosql.coretypes.ContainerObj;
 import org.apache.polaris.persistence.nosql.coretypes.ObjBase;
 import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
+import org.apache.polaris.persistence.nosql.metastore.containeraccess.IndexedContainerAccess;
 
 /**
  * Memoizes {@link IndexedContainerAccess} instances for a {@link PersistenceMetaStore} instance.
