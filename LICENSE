@@ -230,6 +230,16 @@ License: https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
 
+This product includes code from Netty.
+
+* persistence/nosql/persistence/cdi/quarkus-distcache/src/main/java/org/apache/polaris/persistence/nosql/quarkus/distcache/ResolvConf.java
+
+Copyright: Copyright © 2025 The Netty project
+Home page: https://netty.io/
+License: https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
 This product includes code from OpenAPITool openapi-generator
 
 * server-templates/formParams.mustache

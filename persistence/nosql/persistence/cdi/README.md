@@ -39,3 +39,27 @@ The biggest difference between the Quarkus and Weld variants is the way how data
   There are also backend specific builders that leverage Quarkus extensions for the respective
   database backends.
   The Quarkus variant also adds OpenTelemetry instrumentation to the `Backend` instances.
+
+# Distributed cache invalidation (multiple Polaris nodes)
+
+Most persisted objects are immutable, which eliminates the need to explicitly invalidate objects.
+
+Some specific object types are intentionally mutable.
+Consistency during write operations is guaranteed by using CAS operations on those objects.
+Read operations, however, fetch through the cache.
+
+Reference pointers are mutable by design.
+For writing operations, the current value of the reference pointer is always read from the
+backend database.
+Read operations, however, fetch the recent pointer via the cache.
+
+To keep the state for read operations up to date, the writing node sends the information about
+the mutation to all other nodes via the distributed cache invalidation mechanism.
+Short cache expiration times are used to mitigate the risk of missing cache invalidation messages.
+
+In k8s this works out of the box, leveraging k8s name service mechanisms being able to resolve
+the set of IP addresses of all nodes in the cluster.
+Non-k8s deployments need to configure the DNS resolvable names or IP addresses of all nodes in
+the configuration.
+
+Configuration options allow enabling and disabling the cache expiration duration.
