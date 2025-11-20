@@ -46,19 +46,29 @@ internal fun configureOnRootProject(project: Project) =
       description =
         "Generate a source tarball for a release to be uploaded to dist.apache.org/repos/dist"
 
+      outputs.upToDateWhen { false }
+      outputs.cacheIf { false }
+
       val e = project.extensions.getByType(PublishingHelperExtension::class.java)
       doFirst { mkdir(e.distributionDir) }
 
-      executable = "git"
-      args(
-        "archive",
-        "--prefix=${e.baseName.get()}/",
-        "--format=tar.gz",
-        // use a fixed mtime for reproducible tarballs, using the same timestamp as jars do
-        "--mtime=1980-02-01 00:00:00",
-        "--output=${e.sourceTarball.get().asFile.relativeTo(projectDir)}",
-        "HEAD",
-      )
+      // Use a fixed mtime for reproducible tarballs, using the same timestamp as jars do.
+      // Also don't use the git-internal gzip as it's not stable, see
+      // https://reproducible-builds.org/docs/archives/.
+      commandLine =
+        listOf(
+          "bash",
+          "-c",
+          """
+        git \
+          archive \
+          --prefix="${e.baseName.get()}/" \
+          --format=tar \
+          --mtime="1980-02-01 00:00:00" \
+          HEAD | gzip -6 --no-name > "${e.sourceTarball.get().asFile.relativeTo(projectDir)}"
+          """
+            .trimIndent(),
+        )
       workingDir(project.projectDir)
 
       outputs.file(e.sourceTarball)
