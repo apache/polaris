@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: "Build Python Client Release Pypi Artifacts"
+name: "Build Python Client Release PyPI Artifacts"
 
 on:
   workflow_call:
@@ -54,9 +54,6 @@ jobs:
           java-version: '21'
 
       - name: Set version with RC
-        run:
-
-      - name: Set version with RC
         env:
           VERSION: ${{ inputs.VERSION }}
         run: make client-set-version VERSION="${{ env.VERSION }}"
@@ -74,7 +71,7 @@ jobs:
         env:
           # Ignore 32 bit architectures
           CIBW_ARCHS: "auto64"
-          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.9,<3.14"
+          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.10,<3.14"
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: "" # Disable wheel repair since there will be no binary in the wheel
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: ""
           CIBW_ENVIRONMENT: POLARIS_CLI_SKIP_CLIENT_GENERATION="true" # java is not available in linux containers during wheel build, skip client generation
@@ -82,7 +79,6 @@ jobs:
       - name: Add source distribution
         if: startsWith(matrix.os, 'ubuntu-24.04')
         run: ls -lah ./client/python/dist/* && cp ./client/python/dist/* wheelhouse/
-
 
       - uses: actions/upload-artifact@v4
         with:
