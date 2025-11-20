@@ -237,4 +237,4 @@ upgrade concerns.
 
 ### Configuring Polaris for Cloud Storages
 
-For guidance on configuring cloud storage providers ... see child pages (links in the left-hand pane) for use with Polaris—including credential vending, IAM roles, ACL requirements, and best practices—see [Configuring GCS Cloud Storage](./configuring-gcs-cloud-storage-specific/).
+For guidance on configuring specific cloud storage providers see child pages (links in the left-hand pane).
