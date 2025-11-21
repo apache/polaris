@@ -390,12 +390,7 @@ mkdir -p "${worktree_dir}"
   proc_exec "git checkout failed" git checkout "${git_tag_full}"
 )
 git_sha_on_tag="$(cd "${worktree_dir}" ; git rev-parse HEAD)"
-git_sha_from_tag="$(cd "${worktree_dir}" ; git rev-parse "${git_tag_full}")"
-log_info "Git commit from tag '${git_tag_full}': ${git_sha_from_tag}"
 log_info "Git commit on tag '${git_tag_full}':   ${git_sha_on_tag}"
-if [[ "$git_sha_on_tag" != "$git_sha_from_tag" ]]; then
-  log_fatal "Git SHA ${git_sha_from_tag} on ${git_tag_full} is different from the current SHA ${git_sha_on_tag}"
-fi
 if [[ "$git_sha_on_tag" != "$git_sha" ]]; then
   log_fatal "Expected Git SHA ${git_sha} is different from the current SHA ${git_sha_on_tag}"
 fi
