@@ -82,6 +82,10 @@ while [[ $# -gt 0 ]]; do
   -k | --keep-temp-dir)
     keep_temp_dir=1
     ;;
+  *)
+    usage
+    exit 1
+    ;;
   esac
   shift
 done
