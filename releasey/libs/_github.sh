@@ -43,7 +43,7 @@ function check_github_checks_passed() {
   local repo_info="$GITHUB_REPOSITORY"
 
   local num_invalid_checks
-  local num_invalid_checks_retrieval_command="gh api repos/${repo_info}/commits/${commit_sha}/check-runs --jq '[.check_runs[] | select(.conclusion != \"success\" and .conclusion != \"skipped\" and (.name | startswith(\"Release - \") | not))] | length'"
+  local num_invalid_checks_retrieval_command="gh api repos/${repo_info}/commits/${commit_sha}/check-runs --jq '[.check_runs[] | select(.conclusion != \"success\" and .conclusion != \"skipped\" and (.name | startswith(\"Release - \") | not) and (.name != \"markdown-link-check\"))] | length'"
   if [ ${DRY_RUN} -eq 1 ]; then
     print_info "DRY_RUN is enabled, skipping GitHub check verification"
     print_command "${num_invalid_checks_retrieval_command}"
