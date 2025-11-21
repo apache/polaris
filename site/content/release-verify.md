@@ -91,8 +91,7 @@ Example (values taken from the 1.2.0-rc2 release)
 bash <(curl \
   -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/tools/verify-release/verify-release.sh) \
   --git-sha 354a5ef6b337bf690b7a12fefe2c984e2139b029 \
-  --version 1.2.0 \
-  --rc 2 \
+  --version 1.3.0-incubating-rc0 \
   --maven-repo-id 1033
 ```
 
@@ -101,8 +100,7 @@ Same example, but using the short option names:
 bash <(curl \
   -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/tools/verify-release/verify-release.sh) \
   -s 354a5ef6b337bf690b7a12fefe2c984e2139b029 \
-  -v 1.2.0 \
-  -r 2 \
+  -v 1.3.0-incubating-rc0 \
   -m 1033
 ```
 
@@ -123,12 +121,13 @@ After some startup checks, the tool emits some information about the release can
 Verifying staged release
 ========================
 
-Git tag:           apache-polaris-1.2.0-incubating-rc2
+Git tag:           apache-polaris-1.3.0-incubating-rc0
 Git sha:           354a5ef6b337bf690b7a12fefe2c984e2139b029
-Full version:      1.2.0-incubating
+Version:           1.3.0-incubating
+RC:                0
 Maven repo URL:    https://repository.apache.org/content/repositories/orgapachepolaris-1033/
-Main dist URL:     https://dist.apache.org/repos/dist/dev/incubator/polaris/1.2.0-incubating
-Helm chart URL:    https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/1.2.0-incubating
+Main dist URL:     https://dist.apache.org/repos/dist/dev/incubator/polaris/1.3.0-incubating
+Helm chart URL:    https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/1.3.0-incubating
 Verify directory:  /tmp/polaris-release-verify-2025-10-23-14-22-31-HPmmiybzk
 
 A verbose log containing the identified issues will be available here:
