@@ -142,5 +142,20 @@ To ensure smooth collaboration and to maintain a high-quality codebase, please a
 * `git log` can help you find the original/relevant authors of the code you are modifying. If you need, feel free to tag the author in your Pull Request comment if you need assistance or review.
 * Do not re-create a pull-request for the same change. Use one Pull Request related to the same change(s). The purpose here is to keep the history and all comments in the Pull Request.
 * Consider open questions and concerns in all comments of your Pull Request, provide replies and resolve addressed comments, if those don't serve reference purposes. If a comment doesn't contain `nit`, `minor`, or `not a blocker` mention, please provide feedback to the comment before merging.
-* Give time for review. For instance two working days is a good base to get first reviews and comments for changes that are not likely to affect downstream projects. For changes that touch core interfaces and behaviours three working days would be advisable.
+* All changes to REST API specs should be accompanied by an email to the `dev` list for visibility.
 * If you have the feeling that the discussions in a Pull Request are not going to a consensus, feel free to bring the discussion on the dev mailing list.
+
+## PR Review Guidelines
+
+* Smaller changes that are not likely to affect end users or downstream projects can be merged on
+  immediately on approval. If concerns are flagged later, they are to be addressed in follow-up PRs.
+* Waiting at least two working days is recommented (even if the PR has approvals from some reviewers) for:
+  - Refactorings that may affect downstream projects.
+  - Adding new features even if they are "off" by default.
+* Three working days are recommended in these cases (even if the PR has approvals from some reviewers):
+  - Making changes to public classes or methods in `polaris-core`.
+  - REST API and user-level configuration changes (including feature flags).
+  - Adding new modules to the project.
+* If concerns are raised during the initial review grace period, the PR should remain open until those
+  concerns are addressed. If a reviewer becomes unresponsive after raising a concern, and the same grace
+  period passes, the matter is to be discussed on the `dev` mailing list.
