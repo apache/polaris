@@ -19,6 +19,15 @@
 
 package org.apache.polaris.persistence.relational.jdbc.models;
 
+import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.ADDITIONAL_PROPERTIES;
+import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.CATALOG_ID;
+import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.EVENT_ID;
+import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.EVENT_TYPE;
+import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.PRINCIPAL_NAME;
+import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.REQUEST_ID;
+import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.RESOURCE_IDENTIFIER;
+import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.RESOURCE_TYPE;
+import static org.apache.polaris.persistence.relational.jdbc.models.ModelEvent.TIMESTAMP_MS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
@@ -33,18 +42,6 @@ import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
 
 public class ModelEventTest {
-  // Column names
-  private static final String CATALOG_ID = "catalog_id";
-  private static final String EVENT_ID = "event_id";
-  private static final String REQUEST_ID = "request_id";
-  private static final String EVENT_TYPE = "event_type";
-  private static final String TIMESTAMP_MS = "timestamp_ms";
-  private static final String ACTOR = "actor";
-  private static final String PRINCIPAL_NAME = "principal_name";
-  private static final String RESOURCE_TYPE = "resource_type";
-  private static final String RESOURCE_IDENTIFIER = "resource_identifier";
-  private static final String ADDITIONAL_PROPERTIES = "additional_properties";
-
   // Test data values
   private static final String TEST_CATALOG_ID = "test-catalog";
   private static final String TEST_EVENT_ID = "event-123";
@@ -59,12 +56,6 @@ public class ModelEventTest {
   private static final String EMPTY_JSON = "{}";
   private static final String TEST_JSON = "{\"key\":\"value\"}";
 
-  // Dummy values for test initialization
-  private static final String DUMMY = "dummy";
-  private static final long DUMMY_TIMESTAMP = 0L;
-  private static final PolarisEvent.ResourceType DUMMY_RESOURCE_TYPE =
-      PolarisEvent.ResourceType.CATALOG;
-
   @Test
   public void testFromResultSet() throws SQLException {
     // Arrange
@@ -74,27 +65,13 @@ public class ModelEventTest {
     when(mockResultSet.getString(REQUEST_ID)).thenReturn(TEST_REQUEST_ID);
     when(mockResultSet.getString(EVENT_TYPE)).thenReturn(TEST_EVENT_TYPE);
     when(mockResultSet.getLong(TIMESTAMP_MS)).thenReturn(TEST_TIMESTAMP_MS);
-    when(mockResultSet.getString(ACTOR)).thenReturn(TEST_USER);
+    when(mockResultSet.getString(PRINCIPAL_NAME)).thenReturn(TEST_USER);
     when(mockResultSet.getString(RESOURCE_TYPE)).thenReturn(TEST_RESOURCE_TYPE_STRING);
     when(mockResultSet.getString(RESOURCE_IDENTIFIER)).thenReturn(TEST_RESOURCE_IDENTIFIER);
     when(mockResultSet.getString(ADDITIONAL_PROPERTIES)).thenReturn(EMPTY_JSON);
 
-    // Create a concrete implementation of ModelEvent for testing
-    ModelEvent modelEvent =
-        ImmutableModelEvent.builder()
-            .catalogId(DUMMY)
-            .eventId(DUMMY)
-            .requestId(DUMMY)
-            .eventType(DUMMY)
-            .timestampMs(DUMMY_TIMESTAMP)
-            .principalName(DUMMY)
-            .resourceType(DUMMY_RESOURCE_TYPE)
-            .resourceIdentifier(DUMMY)
-            .additionalProperties(EMPTY_JSON)
-            .build();
-
     // Act
-    PolarisEvent result = modelEvent.fromResultSet(mockResultSet);
+    PolarisEvent result = ModelEvent.CONVERTER.fromResultSet(mockResultSet);
 
     // Assert
     assertEquals(TEST_CATALOG_ID, result.getCatalogId());
@@ -211,15 +188,6 @@ public class ModelEventTest {
     assertEquals(TEST_RESOURCE_TYPE, result.getResourceType());
     assertEquals(TEST_RESOURCE_IDENTIFIER, result.getResourceIdentifier());
     assertEquals(TEST_JSON, result.getAdditionalProperties());
-  }
-
-  @Test
-  public void testToEventWithNullInput() {
-    // Act
-    PolarisEvent result = ModelEvent.toEvent(null);
-
-    // Assert
-    assertNull(result);
   }
 
   @Test

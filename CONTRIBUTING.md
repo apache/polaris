@@ -123,7 +123,7 @@ Tips:
 
 The Apache Polaris build currently requires Java 21 or later. There are a few tools that help you running the right Java version:
 
-* [SDKMAN!](https://sdkman.io/) follow the installation instructions, then run `sdk list java` to see the available distributions and versions, then run `sdk install java <identifer from list>` using the identifier for the distribution and version (>= 21) of your choice.
+* [SDKMAN!](https://sdkman.io/) follow the installation instructions, then run `sdk list java` to see the available distributions and versions, then run `sdk install java <identifier from list>` using the identifier for the distribution and version (>= 21) of your choice.
 * [jenv](https://www.jenv.be/) If on a Mac you can use jenv to set the appropriate SDK.
 
 ## Code Contribution Guidelines

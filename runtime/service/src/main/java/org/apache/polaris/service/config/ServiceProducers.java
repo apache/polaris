@@ -32,13 +32,17 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
+import java.security.Principal;
 import java.time.Clock;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -55,6 +59,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
+import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
@@ -79,6 +84,8 @@ import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
+import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
+import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
 import org.apache.polaris.service.storage.StorageConfiguration;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
@@ -140,9 +147,27 @@ public class ServiceProducers {
   }
 
   @Produces
+  @ApplicationScoped
+  @Identifier("internal")
+  public PolarisAuthorizerFactory defaultPolarisAuthorizerFactory() {
+    return new DefaultPolarisAuthorizerFactory();
+  }
+
+  @Produces
+  @ApplicationScoped
+  public PolarisAuthorizerFactory polarisAuthorizerFactory(
+      AuthorizationConfiguration authorizationConfig,
+      @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
+    PolarisAuthorizerFactory factory =
+        authorizerFactories.select(Identifier.Literal.of(authorizationConfig.type())).get();
+    return factory;
+  }
+
+  @Produces
   @RequestScoped
-  public PolarisAuthorizer polarisAuthorizer(RealmConfig realmConfig) {
-    return new PolarisAuthorizerImpl(realmConfig);
+  public PolarisAuthorizer polarisAuthorizer(
+      PolarisAuthorizerFactory factory, RealmConfig realmConfig) {
+    return factory.create(realmConfig);
   }
 
   @Produces
@@ -156,12 +181,12 @@ public class ServiceProducers {
       PolarisMetaStoreManager polarisMetaStoreManager) {
     EntityCache entityCache =
         metaStoreManagerFactory.getOrCreateEntityCache(realmContext, realmConfig);
-    return (securityContext, referenceCatalogName) ->
+    return (principal, referenceCatalogName) ->
         new Resolver(
             diagnostics,
             callContext.getPolarisCallContext(),
             polarisMetaStoreManager,
-            securityContext,
+            principal,
             entityCache,
             referenceCatalogName);
   }
@@ -173,6 +198,20 @@ public class ServiceProducers {
     return new ResolutionManifestFactoryImpl(diagnostics, realmContext, resolverFactory);
   }
 
+  @Produces
+  @RequestScoped
+  public PolarisPrincipal polarisPrincipal(
+      PolarisDiagnostics diagnostics, @Context SecurityContext securityContext) {
+    Principal userPrincipal = securityContext.getUserPrincipal();
+    diagnostics.checkNotNull(userPrincipal, "null_security_context_principal");
+    diagnostics.check(
+        userPrincipal instanceof PolarisPrincipal,
+        "unexpected_principal_type",
+        "class={}",
+        userPrincipal.getClass().getName());
+    return (PolarisPrincipal) userPrincipal;
+  }
+
   // Polaris service beans - selected from @Identifier-annotated beans
 
   @Produces
@@ -182,6 +221,7 @@ public class ServiceProducers {
   }
 
   @Produces
+  @RequestScoped
   public FileIOFactory fileIOFactory(
       FileIOConfiguration config, @Any Instance<FileIOFactory> fileIOFactories) {
     return fileIOFactories.select(Identifier.Literal.of(config.type())).get();
@@ -206,6 +246,13 @@ public class ServiceProducers {
   public PolarisMetaStoreManager polarisMetaStoreManager(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  }
+
+  @Produces
+  @RequestScoped
+  public StorageCredentialsVendor storageCredentialsVendor(
+      PolarisMetaStoreManager metaStoreManager, CallContext callContext) {
+    return new StorageCredentialsVendor(metaStoreManager, callContext);
   }
 
   @Produces
@@ -351,13 +398,14 @@ public class ServiceProducers {
   @RequestScoped
   public TokenBroker tokenBroker(
       AuthenticationRealmConfiguration config,
-      RealmContext realmContext,
-      @Any Instance<TokenBrokerFactory> tokenBrokerFactories) {
+      @Any Instance<TokenBrokerFactory> tokenBrokerFactories,
+      PolarisMetaStoreManager polarisMetaStoreManager,
+      CallContext callContext) {
     String type =
         config.type() == AuthenticationType.EXTERNAL ? "none" : config.tokenBroker().type();
     TokenBrokerFactory tokenBrokerFactory =
         tokenBrokerFactories.select(Identifier.Literal.of(type)).get();
-    return tokenBrokerFactory.apply(realmContext);
+    return tokenBrokerFactory.create(polarisMetaStoreManager, callContext.getPolarisCallContext());
   }
 
   // other beans
@@ -404,5 +452,12 @@ public class ServiceProducers {
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();
+  }
+
+  @Produces
+  @ApplicationScoped
+  public PolarisMetricsReporter metricsReporter(
+      MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
+    return reporters.select(Identifier.Literal.of(config.type())).get();
   }
 }

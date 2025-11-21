@@ -100,13 +100,13 @@ public class BootstrapCommand extends BaseCommand {
   public Integer call() {
     try {
       RootCredentialsSet rootCredentialsSet;
-      List<String> realms; // TODO Iterable
+      Iterable<String> realms;
 
       if (inputOptions.rootCredentialsOptions.fileOptions != null) {
         rootCredentialsSet =
             RootCredentialsSet.fromUri(
                 inputOptions.rootCredentialsOptions.fileOptions.file.toUri());
-        realms = rootCredentialsSet.credentials().keySet().stream().toList();
+        realms = rootCredentialsSet.credentials().keySet();
       } else {
         realms = inputOptions.rootCredentialsOptions.stdinOptions.realms;
         rootCredentialsSet =

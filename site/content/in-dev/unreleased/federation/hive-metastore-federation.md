@@ -40,6 +40,26 @@ property to include `HIVE` (and any other non-REST backends you need):
 `runtime/server/build.gradle.kts` wires the extension in only when this flag is present, so binaries
 built without it will reject Hive federation requests.
 
+## Feature configuration
+
+After building Polaris with Hive support, enable the necessary feature flags in your
+`application.properties` file (or equivalent configuration mechanism such as environment variables or
+a Kubernetes ConfigMap):
+
+```properties
+# Allows both REST and HIVE connection type
+polaris.features."SUPPORTED_CATALOG_CONNECTION_TYPES"=["ICEBERG_REST","HIVE"]
+
+# Allows IMPLICIT authentication, needed for Hive federation
+polaris.features."SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES"=["OAUTH","IMPLICIT"]
+
+# Enables the federation feature itself
+polaris.features."ENABLE_CATALOG_FEDERATION"=true
+```
+
+For Kubernetes deployments, add these properties to the ConfigMap mounted into the Polaris container
+(typically at `/deployment/config/application.properties`).
+
 ## Runtime requirements
 
 - **Metastore connectivity:** Expose the HMS Thrift endpoint (`thrift://host:port`) to the Polaris

@@ -1101,12 +1101,6 @@ License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2
 
 --------------------------------------------------------------------------------
 
-Group: org.eclipse.persistence Name: eclipselink Version: 4.0.8
-Project URL: https://eclipse.dev/eclipselink/
-License: Eclipse Public License 2.0 - https://projects.eclipse.org/license/epl-2.0
-
---------------------------------------------------------------------------------
-
 Group: org.hdrhistogram Name: HdrHistogram Version: 2.2.2
 Project URL: http://hdrhistogram.github.io/HdrHistogram/
 License: BSD 2-Clause

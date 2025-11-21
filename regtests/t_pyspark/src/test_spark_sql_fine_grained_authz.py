@@ -31,7 +31,7 @@ import uuid
 from py4j.protocol import Py4JJavaError
 
 from iceberg_spark import IcebergSparkSession
-from polaris.management import PrincipalRole, CatalogRole, CatalogGrant, CatalogPrivilege, \
+from apache_polaris.sdk.management import PrincipalRole, CatalogRole, CatalogGrant, CatalogPrivilege, \
     AddGrantRequest, GrantCatalogRoleRequest, GrantPrincipalRoleRequest
 
 # Import existing helper functions instead of copying them
@@ -45,7 +45,7 @@ def fine_grained_authz_test_catalog(root_client, catalog_client):
     Catalog specifically for fine-grained authorization testing.
     Does NOT assign catalog_admin to service_admin to avoid privilege inheritance issues.
     """
-    from polaris.management import FileStorageConfigInfo, Catalog, CatalogProperties, CreateCatalogRequest
+    from apache_polaris.sdk.management import FileStorageConfigInfo, Catalog, CatalogProperties, CreateCatalogRequest
     from conftest import create_catalog_role
     
     catalog_name = f'fine_grained_authz_test_catalog_{str(uuid.uuid4())[-10:]}'

@@ -35,10 +35,11 @@ public interface CatalogAdapter {
     return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
   }
 
-  default void validatePrincipal(SecurityContext securityContext) {
-    var authenticatedPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
-    if (authenticatedPrincipal == null) {
-      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
+  default PolarisPrincipal validatePrincipal(SecurityContext securityContext) {
+    var authenticatedPrincipal = securityContext.getUserPrincipal();
+    if (authenticatedPrincipal instanceof PolarisPrincipal polarisPrincipal) {
+      return polarisPrincipal;
     }
+    throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
   }
 }

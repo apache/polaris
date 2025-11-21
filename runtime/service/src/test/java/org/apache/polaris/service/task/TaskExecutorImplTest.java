@@ -63,7 +63,8 @@ public class TaskExecutorImplTest {
             Runnable::run,
             testServices.clock(),
             testServices.metaStoreManagerFactory(),
-            new TaskFileIOSupplier(testServices.fileIOFactory()),
+            new TaskFileIOSupplier(
+                testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
             testServices.polarisEventListener(),
             null);
 

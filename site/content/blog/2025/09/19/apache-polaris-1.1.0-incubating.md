@@ -24,7 +24,7 @@ date: 2025-09-19
 The Apache Polaris team is pleased to announce Apache Polaris 1.1.0-incubating.
 
 This release includes:
-* **New features & enchancements**
+* **New features & enhancements**
 ** HMS support
 ** IMPLICIT authentication type
 ** Support for non-AWS S3 compatible storage with STS: MinIO, s3a scheme support

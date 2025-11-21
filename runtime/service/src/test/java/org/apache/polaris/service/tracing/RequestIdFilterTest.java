@@ -60,20 +60,20 @@ public class RequestIdFilterTest {
         .then()
         .statusCode(200)
         .body(containsString("access_token"))
-        .header("Polaris-Request-Id", anything());
+        .header("X-Request-ID", anything());
     verify(requestIdGenerator, times(1)).generateRequestId(any());
   }
 
   @Test
   void testSuccessWithCustomRequestId() {
     givenTokenRequest()
-        .header("Polaris-Request-Id", "custom-request-id")
+        .header("X-Request-ID", "custom-request-id")
         .when()
         .post()
         .then()
         .statusCode(200)
         .body(containsString("access_token"))
-        .header("Polaris-Request-Id", "custom-request-id");
+        .header("X-Request-ID", "custom-request-id");
     verify(requestIdGenerator, never()).generateRequestId(any());
   }
 

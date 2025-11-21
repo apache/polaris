@@ -17,8 +17,9 @@
  * under the License.
  */
 
-import publishing.GenerateDigest
 import publishing.PublishingHelperPlugin
+import publishing.digestTaskOutputs
+import publishing.signTaskOutputs
 
 plugins {
   id("distribution")
@@ -80,27 +81,10 @@ val distTar = tasks.named<Tar>("distTar") { compression = Compression.GZIP }
 
 val distZip = tasks.named<Zip>("distZip") {}
 
-val digestDistTar =
-  tasks.register<GenerateDigest>("digestDistTar") {
-    description = "Generate the distribution tar digest"
-    dependsOn(distTar)
-    file.set { distTar.get().archiveFile.get().asFile }
-  }
+digestTaskOutputs(distTar)
 
-val digestDistZip =
-  tasks.register<GenerateDigest>("digestDistZip") {
-    description = "Generate the distribution zip digest"
-    dependsOn(distZip)
-    file.set { distZip.get().archiveFile.get().asFile }
-  }
+digestTaskOutputs(distZip)
 
-distTar.configure { finalizedBy(digestDistTar) }
+signTaskOutputs(distTar)
 
-distZip.configure { finalizedBy(digestDistZip) }
-
-if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
-  signing {
-    sign(distTar.get())
-    sign(distZip.get())
-  }
-}
+signTaskOutputs(distZip)

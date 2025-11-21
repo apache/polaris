@@ -35,7 +35,7 @@ public interface TransactionalPolicyMappingPersistence {
    * Helpers to check conditions for writing new PolicyMappingRecords in current transaction.
    *
    * <p>It should throw a PolicyMappingAlreadyExistsException if the new record conflicts with an
-   * exising record with same policy type but different policy.
+   * existing record with same policy type but different policy.
    *
    * @param callCtx call context
    * @param record policy mapping record to write.

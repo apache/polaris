@@ -28,6 +28,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
@@ -92,14 +93,14 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
   private PolicyCatalogHandler newHandlerWrapper(SecurityContext securityContext, String prefix) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
         realmConfig, FeatureConfiguration.ENABLE_POLICY_STORE);
-    validatePrincipal(securityContext);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
 
     return new PolicyCatalogHandler(
         diagnostics,
         callContext,
         resolutionManifestFactory,
         metaStoreManager,
-        securityContext,
+        principal,
         prefixParser.prefixToCatalogName(realmContext, prefix),
         polarisAuthorizer,
         polarisCredentialManager,

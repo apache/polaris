@@ -28,7 +28,6 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -80,6 +79,7 @@ import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -99,17 +99,16 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -138,8 +137,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
-  private final PolarisEventListener polarisEventListener;
-  private final AccessConfigProvider accessConfigProvider;
+  private final StorageAccessConfigProvider storageAccessConfigProvider;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -156,20 +154,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       PolarisCredentialManager credentialManager,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer,
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories,
-      PolarisEventListener polarisEventListener,
-      AccessConfigProvider accessConfigProvider) {
+      StorageAccessConfigProvider storageAccessConfigProvider) {
     super(
         diagnostics,
         callContext,
         resolutionManifestFactory,
-        securityContext,
+        principal,
         catalogName,
         authorizer,
         credentialManager,
@@ -178,8 +175,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
-    this.polarisEventListener = polarisEventListener;
-    this.accessConfigProvider = accessConfigProvider;
+    this.storageAccessConfigProvider = storageAccessConfigProvider;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -267,9 +263,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       this.baseCatalog = federatedCatalog;
     } else {
       LOGGER.atInfo().log("Initializing non-federated catalog");
-      this.baseCatalog =
-          catalogFactory.createCallContextCatalog(
-              callContext, polarisPrincipal, securityContext, resolutionManifest);
+      this.baseCatalog = catalogFactory.createCallContextCatalog(resolutionManifest);
     }
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
@@ -812,15 +806,14 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         validateRemoteTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
       }
 
-      AccessConfig accessConfig =
-          accessConfigProvider.getAccessConfig(
-              callContext,
+      StorageAccessConfig storageAccessConfig =
+          storageAccessConfigProvider.getStorageAccessConfig(
               tableIdentifier,
               tableLocations,
               actions,
               refreshCredentialsEndpoint,
               resolvedStoragePath);
-      Map<String, String> credentialConfig = accessConfig.credentials();
+      Map<String, String> credentialConfig = storageAccessConfig.credentials();
       if (delegationModes.contains(VENDED_CREDENTIALS)) {
         if (!credentialConfig.isEmpty()) {
           responseBuilder.addAllConfig(credentialConfig);
@@ -833,12 +826,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           Boolean skipCredIndirection =
               realmConfig.getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
           Preconditions.checkArgument(
-              !accessConfig.supportsCredentialVending() || skipCredIndirection,
+              !storageAccessConfig.supportsCredentialVending() || skipCredIndirection,
               "Credential vending was requested for table %s, but no credentials are available",
               tableIdentifier);
         }
       }
-      responseBuilder.addAllConfig(accessConfig.extraProperties());
+      responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
     }
 
     return responseBuilder;

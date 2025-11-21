@@ -26,15 +26,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -67,14 +64,12 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 public class PolarisAdminServiceTest {
-  private PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
   @Mock private CallContext callContext;
   @Mock private PolarisCallContext polarisCallContext;
   @Mock private ResolutionManifestFactory resolutionManifestFactory;
   @Mock private PolarisMetaStoreManager metaStoreManager;
   @Mock private UserSecretsManager userSecretsManager;
   @Mock private ServiceIdentityProvider identityProvider;
-  @Mock private SecurityContext securityContext;
   @Mock private PolarisAuthorizer authorizer;
   @Mock private ReservedProperties reservedProperties;
   @Mock private PolarisPrincipal authenticatedPrincipal;
@@ -87,9 +82,8 @@ public class PolarisAdminServiceTest {
   @BeforeEach
   void setUp() throws Exception {
     MockitoAnnotations.openMocks(this);
-    when(securityContext.getUserPrincipal()).thenReturn(authenticatedPrincipal);
     when(callContext.getPolarisCallContext()).thenReturn(polarisCallContext);
-    when(polarisCallContext.getRealmConfig()).thenReturn(realmConfig);
+    when(callContext.getRealmConfig()).thenReturn(realmConfig);
 
     // Default feature configuration - enabled by default
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
@@ -105,13 +99,12 @@ public class PolarisAdminServiceTest {
 
     adminService =
         new PolarisAdminService(
-            diagnostics,
             callContext,
             resolutionManifestFactory,
             metaStoreManager,
             userSecretsManager,
             identityProvider,
-            securityContext,
+            authenticatedPrincipal,
             authorizer,
             reservedProperties);
   }

@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.admintool.relational.jdbc;
 
-import static org.apache.polaris.admintool.PostgresEclipselinkTestResourceLifecycleManager.INIT_SCRIPT;
-
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.test.commons.PostgresRelationalJdbcLifeCycleManagement;
@@ -42,8 +40,6 @@ public class RelationalJdbcAdminProfile extends RelationalJdbcProfile {
   @Override
   public List<TestResourceEntry> testResources() {
     return List.of(
-        new TestResourceEntry(
-            PostgresRelationalJdbcLifeCycleManagement.class,
-            Map.of(INIT_SCRIPT, "org/apache/polaris/admintool/init.sql")));
+        new TestResourceEntry(PostgresRelationalJdbcLifeCycleManagement.class, Map.of()));
   }
 }

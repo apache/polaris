@@ -26,7 +26,7 @@ import picocli.CommandLine.HelpCommand;
     name = "polaris-admin-tool.jar",
     mixinStandardHelpOptions = true,
     versionProvider = PolarisVersionProvider.class,
-    description = "Polaris Admin Tool",
+    description = "Polaris administration & maintenance tool",
     subcommands = {
       HelpCommand.class,
       BootstrapCommand.class,
@@ -36,15 +36,8 @@ public class PolarisAdminTool extends BaseCommand {
 
   @Override
   public Integer call() {
-    return info();
-  }
-
-  private int info() {
     PrintWriter out = spec.commandLine().getOut();
-
-    out.println("Polaris administration & maintenance tool.");
-    out.println("Use the 'help' command.");
-    out.println();
+    spec.commandLine().usage(out);
     return 0;
   }
 }

@@ -225,7 +225,7 @@ public interface TransactionalPersistence
         pageToken);
   }
 
-  /** See {@link org.apache.polaris.core.persistence.BasePersistence#loadEntities} */
+  /** See {@link org.apache.polaris.core.persistence.BasePersistence#listFullEntities} */
   @Nonnull
   <T> Page<T> loadEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,

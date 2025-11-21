@@ -17,16 +17,15 @@
 # under the License.
 #
 
-import unittest
 import io
+import unittest
 from functools import reduce
 from typing import List
 from unittest.mock import patch, MagicMock
 
-from cli.command import Command
-from cli.options.parser import Parser
-from polaris.catalog import ApiClient
-from polaris.management import PolarisDefaultApi
+from apache_polaris.cli.command import Command
+from apache_polaris.cli.options.parser import Parser
+from apache_polaris.sdk.management import PolarisDefaultApi
 
 INVALID_ARGS = 2
 

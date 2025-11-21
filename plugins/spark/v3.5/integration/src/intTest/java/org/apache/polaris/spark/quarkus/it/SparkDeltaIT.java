@@ -236,7 +236,7 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     List<String> subDirs = listDirs(getTableLocation(deltatb));
     assertThat(subDirs).contains("_delta_log");
 
-    // verify we can create a table out of the exising delta location
+    // verify we can create a table out of the existing delta location
     sql("CREATE TABLE %s USING DELTA LOCATION '%s'", deltatb, getTableLocation(deltatb));
     List<Object[]> tables = sql("SHOW TABLES");
     assertThat(tables.size()).isEqualTo(1);

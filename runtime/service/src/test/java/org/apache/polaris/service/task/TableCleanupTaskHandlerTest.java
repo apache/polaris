@@ -21,6 +21,7 @@ package org.apache.polaris.service.task;
 import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -37,8 +38,6 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -50,7 +49,6 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.service.TestFileIOFactory;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,15 +59,14 @@ import org.slf4j.LoggerFactory;
 class TableCleanupTaskHandlerTest {
   @Inject Clock clock;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject PolarisConfigurationStore configurationStore;
-
-  private PolarisMetaStoreManager metaStoreManager;
-  private CallContext callContext;
+  @Inject PolarisMetaStoreManager metaStoreManager;
+  @Inject CallContext callContext;
+  @InjectMock TaskFileIOSupplier taskFileIOSupplier;
 
   private final RealmContext realmContext = () -> "realmName";
 
   private TableCleanupTaskHandler newTableCleanupTaskHandler(FileIO fileIO) {
-    TaskFileIOSupplier taskFileIOSupplier = new TaskFileIOSupplier(new TestFileIOFactory(fileIO));
+    Mockito.when(taskFileIOSupplier.apply(Mockito.any(), Mockito.any())).thenReturn(fileIO);
     return new TableCleanupTaskHandler(
         Mockito.mock(), clock, metaStoreManagerFactory, taskFileIOSupplier);
   }
@@ -77,13 +74,6 @@ class TableCleanupTaskHandlerTest {
   @BeforeEach
   void setup() {
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
-
-    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    callContext =
-        new PolarisCallContext(
-            realmContext,
-            metaStoreManagerFactory.getOrCreateSession(realmContext),
-            configurationStore);
   }
 
   @Test

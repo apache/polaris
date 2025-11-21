@@ -42,7 +42,7 @@ Node IDs are leased by every "JVM running Polaris" for a period of time. The ID 
 that no IDs will be generated for a timestamp that exceeds the "lease time". Leases can be extended. The implementation
 leverages atomic database operations (CAS) for the lease implementation.
 
-ID generators must not use timestamps before or after the lease period nor must they re-use an older timestamp. This
+ID generators must not use timestamps before or after the lease period nor must they reuse an older timestamp. This
 requirement is satisfied using a monotonic clock implementation.
 
 ## Code structure

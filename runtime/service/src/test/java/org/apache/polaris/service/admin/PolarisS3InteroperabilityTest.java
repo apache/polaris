@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
@@ -72,16 +73,8 @@ public class PolarisS3InteroperabilityTest {
   }
 
   public PolarisS3InteroperabilityTest() {
-    TestServices.FileIOFactorySupplier fileIOFactorySupplier =
-        (accessConfigProvider) ->
-            (FileIOFactory)
-                (callContext,
-                    ioImplClassName,
-                    properties,
-                    identifier,
-                    tableLocations,
-                    storageActions,
-                    resolvedEntityPath) -> new InMemoryFileIO();
+    Supplier<FileIOFactory> fileIOFactorySupplier =
+        () -> (FileIOFactory) (accessConfig, ioImplClassName, properties) -> new InMemoryFileIO();
     services =
         TestServices.builder()
             .config(SERVER_CONFIG)

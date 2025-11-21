@@ -255,7 +255,7 @@ public class CatalogEntityTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"", "arn:aws:iam::0123456:role/jdoe", "aws-cn"})
+  @ValueSource(strings = {"", "arn:aws:iam:0123456:role/jdoe", "aws-cn"})
   public void testInvalidArn(String roleArn) {
     String basedLocation = "s3://externally-owned-bucket";
     AwsStorageConfigInfo awsStorageConfigModel =
@@ -278,11 +278,40 @@ public class CatalogEntityTest {
         switch (roleArn) {
           case "" -> "ARN must not be empty";
           case "aws-cn" -> "AWS China is temporarily not supported";
-          default -> "Invalid role ARN format: arn:aws:iam::0123456:role/jdoe";
+          default -> "Invalid role ARN format: arn:aws:iam:0123456:role/jdoe";
         };
     Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "arn:aws:iam::012345678911:role/rollerblade",
+        "test:test:iam:region:accountid:role/rollerblade",
+        "a::iam:::role/rollerblade"
+      })
+  public void testValidArn(String roleArn) {
+    String basedLocation = "s3://externally-owned-bucket";
+    AwsStorageConfigInfo awsStorageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn(roleArn)
+            .setExternalId("externalId")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(basedLocation))
+            .build();
+
+    CatalogProperties prop = new CatalogProperties(basedLocation);
+    Catalog awsCatalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("name")
+            .setProperties(prop)
+            .setStorageConfigInfo(awsStorageConfigModel)
+            .build();
+    Assertions.assertThatNoException()
+        .isThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog));
   }
 
   @Test

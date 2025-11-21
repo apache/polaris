@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence.resolver;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import jakarta.annotation.Nullable;
-import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,7 +51,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisResolutionManifest.class);
 
   private final ResolverFactory resolverFactory;
-  private final SecurityContext securityContext;
+  private final PolarisPrincipal principal;
   private final RealmContext realmContext;
   private final String catalogName;
   private final Resolver primaryResolver;
@@ -69,24 +68,27 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   // Set when resolveAll is called
   private ResolverStatus primaryResolverStatus = null;
 
+  private boolean isResolveAllSucceeded() {
+    diagnostics.checkNotNull(
+        primaryResolverStatus,
+        "resolver_not_run_before_access",
+        "resolveAll() must be called before reading resolution results");
+    return primaryResolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS;
+  }
+
   public PolarisResolutionManifest(
       PolarisDiagnostics diagnostics,
       RealmContext realmContext,
       ResolverFactory resolverFactory,
-      SecurityContext securityContext,
+      PolarisPrincipal principal,
       String catalogName) {
     this.realmContext = realmContext;
     this.resolverFactory = resolverFactory;
     this.catalogName = catalogName;
-    this.primaryResolver = resolverFactory.createResolver(securityContext, catalogName);
     this.diagnostics = diagnostics;
-    this.diagnostics.checkNotNull(securityContext, "null_security_context_for_resolution_manifest");
-    this.securityContext = securityContext;
-    diagnostics.check(
-        securityContext.getUserPrincipal() instanceof PolarisPrincipal,
-        "invalid_principal_type_for_resolution_manifest",
-        "principal={}",
-        securityContext.getUserPrincipal());
+    this.diagnostics.checkNotNull(principal, "null_principal_for_resolution_manifest");
+    this.principal = principal;
+    this.primaryResolver = resolverFactory.createResolver(principal, catalogName);
 
     // TODO: Make the rootContainer lookup no longer optional in the persistence store.
     // For now, we'll try to resolve the rootContainer as "optional", and only if we fail to find
@@ -186,7 +188,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     ResolverPath requestedPath = passthroughPaths.get(key);
 
     // Run a single-use Resolver for this path.
-    Resolver passthroughResolver = resolverFactory.createResolver(securityContext, catalogName);
+    Resolver passthroughResolver = resolverFactory.createResolver(principal, catalogName);
     passthroughResolver.addPath(requestedPath);
     ResolverStatus status = passthroughResolver.resolveAll();
 
@@ -262,7 +264,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   }
 
   private @Nullable ResolvedPolarisEntity getResolvedRootContainerEntity() {
-    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+    if (!isResolveAllSucceeded()) {
       return null;
     }
     ResolvedPolarisEntity resolvedEntity =
@@ -333,7 +335,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         key,
         pathLookup);
 
-    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+    if (!isResolveAllSucceeded()) {
       return null;
     }
     int index = pathLookup.get(key);
@@ -400,7 +402,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         entityType,
         addedTopLevelNames);
 
-    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+    if (!isResolveAllSucceeded()) {
       return null;
     }
 

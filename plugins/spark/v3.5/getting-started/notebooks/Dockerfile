@@ -19,8 +19,8 @@
 
 FROM docker.io/apache/spark:3.5.6-java17
 
-ENV PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:/home/spark/venv/lib/python3.10/site-packages"
-ENV PYSPARK_PYTHON=/home/spark/venv/bin/python
+ENV PYSPARK_PYTHON=/home/spark/venv/bin/python \
+    PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:/home/spark/venv/lib/python3.10/site-packages"
 
 USER root
 
@@ -34,14 +34,12 @@ USER spark
 WORKDIR /home/spark
 
 COPY --chown=spark client /home/spark/client
-COPY --chown=spark plugins/spark/v3.5/getting-started/notebooks/requirements.txt /tmp/notebook_requirements.txt
 COPY --chown=spark regtests/requirements.txt /tmp
-COPY --chown=spark plugins/spark/v3.5/spark/build/2.12/libs /home/spark/polaris_libs
-
-SHELL ["/bin/bash", "-c"]
+COPY --chown=spark regtests/notebook_requirements.txt /tmp
+COPY --chown=spark plugins/spark/v3.5/spark/build/2.12/libs/*bundle.jar /opt/spark/jars/
 
 RUN python3 -m venv /home/spark/venv && \
-    source /home/spark/venv/bin/activate && \
+    . /home/spark/venv/bin/activate && \
     pip install -r /tmp/requirements.txt -r /tmp/notebook_requirements.txt && \
     cd client/python && \
     poetry lock && \

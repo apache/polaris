@@ -48,4 +48,4 @@ Polaris supports multiple object storage providers. `PolarisStorageIntegration` 
 The `polaris-core` module is primarily consumed by:
 - **API Services** - Management and catalog REST services
 - **Runtime Components** - Server and admin tools
-- **Persistence Implementations** - Eclipselink, JDBC, etc.
+- **Persistence Implementations** - JDBC, etc.

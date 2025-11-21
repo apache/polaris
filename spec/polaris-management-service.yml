@@ -1053,7 +1053,7 @@ components:
 
     ImplicitAuthenticationParameters:
       type: object
-      description: Polaris does not explicity accept any authentication parameters for the connection. Authentication 
+      description: Polaris does not explicitly accept any authentication parameters for the connection. Authentication 
         parameters found in the environment and/or configuration files will be used for this connection.
       allOf:
         - $ref: '#/components/schemas/AuthenticationParameters'

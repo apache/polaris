@@ -23,9 +23,7 @@ import groovy.util.Node
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.component.ModuleComponentSelector
-import org.gradle.api.provider.Provider
 import org.gradle.api.publish.maven.MavenPublication
-import org.gradle.internal.extensions.stdlib.capitalized
 
 /**
  * Configures the content of the generated `pom.xml` files.
@@ -46,8 +44,6 @@ import org.gradle.internal.extensions.stdlib.capitalized
  */
 internal fun configurePom(project: Project, mavenPublication: MavenPublication, task: Task) =
   mavenPublication.run {
-    val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-
     pom {
       if (project != project.rootProject) {
         // Add the license to every pom to make it easier for downstream projects to retrieve the
@@ -74,8 +70,8 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
 
         task.doFirst {
           mavenPom.run {
-            val asfName = e.asfProjectId.get()
-            val projectInfo = fetchProjectInformation(asfName)
+            val prj = EffectiveAsfProject.forProject(project)
+            val asfProjectId = prj.asfProject.apacheId
 
             organization {
               name.set("The Apache Software Foundation")
@@ -84,53 +80,43 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
             licenses {
               license {
                 name.set("Apache-2.0") // SPDX identifier
-                url.set(projectInfo.licenseUrl)
+                url.set(prj.asfProject.licenseUrl)
               }
             }
             mailingLists {
-              e.mailingLists.get().forEach { ml ->
-                mailingList {
-                  name.set("${ml.capitalized()} Mailing List")
-                  subscribe.set("$ml-subscribe@$asfName.apache.org")
-                  unsubscribe.set("$ml-unsubscribe@$asfName.apache.org")
-                  post.set("$ml@$asfName.apache.org")
-                  archive.set("https://lists.apache.org/list.html?$ml@$asfName.apache.org")
+              prj.publishingHelperExtension.mailingLists
+                .get()
+                .map { id -> prj.mailingList(id) }
+                .forEach { ml ->
+                  mailingList {
+                    name.set(ml.name())
+                    subscribe.set(ml.subscribe())
+                    unsubscribe.set(ml.unsubscribe())
+                    post.set(ml.post())
+                    archive.set(ml.archive())
+                  }
                 }
-              }
             }
 
-            val githubRepoName: Provider<String> = e.githubRepositoryName.orElse(asfName)
-            val codeRepo: Provider<String> =
-              e.overrideScm.orElse(
-                githubRepoName
-                  .map { r -> "https://github.com/apache/$r" }
-                  .orElse(projectInfo.repository)
-              )
-
             scm {
-              val codeRepoString: String = codeRepo.get()
+              val codeRepoString: String = prj.codeRepoUrl().get()
               connection.set("scm:git:$codeRepoString")
               developerConnection.set("scm:git:$codeRepoString")
               url.set("$codeRepoString/tree/main")
               val version = project.version.toString()
               if (!version.endsWith("-SNAPSHOT")) {
-                val tagPrefix: String =
-                  e.overrideTagPrefix.orElse("apache-${projectInfo.apacheId}").get()
+                val tagPrefix: String = prj.tagPrefix().get()
                 tag.set("$tagPrefix-$version")
               }
             }
-            issueManagement {
-              val issuesUrl: Provider<String> =
-                codeRepo.map { r -> "$r/issues" }.orElse(projectInfo.bugDatabase)
-              url.set(e.overrideIssueManagement.orElse(issuesUrl))
-            }
+            issueManagement { url.set(prj.issueTracker()) }
 
-            name.set(e.overrideName.orElse("Apache ${projectInfo.name}"))
-            description.set(e.overrideDescription.orElse(projectInfo.description))
-            url.set(e.overrideProjectUrl.orElse(projectInfo.website))
-            inceptionYear.set(projectInfo.inceptionYear.toString())
+            name.set(prj.fullName())
+            description.set(prj.description())
+            url.set(prj.projectUrl())
+            inceptionYear.set(prj.asfProject.inceptionYear.toString())
 
-            developers { developer { url.set("https://$asfName.apache.org/community/") } }
+            developers { developer { url.set("https://$asfProjectId.apache.org/community/") } }
           }
         }
       }

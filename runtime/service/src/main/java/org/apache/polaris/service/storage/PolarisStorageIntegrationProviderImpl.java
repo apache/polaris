@@ -32,11 +32,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
@@ -109,13 +109,13 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         storageIntegration =
             new PolarisStorageIntegration<>((T) polarisStorageConfigurationInfo, "file") {
               @Override
-              public AccessConfig getSubscopedCreds(
+              public StorageAccessConfig getSubscopedCreds(
                   @Nonnull RealmConfig realmConfig,
                   boolean allowListOperation,
                   @Nonnull Set<String> allowedReadLocations,
                   @Nonnull Set<String> allowedWriteLocations,
                   Optional<String> refreshCredentialsEndpoint) {
-                return AccessConfig.builder().supportsCredentialVending(false).build();
+                return StorageAccessConfig.builder().supportsCredentialVending(false).build();
               }
 
               @Override

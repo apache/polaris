@@ -174,7 +174,7 @@ public abstract class PolarisConfiguration<T> {
     }
 
     /**
-     * Used to support backwards compatability before there were reserved properties. Usage of this
+     * Used to support backwards compatibility before there were reserved properties. Usage of this
      * method should be removed over time.
      *
      * @deprecated Use {@link #catalogConfig()} instead.

@@ -93,8 +93,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
     // It's likely the cleanupTask has already been completed, but wasn't dropped successfully.
     // Log a
     // warning and move on
-    try (FileIO fileIO =
-        fileIOSupplier.apply(cleanupTask, tableEntity.getTableIdentifier(), callContext)) {
+    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, tableEntity.getTableIdentifier())) {
       if (!TaskUtils.exists(tableEntity.getMetadataLocation(), fileIO)) {
         LOGGER
             .atWarn()

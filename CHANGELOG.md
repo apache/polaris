@@ -29,17 +29,41 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
+- Support for [Iceberg Metrics Reporting] has been introduced in Polaris. Out of the box, metrics can
+  be printed to the logs by setting the `org.apache.polaris.service.reporting` logger level to `INFO` (it's
+  set to `OFF` by default). Custom reporters can be implemented and configured to send metrics to
+  external systems for further analysis and monitoring.
+
+- Support for [Open Policy Agent (OPA)] integration has been added to Polaris. This enables delegating
+  authorization decisions to external policy decision points, allowing organizations to centralize
+  policy management and implement complex authorization rules. OPA integration can be enabled by setting
+  `polaris.authorization.type=opa` in the Polaris configuration.
+
+[Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
+[Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
+
 ### Upgrade notes
+
+- The legacy management endpoints at `/metrics` and `/healthcheck` have been removed. Please use the
+  standard management endpoints at `/q/metrics` and `/q/health` instead.
 
 ### Breaking changes
 
+- The EclipseLink Persistence implementation has been completely removed.
+- The default request ID header name has changed from `Polaris-Request-Id` to `X-Request-ID`.
+
 ### New Features
 
+- Added `--no-sts` flag to CLI to support S3-compatible storage systems that do not have Security Token Service available.
 - Support credential vending for federated catalogs. `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING` (default: true) was added to toggle this feature.
+- Enhanced catalog federation with SigV4 authentication support, additional authentication types for credential vending, and location-based access restrictions to block credential vending for remote tables outside allowed location lists.
 
 ### Changes
 
 - `client.region` is no longer considered a "credential" property (related to Iceberg REST Catalog API).
+- Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
+- Added checksum to helm deployment so that it will restart when the configmap has changed.
+- Added Windows support for Python client
 
 ### Deprecations
 

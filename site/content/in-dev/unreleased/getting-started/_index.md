@@ -23,17 +23,16 @@ type: docs
 weight: 101
 ---
 
-The fastest way to get started is with our Docker Compose examples. Each example provides a complete working environment with detailed instructions.
+Welcome to Apache Polaris! This section provides several ways to get started with Polaris.
 
-## Next Steps
+## Quick Start Options
 
-1. Check/Install dependencies
-2. Choose the way you want to deploy Polaris
-3. Create a catalog
-4. Check Using polaris page
+Choose the method that best fits your needs:
+
+- **[Binary Distribution]({{% relref "binary-distribution" %}})**: Download and run the pre-built binary distribution. This is the fastest way to get started with Polaris.
+
+- **[Quickstart]({{% relref "quick-start" %}})**: Use Docker Compose to quickly start Polaris with a pre-configured setup. This is ideal for trying out Polaris without installing dependencies.
 
 ## Getting Help
 
-- Documentation: https://polaris.apache.org
-- GitHub Issues: https://github.com/apache/polaris/issues
-- Slack: [Join Apache Polaris Community](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
+If you need help or have questions, please refer to the [documentation]({{% relref "../../" %}}) or reach out to the community.

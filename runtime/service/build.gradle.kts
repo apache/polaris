@@ -106,6 +106,8 @@ dependencies {
 
   implementation(libs.jakarta.servlet.api)
 
+  runtimeOnly(project(":polaris-async-vertx"))
+
   testFixturesApi(project(":polaris-tests")) {
     // exclude all spark dependencies
     exclude(group = "org.apache.iceberg", module = "iceberg-spark-3.5_2.12")
@@ -130,6 +132,8 @@ dependencies {
   testImplementation("io.quarkus:quarkus-rest-client")
   testImplementation("io.quarkus:quarkus-rest-client-jackson")
   testImplementation("io.quarkus:quarkus-jdbc-h2")
+
+  testImplementation("io.opentelemetry:opentelemetry-sdk-testing")
 
   testImplementation("io.rest-assured:rest-assured")
 

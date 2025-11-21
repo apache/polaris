@@ -32,7 +32,7 @@ For the `polaris catalogs create` [command]({{% ref "../../command-line-interfac
 --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
 ```
 
-### example
+### Example
 
 ```shell
 CLIENT_ID=root \

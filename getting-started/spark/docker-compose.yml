@@ -52,4 +52,4 @@ services:
       AWS_REGION: us-west-2
       POLARIS_HOST: polaris
     volumes:
-      - ./notebooks:/home/jovyan/notebooks
+      - ./notebooks:/home/spark/notebooks

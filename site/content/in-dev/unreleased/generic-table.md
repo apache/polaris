@@ -164,6 +164,6 @@ Current limitations of Generic Table support:
 2) No commit coordination or update capability provided at the catalog service level.
 
 Therefore, the catalog itself is unaware of anything about the underlying table except some of the loosely defined metadata.
-It is the responsibility of the engine (and plugins used by the engine) to determine exactly how loading or commiting data
+It is the responsibility of the engine (and plugins used by the engine) to determine exactly how loading or committing data
 should look like based on the metadata. For example, with the delta support, th delta log serialization, deserialization
 and update all happens at client side.

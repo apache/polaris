@@ -19,6 +19,7 @@
 
 package publishing
 
+import asf.AsfProject
 import io.github.gradlenexus.publishplugin.NexusPublishExtension
 import io.github.gradlenexus.publishplugin.NexusPublishPlugin
 import io.github.gradlenexus.publishplugin.internal.StagingRepositoryDescriptorRegistryBuildService
@@ -28,7 +29,6 @@ import org.gradle.api.tasks.Exec
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
-import org.gradle.plugins.signing.Sign
 
 /**
  * Configures Apache project specific publishing tasks on the root project, for example the
@@ -39,7 +39,6 @@ internal fun configureOnRootProject(project: Project) =
     apply<NexusPublishPlugin>()
 
     val isRelease = project.hasProperty("release")
-    val isSigning = isRelease || project.hasProperty("signArtifacts")
 
     val sourceTarball = tasks.register<Exec>("sourceTarball")
     sourceTarball.configure {
@@ -47,46 +46,37 @@ internal fun configureOnRootProject(project: Project) =
       description =
         "Generate a source tarball for a release to be uploaded to dist.apache.org/repos/dist"
 
+      outputs.upToDateWhen { false }
+      outputs.cacheIf { false }
+
       val e = project.extensions.getByType(PublishingHelperExtension::class.java)
       doFirst { mkdir(e.distributionDir) }
 
-      executable = "git"
-      args(
-        "archive",
-        "--prefix=${e.baseName.get()}/",
-        "--format=tar.gz",
-        // use a fixed mtime for reproducible tarballs, using the same timestamp as jars do
-        "--mtime=1980-02-01 00:00:00",
-        "--output=${e.sourceTarball.get().asFile.relativeTo(projectDir)}",
-        "HEAD",
-      )
+      // Use a fixed mtime for reproducible tarballs, using the same timestamp as jars do.
+      // Also don't use the git-internal gzip as it's not stable, see
+      // https://reproducible-builds.org/docs/archives/.
+      commandLine =
+        listOf(
+          "bash",
+          "-c",
+          """
+        git \
+          archive \
+          --prefix="${e.baseName.get()}/" \
+          --format=tar \
+          --mtime="1980-02-01 00:00:00" \
+          HEAD | gzip -6 --no-name > "${e.sourceTarball.get().asFile.relativeTo(projectDir)}"
+          """
+            .trimIndent(),
+        )
       workingDir(project.projectDir)
+
+      outputs.file(e.sourceTarball)
     }
 
-    val digestSourceTarball =
-      tasks.register<GenerateDigest>("digestSourceTarball") {
-        description = "Generate the source tarball digest"
-        mustRunAfter(sourceTarball)
-        file.set {
-          val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-          e.sourceTarball.get().asFile
-        }
-      }
+    digestTaskOutputs(sourceTarball)
 
-    sourceTarball.configure { finalizedBy(digestSourceTarball) }
-
-    if (isSigning) {
-      val signSourceTarball =
-        tasks.register<Sign>("signSourceTarball") {
-          description = "Sign the source tarball"
-          mustRunAfter(sourceTarball)
-          doFirst {
-            val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-            sign(e.sourceTarball.get().asFile)
-          }
-        }
-      sourceTarball.configure { finalizedBy(signSourceTarball) }
-    }
+    signTaskOutputs(sourceTarball)
 
     val releaseEmailTemplate = tasks.register("releaseEmailTemplate")
     releaseEmailTemplate.configure {
@@ -100,8 +90,7 @@ internal fun configureOnRootProject(project: Project) =
         val e = project.extensions.getByType(PublishingHelperExtension::class.java)
         val asfName = e.asfProjectId.get()
 
-        val gitInfo = MemoizedGitInfo.gitInfo(rootProject)
-        val gitCommitId = gitInfo["Apache-Polaris-Build-Git-Head"]
+        val gitCommitId = GitInfo.memoized(rootProject).gitHead
 
         val repos = project.extensions.getByType(NexusPublishExtension::class.java).repositories
         val repo = repos.iterator().next()
@@ -134,8 +123,9 @@ internal fun configureOnRootProject(project: Project) =
             "NO STAGING REPOSITORY (no build service) !!"
           }
 
+        val asfProject = AsfProject.memoized(project, asfName)
         val asfProjectName =
-          e.overrideName.orElse(project.provider { "Apache ${fetchAsfProjectName(asfName)}" }).get()
+          e.overrideName.orElse(project.provider { "Apache ${asfProject.name}" }).get()
 
         val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
 

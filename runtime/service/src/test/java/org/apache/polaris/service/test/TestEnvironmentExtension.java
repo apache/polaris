@@ -27,7 +27,7 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
 /**
- * JUnit test extension that determines the TestEnvironment. Falls back to targetting the local
+ * JUnit test extension that determines the TestEnvironment. Falls back to targeting the local
  * Dropwizard instance.
  */
 public class TestEnvironmentExtension implements ParameterResolver {

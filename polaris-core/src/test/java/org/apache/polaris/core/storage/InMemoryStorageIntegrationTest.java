@@ -194,7 +194,7 @@ class InMemoryStorageIntegrationTest {
     }
 
     @Override
-    public AccessConfig getSubscopedCreds(
+    public StorageAccessConfig getSubscopedCreds(
         @Nonnull RealmConfig realmConfig,
         boolean allowListOperation,
         @Nonnull Set<String> allowedReadLocations,

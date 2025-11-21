@@ -61,7 +61,7 @@ az role assignment create \
 export AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)
 export STORAGE_LOCATION="abfss://$STORAGE_CONTAINER_NAME@$STORAGE_ACCOUNT_NAME.dfs.core.windows.net/quickstart_catalog"
 
-cat >> getting-started/eclipselink/trino-config/catalog/iceberg.properties << EOF
+cat >> getting-started/assets/trino-config/catalog/iceberg.properties << EOF
 fs.native-azure.enabled=true
 azure.auth-type=DEFAULT
 EOF
