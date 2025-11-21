@@ -71,4 +71,7 @@ dependencies {
   testRuntimeOnly(libs.smallrye.jandex)
 }
 
-tasks.withType<Javadoc> { isFailOnError = false }
+tasks.withType<Javadoc> {
+  isFailOnError = false
+  options.memberLevel = JavadocMemberLevel.PACKAGE
+}

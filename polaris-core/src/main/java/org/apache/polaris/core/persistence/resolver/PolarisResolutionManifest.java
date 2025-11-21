@@ -68,6 +68,14 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   // Set when resolveAll is called
   private ResolverStatus primaryResolverStatus = null;
 
+  private boolean isResolveAllSucceeded() {
+    diagnostics.checkNotNull(
+        primaryResolverStatus,
+        "resolver_not_run_before_access",
+        "resolveAll() must be called before reading resolution results");
+    return primaryResolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS;
+  }
+
   public PolarisResolutionManifest(
       PolarisDiagnostics diagnostics,
       RealmContext realmContext,
@@ -256,7 +264,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   }
 
   private @Nullable ResolvedPolarisEntity getResolvedRootContainerEntity() {
-    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+    if (!isResolveAllSucceeded()) {
       return null;
     }
     ResolvedPolarisEntity resolvedEntity =
@@ -327,7 +335,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         key,
         pathLookup);
 
-    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+    if (!isResolveAllSucceeded()) {
       return null;
     }
     int index = pathLookup.get(key);
@@ -394,7 +402,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         entityType,
         addedTopLevelNames);
 
-    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+    if (!isResolveAllSucceeded()) {
       return null;
     }
 

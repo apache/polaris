@@ -20,7 +20,9 @@ package org.apache.polaris.persistence.nosql.api.index;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.EOF;
+import static org.apache.polaris.persistence.nosql.api.index.IndexKey.ESC;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_SERIALIZER;
+import static org.apache.polaris.persistence.nosql.api.index.IndexKey.NULL_ESCAPED;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.deserializeKey;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
 import static org.apache.polaris.persistence.nosql.api.index.Util.asHex;
@@ -202,6 +204,8 @@ public class TestIndexKey {
 
   static Stream<Arguments> keySerializationRoundTrip() {
     return Stream.of(
+        arguments(false, null, 2, "0205"),
+        arguments(true, null, 2, "0205"),
         arguments(false, key("A"), 2, "4101"),
         arguments(true, key("A"), 2, "4101"),
         arguments(false, key("A\u0001B"), 5, "4102034201"),
@@ -227,9 +231,10 @@ public class TestIndexKey {
     IntFunction<ByteBuffer> alloc =
         len -> directBuffer ? ByteBuffer.allocateDirect(len) : ByteBuffer.allocate(len);
 
-    var serialized = key.serialize(alloc.apply(506)).flip();
+    var serBuffer = alloc.apply(506);
+    var serialized = INDEX_KEY_SERIALIZER.serialize(key, serBuffer).flip();
     soft.assertThat(serialized.remaining()).isEqualTo(expectedSerializedSize);
-    soft.assertThat(key.serializedSize()).isEqualTo(expectedSerializedSize);
+    soft.assertThat(INDEX_KEY_SERIALIZER.serializedSize(key)).isEqualTo(expectedSerializedSize);
     if (checkedHex != null) {
       soft.assertThat(asHex(serialized)).isEqualTo(checkedHex);
     }
@@ -273,7 +278,13 @@ public class TestIndexKey {
     for (int i = 0; i < serSize - 1; i++) {
       soft.assertThat(buffer.get(i)).isNotEqualTo(EOF);
     }
-    soft.assertThat(buffer.get(serSize - 1)).isEqualTo(EOF);
+    if (indexKey == null) {
+      soft.assertThat(serSize).isEqualTo(2);
+      soft.assertThat(buffer.get(0)).isEqualTo(ESC);
+      soft.assertThat(buffer.get(1)).isEqualTo(NULL_ESCAPED);
+    } else {
+      soft.assertThat(buffer.get(serSize - 1)).isEqualTo(EOF);
+    }
 
     buffer.flip();
     soft.assertThat(INDEX_KEY_SERIALIZER.deserialize(buffer.duplicate())).isEqualTo(indexKey);
@@ -300,6 +311,7 @@ public class TestIndexKey {
 
   static Stream<IndexKey> indexKeySerializer() {
     return Stream.of(
+        null,
         key(""),
         key("foo"),
         key("foo\u0000"),
