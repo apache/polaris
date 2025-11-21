@@ -32,12 +32,10 @@ Usage: $0 [options]
   Mandatory options:
     -s | --git-sha | --sha <GIT_SHA>   Git commit (full, not abbreviated)
                                        Example: b7188a07511935e7c9c64128dc047107c26f97f6
-    -v | --version <version>           Release version (without RC and 'incubating')
-                                       Example: 1.2.0
-    -r | --rc <rc-number>              RC number (without a leading 'rc')
-                                       Example: 1
+    -v | --version <version>           Release version, including '-incubating' and RC
+                                       Example: 1.3.0-incubating-rc0
     -m | --maven-repo-id <staging-ID>  Staging Maven repository staging ID
-                                       Example: 1032
+                                       Example: 1234
                                        This will be prefixed with ${maven_repo_url_prefix}
 
   Optional arguments:
@@ -45,14 +43,13 @@ Usage: $0 [options]
     -h | --help                        Show usage information (exits early)
 
 
-Full example for RC1 of 1.2.0, staging repo ID 1032.
-  ./verify-release.sh -s b7188a07511935e7c9c64128dc047107c26f97f6 -v 1.2.0 -r 1 -m 1032
+Full example for RC4 of version 9.8.0, staging repo ID 4568.
+  ./verify-release.sh -s b7188a07511935e7c9c64128dc047107c26f97f6 -v 9.8.0-incubating-rc4 -m 4568
 !
 }
 
 git_sha=""
 version=""
-rc_num=""
 maven_repo_id=""
 keep_temp_dir=0
 
@@ -65,10 +62,6 @@ while [[ $# -gt 0 ]]; do
     ;;
   -v | --version)
     version="$2"
-    shift
-    ;;
-  -r | --rc)
-    rc_num="$2"
     shift
     ;;
   -m | --maven-repo-id)
@@ -93,6 +86,23 @@ done
 RED='\033[0;31m'
 ORANGE='\033[0;33m'
 RESET='\033[m'
+
+# Allow leading characters, but only extract the version and rc.
+VERSION_RC_REGEX="^([a-z-]+)?([0-9]+\.[0-9]+\.[0-9]+(-incubating)?)-rc([0-9]+)$"
+if [[ ! ${version} =~ ${VERSION_RC_REGEX} ]]; then
+  echo "Version '${version}' does not match the version pattern 0.0.0-incubating-rc0" > /dev/stderr
+  exit 1
+fi
+version="${BASH_REMATCH[2]}"
+rc_num="${BASH_REMATCH[4]}"
+
+# Allow leading characters for convenience, but extract the staging repo number.
+STAGING_REGEX="[a-z-]*([0-9]+)$"
+if [[ ! ${maven_repo_id} =~ ${STAGING_REGEX} ]]; then
+  echo "Invalid Maven staging repo ID '${maven_repo_id}'" > /dev/stderr
+  exit 1
+fi
+maven_repo_id="${BASH_REMATCH[1]}"
 
 run_id="polaris-release-verify-$(date "+%Y-%m-%d-%k-%M-%S")"
 temp_dir="$(mktemp --tmpdir --directory "${run_id}-XXXXXXXXX")"
@@ -120,8 +130,7 @@ failures_file="$(pwd)/${run_id}.log"
 dist_url_prefix="https://dist.apache.org/repos/dist/dev/incubator/polaris/"
 keys_file_url="https://downloads.apache.org/incubator/polaris/KEYS"
 
-version_full="${version}-incubating"
-git_tag_full="apache-polaris-${version_full}-rc${rc_num}"
+git_tag_full="apache-polaris-${version}-rc${rc_num}"
 
 GITHUB=0
 [[ -n ${GITHUB_ENV} ]] && GITHUB=1
@@ -135,14 +144,14 @@ find_excludes=(
   '!' '-name' '*.sha256'
   '!' '-name' '*.sha512'
   # file with that name is created by wget when mirroring from 'dist'
-  '!' '-name' "${version_full}"
+  '!' '-name' "${version}"
   # ignore Maven repository metadata
   '!' '-name' 'maven-metadata*.xml'
   '!' '-name' 'archetype-catalog.xml'
 )
 
-dist_url="${dist_url_prefix}${version_full}"
-helm_url="${dist_url_prefix}helm-chart/${version_full}"
+dist_url="${dist_url_prefix}${version}"
+helm_url="${dist_url_prefix}helm-chart/${version}"
 maven_repo_url="${maven_repo_url_prefix}${maven_repo_id}/"
 
 function log_part_start {
@@ -223,6 +232,9 @@ function mirror {
   # Nuke the directory listings (index.html from server) and robots.txt...
   # (only wget2 downloads the robots.txt :( )
   find "${dir}" \( -name index.html -o -name robots.txt \) -exec rm {} +
+  # The following is a hack for wget2, which behaves a bit different than wget.
+  # If the server returns `Content-Type: application/x-gzip`, the file is stored gzipped,
+  # although it's "plain text". Leaving it as gzip breaks signature + checksum tests.
   find "${dir}" -name "*.prov" | while read -r helmProv; do
     if gunzip -c "${helmProv}" > /dev/null 2>&1 ; then
       mv "${helmProv}" "${helmProv}.gz"
@@ -366,7 +378,8 @@ Verifying staged release
 
 Git tag:           ${git_tag_full}
 Git sha:           ${git_sha}
-Full version:      ${version_full}
+Version:           ${version}
+RC:                ${rc_num}
 Maven repo URL:    ${maven_repo_url}
 Main dist URL:     ${dist_url}
 Helm chart URL:    ${helm_url}
@@ -404,7 +417,7 @@ log_part_start "Verify mandatory files in source tree"
   [[ -e "${worktree_dir}/DISCLAIMER" ]] || log_fatal "Mandatory DISCLAIMER file missing in source tree"
   [[ -e "${worktree_dir}/LICENSE" ]] || log_fatal "Mandatory LICENSE file missing in source tree"
   [[ -e "${worktree_dir}/NOTICE" ]] || log_fatal "Mandatory NOTICE file missing in source tree"
-  [[ "$(cat "${worktree_dir}/version.txt")" == "${version_full}" ]] || log_fatal "version.txt in source tree does not contain expected version"
+  [[ "$(cat "${worktree_dir}/version.txt")" == "${version}" ]] || log_fatal "version.txt in source tree does not contain expected version"
 log_part_end
 
 # Mirror the helm chart content for the release, verify signatures and checksums
@@ -446,7 +459,7 @@ log_part_start "Comparing Maven repository artifacts, this will take a little wh
 while read -r fn ; do
   compare_binary_file "Maven repository artifact" "${fn}" "${maven_local_dir}" "${maven_repo_dir}"
   # verify that the "main" and sources jars contain LICENSE + NOTICE files
-  [[ "${fn}" =~ .*-$version_full(-sources)?[.]jar ]] && (
+  [[ "${fn}" =~ .*-$version(-sources)?[.]jar ]] && (
     if [[ $(zipinfo -1 "${maven_repo_dir}/${fn}" | grep --extended-regexp --count "^META-INF/(LICENSE|NOTICE)$") -ne 2 ]] ; then
       log_fatal "${fn}: Mandatory LICENSE/NOTICE files not in META-INF/"
     fi
@@ -455,8 +468,8 @@ done < "${temp_dir}/maven-local-files"
 log_part_end
 
 log_part_start "Comparing main distribution artifacts"
-compare_binary_file "source tarball" "apache-polaris-${version_full}.tar.gz" "${worktree_dir}/build/distributions" "${dist_dir}"
-dist_file_prefix="polaris-bin-${version_full}"
+compare_binary_file "source tarball" "apache-polaris-${version}.tar.gz" "${worktree_dir}/build/distributions" "${dist_dir}"
+dist_file_prefix="polaris-bin-${version}"
 compare_binary_file "Polaris distribution tarball" "${dist_file_prefix}.tgz" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
 if [[ $(tar -tf "${dist_dir}/${dist_file_prefix}.tgz" | grep --extended-regexp --count "^${dist_file_prefix}/(DISCLAIMER|LICENSE|NOTICE)$") -ne 3 ]] ; then
   log_fatal "${dist_file_prefix}.tgz: Mandatory DISCLAIMER/LICENSE/NOTICE files not in ${dist_file_prefix}/"
@@ -473,7 +486,7 @@ mkdir -p "${helm_work_dir}/local" "${helm_work_dir}/staged"
 # Works with helm since version 4.0.0
 exec_process find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
 proc_exec "Helm packaging failed" helm package --destination "${helm_work_dir}" "${worktree_dir}/helm/polaris"
-helm_package_file="polaris-${version_full}.tgz"
+helm_package_file="polaris-${version}.tgz"
 tar --warning=no-timestamp -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
 tar --warning=no-timestamp -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
 proc_exec "Helm package ${helm_package_file} contents" diff -r "${helm_work_dir}/local" "${helm_work_dir}/staged"
