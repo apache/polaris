@@ -46,7 +46,7 @@ public class IcebergRestConfigurationEventServiceDelegator
         new IcebergRestCatalogEvents.BeforeGetConfigEvent(warehouse));
     Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
     polarisEventListener.onAfterGetConfig(
-        new IcebergRestCatalogEvents.AfterGetConfigEvent(resp.readEntity(ConfigResponse.class)));
+        new IcebergRestCatalogEvents.AfterGetConfigEvent((ConfigResponse) resp.getEntity()));
     return resp;
   }
 }
