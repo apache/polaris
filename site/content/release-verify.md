@@ -89,7 +89,7 @@ To run the script, you need the following pieces of information:
 Example (values taken from the 1.2.0-rc2 release)
 ```bash
 bash <(curl \
-  -s https://raw.githubusercontent.com/apache/polaris/refs/heads/main/tools/verify-release/verify-release.sh) \
+  --silent https://raw.githubusercontent.com/apache/polaris/refs/heads/main/tools/verify-release/verify-release.sh) \
   --git-sha 354a5ef6b337bf690b7a12fefe2c984e2139b029 \
   --version 1.3.0-incubating-rc0 \
   --maven-repo-id 1033
