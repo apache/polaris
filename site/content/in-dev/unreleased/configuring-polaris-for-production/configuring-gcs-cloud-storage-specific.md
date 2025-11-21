@@ -23,15 +23,10 @@ type: docs
 weight: 600
 ---
 
-This page provides guidance for Configuring GCS Cloud Storage provider for use with Polaris. 
-It covers credential vending, IAM roles, ACL requirements, and best practices to ensure secure and reliable integration.
+This page provides guidance for configuring GCS Cloud Storage provider for use with Polaris. It covers credential vending, IAM roles, ACL requirements, and best practices to ensure secure and reliable integration.
 
-#### GCS
+All catalog operations in Polaris for Google Cloud Storage (GCS)—including listing, reading, and writing objects—are performed using credential vending, which issues scoped (vended) tokens for secure access.
 
-When using credential vending for Google Cloud Storage (GCS) with Apache Iceberg on
-Polaris, ensure that both IAM roles and HNS ACLs (if HNS is enabled) are properly configured. Even with the correct IAM
-role (e.g., `roles/storage.objectAdmin`), access to paths such as `gs://<bucket>/idsp_ns/sample_table4/` may fail with
-403 errors if HNS ACLs are missing for scoped tokens. The original access token may work, but scoped (vended) tokens
-require HNS ACLs on the base path or relevant subpath. Polaris does not require HNS to be enabled for basic operation,
-but if HNS is enabled and credential vending is used, HNS ACLs are mandatory for scoped token access. Always verify HNS ACLs
-in addition to IAM roles when troubleshooting GCS access issues with credential vending and HNS enabled.
+Polaris requires both IAM roles and [Hierarchical Namespace (HNS)](https://docs.cloud.google.com/storage/docs/hns-overview) ACLs (if HNS is enabled) to be properly configured. Even with the correct IAM role (e.g., `roles/storage.objectAdmin`), access to paths such as `gs://<bucket>/idsp_ns/sample_table4/` may fail with 403 errors if HNS ACLs are missing for scoped tokens. The original access token may work, but scoped (vended) tokens require HNS ACLs on the base path or relevant subpath.
+
+**Note:** HNS is not mandatory when using GCS for a catalog in Polaris. If HNS is not enabled on the bucket, only IAM roles are required for access. Always verify HNS ACLs in addition to IAM roles when troubleshooting GCS access issues with credential vending and HNS enabled.
