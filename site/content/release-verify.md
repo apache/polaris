@@ -163,9 +163,14 @@ Note: GPG signatures are verified **only** against the project's `KEYS` file.
 
 # Reproducible builds
 
-A build is reproducible if the built artifacts are identical on every build from the same source.
+A build is reproducible if the built artifacts are identical for every build on every machine from the same source.
 
-The Apache Polaris build is currently mostly reproducible, with some release-version specific exceptions.
+The Apache Polaris build is currently _mostly_ reproducible, with some release-version specific exceptions.
+
+References:
+* [reproducible-builds.org](https://reproducible-builds.org/)
+* [Reproducible builds at the ASF](https://cwiki.apache.org/confluence/display/SECURITY/Reproducible+Builds)
+* [Polaris tracking issue](https://github.com/apache/polaris/issues/2204)
 
 ## Exceptions for all Apache Polaris versions
 
@@ -179,6 +184,5 @@ Pending on full support for reproducible builds in Quarkus:
     * server/app/polaris-server-*.jar
 * Zips and tarballs containing any of the above are not guaranteed to be reproducible.
 
-Helm chart package tarball is not binary reproducible because there is no option to influence the
-mtime and POSIX attributes of the archive entries.
-The actual content of the archive entries is reproducible.
+Helm packages are not binary reproducible yet.
+See helm-package notes on [this page](https://cwiki.apache.org/confluence/display/SECURITY/Reproducible+Builds). 
