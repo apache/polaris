@@ -39,6 +39,7 @@ import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.Period;
@@ -55,6 +56,7 @@ import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 /** Azure credential vendor that supports generating SAS token */
 public class AzureCredentialsStorageIntegration
@@ -312,16 +314,83 @@ public class AzureCredentialsStorageIntegration
         });
   }
 
+  /**
+   * Fetches an Azure access token with timeout and retry logic to handle transient failures.
+   *
+   * <p>This method implements a defensive strategy against slow or failing token requests:
+   *
+   * <ul>
+   *   <li>15-second timeout per individual request attempt
+   *   <li>Exponential backoff retry (3 attempts: 2s, 4s, 8s) with 50% jitter
+   *   <li>90-second overall timeout as a safety net
+   * </ul>
+   *
+   * @param tenantId the Azure tenant ID
+   * @return the access token
+   * @throws RuntimeException if token fetch fails after all retries or times out
+   */
   private AccessToken getAccessToken(String tenantId) {
     String scope = "https://storage.azure.com/.default";
     AccessToken accessToken =
         defaultAzureCredential
             .getToken(new TokenRequestContext().addScopes(scope).setTenantId(tenantId))
-            .blockOptional()
+            .timeout(Duration.ofSeconds(15)) // Per-attempt timeout
+            .doOnError(
+                error ->
+                    LOGGER.warn(
+                        "Error fetching Azure access token for tenant {}: {}",
+                        tenantId,
+                        error.getMessage()))
+            .retryWhen(
+                Retry.backoff(3, Duration.ofSeconds(2)) // 3 retries: 2s, 4s, 8s
+                    .jitter(0.5) // ±50% jitter to prevent thundering herd
+                    .filter(
+                        throwable ->
+                            throwable instanceof java.util.concurrent.TimeoutException
+                                || isRetriableAzureException(throwable))
+                    .doBeforeRetry(
+                        retrySignal ->
+                            LOGGER.info(
+                                "Retrying Azure token fetch for tenant {} (attempt {}/3)",
+                                tenantId,
+                                retrySignal.totalRetries() + 1))
+                    .onRetryExhaustedThrow(
+                        (retryBackoffSpec, retrySignal) ->
+                            new RuntimeException(
+                                String.format(
+                                    "Azure token fetch exhausted after %d attempts for tenant %s",
+                                    retrySignal.totalRetries(), tenantId),
+                                retrySignal.failure())))
+            .blockOptional(Duration.ofSeconds(90)) // Maximum total wait time
             .orElse(null);
+
     if (accessToken == null) {
-      throw new RuntimeException("No access token fetched!");
+      throw new RuntimeException(
+          String.format("Failed to fetch Azure access token for tenant %s", tenantId));
     }
     return accessToken;
+  }
+
+  /**
+   * Determines if an exception is retriable for Azure token requests.
+   *
+   * @param throwable the exception to check
+   * @return true if the exception should trigger a retry
+   */
+  private boolean isRetriableAzureException(Throwable throwable) {
+    // Retry on timeout exceptions
+    if (throwable instanceof java.util.concurrent.TimeoutException) {
+      return true;
+    }
+    // Retry on common transient Azure credential exceptions
+    String message = throwable.getMessage();
+    if (message != null) {
+      return message.contains("AADSTS50058") // Token endpoint timeout
+          || message.contains("AADSTS50078") // Service temporarily unavailable
+          || message.contains("AADSTS700084") // Token refresh required
+          || message.contains("503") // Service unavailable
+          || message.contains("429"); // Too many requests
+    }
+    return false;
   }
 }
