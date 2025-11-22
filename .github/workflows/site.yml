@@ -20,8 +20,9 @@
 name: "Hugo Site"
 on:
   push:
-    branches: [ "main", "versioned-docs" ]
+    branches: [ "main", "release/*", "versioned-docs" ]
   pull_request:
+    branches: [ "main", "release/*" ]
 
 jobs:
   site:
