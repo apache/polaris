@@ -28,9 +28,9 @@ name: Check Markdown links
 
 on:
   push:
-    branches:
-      - 'main'
+    branches: [ "main", "release/*" ]
   pull_request:
+    branches: [ "main", "release/*" ]
 
 jobs:
   markdown-link-check:

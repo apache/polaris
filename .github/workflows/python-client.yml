@@ -28,7 +28,7 @@ name: Python Client CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "release/*" ]
   pull_request:
     branches: [ "main", "release/*" ]
 
