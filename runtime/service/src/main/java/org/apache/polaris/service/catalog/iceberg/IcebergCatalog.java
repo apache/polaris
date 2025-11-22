@@ -108,6 +108,7 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -1553,9 +1554,20 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         updateTableLike(tableIdentifier, entity);
       }
 
-      polarisEventListener.onAfterCommitTable(
-          new IcebergRestCatalogEvents.AfterCommitTableEvent(
-              catalogName, tableIdentifier, base, metadata));
+      if (getMetaStoreManager() instanceof TransactionWorkspaceMetaStoreManager) {
+        // This operation was a staged commit and will be applied later
+        TransactionWorkspaceMetaStoreManager txMgr =
+            (TransactionWorkspaceMetaStoreManager) getMetaStoreManager();
+        txMgr.stageEvent(catalogName, tableIdentifier, base, metadata);
+
+        polarisEventListener.onStageCommitTable(
+            new IcebergRestCatalogEvents.StageCommitTableEvent(
+                catalogName, tableIdentifier, base, metadata));
+      } else {
+        polarisEventListener.onAfterCommitTable(
+            new IcebergRestCatalogEvents.AfterCommitTableEvent(
+                catalogName, tableIdentifier, base, metadata));
+      }
     }
 
     @Override
