@@ -30,6 +30,7 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.polaris.spark.utils.DeltaHelper;
+import org.apache.polaris.spark.utils.HudiHelper;
 import org.apache.polaris.spark.utils.PolarisCatalogUtils;
 import org.apache.spark.sql.catalyst.analysis.NamespaceAlreadyExistsException;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
@@ -69,6 +70,7 @@ public class SparkCatalog
   @VisibleForTesting protected org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
   @VisibleForTesting protected PolarisSparkCatalog polarisSparkCatalog = null;
   @VisibleForTesting protected DeltaHelper deltaHelper = null;
+  @VisibleForTesting protected HudiHelper hudiHelper = null;
 
   @Override
   public String name() {
@@ -130,6 +132,7 @@ public class SparkCatalog
     this.catalogName = name;
     initRESTCatalog(name, options);
     this.deltaHelper = new DeltaHelper(options);
+    this.hudiHelper = new HudiHelper(options);
   }
 
   @Override
@@ -154,12 +157,16 @@ public class SparkCatalog
         throw new UnsupportedOperationException(
             "Create table without location key is not supported by Polaris. Please provide location or path on table creation.");
       }
-
       if (PolarisCatalogUtils.useDelta(provider)) {
         // For delta table, we load the delta catalog to help dealing with the
         // delta log creation.
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
         return deltaCatalog.createTable(ident, schema, transforms, properties);
+      } else if (PolarisCatalogUtils.useHudi(provider)) {
+        // For creating the hudi table, we load HoodieCatalog
+        // to create the .hoodie folder in cloud storage
+        TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
+        return hudiCatalog.createTable(ident, schema, transforms, properties);
       } else {
         return this.polarisSparkCatalog.createTable(ident, schema, transforms, properties);
       }
@@ -180,8 +187,12 @@ public class SparkCatalog
         //     using ALTER TABLE ...SET LOCATION, and ALTER TABLE ... SET FILEFORMAT.
         TableCatalog deltaCatalog = deltaHelper.loadDeltaCatalog(this.polarisSparkCatalog);
         return deltaCatalog.alterTable(ident, changes);
+      } else if (PolarisCatalogUtils.useHudi(provider)) {
+        TableCatalog hudiCatalog = hudiHelper.loadHudiCatalog(this.polarisSparkCatalog);
+        return hudiCatalog.alterTable(ident, changes);
+      } else {
+        return this.polarisSparkCatalog.alterTable(ident);
       }
-      return this.polarisSparkCatalog.alterTable(ident);
     }
   }
 
