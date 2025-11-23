@@ -51,6 +51,7 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.3
 cel-bom = { module = "org.projectnessie.cel:cel-bom", version = "0.5.3" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.14.0" }
+docker-java-api = { module = "com.github.docker-java:docker-java-api", version = "3.6.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.44.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.60.0" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
@@ -75,12 +76,12 @@ jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version 
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.1" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
-junit-bom = { module = "org.junit:junit-bom", version = "5.14.1" }
-junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version = "2.3.0" }
-keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.7" }
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
+junit-bom = { module = "org.junit:junit-bom", version = "5.14.1" }
+junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version = "2.3.0" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.7" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.21" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.16.0" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
