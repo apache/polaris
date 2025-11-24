@@ -10,6 +10,9 @@
     {
       "_comment": "medium blocks requests originating from GitHub Actions",
       "pattern": "https://medium.com/"
+    },
+    { 
+      "pattern": "https://kubernetes.io/"
     }
   ]
 }
