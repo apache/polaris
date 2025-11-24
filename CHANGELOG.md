@@ -29,18 +29,32 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Highlights
 
+### Upgrade notes
+
+### Breaking changes
+
+### New Features
+
+### Changes
+
+### Deprecations
+
+### Fixes
+
+### Commits
+
+## [1.3.0-incubating]
+
+### Highlights
+
 - Support for [Iceberg Metrics Reporting] has been introduced in Polaris. Out of the box, metrics can
   be printed to the logs by setting the `org.apache.polaris.service.reporting` logger level to `INFO` (it's
   set to `OFF` by default). Custom reporters can be implemented and configured to send metrics to
   external systems for further analysis and monitoring.
-
 - Support for [Open Policy Agent (OPA)] integration has been added to Polaris. This enables delegating
   authorization decisions to external policy decision points, allowing organizations to centralize
   policy management and implement complex authorization rules. OPA integration can be enabled by setting
   `polaris.authorization.type=opa` in the Polaris configuration.
-
-[Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
-[Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
 
 ### Upgrade notes
 
@@ -65,12 +79,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added checksum to helm deployment so that it will restart when the configmap has changed.
 - Generic Table is no longer in beta and is generally-available.
 - Added Windows support for Python client
-
-### Deprecations
-
-### Fixes
-
-### Commits
 
 ## [1.2.0-incubating]
 
@@ -214,9 +222,12 @@ Apache Polaris 1.0.0-incubating was released on July 9th, 2025.
 
 Apache Polaris 0.9.0 was released on March 11, 2025 as the first Polaris release. Only the source distribution is available for this release.
 
-[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.2.0-incubating...HEAD
+[Unreleased]: https://github.com/apache/polaris/compare/apache-polaris-1.3.0-incubating...HEAD
+[1.3.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.2.0-incubating...apache-polaris-1.3.0-incubating
 [1.2.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.1.0-incubating...apache-polaris-1.2.0-incubating
 [1.1.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.0.1-incubating...apache-polaris-1.1.0-incubating
 [1.0.1-incubating]: https://github.com/apache/polaris/compare/apache-polaris-1.0.0-incubating...apache-polaris-1.0.1-incubating
 [1.0.0-incubating]: https://github.com/apache/polaris/compare/apache-polaris-0.9.0-incubating...apache-polaris-1.0.0-incubating
 [0.9.0-incubating]: https://github.com/apache/polaris/commits/apache-polaris-0.9.0-incubating
+[Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
+[Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
