@@ -64,7 +64,7 @@ internal fun configureOnRootProject(project: Project) =
           archive \
           --prefix="${e.baseName.get()}/" \
           --format=tar \
-          --mtime="1980-02-01 00:00:00" \
+          --mtime="1980-02-01 00:00:00 UTC" \
           HEAD | gzip -6 --no-name > "${e.sourceTarball.get().asFile.relativeTo(projectDir)}"
           """
             .trimIndent(),
