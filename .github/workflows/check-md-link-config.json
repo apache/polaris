@@ -6,6 +6,10 @@
     {
       "_comment": "mvnrepository blocks requests originating from GitHub Actions",
       "pattern": "https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark"
+    },
+    {
+      "_comment": "medium blocks requests originating from GitHub Actions",
+      "pattern": "https://medium.com/"
     }
   ]
 }
