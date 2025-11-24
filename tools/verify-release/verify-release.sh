@@ -104,12 +104,19 @@ if [[ ! ${maven_repo_id} =~ ${STAGING_REGEX} ]]; then
 fi
 maven_repo_id="${BASH_REMATCH[1]}"
 
+fatal_reported=0
+finished=0
+
 run_id="polaris-release-verify-$(date "+%Y-%m-%d-%k-%M-%S")"
 temp_dir="$(mktemp --tmpdir --directory "${run_id}-XXXXXXXXX")"
 function purge_temp_dir {
   if [[ $keep_temp_dir -eq 0 ]] ; then
-    echo "Purging ${temp_dir}..."
-    rm -rf "${temp_dir}"
+    if [[ $fatal_reported -eq 0 && $finished -eq 1 ]] ; then
+      echo "Purging ${temp_dir}..."
+      rm -rf "${temp_dir}"
+    else
+      echo "⚠ NOT purging temporary directory ${temp_dir} - errors were reported!"
+    fi
   else
     echo "Leaving ${temp_dir} around, you may want to purge it."
   fi
@@ -173,7 +180,8 @@ function log_part_end {
 }
 
 function log_fatal {
-  echo -n -e "${RED}"
+  fatal_reported=1
+  echo -n -e "❌ ${RED}"
   echo -n "$1"
   echo -e "${RESET}"
   echo "" >> "${failures_file}"
@@ -183,7 +191,7 @@ function log_fatal {
 }
 
 function log_warn {
-  echo -ne "${ORANGE}"
+  echo -ne "⚠ ${ORANGE}"
   echo -n "$1"
   echo -e "${RESET}"
 }
@@ -311,16 +319,22 @@ function report_mismatch {
   *.tar.gz | *.tgz | *.tar)
     mkdir "${local_file}.extracted" "${repo_file}.extracted"
     tar --warning=no-timestamp -xf "${local_file}" --directory "${local_file}.extracted" || true
+    log_info "  extracted to ${local_file}.extracted"
     tar --warning=no-timestamp -xf "${repo_file}" --directory "${repo_file}.extracted" || true
+    log_info "  extracted to ${repo_file}.extracted"
     if proc_exec "${title}" diff --recursive "${local_file}.extracted" "${repo_file}.extracted"; then
       # Dump tar listing only when the contents are equal (to inspect mtime and posix attributes)
       log_warn "${title}"
       (
         echo "${title}" # log_warn above prints ANSI escape sequences
+        tar --warning=no-timestamp -tvf "${local_file}" > "${local_file}.contents-listing" || true
+        tar --warning=no-timestamp -tvf "${repo_file}" > "${repo_file}.contents-listing" || true
+        echo "Diff of archives contents:"
+        diff "${local_file}.contents-listing" "${repo_file}.contents-listing"
         echo ">>>>>>>>>>>>>>> tar tvf ${local_file}"
-        tar --warning=no-timestamp -tvf "${local_file}" || true
+        cat "${local_file}.contents-listing"
         echo ">>>>>>>>>>>>>>> tar tvf ${repo_file}"
-        tar --warning=no-timestamp -tvf "${repo_file}" || true
+        cat "${repo_file}.contents-listing"
         echo ""
       ) >> "${failures_file}"
     fi
@@ -484,7 +498,7 @@ log_part_start "Comparing helm chart artifacts"
 mkdir -p "${helm_work_dir}/local" "${helm_work_dir}/staged"
 # Prerequisite for reproducible helm packages: file modification time must be deterministic
 # Works with helm since version 4.0.0
-exec_process find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
+find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
 proc_exec "Helm packaging failed" helm package --destination "${helm_work_dir}" "${worktree_dir}/helm/polaris"
 helm_package_file="polaris-${version}.tgz"
 tar --warning=no-timestamp -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
@@ -544,3 +558,5 @@ The contents of all LICENSE and NOTICE files however MUST be verified manually.
 
 !
 fi
+
+finished=1
