@@ -18,6 +18,10 @@
  */
 package org.apache.polaris.core.storage.azure;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_DELAY_SECONDS;
+import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_JITTER_MILLIS;
+import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_COUNT;
+import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_TIMEOUT_SECONDS;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import com.azure.core.credential.AccessToken;
@@ -122,7 +126,7 @@ public class AzureCredentialsStorageIntegration
         OffsetDateTime.ofInstant(
             start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
-    AccessToken accessToken = getAccessToken(config().getTenantId());
+    AccessToken accessToken = getAccessToken(realmConfig, config().getTenantId());
     // Get user delegation key.
     // Set the new generated user delegation key expiry to 7 days and minute 1 min
     // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
@@ -315,26 +319,37 @@ public class AzureCredentialsStorageIntegration
   }
 
   /**
-   * Fetches an Azure access token with timeout and retry logic to handle transient failures.
+   * Fetches an Azure AD access token with timeout and retry logic to handle transient failures.
    *
-   * <p>This method implements a defensive strategy against slow or failing token requests:
+   * <p>This access token is used internally to obtain a user delegation key from Azure Storage,
+   * which is then used to generate SAS tokens for client credential vending.
+   *
+   * <p>This method implements a defensive strategy against slow or failing cloud provider requests:
    *
    * <ul>
-   *   <li>15-second timeout per individual request attempt
-   *   <li>Exponential backoff retry (3 attempts: 2s, 4s, 8s) with 50% jitter
-   *   <li>90-second overall timeout as a safety net
+   *   <li>Per-attempt timeout (configurable via CLOUD_API_TIMEOUT_SECONDS, default 15s)
+   *   <li>Exponential backoff retry (configurable count and initial delay via CLOUD_API_RETRY_COUNT
+   *       and CLOUD_API_RETRY_DELAY_SECONDS, defaults: 3 attempts starting at 2s)
+   *   <li>Jitter to prevent thundering herd (configurable via CLOUD_API_RETRY_JITTER_MILLIS, default 500ms)
    * </ul>
    *
+   * @param realmConfig the realm configuration to get timeout and retry settings
    * @param tenantId the Azure tenant ID
    * @return the access token
    * @throws RuntimeException if token fetch fails after all retries or times out
    */
-  private AccessToken getAccessToken(String tenantId) {
+  private AccessToken getAccessToken(RealmConfig realmConfig, String tenantId) {
+    int timeoutSeconds = realmConfig.getConfig(CLOUD_API_TIMEOUT_SECONDS);
+    int retryCount = realmConfig.getConfig(CLOUD_API_RETRY_COUNT);
+    int initialDelaySeconds = realmConfig.getConfig(CLOUD_API_RETRY_DELAY_SECONDS);
+    int jitterMillis = realmConfig.getConfig(CLOUD_API_RETRY_JITTER_MILLIS);
+    double jitter = jitterMillis / 1000.0; // Convert millis to fraction for jitter factor
+
     String scope = "https://storage.azure.com/.default";
     AccessToken accessToken =
         defaultAzureCredential
             .getToken(new TokenRequestContext().addScopes(scope).setTenantId(tenantId))
-            .timeout(Duration.ofSeconds(15)) // Per-attempt timeout
+            .timeout(Duration.ofSeconds(timeoutSeconds))
             .doOnError(
                 error ->
                     LOGGER.warn(
@@ -342,18 +357,16 @@ public class AzureCredentialsStorageIntegration
                         tenantId,
                         error.getMessage()))
             .retryWhen(
-                Retry.backoff(3, Duration.ofSeconds(2)) // 3 retries: 2s, 4s, 8s
-                    .jitter(0.5) // ±50% jitter to prevent thundering herd
-                    .filter(
-                        throwable ->
-                            throwable instanceof java.util.concurrent.TimeoutException
-                                || isRetriableAzureException(throwable))
+                Retry.backoff(retryCount, Duration.ofSeconds(initialDelaySeconds))
+                    .jitter(jitter)
+                    .filter(this::isRetriableAzureException)
                     .doBeforeRetry(
                         retrySignal ->
                             LOGGER.info(
-                                "Retrying Azure token fetch for tenant {} (attempt {}/3)",
+                                "Retrying Azure token fetch for tenant {} (attempt {}/{})",
                                 tenantId,
-                                retrySignal.totalRetries() + 1))
+                                retrySignal.totalRetries() + 1,
+                                retryCount))
                     .onRetryExhaustedThrow(
                         (retryBackoffSpec, retrySignal) ->
                             new RuntimeException(
@@ -361,7 +374,7 @@ public class AzureCredentialsStorageIntegration
                                     "Azure token fetch exhausted after %d attempts for tenant %s",
                                     retrySignal.totalRetries(), tenantId),
                                 retrySignal.failure())))
-            .blockOptional(Duration.ofSeconds(90)) // Maximum total wait time
+            .blockOptional()
             .orElse(null);
 
     if (accessToken == null) {
@@ -373,6 +386,17 @@ public class AzureCredentialsStorageIntegration
 
   /**
    * Determines if an exception is retriable for Azure token requests.
+   *
+   * <p>Retries are attempted for:
+   *
+   * <ul>
+   *   <li>TimeoutException - per-attempt timeout exceeded
+   *   <li>AADSTS50058 - Token endpoint timeout
+   *   <li>AADSTS50078 - Service temporarily unavailable
+   *   <li>AADSTS700084 - Token refresh required
+   *   <li>503 - Service unavailable
+   *   <li>429 - Too many requests (rate limited)
+   * </ul>
    *
    * @param throwable the exception to check
    * @return true if the exception should trigger a retry

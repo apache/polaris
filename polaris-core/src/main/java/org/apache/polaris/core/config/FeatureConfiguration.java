@@ -438,4 +438,46 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               "If set to true (default), allow credential vending for external catalogs. Note this requires ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING to be true first.")
           .defaultValue(true)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> CLOUD_API_TIMEOUT_SECONDS =
+      PolarisConfiguration.<Integer>builder()
+          .key("CLOUD_API_TIMEOUT_SECONDS")
+          .description(
+              "Timeout in seconds for cloud provider API requests. "
+                  + "Prevents indefinite blocking when cloud provider endpoints are slow or unresponsive. "
+                  + "Used internally by storage integrations for credential vending and other cloud operations. "
+                  + "Currently only used by Azure storage integration (not yet implemented for AWS S3 or GCP).")
+          .defaultValue(15)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> CLOUD_API_RETRY_COUNT =
+      PolarisConfiguration.<Integer>builder()
+          .key("CLOUD_API_RETRY_COUNT")
+          .description(
+              "Number of retry attempts for cloud provider API requests. "
+                  + "Uses exponential backoff with jitter to handle transient failures. "
+                  + "Currently only used by Azure storage integration (not yet implemented for AWS S3 or GCP).")
+          .defaultValue(3)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> CLOUD_API_RETRY_DELAY_SECONDS =
+      PolarisConfiguration.<Integer>builder()
+          .key("CLOUD_API_RETRY_DELAY_SECONDS")
+          .description(
+              "Initial delay in seconds before first retry for cloud provider API requests. "
+                  + "Delay doubles with each retry (exponential backoff). "
+                  + "Currently only used by Azure storage integration (not yet implemented for AWS S3 or GCP).")
+          .defaultValue(2)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> CLOUD_API_RETRY_JITTER_MILLIS =
+      PolarisConfiguration.<Integer>builder()
+          .key("CLOUD_API_RETRY_JITTER_MILLIS")
+          .description(
+              "Maximum jitter in milliseconds added to retry delays for cloud provider API requests. "
+                  + "Helps prevent thundering herd when multiple requests fail simultaneously. "
+                  + "Actual jitter is random between 0 and this value. "
+                  + "Currently only used by Azure storage integration (not yet implemented for AWS S3 or GCP).")
+          .defaultValue(500)
+          .buildFeatureConfiguration();
 }
