@@ -18,15 +18,9 @@
  */
 package org.apache.polaris.admintool;
 
-import java.util.concurrent.Callable;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Spec;
+import jakarta.inject.Inject;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
-public abstract class BaseCommand implements Callable<Integer> {
-
-  public static final int EXIT_CODE_USAGE = 2;
-  public static final int EXIT_CODE_BOOTSTRAP_ERROR = 3;
-  public static final int EXIT_CODE_PURGE_ERROR = 4;
-
-  @Spec protected CommandSpec spec;
+public abstract class BaseMetaStoreCommand extends BaseCommand {
+  @Inject protected MetaStoreManagerFactory metaStoreManagerFactory;
 }

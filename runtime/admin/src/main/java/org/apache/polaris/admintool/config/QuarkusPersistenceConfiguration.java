@@ -16,17 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool;
+package org.apache.polaris.admintool.config;
 
-import java.util.concurrent.Callable;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Spec;
+import io.smallrye.config.ConfigMapping;
 
-public abstract class BaseCommand implements Callable<Integer> {
+@ConfigMapping(prefix = "polaris.persistence")
+public interface QuarkusPersistenceConfiguration {
 
-  public static final int EXIT_CODE_USAGE = 2;
-  public static final int EXIT_CODE_BOOTSTRAP_ERROR = 3;
-  public static final int EXIT_CODE_PURGE_ERROR = 4;
-
-  @Spec protected CommandSpec spec;
+  /**
+   * The type of the persistence to use. Must be a registered {@link
+   * org.apache.polaris.core.persistence.MetaStoreManagerFactory} identifier.
+   */
+  String type();
 }
