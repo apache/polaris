@@ -27,6 +27,7 @@ import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * Helper class for integrating Delta table functionality with Polaris Spark Catalog.
  *

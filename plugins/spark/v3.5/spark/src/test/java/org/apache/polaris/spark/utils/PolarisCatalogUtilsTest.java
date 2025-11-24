@@ -29,65 +29,65 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 public class PolarisCatalogUtilsTest {
 
-    @Test
-    public void testIsTableWithSparkManagedLocationWithNoLocationOrPath() {
-        Map<String, String> properties = ImmutableMap.of("key1", "value1", "key2", "value2");
+  @Test
+  public void testIsTableWithSparkManagedLocationWithNoLocationOrPath() {
+    Map<String, String> properties = ImmutableMap.of("key1", "value1", "key2", "value2");
 
-        assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isTrue();
-    }
+    assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isTrue();
+  }
 
-    @Test
-    public void testIsTableWithSparkManagedLocationWithLocation() {
-        Map<String, String> properties =
-                ImmutableMap.of(TableCatalog.PROP_LOCATION, "s3://bucket/path");
+  @Test
+  public void testIsTableWithSparkManagedLocationWithLocation() {
+    Map<String, String> properties =
+        ImmutableMap.of(TableCatalog.PROP_LOCATION, "s3://bucket/path");
 
-        assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isFalse();
-    }
+    assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isFalse();
+  }
 
-    @Test
-    public void testIsTableWithSparkManagedLocationWithPath() {
-        Map<String, String> properties =
-                ImmutableMap.of(PolarisCatalogUtils.TABLE_PATH_KEY, "s3://bucket/path");
+  @Test
+  public void testIsTableWithSparkManagedLocationWithPath() {
+    Map<String, String> properties =
+        ImmutableMap.of(PolarisCatalogUtils.TABLE_PATH_KEY, "s3://bucket/path");
 
-        assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isFalse();
-    }
+    assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isFalse();
+  }
 
-    @Test
-    public void testIsTableWithSparkManagedLocationWithBothLocationAndPath() {
-        Map<String, String> properties =
-                ImmutableMap.of(
-                        TableCatalog.PROP_LOCATION,
-                        "s3://bucket/location",
-                        PolarisCatalogUtils.TABLE_PATH_KEY,
-                        "s3://bucket/path");
+  @Test
+  public void testIsTableWithSparkManagedLocationWithBothLocationAndPath() {
+    Map<String, String> properties =
+        ImmutableMap.of(
+            TableCatalog.PROP_LOCATION,
+            "s3://bucket/location",
+            PolarisCatalogUtils.TABLE_PATH_KEY,
+            "s3://bucket/path");
 
-        assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isFalse();
-    }
+    assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isFalse();
+  }
 
-    @Test
-    public void testIsTableWithSparkManagedLocationWithEmptyProperties() {
-        Map<String, String> properties = ImmutableMap.of();
+  @Test
+  public void testIsTableWithSparkManagedLocationWithEmptyProperties() {
+    Map<String, String> properties = ImmutableMap.of();
 
-        assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isTrue();
-    }
+    assertThat(PolarisCatalogUtils.isTableWithSparkManagedLocation(properties)).isTrue();
+  }
 
-    @ParameterizedTest
-    @CsvSource({
-            "parquet, false, false",
-            "csv, false, false",
-            "orc, false, false",
-            "json, false, false",
-            "avro, false, false",
-            "delta, false, true",
-            "iceberg, true, false",
-            "DELTA, false, true",
-            "ICEBERG, true, false",
-            "DeLta, false, true",
-            "IceBerg, true, false"
-    })
-    public void testProviderDetectionForOtherFormats(
-            String provider, boolean expectedIceberg, boolean expectedDelta) {
-        assertThat(PolarisCatalogUtils.useIceberg(provider)).isEqualTo(expectedIceberg);
-        assertThat(PolarisCatalogUtils.useDelta(provider)).isEqualTo(expectedDelta);
-    }
+  @ParameterizedTest
+  @CsvSource({
+    "parquet, false, false",
+    "csv, false, false",
+    "orc, false, false",
+    "json, false, false",
+    "avro, false, false",
+    "delta, false, true",
+    "iceberg, true, false",
+    "DELTA, false, true",
+    "ICEBERG, true, false",
+    "DeLta, false, true",
+    "IceBerg, true, false"
+  })
+  public void testProviderDetectionForOtherFormats(
+      String provider, boolean expectedIceberg, boolean expectedDelta) {
+    assertThat(PolarisCatalogUtils.useIceberg(provider)).isEqualTo(expectedIceberg);
+    assertThat(PolarisCatalogUtils.useDelta(provider)).isEqualTo(expectedDelta);
+  }
 }

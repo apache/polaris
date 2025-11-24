@@ -32,84 +32,84 @@ import org.junit.jupiter.api.Test;
 
 public class DeltaHelperTest {
 
-    @Test
-    public void testLoadDeltaCatalogWithNoopDeltaCatalog() {
-        CaseInsensitiveStringMap options =
-                new CaseInsensitiveStringMap(
-                        ImmutableMap.of(
-                                DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog"));
-        DeltaHelper helper = new DeltaHelper(options);
-        PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
+  @Test
+  public void testLoadDeltaCatalogWithNoopDeltaCatalog() {
+    CaseInsensitiveStringMap options =
+        new CaseInsensitiveStringMap(
+            ImmutableMap.of(
+                DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog"));
+    DeltaHelper helper = new DeltaHelper(options);
+    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 
-        TableCatalog deltaCatalog = helper.loadDeltaCatalog(polarisSparkCatalog);
+    TableCatalog deltaCatalog = helper.loadDeltaCatalog(polarisSparkCatalog);
 
-        assertThat(deltaCatalog).isNotNull();
-        assertThat(deltaCatalog).isInstanceOf(NoopDeltaCatalog.class);
-        assertThat(deltaCatalog).isInstanceOf(DelegatingCatalogExtension.class);
-    }
+    assertThat(deltaCatalog).isNotNull();
+    assertThat(deltaCatalog).isInstanceOf(NoopDeltaCatalog.class);
+    assertThat(deltaCatalog).isInstanceOf(DelegatingCatalogExtension.class);
+  }
 
-    @Test
-    public void testLoadDeltaCatalogCachesInstance() {
-        CaseInsensitiveStringMap options =
-                new CaseInsensitiveStringMap(
-                        ImmutableMap.of(
-                                DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog"));
-        DeltaHelper helper = new DeltaHelper(options);
-        PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
+  @Test
+  public void testLoadDeltaCatalogCachesInstance() {
+    CaseInsensitiveStringMap options =
+        new CaseInsensitiveStringMap(
+            ImmutableMap.of(
+                DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog"));
+    DeltaHelper helper = new DeltaHelper(options);
+    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 
-        TableCatalog deltaCatalog1 = helper.loadDeltaCatalog(polarisSparkCatalog);
-        TableCatalog deltaCatalog2 = helper.loadDeltaCatalog(polarisSparkCatalog);
+    TableCatalog deltaCatalog1 = helper.loadDeltaCatalog(polarisSparkCatalog);
+    TableCatalog deltaCatalog2 = helper.loadDeltaCatalog(polarisSparkCatalog);
 
-        // Should return the same cached instance
-        assertThat(deltaCatalog1).isSameAs(deltaCatalog2);
-    }
+    // Should return the same cached instance
+    assertThat(deltaCatalog1).isSameAs(deltaCatalog2);
+  }
 
-    @Test
-    public void testLoadDeltaCatalogWithNonExistentClass() {
-        CaseInsensitiveStringMap options =
-                new CaseInsensitiveStringMap(
-                        ImmutableMap.of(
-                                DeltaHelper.DELTA_CATALOG_IMPL_KEY, "com.example.NonExistentDeltaCatalog"));
-        DeltaHelper helper = new DeltaHelper(options);
-        PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
+  @Test
+  public void testLoadDeltaCatalogWithNonExistentClass() {
+    CaseInsensitiveStringMap options =
+        new CaseInsensitiveStringMap(
+            ImmutableMap.of(
+                DeltaHelper.DELTA_CATALOG_IMPL_KEY, "com.example.NonExistentDeltaCatalog"));
+    DeltaHelper helper = new DeltaHelper(options);
+    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 
-        assertThatThrownBy(() -> helper.loadDeltaCatalog(polarisSparkCatalog))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Cannot initialize Delta Catalog")
-                .hasMessageContaining("com.example.NonExistentDeltaCatalog");
-    }
+    assertThatThrownBy(() -> helper.loadDeltaCatalog(polarisSparkCatalog))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Cannot initialize Delta Catalog")
+        .hasMessageContaining("com.example.NonExistentDeltaCatalog");
+  }
 
-    @Test
-    public void testLoadDeltaCatalogSetsIsUnityCatalogField() throws Exception {
-        CaseInsensitiveStringMap options =
-                new CaseInsensitiveStringMap(
-                        ImmutableMap.of(
-                                DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog"));
-        DeltaHelper helper = new DeltaHelper(options);
-        PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
+  @Test
+  public void testLoadDeltaCatalogSetsIsUnityCatalogField() throws Exception {
+    CaseInsensitiveStringMap options =
+        new CaseInsensitiveStringMap(
+            ImmutableMap.of(
+                DeltaHelper.DELTA_CATALOG_IMPL_KEY, "org.apache.polaris.spark.NoopDeltaCatalog"));
+    DeltaHelper helper = new DeltaHelper(options);
+    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 
-        TableCatalog deltaCatalog = helper.loadDeltaCatalog(polarisSparkCatalog);
+    TableCatalog deltaCatalog = helper.loadDeltaCatalog(polarisSparkCatalog);
 
-        // Verify that the isUnityCatalog field is set to true using reflection
-        java.lang.reflect.Field field = deltaCatalog.getClass().getDeclaredField("isUnityCatalog");
-        field.setAccessible(true);
-        boolean isUnityCatalog = (boolean) field.get(deltaCatalog);
+    // Verify that the isUnityCatalog field is set to true using reflection
+    java.lang.reflect.Field field = deltaCatalog.getClass().getDeclaredField("isUnityCatalog");
+    field.setAccessible(true);
+    boolean isUnityCatalog = (boolean) field.get(deltaCatalog);
 
-        assertThat(isUnityCatalog).isTrue();
-    }
+    assertThat(isUnityCatalog).isTrue();
+  }
 
-    @Test
-    public void testLoadDeltaCatalogWithCaseInsensitiveOptions() {
-        // Test that options are case-insensitive
-        CaseInsensitiveStringMap options =
-                new CaseInsensitiveStringMap(
-                        ImmutableMap.of("DELTA-CATALOG-IMPL", "org.apache.polaris.spark.NoopDeltaCatalog"));
-        DeltaHelper helper = new DeltaHelper(options);
-        PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
+  @Test
+  public void testLoadDeltaCatalogWithCaseInsensitiveOptions() {
+    // Test that options are case-insensitive
+    CaseInsensitiveStringMap options =
+        new CaseInsensitiveStringMap(
+            ImmutableMap.of("DELTA-CATALOG-IMPL", "org.apache.polaris.spark.NoopDeltaCatalog"));
+    DeltaHelper helper = new DeltaHelper(options);
+    PolarisSparkCatalog polarisSparkCatalog = mock(PolarisSparkCatalog.class);
 
-        TableCatalog deltaCatalog = helper.loadDeltaCatalog(polarisSparkCatalog);
+    TableCatalog deltaCatalog = helper.loadDeltaCatalog(polarisSparkCatalog);
 
-        assertThat(deltaCatalog).isNotNull();
-        assertThat(deltaCatalog).isInstanceOf(NoopDeltaCatalog.class);
-    }
+    assertThat(deltaCatalog).isNotNull();
+    assertThat(deltaCatalog).isInstanceOf(NoopDeltaCatalog.class);
+  }
 }
