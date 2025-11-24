@@ -984,12 +984,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       // Create a fake IcebergTableLikeEntity to check for overlap, since no real entity
       // has been created yet.
+      var lastNamespace = resolvedNamespace.getLast();
       IcebergTableLikeEntity virtualEntity =
           IcebergTableLikeEntity.of(
               new PolarisEntity.Builder()
                   .setType(PolarisEntityType.TABLE_LIKE)
                   .setSubType(PolarisEntitySubType.ICEBERG_TABLE)
-                  .setParentId(resolvedNamespace.getLast().getId())
+                  .setParentId(lastNamespace.getId())
+                  .setCatalogId(lastNamespace.getCatalogId())
                   .setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location))
                   .build());
 
