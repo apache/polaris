@@ -64,6 +64,7 @@ dependencies {
     api(project(":polaris-persistence-nosql-benchmark"))
     api(project(":polaris-persistence-nosql-correctness"))
     api(project(":polaris-persistence-nosql-cdi-common"))
+    api(project(":polaris-persistence-nosql-cdi-quarkus-distcache"))
     api(project(":polaris-persistence-nosql-cdi-weld"))
     api(project(":polaris-persistence-nosql-standalone"))
     api(project(":polaris-persistence-nosql-testextension"))
