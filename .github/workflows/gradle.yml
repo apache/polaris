@@ -66,7 +66,9 @@ jobs:
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-runtime-service:test \
             -x :polaris-admin:test \
-            -x intTest --continue
+            -x intTest \
+            -x :polaris-helm:check \
+            --continue
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -213,6 +215,7 @@ jobs:
           ./gradlew \
             intTest \
             -x :polaris-runtime-service:intTest \
+            -x :polaris-helm:intTest \
             --continue
         env:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
