@@ -31,8 +31,8 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.Set;
+import org.apache.polaris.core.auth.PolarisCredential;
 import org.apache.polaris.service.auth.AuthenticatingAugmentor;
-import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.external.mapping.PrincipalMapper;
 import org.apache.polaris.service.auth.external.mapping.PrincipalRolesMapper;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
@@ -90,7 +90,12 @@ public class OidcPolarisCredentialAugmentor implements SecurityIdentityAugmentor
         principalMapper.mapPrincipalId(identity).stream().boxed().findFirst().orElse(null);
     String principalName = principalMapper.mapPrincipalName(identity).orElse(null);
     Set<String> principalRoles = rolesMapper.mapPrincipalRoles(identity);
-    PolarisCredential credential = PolarisCredential.of(principalId, principalName, principalRoles);
+    String token = null;
+    if (identity.getPrincipal() instanceof JsonWebToken jwt) {
+      token = jwt.getRawToken();
+    }
+    PolarisCredential credential =
+        PolarisCredential.of(token, principalId, principalName, principalRoles);
     // Note: we don't change the identity roles here, this will be done later on
     // by the AuthenticatingAugmentor, which will also validate them.
     return QuarkusSecurityIdentity.builder(identity).addCredential(credential).build();

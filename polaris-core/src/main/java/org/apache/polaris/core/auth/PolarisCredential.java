@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.core.auth;
 
 import io.quarkus.security.credential.Credential;
 import jakarta.annotation.Nullable;
@@ -31,13 +31,21 @@ import org.apache.polaris.immutables.PolarisImmutable;
 public interface PolarisCredential extends Credential {
 
   static PolarisCredential of(
-      @Nullable Long principalId, @Nullable String principalName, Set<String> principalRoles) {
+      @Nullable String token,
+      @Nullable Long principalId,
+      @Nullable String principalName,
+      Set<String> principalRoles) {
     return ImmutablePolarisCredential.builder()
+        .token(token)
         .principalId(principalId)
         .principalName(principalName)
         .principalRoles(principalRoles)
         .build();
   }
+
+  /** the JWT token used to authenticate the user to Polaris */
+  @Nullable
+  String getToken();
 
   /** The principal id, or null if unknown. Used for principal lookups by id. */
   @Nullable

@@ -22,13 +22,12 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.SecurityContext;
-
 import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
@@ -55,7 +54,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
-  @Context SecurityContext securityContext;
+  @Context SecurityIdentity securityIdentity;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
@@ -93,7 +92,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                     (AwsStorageConfigurationInfo) polarisStorageConfigurationInfo,
                     stsClientProvider,
                     stsCredentials,
-                    securityContext);
+                    securityIdentity);
         break;
       case GCS:
         storageIntegration =

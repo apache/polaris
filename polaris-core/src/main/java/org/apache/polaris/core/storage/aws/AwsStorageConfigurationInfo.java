@@ -64,7 +64,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   public abstract String getRoleARN();
 
   @Nullable
-  public abstract boolean getUserTokenSTS();
+  public abstract Boolean getUserTokenSTS();
 
   /** AWS external ID, optional */
   @Nullable

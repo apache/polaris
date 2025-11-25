@@ -18,6 +18,7 @@
  */
 
 plugins {
+  alias(libs.plugins.quarkus)
   id("polaris-client")
   id("org.kordamp.gradle.jandex")
 }
@@ -51,6 +52,9 @@ dependencies {
   implementation(libs.jakarta.validation.api)
   implementation(libs.jakarta.ws.rs.api)
   implementation(libs.smallrye.common.annotation)
+
+  implementation(platform(libs.quarkus.bom))
+  implementation("io.quarkus:quarkus-security")
 
   implementation("org.apache.iceberg:iceberg-aws")
   implementation(platform(libs.awssdk.bom))

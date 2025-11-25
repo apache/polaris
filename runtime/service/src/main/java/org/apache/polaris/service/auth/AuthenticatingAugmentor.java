@@ -27,6 +27,7 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.iceberg.exceptions.ServiceFailureException;
+import org.apache.polaris.core.auth.PolarisCredential;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 
 /**

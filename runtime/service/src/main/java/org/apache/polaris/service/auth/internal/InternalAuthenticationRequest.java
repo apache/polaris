@@ -20,7 +20,7 @@
 package org.apache.polaris.service.auth.internal;
 
 import io.quarkus.security.identity.request.BaseAuthenticationRequest;
-import org.apache.polaris.service.auth.PolarisCredential;
+import org.apache.polaris.core.auth.PolarisCredential;
 
 final class InternalAuthenticationRequest extends BaseAuthenticationRequest {
 
