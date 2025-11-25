@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.core.storage.azure;
 
-import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_DELAY_SECONDS;
+import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_DELAY_MILLIS;
 import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_JITTER_MILLIS;
 import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_COUNT;
-import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_TIMEOUT_SECONDS;
+import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_TIMEOUT_MILLIS;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import com.azure.core.credential.AccessToken;
@@ -327,9 +327,9 @@ public class AzureCredentialsStorageIntegration
    * <p>This method implements a defensive strategy against slow or failing cloud provider requests:
    *
    * <ul>
-   *   <li>Per-attempt timeout (configurable via CLOUD_API_TIMEOUT_SECONDS, default 15s)
+   *   <li>Per-attempt timeout (configurable via CLOUD_API_TIMEOUT_MILLIS, default 15000ms)
    *   <li>Exponential backoff retry (configurable count and initial delay via CLOUD_API_RETRY_COUNT
-   *       and CLOUD_API_RETRY_DELAY_SECONDS, defaults: 3 attempts starting at 2s)
+   *       and CLOUD_API_RETRY_DELAY_MILLIS, defaults: 3 attempts starting at 2000ms)
    *   <li>Jitter to prevent thundering herd (configurable via CLOUD_API_RETRY_JITTER_MILLIS, default 500ms)
    * </ul>
    *
@@ -339,9 +339,9 @@ public class AzureCredentialsStorageIntegration
    * @throws RuntimeException if token fetch fails after all retries or times out
    */
   private AccessToken getAccessToken(RealmConfig realmConfig, String tenantId) {
-    int timeoutSeconds = realmConfig.getConfig(CLOUD_API_TIMEOUT_SECONDS);
+    int timeoutMillis = realmConfig.getConfig(CLOUD_API_TIMEOUT_MILLIS);
     int retryCount = realmConfig.getConfig(CLOUD_API_RETRY_COUNT);
-    int initialDelaySeconds = realmConfig.getConfig(CLOUD_API_RETRY_DELAY_SECONDS);
+    int initialDelayMillis = realmConfig.getConfig(CLOUD_API_RETRY_DELAY_MILLIS);
     int jitterMillis = realmConfig.getConfig(CLOUD_API_RETRY_JITTER_MILLIS);
     double jitter = jitterMillis / 1000.0; // Convert millis to fraction for jitter factor
 
@@ -349,7 +349,7 @@ public class AzureCredentialsStorageIntegration
     AccessToken accessToken =
         defaultAzureCredential
             .getToken(new TokenRequestContext().addScopes(scope).setTenantId(tenantId))
-            .timeout(Duration.ofSeconds(timeoutSeconds))
+            .timeout(Duration.ofMillis(timeoutMillis))
             .doOnError(
                 error ->
                     LOGGER.warn(
@@ -357,7 +357,7 @@ public class AzureCredentialsStorageIntegration
                         tenantId,
                         error.getMessage()))
             .retryWhen(
-                Retry.backoff(retryCount, Duration.ofSeconds(initialDelaySeconds))
+                Retry.backoff(retryCount, Duration.ofMillis(initialDelayMillis))
                     .jitter(jitter)
                     .filter(this::isRetriableAzureException)
                     .doBeforeRetry(

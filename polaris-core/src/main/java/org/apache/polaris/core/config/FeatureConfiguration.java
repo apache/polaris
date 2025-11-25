@@ -439,15 +439,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Integer> CLOUD_API_TIMEOUT_SECONDS =
+  public static final FeatureConfiguration<Integer> CLOUD_API_TIMEOUT_MILLIS =
       PolarisConfiguration.<Integer>builder()
-          .key("CLOUD_API_TIMEOUT_SECONDS")
+          .key("CLOUD_API_TIMEOUT_MILLIS")
           .description(
-              "Timeout in seconds for cloud provider API requests. "
+              "Timeout in milliseconds for cloud provider API requests. "
                   + "Prevents indefinite blocking when cloud provider endpoints are slow or unresponsive. "
                   + "Used internally by storage integrations for credential vending and other cloud operations. "
                   + "Currently only used by Azure storage integration (not yet implemented for AWS S3 or GCP).")
-          .defaultValue(15)
+          .defaultValue(15000)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> CLOUD_API_RETRY_COUNT =
@@ -460,14 +460,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(3)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Integer> CLOUD_API_RETRY_DELAY_SECONDS =
+  public static final FeatureConfiguration<Integer> CLOUD_API_RETRY_DELAY_MILLIS =
       PolarisConfiguration.<Integer>builder()
-          .key("CLOUD_API_RETRY_DELAY_SECONDS")
+          .key("CLOUD_API_RETRY_DELAY_MILLIS")
           .description(
-              "Initial delay in seconds before first retry for cloud provider API requests. "
+              "Initial delay in milliseconds before first retry for cloud provider API requests. "
                   + "Delay doubles with each retry (exponential backoff). "
                   + "Currently only used by Azure storage integration (not yet implemented for AWS S3 or GCP).")
-          .defaultValue(2)
+          .defaultValue(2000)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> CLOUD_API_RETRY_JITTER_MILLIS =
