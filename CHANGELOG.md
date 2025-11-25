@@ -84,6 +84,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added a finer grained authorization model for UpdateTable requests. Existing privileges continue to work for granting UpdateTable, such as `TABLE_WRITE_PROPERTIES`.
   However, you can now instead grant privileges just for specific operations, such as `TABLE_ADD_SNAPSHOT`
 - Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
