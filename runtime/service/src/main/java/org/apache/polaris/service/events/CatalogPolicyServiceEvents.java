@@ -19,7 +19,6 @@
 
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
 import org.apache.polaris.service.types.AttachPolicyRequest;
 import org.apache.polaris.service.types.CreatePolicyRequest;
 import org.apache.polaris.service.types.DetachPolicyRequest;
@@ -35,7 +34,6 @@ public class CatalogPolicyServiceEvents {
 
   // Policy CRUD Events
   public record BeforeCreatePolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -48,7 +46,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record AfterCreatePolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -61,11 +58,7 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record BeforeListPoliciesEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      String namespace,
-      String policyType)
+      PolarisEventMetadata metadata, String catalogName, String namespace, String policyType)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -74,11 +67,7 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record AfterListPoliciesEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      String namespace,
-      String policyType)
+      PolarisEventMetadata metadata, String catalogName, String namespace, String policyType)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -87,11 +76,7 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record BeforeLoadPolicyEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      String namespace,
-      String policyName)
+      PolarisEventMetadata metadata, String catalogName, String namespace, String policyName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -100,7 +85,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record AfterLoadPolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -113,7 +97,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record BeforeUpdatePolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -127,7 +110,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record AfterUpdatePolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -140,7 +122,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record BeforeDropPolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -154,7 +135,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record AfterDropPolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -169,7 +149,6 @@ public class CatalogPolicyServiceEvents {
 
   // Policy Attachment Events
   public record BeforeAttachPolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -183,7 +162,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record AfterAttachPolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -197,7 +175,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record BeforeDetachPolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -211,7 +188,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record AfterDetachPolicyEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -226,7 +202,6 @@ public class CatalogPolicyServiceEvents {
 
   // Policy Query Events
   public record BeforeGetApplicablePoliciesEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -240,7 +215,6 @@ public class CatalogPolicyServiceEvents {
   }
 
   public record AfterGetApplicablePoliciesEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,

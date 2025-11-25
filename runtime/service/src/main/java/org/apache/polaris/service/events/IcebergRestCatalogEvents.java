@@ -20,7 +20,6 @@
 package org.apache.polaris.service.events;
 
 import java.util.Map;
-import java.util.UUID;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -48,7 +47,6 @@ public class IcebergRestCatalogEvents {
 
   // Namespace Events
   public record BeforeCreateNamespaceEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       CreateNamespaceRequest createNamespaceRequest)
@@ -60,7 +58,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterCreateNamespaceEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -73,8 +70,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeListNamespacesEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String parent)
-      implements PolarisEvent {
+      PolarisEventMetadata metadata, String catalogName, String parent) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.BEFORE_LIST_NAMESPACES;
@@ -82,8 +78,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterListNamespacesEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String parent)
-      implements PolarisEvent {
+      PolarisEventMetadata metadata, String catalogName, String parent) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_LIST_NAMESPACES;
@@ -91,7 +86,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeLoadNamespaceMetadataEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -100,7 +95,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterLoadNamespaceMetadataEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -113,7 +107,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeCheckExistsNamespaceEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -122,7 +116,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterCheckExistsNamespaceEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -131,7 +125,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeDropNamespaceEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -140,8 +134,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterDropNamespaceEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String namespace)
-      implements PolarisEvent {
+      PolarisEventMetadata metadata, String catalogName, String namespace) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_DROP_NAMESPACE;
@@ -149,7 +142,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeUpdateNamespacePropertiesEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -162,7 +154,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterUpdateNamespacePropertiesEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -176,7 +167,6 @@ public class IcebergRestCatalogEvents {
 
   // Table Events
   public record BeforeCreateTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -190,7 +180,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterCreateTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -204,7 +193,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeListTablesEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -213,7 +202,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterListTablesEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -222,7 +211,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeLoadTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -238,7 +226,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterLoadTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -252,7 +239,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeCheckExistsTableEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -261,7 +248,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterCheckExistsTableEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -270,7 +257,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeDropTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -284,7 +270,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterDropTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -298,7 +283,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeRegisterTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -311,7 +295,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterRegisterTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -325,10 +308,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeRenameTableEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      RenameTableRequest renameTableRequest)
+      PolarisEventMetadata metadata, String catalogName, RenameTableRequest renameTableRequest)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -337,10 +317,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterRenameTableEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      RenameTableRequest renameTableRequest)
+      PolarisEventMetadata metadata, String catalogName, RenameTableRequest renameTableRequest)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -349,7 +326,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeUpdateTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -363,7 +339,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterUpdateTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -379,7 +354,6 @@ public class IcebergRestCatalogEvents {
 
   // View Events
   public record BeforeCreateViewEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -392,7 +366,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterCreateViewEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -406,7 +379,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeListViewsEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -415,7 +388,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterListViewsEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -424,7 +397,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeLoadViewEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -433,7 +406,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterLoadViewEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -447,7 +419,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeCheckExistsViewEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -456,7 +428,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterCheckExistsViewEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -465,7 +437,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeDropViewEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -474,7 +446,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterDropViewEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String view)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -483,10 +455,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeRenameViewEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      RenameTableRequest renameTableRequest)
+      PolarisEventMetadata metadata, String catalogName, RenameTableRequest renameTableRequest)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -495,10 +464,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterRenameViewEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      RenameTableRequest renameTableRequest)
+      PolarisEventMetadata metadata, String catalogName, RenameTableRequest renameTableRequest)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -507,7 +473,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeReplaceViewEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -521,7 +486,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterReplaceViewEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -537,7 +501,7 @@ public class IcebergRestCatalogEvents {
 
   // Credential Events
   public record BeforeLoadCredentialsEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -546,7 +510,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterLoadCredentialsEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -556,7 +520,6 @@ public class IcebergRestCatalogEvents {
 
   // Transaction Events
   public record BeforeCommitTransactionEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       CommitTransactionRequest commitTransactionRequest)
@@ -569,7 +532,6 @@ public class IcebergRestCatalogEvents {
 
   // TODO: Add all PolarisEntities that were modified with this transaction.
   public record AfterCommitTransactionEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       CommitTransactionRequest commitTransactionRequest)
@@ -582,7 +544,6 @@ public class IcebergRestCatalogEvents {
 
   // Notification Events
   public record BeforeSendNotificationEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
@@ -597,7 +558,7 @@ public class IcebergRestCatalogEvents {
 
   // TODO: Add result once SendNotification API changes are confirmed to return the result.
   public record AfterSendNotificationEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
+      PolarisEventMetadata metadata, String catalogName, Namespace namespace, String table)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -606,7 +567,7 @@ public class IcebergRestCatalogEvents {
   }
 
   // Configuration Events
-  public record BeforeGetConfigEvent(UUID id, PolarisEventMetadata metadata, String warehouse)
+  public record BeforeGetConfigEvent(PolarisEventMetadata metadata, String warehouse)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -614,8 +575,7 @@ public class IcebergRestCatalogEvents {
     }
   }
 
-  public record AfterGetConfigEvent(
-      UUID id, PolarisEventMetadata metadata, ConfigResponse configResponse)
+  public record AfterGetConfigEvent(PolarisEventMetadata metadata, ConfigResponse configResponse)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -625,7 +585,6 @@ public class IcebergRestCatalogEvents {
 
   // Legacy events
   public record BeforeCommitTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       TableIdentifier identifier,
@@ -639,7 +598,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterCommitTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       TableIdentifier identifier,
@@ -653,7 +611,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeCommitViewEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       TableIdentifier identifier,
@@ -667,7 +624,6 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterCommitViewEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       TableIdentifier identifier,
@@ -681,7 +637,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeRefreshTableEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, TableIdentifier tableIdentifier)
+      PolarisEventMetadata metadata, String catalogName, TableIdentifier tableIdentifier)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -690,7 +646,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterRefreshTableEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, TableIdentifier tableIdentifier)
+      PolarisEventMetadata metadata, String catalogName, TableIdentifier tableIdentifier)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -699,7 +655,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record BeforeRefreshViewEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, TableIdentifier viewIdentifier)
+      PolarisEventMetadata metadata, String catalogName, TableIdentifier viewIdentifier)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -708,7 +664,7 @@ public class IcebergRestCatalogEvents {
   }
 
   public record AfterRefreshViewEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, TableIdentifier viewIdentifier)
+      PolarisEventMetadata metadata, String catalogName, TableIdentifier viewIdentifier)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {

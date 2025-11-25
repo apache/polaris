@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
-
 /**
  * Emitted after an attempt of an async task, such as manifest file cleanup, finishes.
  *
@@ -29,7 +27,7 @@ import java.util.UUID;
  * @param success Whether the attempt succeeded.
  */
 public record AfterAttemptTaskEvent(
-    UUID id, PolarisEventMetadata metadata, long taskEntityId, int attempt, boolean success)
+    PolarisEventMetadata metadata, long taskEntityId, int attempt, boolean success)
     implements PolarisEvent {
   @Override
   public PolarisEventType type() {

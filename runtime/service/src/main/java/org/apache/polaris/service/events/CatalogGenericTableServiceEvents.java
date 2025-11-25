@@ -19,13 +19,11 @@
 
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
 import org.apache.polaris.service.types.CreateGenericTableRequest;
 import org.apache.polaris.service.types.GenericTable;
 
 public class CatalogGenericTableServiceEvents {
   public record BeforeCreateGenericTableEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
@@ -38,11 +36,7 @@ public class CatalogGenericTableServiceEvents {
   }
 
   public record AfterCreateGenericTableEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      String namespace,
-      GenericTable table)
+      PolarisEventMetadata metadata, String catalogName, String namespace, GenericTable table)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -51,11 +45,7 @@ public class CatalogGenericTableServiceEvents {
   }
 
   public record BeforeDropGenericTableEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      String namespace,
-      String tableName)
+      PolarisEventMetadata metadata, String catalogName, String namespace, String tableName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -64,11 +54,7 @@ public class CatalogGenericTableServiceEvents {
   }
 
   public record AfterDropGenericTableEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      String namespace,
-      String tableName)
+      PolarisEventMetadata metadata, String catalogName, String namespace, String tableName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -77,8 +63,7 @@ public class CatalogGenericTableServiceEvents {
   }
 
   public record BeforeListGenericTablesEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String namespace)
-      implements PolarisEvent {
+      PolarisEventMetadata metadata, String catalogName, String namespace) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.BEFORE_LIST_GENERIC_TABLES;
@@ -86,8 +71,7 @@ public class CatalogGenericTableServiceEvents {
   }
 
   public record AfterListGenericTablesEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String namespace)
-      implements PolarisEvent {
+      PolarisEventMetadata metadata, String catalogName, String namespace) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_LIST_GENERIC_TABLES;
@@ -95,11 +79,7 @@ public class CatalogGenericTableServiceEvents {
   }
 
   public record BeforeLoadGenericTableEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      String namespace,
-      String tableName)
+      PolarisEventMetadata metadata, String catalogName, String namespace, String tableName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -108,11 +88,7 @@ public class CatalogGenericTableServiceEvents {
   }
 
   public record AfterLoadGenericTableEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      String namespace,
-      GenericTable table)
+      PolarisEventMetadata metadata, String catalogName, String namespace, GenericTable table)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {

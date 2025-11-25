@@ -90,7 +90,6 @@ import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeReplaceV
 import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeSendNotificationEvent;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeUpdateNamespacePropertiesEvent;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents.BeforeUpdateTableEvent;
-import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.types.CommitTableRequest;
@@ -116,16 +115,12 @@ public class IcebergRestCatalogEventServiceDelegator
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeCreateNamespace(
         new BeforeCreateNamespaceEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            createNamespaceRequest));
+            eventMetadataFactory.create(), catalogName, createNamespaceRequest));
     Response resp =
         delegate.createNamespace(prefix, createNamespaceRequest, realmContext, securityContext);
     CreateNamespaceResponse createNamespaceResponse = (CreateNamespaceResponse) resp.getEntity();
     polarisEventListener.onAfterCreateNamespace(
         new AfterCreateNamespaceEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             createNamespaceResponse.namespace(),
@@ -143,13 +138,11 @@ public class IcebergRestCatalogEventServiceDelegator
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeListNamespaces(
-        new BeforeListNamespacesEvent(
-            PolarisEvent.createEventId(), eventMetadataFactory.create(), catalogName, parent));
+        new BeforeListNamespacesEvent(eventMetadataFactory.create(), catalogName, parent));
     Response resp =
         delegate.listNamespaces(prefix, pageToken, pageSize, parent, realmContext, securityContext);
     polarisEventListener.onAfterListNamespaces(
-        new AfterListNamespacesEvent(
-            PolarisEvent.createEventId(), eventMetadataFactory.create(), catalogName, parent));
+        new AfterListNamespacesEvent(eventMetadataFactory.create(), catalogName, parent));
     return resp;
   }
 
@@ -159,16 +152,12 @@ public class IcebergRestCatalogEventServiceDelegator
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeLoadNamespaceMetadata(
         new BeforeLoadNamespaceMetadataEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            decodeNamespace(namespace)));
+            eventMetadataFactory.create(), catalogName, decodeNamespace(namespace)));
     Response resp =
         delegate.loadNamespaceMetadata(prefix, namespace, realmContext, securityContext);
     GetNamespaceResponse getNamespaceResponse = (GetNamespaceResponse) resp.getEntity();
     polarisEventListener.onAfterLoadNamespaceMetadata(
         new AfterLoadNamespaceMetadataEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             getNamespaceResponse.namespace(),
@@ -183,17 +172,11 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeCheckExistsNamespace(
         new BeforeCheckExistsNamespaceEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj));
+            eventMetadataFactory.create(), catalogName, namespaceObj));
     Response resp = delegate.namespaceExists(prefix, namespace, realmContext, securityContext);
     polarisEventListener.onAfterCheckExistsNamespace(
         new AfterCheckExistsNamespaceEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj));
+            eventMetadataFactory.create(), catalogName, namespaceObj));
     return resp;
   }
 
@@ -203,14 +186,10 @@ public class IcebergRestCatalogEventServiceDelegator
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeDropNamespace(
         new BeforeDropNamespaceEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            decodeNamespace(namespace)));
+            eventMetadataFactory.create(), catalogName, decodeNamespace(namespace)));
     Response resp = delegate.dropNamespace(prefix, namespace, realmContext, securityContext);
     polarisEventListener.onAfterDropNamespace(
-        new AfterDropNamespaceEvent(
-            PolarisEvent.createEventId(), eventMetadataFactory.create(), catalogName, namespace));
+        new AfterDropNamespaceEvent(eventMetadataFactory.create(), catalogName, namespace));
     return resp;
   }
 
@@ -225,7 +204,6 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeUpdateNamespaceProperties(
         new BeforeUpdateNamespacePropertiesEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -235,7 +213,6 @@ public class IcebergRestCatalogEventServiceDelegator
             prefix, namespace, updateNamespacePropertiesRequest, realmContext, securityContext);
     polarisEventListener.onAfterUpdateNamespaceProperties(
         new AfterUpdateNamespacePropertiesEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -255,7 +232,6 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeCreateTable(
         new BeforeCreateTableEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -272,7 +248,6 @@ public class IcebergRestCatalogEventServiceDelegator
     if (!createTableRequest.stageCreate()) {
       polarisEventListener.onAfterCreateTable(
           new AfterCreateTableEvent(
-              PolarisEvent.createEventId(),
               eventMetadataFactory.create(),
               catalogName,
               namespaceObj,
@@ -293,19 +268,11 @@ public class IcebergRestCatalogEventServiceDelegator
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeListTables(
-        new BeforeListTablesEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj));
+        new BeforeListTablesEvent(eventMetadataFactory.create(), catalogName, namespaceObj));
     Response resp =
         delegate.listTables(prefix, namespace, pageToken, pageSize, realmContext, securityContext);
     polarisEventListener.onAfterListTables(
-        new AfterListTablesEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj));
+        new AfterListTablesEvent(eventMetadataFactory.create(), catalogName, namespaceObj));
     return resp;
   }
 
@@ -323,7 +290,6 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeLoadTable(
         new BeforeLoadTableEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -343,7 +309,6 @@ public class IcebergRestCatalogEventServiceDelegator
             securityContext);
     polarisEventListener.onAfterLoadTable(
         new AfterLoadTableEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -363,19 +328,11 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeCheckExistsTable(
         new BeforeCheckExistsTableEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            table));
+            eventMetadataFactory.create(), catalogName, namespaceObj, table));
     Response resp = delegate.tableExists(prefix, namespace, table, realmContext, securityContext);
     polarisEventListener.onAfterCheckExistsTable(
         new AfterCheckExistsTableEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            table));
+            eventMetadataFactory.create(), catalogName, namespaceObj, table));
     return resp;
   }
 
@@ -391,22 +348,12 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeDropTable(
         new BeforeDropTableEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            table,
-            purgeRequested));
+            eventMetadataFactory.create(), catalogName, namespaceObj, table, purgeRequested));
     Response resp =
         delegate.dropTable(prefix, namespace, table, purgeRequested, realmContext, securityContext);
     polarisEventListener.onAfterDropTable(
         new AfterDropTableEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            table,
-            purgeRequested));
+            eventMetadataFactory.create(), catalogName, namespaceObj, table, purgeRequested));
     return resp;
   }
 
@@ -421,17 +368,12 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeRegisterTable(
         new BeforeRegisterTableEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            registerTableRequest));
+            eventMetadataFactory.create(), catalogName, namespaceObj, registerTableRequest));
     Response resp =
         delegate.registerTable(
             prefix, namespace, registerTableRequest, realmContext, securityContext);
     polarisEventListener.onAfterRegisterTable(
         new AfterRegisterTableEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -448,18 +390,10 @@ public class IcebergRestCatalogEventServiceDelegator
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeRenameTable(
-        new BeforeRenameTableEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            renameTableRequest));
+        new BeforeRenameTableEvent(eventMetadataFactory.create(), catalogName, renameTableRequest));
     Response resp = delegate.renameTable(prefix, renameTableRequest, realmContext, securityContext);
     polarisEventListener.onAfterRenameTable(
-        new AfterRenameTableEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            renameTableRequest));
+        new AfterRenameTableEvent(eventMetadataFactory.create(), catalogName, renameTableRequest));
     return resp;
   }
 
@@ -475,18 +409,12 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeUpdateTable(
         new BeforeUpdateTableEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            table,
-            commitTableRequest));
+            eventMetadataFactory.create(), catalogName, namespaceObj, table, commitTableRequest));
     Response resp =
         delegate.updateTable(
             prefix, namespace, table, commitTableRequest, realmContext, securityContext);
     polarisEventListener.onAfterUpdateTable(
         new AfterUpdateTableEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -507,16 +435,11 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeCreateView(
         new BeforeCreateViewEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            createViewRequest));
+            eventMetadataFactory.create(), catalogName, namespaceObj, createViewRequest));
     Response resp =
         delegate.createView(prefix, namespace, createViewRequest, realmContext, securityContext);
     polarisEventListener.onAfterCreateView(
         new AfterCreateViewEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -536,19 +459,11 @@ public class IcebergRestCatalogEventServiceDelegator
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeListViews(
-        new BeforeListViewsEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj));
+        new BeforeListViewsEvent(eventMetadataFactory.create(), catalogName, namespaceObj));
     Response resp =
         delegate.listViews(prefix, namespace, pageToken, pageSize, realmContext, securityContext);
     polarisEventListener.onAfterListViews(
-        new AfterListViewsEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj));
+        new AfterListViewsEvent(eventMetadataFactory.create(), catalogName, namespaceObj));
     return resp;
   }
 
@@ -563,20 +478,12 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeLoadCredentials(
         new BeforeLoadCredentialsEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            table));
+            eventMetadataFactory.create(), catalogName, namespaceObj, table));
     Response resp =
         delegate.loadCredentials(prefix, namespace, table, realmContext, securityContext);
     polarisEventListener.onAfterLoadCredentials(
         new AfterLoadCredentialsEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            table));
+            eventMetadataFactory.create(), catalogName, namespaceObj, table));
     return resp;
   }
 
@@ -590,16 +497,10 @@ public class IcebergRestCatalogEventServiceDelegator
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeLoadView(
-        new BeforeLoadViewEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            view));
+        new BeforeLoadViewEvent(eventMetadataFactory.create(), catalogName, namespaceObj, view));
     Response resp = delegate.loadView(prefix, namespace, view, realmContext, securityContext);
     polarisEventListener.onAfterLoadView(
         new AfterLoadViewEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -619,19 +520,11 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeCheckExistsView(
         new BeforeCheckExistsViewEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            view));
+            eventMetadataFactory.create(), catalogName, namespaceObj, view));
     Response resp = delegate.viewExists(prefix, namespace, view, realmContext, securityContext);
     polarisEventListener.onAfterCheckExistsView(
         new AfterCheckExistsViewEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            view));
+            eventMetadataFactory.create(), catalogName, namespaceObj, view));
     return resp;
   }
 
@@ -645,20 +538,10 @@ public class IcebergRestCatalogEventServiceDelegator
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeDropView(
-        new BeforeDropViewEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            view));
+        new BeforeDropViewEvent(eventMetadataFactory.create(), catalogName, namespaceObj, view));
     Response resp = delegate.dropView(prefix, namespace, view, realmContext, securityContext);
     polarisEventListener.onAfterDropView(
-        new AfterDropViewEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            view));
+        new AfterDropViewEvent(eventMetadataFactory.create(), catalogName, namespaceObj, view));
     return resp;
   }
 
@@ -670,18 +553,10 @@ public class IcebergRestCatalogEventServiceDelegator
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeRenameView(
-        new BeforeRenameViewEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            renameTableRequest));
+        new BeforeRenameViewEvent(eventMetadataFactory.create(), catalogName, renameTableRequest));
     Response resp = delegate.renameView(prefix, renameTableRequest, realmContext, securityContext);
     polarisEventListener.onAfterRenameView(
-        new AfterRenameViewEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            renameTableRequest));
+        new AfterRenameViewEvent(eventMetadataFactory.create(), catalogName, renameTableRequest));
     return resp;
   }
 
@@ -697,18 +572,12 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeReplaceView(
         new BeforeReplaceViewEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            view,
-            commitViewRequest));
+            eventMetadataFactory.create(), catalogName, namespaceObj, view, commitViewRequest));
     Response resp =
         delegate.replaceView(
             prefix, namespace, view, commitViewRequest, realmContext, securityContext);
     polarisEventListener.onAfterReplaceView(
         new AfterReplaceViewEvent(
-            PolarisEvent.createEventId(),
             eventMetadataFactory.create(),
             catalogName,
             namespaceObj,
@@ -727,18 +596,12 @@ public class IcebergRestCatalogEventServiceDelegator
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onBeforeCommitTransaction(
         new IcebergRestCatalogEvents.BeforeCommitTransactionEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            commitTransactionRequest));
+            eventMetadataFactory.create(), catalogName, commitTransactionRequest));
     Response resp =
         delegate.commitTransaction(prefix, commitTransactionRequest, realmContext, securityContext);
     polarisEventListener.onAfterCommitTransaction(
         new IcebergRestCatalogEvents.AfterCommitTransactionEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            commitTransactionRequest));
+            eventMetadataFactory.create(), catalogName, commitTransactionRequest));
     return resp;
   }
 
@@ -767,22 +630,13 @@ public class IcebergRestCatalogEventServiceDelegator
     Namespace namespaceObj = decodeNamespace(namespace);
     polarisEventListener.onBeforeSendNotification(
         new BeforeSendNotificationEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            table,
-            notificationRequest));
+            eventMetadataFactory.create(), catalogName, namespaceObj, table, notificationRequest));
     Response resp =
         delegate.sendNotification(
             prefix, namespace, table, notificationRequest, realmContext, securityContext);
     polarisEventListener.onAfterSendNotification(
         new AfterSendNotificationEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.create(),
-            catalogName,
-            namespaceObj,
-            table));
+            eventMetadataFactory.create(), catalogName, namespaceObj, table));
     return resp;
   }
 }

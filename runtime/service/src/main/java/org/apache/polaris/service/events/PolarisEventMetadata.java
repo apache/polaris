@@ -21,6 +21,7 @@ package org.apache.polaris.service.events;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
@@ -31,6 +32,11 @@ public interface PolarisEventMetadata {
 
   static ImmutablePolarisEventMetadata.Builder builder() {
     return ImmutablePolarisEventMetadata.builder();
+  }
+
+  /** The unique ID of the event. */
+  default UUID eventId() {
+    return UUID.randomUUID();
   }
 
   /** The timestamp when the event was emitted. */

@@ -19,7 +19,6 @@
 
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogRole;
@@ -31,7 +30,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 
 public class CatalogsServiceEvents {
 
-  public record BeforeCreateCatalogEvent(UUID id, PolarisEventMetadata metadata, String catalogName)
+  public record BeforeCreateCatalogEvent(PolarisEventMetadata metadata, String catalogName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -39,7 +38,7 @@ public class CatalogsServiceEvents {
     }
   }
 
-  public record AfterCreateCatalogEvent(UUID id, PolarisEventMetadata metadata, Catalog catalog)
+  public record AfterCreateCatalogEvent(PolarisEventMetadata metadata, Catalog catalog)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -47,7 +46,7 @@ public class CatalogsServiceEvents {
     }
   }
 
-  public record BeforeDeleteCatalogEvent(UUID id, PolarisEventMetadata metadata, String catalogName)
+  public record BeforeDeleteCatalogEvent(PolarisEventMetadata metadata, String catalogName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -55,7 +54,7 @@ public class CatalogsServiceEvents {
     }
   }
 
-  public record AfterDeleteCatalogEvent(UUID id, PolarisEventMetadata metadata, String catalogName)
+  public record AfterDeleteCatalogEvent(PolarisEventMetadata metadata, String catalogName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -63,7 +62,7 @@ public class CatalogsServiceEvents {
     }
   }
 
-  public record BeforeGetCatalogEvent(UUID id, PolarisEventMetadata metadata, String catalogName)
+  public record BeforeGetCatalogEvent(PolarisEventMetadata metadata, String catalogName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -71,7 +70,7 @@ public class CatalogsServiceEvents {
     }
   }
 
-  public record AfterGetCatalogEvent(UUID id, PolarisEventMetadata metadata, Catalog catalog)
+  public record AfterGetCatalogEvent(PolarisEventMetadata metadata, Catalog catalog)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -80,10 +79,7 @@ public class CatalogsServiceEvents {
   }
 
   public record BeforeUpdateCatalogEvent(
-      UUID id,
-      PolarisEventMetadata metadata,
-      String catalogName,
-      UpdateCatalogRequest updateRequest)
+      PolarisEventMetadata metadata, String catalogName, UpdateCatalogRequest updateRequest)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -91,7 +87,7 @@ public class CatalogsServiceEvents {
     }
   }
 
-  public record AfterUpdateCatalogEvent(UUID id, PolarisEventMetadata metadata, Catalog catalog)
+  public record AfterUpdateCatalogEvent(PolarisEventMetadata metadata, Catalog catalog)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -99,16 +95,14 @@ public class CatalogsServiceEvents {
     }
   }
 
-  public record BeforeListCatalogsEvent(UUID id, PolarisEventMetadata metadata)
-      implements PolarisEvent {
+  public record BeforeListCatalogsEvent(PolarisEventMetadata metadata) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.BEFORE_LIST_CATALOGS;
     }
   }
 
-  public record AfterListCatalogsEvent(UUID id, PolarisEventMetadata metadata)
-      implements PolarisEvent {
+  public record AfterListCatalogsEvent(PolarisEventMetadata metadata) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_LIST_CATALOGS;
@@ -116,7 +110,7 @@ public class CatalogsServiceEvents {
   }
 
   public record BeforeCreateCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -125,7 +119,7 @@ public class CatalogsServiceEvents {
   }
 
   public record AfterCreateCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, CatalogRole catalogRole)
+      PolarisEventMetadata metadata, String catalogName, CatalogRole catalogRole)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -134,7 +128,7 @@ public class CatalogsServiceEvents {
   }
 
   public record BeforeDeleteCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -143,7 +137,7 @@ public class CatalogsServiceEvents {
   }
 
   public record AfterDeleteCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -152,7 +146,7 @@ public class CatalogsServiceEvents {
   }
 
   public record BeforeGetCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -161,7 +155,7 @@ public class CatalogsServiceEvents {
   }
 
   public record AfterGetCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, CatalogRole catalogRole)
+      PolarisEventMetadata metadata, String catalogName, CatalogRole catalogRole)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -170,7 +164,6 @@ public class CatalogsServiceEvents {
   }
 
   public record BeforeUpdateCatalogRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String catalogRoleName,
@@ -183,7 +176,7 @@ public class CatalogsServiceEvents {
   }
 
   public record AfterUpdateCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, CatalogRole updatedCatalogRole)
+      PolarisEventMetadata metadata, String catalogName, CatalogRole updatedCatalogRole)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -191,16 +184,16 @@ public class CatalogsServiceEvents {
     }
   }
 
-  public record BeforeListCatalogRolesEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName) implements PolarisEvent {
+  public record BeforeListCatalogRolesEvent(PolarisEventMetadata metadata, String catalogName)
+      implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.BEFORE_LIST_CATALOG_ROLES;
     }
   }
 
-  public record AfterListCatalogRolesEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName) implements PolarisEvent {
+  public record AfterListCatalogRolesEvent(PolarisEventMetadata metadata, String catalogName)
+      implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_LIST_CATALOG_ROLES;
@@ -215,7 +208,6 @@ public class CatalogsServiceEvents {
    * @param grantRequest the grant request
    */
   public record BeforeAddGrantToCatalogRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String catalogRoleName,
@@ -236,7 +228,6 @@ public class CatalogsServiceEvents {
    * @param grantResource the grant resource
    */
   public record AfterAddGrantToCatalogRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String catalogRoleName,
@@ -258,7 +249,6 @@ public class CatalogsServiceEvents {
    * @param cascade whether the revoke is cascading
    */
   public record BeforeRevokeGrantFromCatalogRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String catalogRoleName,
@@ -281,7 +271,6 @@ public class CatalogsServiceEvents {
    * @param cascade whether to cascade the revocation
    */
   public record AfterRevokeGrantFromCatalogRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String catalogName,
       String catalogRoleName,
@@ -296,7 +285,7 @@ public class CatalogsServiceEvents {
   }
 
   public record BeforeListAssigneePrincipalRolesForCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -305,7 +294,7 @@ public class CatalogsServiceEvents {
   }
 
   public record AfterListAssigneePrincipalRolesForCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -314,7 +303,7 @@ public class CatalogsServiceEvents {
   }
 
   public record BeforeListGrantsForCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -323,7 +312,7 @@ public class CatalogsServiceEvents {
   }
 
   public record AfterListGrantsForCatalogRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
+      PolarisEventMetadata metadata, String catalogName, String catalogRoleName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {

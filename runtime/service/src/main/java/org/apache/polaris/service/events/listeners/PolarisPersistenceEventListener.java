@@ -39,7 +39,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     PolarisEvent polarisEvent =
         new PolarisEvent(
             event.catalogName(),
-            event.id().toString(),
+            event.metadata().eventId().toString(),
             event.metadata().requestId().orElse(null),
             event.getClass().getSimpleName(),
             event.metadata().timestamp().toEpochMilli(),
@@ -60,7 +60,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     PolarisEvent polarisEvent =
         new PolarisEvent(
             event.catalog().getName(),
-            event.id().toString(),
+            event.metadata().eventId().toString(),
             event.metadata().requestId().orElse(null),
             event.getClass().getSimpleName(),
             event.metadata().timestamp().toEpochMilli(),

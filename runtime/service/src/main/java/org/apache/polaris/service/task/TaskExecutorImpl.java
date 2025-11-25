@@ -45,7 +45,6 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
-import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -159,10 +158,7 @@ public class TaskExecutorImpl implements TaskExecutor {
       long taskEntityId, CallContext ctx, PolarisEventMetadata eventMetadata, int attempt) {
     polarisEventListener.onBeforeAttemptTask(
         new BeforeAttemptTaskEvent(
-            PolarisEvent.createEventId(),
-            eventMetadataFactory.copy(eventMetadata),
-            taskEntityId,
-            attempt));
+            eventMetadataFactory.copy(eventMetadata), taskEntityId, attempt));
 
     boolean success = false;
     try {
@@ -207,11 +203,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     } finally {
       polarisEventListener.onAfterAttemptTask(
           new AfterAttemptTaskEvent(
-              PolarisEvent.createEventId(),
-              eventMetadataFactory.copy(eventMetadata),
-              taskEntityId,
-              attempt,
-              success));
+              eventMetadataFactory.copy(eventMetadata), taskEntityId, attempt, success));
     }
   }
 

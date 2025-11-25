@@ -19,14 +19,13 @@
 
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 
 public class PrincipalRolesServiceEvents {
   public record AfterCreatePrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, PrincipalRole principalRole) implements PolarisEvent {
+      PolarisEventMetadata metadata, PrincipalRole principalRole) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_CREATE_PRINCIPAL_ROLE;
@@ -34,7 +33,7 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record BeforeCreatePrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, CreatePrincipalRoleRequest createPrincipalRoleRequest)
+      PolarisEventMetadata metadata, CreatePrincipalRoleRequest createPrincipalRoleRequest)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -43,7 +42,7 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record AfterDeletePrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
+      PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_DELETE_PRINCIPAL_ROLE;
@@ -51,7 +50,7 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record BeforeDeletePrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
+      PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.BEFORE_DELETE_PRINCIPAL_ROLE;
@@ -59,15 +58,15 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record AfterGetPrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, PrincipalRole principalRole) implements PolarisEvent {
+      PolarisEventMetadata metadata, PrincipalRole principalRole) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_GET_PRINCIPAL_ROLE;
     }
   }
 
-  public record BeforeGetPrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
+  public record BeforeGetPrincipalRoleEvent(PolarisEventMetadata metadata, String principalRoleName)
+      implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.BEFORE_GET_PRINCIPAL_ROLE;
@@ -75,8 +74,7 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record AfterUpdatePrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, PrincipalRole updatedPrincipalRole)
-      implements PolarisEvent {
+      PolarisEventMetadata metadata, PrincipalRole updatedPrincipalRole) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_UPDATE_PRINCIPAL_ROLE;
@@ -84,7 +82,6 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record BeforeUpdatePrincipalRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String principalRoleName,
       UpdatePrincipalRoleRequest updateRequest)
@@ -95,7 +92,7 @@ public class PrincipalRolesServiceEvents {
     }
   }
 
-  public record AfterListPrincipalRolesEvent(UUID id, PolarisEventMetadata metadata)
+  public record AfterListPrincipalRolesEvent(PolarisEventMetadata metadata)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -103,7 +100,7 @@ public class PrincipalRolesServiceEvents {
     }
   }
 
-  public record BeforeListPrincipalRolesEvent(UUID id, PolarisEventMetadata metadata)
+  public record BeforeListPrincipalRolesEvent(PolarisEventMetadata metadata)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -112,7 +109,6 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record AfterAssignCatalogRoleToPrincipalRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String principalRoleName,
       String catalogName,
@@ -125,7 +121,6 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record BeforeAssignCatalogRoleToPrincipalRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String principalRoleName,
       String catalogName,
@@ -138,7 +133,6 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record AfterRevokeCatalogRoleFromPrincipalRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String principalRoleName,
       String catalogName,
@@ -151,7 +145,6 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record BeforeRevokeCatalogRoleFromPrincipalRoleEvent(
-      UUID id,
       PolarisEventMetadata metadata,
       String principalRoleName,
       String catalogName,
@@ -164,7 +157,7 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record AfterListAssigneePrincipalsForPrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
+      PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE;
@@ -172,7 +165,7 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record BeforeListAssigneePrincipalsForPrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
+      PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.BEFORE_LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE;
@@ -180,7 +173,7 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record AfterListCatalogRolesForPrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String principalRoleName, String catalogName)
+      PolarisEventMetadata metadata, String principalRoleName, String catalogName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -189,7 +182,7 @@ public class PrincipalRolesServiceEvents {
   }
 
   public record BeforeListCatalogRolesForPrincipalRoleEvent(
-      UUID id, PolarisEventMetadata metadata, String principalRoleName, String catalogName)
+      PolarisEventMetadata metadata, String principalRoleName, String catalogName)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {

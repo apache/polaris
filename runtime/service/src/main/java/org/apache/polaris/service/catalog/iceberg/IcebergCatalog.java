@@ -131,7 +131,6 @@ import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
-import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -1380,10 +1379,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         polarisEventListener.onBeforeRefreshTable(
             new IcebergRestCatalogEvents.BeforeRefreshTableEvent(
-                PolarisEvent.createEventId(),
-                eventMetadataFactory.create(),
-                catalogName,
-                tableIdentifier));
+                eventMetadataFactory.create(), catalogName, tableIdentifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1405,22 +1401,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             });
         polarisEventListener.onAfterRefreshTable(
             new IcebergRestCatalogEvents.AfterRefreshTableEvent(
-                PolarisEvent.createEventId(),
-                eventMetadataFactory.create(),
-                catalogName,
-                tableIdentifier));
+                eventMetadataFactory.create(), catalogName, tableIdentifier));
       }
     }
 
     public void doCommit(TableMetadata base, TableMetadata metadata) {
       polarisEventListener.onBeforeCommitTable(
           new IcebergRestCatalogEvents.BeforeCommitTableEvent(
-              PolarisEvent.createEventId(),
-              eventMetadataFactory.create(),
-              catalogName,
-              tableIdentifier,
-              base,
-              metadata));
+              eventMetadataFactory.create(), catalogName, tableIdentifier, base, metadata));
 
       LOGGER.debug(
           "doCommit for table {} with metadataBefore {}, metadataAfter {}",
@@ -1573,12 +1561,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       polarisEventListener.onAfterCommitTable(
           new IcebergRestCatalogEvents.AfterCommitTableEvent(
-              PolarisEvent.createEventId(),
-              eventMetadataFactory.create(),
-              catalogName,
-              tableIdentifier,
-              base,
-              metadata));
+              eventMetadataFactory.create(), catalogName, tableIdentifier, base, metadata));
     }
 
     @Override
@@ -1806,10 +1789,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         polarisEventListener.onBeforeRefreshView(
             new IcebergRestCatalogEvents.BeforeRefreshViewEvent(
-                PolarisEvent.createEventId(),
-                eventMetadataFactory.create(),
-                catalogName,
-                identifier));
+                eventMetadataFactory.create(), catalogName, identifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1833,22 +1813,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             });
         polarisEventListener.onAfterRefreshView(
             new IcebergRestCatalogEvents.AfterRefreshViewEvent(
-                PolarisEvent.createEventId(),
-                eventMetadataFactory.create(),
-                catalogName,
-                identifier));
+                eventMetadataFactory.create(), catalogName, identifier));
       }
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
       polarisEventListener.onBeforeCommitView(
           new IcebergRestCatalogEvents.BeforeCommitViewEvent(
-              PolarisEvent.createEventId(),
-              eventMetadataFactory.create(),
-              catalogName,
-              identifier,
-              base,
-              metadata));
+              eventMetadataFactory.create(), catalogName, identifier, base, metadata));
 
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug(
@@ -1950,12 +1922,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       polarisEventListener.onAfterCommitView(
           new IcebergRestCatalogEvents.AfterCommitViewEvent(
-              PolarisEvent.createEventId(),
-              eventMetadataFactory.create(),
-              catalogName,
-              identifier,
-              base,
-              metadata));
+              eventMetadataFactory.create(), catalogName, identifier, base, metadata));
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {

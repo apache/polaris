@@ -29,7 +29,6 @@ import jakarta.ws.rs.ext.Provider;
 import java.io.IOException;
 import org.apache.polaris.service.config.FilterPriorities;
 import org.apache.polaris.service.events.BeforeLimitRequestRateEvent;
-import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
@@ -63,7 +62,6 @@ public class RateLimiterFilter implements ContainerRequestFilter {
     if (!rateLimiter.canProceed()) {
       polarisEventListener.onBeforeLimitRequestRate(
           new BeforeLimitRequestRateEvent(
-              PolarisEvent.createEventId(),
               eventMetadataFactory.create(),
               ctx.getMethod(),
               ctx.getUriInfo().getAbsolutePath().toString()));

@@ -37,7 +37,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
-import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
@@ -190,7 +189,6 @@ class AwsCloudWatchEventListenerTest {
       TableIdentifier testTable = TableIdentifier.of("test_namespace", "test_table");
       listener.onAfterRefreshTable(
           new IcebergRestCatalogEvents.AfterRefreshTableEvent(
-              PolarisEvent.createEventId(),
               PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
               "test_catalog",
               testTable));
@@ -253,7 +251,6 @@ class AwsCloudWatchEventListenerTest {
       TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
       syncListener.onAfterRefreshTable(
           new IcebergRestCatalogEvents.AfterRefreshTableEvent(
-              PolarisEvent.createEventId(),
               PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
               "test_catalog",
               syncTestTable));
