@@ -19,7 +19,7 @@
 package org.apache.polaris.core.storage.azure;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_DELAY_MILLIS;
-import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_JITTER_MILLIS;
+import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_JITTER_FACTOR;
 import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_COUNT;
 import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_TIMEOUT_MILLIS;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
@@ -330,7 +330,7 @@ public class AzureCredentialsStorageIntegration
    *   <li>Per-attempt timeout (configurable via CLOUD_API_TIMEOUT_MILLIS, default 15000ms)
    *   <li>Exponential backoff retry (configurable count and initial delay via CLOUD_API_RETRY_COUNT
    *       and CLOUD_API_RETRY_DELAY_MILLIS, defaults: 3 attempts starting at 2000ms)
-   *   <li>Jitter to prevent thundering herd (configurable via CLOUD_API_RETRY_JITTER_MILLIS, default 500ms)
+   *   <li>Jitter to prevent thundering herd (configurable via CLOUD_API_RETRY_JITTER_FACTOR, default 0.5 = 50%%)
    * </ul>
    *
    * @param realmConfig the realm configuration to get timeout and retry settings
@@ -342,8 +342,7 @@ public class AzureCredentialsStorageIntegration
     int timeoutMillis = realmConfig.getConfig(CLOUD_API_TIMEOUT_MILLIS);
     int retryCount = realmConfig.getConfig(CLOUD_API_RETRY_COUNT);
     int initialDelayMillis = realmConfig.getConfig(CLOUD_API_RETRY_DELAY_MILLIS);
-    int jitterMillis = realmConfig.getConfig(CLOUD_API_RETRY_JITTER_MILLIS);
-    double jitter = jitterMillis / 1000.0; // Convert millis to fraction for jitter factor
+    double jitter = realmConfig.getConfig(CLOUD_API_RETRY_JITTER_FACTOR);
 
     String scope = "https://storage.azure.com/.default";
     AccessToken accessToken =
@@ -358,7 +357,7 @@ public class AzureCredentialsStorageIntegration
                         error.getMessage()))
             .retryWhen(
                 Retry.backoff(retryCount, Duration.ofMillis(initialDelayMillis))
-                    .jitter(jitter)
+                    .jitter(jitter) // Apply jitter factor to computed delay
                     .filter(this::isRetriableAzureException)
                     .doBeforeRetry(
                         retrySignal ->
