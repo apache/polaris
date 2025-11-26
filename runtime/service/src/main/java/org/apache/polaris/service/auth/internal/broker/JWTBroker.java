@@ -49,10 +49,15 @@ public abstract class JWTBroker implements TokenBroker {
   private static final String CLAIM_KEY_SCOPE = "scope";
 
   private final PolarisMetaStoreManager metaStoreManager;
+  private final PolarisCallContext polarisCallContext;
   private final int maxTokenGenerationInSeconds;
 
-  JWTBroker(PolarisMetaStoreManager metaStoreManager, int maxTokenGenerationInSeconds) {
+  JWTBroker(
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext polarisCallContext,
+      int maxTokenGenerationInSeconds) {
     this.metaStoreManager = metaStoreManager;
+    this.polarisCallContext = polarisCallContext;
     this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
   }
 
@@ -86,7 +91,6 @@ public abstract class JWTBroker implements TokenBroker {
       String subjectToken,
       String grantType,
       String scope,
-      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType) {
     if (requestedTokenType != null && !TokenType.ACCESS_TOKEN.equals(requestedTokenType)) {
       return TokenResponse.of(OAuthError.invalid_request);
@@ -125,7 +129,6 @@ public abstract class JWTBroker implements TokenBroker {
       String clientSecret,
       String grantType,
       String scope,
-      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType) {
     // Initial sanity checks
     TokenRequestValidator validator = new TokenRequestValidator();
@@ -135,8 +138,7 @@ public abstract class JWTBroker implements TokenBroker {
       return TokenResponse.of(initialValidationResponse.get());
     }
 
-    Optional<PrincipalEntity> principal =
-        findPrincipalEntity(clientId, clientSecret, polarisCallContext);
+    Optional<PrincipalEntity> principal = findPrincipalEntity(clientId, clientSecret);
     if (principal.isEmpty()) {
       return TokenResponse.of(OAuthError.unauthorized_client);
     }
@@ -176,8 +178,7 @@ public abstract class JWTBroker implements TokenBroker {
     return scope == null || scope.isBlank() ? DefaultAuthenticator.PRINCIPAL_ROLE_ALL : scope;
   }
 
-  private Optional<PrincipalEntity> findPrincipalEntity(
-      String clientId, String clientSecret, PolarisCallContext polarisCallContext) {
+  private Optional<PrincipalEntity> findPrincipalEntity(String clientId, String clientSecret) {
     // Validate the principal is present and secrets match
     PrincipalSecretsResult principalSecrets =
         metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);

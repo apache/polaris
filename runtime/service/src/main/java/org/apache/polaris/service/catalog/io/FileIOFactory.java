@@ -19,15 +19,15 @@
 package org.apache.polaris.service.catalog.io;
 
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 
 /**
  * Interface for providing a way to construct FileIO objects, such as for reading/writing S3.
  *
- * <p>Implementations are available via CDI as {@link ApplicationScoped @ApplicationScoped} beans.
+ * <p>Implementations are available via CDI as {@link RequestScoped @RequestScoped} beans.
  */
 public interface FileIOFactory {
 
@@ -37,13 +37,14 @@ public interface FileIOFactory {
    * <p>This method may obtain subscoped credentials to restrict the FileIO's permissions, ensuring
    * secure and limited access to the table's data and locations.
    *
-   * @param accessConfig the access configuration containing credentials and other properties.
+   * @param storageAccessConfig the storage access configuration containing credentials and other
+   *     properties.
    * @param ioImplClassName the class name of the FileIO implementation to load.
    * @param properties configuration properties for the FileIO.
    * @return a configured FileIO instance.
    */
   FileIO loadFileIO(
-      @Nonnull AccessConfig accessConfig,
+      @Nonnull StorageAccessConfig storageAccessConfig,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties);
 }

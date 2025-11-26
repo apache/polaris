@@ -85,7 +85,6 @@ public interface PolarisSecretsManager {
    * @param clientId principal client id
    * @param principalId id of the principal whose secrets should be deleted
    */
-  @Nonnull
   void deletePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
 }

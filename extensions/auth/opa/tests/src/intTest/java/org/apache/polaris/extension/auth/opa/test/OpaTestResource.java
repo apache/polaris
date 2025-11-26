@@ -21,6 +21,7 @@ package org.apache.polaris.extension.auth.opa.test;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -32,8 +33,8 @@ import org.testcontainers.containers.wait.strategy.Wait;
 
 public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
   private static GenericContainer<?> opa;
-  private int mappedPort;
 
+  @SuppressWarnings({"resource", "HttpUrlsUsage"})
   @Override
   public Map<String, String> start() {
     try {
@@ -55,7 +56,7 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
         opa.start();
       }
 
-      mappedPort = opa.getMappedPort(8181);
+      int mappedPort = opa.getMappedPort(8181);
       String containerHost = opa.getHost();
       String baseUrl = "http://" + containerHost + ":" + mappedPort;
 
@@ -92,7 +93,7 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
   private void loadRegoPolicy(String baseUrl, String policyName, String regoPolicy) {
     // Hardcode the policy directly instead of loading through QuarkusTestProfile
     try {
-      URL url = new URL(baseUrl + "/v1/policies/" + policyName);
+      URL url = URI.create(baseUrl + "/v1/policies/" + policyName).toURL();
       System.out.println("Uploading policy to: " + url);
 
       HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -125,7 +126,7 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
 
   @Override
   public void stop() {
-    // Don't stop the container to allow reuse across tests
-    // Container will be cleaned up when the JVM exits
+    // Quarkus takes care of reusing the test resource across tests
+    opa.stop();
   }
 }

@@ -20,17 +20,13 @@ package org.apache.polaris.extension.auth.opa;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -42,9 +38,14 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpException;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
+import org.apache.hc.core5.http.io.entity.HttpEntities;
+import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -55,7 +56,6 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.StaticBearerTokenProvider;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 /**
  * Unit tests for OpaPolarisAuthorizer including basic functionality and bearer token authentication
@@ -211,9 +211,6 @@ public class OpaPolarisAuthorizerTest {
       // Verify resource structure - this is the key part for hierarchical resources
       var resource = input.get("resource");
       assertThat(resource.has("targets")).as("Resource should have 'targets' field").isTrue();
-      assertThat(resource.has("secondaries"))
-          .as("Resource should have 'secondaries' field")
-          .isTrue();
 
       var targets = resource.get("targets");
       assertThat(targets.isArray()).as("Targets should be an array").isTrue();
@@ -255,9 +252,10 @@ public class OpaPolarisAuthorizerTest {
           .as("Namespace name should be sales_data")
           .isEqualTo("sales_data");
 
-      var secondaries = resource.get("secondaries");
-      assertThat(secondaries.isArray()).as("Secondaries should be an array").isTrue();
-      assertThat(secondaries.size()).as("Should have no secondaries in this test").isEqualTo(0);
+      // Secondaries field should be omitted when empty (NON_EMPTY serialization)
+      assertThat(resource.has("secondaries"))
+          .as("Secondaries should be omitted when empty")
+          .isFalse();
     } finally {
       server.stop(0);
     }
@@ -421,9 +419,10 @@ public class OpaPolarisAuthorizerTest {
           .as("Team name should be machine_learning")
           .isEqualTo("machine_learning");
 
-      var secondaries = resource.get("secondaries");
-      assertThat(secondaries.isArray()).as("Secondaries should be an array").isTrue();
-      assertThat(secondaries.size()).as("Should have no secondaries in this test").isEqualTo(0);
+      // Secondaries field should be omitted when empty (NON_EMPTY serialization)
+      assertThat(resource.has("secondaries"))
+          .as("Secondaries should be omitted when empty")
+          .isFalse();
     } finally {
       server.stop(0);
     }
@@ -490,23 +489,27 @@ public class OpaPolarisAuthorizerTest {
   }
 
   @Test
-  public void testBearerTokenIsAddedToHttpRequest() throws IOException {
+  public void testBearerTokenIsAddedToHttpRequest() {
     URI policyUri = URI.create("http://opa.example.com:8181/v1/data/polaris/allow");
-    CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
-    CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
-    HttpEntity mockEntity = mock(HttpEntity.class);
-
-    when(mockHttpClient.execute(any(HttpPost.class))).thenReturn(mockResponse);
-    when(mockResponse.getCode()).thenReturn(200);
-    when(mockResponse.getEntity()).thenReturn(mockEntity);
-    when(mockEntity.getContent())
-        .thenReturn(
-            new ByteArrayInputStream(
-                "{\"result\":{\"allow\":true}}".getBytes(StandardCharsets.UTF_8)));
+    HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
+    @SuppressWarnings("resource")
+    ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
+    mockResponse.setEntity(mockEntity);
 
     BearerTokenProvider tokenProvider = new StaticBearerTokenProvider("test-bearer-token");
     OpaPolarisAuthorizer authorizer =
-        new OpaPolarisAuthorizer(policyUri, mockHttpClient, new ObjectMapper(), tokenProvider);
+        new OpaPolarisAuthorizer(
+            policyUri, mock(CloseableHttpClient.class), new ObjectMapper(), tokenProvider) {
+          @Override
+          <T> T httpClientExecute(
+              ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
+              throws HttpException, IOException {
+            // Verify the Authorization header with static bearer token
+            verifyAuthorizationHeader(request, "test-bearer-token");
+
+            return responseHandler.handleResponse(mockResponse);
+          }
+        };
 
     PolarisPrincipal mockPrincipal =
         PolarisPrincipal.of("test-user", Map.of(), Collections.emptySet());
@@ -522,32 +525,33 @@ public class OpaPolarisAuthorizerTest {
                   (PolarisResolvedPathWrapper) null,
                   (PolarisResolvedPathWrapper) null);
             });
-
-    // Verify the Authorization header with static bearer token
-    verifyAuthorizationHeader(mockHttpClient, "test-bearer-token");
   }
 
   @Test
-  public void testBearerTokenFromBearerTokenProvider() throws IOException {
+  public void testBearerTokenFromBearerTokenProvider() {
     // Mock HTTP client and response
-    CloseableHttpClient mockHttpClient = mock(CloseableHttpClient.class);
-    CloseableHttpResponse mockResponse = mock(CloseableHttpResponse.class);
-    HttpEntity mockEntity = mock(HttpEntity.class);
-
-    when(mockHttpClient.execute(any(HttpPost.class))).thenReturn(mockResponse);
-    when(mockResponse.getCode()).thenReturn(200);
-    when(mockResponse.getEntity()).thenReturn(mockEntity);
-    when(mockEntity.getContent())
-        .thenReturn(
-            new ByteArrayInputStream(
-                "{\"result\":{\"allow\":true}}".getBytes(StandardCharsets.UTF_8)));
+    HttpEntity mockEntity = HttpEntities.create("{\"result\":{\"allow\":true}}");
+    @SuppressWarnings("resource")
+    ClassicHttpResponse mockResponse = new BasicClassicHttpResponse(200);
+    mockResponse.setEntity(mockEntity);
 
     // Create token provider that returns a dynamic token
     BearerTokenProvider tokenProvider = () -> "dynamic-token-12345";
     URI policyUri = URI.create("http://opa.example.com:8181/v1/data/polaris/allow");
     // Create authorizer with the token provider instead of static token
     OpaPolarisAuthorizer authorizer =
-        new OpaPolarisAuthorizer(policyUri, mockHttpClient, new ObjectMapper(), tokenProvider);
+        new OpaPolarisAuthorizer(
+            policyUri, mock(CloseableHttpClient.class), new ObjectMapper(), tokenProvider) {
+          @Override
+          <T> T httpClientExecute(
+              ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
+              throws HttpException, IOException {
+            // Verify the Authorization header with bearer token from provider
+            verifyAuthorizationHeader(request, "dynamic-token-12345");
+
+            return responseHandler.handleResponse(mockResponse);
+          }
+        };
 
     // Create mock principal and entities
     PolarisPrincipal mockPrincipal =
@@ -566,9 +570,6 @@ public class OpaPolarisAuthorizerTest {
                   (PolarisResolvedPathWrapper) null,
                   (PolarisResolvedPathWrapper) null);
             });
-
-    // Verify the Authorization header with bearer token from provider
-    verifyAuthorizationHeader(mockHttpClient, "dynamic-token-12345");
   }
 
   private ResolvedPolarisEntity createResolvedEntity(PolarisEntity entity) {
@@ -632,17 +633,13 @@ public class OpaPolarisAuthorizerTest {
   /**
    * Helper method to capture and verify HTTP request Authorization header.
    *
-   * @param mockHttpClient The mocked HTTP client to verify against
+   * @param capturedRequest The request issued to the HTTP client to verify against
    * @param expectedToken The expected bearer token value, or null if no Authorization header
    *     expected
    */
-  private void verifyAuthorizationHeader(CloseableHttpClient mockHttpClient, String expectedToken)
-      throws IOException {
-    // Capture the HTTP request to verify bearer token header
-    ArgumentCaptor<HttpPost> httpPostCaptor = ArgumentCaptor.forClass(HttpPost.class);
-    verify(mockHttpClient).execute(httpPostCaptor.capture());
-
-    HttpPost capturedRequest = httpPostCaptor.getValue();
+  private void verifyAuthorizationHeader(ClassicHttpRequest capturedRequest, String expectedToken) {
+    // Capture the HTTP request to verify the bearer token header
+    assertThat(capturedRequest).isInstanceOf(HttpPost.class);
 
     if (expectedToken != null) {
       // Verify the Authorization header is present and contains the expected token

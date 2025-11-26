@@ -17,10 +17,14 @@
  * under the License.
  */
 
+import java.io.OutputStream
+
 plugins {
   id("polaris-server")
   id("org.kordamp.gradle.jandex")
 }
+
+val jsonSchemaGenerator = sourceSets.create("jsonSchemaGenerator")
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -32,6 +36,13 @@ dependencies {
   implementation(libs.slf4j.api)
   implementation(libs.auth0.jwt)
   implementation(project(":polaris-async-api"))
+
+  add(jsonSchemaGenerator.implementationConfigurationName, project(":polaris-extensions-auth-opa"))
+  add(jsonSchemaGenerator.implementationConfigurationName, platform(libs.jackson.bom))
+  add(
+    jsonSchemaGenerator.implementationConfigurationName,
+    "com.fasterxml.jackson.module:jackson-module-jsonSchema",
+  )
 
   // Iceberg dependency for ForbiddenException
   implementation(platform(libs.iceberg.bom))
@@ -58,3 +69,95 @@ dependencies {
   testImplementation(project(":polaris-async-java"))
   testImplementation(project(":polaris-idgen-mocks"))
 }
+
+// Task to generate JSON Schema from model classes
+tasks.register<JavaExec>("generateOpaSchema") {
+  group = "documentation"
+  description = "Generates JSON Schema for OPA authorization input"
+
+  dependsOn(tasks.compileJava, tasks.named("jandex"))
+
+  // Only execute generation if anything changed
+  outputs.cacheIf { true }
+  outputs.file("${projectDir}/opa-input-schema.json")
+  inputs.files(jsonSchemaGenerator.runtimeClasspath)
+
+  classpath = jsonSchemaGenerator.runtimeClasspath
+  mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
+  args("${projectDir}/opa-input-schema.json")
+}
+
+// Task to validate that the committed schema matches the generated schema
+tasks.register<JavaExec>("validateOpaSchema") {
+  group = "verification"
+  description = "Validates that the committed OPA schema matches the generated schema"
+
+  dependsOn(tasks.compileJava, tasks.named("jandex"))
+
+  val tempSchemaFile = layout.buildDirectory.file("opa-schema/opa-input-schema-generated.json")
+  val committedSchemaFile = file("${projectDir}/opa-input-schema.json")
+  val logFile = layout.buildDirectory.file("opa-schema/generator.log")
+
+  // Only execute validation if anything changed
+  outputs.cacheIf { true }
+  outputs.file(tempSchemaFile)
+  inputs.file(committedSchemaFile)
+  inputs.files(jsonSchemaGenerator.runtimeClasspath)
+
+  classpath = jsonSchemaGenerator.runtimeClasspath
+  mainClass.set("org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator")
+  args(tempSchemaFile.get().asFile.absolutePath)
+  isIgnoreExitValue = true
+
+  var outStream: OutputStream? = null
+  doFirst {
+    // Ensure temp directory exists
+    tempSchemaFile.get().asFile.parentFile.mkdirs()
+    outStream = logFile.get().asFile.outputStream()
+    standardOutput = outStream
+    errorOutput = outStream
+  }
+
+  doLast {
+    outStream?.close()
+
+    if (executionResult.get().exitValue != 0) {
+      throw GradleException(
+        """
+        |OPA Schema validation failed!
+        |
+        |${logFile.get().asFile.readText()}
+      """
+          .trimMargin()
+      )
+    }
+
+    val generatedContent = tempSchemaFile.get().asFile.readText().trim()
+    val committedContent = committedSchemaFile.readText().trim()
+
+    if (generatedContent != committedContent) {
+      throw GradleException(
+        """
+        |OPA Schema validation failed!
+        |
+        |The committed opa-input-schema.json does not match the generated schema.
+        |This means the schema is out of sync with the model classes.
+        |
+        |To fix this, run:
+        |  ./gradlew :polaris-extensions-auth-opa:generateOpaSchema
+        |
+        |Then commit the updated opa-input-schema.json file.
+        |
+        |Committed file: ${committedSchemaFile.absolutePath}
+        |Generated file: ${tempSchemaFile.get().asFile.absolutePath}
+      """
+          .trimMargin()
+      )
+    }
+
+    logger.info("OPA schema validation passed - schema is up to date")
+  }
+}
+
+// Add schema validation to the check task
+tasks.named("check") { dependsOn("validateOpaSchema") }

@@ -34,7 +34,13 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   set to `OFF` by default). Custom reporters can be implemented and configured to send metrics to
   external systems for further analysis and monitoring.
 
+- Support for [Open Policy Agent (OPA)] integration has been added to Polaris. This enables delegating
+  authorization decisions to external policy decision points, allowing organizations to centralize
+  policy management and implement complex authorization rules. OPA integration can be enabled by setting
+  `polaris.authorization.type=opa` in the Polaris configuration.
+
 [Iceberg Metrics Reporting]: https://iceberg.apache.org/docs/latest/metrics-reporting/
+[Open Policy Agent (OPA)]: https://www.openpolicyagent.org/
 
 ### Upgrade notes
 
@@ -48,13 +54,17 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added `--no-sts` flag to CLI to support S3-compatible storage systems that do not have Security Token Service available.
 - Support credential vending for federated catalogs. `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING` (default: true) was added to toggle this feature.
+- Enhanced catalog federation with SigV4 authentication support, additional authentication types for credential vending, and location-based access restrictions to block credential vending for remote tables outside allowed location lists.
 
 ### Changes
 
 - `client.region` is no longer considered a "credential" property (related to Iceberg REST Catalog API).
 - Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
 - Added checksum to helm deployment so that it will restart when the configmap has changed.
+- Generic Table is no longer in beta and is generally-available.
+- Added Windows support for Python client
 
 ### Deprecations
 
@@ -74,6 +84,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added a finer grained authorization model for UpdateTable requests. Existing privileges continue to work for granting UpdateTable, such as `TABLE_WRITE_PROPERTIES`.
   However, you can now instead grant privileges just for specific operations, such as `TABLE_ADD_SNAPSHOT`
 - Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.

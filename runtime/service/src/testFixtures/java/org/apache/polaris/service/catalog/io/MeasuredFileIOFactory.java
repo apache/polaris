@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 
 /**
  * A FileIOFactory that measures the number of bytes read, files written, and files deleted. It can
@@ -52,7 +52,7 @@ public class MeasuredFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull AccessConfig accessConfig,
+      @Nonnull StorageAccessConfig storageAccessConfig,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties) {
     loadFileIOExceptionSupplier.ifPresent(
@@ -62,7 +62,7 @@ public class MeasuredFileIOFactory implements FileIOFactory {
 
     MeasuredFileIO wrapped =
         new MeasuredFileIO(
-            defaultFileIOFactory.loadFileIO(accessConfig, ioImplClassName, properties),
+            defaultFileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, properties),
             newInputFileExceptionSupplier,
             newOutputFileExceptionSupplier,
             getLengthExceptionSupplier);
