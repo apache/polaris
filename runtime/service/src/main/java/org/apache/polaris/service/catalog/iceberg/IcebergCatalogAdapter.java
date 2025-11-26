@@ -81,10 +81,9 @@ import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
-import org.apache.polaris.service.catalog.io.AccessConfigProvider;
+import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
@@ -149,8 +148,7 @@ public class IcebergCatalogAdapter
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
-  private final PolarisEventListener polarisEventListener;
-  private final AccessConfigProvider accessConfigProvider;
+  private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final PolarisMetricsReporter metricsReporter;
 
   @Inject
@@ -168,8 +166,7 @@ public class IcebergCatalogAdapter
       ReservedProperties reservedProperties,
       CatalogHandlerUtils catalogHandlerUtils,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
-      PolarisEventListener polarisEventListener,
-      AccessConfigProvider accessConfigProvider,
+      StorageAccessConfigProvider storageAccessConfigProvider,
       PolarisMetricsReporter metricsReporter) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
@@ -185,8 +182,7 @@ public class IcebergCatalogAdapter
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.externalCatalogFactories = externalCatalogFactories;
-    this.polarisEventListener = polarisEventListener;
-    this.accessConfigProvider = accessConfigProvider;
+    this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.metricsReporter = metricsReporter;
   }
 
@@ -227,8 +223,7 @@ public class IcebergCatalogAdapter
         reservedProperties,
         catalogHandlerUtils,
         externalCatalogFactories,
-        polarisEventListener,
-        accessConfigProvider);
+        storageAccessConfigProvider);
   }
 
   @Override

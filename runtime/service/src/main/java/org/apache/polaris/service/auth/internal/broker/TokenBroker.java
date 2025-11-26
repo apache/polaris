@@ -39,7 +39,6 @@ public interface TokenBroker {
       final String clientSecret,
       final String grantType,
       final String scope,
-      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType);
 
   /**
@@ -52,7 +51,6 @@ public interface TokenBroker {
       String subjectToken,
       final String grantType,
       final String scope,
-      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType);
 
   /** Decodes and verifies the token, then returns the associated {@link PolarisCredential}. */

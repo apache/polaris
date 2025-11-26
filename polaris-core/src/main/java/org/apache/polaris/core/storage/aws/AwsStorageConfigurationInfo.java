@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.annotation.Nullable;
 import java.net.URI;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -65,6 +66,13 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
 
   @Nullable
   public abstract Boolean getUserTokenSTS();
+  /** KMS Key ARN for server-side encryption,used for writes, optional */
+  @Nullable
+  public abstract String getCurrentKmsKey();
+
+  /** Comma-separated list of allowed KMS Key ARNs, optional */
+  @Nullable
+  public abstract List<String> getAllowedKmsKeys();
 
   /** AWS external ID, optional */
   @Nullable

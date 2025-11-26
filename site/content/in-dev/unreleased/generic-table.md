@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Generic Table (Beta)
+title: Generic Table
 type: docs
 weight: 435
 ---
@@ -27,8 +27,6 @@ The Generic Table in Apache Polaris is designed to provide support for non-Icebe
 - Load a generic table
 - Drop a generic table
 - List all generic tables under a namespace
-
-**NOTE** The current generic table is in beta release. Please use it with caution and report any issue if encountered.
 
 ## What is a Generic Table?
 

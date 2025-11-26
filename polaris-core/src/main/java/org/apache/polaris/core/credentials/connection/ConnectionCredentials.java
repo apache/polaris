@@ -22,21 +22,21 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.polaris.core.storage.AccessConfig;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Encapsulates credentials and configuration needed to connect to external federated catalogs.
  *
- * <p>Similar to {@link AccessConfig} for storage, this class holds the credentials and properties
- * required for Polaris to authenticate with remote catalog services (e.g., AWS Glue, other Iceberg
- * REST catalogs).
+ * <p>Similar to {@link StorageAccessConfig} for storage, this class holds the credentials and
+ * properties required for Polaris to authenticate with remote catalog services (e.g., AWS Glue,
+ * other Iceberg REST catalogs).
  *
  * <p>Credentials may be temporary and include an expiration time.
  *
  * <p><b>Note:</b> This interface currently includes only {@code credentials} and {@code expiresAt}.
  * Additional fields like {@code extraProperties} and {@code internalProperties} (similar to {@link
- * AccessConfig}) are not included for now but can be added later if needed for more complex
+ * StorageAccessConfig}) are not included for now but can be added later if needed for more complex
  * credential scenarios.
  */
 @PolarisImmutable

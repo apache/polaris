@@ -69,7 +69,6 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
-import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -133,8 +132,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         reservedProperties,
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
-        polarisEventListener,
-        accessConfigProvider);
+        storageAccessConfigProvider);
   }
 
   protected void doTestInsufficientPrivileges(
@@ -273,8 +271,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             reservedProperties,
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
-            polarisEventListener,
-            accessConfigProvider);
+            storageAccessConfigProvider);
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -311,8 +308,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             reservedProperties,
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
-            polarisEventListener,
-            accessConfigProvider);
+            storageAccessConfigProvider);
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),
@@ -1188,8 +1184,7 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         reservedProperties,
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
-        polarisEventListener,
-        accessConfigProvider);
+        storageAccessConfigProvider);
   }
 
   @Test
@@ -1894,8 +1889,8 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             diagServices,
             resolverFactory,
             Mockito.mock(),
-            accessConfigProvider,
-            new DefaultFileIOFactory(),
+            storageAccessConfigProvider,
+            fileIOFactory,
             polarisEventListener,
             metaStoreManager,
             callContext,

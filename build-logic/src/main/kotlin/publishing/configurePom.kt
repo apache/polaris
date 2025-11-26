@@ -19,6 +19,7 @@
 
 package publishing
 
+import groovy.namespace.QName
 import groovy.util.Node
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -58,7 +59,23 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
           val projectNode = asNode()
 
           val parentNode = projectNode.appendNode("parent")
+          // Guarantee that the <parent> element is at a deterministic location.
+          // This is important for reproducible builds!
+          projectNode.remove(parentNode)
+          for ((index, any) in projectNode.children().withIndex()) {
+            if (any is Node) {
+              val qName = any.name() as QName
+              if (qName.localPart == "groupId") {
+                // In theory, we could also replace the groupId element, as the group ID is
+                // currently the same.
+                // But this would break once another group ID is built.
+                projectNode.children().add(index, parentNode)
+                break
+              }
+            }
+          }
           val parent = project.parent!!
+          // Add GAV to <parent> element
           parentNode.appendNode("groupId", parent.group)
           parentNode.appendNode("artifactId", parent.name)
           parentNode.appendNode("version", parent.version)

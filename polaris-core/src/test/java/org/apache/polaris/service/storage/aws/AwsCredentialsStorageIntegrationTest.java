@@ -32,6 +32,7 @@ import java.util.Set;
 import org.apache.polaris.core.auth.PolarisCredential;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
+import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -102,7 +103,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = scheme + "://bucket/path/to/warehouse";
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(warehouseDir)
@@ -117,7 +118,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
                 Optional.of("/namespace/table/credentials"));
-    assertThat(accessConfig.credentials())
+    assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -125,7 +126,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .containsEntry(
             StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
-    assertThat(accessConfig.extraProperties())
+    assertThat(storageAccessConfig.extraProperties())
         .containsEntry(
             StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
             "/namespace/table/credentials");
@@ -161,7 +162,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Mockito.when(credential.getPrincipalName()).thenReturn("jdoe");
     String warehouseDir = scheme + "://bucket/path/to/warehouse";
     Optional<AwsCredentialsProvider> credentialsProvider = Optional.empty();
-    AccessConfig accessConfig =
+    StorageAccessConfig accessConfig =
         new AwsCredentialsStorageIntegration(
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(warehouseDir)
@@ -334,7 +335,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
-        AccessConfig accessConfig =
+        StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(
                     AwsStorageConfigurationInfo.builder()
                         .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -350,7 +351,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
                     Optional.empty());
-        assertThat(accessConfig.credentials())
+        assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
             .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -436,7 +437,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -452,7 +453,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)),
                 Optional.empty());
-    assertThat(accessConfig.credentials())
+    assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -471,6 +472,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String warehouseKeyPrefix = "path/to/warehouse";
     String firstPath = warehouseKeyPrefix + "/namespace/table";
     String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
+    String region = "us-east-2";
+    String accountId = "012345678901";
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
             invocation -> {
@@ -484,8 +487,26 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(3)
+                            .hasSize(4)
                             .satisfiesExactly(
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(IamEffect.ALLOW, IamStatement::effect)
+                                        .returns(
+                                            List.of(
+                                                IamAction.create(
+                                                    "kms:GenerateDataKeyWithoutPlaintext"),
+                                                IamAction.create("kms:DescribeKey"),
+                                                IamAction.create("kms:Decrypt"),
+                                                IamAction.create("kms:GenerateDataKey")),
+                                            IamStatement::actions)
+                                        .returns(
+                                            List.of(
+                                                IamResource.create(
+                                                    String.format(
+                                                        "arn:aws:kms:%s:%s:key/*",
+                                                        region, accountId))),
+                                            IamStatement::resources),
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
@@ -532,14 +553,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                     .roleARN(roleARN)
                     .externalId(externalId)
-                    .region("us-east-2")
                     .userTokenSTS(false)
+                    .region(region)
                     .build(),
                 stsClient)
             .getSubscopedCreds(
@@ -548,7 +569,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
                 Optional.empty());
-    assertThat(accessConfig.credentials())
+    assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -565,6 +586,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String externalId = "externalId";
     String bucket = "bucket";
     String warehouseKeyPrefix = "path/to/warehouse";
+    String region = "us-east-2";
+    String accountId = "012345678901";
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
             invocation -> {
@@ -578,8 +601,26 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(2)
-                            .satisfiesExactly(
+                            .hasSize(3)
+                            .satisfiesExactlyInAnyOrder(
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(IamEffect.ALLOW, IamStatement::effect)
+                                        .returns(
+                                            List.of(
+                                                IamAction.create(
+                                                    "kms:GenerateDataKeyWithoutPlaintext"),
+                                                IamAction.create("kms:DescribeKey"),
+                                                IamAction.create("kms:Decrypt"),
+                                                IamAction.create("kms:GenerateDataKey")),
+                                            IamStatement::actions)
+                                        .returns(
+                                            List.of(
+                                                IamResource.create(
+                                                    String.format(
+                                                        "arn:aws:kms:%s:%s:key/*",
+                                                        region, accountId))),
+                                            IamStatement::resources),
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
@@ -600,14 +641,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                       });
               return ASSUME_ROLE_RESPONSE;
             });
-    AccessConfig accessConfig =
+    StorageAccessConfig storageAccessConfig =
         new AwsCredentialsStorageIntegration(
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                     .roleARN(roleARN)
                     .externalId(externalId)
-                    .region("us-east-2")
                     .userTokenSTS(false)
+                    .region(region)
                     .build(),
                 stsClient)
             .getSubscopedCreds(
@@ -616,7 +657,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(),
                 Set.of(),
                 Optional.empty());
-    assertThat(accessConfig.credentials())
+    assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
         .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
         .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -663,7 +704,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         break;
       case AWS_PARTITION:
       case "aws-us-gov":
-        AccessConfig accessConfig =
+        StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(
                     AwsStorageConfigurationInfo.builder()
                         .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -679,7 +720,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(),
                     Set.of(),
                     Optional.empty());
-        assertThat(accessConfig.credentials())
+        assertThat(storageAccessConfig.credentials())
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
             .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
             .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
@@ -705,7 +746,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
     switch (awsPartition) {
       case AWS_PARTITION:
-        AccessConfig accessConfig =
+        StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(
                     AwsStorageConfigurationInfo.builder()
                         .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
@@ -720,7 +761,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(),
                     Set.of(),
                     Optional.empty());
-        assertThat(accessConfig.credentials())
+        assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
             .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
         break;
@@ -748,6 +789,177 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
     }
     ;
+  }
+
+  @Test
+  public void testKmsKeyPolicyLogic() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String region = "us-east-1";
+    String accountId = "012345678901";
+    String currentKmsKey = "arn:aws:kms:us-east-1:012345678901:key/current-key";
+    List<String> allowedKmsKeys =
+        List.of(
+            "arn:aws:kms:us-east-1:012345678901:key/allowed-key-1",
+            "arn:aws:kms:us-east-1:012345678901:key/allowed-key-2");
+
+    // Test with current KMS key and write permissions
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              // Verify KMS statement exists with write permissions
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      stmt -> {
+                        assertThat(stmt.actions())
+                            .containsAll(
+                                List.of(
+                                    IamAction.create("kms:GenerateDataKeyWithoutPlaintext"),
+                                    IamAction.create("kms:DescribeKey"),
+                                    IamAction.create("kms:Decrypt"),
+                                    IamAction.create("kms:GenerateDataKey"),
+                                    IamAction.create("kms:Encrypt")));
+                        assertThat(stmt.resources()).contains(IamResource.create(currentKmsKey));
+                      });
+
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region(region)
+                .currentKmsKey(currentKmsKey)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Optional.empty());
+
+    // Test with allowed KMS keys and read-only permissions
+    Mockito.reset(stsClient);
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              // Verify KMS statement exists with read-only permissions
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      stmt -> {
+                        assertThat(stmt.actions())
+                            .containsAll(
+                                List.of(
+                                    IamAction.create("kms:GenerateDataKeyWithoutPlaintext"),
+                                    IamAction.create("kms:DescribeKey"),
+                                    IamAction.create("kms:Decrypt"),
+                                    IamAction.create("kms:GenerateDataKey")));
+                        assertThat(stmt.actions()).doesNotContain(IamAction.create("kms:Encrypt"));
+                        assertThat(stmt.resources())
+                            .containsExactlyInAnyOrder(
+                                IamResource.create(allowedKmsKeys.get(0)),
+                                IamResource.create(allowedKmsKeys.get(1)));
+                      });
+
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region(region)
+                .allowedKmsKeys(allowedKmsKeys)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Set.of(),
+            Optional.empty());
+
+    // Test with no KMS keys and read-only (should add wildcard KMS access)
+    Mockito.reset(stsClient);
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              // Verify wildcard KMS statement exists
+              assertThat(policy.statements())
+                  .anySatisfy(
+                      stmt -> {
+                        assertThat(stmt.resources())
+                            .contains(
+                                IamResource.create(
+                                    String.format("arn:aws:kms:%s:%s:key/*", region, accountId)));
+                      });
+
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region(region)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Set.of(),
+            Optional.empty());
+
+    // Test with no KMS keys and write permissions (should not add KMS statement)
+    Mockito.reset(stsClient);
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              // Verify no KMS statement exists
+              assertThat(policy.statements())
+                  .noneMatch(
+                      stmt ->
+                          stmt.actions().stream()
+                              .anyMatch(action -> action.value().startsWith("kms:")));
+
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region(region)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Optional.empty());
   }
 
   private static @Nonnull String s3Arn(String partition, String bucket, String keyPrefix) {
