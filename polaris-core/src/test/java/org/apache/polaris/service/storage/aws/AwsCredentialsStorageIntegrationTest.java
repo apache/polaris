@@ -835,6 +835,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                 .roleARN(roleARN)
                 .externalId(externalId)
+                .userTokenSTS(false)
                 .region(region)
                 .currentKmsKey(currentKmsKey)
                 .build(),

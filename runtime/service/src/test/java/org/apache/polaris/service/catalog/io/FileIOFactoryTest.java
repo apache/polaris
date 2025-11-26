@@ -189,6 +189,7 @@ public class FileIOFactoryTest {
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation))
+            .setUserTokenSts(false)
             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
             .build();
 
