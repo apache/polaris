@@ -338,9 +338,6 @@ This product includes code from Project Nessie.
 * helm/polaris/templates/servicemonitor.yaml
 * helm/polaris/templates/storage.yaml
 
-Code underneath the components/persistence directory, especially pluggable object types, index related, cache,
-atomic commit logic and fundamental persistence implementations.
-
 Copyright: Copyright 2015-2025 Dremio Corporation
 Home page: https://projectnessie.org/
 License: https://www.apache.org/licenses/LICENSE-2.0
