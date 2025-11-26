@@ -66,6 +66,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
 
   @Nullable
   public abstract Boolean getUserTokenSTS();
+
   /** KMS Key ARN for server-side encryption,used for writes, optional */
   @Nullable
   public abstract String getCurrentKmsKey();

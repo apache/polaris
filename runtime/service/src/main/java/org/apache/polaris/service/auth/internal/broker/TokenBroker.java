@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.auth.internal.broker;
 
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisCredential;
 import org.apache.polaris.service.types.TokenType;
 

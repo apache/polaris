@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisCredential;
-import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
