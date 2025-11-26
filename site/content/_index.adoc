@@ -29,6 +29,7 @@ Apache Polaris is an open-source, fully-featured catalog for Apache Iceberg™. 
 
 {{< /blocks/cover >}}
 
+[.full-width]
 image::img/Polaris-Catalog-BLOG-symmetrical-subhead.png[Polaris Catalog]
 
 {{< blocks/section color="dark" type="row" >}}
