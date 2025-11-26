@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.core.storage.azure;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_COUNT;
 import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_DELAY_MILLIS;
 import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_JITTER_FACTOR;
-import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_COUNT;
 import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_TIMEOUT_MILLIS;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
@@ -330,7 +330,8 @@ public class AzureCredentialsStorageIntegration
    *   <li>Per-attempt timeout (configurable via CLOUD_API_TIMEOUT_MILLIS, default 15000ms)
    *   <li>Exponential backoff retry (configurable count and initial delay via CLOUD_API_RETRY_COUNT
    *       and CLOUD_API_RETRY_DELAY_MILLIS, defaults: 3 attempts starting at 2000ms)
-   *   <li>Jitter to prevent thundering herd (configurable via CLOUD_API_RETRY_JITTER_FACTOR, default 0.5 = 50%%)
+   *   <li>Jitter to prevent thundering herd (configurable via CLOUD_API_RETRY_JITTER_FACTOR,
+   *       default 0.5 = 50%%)
    * </ul>
    *
    * @param realmConfig the realm configuration to get timeout and retry settings
