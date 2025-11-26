@@ -270,6 +270,13 @@ public class IcebergRestCatalogEvents {
       TableMetadata metadataAfter)
       implements PolarisEvent {}
 
+  public record StageCommitTableEvent(
+      String catalogName,
+      TableIdentifier identifier,
+      TableMetadata metadataBefore,
+      TableMetadata metadataAfter)
+      implements PolarisEvent {}
+
   public record AfterCommitTableEvent(
       String catalogName,
       TableIdentifier identifier,

@@ -31,7 +31,7 @@ import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PrincipalRolesServiceEvents;
 import org.apache.polaris.service.events.PrincipalsServiceEvents;
 
-/** Test event listener that stores all emitted events forever. */
+/** Test event listener that stores the last event of each type. */
 public class TestPolarisEventListener implements PolarisEventListener {
   private final Map<Class<? extends PolarisEvent>, PolarisEvent> latestEvents =
       new ConcurrentHashMap<>();
@@ -493,6 +493,11 @@ public class TestPolarisEventListener implements PolarisEventListener {
 
   @Override
   public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {
+    recordEvent(event);
+  }
+
+  @Override
+  public void onStageCommitTable(IcebergRestCatalogEvents.StageCommitTableEvent event) {
     recordEvent(event);
   }
 

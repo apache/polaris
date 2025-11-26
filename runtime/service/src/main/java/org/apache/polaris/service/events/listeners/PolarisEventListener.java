@@ -257,6 +257,8 @@ public interface PolarisEventListener {
 
   default void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {}
 
+  default void onStageCommitTable(IcebergRestCatalogEvents.StageCommitTableEvent event) {}
+
   default void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {}
 
   default void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {}
