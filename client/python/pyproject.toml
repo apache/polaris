@@ -29,13 +29,6 @@ requires-python = ">=3.10,<4.0"
 license = "Apache-2.0"
 keywords = ["Apache Polaris", "Polaris", "Polaris Management Service", "Apache Iceberg REST Catalog API"]
 dynamic = ["classifiers"]
-dependencies = [
-    "urllib3>=1.25.3,<3.0.0",
-    "python-dateutil>=2.8.2",
-    "pydantic>=2.0.0,<2.12.0",
-    "typing-extensions>=4.7.1",
-    "boto3~=1.40.6",
-]
 
 [project.urls]
 homepage = "https://polaris.apache.org/"
@@ -45,6 +38,13 @@ repository = "https://github.com/apache/polaris/"
 polaris = "apache_polaris.cli.polaris_cli:main"
 
 [tool.poetry]
+name = "polaris"
+version = "1.2.0"
+license = "Apache-2.0"
+description = "Apache Polaris"
+urls.homepage = "https://polaris.apache.org/"
+urls.repository = "https://github.com/apache/polaris/"
+
 requires-poetry = "==2.2.1"
 packages = [
     { include = "apache_polaris" }
@@ -56,6 +56,13 @@ include = [
     { path = "spec/**", format = "sdist" },
 ]
 
+[tool.poetry.group.main.dependencies]
+urllib3 = ">=1.25.3,<3.0.0"
+python-dateutil = ">=2.8.2"
+pydantic = ">=2.0.0,<2.12.0"
+typing-extensions = ">=4.7.1"
+boto3 = "~=1.40.6"
+
 [tool.poetry.group.dev.dependencies]
 pytest = ">= 7.2.1"
 pytest-cov = ">= 2.8.1"
@@ -66,6 +73,7 @@ pyiceberg = "==0.10.0"
 pre-commit = "==4.5.0"
 openapi-generator-cli = "==7.17.0"
 pip-licenses-cli = "==3.0.1"
+cyclonedx-bom = "==7.2.0"
 
 [tool.pip-licenses]
 partial-match = true
