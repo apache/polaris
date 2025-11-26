@@ -81,7 +81,6 @@ public class StsClientsPool implements StsClientProvider {
       CompletableFuture<Endpoint> endpointFuture =
           completedFuture(Endpoint.builder().url(parameters.endpoint().get()).build());
       builder.endpointProvider(params -> endpointFuture);
-      // builder.endpointOverride(parameters.endpoint().get());
     }
 
     parameters.region().ifPresent(r -> builder.region(Region.of(r)));

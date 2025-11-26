@@ -35,8 +35,6 @@ import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.StsClientProvider.StsDestination;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
@@ -54,8 +52,6 @@ public class AwsCredentialsStorageIntegration
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
   private final SecurityIdentity securityIdentity;
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
 
   public AwsCredentialsStorageIntegration(
       AwsStorageConfigurationInfo config, StsClient fixedClient) {
@@ -92,20 +88,12 @@ public class AwsCredentialsStorageIntegration
     String region = storageConfig.getRegion();
     AccessConfig.Builder accessConfig = AccessConfig.builder();
     if (shouldUseSts(storageConfig)) {
-
-      LOGGER.debug(
-          "Setting up stsClient with region {} and sts endpoint: {}",
-          region,
-          storageConfig.getStsEndpointUri());
       @SuppressWarnings("resource")
       // Note: stsClientProvider returns "thin" clients that do not need closing
       StsClient stsClient =
           stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
       Credentials credentials;
       if (storageConfig.getUserTokenSTS()) {
-        LOGGER.debug(
-            "User {} hitting the STS",
-            securityIdentity.getCredential(PolarisCredential.class).getPrincipalName());
         AssumeRoleWithWebIdentityRequest.Builder request =
             AssumeRoleWithWebIdentityRequest.builder()
                 .webIdentityToken(
@@ -133,26 +121,18 @@ public class AwsCredentialsStorageIntegration
             cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
         credentials = stsClient.assumeRole(request.build()).credentials();
       }
-      try {
-        LOGGER.debug("accessKeyId: {}", credentials.accessKeyId());
-        LOGGER.debug("accessKeySecret: {}", credentials.secretAccessKey());
-        LOGGER.debug("sessionToken: {}", credentials.sessionToken());
-        accessConfig.put(StorageAccessProperty.AWS_KEY_ID, credentials.accessKeyId());
-        accessConfig.put(StorageAccessProperty.AWS_SECRET_KEY, credentials.secretAccessKey());
-        accessConfig.put(StorageAccessProperty.AWS_TOKEN, credentials.sessionToken());
-        Optional.ofNullable(credentials.expiration())
-            .ifPresent(
-                i -> {
-                  accessConfig.put(
-                      StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
-                  accessConfig.put(
-                      StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
-                      String.valueOf(i.toEpochMilli()));
-                });
-      } catch (Exception e) {
-        LOGGER.error("Error creating STS client or assuming role: ", e);
-        throw e;
-      }
+      accessConfig.put(StorageAccessProperty.AWS_KEY_ID, credentials.accessKeyId());
+      accessConfig.put(StorageAccessProperty.AWS_SECRET_KEY, credentials.secretAccessKey());
+      accessConfig.put(StorageAccessProperty.AWS_TOKEN, credentials.sessionToken());
+      Optional.ofNullable(credentials.expiration())
+          .ifPresent(
+              i -> {
+                accessConfig.put(
+                    StorageAccessProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
+                accessConfig.put(
+                    StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                    String.valueOf(i.toEpochMilli()));
+              });
     }
 
     if (region != null) {

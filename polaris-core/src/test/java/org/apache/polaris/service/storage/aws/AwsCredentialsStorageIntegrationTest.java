@@ -21,14 +21,14 @@ package org.apache.polaris.service.storage.aws;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import io.quarkus.security.identity.SecurityIdentity;
+import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import jakarta.annotation.Nonnull;
-
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-
 import org.apache.polaris.core.auth.PolarisCredential;
 import org.apache.polaris.core.storage.AccessConfig;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
@@ -41,10 +41,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
-import org.mockito.internal.matchers.Any;
-
-import io.quarkus.security.identity.SecurityIdentity;
-import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.policybuilder.iam.IamAction;
 import software.amazon.awssdk.policybuilder.iam.IamCondition;
@@ -74,7 +70,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .expiration(EXPIRE_TIME)
                   .build())
           .build();
-    public static final AssumeRoleWithWebIdentityResponse ASSUME_ROLE_WITH_WEB_IDENTITY_RESPONSE =
+  public static final AssumeRoleWithWebIdentityResponse ASSUME_ROLE_WITH_WEB_IDENTITY_RESPONSE =
       AssumeRoleWithWebIdentityResponse.builder()
           .credentials(
               Credentials.builder()
@@ -135,7 +131,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             "/namespace/table/credentials");
   }
 
-  
   @ParameterizedTest
   @ValueSource(strings = {"s3a", "s3"})
   public void testGetSubscopedCredsWithUserWebToken(String scheme) {
@@ -149,12 +144,15 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .setPrincipal(nonPolarisPrincipal)
             .addCredential(credential)
             .build();
-    Mockito.when(stsClient.assumeRoleWithWebIdentity(Mockito.isA(AssumeRoleWithWebIdentityRequest.class)))
+    Mockito.when(
+            stsClient.assumeRoleWithWebIdentity(
+                Mockito.isA(AssumeRoleWithWebIdentityRequest.class)))
         .thenAnswer(
             invocation -> {
               assertThat(invocation.getArguments()[0])
                   .isInstanceOf(AssumeRoleWithWebIdentityRequest.class)
-                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleWithWebIdentityRequest.class))
+                  .asInstanceOf(
+                      InstanceOfAssertFactories.type(AssumeRoleWithWebIdentityRequest.class))
                   .returns(webIdentityToken, AssumeRoleWithWebIdentityRequest::webIdentityToken)
                   .returns(roleARN, AssumeRoleWithWebIdentityRequest::roleArn);
               return ASSUME_ROLE_WITH_WEB_IDENTITY_RESPONSE;
@@ -170,7 +168,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .roleARN(roleARN)
                     .userTokenSTS(true)
                     .build(),
-                (destination) -> stsClient, credentialsProvider, identity)
+                (destination) -> stsClient,
+                credentialsProvider,
+                identity)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
                 true,
