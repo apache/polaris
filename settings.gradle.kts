@@ -104,8 +104,6 @@ gradle.beforeProject {
 
 pluginManagement {
   repositories {
-    maven { url = java.net.URI("https://bagofholding.cse-cst.gc.ca/repository/maven-central/") }
-    maven { url = java.net.URI("https://bagofholding.cse-cst.gc.ca/repository/maven-ap/") }
     mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
     gradlePluginPortal()
   }
@@ -119,8 +117,6 @@ plugins {
 dependencyResolutionManagement {
   repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
   repositories {
-    maven { url = java.net.URI("https://bagofholding.cse-cst.gc.ca/repository/maven-central/") }
-    maven { url = java.net.URI("https://bagofholding.cse-cst.gc.ca/repository/maven-ap/") }
     mavenCentral()
     gradlePluginPortal()
   }
