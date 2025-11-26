@@ -76,6 +76,7 @@ class CatalogsCommand(Command):
     sts_endpoint: str
     sts_unavailable: bool
     path_style_access: bool
+    user_token_sts: bool
     catalog_connection_type: str
     catalog_authentication_type: str
     catalog_service_identity_type: str
@@ -173,7 +174,7 @@ class CatalogsCommand(Command):
                 )
 
     def _has_aws_storage_info(self):
-        return self.role_arn or self.external_id or self.user_arn or self.region or self.endpoint or self.endpoint_internal or self.sts_endpoint or self.path_style_access
+        return self.role_arn or self.external_id or self.user_arn or self.region or self.endpoint or self.endpoint_internal or self.sts_endpoint or self.path_style_access or self.user_token_sts
 
     def _has_azure_storage_info(self):
         return self.tenant_id or self.multi_tenant_app_name or self.consent_url
@@ -196,6 +197,7 @@ class CatalogsCommand(Command):
                 sts_endpoint=self.sts_endpoint,
                 sts_unavailable=self.sts_unavailable,
                 path_style_access=self.path_style_access,
+                user_token_sts=self.user_token_sts,
             )
         elif self.storage_type == StorageType.AZURE.value:
             config = AzureStorageConfigInfo(

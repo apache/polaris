@@ -54,6 +54,7 @@ class Command(ABC):
                 allowed_locations=options_get(Arguments.ALLOWED_LOCATION),
                 role_arn=options_get(Arguments.ROLE_ARN),
                 external_id=options_get(Arguments.EXTERNAL_ID),
+                user_token_sts=options_get(Arguments.USER_TOKEN_STS),
                 user_arn=options_get(Arguments.USER_ARN),
                 region=options_get(Arguments.REGION),
                 tenant_id=options_get(Arguments.TENANT_ID),
