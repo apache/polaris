@@ -30,7 +30,12 @@ import io.quarkus.runtime.configuration.MemorySizeConverter;
 import io.smallrye.config.WithConverter;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTSerializers;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.json.mixins.IcebergMixins;
+import org.apache.polaris.service.events.json.mixins.PolarisEventBaseMixin;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +61,10 @@ public class PolarisIcebergObjectMapperCustomizer implements ObjectMapperCustomi
     objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     objectMapper.setPropertyNamingStrategy(new PropertyNamingStrategies.KebabCaseStrategy());
+    objectMapper.addMixIn(PolarisEvent.class, PolarisEventBaseMixin.class);
+    objectMapper.addMixIn(TableIdentifier.class, IcebergMixins.TableIdentifierMixin.class);
+    objectMapper.addMixIn(Namespace.class, IcebergMixins.NamespaceMixin.class);
+
     RESTSerializers.registerAll(objectMapper);
     Serializers.registerSerializers(objectMapper);
     objectMapper

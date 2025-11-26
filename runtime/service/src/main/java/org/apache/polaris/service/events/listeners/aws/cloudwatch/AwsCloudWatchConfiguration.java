@@ -16,13 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.events.jsonEventListener.aws.cloudwatch;
+package org.apache.polaris.service.events.listeners.aws.cloudwatch;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.util.Optional;
+import java.util.Set;
+import org.apache.polaris.service.events.PolarisEvent;
 
 /** Configuration interface for AWS CloudWatch event listener integration. */
 @StaticInitSafe
@@ -86,4 +89,8 @@ public interface AwsCloudWatchConfiguration {
   @WithName("synchronous-mode")
   @WithDefault("false")
   boolean synchronousMode();
+
+  @WithName("event-types")
+  Optional<Set<Class<? extends PolarisEvent>>>
+      eventTypes(); // defaults to empty option i.e. process all events
 }
