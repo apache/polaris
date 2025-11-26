@@ -28,7 +28,7 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import java.security.Principal;
 import java.util.Set;
-import org.apache.polaris.service.auth.PolarisCredential;
+import org.apache.polaris.core.auth.PolarisCredential;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +45,7 @@ public class InternalIdentityProviderTest {
 
   @Test
   public void testAuthenticateWithValidCredential() {
-    PolarisCredential credential = PolarisCredential.of(1L, "testUser", Set.of());
+    PolarisCredential credential = PolarisCredential.of(null, 1L, "testUser", Set.of());
     InternalAuthenticationRequest request = new InternalAuthenticationRequest(credential);
 
     // Create a request with the credential and a routing context attribute
