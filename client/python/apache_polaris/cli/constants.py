@@ -143,7 +143,6 @@ class Arguments:
     USER_ARN = "user_arn"
     TENANT_ID = "tenant_id"
     MULTI_TENANT_APP_NAME = "multi_tenant_app_name"
-    USER_TOKEN_STS = "user_token_sts"
     CONSENT_URL = "consent_url"
     SERVICE_ACCOUNT = "service_account"
     CATALOG_ROLE = "catalog_role"
@@ -257,7 +256,7 @@ class Hints:
                 "(Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)"
             )
             PATH_STYLE_ACCESS = "(Only for S3) Whether to use path-style-access for S3"
-            USER_TOKEN_STS = "(Only for S3) Whether to use the requesting users identity when connecting to the STS"
+
             TENANT_ID = "(Required for Azure) A tenant ID to use when connecting to Azure Storage"
             MULTI_TENANT_APP_NAME = (
                 "(Only for Azure) The app name to use when connecting to Azure Storage"
