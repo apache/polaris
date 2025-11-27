@@ -77,10 +77,10 @@ cascade:
 | https://github.com/annafil[Anna Filippova] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Anoop Johnson | PPMC Member | link:https://www.google.com/[Google]
 | https://github.com/ashvina[Ashvin Agrawal] | PPMC Member | link:https://www.microsoft.com/[Microsoft]
-| Bertrand Delacretaz | Mentor |
 | https://github.com/dennishuo[Dennis Huo] | PPMC Member | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/dimas-b[Dmitri Bourlatchkov] | PPMC Member | link:https://www.dremio.com/[Dremio]
 | https://github.com/eric-maynard[Eric Maynard] | Committer |
+| https://github.com/fpapon[François Papon] | Mentor |
 | Holden Karau | Mentor |
 | https://github.com/jackye1995[Jack Ye] | PPMC Member | link:https://lancedb.com/[LanceDB]
 | https://github.com/jbonofre[JB Onofre] | PPMC Member & Mentor | link:https://www.dremio.com/[Dremio]
