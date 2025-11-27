@@ -54,7 +54,8 @@ public interface PolarisPrincipal extends Principal {
    * @param token the access token of the current user
    */
   static PolarisPrincipal of(PrincipalEntity principalEntity, Set<String> roles, String token) {
-    return of(principalEntity.getName(), principalEntity.getInternalPropertiesAsMap(), roles, token);
+    return of(
+        principalEntity.getName(), principalEntity.getInternalPropertiesAsMap(), roles, token);
   }
 
   /**
@@ -66,7 +67,8 @@ public interface PolarisPrincipal extends Principal {
    * @param roles the set of roles associated with the principal
    * @param token the access token of the current user
    */
-  static PolarisPrincipal of(String name, Map<String, String> properties, Set<String> roles, String token) {
+  static PolarisPrincipal of(
+      String name, Map<String, String> properties, Set<String> roles, String token) {
     return ImmutablePolarisPrincipal.builder()
         .name(name)
         .properties(properties)
@@ -92,8 +94,6 @@ public interface PolarisPrincipal extends Principal {
    */
   Map<String, String> getProperties();
 
-  /**
-   * Returns the access token of the current user.
-   */
+  /** Returns the access token of the current user. */
   String getToken();
 }

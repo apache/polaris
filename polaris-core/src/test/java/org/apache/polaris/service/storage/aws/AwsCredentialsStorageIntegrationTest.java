@@ -21,15 +21,11 @@ package org.apache.polaris.service.storage.aws;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import io.quarkus.security.identity.SecurityIdentity;
-import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import jakarta.annotation.Nonnull;
-import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisCredential;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessConfig;

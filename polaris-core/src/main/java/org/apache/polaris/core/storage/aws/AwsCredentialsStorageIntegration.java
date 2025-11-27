@@ -20,7 +20,6 @@ package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
-import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.HashMap;
@@ -29,7 +28,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.PolarisCredential;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;

@@ -435,7 +435,9 @@ public abstract class BaseResolverTest {
                         .collect(Collectors.toList()));
     PolarisPrincipal authenticatedPrincipal =
         PolarisPrincipal.of(
-            PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()), "thisisatoken");
+            PrincipalEntity.of(P1),
+            Optional.ofNullable(principalRolesScope).orElse(Set.of()),
+            "thisisatoken");
     return new Resolver(
         diagServices,
         callCtx(),
