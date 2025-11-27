@@ -141,6 +141,7 @@ tasks.named<RatTask>("rat").configure {
 }
 
 tasks.register<Exec>("buildPythonClient") {
+  group = "build"
   description = "Build the python client"
 
   workingDir = project.projectDir
@@ -236,6 +237,8 @@ changelog {
 }
 
 tasks.register("showVersion") {
+  group = "Application"
+  description = "Show the Polaris version"
   actions.add {
     logger.lifecycle(
       "Polaris version is ${project.file("version.txt").readText(Charsets.UTF_8).trim()}"
