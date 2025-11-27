@@ -32,7 +32,7 @@ import java.security.Principal;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisCredential;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalMapper;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantConfiguration.PrincipalRolesMapper;

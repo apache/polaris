@@ -36,9 +36,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Collections;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisCredential;
 import org.apache.polaris.service.auth.AuthenticationRealmConfiguration;
 import org.apache.polaris.service.auth.AuthenticationType;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 
 /**

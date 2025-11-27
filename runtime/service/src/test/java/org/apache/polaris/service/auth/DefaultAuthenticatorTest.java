@@ -31,7 +31,6 @@ import java.time.Instant;
 import java.util.Set;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
-import org.apache.polaris.core.auth.PolarisCredential;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;

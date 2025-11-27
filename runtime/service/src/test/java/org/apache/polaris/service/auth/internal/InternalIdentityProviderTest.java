@@ -28,7 +28,7 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
 import java.security.Principal;
 import java.util.Set;
-import org.apache.polaris.core.auth.PolarisCredential;
+import org.apache.polaris.service.auth.PolarisCredential;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

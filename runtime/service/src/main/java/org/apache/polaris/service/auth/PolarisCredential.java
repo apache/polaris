@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.service.auth;
 
 import io.quarkus.security.credential.Credential;
 import jakarta.annotation.Nullable;
