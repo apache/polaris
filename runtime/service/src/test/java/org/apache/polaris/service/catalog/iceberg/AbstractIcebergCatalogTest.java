@@ -317,7 +317,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
-            .setUserTokenSts(false)
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
@@ -1914,7 +1913,6 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
-            .setUserTokenSts(false)
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .build();
     adminService.createCatalog(

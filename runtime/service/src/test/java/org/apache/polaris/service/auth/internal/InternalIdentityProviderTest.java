@@ -45,7 +45,7 @@ public class InternalIdentityProviderTest {
 
   @Test
   public void testAuthenticateWithValidCredential() {
-    PolarisCredential credential = PolarisCredential.of(null, 1L, "testUser", Set.of());
+    PolarisCredential credential = PolarisCredential.of( 1L, "testUser", Set.of());
     InternalAuthenticationRequest request = new InternalAuthenticationRequest(credential);
 
     // Create a request with the credential and a routing context attribute

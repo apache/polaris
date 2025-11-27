@@ -74,7 +74,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
   void testNullPrincipalIdAndName() {
     // Given: credentials with both null principal ID and name
     PolarisCredential credentials =
-        PolarisCredential.of(null, null, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When/Then: authentication should fail with NotAuthorizedException
     assertUnauthorized(credentials);
@@ -85,7 +85,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials with a non-existent principal name
     PolarisCredential credentials =
         PolarisCredential.of(
-            null, null, "non-existent-principal", Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+            null, "non-existent-principal", Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When/Then: authentication should fail with NotAuthorizedException
     assertUnauthorized(credentials);
@@ -95,7 +95,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
   void testPrincipalNotFoundById() {
     // Given: credentials with a non-existent principal ID
     PolarisCredential credentials =
-        PolarisCredential.of(null, 999999L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(999999L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When/Then: authentication should fail with NotAuthorizedException
     assertUnauthorized(credentials);
@@ -106,7 +106,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
 
     // Given: credentials with a non-existent principal ID
     PolarisCredential credentials =
-        PolarisCredential.of(null, 123L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(123L, null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     metaStoreManager = Mockito.spy(metaStoreManager);
     when(metaStoreManager.loadEntity(polarisContext, 0L, 123L, PolarisEntityType.PRINCIPAL))
@@ -120,7 +120,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials with principal ID instead of name
     PolarisCredential credentials =
         PolarisCredential.of(
-            null, principalEntity.getId(), null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+            principalEntity.getId(), null, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(credentials);
@@ -133,8 +133,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
   void testPrincipalFoundByName() {
     // Given: credentials with existing principal name
     PolarisCredential credentials =
-        PolarisCredential.of(
-            null, null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(credentials);
@@ -147,8 +146,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
   void testPrincipalFoundWithAllRolesRequested() {
     // Given: credentials requesting all roles for an existing principal
     PolarisCredential credentials =
-        PolarisCredential.of(
-            null, null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(credentials);
@@ -162,7 +160,6 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials requesting only a subset of the principal's roles
     PolarisCredential credentials =
         PolarisCredential.of(
-            null,
             null,
             PRINCIPAL_NAME,
             Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1));
@@ -179,7 +176,6 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials requesting multiple specific roles
     PolarisCredential credentials =
         PolarisCredential.of(
-            null,
             null,
             PRINCIPAL_NAME,
             Set.of(
@@ -198,7 +194,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials for a principal with no assigned roles
     PolarisCredential credentials =
         PolarisCredential.of(
-            null, null, PRINCIPAL_NO_ROLES, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+            null, PRINCIPAL_NO_ROLES, Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
 
     // When: authenticating the principal
     PolarisPrincipal result = authenticator.authenticate(credentials);
@@ -212,7 +208,6 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials requesting roles that don't exist in the system
     PolarisCredential credentials =
         PolarisCredential.of(
-            null,
             null,
             PRINCIPAL_NAME,
             Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + "non-existent-role"));
@@ -229,7 +224,6 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials requesting both valid and invalid roles
     PolarisCredential credentials =
         PolarisCredential.of(
-            null,
             null,
             PRINCIPAL_NAME,
             Set.of(
@@ -251,7 +245,6 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     PolarisCredential credentials =
         PolarisCredential.of(
             null,
-            null,
             PRINCIPAL_NAME,
             Set.of(
                 DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1,
@@ -271,7 +264,7 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials with empty roles set
     PolarisCredential credentials =
         PolarisCredential.of(
-            null, null, PRINCIPAL_NAME, Set.of() // Empty roles set
+            null, PRINCIPAL_NAME, Set.of() // Empty roles set
             );
 
     // When: authenticating the principal
@@ -286,7 +279,6 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
     // Given: credentials with both principal ID and name (ID should take precedence)
     PolarisCredential credentials =
         PolarisCredential.of(
-            null,
             principalEntity.getId(),
             "wrong-name", // This should be ignored since ID is provided
             Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));

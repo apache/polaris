@@ -31,6 +31,11 @@ import org.apache.polaris.immutables.PolarisImmutable;
 public interface PolarisCredential extends Credential {
 
   static PolarisCredential of(
+      @Nullable Long principalId, @Nullable String principalName, Set<String> principalRoles) {
+    return of(null, principalId, principalName, principalRoles);
+  }
+
+  static PolarisCredential of(
       @Nullable String token,
       @Nullable Long principalId,
       @Nullable String principalName,
