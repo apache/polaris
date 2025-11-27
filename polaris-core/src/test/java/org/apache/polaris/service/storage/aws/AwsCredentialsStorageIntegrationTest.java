@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisCredential;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -108,7 +109,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .addAllowedLocation(warehouseDir)
                     .roleARN(roleARN)
                     .externalId(externalId)
-                    .userTokenSTS(false)
                     .build(),
                 stsClient)
             .getSubscopedCreds(
@@ -137,13 +137,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String webIdentityToken = "webIdentityToken";
-    Principal nonPolarisPrincipal = mock(Principal.class);
-    PolarisCredential credential = mock(PolarisCredential.class);
-    SecurityIdentity identity =
-        QuarkusSecurityIdentity.builder()
-            .setPrincipal(nonPolarisPrincipal)
-            .addCredential(credential)
-            .build();
+    PolarisPrincipal principal = mock(PolarisPrincipal.class);
     Mockito.when(
             stsClient.assumeRoleWithWebIdentity(
                 Mockito.isA(AssumeRoleWithWebIdentityRequest.class)))
@@ -157,8 +151,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .returns(roleARN, AssumeRoleWithWebIdentityRequest::roleArn);
               return ASSUME_ROLE_WITH_WEB_IDENTITY_RESPONSE;
             });
-    Mockito.when(credential.getToken()).thenReturn(webIdentityToken);
-    Mockito.when(credential.getPrincipalName()).thenReturn("jdoe");
+    Mockito.when(principal.getToken()).thenReturn(webIdentityToken);
     String warehouseDir = scheme + "://bucket/path/to/warehouse";
     Optional<AwsCredentialsProvider> credentialsProvider = Optional.empty();
     StorageAccessConfig accessConfig =
@@ -166,11 +159,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 AwsStorageConfigurationInfo.builder()
                     .addAllowedLocation(warehouseDir)
                     .roleARN(roleARN)
-                    .userTokenSTS(true)
+                    .propagateApiUserIdentity(true)
                     .build(),
                 (destination) -> stsClient,
                 credentialsProvider,
-                identity)
+                principal)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
                 true,
@@ -321,7 +314,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .roleARN(roleARN)
                                 .externalId(externalId)
                                 .region(region)
-                                .userTokenSTS(false)
                                 .build(),
                             stsClient)
                         .getSubscopedCreds(
@@ -341,7 +333,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .roleARN(roleARN)
                         .externalId(externalId)
                         .region(region)
-                        .userTokenSTS(false)
                         .build(),
                     stsClient)
                 .getSubscopedCreds(
@@ -443,7 +434,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .roleARN(roleARN)
                     .externalId(externalId)
                     .region("us-east-2")
-                    .userTokenSTS(false)
                     .build(),
                 stsClient)
             .getSubscopedCreds(
@@ -558,7 +548,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                     .roleARN(roleARN)
                     .externalId(externalId)
-                    .userTokenSTS(false)
                     .region(region)
                     .build(),
                 stsClient)
@@ -646,7 +635,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                     .roleARN(roleARN)
                     .externalId(externalId)
-                    .userTokenSTS(false)
                     .region(region)
                     .build(),
                 stsClient)
@@ -690,7 +678,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .roleARN(roleARN)
                                 .externalId(externalId)
                                 .region(clientRegion)
-                                .userTokenSTS(false)
                                 .build(),
                             stsClient)
                         .getSubscopedCreds(
@@ -710,7 +697,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .roleARN(roleARN)
                         .externalId(externalId)
                         .region(clientRegion)
-                        .userTokenSTS(false)
                         .build(),
                     stsClient)
                 .getSubscopedCreds(
@@ -751,7 +737,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                         .roleARN(roleARN)
                         .externalId(externalId)
-                        .userTokenSTS(false)
                         .build(),
                     stsClient)
                 .getSubscopedCreds(
@@ -773,7 +758,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                 .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                                 .roleARN(roleARN)
                                 .externalId(externalId)
-                                .userTokenSTS(false)
                                 .build(),
                             stsClient)
                         .getSubscopedCreds(
@@ -835,7 +819,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
                 .roleARN(roleARN)
                 .externalId(externalId)
-                .userTokenSTS(false)
                 .region(region)
                 .currentKmsKey(currentKmsKey)
                 .build(),

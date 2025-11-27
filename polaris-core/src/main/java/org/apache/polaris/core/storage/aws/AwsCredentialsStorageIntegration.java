@@ -30,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisCredential;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -54,7 +55,7 @@ public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
-  private final SecurityIdentity securityIdentity;
+  private final PolarisPrincipal principal;
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
@@ -73,11 +74,11 @@ public class AwsCredentialsStorageIntegration
       AwsStorageConfigurationInfo config,
       StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> credentialsProvider,
-      SecurityIdentity securityIdentity) {
+      PolarisPrincipal principal) {
     super(config, AwsCredentialsStorageIntegration.class.getName());
     this.stsClientProvider = stsClientProvider;
     this.credentialsProvider = credentialsProvider;
-    this.securityIdentity = securityIdentity;
+    this.principal = principal;
   }
 
   /** {@inheritDoc} */
@@ -102,11 +103,10 @@ public class AwsCredentialsStorageIntegration
       StsClient stsClient =
           stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
       Credentials credentials;
-      if (storageConfig.getUserTokenSTS()) {
+      if (Boolean.TRUE.equals(storageConfig.getPropagateApiUserIdentity())) {
         AssumeRoleWithWebIdentityRequest.Builder request =
             AssumeRoleWithWebIdentityRequest.builder()
-                .webIdentityToken(
-                    securityIdentity.getCredential(PolarisCredential.class).getToken())
+                .webIdentityToken(principal.getToken())
                 .roleArn(storageConfig.getRoleARN())
                 .roleSessionName("PolarisAwsCredentialsStorageIntegration")
                 .durationSeconds(storageCredentialDurationSeconds);
