@@ -237,7 +237,7 @@ changelog {
 }
 
 tasks.register("showVersion") {
-  group = "Application"
+  group = "application"
   description = "Show the Polaris version"
   actions.add {
     logger.lifecycle(

@@ -73,9 +73,9 @@ quarkus {
 }
 
 tasks.register("run") {
-    group = "application"
-    description = "Runs the Apache Polaris server application"
-    dependsOn("quarkusRun")
+  group = "application"
+  description = "Runs the Apache Polaris server application"
+  dependsOn("quarkusRun")
 }
 
 tasks.named<QuarkusRun>("quarkusRun") {
