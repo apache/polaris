@@ -1136,11 +1136,12 @@ components:
                 for accessing data and metadata files within the related catalog. Setting this property to `true`
                 effectively disables vending storage credentials to clients. This setting is intended for configuring
                 catalogs with S3-compatible storage implementations that do not support STS.
-            userTokenSts:
+            propagateApiUserIdentity:
               type: boolean
               description: >-
                 if set to `true`, instructs Polaris Servers to use the end-user's credentials when
                 accessing the S3 STS server. 
+              default: false
             endpointInternal:
               type: string
               description: >-

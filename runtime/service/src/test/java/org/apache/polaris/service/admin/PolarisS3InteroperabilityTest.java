@@ -92,7 +92,6 @@ public class PolarisS3InteroperabilityTest {
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setRoleArn("arn:aws:iam::123456789012:role/catalog_role")
-            .setUserTokenSts(false)
             .build();
     Catalog catalogObject =
         new Catalog(

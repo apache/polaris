@@ -159,7 +159,6 @@ public class CatalogFederationIntegrationTest {
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(true)
-            .setUserTokenSts(false)
             .setEndpoint(endpoint)
             .setAllowedLocations(List.of(localStorageBase.toString()))
             .build();

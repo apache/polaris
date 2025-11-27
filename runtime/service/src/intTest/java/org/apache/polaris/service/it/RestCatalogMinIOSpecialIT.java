@@ -186,7 +186,6 @@ public class RestCatalogMinIOSpecialIT {
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setPathStyleAccess(pathStyleAccess)
-            .setUserTokenSts(false)
             .setStsUnavailable(!stsEnabled)
             .setAllowedLocations(List.of(storageBase.toString()));
 
