@@ -79,6 +79,7 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -126,6 +127,7 @@ public abstract class AbstractPolicyCatalogTest {
   @Inject PolarisDiagnostics diagServices;
   @Inject ResolverFactory resolverFactory;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
+  @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject UserSecretsManager userSecretsManager;
   @Inject CallContext callContext;
@@ -246,7 +248,8 @@ public abstract class AbstractPolicyCatalogTest {
             taskExecutor,
             storageAccessConfigProvider,
             fileIOFactory,
-            new NoOpPolarisEventListener());
+            new NoOpPolarisEventListener(),
+            eventMetadataFactory);
     this.icebergCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

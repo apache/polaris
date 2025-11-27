@@ -34,84 +34,197 @@ public class CatalogPolicyServiceEvents {
 
   // Policy CRUD Events
   public record BeforeCreatePolicyEvent(
-      String catalogName, String namespace, CreatePolicyRequest createPolicyRequest)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String namespace,
+      CreatePolicyRequest createPolicyRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CREATE_POLICY;
+    }
+  }
 
   public record AfterCreatePolicyEvent(
-      String catalogName, String namespace, LoadPolicyResponse loadPolicyResponse)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String namespace,
+      LoadPolicyResponse loadPolicyResponse)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CREATE_POLICY;
+    }
+  }
 
-  public record BeforeListPoliciesEvent(String catalogName, String namespace, String policyType)
-      implements PolarisEvent {}
+  public record BeforeListPoliciesEvent(
+      PolarisEventMetadata metadata, String catalogName, String namespace, String policyType)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_POLICIES;
+    }
+  }
 
-  public record AfterListPoliciesEvent(String catalogName, String namespace, String policyType)
-      implements PolarisEvent {}
+  public record AfterListPoliciesEvent(
+      PolarisEventMetadata metadata, String catalogName, String namespace, String policyType)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_POLICIES;
+    }
+  }
 
-  public record BeforeLoadPolicyEvent(String catalogName, String namespace, String policyName)
-      implements PolarisEvent {}
+  public record BeforeLoadPolicyEvent(
+      PolarisEventMetadata metadata, String catalogName, String namespace, String policyName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LOAD_POLICY;
+    }
+  }
 
   public record AfterLoadPolicyEvent(
-      String catalogName, String namespace, LoadPolicyResponse loadPolicyResponse)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String namespace,
+      LoadPolicyResponse loadPolicyResponse)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LOAD_POLICY;
+    }
+  }
 
   public record BeforeUpdatePolicyEvent(
+      PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
       String policyName,
       UpdatePolicyRequest updatePolicyRequest)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_UPDATE_POLICY;
+    }
+  }
 
   public record AfterUpdatePolicyEvent(
-      String catalogName, String namespace, LoadPolicyResponse loadPolicyResponse)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String namespace,
+      LoadPolicyResponse loadPolicyResponse)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_UPDATE_POLICY;
+    }
+  }
 
   public record BeforeDropPolicyEvent(
-      String catalogName, String namespace, String policyName, Boolean detachAll)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String namespace,
+      String policyName,
+      Boolean detachAll)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_DROP_POLICY;
+    }
+  }
 
   public record AfterDropPolicyEvent(
-      String catalogName, String namespace, String policyName, Boolean detachAll)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String namespace,
+      String policyName,
+      Boolean detachAll)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_DROP_POLICY;
+    }
+  }
 
   // Policy Attachment Events
   public record BeforeAttachPolicyEvent(
+      PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
       String policyName,
       AttachPolicyRequest attachPolicyRequest)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_ATTACH_POLICY;
+    }
+  }
 
   public record AfterAttachPolicyEvent(
+      PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
       String policyName,
       AttachPolicyRequest attachPolicyRequest)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_ATTACH_POLICY;
+    }
+  }
 
   public record BeforeDetachPolicyEvent(
+      PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
       String policyName,
       DetachPolicyRequest detachPolicyRequest)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_DETACH_POLICY;
+    }
+  }
 
   public record AfterDetachPolicyEvent(
+      PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
       String policyName,
       DetachPolicyRequest detachPolicyRequest)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_DETACH_POLICY;
+    }
+  }
 
   // Policy Query Events
   public record BeforeGetApplicablePoliciesEvent(
-      String catalogName, String namespace, String targetName, String policyType)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String namespace,
+      String targetName,
+      String policyType)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_GET_APPLICABLE_POLICIES;
+    }
+  }
 
   public record AfterGetApplicablePoliciesEvent(
+      PolarisEventMetadata metadata,
       String catalogName,
       String namespace,
       String targetName,
       String policyType,
       GetApplicablePoliciesResponse getApplicablePoliciesResponse)
-      implements PolarisEvent {}
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_GET_APPLICABLE_POLICIES;
+    }
+  }
 }

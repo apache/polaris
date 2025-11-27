@@ -18,14 +18,10 @@
  */
 package org.apache.polaris.service.events;
 
-import java.util.UUID;
-
-/**
- * Represents an event emitted by Polaris. Currently, there's no common data across events so this
- * is just a marker interface.
- */
+/** Represents an event emitted by Polaris. */
 public interface PolarisEvent {
-  static String createEventId() {
-    return UUID.randomUUID().toString();
-  }
+
+  PolarisEventType type();
+
+  PolarisEventMetadata metadata();
 }
