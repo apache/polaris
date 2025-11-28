@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage.aws;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.core.SecurityContext;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
@@ -53,7 +54,7 @@ public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
-  private final PolarisPrincipal principal;
+  private final SecurityContext context;
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
@@ -72,11 +73,11 @@ public class AwsCredentialsStorageIntegration
       AwsStorageConfigurationInfo config,
       StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> credentialsProvider,
-      PolarisPrincipal principal) {
+      SecurityContext context) {
     super(config, AwsCredentialsStorageIntegration.class.getName());
     this.stsClientProvider = stsClientProvider;
     this.credentialsProvider = credentialsProvider;
-    this.principal = principal;
+    this.context = context;
   }
 
   /** {@inheritDoc} */
@@ -104,7 +105,7 @@ public class AwsCredentialsStorageIntegration
       if (Boolean.TRUE.equals(storageConfig.getPropagateApiUserIdentity())) {
         AssumeRoleWithWebIdentityRequest.Builder request =
             AssumeRoleWithWebIdentityRequest.builder()
-                .webIdentityToken(principal.getToken())
+                .webIdentityToken(((PolarisPrincipal) context.getUserPrincipal()).getToken())
                 .roleArn(storageConfig.getRoleARN())
                 .roleSessionName("PolarisAwsCredentialsStorageIntegration")
                 .durationSeconds(storageCredentialDurationSeconds);

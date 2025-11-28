@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.auth;
 
+import jakarta.annotation.Nullable;
 import java.security.Principal;
 import java.util.Map;
 import java.util.Set;
@@ -65,10 +66,22 @@ public interface PolarisPrincipal extends Principal {
    * @param name the name of the principal
    * @param properties additional properties associated with the principal
    * @param roles the set of roles associated with the principal
+   */
+  static PolarisPrincipal of(String name, Map<String, String> properties, Set<String> roles) {
+    return of(name, properties, roles, null);
+  }
+
+  /**
+   * Creates a new instance of {@link PolarisPrincipal} with the specified ID, name, roles, and
+   * properties.
+   *
+   * @param name the name of the principal
+   * @param properties additional properties associated with the principal
+   * @param roles the set of roles associated with the principal
    * @param token the access token of the current user
    */
   static PolarisPrincipal of(
-      String name, Map<String, String> properties, Set<String> roles, String token) {
+      String name, Map<String, String> properties, Set<String> roles, @Nullable String token) {
     return ImmutablePolarisPrincipal.builder()
         .name(name)
         .properties(properties)
@@ -95,5 +108,6 @@ public interface PolarisPrincipal extends Principal {
   Map<String, String> getProperties();
 
   /** Returns the access token of the current user. */
+  @Nullable
   String getToken();
 }

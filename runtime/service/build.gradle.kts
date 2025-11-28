@@ -30,7 +30,6 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
-
   runtimeOnly(project(":polaris-relational-jdbc"))
 
   implementation(project(":polaris-runtime-defaults"))
@@ -103,7 +102,7 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-annotations")
   implementation("com.fasterxml.jackson.core:jackson-core")
   implementation("com.fasterxml.jackson.core:jackson-databind")
-
+  implementation(libs.apache.httpclient5)
   implementation(libs.jakarta.servlet.api)
 
   runtimeOnly(project(":polaris-async-vertx"))

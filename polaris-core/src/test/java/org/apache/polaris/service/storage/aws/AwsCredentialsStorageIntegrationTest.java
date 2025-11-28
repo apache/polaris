@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -134,6 +135,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String webIdentityToken = "webIdentityToken";
     PolarisPrincipal principal = mock(PolarisPrincipal.class);
+    SecurityContext context = mock(SecurityContext.class);
+    Mockito.when(context.getUserPrincipal()).thenReturn(principal);
     Mockito.when(
             stsClient.assumeRoleWithWebIdentity(
                 Mockito.isA(AssumeRoleWithWebIdentityRequest.class)))
@@ -159,7 +162,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     .build(),
                 (destination) -> stsClient,
                 credentialsProvider,
-                principal)
+                context)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
                 true,

@@ -26,12 +26,13 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -53,31 +54,25 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
-  private final PolarisPrincipal principal;
+  @Context SecurityContext context;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
   public PolarisStorageIntegrationProviderImpl(
-      StorageConfiguration storageConfiguration,
-      StsClientProvider stsClientProvider,
-      Clock clock,
-      PolarisPrincipal principal) {
+      StorageConfiguration storageConfiguration, StsClientProvider stsClientProvider, Clock clock) {
     this(
         stsClientProvider,
         Optional.ofNullable(storageConfiguration.stsCredentials()),
-        storageConfiguration.gcpCredentialsSupplier(clock),
-        principal);
+        storageConfiguration.gcpCredentialsSupplier(clock));
   }
 
   public PolarisStorageIntegrationProviderImpl(
       StsClientProvider stsClientProvider,
       Optional<AwsCredentialsProvider> stsCredentials,
-      Supplier<GoogleCredentials> gcpCredsProvider,
-      PolarisPrincipal principal) {
+      Supplier<GoogleCredentials> gcpCredsProvider) {
     this.stsClientProvider = stsClientProvider;
     this.stsCredentials = stsCredentials;
     this.gcpCredsProvider = gcpCredsProvider;
-    this.principal = principal;
   }
 
   @Override
@@ -97,7 +92,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                     (AwsStorageConfigurationInfo) polarisStorageConfigurationInfo,
                     stsClientProvider,
                     stsCredentials,
-                    principal);
+                    context);
         break;
       case GCS:
         storageIntegration =
