@@ -26,6 +26,8 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
@@ -52,6 +54,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
+  @Context SecurityContext context;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
@@ -88,7 +91,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 new AwsCredentialsStorageIntegration(
                     (AwsStorageConfigurationInfo) polarisStorageConfigurationInfo,
                     stsClientProvider,
-                    stsCredentials);
+                    stsCredentials,
+                    context);
         break;
       case GCS:
         storageIntegration =

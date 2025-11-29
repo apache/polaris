@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage.aws;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.core.SecurityContext;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -44,13 +46,15 @@ import software.amazon.awssdk.policybuilder.iam.IamResource;
 import software.amazon.awssdk.policybuilder.iam.IamStatement;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
-import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
+import software.amazon.awssdk.services.sts.model.AssumeRoleWithWebIdentityRequest;
+import software.amazon.awssdk.services.sts.model.Credentials;
 
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
+  private final SecurityContext context;
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
@@ -62,16 +66,18 @@ public class AwsCredentialsStorageIntegration
 
   public AwsCredentialsStorageIntegration(
       AwsStorageConfigurationInfo config, StsClientProvider stsClientProvider) {
-    this(config, stsClientProvider, Optional.empty());
+    this(config, stsClientProvider, Optional.empty(), null);
   }
 
   public AwsCredentialsStorageIntegration(
       AwsStorageConfigurationInfo config,
       StsClientProvider stsClientProvider,
-      Optional<AwsCredentialsProvider> credentialsProvider) {
+      Optional<AwsCredentialsProvider> credentialsProvider,
+      SecurityContext context) {
     super(config, AwsCredentialsStorageIntegration.class.getName());
     this.stsClientProvider = stsClientProvider;
     this.credentialsProvider = credentialsProvider;
+    this.context = context;
   }
 
   /** {@inheritDoc} */
@@ -90,35 +96,45 @@ public class AwsCredentialsStorageIntegration
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
     if (shouldUseSts(storageConfig)) {
-      AssumeRoleRequest.Builder request =
-          AssumeRoleRequest.builder()
-              .externalId(storageConfig.getExternalId())
-              .roleArn(storageConfig.getRoleARN())
-              .roleSessionName("PolarisAwsCredentialsStorageIntegration")
-              .policy(
-                  policyString(
-                          storageConfig,
-                          allowListOperation,
-                          allowedReadLocations,
-                          allowedWriteLocations,
-                          region,
-                          accountId)
-                      .toJson())
-              .durationSeconds(storageCredentialDurationSeconds);
-      credentialsProvider.ifPresent(
-          cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
       @SuppressWarnings("resource")
       // Note: stsClientProvider returns "thin" clients that do not need closing
       StsClient stsClient =
           stsClientProvider.stsClient(StsDestination.of(storageConfig.getStsEndpointUri(), region));
+      Credentials credentials;
+      if (Boolean.TRUE.equals(storageConfig.getPropagateApiUserIdentity())) {
+        AssumeRoleWithWebIdentityRequest.Builder request =
+            AssumeRoleWithWebIdentityRequest.builder()
+                .webIdentityToken(((PolarisPrincipal) context.getUserPrincipal()).getToken())
+                .roleArn(storageConfig.getRoleARN())
+                .roleSessionName("PolarisAwsCredentialsStorageIntegration")
+                .durationSeconds(storageCredentialDurationSeconds);
 
-      AssumeRoleResponse response = stsClient.assumeRole(request.build());
-      accessConfig.put(StorageAccessProperty.AWS_KEY_ID, response.credentials().accessKeyId());
-      accessConfig.put(
-          StorageAccessProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
-      accessConfig.put(StorageAccessProperty.AWS_TOKEN, response.credentials().sessionToken());
-      Optional.ofNullable(response.credentials().expiration())
+        credentials = stsClient.assumeRoleWithWebIdentity(request.build()).credentials();
+      } else {
+        AssumeRoleRequest.Builder request =
+            AssumeRoleRequest.builder()
+                .externalId(storageConfig.getExternalId())
+                .roleArn(storageConfig.getRoleARN())
+                .roleSessionName("PolarisAwsCredentialsStorageIntegration")
+                .policy(
+                    policyString(
+                            storageConfig,
+                            allowListOperation,
+                            allowedReadLocations,
+                            allowedWriteLocations,
+                            region,
+                            accountId)
+                        .toJson())
+                .durationSeconds(storageCredentialDurationSeconds);
+        credentialsProvider.ifPresent(
+            cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
+        credentials = stsClient.assumeRole(request.build()).credentials();
+      }
+      accessConfig.put(StorageAccessProperty.AWS_KEY_ID, credentials.accessKeyId());
+      accessConfig.put(StorageAccessProperty.AWS_SECRET_KEY, credentials.secretAccessKey());
+      accessConfig.put(StorageAccessProperty.AWS_TOKEN, credentials.sessionToken());
+      Optional.ofNullable(credentials.expiration())
           .ifPresent(
               i -> {
                 accessConfig.put(
