@@ -40,6 +40,9 @@ import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import scala.Option;
+import scala.Tuple2;
+import scala.collection.immutable.Map$;
+import scala.collection.mutable.Builder;
 
 public class PolarisCatalogUtils {
 
@@ -125,10 +128,10 @@ public class PolarisCatalogUtils {
         new TableIdentifier(
             identifier.name(), Option.apply(namespacePath), Option.apply(catalogName));
 
-    scala.collection.immutable.Map<String, String> scalaOptions =
-        (scala.collection.immutable.Map<String, String>)
-            scala.collection.immutable.Map$.MODULE$.apply(
-                scala.collection.JavaConverters.mapAsScalaMap(tableProperties).toSeq());
+    Builder<Tuple2<String, String>, scala.collection.immutable.Map<String, String>> mb =
+        Map$.MODULE$.newBuilder();
+    tableProperties.forEach((k, v) -> mb.$plus$eq(Tuple2.apply(k, v)));
+    scala.collection.immutable.Map<String, String> scalaOptions = mb.result();
 
     org.apache.spark.sql.catalyst.catalog.CatalogStorageFormat storage =
         DataSource.buildStorageFormatFromOptions(scalaOptions);
