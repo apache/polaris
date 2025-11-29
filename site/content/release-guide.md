@@ -17,9 +17,13 @@
   under the License.
 -->
 
-# Release Guide
+# Release Manager Guide
 
-This guide walks you through the release process of the Apache Polaris podling.
+**Audience**: Release Managers
+
+This guide walks you through the process of **creating** a release of the Apache Polaris podling.
+
+Instructions how to verify a release candidate are available [here](release-verify.md).
 
 ## Setup
 
