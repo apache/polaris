@@ -23,6 +23,14 @@ plugins {
   id("polaris-runtime")
 }
 
+configurations.all {
+  if (name != "checkstyle") {
+    resolutionStrategy {
+      force("org.antlr:antlr4-runtime:4.9.3") // Spark 3.5 and Delta 3.3 require ANTLR 4.9.3
+    }
+  }
+}
+
 dependencies {
 
   // must be enforced to get a consistent and validated set of dependencies
@@ -56,7 +64,7 @@ dependencies {
   testImplementation(enforcedPlatform(libs.scala212.lang.library))
   testImplementation(enforcedPlatform(libs.scala212.lang.reflect))
   testImplementation(libs.javax.servlet.api)
-  testImplementation(libs.antlr4.runtime)
+  // ANTLR version is determined by Spark/Delta dependencies, not enforced
 }
 
 tasks.named<Test>("intTest").configure {

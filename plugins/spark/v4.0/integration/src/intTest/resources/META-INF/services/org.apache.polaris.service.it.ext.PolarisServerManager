@@ -17,9 +17,4 @@
 # under the License.
 #
 
-sparkVersions=3.5,4.0
-
-scalaVersions=2.12,2.13
-
-# Spark 4.0 only supports Scala 2.13
-scalaVersions.4.0=2.13
+org.apache.polaris.service.it.ServerManager
