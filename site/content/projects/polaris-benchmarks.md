@@ -17,14 +17,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Migrating from Existing Iceberg Catalogs
-linkTitle: Catalog Migration
+title: Polaris Benchmarks
 type: docs
-weight: 300
+weight: 500
 ---
 
-There are two ways to migrate an existing Iceberg catalog to Polaris:
-1. Using the [Iceberg Catalog Migrator tool](../../../../../projects/iceberg-catalog-migrator/): A command-line tool to migrate Iceberg tables from one Iceberg catalog to another.
-   This tool works with any existing Iceberg catalog including Polaris.
-2. Using the [Polaris Synchronizer tool](../../../../../projects/polaris-synchronizer/): A tool to migrate entities from one Polaris instance to another.
-   This tool is specific to Polaris.
+Polaris Benchmarks is a tool to measure the performance of Polaris.
+It can be used for comparing the performance of different Polaris instances or for monitoring the performance of a Polaris instance over time.
+
+To use this tool, please see this [guide](https://github.com/apache/polaris-tools/blob/main/benchmarks/README.md).
