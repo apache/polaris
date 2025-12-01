@@ -36,4 +36,4 @@
 * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 * KIND, either express or implied. See the License for the
 * specific language governing permissions and limitations
-* under the License.*/.td-navbar .navbar-brand svg{height:2.5rem}.td-sidebar-toc{padding-top:1.75rem}
+* under the License.*/.td-navbar .navbar-brand svg{height:2.5rem}.td-sidebar-toc{padding-top:1.75rem}.imageblock.full-width{margin-inline:calc(0px - var(--bs-gutter-x));width:calc(100% + var(--bs-gutter-x) + var(--bs-gutter-x))}.imageblock.full-width img{width:100%}
