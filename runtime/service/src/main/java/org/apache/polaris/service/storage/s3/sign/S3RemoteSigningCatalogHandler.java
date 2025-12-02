@@ -20,6 +20,9 @@ package org.apache.polaris.service.storage.s3.sign;
 
 import java.util.EnumSet;
 import java.util.Set;
+import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.Table;
+import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -30,33 +33,30 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
-import org.apache.polaris.core.entity.table.TableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.storage.LocationRestrictions;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.s3.sign.model.PolarisS3SignRequest;
 import org.apache.polaris.service.s3.sign.model.PolarisS3SignResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class S3RemoteSigningCatalogHandler extends CatalogHandler implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(S3RemoteSigningCatalogHandler.class);
-
+  private final CallContextCatalogFactory catalogFactory;
   private final S3RequestSigner s3RequestSigner;
 
   private CatalogEntity catalogEntity;
+  private Catalog baseCatalog;
 
   public S3RemoteSigningCatalogHandler(
       PolarisDiagnostics diagnostics,
       CallContext callContext,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisPrincipal polarisPrincipal,
+      CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer,
       S3RequestSigner s3RequestSigner) {
@@ -70,6 +70,7 @@ public class S3RemoteSigningCatalogHandler extends CatalogHandler implements Aut
         // external catalogs are not supported for S3 remote signing
         null,
         null);
+    this.catalogFactory = catalogFactory;
     this.s3RequestSigner = s3RequestSigner;
   }
 
@@ -80,7 +81,7 @@ public class S3RemoteSigningCatalogHandler extends CatalogHandler implements Aut
     if (catalogEntity.isExternal()) {
       throw new ForbiddenException("Cannot use S3 remote signing with federated catalogs.");
     }
-    // no need to materialize the catalog here, as we only need the catalog entity
+    baseCatalog = catalogFactory.createCallContextCatalog(resolutionManifest);
   }
 
   public PolarisS3SignResponse signS3Request(
@@ -113,13 +114,25 @@ public class S3RemoteSigningCatalogHandler extends CatalogHandler implements Aut
 
     // If the table exists already, validate the target locations against the table's locations;
     // otherwise, validate against the namespace's locations using the entity path hierarchy.
-    if (tableOrNamespace.getRawLeafEntity().getType() == PolarisEntityType.TABLE_LIKE) {
-      TableLikeEntity tableEntity = new IcebergTableLikeEntity(tableOrNamespace.getRawLeafEntity());
-      Set<String> allowedLocations =
-          StorageUtil.getLocationsUsedByTable(
-              tableEntity.getBaseLocation(), tableEntity.getPropertiesAsMap());
-      new LocationRestrictions(allowedLocations)
-          .validate(callContext.getRealmConfig(), tableIdentifier, targetLocations);
+    if (baseCatalog.tableExists(tableIdentifier)) {
+
+      // TODO M2: remove the need to load the table as it is very expensive.
+      // Unfortunately, checking the table entity only is not enough; we could
+      // technically call:
+      // StorageUtil.getLocationsUsedByTable(tableEntity.getBaseLocation(),
+      // tableEntity.getPropertiesAsMap());
+      // But the properties 'write.data.path' and 'write.metadata.path'
+      // are not persisted in the table entity's internal properties.
+      Table table = baseCatalog.loadTable(tableIdentifier);
+      if (table instanceof BaseTable baseTable) {
+        Set<String> allowedLocations =
+            StorageUtil.getLocationsUsedByTable(baseTable.operations().current());
+        new LocationRestrictions(allowedLocations)
+            .validate(callContext.getRealmConfig(), tableIdentifier, targetLocations);
+      } else {
+        throw new ForbiddenException("Location not allowed");
+      }
+
     } else {
       CatalogUtils.validateLocationsForTableLike(
           callContext.getRealmConfig(), tableIdentifier, targetLocations, tableOrNamespace);
