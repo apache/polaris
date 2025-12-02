@@ -17,18 +17,29 @@
 # under the License.
 #
 
-name: "Build Python Client Release PyPI Artifacts"
+name: "Python Client Build Artifacts"
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to set (optional, e.g. 1.1.0 or 1.1.0rc1 or dev-20251202-abc1234)'
+        type: string
+        required: false
   workflow_call:
     inputs:
-      VERSION:
-        required: true
+      version:
+        description: 'Version to set (optional)'
         type: string
+        required: false
+  pull_request:
+    paths:
+      - '.github/workflows/python-client-build-artifacts.yml'
+      - 'client/python/**'
 
 jobs:
-  pypi-build-artifacts:
-    name: Build artifacts for SVN on ${{ matrix.os }}
+  build-artifacts:
+    name: Build artifacts on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -53,9 +64,10 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Set version with RC
+      - name: Set version (if provided)
+        if: inputs.version != ''
         env:
-          VERSION: ${{ inputs.VERSION }}
+          VERSION: ${{ inputs.version }}
         run: make client-set-version VERSION="${{ env.VERSION }}"
 
       - name: Build source distribution
@@ -82,17 +94,29 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: "python-client-pypi-release-candidate-${{ matrix.os }}"
+          name: "python-client-artifacts-${{ matrix.os }}"
           path: ./wheelhouse/*
 
-  pypi-merge-artifacts:
+  merge-artifacts:
     runs-on: ubuntu-latest
     needs:
-      - pypi-build-artifacts
+      - build-artifacts
     steps:
+      - name: Generate artifact name
+        id: artifact-name
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            ARTIFACT_NAME="python-client-artifacts-${{ inputs.version }}"
+          else
+            ARTIFACT_NAME="python-client-artifacts-${{ github.run_id }}"
+          fi
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+          echo "Using artifact name: $ARTIFACT_NAME"
+
       - name: Merge Artifacts
         uses: actions/upload-artifact/merge@v4
         with:
-          name: "python-client-pypi-release-candidate-${{ inputs.VERSION }}"
-          pattern: python-client-pypi-release-candidate*
+          name: ${{ steps.artifact-name.outputs.ARTIFACT_NAME }}
+          pattern: python-client-artifacts-*
           delete-merged: true
+
