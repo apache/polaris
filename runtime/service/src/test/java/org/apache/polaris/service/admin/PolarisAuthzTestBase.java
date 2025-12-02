@@ -88,6 +88,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -197,6 +198,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisEventListener polarisEventListener;
   @Inject protected PolarisEventMetadataFactory eventMetadataFactory;
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
+  @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected StorageCredentialCache storageCredentialCache;
   @Inject protected ResolverFactory resolverFactory;
   @Inject protected StorageAccessConfigProvider storageAccessConfigProvider;
