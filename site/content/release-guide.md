@@ -187,7 +187,7 @@ It's also welcome to verify the regression tests (see [regtests/README.md](https
 You can now build the source distribution:
 
 ```
-./gradlew build sourceTarball -Prelease -PuseGpgAgent -x test -x intTest -x check
+./gradlew assemble sourceTarball -Prelease -PuseGpgAgent
 ```
 
 The source distribution archives are available in `build/distribution` folder.
