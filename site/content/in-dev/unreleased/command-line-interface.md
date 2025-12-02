@@ -151,7 +151,6 @@ options:
       --role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
       --region  (Only for S3) The region to use when connecting to S3
       --external-id  (Only for S3) The external ID to use when connecting to S3
-      --propagate-api-user-identity  (Only for S3) Whether to use the requesting users identity when connecting to the STS
       --tenant-id  (Required for Azure) A tenant ID to use when connecting to Azure Storage
       --multi-tenant-app-name  (Only for Azure) The app name to use when connecting to Azure Storage
       --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
