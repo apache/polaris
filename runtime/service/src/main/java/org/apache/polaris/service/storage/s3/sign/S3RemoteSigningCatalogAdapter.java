@@ -35,6 +35,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.s3.sign.api.IcebergRestS3SignerApiService;
 import org.apache.polaris.service.s3.sign.model.PolarisS3SignRequest;
 import org.slf4j.Logger;
@@ -51,6 +52,7 @@ public class S3RemoteSigningCatalogAdapter
   @Inject CallContext callContext;
   @Inject ResolutionManifestFactory resolutionManifestFactory;
   @Inject PolarisAuthorizer polarisAuthorizer;
+  @Inject CallContextCatalogFactory catalogFactory;
   @Inject CatalogPrefixParser prefixParser;
   @Inject S3RequestSigner s3RequestSigner;
   @Inject PolarisPrincipal polarisPrincipal;
@@ -71,6 +73,7 @@ public class S3RemoteSigningCatalogAdapter
             callContext,
             resolutionManifestFactory,
             polarisPrincipal,
+            catalogFactory,
             catalogName,
             polarisAuthorizer,
             s3RequestSigner)) {

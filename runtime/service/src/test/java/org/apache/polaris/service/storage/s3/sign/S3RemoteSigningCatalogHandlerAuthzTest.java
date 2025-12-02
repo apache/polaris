@@ -102,6 +102,7 @@ public class S3RemoteSigningCatalogHandlerAuthzTest extends PolarisAuthzTestBase
         callContext,
         resolutionManifestFactory,
         principal,
+        callContextCatalogFactory,
         CATALOG_NAME,
         polarisAuthorizer,
         s3signer);

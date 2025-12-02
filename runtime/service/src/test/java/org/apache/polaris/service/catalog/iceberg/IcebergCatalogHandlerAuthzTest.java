@@ -98,7 +98,6 @@ import org.mockito.Mockito;
 @TestProfile(PolarisAuthzTestBase.Profile.class)
 public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
-  @Inject CallContextCatalogFactory callContextCatalogFactory;
   @Inject Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   @SuppressWarnings("unchecked")

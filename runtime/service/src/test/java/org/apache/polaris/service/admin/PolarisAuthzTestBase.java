@@ -78,7 +78,6 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.apache.polaris.core.secrets.UserSecretsManager;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.Profiles;
@@ -89,6 +88,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -197,6 +197,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisEventListener polarisEventListener;
   @Inject protected PolarisEventMetadataFactory eventMetadataFactory;
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
+  @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected StorageCredentialCache storageCredentialCache;
   @Inject protected ResolverFactory resolverFactory;
   @Inject protected StorageAccessConfigProvider storageAccessConfigProvider;
@@ -204,7 +205,6 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected UserSecretsManager userSecretsManager;
   @Inject protected CallContext callContext;
   @Inject protected RealmConfig realmConfig;
-  @Inject protected PolarisStorageIntegrationProvider storageIntegrationProvider;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
