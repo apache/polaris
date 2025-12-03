@@ -19,12 +19,16 @@
 
 package org.apache.polaris.service.catalog.io;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -49,6 +53,7 @@ public class StorageAccessConfigProvider {
 
   private final StorageCredentialCache storageCredentialCache;
   private final StorageCredentialsVendor storageCredentialsVendor;
+  @Context SecurityContext securityContext;
 
   @Inject
   public StorageAccessConfigProvider(
@@ -56,6 +61,16 @@ public class StorageAccessConfigProvider {
       StorageCredentialsVendor storageCredentialsVendor) {
     this.storageCredentialCache = storageCredentialCache;
     this.storageCredentialsVendor = storageCredentialsVendor;
+  }
+
+  @VisibleForTesting
+  public StorageAccessConfigProvider(
+      StorageCredentialCache storageCredentialCache,
+      StorageCredentialsVendor storageCredentialsVendor,
+      SecurityContext securityContext) {
+    this.storageCredentialCache = storageCredentialCache;
+    this.storageCredentialsVendor = storageCredentialsVendor;
+    this.securityContext = securityContext;
   }
 
   /**
@@ -119,8 +134,9 @@ public class StorageAccessConfigProvider {
             allowList,
             tableLocations,
             writeLocations,
-            refreshCredentialsEndpoint);
-
+            refreshCredentialsEndpoint,
+            Optional.ofNullable(
+                ((PolarisPrincipal) securityContext.getUserPrincipal()).getToken()));
     LOGGER
         .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)

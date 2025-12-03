@@ -109,7 +109,8 @@ public class StorageCredentialCache {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<String> token) {
     RealmContext realmContext = storageCredentialsVendor.getRealmContext();
     RealmConfig realmConfig = storageCredentialsVendor.getRealmConfig();
     if (!isTypeSupported(polarisEntity.getType())) {
@@ -134,7 +135,8 @@ public class StorageCredentialCache {
                   allowListOperation,
                   allowedReadLocations,
                   allowedWriteLocations,
-                  refreshCredentialsEndpoint);
+                  refreshCredentialsEndpoint,
+                  token);
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
             return new StorageCredentialCacheEntry(

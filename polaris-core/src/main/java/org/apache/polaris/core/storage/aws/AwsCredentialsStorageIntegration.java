@@ -21,7 +21,6 @@ package org.apache.polaris.core.storage.aws;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import jakarta.annotation.Nonnull;
-import jakarta.ws.rs.core.SecurityContext;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -54,7 +52,6 @@ public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> credentialsProvider;
-  private final SecurityContext context;
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
@@ -66,18 +63,16 @@ public class AwsCredentialsStorageIntegration
 
   public AwsCredentialsStorageIntegration(
       AwsStorageConfigurationInfo config, StsClientProvider stsClientProvider) {
-    this(config, stsClientProvider, Optional.empty(), null);
+    this(config, stsClientProvider, Optional.empty());
   }
 
   public AwsCredentialsStorageIntegration(
       AwsStorageConfigurationInfo config,
       StsClientProvider stsClientProvider,
-      Optional<AwsCredentialsProvider> credentialsProvider,
-      SecurityContext context) {
+      Optional<AwsCredentialsProvider> credentialsProvider) {
     super(config, AwsCredentialsStorageIntegration.class.getName());
     this.stsClientProvider = stsClientProvider;
     this.credentialsProvider = credentialsProvider;
-    this.context = context;
   }
 
   /** {@inheritDoc} */
@@ -87,7 +82,8 @@ public class AwsCredentialsStorageIntegration
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<String> token) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
@@ -105,9 +101,22 @@ public class AwsCredentialsStorageIntegration
       if (Boolean.TRUE.equals(storageConfig.getPropagateApiUserIdentity())) {
         AssumeRoleWithWebIdentityRequest.Builder request =
             AssumeRoleWithWebIdentityRequest.builder()
-                .webIdentityToken(((PolarisPrincipal) context.getUserPrincipal()).getToken())
+                .webIdentityToken(
+                    token.orElseThrow(
+                        () ->
+                            new IllegalArgumentException(
+                                "Token must be provided when PROPAGATE_API_USER_IDENTITY is true")))
                 .roleArn(storageConfig.getRoleARN())
                 .roleSessionName("PolarisAwsCredentialsStorageIntegration")
+                .policy(
+                    policyString(
+                            storageConfig,
+                            allowListOperation,
+                            allowedReadLocations,
+                            allowedWriteLocations,
+                            region,
+                            accountId)
+                        .toJson())
                 .durationSeconds(storageCredentialDurationSeconds);
 
         credentials = stsClient.assumeRoleWithWebIdentity(request.build()).credentials();

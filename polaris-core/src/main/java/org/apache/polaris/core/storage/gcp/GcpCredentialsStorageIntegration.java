@@ -77,7 +77,8 @@ public class GcpCredentialsStorageIntegration
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<String> token) {
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {
@@ -93,9 +94,9 @@ public class GcpCredentialsStorageIntegration
             .setSourceCredential(sourceCredentials)
             .setCredentialAccessBoundary(accessBoundary)
             .build();
-    AccessToken token;
+    AccessToken accessToken;
     try {
-      token = credentials.refreshAccessToken();
+      accessToken = credentials.refreshAccessToken();
     } catch (IOException e) {
       LOGGER
           .atError()
@@ -110,10 +111,10 @@ public class GcpCredentialsStorageIntegration
     // If expires_in missing, use source credential's expire time, which require another api call to
     // get.
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
-    accessConfig.put(StorageAccessProperty.GCS_ACCESS_TOKEN, token.getTokenValue());
+    accessConfig.put(StorageAccessProperty.GCS_ACCESS_TOKEN, accessToken.getTokenValue());
     accessConfig.put(
         StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT,
-        String.valueOf(token.getExpirationTime().getTime()));
+        String.valueOf(accessToken.getExpirationTime().getTime()));
 
     refreshCredentialsEndpoint.ifPresent(
         endpoint -> {
