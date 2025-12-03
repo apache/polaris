@@ -22,7 +22,7 @@ import io.smallrye.config.ConfigMapping;
 import java.util.Optional;
 
 /** Polaris persistence, MongoDB backend specific configuration. */
-@ConfigMapping(prefix = "polaris.persistence.backend.mongodb")
+@ConfigMapping(prefix = "polaris.persistence.nosql.mongodb")
 public interface MongoDbConfiguration {
   Optional<String> connectionString();
 

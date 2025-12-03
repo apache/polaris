@@ -25,12 +25,12 @@ import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /** Polaris persistence backend configuration. */
-@ConfigMapping(prefix = "polaris.persistence.backend")
+@ConfigMapping(prefix = "polaris.persistence.nosql")
 @JsonSerialize(as = ImmutableBuildableBackendConfiguration.class)
 @JsonDeserialize(as = ImmutableBuildableBackendConfiguration.class)
 public interface BackendConfiguration {
   /** Name of the persistence backend to use. */
-  Optional<String> type();
+  Optional<String> backend();
 
   @PolarisImmutable
   interface BuildableBackendConfiguration extends BackendConfiguration {
@@ -39,6 +39,6 @@ public interface BackendConfiguration {
     }
 
     @Override
-    Optional<String> type();
+    Optional<String> backend();
   }
 }
