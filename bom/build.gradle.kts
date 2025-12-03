@@ -62,6 +62,7 @@ dependencies {
     api(project(":polaris-persistence-nosql-api"))
     api(project(":polaris-persistence-nosql-impl"))
     api(project(":polaris-persistence-nosql-benchmark"))
+    api(project(":polaris-persistence-nosql-metastore"))
     api(project(":polaris-persistence-nosql-metastore-types"))
     api(project(":polaris-persistence-nosql-correctness"))
     api(project(":polaris-persistence-nosql-cdi-common"))
