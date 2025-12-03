@@ -35,7 +35,7 @@ from apache_polaris.sdk.management import PolarisDefaultApi, \
   PolarisCatalog, CatalogProperties, BearerAuthenticationParameters, \
   ImplicitAuthenticationParameters, \
   OAuthClientCredentialsParameters, SigV4AuthenticationParameters, \
-  HadoopConnectionConfigInfo, HiveConnectionConfigInfo\
+  HadoopConnectionConfigInfo, HiveConnectionConfigInfo, \
   IcebergRestConnectionConfigInfo, AwsIamServiceIdentityInfo
 
 
