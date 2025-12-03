@@ -199,7 +199,8 @@ class InMemoryStorageIntegrationTest {
         boolean allowListOperation,
         @Nonnull Set<String> allowedReadLocations,
         @Nonnull Set<String> allowedWriteLocations,
-        Optional<String> refreshCredentialsEndpoint) {
+        Optional<String> refreshCredentialsEndpoint,
+        Optional<String> token) {
       return null;
     }
   }

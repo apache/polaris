@@ -321,6 +321,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
+                    Optional.empty(),
                     Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
@@ -422,6 +423,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)),
+                Optional.empty(),
                 Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -537,6 +539,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
+                Optional.empty(),
                 Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -624,6 +627,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 true, /* allowList = true */
                 Set.of(),
                 Set.of(),
+                Optional.empty(),
                 Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -667,6 +671,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true, /* allowList = true */
                     Set.of(),
                     Set.of(),
+                    Optional.empty(),
                     Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -708,6 +713,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true, /* allowList = true */
                     Set.of(),
                     Set.of(),
+                    Optional.empty(),
                     Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
@@ -791,6 +797,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Optional.empty(),
             Optional.empty());
 
     // Test with allowed KMS keys and read-only permissions
@@ -836,6 +843,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
+            Optional.empty(),
             Optional.empty());
 
     // Test with no KMS keys and read-only (should add wildcard KMS access)
@@ -872,6 +880,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
+            Optional.empty(),
             Optional.empty());
 
     // Test with no KMS keys and write permissions (should not add KMS statement)
@@ -905,6 +914,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Optional.empty(),
             Optional.empty());
   }
 

@@ -80,6 +80,7 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(badResult);
     PolarisEntity polarisEntity =
@@ -94,6 +95,7 @@ public class StorageCredentialCacheTest {
                     true,
                     Set.of("s3://bucket1/path"),
                     Set.of("s3://bucket3/path"),
+                    Optional.empty(),
                     Optional.empty()))
         .isInstanceOf(UnprocessableEntityException.class)
         .hasMessage("Failed to get subscoped credentials: extra_error_info");
@@ -109,6 +111,7 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
@@ -125,6 +128,7 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        Optional.empty(),
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
@@ -135,6 +139,7 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        Optional.empty(),
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
   }
@@ -149,6 +154,7 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
@@ -173,6 +179,7 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket/path"),
+        Optional.empty(),
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
@@ -182,6 +189,7 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket/path"),
+        Optional.empty(),
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
@@ -191,6 +199,7 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket/path"),
+        Optional.empty(),
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
   }
@@ -205,6 +214,7 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
@@ -219,6 +229,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket/path"),
+          Optional.empty(),
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -236,6 +247,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket/path"),
+          Optional.empty(),
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -247,6 +259,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ false,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket/path"),
+          Optional.empty(),
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -258,6 +271,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ false,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://differentbucket/path"),
+          Optional.empty(),
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -274,6 +288,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ false,
           Set.of("s3://differentbucket/path", "s3://bucket2/path"),
           Set.of("s3://bucket/path"),
+          Optional.empty(),
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -290,6 +305,7 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
@@ -302,6 +318,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          Optional.empty(),
           Optional.empty());
     }
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
@@ -314,6 +331,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          Optional.empty(),
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
@@ -326,6 +344,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          Optional.empty(),
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
@@ -337,6 +356,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket2/path", "s3://bucket1/path"),
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          Optional.empty(),
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
@@ -349,6 +369,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket2/path", "s3://bucket1/path"),
           Set.of("s3://bucket4/path", "s3://bucket3/path"),
+          Optional.empty(),
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
@@ -428,6 +449,7 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(properties);
     List<PolarisEntity> entityList = getPolarisEntities();
@@ -439,6 +461,7 @@ public class StorageCredentialCacheTest {
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
+            Optional.empty(),
             Optional.empty());
     Assertions.assertThat(config.credentials())
         .containsExactly(Map.entry("s3.secret-access-key", "super-secret-123"));

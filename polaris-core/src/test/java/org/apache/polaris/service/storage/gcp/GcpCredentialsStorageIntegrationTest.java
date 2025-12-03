@@ -175,7 +175,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
-        Optional.of(REFRESH_ENDPOINT));
+        Optional.of(REFRESH_ENDPOINT),
+        Optional.empty());
   }
 
   private JsonNode readResource(ObjectMapper mapper, String name) throws IOException {
