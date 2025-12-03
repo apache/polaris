@@ -32,7 +32,7 @@ import picocli.CommandLine.HelpCommand;
       BootstrapCommand.class,
       PurgeCommand.class,
     })
-public class PolarisAdminTool extends BaseCommand {
+public class PolarisAdminTool extends BaseMetaStoreCommand {
 
   @Override
   public Integer call() {

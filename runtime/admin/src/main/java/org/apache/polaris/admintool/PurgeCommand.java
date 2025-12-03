@@ -26,7 +26,7 @@ import picocli.CommandLine;
     name = "purge",
     mixinStandardHelpOptions = true,
     description = "Purge realms and all associated entities.")
-public class PurgeCommand extends BaseCommand {
+public class PurgeCommand extends BaseMetaStoreCommand {
 
   @CommandLine.Option(
       names = {"-r", "--realm"},

@@ -26,16 +26,12 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
-import org.apache.polaris.core.auth.PolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
+import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.jsonEventListener.PropertyMapEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +49,6 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse
 @Identifier("aws-cloudwatch")
 public class AwsCloudWatchEventListener extends PropertyMapEventListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(AwsCloudWatchEventListener.class);
-  final ObjectMapper objectMapper = new ObjectMapper();
 
   private CloudWatchLogsAsyncClient client;
 
@@ -61,23 +56,18 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
   private final String logStream;
   private final Region region;
   private final boolean synchronousMode;
+  private final ObjectMapper objectMapper;
   private final Clock clock;
-
-  @Inject CallContext callContext;
-
-  @Context SecurityContext securityContext;
 
   @Inject
   public AwsCloudWatchEventListener(
-      AwsCloudWatchConfiguration config,
-      Clock clock,
-      PolarisIcebergObjectMapperCustomizer customizer) {
+      AwsCloudWatchConfiguration config, ObjectMapper objectMapper, Clock clock) {
     this.logStream = config.awsCloudWatchLogStream();
     this.logGroup = config.awsCloudWatchLogGroup();
     this.region = Region.of(config.awsCloudWatchRegion());
     this.synchronousMode = config.synchronousMode();
+    this.objectMapper = objectMapper;
     this.clock = clock;
-    customizer.customize(this.objectMapper);
   }
 
   @PostConstruct
@@ -152,12 +142,17 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
   }
 
   @Override
-  protected void transformAndSendEvent(HashMap<String, Object> properties) {
-    properties.put("realm_id", callContext.getRealmContext().getRealmIdentifier());
-    properties.put("principal", securityContext.getUserPrincipal().getName());
-    properties.put(
-        "activated_roles", ((PolarisPrincipal) securityContext.getUserPrincipal()).getRoles());
-    // TODO: Add request ID when it is available
+  protected void transformAndSendEvent(
+      HashMap<String, Object> properties, PolarisEventMetadata metadata) {
+    properties.put("realm_id", metadata.realmId());
+    metadata
+        .user()
+        .ifPresent(
+            p -> {
+              properties.put("principal", p.getName());
+              properties.put("activated_roles", p.getRoles());
+            });
+    metadata.requestId().ifPresent(id -> properties.put("request_id", id));
     String eventAsJson;
     try {
       eventAsJson = objectMapper.writeValueAsString(properties);

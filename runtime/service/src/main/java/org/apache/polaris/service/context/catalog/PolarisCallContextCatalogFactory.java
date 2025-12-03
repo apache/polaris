@@ -34,6 +34,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
@@ -50,6 +51,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final FileIOFactory fileIOFactory;
   private final ResolverFactory resolverFactory;
   private final PolarisEventListener polarisEventListener;
+  private final PolarisEventMetadataFactory eventMetadataFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final CallContext callContext;
   private final PolarisPrincipal principal;
@@ -62,6 +64,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       StorageAccessConfigProvider storageAccessConfigProvider,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener,
+      PolarisEventMetadataFactory eventMetadataFactory,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisPrincipal principal) {
@@ -71,6 +74,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.fileIOFactory = fileIOFactory;
     this.polarisEventListener = polarisEventListener;
+    this.eventMetadataFactory = eventMetadataFactory;
     this.metaStoreManager = metaStoreManager;
     this.callContext = callContext;
     this.principal = principal;
@@ -96,7 +100,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             taskExecutor,
             storageAccessConfigProvider,
             fileIOFactory,
-            polarisEventListener);
+            polarisEventListener,
+            eventMetadataFactory);
 
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getBaseLocation();
