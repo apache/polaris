@@ -70,6 +70,7 @@ class CatalogsCommand(Command):
     set_properties: Dict[str, StrictStr]
     remove_properties: List[str]
     hadoop_warehouse: str
+    hive_warehouse: str
     iceberg_remote_catalog_name: str
     endpoint: str
     endpoint_internal: str
