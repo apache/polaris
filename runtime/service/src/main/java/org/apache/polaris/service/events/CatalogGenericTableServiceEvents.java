@@ -24,27 +24,75 @@ import org.apache.polaris.service.types.GenericTable;
 
 public class CatalogGenericTableServiceEvents {
   public record BeforeCreateGenericTableEvent(
-      String catalogName, String namespace, CreateGenericTableRequest request)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String catalogName,
+      String namespace,
+      CreateGenericTableRequest request)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CREATE_GENERIC_TABLE;
+    }
+  }
 
   public record AfterCreateGenericTableEvent(
-      String catalogName, String namespace, GenericTable table) implements PolarisEvent {}
+      PolarisEventMetadata metadata, String catalogName, String namespace, GenericTable table)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CREATE_GENERIC_TABLE;
+    }
+  }
 
-  public record BeforeDropGenericTableEvent(String catalogName, String namespace, String tableName)
-      implements PolarisEvent {}
+  public record BeforeDropGenericTableEvent(
+      PolarisEventMetadata metadata, String catalogName, String namespace, String tableName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_DROP_GENERIC_TABLE;
+    }
+  }
 
-  public record AfterDropGenericTableEvent(String catalogName, String namespace, String tableName)
-      implements PolarisEvent {}
+  public record AfterDropGenericTableEvent(
+      PolarisEventMetadata metadata, String catalogName, String namespace, String tableName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_DROP_GENERIC_TABLE;
+    }
+  }
 
-  public record BeforeListGenericTablesEvent(String catalogName, String namespace)
-      implements PolarisEvent {}
+  public record BeforeListGenericTablesEvent(
+      PolarisEventMetadata metadata, String catalogName, String namespace) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_GENERIC_TABLES;
+    }
+  }
 
-  public record AfterListGenericTablesEvent(String catalogName, String namespace)
-      implements PolarisEvent {}
+  public record AfterListGenericTablesEvent(
+      PolarisEventMetadata metadata, String catalogName, String namespace) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_GENERIC_TABLES;
+    }
+  }
 
-  public record BeforeLoadGenericTableEvent(String catalogName, String namespace, String tableName)
-      implements PolarisEvent {}
+  public record BeforeLoadGenericTableEvent(
+      PolarisEventMetadata metadata, String catalogName, String namespace, String tableName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LOAD_GENERIC_TABLE;
+    }
+  }
 
-  public record AfterLoadGenericTableEvent(String catalogName, String namespace, GenericTable table)
-      implements PolarisEvent {}
+  public record AfterLoadGenericTableEvent(
+      PolarisEventMetadata metadata, String catalogName, String namespace, GenericTable table)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LOAD_GENERIC_TABLE;
+    }
+  }
 }

@@ -24,55 +24,169 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 
 public class PrincipalRolesServiceEvents {
-  public record AfterCreatePrincipalRoleEvent(PrincipalRole principalRole)
-      implements PolarisEvent {}
+  public record AfterCreatePrincipalRoleEvent(
+      PolarisEventMetadata metadata, PrincipalRole principalRole) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_CREATE_PRINCIPAL_ROLE;
+    }
+  }
 
   public record BeforeCreatePrincipalRoleEvent(
-      CreatePrincipalRoleRequest createPrincipalRoleRequest) implements PolarisEvent {}
+      PolarisEventMetadata metadata, CreatePrincipalRoleRequest createPrincipalRoleRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_CREATE_PRINCIPAL_ROLE;
+    }
+  }
 
-  public record AfterDeletePrincipalRoleEvent(String principalRoleName) implements PolarisEvent {}
+  public record AfterDeletePrincipalRoleEvent(
+      PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_DELETE_PRINCIPAL_ROLE;
+    }
+  }
 
-  public record BeforeDeletePrincipalRoleEvent(String principalRoleName) implements PolarisEvent {}
+  public record BeforeDeletePrincipalRoleEvent(
+      PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_DELETE_PRINCIPAL_ROLE;
+    }
+  }
 
-  public record AfterGetPrincipalRoleEvent(PrincipalRole principalRole) implements PolarisEvent {}
+  public record AfterGetPrincipalRoleEvent(
+      PolarisEventMetadata metadata, PrincipalRole principalRole) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_GET_PRINCIPAL_ROLE;
+    }
+  }
 
-  public record BeforeGetPrincipalRoleEvent(String principalRoleName) implements PolarisEvent {}
+  public record BeforeGetPrincipalRoleEvent(PolarisEventMetadata metadata, String principalRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_GET_PRINCIPAL_ROLE;
+    }
+  }
 
-  public record AfterUpdatePrincipalRoleEvent(PrincipalRole updatedPrincipalRole)
-      implements PolarisEvent {}
+  public record AfterUpdatePrincipalRoleEvent(
+      PolarisEventMetadata metadata, PrincipalRole updatedPrincipalRole) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_UPDATE_PRINCIPAL_ROLE;
+    }
+  }
 
   public record BeforeUpdatePrincipalRoleEvent(
-      String principalRoleName, UpdatePrincipalRoleRequest updateRequest) implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String principalRoleName,
+      UpdatePrincipalRoleRequest updateRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_UPDATE_PRINCIPAL_ROLE;
+    }
+  }
 
-  public record AfterListPrincipalRolesEvent() implements PolarisEvent {}
+  public record AfterListPrincipalRolesEvent(PolarisEventMetadata metadata)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_PRINCIPAL_ROLES;
+    }
+  }
 
-  public record BeforeListPrincipalRolesEvent() implements PolarisEvent {}
+  public record BeforeListPrincipalRolesEvent(PolarisEventMetadata metadata)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_PRINCIPAL_ROLES;
+    }
+  }
 
   public record AfterAssignCatalogRoleToPrincipalRoleEvent(
-      String principalRoleName, String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String principalRoleName,
+      String catalogName,
+      String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE;
+    }
+  }
 
   public record BeforeAssignCatalogRoleToPrincipalRoleEvent(
-      String principalRoleName, String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String principalRoleName,
+      String catalogName,
+      String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_ASSIGN_CATALOG_ROLE_TO_PRINCIPAL_ROLE;
+    }
+  }
 
   public record AfterRevokeCatalogRoleFromPrincipalRoleEvent(
-      String principalRoleName, String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String principalRoleName,
+      String catalogName,
+      String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE;
+    }
+  }
 
   public record BeforeRevokeCatalogRoleFromPrincipalRoleEvent(
-      String principalRoleName, String catalogName, String catalogRoleName)
-      implements PolarisEvent {}
+      PolarisEventMetadata metadata,
+      String principalRoleName,
+      String catalogName,
+      String catalogRoleName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_REVOKE_CATALOG_ROLE_FROM_PRINCIPAL_ROLE;
+    }
+  }
 
-  public record AfterListAssigneePrincipalsForPrincipalRoleEvent(String principalRoleName)
-      implements PolarisEvent {}
+  public record AfterListAssigneePrincipalsForPrincipalRoleEvent(
+      PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE;
+    }
+  }
 
-  public record BeforeListAssigneePrincipalsForPrincipalRoleEvent(String principalRoleName)
-      implements PolarisEvent {}
+  public record BeforeListAssigneePrincipalsForPrincipalRoleEvent(
+      PolarisEventMetadata metadata, String principalRoleName) implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_ASSIGNEE_PRINCIPALS_FOR_PRINCIPAL_ROLE;
+    }
+  }
 
   public record AfterListCatalogRolesForPrincipalRoleEvent(
-      String principalRoleName, String catalogName) implements PolarisEvent {}
+      PolarisEventMetadata metadata, String principalRoleName, String catalogName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE;
+    }
+  }
 
   public record BeforeListCatalogRolesForPrincipalRoleEvent(
-      String principalRoleName, String catalogName) implements PolarisEvent {}
+      PolarisEventMetadata metadata, String principalRoleName, String catalogName)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_LIST_CATALOG_ROLES_FOR_PRINCIPAL_ROLE;
+    }
+  }
 }

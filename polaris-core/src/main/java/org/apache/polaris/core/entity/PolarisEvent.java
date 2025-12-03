@@ -21,15 +21,16 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
 import java.util.Map;
 
 public class PolarisEvent {
-  // TODO: Look into using the CDI-managed `ObjectMapper` object
   public static final String EMPTY_MAP_STRING = "{}";
 
   // to serialize/deserialize properties
+  // TODO: Look into using the CDI-managed `ObjectMapper` object
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   // catalog id
@@ -114,6 +115,17 @@ public class PolarisEvent {
     this.principalName = principalName;
     this.resourceType = resourceType;
     this.resourceIdentifier = resourceIdentifier;
+  }
+
+  @JsonIgnore
+  public Map<String, String> getAdditionalPropertiesAsMap() {
+    String properties = getAdditionalProperties();
+    try {
+      return MAPPER.readValue(properties, new TypeReference<>() {});
+    } catch (JsonProcessingException ex) {
+      throw new IllegalStateException(
+          String.format("Failed to deserialize json. properties %s", properties), ex);
+    }
   }
 
   @JsonIgnore
