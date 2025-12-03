@@ -263,20 +263,6 @@ public class IcebergRestCatalogEvents {
   public record AfterGetConfigEvent(ConfigResponse configResponse) implements PolarisEvent {}
 
   // Legacy events
-  public record BeforeCommitTableEvent(
-      String catalogName,
-      TableIdentifier identifier,
-      TableMetadata metadataBefore,
-      TableMetadata metadataAfter)
-      implements PolarisEvent {}
-
-  public record AfterCommitTableEvent(
-      String catalogName,
-      TableIdentifier identifier,
-      TableMetadata metadataBefore,
-      TableMetadata metadataAfter)
-      implements PolarisEvent {}
-
   public record BeforeCommitViewEvent(
       String catalogName,
       TableIdentifier identifier,

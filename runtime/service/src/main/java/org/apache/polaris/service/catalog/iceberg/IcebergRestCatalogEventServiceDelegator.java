@@ -34,6 +34,7 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
+import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.CreateNamespaceResponse;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
@@ -535,11 +536,17 @@ public class IcebergRestCatalogEventServiceDelegator
     polarisEventListener.onBeforeCommitTransaction(
         new IcebergRestCatalogEvents.BeforeCommitTransactionEvent(
             catalogName, commitTransactionRequest));
+    for (UpdateTableRequest req : commitTransactionRequest.tableChanges()) {
+        polarisEventListener.onBeforeUpdateTable(new BeforeUpdateTableEvent(catalogName, req.identifier().namespace(), req.identifier().name(), (CommitTableRequest) req));
+    }
     Response resp =
         delegate.commitTransaction(prefix, commitTransactionRequest, realmContext, securityContext);
     polarisEventListener.onAfterCommitTransaction(
         new IcebergRestCatalogEvents.AfterCommitTransactionEvent(
             catalogName, commitTransactionRequest));
+    for (UpdateTableRequest req : commitTransactionRequest.tableChanges()) {
+        polarisEventListener.onAfterUpdateTable(new AfterUpdateTableEvent(catalogName, req.identifier().namespace(), req.identifier().name(), (CommitTableRequest) req, (LoadTableResponse) resp.getEntity()));
+    }
     return resp;
   }
 
