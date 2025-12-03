@@ -274,7 +274,7 @@ class Hints:
 
         class External:
             CATALOG_CONNECTION_TYPE = (
-                "The type of external catalog in [ICEBERG, HADOOP]."
+                "The type of external catalog in [ICEBERG, HADOOP, HIVE]."
             )
             CATALOG_AUTHENTICATION_TYPE = (
                 "The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]"
@@ -290,6 +290,9 @@ class Hints:
             CATALOG_URI = "The URI of the external catalog"
             HADOOP_WAREHOUSE = (
                 "The warehouse to use when federating to a HADOOP catalog"
+            )
+            HIVE_WAREHOUSE = (
+                "The warehouse to use when federating to a HIVE catalog"
             )
             ICEBERG_REMOTE_CATALOG_NAME = (
                 "The remote catalog name when federating to an Iceberg REST catalog"

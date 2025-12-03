@@ -85,6 +85,8 @@ class OptionTree:
                  Hints.Catalogs.External.ICEBERG_REMOTE_CATALOG_NAME),
         Argument(Arguments.HADOOP_WAREHOUSE, str,
                  Hints.Catalogs.External.HADOOP_WAREHOUSE),
+        Argument(Arguments.HIVE_WAREHOUSE, str,
+                 Hints.Catalogs.External.HIVE_WAREHOUSE),
         Argument(Arguments.CATALOG_AUTHENTICATION_TYPE, str,
                  Hints.Catalogs.External.CATALOG_AUTHENTICATION_TYPE, lower=True,
                  choices=[at.value for at in AuthenticationType]),
