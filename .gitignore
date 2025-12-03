@@ -107,3 +107,10 @@ hs_err_pid*
 # Python Virtual Env
 .venv
 venv
+
+# Development Experience
+
+# You can create runtime/defaults/src/main/resources/application-local.properties file
+# to override default properties for local development.
+# And then use `./gradlew run -Dquarkus.profile=local` to run Polaris with dev profile.
+application-local.properties

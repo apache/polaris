@@ -26,5 +26,11 @@ package org.apache.polaris.service.events;
  *     initial (non-retried) attempt starts counting from 1.
  * @param success Whether the attempt succeeded.
  */
-public record AfterAttemptTaskEvent(long taskEntityId, int attempt, boolean success)
-    implements PolarisEvent {}
+public record AfterAttemptTaskEvent(
+    PolarisEventMetadata metadata, long taskEntityId, int attempt, boolean success)
+    implements PolarisEvent {
+  @Override
+  public PolarisEventType type() {
+    return PolarisEventType.AFTER_ATTEMPT_TASK;
+  }
+}
