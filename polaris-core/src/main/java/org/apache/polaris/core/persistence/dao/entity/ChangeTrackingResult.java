@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
@@ -49,16 +47,6 @@ public class ChangeTrackingResult extends BaseResult {
    */
   public ChangeTrackingResult(@Nonnull List<PolarisChangeTrackingVersions> changeTrackingVersions) {
     super(ReturnStatus.SUCCESS);
-    this.changeTrackingVersions = changeTrackingVersions;
-  }
-
-  @JsonCreator
-  private ChangeTrackingResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("changeTrackingVersions")
-          List<PolarisChangeTrackingVersions> changeTrackingVersions) {
-    super(returnStatus, extraInformation);
     this.changeTrackingVersions = changeTrackingVersions;
   }
 

@@ -18,9 +18,7 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
@@ -60,17 +58,6 @@ public class LoadPolicyMappingsResult extends BaseResult {
       @Nonnull List<PolarisPolicyMappingRecord> mappingRecords,
       @Nonnull List<PolarisBaseEntity> entities) {
     super(ReturnStatus.SUCCESS);
-    this.mappingRecords = mappingRecords;
-    this.entities = entities;
-  }
-
-  @JsonCreator
-  private LoadPolicyMappingsResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("policyMappingRecords") List<PolarisPolicyMappingRecord> mappingRecords,
-      @JsonProperty("policyEntities") List<PolarisBaseEntity> entities) {
-    super(returnStatus, extraInformation);
     this.mappingRecords = mappingRecords;
     this.entities = entities;
   }

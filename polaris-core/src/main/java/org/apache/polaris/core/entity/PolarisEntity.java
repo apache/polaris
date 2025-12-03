@@ -18,9 +18,7 @@
  */
 package org.apache.polaris.core.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
@@ -85,39 +83,6 @@ public class PolarisEntity extends PolarisBaseEntity {
     public String getName() {
       return name;
     }
-  }
-
-  @JsonCreator
-  private PolarisEntity(
-      @JsonProperty("catalogId") long catalogId,
-      @JsonProperty("typeCode") PolarisEntityType type,
-      @JsonProperty("subTypeCode") PolarisEntitySubType subType,
-      @JsonProperty("id") long id,
-      @JsonProperty("parentId") long parentId,
-      @JsonProperty("name") String name,
-      @JsonProperty("createTimestamp") long createTimestamp,
-      @JsonProperty("dropTimestamp") long dropTimestamp,
-      @JsonProperty("purgeTimestamp") long purgeTimestamp,
-      @JsonProperty("lastUpdateTimestamp") long lastUpdateTimestamp,
-      @JsonProperty("properties") String properties,
-      @JsonProperty("internalProperties") String internalProperties,
-      @JsonProperty("entityVersion") int entityVersion,
-      @JsonProperty("grantRecordsVersion") int grantRecordsVersion) {
-    super(
-        catalogId,
-        id,
-        type.getCode(),
-        parentId,
-        name,
-        subType.getCode(),
-        createTimestamp,
-        dropTimestamp,
-        purgeTimestamp,
-        lastUpdateTimestamp,
-        properties,
-        internalProperties,
-        grantRecordsVersion,
-        entityVersion);
   }
 
   public PolarisEntity(

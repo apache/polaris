@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -59,15 +57,6 @@ public class PolicyAttachmentResult extends BaseResult {
    */
   public PolicyAttachmentResult(@Nonnull PolarisPolicyMappingRecord mappingRecord) {
     super(ReturnStatus.SUCCESS);
-    this.mappingRecord = mappingRecord;
-  }
-
-  @JsonCreator
-  private PolicyAttachmentResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("policyMappingRecord") PolarisPolicyMappingRecord mappingRecord) {
-    super(returnStatus, extraInformation);
     this.mappingRecord = mappingRecord;
   }
 

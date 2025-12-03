@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -48,15 +46,6 @@ public class PrivilegeResult extends BaseResult {
    */
   public PrivilegeResult(@Nonnull PolarisGrantRecord grantRecord) {
     super(ReturnStatus.SUCCESS);
-    this.grantRecord = grantRecord;
-  }
-
-  @JsonCreator
-  private PrivilegeResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("grantRecord") PolarisGrantRecord grantRecord) {
-    super(returnStatus, extraInformation);
     this.grantRecord = grantRecord;
   }
 

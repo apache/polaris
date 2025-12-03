@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
@@ -49,15 +47,6 @@ public class PrincipalSecretsResult extends BaseResult {
    */
   public PrincipalSecretsResult(@Nonnull PolarisPrincipalSecrets principalSecrets) {
     super(ReturnStatus.SUCCESS);
-    this.principalSecrets = principalSecrets;
-  }
-
-  @JsonCreator
-  private PrincipalSecretsResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") @Nullable String extraInformation,
-      @JsonProperty("principalSecrets") @Nonnull PolarisPrincipalSecrets principalSecrets) {
-    super(returnStatus, extraInformation);
     this.principalSecrets = principalSecrets;
   }
 

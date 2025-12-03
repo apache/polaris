@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -54,17 +52,6 @@ public class CreateCatalogResult extends BaseResult {
   public CreateCatalogResult(
       @Nonnull PolarisBaseEntity catalog, @Nonnull PolarisBaseEntity catalogAdminRole) {
     super(ReturnStatus.SUCCESS);
-    this.catalog = catalog;
-    this.catalogAdminRole = catalogAdminRole;
-  }
-
-  @JsonCreator
-  private CreateCatalogResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") @Nullable String extraInformation,
-      @JsonProperty("catalog") @Nonnull PolarisBaseEntity catalog,
-      @JsonProperty("catalogAdminRole") @Nonnull PolarisBaseEntity catalogAdminRole) {
-    super(returnStatus, extraInformation);
     this.catalog = catalog;
     this.catalogAdminRole = catalogAdminRole;
   }

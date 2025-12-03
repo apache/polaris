@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -85,15 +83,6 @@ public class EntityResult extends BaseResult {
       }
       return PolarisEntitySubType.fromCode(subTypeCode);
     }
-  }
-
-  @JsonCreator
-  private EntityResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") @Nullable String extraInformation,
-      @JsonProperty("entity") @Nullable PolarisBaseEntity entity) {
-    super(returnStatus, extraInformation);
-    this.entity = entity;
   }
 
   public PolarisBaseEntity getEntity() {

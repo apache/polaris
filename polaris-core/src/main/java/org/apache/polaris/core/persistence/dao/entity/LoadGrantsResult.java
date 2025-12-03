@@ -18,9 +18,7 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
@@ -66,20 +64,6 @@ public class LoadGrantsResult extends BaseResult {
     super(ReturnStatus.SUCCESS);
     this.grantsVersion = grantsVersion;
     this.grantRecords = grantRecords;
-    this.entities = entities;
-  }
-
-  @JsonCreator
-  private LoadGrantsResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("grantsVersion") int grantsVersion,
-      @JsonProperty("grantRecords") List<PolarisGrantRecord> grantRecords,
-      @JsonProperty("entities") List<PolarisBaseEntity> entities) {
-    super(returnStatus, extraInformation);
-    this.grantsVersion = grantsVersion;
-    this.grantRecords = grantRecords;
-    // old GS code might not serialize this argument
     this.entities = entities;
   }
 

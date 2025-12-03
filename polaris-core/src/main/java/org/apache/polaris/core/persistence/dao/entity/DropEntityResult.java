@@ -18,9 +18,7 @@
  */
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 
@@ -54,15 +52,6 @@ public class DropEntityResult extends BaseResult {
    */
   public DropEntityResult(long cleanupTaskId) {
     super(ReturnStatus.SUCCESS);
-    this.cleanupTaskId = cleanupTaskId;
-  }
-
-  @JsonCreator
-  private DropEntityResult(
-      @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("cleanupTaskId") Long cleanupTaskId) {
-    super(returnStatus, extraInformation);
     this.cleanupTaskId = cleanupTaskId;
   }
 

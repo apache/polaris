@@ -19,8 +19,6 @@
 
 package org.apache.polaris.core.persistence.dao.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
@@ -39,15 +37,6 @@ public class ResolvedEntitiesResult extends BaseResult {
       @Nonnull ReturnStatus returnStatus, @Nullable String extraInformation) {
     super(returnStatus, extraInformation);
     this.resolvedEntities = null;
-  }
-
-  @JsonCreator
-  private ResolvedEntitiesResult(
-      @JsonProperty("returnStatus") ReturnStatus returnStatus,
-      @JsonProperty("extraInformation") String extraInformation,
-      @JsonProperty("resolvedEntities") List<ResolvedPolarisEntity> resolvedEntities) {
-    super(returnStatus, extraInformation);
-    this.resolvedEntities = resolvedEntities;
   }
 
   public List<ResolvedPolarisEntity> getResolvedEntities() {
