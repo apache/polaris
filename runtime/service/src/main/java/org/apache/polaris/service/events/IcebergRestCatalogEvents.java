@@ -29,12 +29,12 @@ import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
+import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.iceberg.view.ViewMetadata;
-import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
 
@@ -329,7 +329,7 @@ public class IcebergRestCatalogEvents {
       String catalogName,
       Namespace namespace,
       String sourceTable,
-      CommitTableRequest commitTableRequest)
+      UpdateTableRequest commitTableRequest)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -342,7 +342,7 @@ public class IcebergRestCatalogEvents {
       String catalogName,
       Namespace namespace,
       String sourceTable,
-      CommitTableRequest commitTableRequest,
+      UpdateTableRequest commitTableRequest,
       LoadTableResponse loadTableResponse)
       implements PolarisEvent {
     @Override

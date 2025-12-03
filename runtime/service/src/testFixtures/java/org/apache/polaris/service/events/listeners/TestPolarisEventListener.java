@@ -492,16 +492,6 @@ public class TestPolarisEventListener implements PolarisEventListener {
   }
 
   @Override
-  public void onBeforeCommitTable(IcebergRestCatalogEvents.BeforeCommitTableEvent event) {
-    recordEvent(event);
-  }
-
-  @Override
-  public void onAfterCommitTable(IcebergRestCatalogEvents.AfterCommitTableEvent event) {
-    recordEvent(event);
-  }
-
-  @Override
   public void onBeforeRefreshTable(IcebergRestCatalogEvents.BeforeRefreshTableEvent event) {
     recordEvent(event);
   }

@@ -605,7 +605,7 @@ public class IcebergRestCatalogEventServiceDelegator
               catalogName,
               req.identifier().namespace(),
               req.identifier().name(),
-              (CommitTableRequest) req));
+              req));
     }
     Response resp =
         delegate.commitTransaction(prefix, commitTransactionRequest, realmContext, securityContext);
@@ -619,7 +619,7 @@ public class IcebergRestCatalogEventServiceDelegator
               catalogName,
               req.identifier().namespace(),
               req.identifier().name(),
-              (CommitTableRequest) req,
+              req,
               (LoadTableResponse) resp.getEntity()));
     }
     return resp;
