@@ -55,6 +55,7 @@ class CatalogConnectionType(Enum):
 
     HADOOP = "hadoop"
     ICEBERG = "iceberg-rest"
+    HIVE = "hive"
 
 
 class AuthenticationType(Enum):
@@ -172,6 +173,7 @@ class Arguments:
     PROXY = "proxy"
     DEBUG = "debug"
     HADOOP_WAREHOUSE = "hadoop_warehouse"
+    HIVE_WAREHOUSE = "hive_warehouse"
     ICEBERG_REMOTE_CATALOG_NAME = "iceberg_remote_catalog_name"
     ENDPOINT = "endpoint"
     ENDPOINT_INTERNAL = "endpoint_internal"
@@ -272,7 +274,7 @@ class Hints:
 
         class External:
             CATALOG_CONNECTION_TYPE = (
-                "The type of external catalog in [ICEBERG, HADOOP]."
+                "The type of external catalog in [ICEBERG, HADOOP, HIVE]."
             )
             CATALOG_AUTHENTICATION_TYPE = (
                 "The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]"
@@ -288,6 +290,9 @@ class Hints:
             CATALOG_URI = "The URI of the external catalog"
             HADOOP_WAREHOUSE = (
                 "The warehouse to use when federating to a HADOOP catalog"
+            )
+            HIVE_WAREHOUSE = (
+                "The warehouse to use when federating to a HIVE catalog"
             )
             ICEBERG_REMOTE_CATALOG_NAME = (
                 "The remote catalog name when federating to an Iceberg REST catalog"
