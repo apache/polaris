@@ -175,8 +175,8 @@ Iceberg     Iceberg     Generic
 </span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;type&#34;</span>: <span style=color:#e6db74>&#34;table-like&#34;</span>,
 </span></span><span style=display:flex><span>    <span style=color:#f92672>&#34;path&#34;</span>: [<span style=color:#e6db74>&#34;NS1&#34;</span>, <span style=color:#e6db74>&#34;NS2&#34;</span>, <span style=color:#e6db74>&#34;test_table_1&#34;</span>]
 </span></span><span style=display:flex><span>  }
-</span></span><span style=display:flex><span>}
-</span></span></code></pre></div><p>For inheritable policies, only one policy of a given type can be attached to a resource. For non-inheritable policies,
+</span></span><span style=display:flex><span>}<span style=color:#960050;background-color:#1e0010>
+</span></span></span></code></pre></div><p>For inheritable policies, only one policy of a given type can be attached to a resource. For non-inheritable policies,
 multiple policies of the same type can be attached.</p><h3 id=retrieving-applicable-policies>Retrieving Applicable Policies</h3><p>A user can view applicable policies on a resource (e.g., table, namespace, or catalog) as long as they have
 read permission on that resource.</p><p>Here is an example to find all policies that apply to a specific resource (including inherited policies):</p><pre tabindex=0><code>GET /polaris/v1/catalog/applicable-policies?namespace=finance%1Fquarterly&amp;target-name=transactions
 </code></pre><p><strong>Sample response:</strong></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-json data-lang=json><span style=display:flex><span>{
