@@ -26,6 +26,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
+import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,7 @@ public class TaskExecutorImplTest {
             new TaskFileIOSupplier(
                 testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
             testServices.polarisEventListener(),
+            testServices.eventMetadataFactory(),
             null);
 
     executor.addTaskHandler(
@@ -85,7 +87,11 @@ public class TaskExecutorImplTest {
           }
         });
 
-    executor.handleTask(taskEntity.getId(), polarisCallCtx, attempt);
+    executor.handleTask(
+        taskEntity.getId(),
+        polarisCallCtx,
+        PolarisEventMetadata.builder().realmId(realm).build(),
+        attempt);
 
     var afterAttemptTaskEvent = testPolarisEventListener.getLatest(AfterAttemptTaskEvent.class);
     Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.taskEntityId());

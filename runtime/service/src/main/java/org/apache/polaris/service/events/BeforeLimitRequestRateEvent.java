@@ -24,5 +24,10 @@ package org.apache.polaris.service.events;
  * @param method The request's HTTP method
  * @param absolutePath The request's absolute path
  */
-public record BeforeLimitRequestRateEvent(String method, String absolutePath)
-    implements PolarisEvent {}
+public record BeforeLimitRequestRateEvent(
+    PolarisEventMetadata metadata, String method, String absolutePath) implements PolarisEvent {
+  @Override
+  public PolarisEventType type() {
+    return PolarisEventType.BEFORE_LIMIT_REQUEST_RATE;
+  }
+}

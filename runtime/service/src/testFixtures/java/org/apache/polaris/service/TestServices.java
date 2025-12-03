@@ -79,6 +79,8 @@ import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
 import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
+import org.apache.polaris.service.events.PolarisEventMetadata;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
@@ -113,6 +115,7 @@ public record TestServices(
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
     PolarisEventListener polarisEventListener,
+    PolarisEventMetadataFactory eventMetadataFactory,
     StorageAccessConfigProvider storageAccessConfigProvider) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
@@ -138,12 +141,27 @@ public record TestServices(
   }
 
   public static class Builder {
-    private Clock clock = Clock.systemUTC();
-    private PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
+    private final Clock clock = Clock.systemUTC();
+    private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
+    private final PolarisEventMetadataFactory eventMetadataFactory =
+        new PolarisEventMetadataFactory() {
+          @Override
+          public PolarisEventMetadata create() {
+            return PolarisEventMetadata.builder()
+                .realmId(realmContext.getRealmIdentifier())
+                .timestamp(clock.instant())
+                .build();
+          }
+
+          @Override
+          public PolarisEventMetadata copy(PolarisEventMetadata original) {
+            return PolarisEventMetadata.builder().from(original).timestamp(clock.instant()).build();
+          }
+        };
 
     private Builder() {
       stsClient = Mockito.mock(StsClient.class, RETURNS_DEEP_STUBS);
@@ -292,6 +310,7 @@ public record TestServices(
               storageAccessConfigProvider,
               fileIOFactory,
               polarisEventListener,
+              eventMetadataFactory,
               metaStoreManager,
               callContext,
               principal);
@@ -362,6 +381,7 @@ public record TestServices(
           fileIOFactory,
           taskExecutor,
           polarisEventListener,
+          eventMetadataFactory,
           storageAccessConfigProvider);
     }
   }

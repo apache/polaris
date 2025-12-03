@@ -305,24 +305,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
     switch (awsPartition) {
       case "aws-cn":
-        Assertions.assertThatThrownBy(
-                () ->
-                    new AwsCredentialsStorageIntegration(
-                            AwsStorageConfigurationInfo.builder()
-                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                                .roleARN(roleARN)
-                                .externalId(externalId)
-                                .region(region)
-                                .build(),
-                            stsClient)
-                        .getSubscopedCreds(
-                            EMPTY_REALM_CONFIG,
-                            true,
-                            Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
-                            Set.of(s3Path(bucket, firstPath)),
-                            null))
-            .isInstanceOf(IllegalArgumentException.class);
-        break;
       case AWS_PARTITION:
       case "aws-us-gov":
         StorageAccessConfig storageAccessConfig =
@@ -669,24 +651,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
     switch (awsPartition) {
       case "aws-cn":
-        Assertions.assertThatThrownBy(
-                () ->
-                    new AwsCredentialsStorageIntegration(
-                            AwsStorageConfigurationInfo.builder()
-                                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
-                                .roleARN(roleARN)
-                                .externalId(externalId)
-                                .region(clientRegion)
-                                .build(),
-                            stsClient)
-                        .getSubscopedCreds(
-                            EMPTY_REALM_CONFIG,
-                            true, /* allowList = true */
-                            Set.of(),
-                            Set.of(),
-                            Optional.empty()))
-            .isInstanceOf(IllegalArgumentException.class);
-        break;
       case AWS_PARTITION:
       case "aws-us-gov":
         StorageAccessConfig storageAccessConfig =
@@ -730,6 +694,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             });
     switch (awsPartition) {
       case AWS_PARTITION:
+      case "aws-cn":
         StorageAccessConfig storageAccessConfig =
             new AwsCredentialsStorageIntegration(
                     AwsStorageConfigurationInfo.builder()
@@ -748,7 +713,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .isNotEmpty()
             .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
         break;
-      case "aws-cn":
       case "aws-us-gov":
         Assertions.assertThatThrownBy(
                 () ->

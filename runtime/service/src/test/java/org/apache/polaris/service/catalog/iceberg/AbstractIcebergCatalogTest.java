@@ -140,6 +140,7 @@ import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
@@ -231,6 +232,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject ServiceIdentityProvider serviceIdentityProvider;
   @Inject PolarisDiagnostics diagServices;
   @Inject PolarisEventListener polarisEventListener;
+  @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject PolarisMetaStoreManager metaStoreManager;
   @Inject UserSecretsManager userSecretsManager;
   @Inject CallContext callContext;
@@ -440,7 +442,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         taskExecutor,
         storageAccessConfigProvider,
         fileIOFactory,
-        polarisEventListener);
+        polarisEventListener,
+        eventMetadataFactory);
   }
 
   @Test

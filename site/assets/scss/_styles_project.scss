@@ -24,3 +24,14 @@
 .td-sidebar-toc {
   padding-top: 1.75rem;
 }
+
+// Make image span full viewport width by canceling out
+// container padding
+.imageblock.full-width {
+  margin-inline: calc(0px - var(--bs-gutter-x));
+  width: calc(100% + var(--bs-gutter-x) + var(--bs-gutter-x));
+
+  img {
+    width: 100%;
+  }
+}

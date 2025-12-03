@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
 
@@ -115,7 +115,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
 
@@ -240,7 +240,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
 
@@ -312,7 +312,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
 
@@ -358,6 +358,9 @@ jobs:
           gpg --batch --pinentry-mode loopback --export > /tmp/pubring.gpg
 
           exec_process cd helm
+          # Prerequisite for reproducible helm packages: file modification time must be deterministic
+          # Works with helm since version 4.0.0
+          exec_process find polaris -exec touch -d "1980-01-01 00:00:00" {} +
           exec_process helm package polaris --sign --key "." --keyring /tmp/secring.gpg --passphrase-file /tmp/passphrase
           exec_process helm verify polaris-${version_without_rc}.tgz --keyring /tmp/pubring.gpg
 
