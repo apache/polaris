@@ -42,17 +42,17 @@ class BackendProvider {
 
     var backendName =
         backendConfiguration
-            .type()
+            .backend()
             .orElseThrow(
                 () ->
                     new IllegalStateException(
-                        "Mandatory configuration option polaris.persistence.backend.type is missing!"));
+                        "Mandatory configuration option polaris.persistence.nosql.backend is missing!"));
 
     var backendBuilder = backendBuilders.select(BackendType.Literal.of(backendName));
     if (!backendBuilder.isResolvable()) {
       throw new IllegalStateException(
           format(
-              "Backend '%s' provided in configuration polaris.persistence.backend.type is not available. Available backends: %s",
+              "Backend '%s' provided in configuration polaris.persistence.nosql.backend is not available. Available backends: %s",
               backendName,
               backendBuilders
                   .handlesStream()
@@ -70,7 +70,7 @@ class BackendProvider {
     if (backendBuilder.isAmbiguous()) {
       throw new IllegalStateException(
           format(
-              "Multiple implementations match the backend name '%s' provided in configuration polaris.persistence.backend.type is not available. All available backends: %s",
+              "Multiple implementations match the backend name '%s' provided in configuration polaris.persistence.nosql.backend is not available. All available backends: %s",
               backendName,
               backendBuilders
                   .handlesStream()
