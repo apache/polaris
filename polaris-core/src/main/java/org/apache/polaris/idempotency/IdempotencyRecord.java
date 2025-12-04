@@ -83,5 +83,3 @@ public final class IdempotencyRecord {
   public Instant getExpiresAt() { return expiresAt; }
   public boolean isFinalized() { return httpStatus != null; }
 }
-
-

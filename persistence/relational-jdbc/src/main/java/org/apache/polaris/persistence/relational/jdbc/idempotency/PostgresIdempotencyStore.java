@@ -235,5 +235,3 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
     }
   }
 }
-
-

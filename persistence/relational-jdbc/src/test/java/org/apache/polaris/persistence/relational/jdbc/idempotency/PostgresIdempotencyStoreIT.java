@@ -188,5 +188,3 @@ public class PostgresIdempotencyStoreIT {
     assertThat(rec.getNormalizedResourceId()).isEqualTo(rid1);
   }
 }
-
-
