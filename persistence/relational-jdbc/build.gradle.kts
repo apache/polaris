@@ -42,4 +42,9 @@ dependencies {
   testImplementation(libs.mockito.junit.jupiter)
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
+
+  testImplementation(platform(libs.testcontainers.bom))
+
+  testImplementation("org.testcontainers:junit-jupiter:1.20.3")
+  testImplementation("org.testcontainers:postgresql:1.20.3")
 }
