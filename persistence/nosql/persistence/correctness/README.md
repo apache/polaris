@@ -29,8 +29,8 @@ The `correctnessManualTest` task however is meant to be run _manually_ against a
 providing the necessary backend configuration via system properties. For example:
 ```bash
 ./gradlew :polaris-persistence-nosql-correctness:correctnessManualTest \
-  -Dpolaris.persistence.backend=MongoDb \
-  -Dpolaris.persistence.backend.mongodb.uri=mongodb://localhost:27017/test
-  -Dpolaris.persistence.backend.mongodb.databaseName=polaris_mongo_test
+  -Dpolaris.persistence.nosql=MongoDb \
+  -Dpolaris.persistence.nosql.mongodb.uri=mongodb://localhost:27017/test
+  -Dpolaris.persistence.nosql.mongodb.databaseName=polaris_mongo_test
 ```
 See also the Docker Compose example in the [`docker`](../docker) directory.

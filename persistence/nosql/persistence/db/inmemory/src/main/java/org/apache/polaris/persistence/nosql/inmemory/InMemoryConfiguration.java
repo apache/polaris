@@ -20,5 +20,5 @@ package org.apache.polaris.persistence.nosql.inmemory;
 
 import io.smallrye.config.ConfigMapping;
 
-@ConfigMapping(prefix = "polaris.persistence.backend.inmemory")
+@ConfigMapping(prefix = "polaris.persistence.nosql.inmemory")
 public interface InMemoryConfiguration {}

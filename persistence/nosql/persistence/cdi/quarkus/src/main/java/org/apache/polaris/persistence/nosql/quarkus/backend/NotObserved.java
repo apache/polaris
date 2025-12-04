@@ -16,22 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.mongodb;
+package org.apache.polaris.persistence.nosql.quarkus.backend;
 
-import io.smallrye.config.ConfigMapping;
-import java.util.Optional;
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.ElementType.TYPE;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-/** Polaris persistence, MongoDB backend specific configuration. */
-@ConfigMapping(prefix = "polaris.persistence.nosql.mongodb")
-public interface MongoDbConfiguration {
-  Optional<String> connectionString();
+import jakarta.inject.Qualifier;
+import java.lang.annotation.Documented;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-  Optional<String> databaseName();
-
-  /**
-   * Optionally enable realm-deletion using a prefix-delete.
-   *
-   * <p>Prefix-deletion is disabled by default.
-   */
-  Optional<Boolean> allowPrefixDeletion();
-}
+@Target({TYPE, METHOD, PARAMETER, FIELD})
+@Retention(RUNTIME)
+@Documented
+@Qualifier
+public @interface NotObserved {}

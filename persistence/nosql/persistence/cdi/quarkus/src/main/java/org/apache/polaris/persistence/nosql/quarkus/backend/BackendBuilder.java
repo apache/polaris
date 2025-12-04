@@ -16,22 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.mongodb;
+package org.apache.polaris.persistence.nosql.quarkus.backend;
 
-import io.smallrye.config.ConfigMapping;
-import java.util.Optional;
+import org.apache.polaris.persistence.nosql.api.backend.Backend;
 
-/** Polaris persistence, MongoDB backend specific configuration. */
-@ConfigMapping(prefix = "polaris.persistence.nosql.mongodb")
-public interface MongoDbConfiguration {
-  Optional<String> connectionString();
-
-  Optional<String> databaseName();
-
-  /**
-   * Optionally enable realm-deletion using a prefix-delete.
-   *
-   * <p>Prefix-deletion is disabled by default.
-   */
-  Optional<Boolean> allowPrefixDeletion();
+interface BackendBuilder {
+  Backend buildBackend();
 }

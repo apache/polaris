@@ -16,22 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.nosql.mongodb;
+package org.apache.polaris.persistence.nosql.quarkus.backend;
 
-import io.smallrye.config.ConfigMapping;
-import java.util.Optional;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.polaris.persistence.nosql.api.backend.Backend;
+import org.apache.polaris.persistence.nosql.inmemory.InMemoryBackendFactory;
+import org.apache.polaris.persistence.nosql.inmemory.InMemoryConfiguration;
 
-/** Polaris persistence, MongoDB backend specific configuration. */
-@ConfigMapping(prefix = "polaris.persistence.nosql.mongodb")
-public interface MongoDbConfiguration {
-  Optional<String> connectionString();
-
-  Optional<String> databaseName();
-
-  /**
-   * Optionally enable realm-deletion using a prefix-delete.
-   *
-   * <p>Prefix-deletion is disabled by default.
-   */
-  Optional<Boolean> allowPrefixDeletion();
+@BackendType(InMemoryBackendFactory.NAME)
+@ApplicationScoped
+class InMemoryBackendBuilder implements BackendBuilder {
+  @Override
+  public Backend buildBackend() {
+    var factory = new InMemoryBackendFactory();
+    return factory.buildBackend(factory.buildConfiguration(new InMemoryConfiguration() {}));
+  }
 }

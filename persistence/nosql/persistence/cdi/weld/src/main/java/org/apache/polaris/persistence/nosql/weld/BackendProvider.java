@@ -40,7 +40,7 @@ class BackendProvider {
 
     var factory =
         backendConfiguration
-            .type()
+            .backend()
             .map(BackendLoader::findFactoryByName)
             .map(
                 f -> {
@@ -56,7 +56,7 @@ class BackendProvider {
                     return r;
                   } catch (IllegalStateException e) {
                     throw new RuntimeException(
-                        "Backend factory type is configured using the configuration option polaris.persistence.backend.type - available are: "
+                        "Backend factory type is configured using the configuration option polaris.persistence.nosql.backend - available are: "
                             + BackendLoader.availableFactories()
                                 .map(BackendFactory::name)
                                 .collect(Collectors.joining(", ")),
