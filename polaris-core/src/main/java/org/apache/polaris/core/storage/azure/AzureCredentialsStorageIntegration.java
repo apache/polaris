@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.core.storage.azure;
 
-import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_COUNT;
-import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_DELAY_MILLIS;
-import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_RETRY_JITTER_FACTOR;
-import static org.apache.polaris.core.config.FeatureConfiguration.CLOUD_API_TIMEOUT_MILLIS;
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_API_RETRY_COUNT;
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_API_RETRY_DELAY_MILLIS;
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_API_RETRY_JITTER_FACTOR;
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_API_TIMEOUT_MILLIS;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import com.azure.core.credential.AccessToken;
@@ -327,11 +327,12 @@ public class AzureCredentialsStorageIntegration
    * <p>This method implements a defensive strategy against slow or failing cloud provider requests:
    *
    * <ul>
-   *   <li>Per-attempt timeout (configurable via CLOUD_API_TIMEOUT_MILLIS, default 15000ms)
-   *   <li>Exponential backoff retry (configurable count and initial delay via CLOUD_API_RETRY_COUNT
-   *       and CLOUD_API_RETRY_DELAY_MILLIS, defaults: 3 attempts starting at 2000ms)
-   *   <li>Jitter to prevent thundering herd (configurable via CLOUD_API_RETRY_JITTER_FACTOR,
-   *       default 0.5 = 50%%)
+   *   <li>Per-attempt timeout (configurable via STORAGE_API_TIMEOUT_MILLIS, default 15000ms)
+   *   <li>Exponential backoff retry (configurable count and initial delay via
+   *       STORAGE_API_RETRY_COUNT and STORAGE_API_RETRY_DELAY_MILLIS, defaults: 3 attempts starting
+   *       at 2000ms)
+   *   <li>Jitter to prevent thundering herd (configurable via STORAGE_API_RETRY_JITTER_FACTOR,
+   *       default 0.5 = 50%%) default 0.5 = 50%%)
    * </ul>
    *
    * @param realmConfig the realm configuration to get timeout and retry settings
@@ -340,10 +341,11 @@ public class AzureCredentialsStorageIntegration
    * @throws RuntimeException if token fetch fails after all retries or times out
    */
   private AccessToken getAccessToken(RealmConfig realmConfig, String tenantId) {
-    int timeoutMillis = realmConfig.getConfig(CLOUD_API_TIMEOUT_MILLIS);
-    int retryCount = realmConfig.getConfig(CLOUD_API_RETRY_COUNT);
-    int initialDelayMillis = realmConfig.getConfig(CLOUD_API_RETRY_DELAY_MILLIS);
-    double jitter = realmConfig.getConfig(CLOUD_API_RETRY_JITTER_FACTOR);
+    int timeoutMillis = realmConfig.getConfig(STORAGE_API_TIMEOUT_MILLIS);
+    int retryCount = realmConfig.getConfig(STORAGE_API_RETRY_COUNT);
+    int initialDelayMillis = realmConfig.getConfig(STORAGE_API_RETRY_DELAY_MILLIS);
+    double jitter = realmConfig.getConfig(STORAGE_API_RETRY_JITTER_FACTOR);
+    int maxAttempts = retryCount + 1;
 
     String scope = "https://storage.azure.com/.default";
     AccessToken accessToken =
@@ -352,10 +354,7 @@ public class AzureCredentialsStorageIntegration
             .timeout(Duration.ofMillis(timeoutMillis))
             .doOnError(
                 error ->
-                    LOGGER.warn(
-                        "Error fetching Azure access token for tenant {}: {}",
-                        tenantId,
-                        error.getMessage()))
+                    LOGGER.warn("Error fetching Azure access token for tenant {}", tenantId, error))
             .retryWhen(
                 Retry.backoff(retryCount, Duration.ofMillis(initialDelayMillis))
                     .jitter(jitter) // Apply jitter factor to computed delay
@@ -366,7 +365,7 @@ public class AzureCredentialsStorageIntegration
                                 "Retrying Azure token fetch for tenant {} (attempt {}/{})",
                                 tenantId,
                                 retrySignal.totalRetries() + 1,
-                                retryCount))
+                                maxAttempts))
                     .onRetryExhaustedThrow(
                         (retryBackoffSpec, retrySignal) ->
                             new RuntimeException(
