@@ -19,13 +19,12 @@ package org.apache.polaris.persistence.relational.jdbc.idempotency;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
-import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import javax.sql.DataSource;
+import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.idempotency.IdempotencyRecord;
-import org.apache.polaris.idempotency.IdempotencyStore;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
 import org.junit.jupiter.api.AfterAll;
@@ -75,7 +74,9 @@ public class PostgresIdempotencyStoreIT {
         };
     DatasourceOperations ops = new DatasourceOperations(dataSource, cfg);
     try (InputStream is =
-        Thread.currentThread().getContextClassLoader().getResourceAsStream("postgres/schema-v3.sql")) {
+        Thread.currentThread()
+            .getContextClassLoader()
+            .getResourceAsStream("postgres/schema-v3.sql")) {
       if (is == null) {
         throw new IllegalStateException("schema-v3.sql not found on classpath");
       }
@@ -99,12 +100,10 @@ public class PostgresIdempotencyStoreIT {
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    IdempotencyStore.ReserveResult r1 =
-        store.reserve(realm, key, op, rid, exp, "A", now);
+    IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op, rid, exp, "A", now);
     assertThat(r1.getType()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
 
-    IdempotencyStore.ReserveResult r2 =
-        store.reserve(realm, key, op, rid, exp, "B", now);
+    IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op, rid, exp, "B", now);
     assertThat(r2.getType()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
     assertThat(r2.getExisting()).isPresent();
     IdempotencyRecord rec = r2.getExisting().get();
@@ -130,14 +129,24 @@ public class PostgresIdempotencyStoreIT {
 
     boolean fin =
         store.finalizeRecord(
-            realm, key, 201, null, "{\"ok\":true}", "{\"Content-Type\":\"application/json\"}",
+            realm,
+            key,
+            201,
+            null,
+            "{\"ok\":true}",
+            "{\"Content-Type\":\"application/json\"}",
             now.plusSeconds(2));
     assertThat(fin).isTrue();
 
     // finalize again should be a no-op
     boolean fin2 =
         store.finalizeRecord(
-            realm, key, 201, null, "{\"ok\":true}", "{\"Content-Type\":\"application/json\"}",
+            realm,
+            key,
+            201,
+            null,
+            "{\"ok\":true}",
+            "{\"Content-Type\":\"application/json\"}",
             now.plusSeconds(3));
     assertThat(fin2).isFalse();
 
@@ -172,15 +181,14 @@ public class PostgresIdempotencyStoreIT {
     Instant now = Instant.now();
     Instant exp = now.plus(Duration.ofMinutes(5));
 
-    IdempotencyStore.ReserveResult r1 =
-        store.reserve(realm, key, op1, rid1, exp, "A", now);
+    IdempotencyStore.ReserveResult r1 = store.reserve(realm, key, op1, rid1, exp, "A", now);
     assertThat(r1.getType()).isEqualTo(IdempotencyStore.ReserveResultType.OWNED);
 
     // Second reserve with different op/resource should *not* overwrite the original binding.
-    // The store must return DUPLICATE with the *original* (op1, rid1); the HTTP layer (IdempotencyFilter)
+    // The store must return DUPLICATE with the *original* (op1, rid1); the HTTP layer
+    // (IdempotencyFilter)
     // will detect the mismatch and return 422.
-    IdempotencyStore.ReserveResult r2 =
-        store.reserve(realm, key, op2, rid2, exp, "B", now);
+    IdempotencyStore.ReserveResult r2 = store.reserve(realm, key, op2, rid2, exp, "B", now);
     assertThat(r2.getType()).isEqualTo(IdempotencyStore.ReserveResultType.DUPLICATE);
     assertThat(r2.getExisting()).isPresent();
     IdempotencyRecord rec = r2.getExisting().get();

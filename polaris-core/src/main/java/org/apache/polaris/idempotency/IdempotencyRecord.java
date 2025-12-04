@@ -67,19 +67,63 @@ public final class IdempotencyRecord {
     this.expiresAt = expiresAt;
   }
 
-  public String getRealmId() { return realmId; }
-  public String getIdempotencyKey() { return idempotencyKey; }
-  public String getOperationType() { return operationType; }
-  public String getNormalizedResourceId() { return normalizedResourceId; }
-  public Integer getHttpStatus() { return httpStatus; }
-  public String getErrorSubtype() { return errorSubtype; }
-  public String getResponseSummary() { return responseSummary; }
-  public String getResponseHeaders() { return responseHeaders; }
-  public Instant getCreatedAt() { return createdAt; }
-  public Instant getUpdatedAt() { return updatedAt; }
-  public Instant getFinalizedAt() { return finalizedAt; }
-  public Instant getHeartbeatAt() { return heartbeatAt; }
-  public String getExecutorId() { return executorId; }
-  public Instant getExpiresAt() { return expiresAt; }
-  public boolean isFinalized() { return httpStatus != null; }
+  public String getRealmId() {
+    return realmId;
+  }
+
+  public String getIdempotencyKey() {
+    return idempotencyKey;
+  }
+
+  public String getOperationType() {
+    return operationType;
+  }
+
+  public String getNormalizedResourceId() {
+    return normalizedResourceId;
+  }
+
+  public Integer getHttpStatus() {
+    return httpStatus;
+  }
+
+  public String getErrorSubtype() {
+    return errorSubtype;
+  }
+
+  public String getResponseSummary() {
+    return responseSummary;
+  }
+
+  public String getResponseHeaders() {
+    return responseHeaders;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
+
+  public Instant getFinalizedAt() {
+    return finalizedAt;
+  }
+
+  public Instant getHeartbeatAt() {
+    return heartbeatAt;
+  }
+
+  public String getExecutorId() {
+    return executorId;
+  }
+
+  public Instant getExpiresAt() {
+    return expiresAt;
+  }
+
+  public boolean isFinalized() {
+    return httpStatus != null;
+  }
 }

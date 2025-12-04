@@ -26,8 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import javax.sql.DataSource;
+import org.apache.polaris.core.persistence.IdempotencyStore;
 import org.apache.polaris.idempotency.IdempotencyRecord;
-import org.apache.polaris.idempotency.IdempotencyStore;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.QueryGenerator;
@@ -36,9 +36,7 @@ import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Postgres implementation of IdempotencyStore.
- */
+/** Postgres implementation of IdempotencyStore. */
 public final class PostgresIdempotencyStore implements IdempotencyStore {
   private static final Logger LOG = LoggerFactory.getLogger(PostgresIdempotencyStore.class);
 
@@ -46,8 +44,8 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
 
   private final DatasourceOperations ops;
 
-  public PostgresIdempotencyStore(@Nonnull DataSource dataSource,
-                                  @Nonnull RelationalJdbcConfiguration cfg)
+  public PostgresIdempotencyStore(
+      @Nonnull DataSource dataSource, @Nonnull RelationalJdbcConfiguration cfg)
       throws SQLException {
     this.ops = new DatasourceOperations(dataSource, cfg);
   }
@@ -113,8 +111,7 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
             }
 
             @Override
-            public Map<String, Object> toMap(
-               DatabaseType databaseType) {
+            public Map<String, Object> toMap(DatabaseType databaseType) {
               return Map.of();
             }
           },
@@ -191,7 +188,8 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
   public int purgeExpired(Instant before) {
     String sql = "DELETE FROM " + TABLE + " WHERE expires_at < ?";
     try {
-      return ops.executeUpdate(new QueryGenerator.PreparedQuery(sql, List.of(Timestamp.from(before))));
+      return ops.executeUpdate(
+          new QueryGenerator.PreparedQuery(sql, List.of(Timestamp.from(before))));
     } catch (SQLException e) {
       throw new RuntimeException("Failed to purge expired idempotency records", e);
     }
