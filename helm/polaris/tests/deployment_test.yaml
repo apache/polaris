@@ -1303,3 +1303,28 @@ tests:
               secretKeyRef:
                 name: polaris-oidc-secret
                 key: client-secret
+
+  - it: should not set topologySpreadConstraints by default
+    template: deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.topologySpreadConstraints
+
+  - it: should set topologySpreadConstraints and inject label selector
+    template: deployment.yaml
+    set:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: "kubernetes.io/hostname"
+          whenUnsatisfiable: DoNotSchedule
+    asserts:
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints
+          value:
+            - maxSkew: 1
+              topologyKey: "kubernetes.io/hostname"
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: polaris
+                  app.kubernetes.io/instance: polaris-release
