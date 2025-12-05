@@ -24,6 +24,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -37,10 +38,21 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
+import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
+import org.apache.iceberg.rest.responses.ConfigResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
+import org.apache.iceberg.rest.responses.LoadViewResponse;
+import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.json.FieldRedactionSerializerModifier;
+import org.apache.polaris.service.events.json.mixins.RedactionMixins;
 import org.apache.polaris.service.events.listeners.AllEventsForwardingListener;
+import org.apache.polaris.service.events.listeners.aws.cloudwatch.AwsCloudWatchConfiguration.RedactionMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.regions.Region;
@@ -81,11 +93,74 @@ public class AwsCloudWatchEventListener extends AllEventsForwardingListener {
     this.region = Region.of(config.awsCloudWatchRegion());
     this.synchronousMode = config.synchronousMode();
     this.clock = clock;
-    this.objectMapper = mapper;
+    this.objectMapper =
+        configureRedaction(
+            mapper.copy(),
+            config.redactionMode(),
+            config.additionalRedactedFields().orElse(Set.of()));
     this.allowedEventTypes = config.eventTypes().orElse(Set.of());
     this.listenToAllEvents =
         allowedEventTypes.isEmpty()
             || allowedEventTypes.stream().anyMatch(c -> c == PolarisEvent.class);
+  }
+
+  /**
+   * Configures the ObjectMapper with redaction mixins based on the specified redaction mode.
+   *
+   * @param mapper the ObjectMapper to configure (should be a copy)
+   * @param redactionMode the redaction mode to apply
+   * @param additionalRedactedFields additional field names to redact beyond the defaults
+   * @return the configured ObjectMapper
+   */
+  private static ObjectMapper configureRedaction(
+      ObjectMapper mapper, RedactionMode redactionMode, Set<String> additionalRedactedFields) {
+    LOGGER.debug("Configuring redaction with mode: {}", redactionMode);
+    LOGGER.debug("Additional redacted fields: {}", additionalRedactedFields);
+
+    if (redactionMode == RedactionMode.NONE && additionalRedactedFields.isEmpty()) {
+      // No redaction - return mapper as-is
+      return mapper;
+    }
+
+    // Apply field-level redaction patterns if configured
+    if (!additionalRedactedFields.isEmpty()) {
+      SimpleModule module = new SimpleModule();
+      module.setSerializerModifier(new FieldRedactionSerializerModifier(additionalRedactedFields));
+      mapper.registerModule(module);
+      LOGGER.debug("Registered field-level redaction for {} patterns", additionalRedactedFields.size());
+    }
+
+    // Skip mixin-based redaction if mode is NONE
+    if (redactionMode == RedactionMode.NONE) {
+      return mapper;
+    }
+
+    // Always redact these highly sensitive types regardless of mode
+    mapper.addMixIn(LoadTableResponse.class, RedactionMixins.LoadTableResponseRedactionMixin.class);
+    mapper.addMixIn(LoadViewResponse.class, RedactionMixins.LoadViewResponseRedactionMixin.class);
+    // Redact the entire AfterGetConfigEvent.configResponse field
+    mapper.addMixIn(
+        IcebergRestCatalogEvents.AfterGetConfigEvent.class,
+        RedactionMixins.AfterGetConfigEventRedactionMixin.class);
+    LOGGER.debug("Registered AfterGetConfigEvent mixin");
+    mapper.addMixIn(
+        CreateNamespaceRequest.class, RedactionMixins.CreateNamespaceRequestRedactionMixin.class);
+    mapper.addMixIn(
+        UpdateNamespacePropertiesRequest.class,
+        RedactionMixins.UpdateNamespacePropertiesRequestRedactionMixin.class);
+
+    if (redactionMode == RedactionMode.PARTIAL) {
+      // Partial redaction - keep locations, redact properties
+      mapper.addMixIn(
+          TableMetadata.class, RedactionMixins.TableMetadataPartialRedactionMixin.class);
+      mapper.addMixIn(ViewMetadata.class, RedactionMixins.ViewMetadataPartialRedactionMixin.class);
+    } else if (redactionMode == RedactionMode.FULL) {
+      // Full redaction - redact both locations and properties
+      mapper.addMixIn(TableMetadata.class, RedactionMixins.TableMetadataFullRedactionMixin.class);
+      mapper.addMixIn(ViewMetadata.class, RedactionMixins.ViewMetadataFullRedactionMixin.class);
+    }
+
+    return mapper;
   }
 
   @Override

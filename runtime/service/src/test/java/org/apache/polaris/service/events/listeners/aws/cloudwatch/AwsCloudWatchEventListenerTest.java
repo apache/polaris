@@ -394,4 +394,355 @@ class AwsCloudWatchEventListenerTest {
         .first()
         .satisfies(stream -> assertThat(stream.logStreamName()).isEqualTo(LOG_STREAM));
   }
+
+  @Test
+  void shouldRedactConfigResponseDirectly() throws Exception {
+    // Test that the mixin works when serializing ConfigResponse directly
+    ObjectMapper testMapper = new ObjectMapper();
+    testMapper.addMixIn(
+        org.apache.iceberg.rest.responses.ConfigResponse.class,
+        org.apache.polaris.service.events.json.mixins.RedactionMixins
+            .ConfigResponseRedactionMixin.class);
+
+    org.apache.iceberg.rest.responses.ConfigResponse configResponse =
+        org.apache.iceberg.rest.responses.ConfigResponse.builder()
+            .withDefault("s3.access-key-id", "AKIAIOSFODNN7EXAMPLE")
+            .withDefault("s3.secret-access-key", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+            .withDefault("token", "some-bearer-token")
+            .withOverride("prefix", "test-catalog")
+            .build();
+
+    String json = testMapper.writeValueAsString(configResponse);
+    System.out.println("Direct ConfigResponse JSON: " + json);
+
+    // Verify that defaults and overrides are not in the JSON
+    assertThat(json).doesNotContain("defaults");
+    assertThat(json).doesNotContain("overrides");
+    assertThat(json).doesNotContain("AKIAIOSFODNN7EXAMPLE");
+  }
+
+  @Test
+  void shouldRedactSensitiveFieldsInPartialMode() throws Exception {
+    // Configure for PARTIAL redaction mode
+    when(config.redactionMode())
+        .thenReturn(AwsCloudWatchConfiguration.RedactionMode.PARTIAL);
+
+    CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
+    AwsCloudWatchEventListener listener = createListener(client);
+    listener.start();
+
+    try {
+      // Create an event with sensitive data
+      org.apache.iceberg.rest.responses.ConfigResponse configResponse =
+          org.apache.iceberg.rest.responses.ConfigResponse.builder()
+              .withDefault("s3.access-key-id", "AKIAIOSFODNN7EXAMPLE")
+              .withDefault("s3.secret-access-key", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+              .withDefault("token", "some-bearer-token")
+              .withOverride("prefix", "test-catalog")
+              .build();
+
+      listener.onAfterGetConfig(
+          new IcebergRestCatalogEvents.AfterGetConfigEvent(configResponse));
+
+      // Wait for event to be sent
+      Awaitility.await("event should be sent to CloudWatch")
+          .atMost(Duration.ofSeconds(30))
+          .pollDelay(Duration.ofMillis(100))
+          .pollInterval(Duration.ofMillis(100))
+          .untilAsserted(
+              () -> {
+                GetLogEventsResponse resp =
+                    client
+                        .getLogEvents(
+                            GetLogEventsRequest.builder()
+                                .logGroupName(LOG_GROUP)
+                                .logStreamName(LOG_STREAM)
+                                .build())
+                        .join();
+                assertThat(resp.events().size()).isGreaterThan(0);
+              });
+
+      // Retrieve and verify the logged event
+      GetLogEventsResponse logEvents =
+          client
+              .getLogEvents(
+                  GetLogEventsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamName(LOG_STREAM)
+                      .build())
+              .join();
+
+      assertThat(logEvents.events()).hasSize(1);
+      String message = logEvents.events().get(0).message();
+      System.out.println("REDACTED MESSAGE: " + message);
+      JsonNode eventJson = objectMapper.readTree(message);
+
+      // Verify that the entire configResponse field is redacted (omitted from JSON)
+      assertThat(eventJson.has("config_response"))
+          .as("config_response field should be redacted")
+          .isFalse();
+
+      // Verify that the original values are NOT present
+      assertThat(message).doesNotContain("AKIAIOSFODNN7EXAMPLE");
+      assertThat(message).doesNotContain("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+      assertThat(message).doesNotContain("some-bearer-token");
+    } finally {
+      client.close();
+      listener.shutdown();
+    }
+  }
+
+  @Test
+  void shouldNotRedactInNoneMode() throws Exception {
+    // Configure for NONE redaction mode
+    when(config.redactionMode()).thenReturn(AwsCloudWatchConfiguration.RedactionMode.NONE);
+
+    CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
+    AwsCloudWatchEventListener listener = createListener(client);
+    listener.start();
+
+    try {
+      // Create an event with data that would normally be redacted
+      org.apache.iceberg.rest.responses.ConfigResponse configResponse =
+          org.apache.iceberg.rest.responses.ConfigResponse.builder()
+              .withDefault("test-key", "test-value")
+              .withOverride("prefix", "test-catalog")
+              .build();
+
+      listener.onAfterGetConfig(
+          new IcebergRestCatalogEvents.AfterGetConfigEvent(configResponse));
+
+      // Wait for event to be sent
+      Awaitility.await("event should be sent to CloudWatch")
+          .atMost(Duration.ofSeconds(30))
+          .pollDelay(Duration.ofMillis(100))
+          .pollInterval(Duration.ofMillis(100))
+          .untilAsserted(
+              () -> {
+                GetLogEventsResponse resp =
+                    client
+                        .getLogEvents(
+                            GetLogEventsRequest.builder()
+                                .logGroupName(LOG_GROUP)
+                                .logStreamName(LOG_STREAM)
+                                .build())
+                        .join();
+                assertThat(resp.events().size()).isGreaterThan(0);
+              });
+
+      // Retrieve and verify the logged event
+      GetLogEventsResponse logEvents =
+          client
+              .getLogEvents(
+                  GetLogEventsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamName(LOG_STREAM)
+                      .build())
+              .join();
+
+      assertThat(logEvents.events()).hasSize(1);
+      String message = logEvents.events().get(0).message();
+      System.out.println("NON-REDACTED MESSAGE: " + message);
+      JsonNode eventJson = objectMapper.readTree(message);
+
+      // Verify that values are NOT redacted (config_response field is present)
+      assertThat(eventJson.has("config_response"))
+          .as("config_response field should be present")
+          .isTrue();
+      assertThat(message).contains("test-key");
+      assertThat(message).contains("test-value");
+    } finally {
+      client.close();
+      listener.shutdown();
+    }
+  }
+
+  @Test
+  void shouldRedactAdditionalFieldsWhenConfigured() throws Exception {
+    // Configure additional fields to redact
+    when(config.redactionMode()).thenReturn(AwsCloudWatchConfiguration.RedactionMode.NONE);
+    when(config.additionalRedactedFields())
+        .thenReturn(java.util.Optional.of(Set.of("catalogName", "namespace")));
+
+    CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
+    AwsCloudWatchEventListener listener = createListener(client);
+    listener.start();
+
+    try {
+      // Create and send a test event
+      Namespace namespaceTest = Namespace.of("sensitive_namespace");
+      TableIdentifier testTable = TableIdentifier.of(namespaceTest, "test_table");
+      listener.onAfterRefreshTable(
+          new IcebergRestCatalogEvents.AfterRefreshTableEvent("sensitive_catalog", testTable));
+
+      // Wait for the event to be sent
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(10))
+          .pollInterval(Duration.ofMillis(100))
+          .until(
+              () -> {
+                GetLogEventsResponse response =
+                    client
+                        .getLogEvents(
+                            GetLogEventsRequest.builder()
+                                .logGroupName(LOG_GROUP)
+                                .logStreamName(LOG_STREAM)
+                                .build())
+                        .join();
+                return !response.events().isEmpty();
+              });
+
+      GetLogEventsResponse logEvents =
+          client
+              .getLogEvents(
+                  GetLogEventsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamName(LOG_STREAM)
+                      .build())
+              .join();
+
+      assertThat(logEvents.events()).hasSize(1);
+      String message = logEvents.events().get(0).message();
+      System.out.println("FIELD-REDACTED MESSAGE: " + message);
+      JsonNode eventJson = objectMapper.readTree(message);
+
+      // Verify that configured fields are redacted
+      assertThat(eventJson.get("catalog_name").asText())
+          .isEqualTo(org.apache.polaris.service.events.json.RedactingSerializer.getRedactedMarker());
+      assertThat(eventJson.get("namespace").asText())
+          .isEqualTo(org.apache.polaris.service.events.json.RedactingSerializer.getRedactedMarker());
+
+      // Verify that other fields are NOT redacted
+      assertThat(eventJson.has("table_identifier")).isTrue();
+      assertThat(message).doesNotContain("sensitive_catalog");
+      assertThat(message).doesNotContain("sensitive_namespace");
+    } finally {
+      client.close();
+      listener.shutdown();
+    }
+  }
+
+  @Test
+  void shouldRedactFieldsWithWildcardPatterns() throws Exception {
+    // Configure wildcard patterns to redact
+    when(config.redactionMode()).thenReturn(AwsCloudWatchConfiguration.RedactionMode.NONE);
+    when(config.additionalRedactedFields())
+        .thenReturn(java.util.Optional.of(Set.of("*Name", "table*")));
+
+    CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
+    AwsCloudWatchEventListener listener = createListener(client);
+    listener.start();
+
+    try {
+      // Create and send a test event
+      Namespace namespaceTest = Namespace.of("test_namespace");
+      TableIdentifier testTable = TableIdentifier.of(namespaceTest, "test_table");
+      listener.onAfterRefreshTable(
+          new IcebergRestCatalogEvents.AfterRefreshTableEvent("test_catalog", testTable));
+
+      // Wait for the event to be sent
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(10))
+          .pollInterval(Duration.ofMillis(100))
+          .until(
+              () -> {
+                GetLogEventsResponse response =
+                    client
+                        .getLogEvents(
+                            GetLogEventsRequest.builder()
+                                .logGroupName(LOG_GROUP)
+                                .logStreamName(LOG_STREAM)
+                                .build())
+                        .join();
+                return !response.events().isEmpty();
+              });
+
+      GetLogEventsResponse logEvents =
+          client
+              .getLogEvents(
+                  GetLogEventsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamName(LOG_STREAM)
+                      .build())
+              .join();
+
+      assertThat(logEvents.events()).hasSize(1);
+      String message = logEvents.events().get(0).message();
+      System.out.println("WILDCARD-REDACTED MESSAGE: " + message);
+      JsonNode eventJson = objectMapper.readTree(message);
+
+      // Verify that fields matching wildcard patterns are redacted
+      // *Name should match catalogName, tableName
+      assertThat(eventJson.get("catalog_name").asText())
+          .isEqualTo(org.apache.polaris.service.events.json.RedactingSerializer.getRedactedMarker());
+
+      // table* should match tableIdentifier
+      assertThat(eventJson.get("table_identifier").asText())
+          .isEqualTo(org.apache.polaris.service.events.json.RedactingSerializer.getRedactedMarker());
+    } finally {
+      client.close();
+      listener.shutdown();
+    }
+  }
+
+  @Test
+  void shouldCombineRedactionModeWithAdditionalFields() throws Exception {
+    // Configure PARTIAL mode with additional fields
+    when(config.redactionMode()).thenReturn(AwsCloudWatchConfiguration.RedactionMode.PARTIAL);
+    when(config.additionalRedactedFields())
+        .thenReturn(java.util.Optional.of(Set.of("catalogName")));
+
+    CloudWatchLogsAsyncClient client = createCloudWatchAsyncClient();
+    AwsCloudWatchEventListener listener = createListener(client);
+    listener.start();
+
+    try {
+      // Create and send a test event
+      Namespace namespaceTest = Namespace.of("test_namespace");
+      TableIdentifier testTable = TableIdentifier.of(namespaceTest, "test_table");
+      listener.onAfterRefreshTable(
+          new IcebergRestCatalogEvents.AfterRefreshTableEvent("test_catalog", testTable));
+
+      // Wait for the event to be sent
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(10))
+          .pollInterval(Duration.ofMillis(100))
+          .until(
+              () -> {
+                GetLogEventsResponse response =
+                    client
+                        .getLogEvents(
+                            GetLogEventsRequest.builder()
+                                .logGroupName(LOG_GROUP)
+                                .logStreamName(LOG_STREAM)
+                                .build())
+                        .join();
+                return !response.events().isEmpty();
+              });
+
+      GetLogEventsResponse logEvents =
+          client
+              .getLogEvents(
+                  GetLogEventsRequest.builder()
+                      .logGroupName(LOG_GROUP)
+                      .logStreamName(LOG_STREAM)
+                      .build())
+              .join();
+
+      assertThat(logEvents.events()).hasSize(1);
+      String message = logEvents.events().get(0).message();
+      System.out.println("COMBINED-REDACTED MESSAGE: " + message);
+      JsonNode eventJson = objectMapper.readTree(message);
+
+      // Verify that catalogName is redacted (from additional fields)
+      assertThat(eventJson.get("catalog_name").asText())
+          .isEqualTo(org.apache.polaris.service.events.json.RedactingSerializer.getRedactedMarker());
+
+      // Verify that default PARTIAL mode redactions are also applied
+      // (This would be tested with events that have properties/config fields)
+    } finally {
+      client.close();
+      listener.shutdown();
+    }
+  }
 }

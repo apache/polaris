@@ -93,4 +93,50 @@ public interface AwsCloudWatchConfiguration {
   @WithName("event-types")
   Optional<Set<Class<? extends PolarisEvent>>>
       eventTypes(); // defaults to empty option i.e. process all events
+
+  /**
+   * Returns the redaction mode for sensitive data in events.
+   *
+   * <p>Controls how sensitive information is handled when serializing events to CloudWatch:
+   *
+   * <ul>
+   *   <li>NONE - No redaction, all data is sent as-is (use with caution)
+   *   <li>PARTIAL - Redact highly sensitive fields like credentials, but keep metadata locations
+   *       and properties
+   *   <li>FULL - Redact all potentially sensitive fields including locations, properties, and
+   *       credentials
+   * </ul>
+   *
+   * <p>Configuration property: {@code polaris.event-listener.aws-cloudwatch.redaction-mode}
+   *
+   * @return the redaction mode, defaults to PARTIAL for security
+   */
+  @WithName("redaction-mode")
+  @WithDefault("PARTIAL")
+  RedactionMode redactionMode();
+
+  /**
+   * Returns additional field names to redact beyond the defaults.
+   *
+   * <p>Allows customization of which fields should be redacted. Field names can use dot notation
+   * for nested fields (e.g., "properties.custom-secret"). These fields are redacted in addition to
+   * the default redacted fields based on the redaction mode.
+   *
+   * <p>Configuration property: {@code
+   * polaris.event-listener.aws-cloudwatch.additional-redacted-fields}
+   *
+   * @return a set of additional field names to redact, empty by default
+   */
+  @WithName("additional-redacted-fields")
+  Optional<Set<String>> additionalRedactedFields();
+
+  /** Enum defining redaction modes for sensitive data. */
+  enum RedactionMode {
+    /** No redaction - all data sent as-is. Use with extreme caution. */
+    NONE,
+    /** Partial redaction - redact credentials and secrets, keep metadata. */
+    PARTIAL,
+    /** Full redaction - redact all potentially sensitive fields. */
+    FULL
+  }
 }
