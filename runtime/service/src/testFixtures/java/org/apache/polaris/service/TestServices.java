@@ -68,9 +68,14 @@ import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
+import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
+import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
+import org.apache.polaris.service.catalog.iceberg.IcebergRestCatalogEventServiceDelegator;
+import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigurationEventServiceDelegator;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -146,6 +151,7 @@ public record TestServices(
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient;
+    private boolean useEventDelegator = false;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
     private final PolarisEventMetadataFactory eventMetadataFactory =
         new PolarisEventMetadataFactory() {
@@ -193,6 +199,11 @@ public record TestServices(
 
     public Builder stsClient(StsClient stsClient) {
       this.stsClient = stsClient;
+      return this;
+    }
+
+    public Builder withEventDelegator(boolean useEventDelegator) {
+      this.useEventDelegator = useEventDelegator;
       return this;
     }
 
@@ -341,9 +352,24 @@ public record TestServices(
               storageAccessConfigProvider,
               new DefaultMetricsReporter());
 
-      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
+      // Optionally wrap with event delegator
+      IcebergRestCatalogApiService finalRestCatalogService = catalogService;
+      IcebergRestConfigurationApiService finalRestConfigurationService = catalogService;
+      if (useEventDelegator) {
+          finalRestCatalogService = new IcebergRestCatalogEventServiceDelegator(
+              catalogService,
+              polarisEventListener,
+              eventMetadataFactory,
+              new DefaultCatalogPrefixParser());
+          finalRestConfigurationService = new IcebergRestConfigurationEventServiceDelegator(
+              catalogService,
+              polarisEventListener,
+              eventMetadataFactory);
+      }
+
+      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(finalRestCatalogService);
       IcebergRestConfigurationApi restConfigurationApi =
-          new IcebergRestConfigurationApi(catalogService);
+          new IcebergRestConfigurationApi(finalRestConfigurationService);
 
       PolarisAdminService adminService =
           new PolarisAdminService(

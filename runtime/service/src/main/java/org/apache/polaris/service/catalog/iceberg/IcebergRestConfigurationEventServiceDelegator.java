@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
@@ -40,6 +41,19 @@ public class IcebergRestConfigurationEventServiceDelegator
   @Inject @Delegate IcebergCatalogAdapter delegate;
   @Inject PolarisEventListener polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
+
+  @VisibleForTesting
+  public IcebergRestConfigurationEventServiceDelegator(
+      IcebergCatalogAdapter delegate,
+      PolarisEventListener polarisEventListener,
+      PolarisEventMetadataFactory eventMetadataFactory) {
+    this.delegate = delegate;
+    this.polarisEventListener = polarisEventListener;
+    this.eventMetadataFactory = eventMetadataFactory;
+  }
+
+  // Default constructor for CDI
+  public IcebergRestConfigurationEventServiceDelegator() {}
 
   @Override
   public Response getConfig(
