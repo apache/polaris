@@ -26,6 +26,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.service.config.FilterPriorities;
+import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,7 @@ public class RealmContextFilter {
   private static final Logger LOGGER = LoggerFactory.getLogger(RealmContextFilter.class);
 
   @Inject RealmContextResolver realmContextResolver;
+  @Inject RealmContextHolder realmContextHolder;
 
   @ServerRequestFilter(preMatching = true, priority = FilterPriorities.REALM_CONTEXT_FILTER)
   public Uni<Response> resolveRealmContext(ContainerRequestContext rc) {
@@ -49,6 +51,7 @@ public class RealmContextFilter {
                     rc.getUriInfo().getPath(),
                     rc.getHeaders()::getFirst))
         .onItem()
+        .invoke(realmContext -> realmContextHolder.set(realmContext))
         .invoke(realmContext -> rc.setProperty(REALM_CONTEXT_KEY, realmContext))
         // ContextLocals is used by RealmIdTagContributor to add the realm id to metrics
         .invoke(realmContext -> ContextLocals.put(REALM_CONTEXT_KEY, realmContext))
