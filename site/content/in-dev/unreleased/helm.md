@@ -442,6 +442,7 @@ ct install --namespace polaris --charts ./helm/polaris
 | tasks.maxConcurrentTasks | string | `nil` | The maximum number of concurrent tasks that can be executed at the same time. The default is the number of available cores. |
 | tasks.maxQueuedTasks | string | `nil` | The maximum number of tasks that can be queued up for execution. The default is Integer.MAX_VALUE. |
 | tolerations | list | `[]` | A list of tolerations to apply to polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/. |
+| topologySpreadConstraints | list | `[]` | Topology spread constraints for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/#topologyspreadconstraints-field. |
 | tracing.attributes | object | `{}` | Resource attributes to identify the polaris service among other tracing sources. See https://opentelemetry.io/docs/reference/specification/resource/semantic_conventions/#service. If left empty, traces will be attached to a service named "Apache Polaris"; to change this, provide a service.name attribute here. |
 | tracing.enabled | bool | `false` | Specifies whether tracing for the polaris server should be enabled. |
 | tracing.endpoint | string | `"http://otlp-collector:4317"` | The collector endpoint URL to connect to (required). The endpoint URL must have either the http:// or the https:// scheme. The collector must talk the OpenTelemetry protocol (OTLP) and the port must be its gRPC port (by default 4317). See https://quarkus.io/guides/opentelemetry for more information. |
