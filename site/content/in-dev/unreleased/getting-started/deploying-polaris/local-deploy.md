@@ -71,9 +71,7 @@ The Docker image pre-configures a sample catalog called `quickstart_catalog` tha
 
 You can also start Polaris through Gradle (packaged within the Polaris repository):
 
-1. **Start the Server**
-
-Run the following command to start Polaris:
+Run the following command to start Polaris server:
 
 ```shell
 ./gradlew run
