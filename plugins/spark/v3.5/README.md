@@ -17,11 +17,7 @@
   under the License.
 -->
 
-# Polaris Spark Plugins
-
-This directory contains the Polaris Spark plugins. The plugins are built for specific versions of Spark:
-- [Spark 3.5](./v3.5/README.md)
-- [Spark 4.0](./v4.0/README.md)
+# Polaris Spark 3.5 Plugin
 
 The Polaris Spark plugin provides a SparkCatalog class, which communicates with the Polaris
 REST endpoints, and provides implementations for Apache Spark's
@@ -77,7 +73,7 @@ Assume the following values:
 - `scala_version`: 2.12
 - `polaris_version`: 1.2.0-incubating-SNAPSHOT
 - `catalog-name`: `polaris`
-The Spark command would look like following:
+  The Spark command would look like following:
 
 ```shell
 bin/spark-shell \
