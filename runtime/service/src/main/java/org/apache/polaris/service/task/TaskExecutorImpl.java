@@ -39,7 +39,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
+import org.apache.commons.lang3.function.TriConsumer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -71,7 +71,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final TaskFileIOSupplier fileIOSupplier;
   private final RealmContextHolder realmContextHolder;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
-  private final Optional<BiConsumer<Long, Throwable>> errorHandler;
+  private final Optional<TriConsumer<Long, Boolean, Throwable>> errorHandler;
   private final PolarisEventListener polarisEventListener;
   private final PolarisEventMetadataFactory eventMetadataFactory;
   @Nullable private final Tracer tracer;
@@ -84,7 +84,8 @@ public class TaskExecutorImpl implements TaskExecutor {
   @Inject
   public TaskExecutorImpl(
       @Identifier("task-executor") Executor executor,
-      @Identifier("task-error-handler") Instance<BiConsumer<Long, Throwable>> errorHandler,
+      @Identifier("task-error-handler")
+          Instance<TriConsumer<Long, Boolean, Throwable>> errorHandler,
       Clock clock,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
@@ -136,7 +137,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   @Override
   @SuppressWarnings("FutureReturnValueIgnored") // it _should_ be okay in this particular case
   public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {
-    errorHandler.ifPresent(h -> h.accept(-taskEntityId, null));
+    errorHandler.ifPresent(h -> h.accept(taskEntityId, true, null));
     // Unfortunately CallContext is a request-scoped bean and must be cloned now,
     // because its usage inside the TaskExecutor thread pool will outlive its
     // lifespan, so the original CallContext will eventually be closed while
@@ -161,13 +162,13 @@ public class TaskExecutorImpl implements TaskExecutor {
     return CompletableFuture.runAsync(
             () -> {
               handleTaskWithTracing(taskEntityId, callContext, eventMetadata, attempt);
-              errorHandler.ifPresent(h -> h.accept(taskEntityId, null));
+              errorHandler.ifPresent(h -> h.accept(taskEntityId, false, null));
             },
             executor)
         .exceptionallyComposeAsync(
             (t) -> {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
-              errorHandler.ifPresent(h -> h.accept(taskEntityId, e));
+              errorHandler.ifPresent(h -> h.accept(taskEntityId, false, e));
               return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(

@@ -26,22 +26,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.BiConsumer;
+import org.apache.commons.lang3.function.TriConsumer;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 
 @ApplicationScoped
 @Identifier("task-error-handler")
-public class TaskErrorHandler implements BiConsumer<Long, Throwable> {
+public class TaskErrorHandler implements TriConsumer<Long, Boolean, Throwable> {
 
   private final ConcurrentMap<Long, TaskStatus> tasks = new ConcurrentHashMap<>();
 
   private record TaskStatus(boolean completed, Throwable error) {}
 
   @Override
-  public void accept(Long id, Throwable th) {
-    if (id < 0) {
-      tasks.computeIfAbsent(-id, x -> new TaskStatus(false, null));
+  public void accept(Long id, Boolean start, Throwable th) {
+    if (start) {
+      tasks.computeIfAbsent(id, x -> new TaskStatus(false, null));
     } else {
       tasks.compute(id, (i, s) -> new TaskStatus(true, th != null || s == null ? th : s.error));
     }
