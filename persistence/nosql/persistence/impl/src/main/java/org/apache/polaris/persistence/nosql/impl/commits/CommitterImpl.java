@@ -497,7 +497,7 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     }
     return newReference.map(
         newRef -> {
-          LOGGER.debug("Successfully commited change from {} to {}", reference, newRef);
+          LOGGER.debug("Successfully committed change from {} to {}", reference, newRef);
           if (state.result != null) {
             return state.result;
           }

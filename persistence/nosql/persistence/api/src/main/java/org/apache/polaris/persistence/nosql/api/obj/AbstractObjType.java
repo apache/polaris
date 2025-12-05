@@ -58,7 +58,7 @@ public abstract class AbstractObjType<T extends Obj> implements ObjType {
   }
 
   @Override
-  @SuppressWarnings("EqualsGetClass") // explict class-instance-equals is intentional
+  @SuppressWarnings("EqualsGetClass") // explicit class-instance-equals is intentional
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;

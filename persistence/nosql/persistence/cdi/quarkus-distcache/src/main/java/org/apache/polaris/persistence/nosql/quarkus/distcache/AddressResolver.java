@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  * Vert.x based address resolver.
  *
  * <p>Resolves names to both IPv4 and IPv6 addresses using a given search-list. These
- * functionalities are not supported vie{@code InetAddress}.
+ * functionalities are not supported via{@code InetAddress}.
  */
 record AddressResolver(DnsClient dnsClient, List<String> searchList) {
   private static final Logger LOGGER = LoggerFactory.getLogger(AddressResolver.class);
