@@ -32,8 +32,8 @@ Use this guide to quickly start running Polaris using the pre-built binary distr
 Download and extract the binary distribution:
 
 ```bash
-curl -L https://downloads.apache.org/incubator/polaris/1.0.0-incubating/polaris-bin-1.0.0-incubating.tgz | tar xz
-cd polaris-distribution-1.0.0-incubating
+curl -L https://downloads.apache.org/incubator/polaris/1.2.0-incubating/polaris-bin-1.2.0-incubating.tgz | tar xz
+cd polaris-distribution-1.2.0-incubating
 ```
 
 Start the Polaris server:
@@ -42,10 +42,10 @@ Start the Polaris server:
 bin/server
 ```
 
-The server will start and listen on http://localhost:8181. Health and metrics endpoints are available under /q.
+The server will start and listen on http://localhost:8182. Health and metrics endpoints are available under /q.
 
 You can verify the server is running by checking the health endpoint:
 
 ```bash
-curl http://localhost:8181/q/health
+curl http://localhost:8182/q/health
 ```
