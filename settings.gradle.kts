@@ -68,14 +68,8 @@ val sparkVersions = sparkScalaVersions["sparkVersions"].toString().split(",").ma
 val noSourceChecksProjects = mutableSetOf<String>()
 
 for (sparkVersion in sparkVersions) {
-  // Check if there's a version-specific scalaVersions property, otherwise use the default
   val scalaVersionsKey = "scalaVersions.${sparkVersion}"
-  val scalaVersionsStr =
-    if (sparkScalaVersions.containsKey(scalaVersionsKey)) {
-      sparkScalaVersions[scalaVersionsKey].toString()
-    } else {
-      sparkScalaVersions["scalaVersions"].toString()
-    }
+  val scalaVersionsStr = sparkScalaVersions[scalaVersionsKey].toString()
   val scalaVersions = scalaVersionsStr.split(",").map { it.trim() }
   var first = true
   for (scalaVersion in scalaVersions) {
