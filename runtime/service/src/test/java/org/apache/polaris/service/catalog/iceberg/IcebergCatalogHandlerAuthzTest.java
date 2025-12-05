@@ -24,6 +24,7 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,6 +70,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -96,7 +98,6 @@ import org.mockito.Mockito;
 @TestProfile(PolarisAuthzTestBase.Profile.class)
 public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
 
-  @Inject CallContextCatalogFactory callContextCatalogFactory;
   @Inject Instance<ExternalCatalogFactory> externalCatalogFactories;
 
   @SuppressWarnings("unchecked")
@@ -638,7 +639,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
               .createTableDirectWithWriteDelegation(
-                  NS2, createDirectWithWriteDelegationRequest, Optional.empty());
+                  NS2,
+                  createDirectWithWriteDelegationRequest,
+                  Set.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                  Optional.empty());
         },
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable);
@@ -669,7 +673,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
               .createTableDirectWithWriteDelegation(
-                  NS2, createDirectWithWriteDelegationRequest, Optional.empty());
+                  NS2,
+                  createDirectWithWriteDelegationRequest,
+                  Set.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                  Optional.empty());
         });
   }
 
@@ -743,7 +750,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
               .createTableStagedWithWriteDelegation(
-                  NS2, createStagedWithWriteDelegationRequest, Optional.empty());
+                  NS2,
+                  createStagedWithWriteDelegationRequest,
+                  Set.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                  Optional.empty());
         },
         // createTableStagedWithWriteDelegation doesn't actually commit any metadata
         null,
@@ -773,7 +783,10 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
               .createTableStagedWithWriteDelegation(
-                  NS2, createStagedWithWriteDelegationRequest, Optional.empty());
+                  NS2,
+                  createStagedWithWriteDelegationRequest,
+                  Set.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                  Optional.empty());
         });
   }
 
@@ -917,7 +930,13 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2,
+                    "all",
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()),
         null /* cleanupAction */);
   }
 
@@ -933,7 +952,13 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()));
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2,
+                    "all",
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()));
   }
 
   @Test
@@ -946,7 +971,13 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2,
+                    "all",
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()),
         null /* cleanupAction */);
   }
 
@@ -962,7 +993,13 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", Optional.empty()));
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2,
+                    "all",
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()));
   }
 
   @Test
@@ -975,7 +1012,11 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () ->
             newWrapper()
                 .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()),
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    "all",
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()),
         null /* cleanupAction */);
   }
 
@@ -994,7 +1035,51 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () ->
             newWrapper()
                 .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()));
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    "all",
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()));
+  }
+
+  @Test
+  public void testLoadTableWithReadRemoteSigningIfStaleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    "all",
+                    EnumSet.of(AccessDelegationMode.REMOTE_SIGNING),
+                    Optional.empty()),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadTableWithReadRemoteSigningIfStaleInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegationIfStale(
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    "all",
+                    EnumSet.of(AccessDelegationMode.REMOTE_SIGNING),
+                    Optional.empty()));
   }
 
   @Test
@@ -1010,7 +1095,11 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () ->
             newWrapper()
                 .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()),
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    "all",
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()),
         null /* cleanupAction */);
   }
 
@@ -1029,7 +1118,11 @@ public class IcebergCatalogHandlerAuthzTest extends PolarisAuthzTestBase {
         () ->
             newWrapper()
                 .loadTableWithAccessDelegationIfStale(
-                    TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all", Optional.empty()));
+                    TABLE_NS1A_2,
+                    IfNoneMatch.fromHeader("W/\"0:0\""),
+                    "all",
+                    EnumSet.of(AccessDelegationMode.VENDED_CREDENTIALS),
+                    Optional.empty()));
   }
 
   @Test

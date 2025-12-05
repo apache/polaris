@@ -53,13 +53,12 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
 
-  @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
   public PolarisStorageIntegrationProviderImpl(
       StorageConfiguration storageConfiguration, StsClientProvider stsClientProvider, Clock clock) {
     this(
         stsClientProvider,
-        Optional.ofNullable(storageConfiguration.stsCredentials()),
+        storageConfiguration.awsSystemCredentials(),
         storageConfiguration.gcpCredentialsSupplier(clock));
   }
 
@@ -115,7 +114,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                   @Nonnull Set<String> allowedReadLocations,
                   @Nonnull Set<String> allowedWriteLocations,
                   Optional<String> refreshCredentialsEndpoint) {
-                return StorageAccessConfig.builder().supportsCredentialVending(false).build();
+                return StorageAccessConfig.EMPTY;
               }
 
               @Override

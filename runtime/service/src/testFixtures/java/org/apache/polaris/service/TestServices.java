@@ -27,6 +27,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
@@ -66,6 +67,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
@@ -294,8 +296,15 @@ public record TestServices(
 
       StorageCredentialsVendor storageCredentialsVendor =
           new StorageCredentialsVendor(metaStoreManager, callContext);
+      CatalogPrefixParser prefixParser = new DefaultCatalogPrefixParser();
       StorageAccessConfigProvider storageAccessConfigProvider =
-          new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
+          new StorageAccessConfigProvider(
+              storageCredentialCache,
+              storageCredentialsVendor,
+              storageIntegrationProvider,
+              prefixParser,
+              Mockito.mock(UriInfo.class));
+
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
