@@ -159,9 +159,10 @@ public class TaskExecutorImpl implements TaskExecutor {
     if (attempt > 3) {
       return CompletableFuture.failedFuture(e);
     }
+    String realmId = callContext.getRealmContext().getRealmIdentifier();
     return CompletableFuture.runAsync(
             () -> {
-              handleTaskWithTracing(taskEntityId, callContext, eventMetadata, attempt);
+              handleTaskWithTracing(realmId, taskEntityId, callContext, eventMetadata, attempt);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, null));
             },
             executor)
@@ -230,9 +231,13 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   @ActivateRequestContext
   protected void handleTaskWithTracing(
-      long taskEntityId, CallContext callContext, PolarisEventMetadata eventMetadata, int attempt) {
+      String realmId,
+      long taskEntityId,
+      CallContext callContext,
+      PolarisEventMetadata eventMetadata,
+      int attempt) {
     // Note: each call to this method runs in a new CDI request context
-    realmContextHolder.set(callContext.getRealmContext());
+    realmContextHolder.set(() -> realmId);
 
     if (tracer == null) {
       handleTask(taskEntityId, callContext, eventMetadata, attempt);
