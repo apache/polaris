@@ -71,7 +71,6 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
-import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.iceberg.IcebergRestCatalogEventServiceDelegator;
@@ -356,15 +355,15 @@ public record TestServices(
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;
       IcebergRestConfigurationApiService finalRestConfigurationService = catalogService;
       if (useEventDelegator) {
-          finalRestCatalogService = new IcebergRestCatalogEventServiceDelegator(
-              catalogService,
-              polarisEventListener,
-              eventMetadataFactory,
-              new DefaultCatalogPrefixParser());
-          finalRestConfigurationService = new IcebergRestConfigurationEventServiceDelegator(
-              catalogService,
-              polarisEventListener,
-              eventMetadataFactory);
+        finalRestCatalogService =
+            new IcebergRestCatalogEventServiceDelegator(
+                catalogService,
+                polarisEventListener,
+                eventMetadataFactory,
+                new DefaultCatalogPrefixParser());
+        finalRestConfigurationService =
+            new IcebergRestConfigurationEventServiceDelegator(
+                catalogService, polarisEventListener, eventMetadataFactory);
       }
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(finalRestCatalogService);
