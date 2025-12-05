@@ -53,11 +53,11 @@ public class PersistenceConfigurer {
 
     this.name =
         backendConfiguration
-            .type()
+            .backend()
             .orElseThrow(
                 () ->
                     new IllegalArgumentException(
-                        "No backend name provided, for example via the system property 'polaris.persistence.backend.type', available backend names: "
+                        "No backend name provided, for example via the system property 'polaris.persistence.nosql.backend', available backend names: "
                             + BackendLoader.availableFactories()
                                 .map(BackendFactory::name)
                                 .toList()));

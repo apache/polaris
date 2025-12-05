@@ -30,7 +30,6 @@ import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
-import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
@@ -74,7 +73,6 @@ import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOConfiguration;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
-import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.credentials.PolarisCredentialManagerConfiguration;
 import org.apache.polaris.service.events.PolarisEventListenerConfiguration;
@@ -123,12 +121,6 @@ public class ServiceProducers {
   }
 
   // Polaris core beans - request scope
-
-  @Produces
-  @RequestScoped
-  public RealmContext realmContext(@Context ContainerRequestContext request) {
-    return (RealmContext) request.getProperty(RealmContextFilter.REALM_CONTEXT_KEY);
-  }
 
   @Produces
   @RequestScoped
@@ -417,6 +409,7 @@ public class ServiceProducers {
     return SmallRyeManagedExecutor.builder()
         .injectionPointName("task-executor")
         .propagated(ThreadContext.ALL_REMAINING)
+        .cleared(ThreadContext.CDI)
         .maxAsync(config.maxConcurrentTasks())
         .maxQueued(config.maxQueuedTasks())
         .build();

@@ -204,6 +204,10 @@ class TestCliParsing(unittest.TestCase):
                                               '--allowed-location', 'a', '--allowed-location', 'b',
                                               '--role-arn', 'ra', '--default-base-location', 'x']),
                         'gcs')
+        check_exception(lambda: mock_execute(['catalogs', 'create', 'my-catalog', '--type', 'external',
+                                              '--storage-type', 'file', '--default-base-location', 'dbl',
+                                              '--catalog-connection-type', 'hive', '--catalog-authentication-type', 'implicit']),
+                        '--hive-warehouse')
 
         # Test various correct commands:
         check_arguments(
@@ -584,6 +588,35 @@ class TestCliParsing(unittest.TestCase):
                 (0, 'catalog.connection_config_info.warehouse'): 'h',
                 (0, 'catalog.connection_config_info.authentication_parameters.authentication_type'): 'IMPLICIT',
                 (0, 'catalog.connection_config_info.uri'): 'u',
+            })
+        check_arguments(
+            mock_execute(['catalogs', 'create', 'my-catalog', '--type', 'external',
+                          '--storage-type', 'file', '--default-base-location', 'dbl',
+                          '--catalog-connection-type', 'hive', '--hive-warehouse', 'h',
+                          '--catalog-authentication-type', 'implicit', '--catalog-uri', 'u']),
+            'create_catalog', {
+                (0, 'catalog.name'): 'my-catalog',
+                (0, 'catalog.type'): 'EXTERNAL',
+                (0, 'catalog.connection_config_info.connection_type'): 'HIVE',
+                (0, 'catalog.connection_config_info.warehouse'): 'h',
+                (0, 'catalog.connection_config_info.authentication_parameters.authentication_type'): 'IMPLICIT',
+                (0, 'catalog.connection_config_info.uri'): 'u',
+            })
+        check_arguments(
+            mock_execute(['catalogs', 'create', 'my-catalog', '--type', 'external',
+                          '--storage-type', 'file', '--default-base-location', 'dbl',
+                          '--catalog-connection-type', 'hive', '--hive-warehouse', '/warehouse/path',
+                          '--catalog-authentication-type', 'oauth', '--catalog-uri', 'thrift://hive-metastore:9083',
+                          '--catalog-token-uri', 'http://auth-server/token', '--catalog-client-id', 'test-client',
+                          '--catalog-client-secret', 'test-secret', '--catalog-client-scope', 'read',
+                          '--catalog-client-scope', 'write']),
+            'create_catalog', {
+                (0, 'catalog.name'): 'my-catalog',
+                (0, 'catalog.type'): 'EXTERNAL',
+                (0, 'catalog.connection_config_info.connection_type'): 'HIVE',
+                (0, 'catalog.connection_config_info.warehouse'): '/warehouse/path',
+                (0, 'catalog.connection_config_info.authentication_parameters.authentication_type'): 'OAUTH',
+                (0, 'catalog.connection_config_info.uri'): 'thrift://hive-metastore:9083',
             })
 
         check_arguments(

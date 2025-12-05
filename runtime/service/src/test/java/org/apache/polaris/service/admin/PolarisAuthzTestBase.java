@@ -29,7 +29,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.container.ContainerRequestContext;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
@@ -89,6 +88,7 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -202,6 +202,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected UserSecretsManager userSecretsManager;
   @Inject protected CallContext callContext;
   @Inject protected RealmConfig realmConfig;
+  @Inject protected RealmContextHolder realmContextHolder;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -231,12 +232,8 @@ public abstract class PolarisAuthzTestBase {
 
     RealmContext realmContext = testInfo::getDisplayName;
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    realmContextHolder.set(realmContext);
     polarisContext = callContext.getPolarisCallContext();
-
-    ContainerRequestContext containerRequestContext = Mockito.mock(ContainerRequestContext.class);
-    Mockito.when(containerRequestContext.getProperty(Mockito.anyString()))
-        .thenReturn("request-id-1");
-    QuarkusMock.installMockForType(containerRequestContext, ContainerRequestContext.class);
 
     polarisAuthorizer = new PolarisAuthorizerImpl(realmConfig);
 

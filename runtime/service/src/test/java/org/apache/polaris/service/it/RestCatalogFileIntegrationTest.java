@@ -21,8 +21,12 @@ package org.apache.polaris.service.it;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.polaris.service.it.test.PolarisRestCatalogFileIntegrationTest;
+import org.apache.polaris.service.task.TaskErrorHandler;
+import org.junit.jupiter.api.AfterEach;
 
 @QuarkusTest
 @TestProfile(RestCatalogFileIntegrationTest.Profile.class)
@@ -46,5 +50,14 @@ public class RestCatalogFileIntegrationTest extends PolarisRestCatalogFileIntegr
           "polaris.features.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"",
           "true");
     }
+  }
+
+  @Inject
+  @Identifier("task-error-handler")
+  TaskErrorHandler taskErrorHandler;
+
+  @AfterEach
+  void checkTaskExceptions() {
+    taskErrorHandler.assertNoTaskExceptions();
   }
 }
