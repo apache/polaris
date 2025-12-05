@@ -19,6 +19,7 @@
 package org.apache.polaris.core.config;
 
 import jakarta.annotation.Nullable;
+import java.util.Map;
 import org.apache.polaris.core.entity.CatalogEntity;
 
 /** Realm-specific configuration used to retrieve runtime parameters. */
@@ -57,10 +58,24 @@ public interface RealmConfig {
    * Retrieve the current value for a configuration, overriding with a catalog config if it is
    * present.
    *
+   * <p>Prefer using {@link #getConfig(PolarisConfiguration, Map)} when the catalog properties are
+   * already available or are needed repeatedly to prevent unnecessary JSON deserialization.
+   *
    * @param <T> the type of the configuration value
    * @param config the configuration to load
    * @param catalogEntity the catalog to check for an override
    * @return the current value set for the configuration key or null if not set
    */
   <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity);
+
+  /**
+   * Retrieve the current value for a configuration, overriding with a catalog config if it is
+   * present.
+   *
+   * @param <T> the type of the configuration value
+   * @param config the configuration to load
+   * @param catalogProperties the catalog configuration to check for an override
+   * @return the current value set for the configuration key or null if not set
+   */
+  <T> T getConfig(PolarisConfiguration<T> config, Map<String, String> catalogProperties);
 }

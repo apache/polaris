@@ -19,6 +19,7 @@
 package org.apache.polaris.core.config;
 
 import jakarta.annotation.Nullable;
+import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 
@@ -50,5 +51,10 @@ public class RealmConfigImpl implements RealmConfig {
   @Override
   public <T> T getConfig(PolarisConfiguration<T> config, CatalogEntity catalogEntity) {
     return configurationStore.getConfiguration(realmContext, catalogEntity, config);
+  }
+
+  @Override
+  public <T> T getConfig(PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
+    return configurationStore.getConfiguration(realmContext, catalogProperties, config);
   }
 }

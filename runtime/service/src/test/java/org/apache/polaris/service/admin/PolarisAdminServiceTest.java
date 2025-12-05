@@ -89,7 +89,8 @@ public class PolarisAdminServiceTest {
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
         .thenReturn(true);
     when(realmConfig.getConfig(
-            eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS), Mockito.any()))
+            eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS),
+            (CatalogEntity) Mockito.any()))
         .thenReturn(true);
 
     when(resolutionManifestFactory.createResolutionManifest(any(), any()))
@@ -353,7 +354,8 @@ public class PolarisAdminServiceTest {
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
         .thenReturn(false);
     when(realmConfig.getConfig(
-            eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS), Mockito.any()))
+            eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS),
+            (CatalogEntity) Mockito.any()))
         .thenReturn(false);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
@@ -516,7 +518,8 @@ public class PolarisAdminServiceTest {
     when(realmConfig.getConfig(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS))
         .thenReturn(false);
     when(realmConfig.getConfig(
-            eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS), Mockito.any()))
+            eq(FeatureConfiguration.ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS),
+            (CatalogEntity) Mockito.any()))
         .thenReturn(false);
 
     PolarisEntity catalogEntity = createEntity(catalogName, PolarisEntityType.CATALOG);
