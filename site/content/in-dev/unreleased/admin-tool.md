@@ -57,14 +57,14 @@ docker run apache/polaris-admin-tool:latest --help
 The basic usage of the Polaris Admin Tool is outlined below:
 
 ```
-Usage: polaris-admin-runner.jar [-hV] [COMMAND]
-Polaris Admin Tool
+Usage: polaris-admin-tool.jar [-hV] [COMMAND]
+Polaris administration & maintenance tool
   -h, --help      Show this help message and exit.
   -V, --version   Print version information and exit.
 Commands:
   help       Display help information about the specified command.
-  bootstrap  Bootstraps realms and principal credentials.
-  purge      Purge principal credentials.
+  bootstrap  Bootstraps realms and root principal credentials.
+  purge      Purge realms and all associated entities.
 ```
 
 ## Configuration
@@ -94,15 +94,26 @@ java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap --help
 The basic usage of the `bootstrap` command is outlined below:
 
 ```
-Usage: polaris-admin-runner.jar bootstrap [-hV] [-c=<realm,clientId,
-       clientSecret>]... -r=<realm> [-r=<realm>]...
+Usage: polaris-admin-tool.jar bootstrap [-hV] [-v=<schema version>]
+                                        ([-r=<realm> [-r=<realm>]... [-c=<realm,
+                                        clientId,clientSecret>]... [-p]] |
+                                        [[-f=<file>]])
 Bootstraps realms and root principal credentials.
+  -h, --help                Show this help message and exit.
+  -v, --schema-version=<schema version>
+                            The version of the schema to load in [1, 2, 3,
+                              LATEST].
+  -V, --version             Print version information and exit.
+Standard Input Options:
   -c, --credential=<realm,clientId,clientSecret>
-                        Root principal credentials to bootstrap. Must be of the form
-                          'realm,clientId,clientSecret'.
-  -h, --help            Show this help message and exit.
-  -r, --realm=<realm>   The name of a realm to bootstrap.
-  -V, --version         Print version information and exit.
+                            Root principal credentials to bootstrap. Must be of
+                              the form 'realm,clientId,clientSecret'.
+  -p, --print-credentials   Print root credentials to stdout
+  -r, --realm=<realm>       The name of a realm to bootstrap.
+File Input Options:
+  -f, --credentials-file=<file>
+                            A file containing root principal credentials to
+                              bootstrap.
 ```
 
 For example, to bootstrap the `realm1` realm and create its root principal credential with the
@@ -129,7 +140,7 @@ java -jar runtime/admin/build/quarkus-app/quarkus-run.jar purge --help
 The basic usage of the `purge` command is outlined below:
 
 ```
-Usage: polaris-admin-runner.jar purge [-hV] -r=<realm> [-r=<realm>]...
+Usage: polaris-admin-tool.jar purge [-hV] -r=<realm> [-r=<realm>]...
 Purge realms and all associated entities.
   -h, --help            Show this help message and exit.
   -r, --realm=<realm>   The name of a realm to purge.
