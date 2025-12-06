@@ -151,7 +151,7 @@ dependencies {
 
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
-  testImplementation("org.testcontainers:postgresql")
+  testImplementation("org.testcontainers:testcontainers-postgresql")
 
   testFixturesImplementation(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-api-management-model"))
