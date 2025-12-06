@@ -42,8 +42,10 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -175,6 +177,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
+        PolarisPrincipal.of("principal", Map.of(), Set.of()),
         Optional.of(REFRESH_ENDPOINT));
   }
 

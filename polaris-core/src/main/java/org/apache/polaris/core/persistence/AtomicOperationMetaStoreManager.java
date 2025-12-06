@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -1600,6 +1601,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
 
     // get meta store session we should be using
@@ -1641,6 +1643,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               allowListOperation,
               allowedReadLocations,
               allowedWriteLocations,
+              polarisPrincipal,
               refreshCredentialsEndpoint);
       return new ScopedCredentialsResult(storageAccessConfig);
     } catch (Exception ex) {

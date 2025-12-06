@@ -25,6 +25,7 @@ import jakarta.inject.Inject;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -49,13 +50,16 @@ public class StorageAccessConfigProvider {
 
   private final StorageCredentialCache storageCredentialCache;
   private final StorageCredentialsVendor storageCredentialsVendor;
+  private final PolarisPrincipal polarisPrincipal;
 
   @Inject
   public StorageAccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
-      StorageCredentialsVendor storageCredentialsVendor) {
+      StorageCredentialsVendor storageCredentialsVendor,
+      PolarisPrincipal polarisPrincipal) {
     this.storageCredentialCache = storageCredentialCache;
     this.storageCredentialsVendor = storageCredentialsVendor;
+    this.polarisPrincipal = polarisPrincipal;
   }
 
   /**
@@ -119,6 +123,7 @@ public class StorageAccessConfigProvider {
             allowList,
             tableLocations,
             writeLocations,
+            polarisPrincipal,
             refreshCredentialsEndpoint);
 
     LOGGER
