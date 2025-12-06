@@ -23,6 +23,6 @@ import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.service.catalog.Profiles;
 
 @QuarkusTest
-@TestProfile(Profiles.DefaultProfile.class)
+@TestProfile(Profiles.AuthProfile.class)
 public class PolarisGenericTableCatalogRelationalTest
     extends AbstractPolarisGenericTableCatalogTest {}

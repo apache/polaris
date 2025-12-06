@@ -19,6 +19,8 @@
 package org.apache.polaris.service.config;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.quarkus.security.identity.CurrentIdentityAssociation;
+import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -30,8 +32,6 @@ import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.time.Clock;
 import java.util.stream.Collectors;
@@ -193,14 +193,18 @@ public class ServiceProducers {
   @Produces
   @RequestScoped
   public PolarisPrincipal polarisPrincipal(
-      PolarisDiagnostics diagnostics, @Context SecurityContext securityContext) {
-    Principal userPrincipal = securityContext.getUserPrincipal();
-    diagnostics.checkNotNull(userPrincipal, "null_security_context_principal");
+      PolarisDiagnostics diagnostics, CurrentIdentityAssociation currentIdentityAssociation) {
+    SecurityIdentity identity =
+        currentIdentityAssociation.getDeferredIdentity().subscribeAsCompletionStage().getNow(null);
+
+    Principal userPrincipal = identity.getPrincipal();
+
     diagnostics.check(
         userPrincipal instanceof PolarisPrincipal,
         "unexpected_principal_type",
         "class={}",
         userPrincipal.getClass().getName());
+
     return (PolarisPrincipal) userPrincipal;
   }
 
