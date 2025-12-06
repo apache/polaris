@@ -94,7 +94,8 @@ public class DefaultAuthenticator implements Authenticator {
 
     PrincipalEntity principalEntity = resolvePrincipalEntity(credentials);
     Set<String> principalRoles = resolvePrincipalRoles(credentials, principalEntity);
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of(principalEntity, principalRoles);
+    PolarisPrincipal polarisPrincipal =
+        PolarisPrincipal.of(principalEntity, principalRoles, credentials.getToken());
 
     LOGGER.debug("Resolved principal: {}", polarisPrincipal);
     return polarisPrincipal;

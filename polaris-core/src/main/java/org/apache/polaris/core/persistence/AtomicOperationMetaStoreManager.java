@@ -1600,7 +1600,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<String> token) {
 
     // get meta store session we should be using
     BasePersistence ms = callCtx.getMetaStore();
@@ -1641,7 +1642,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               allowListOperation,
               allowedReadLocations,
               allowedWriteLocations,
-              refreshCredentialsEndpoint);
+              refreshCredentialsEndpoint,
+              token);
       return new ScopedCredentialsResult(storageAccessConfig);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(

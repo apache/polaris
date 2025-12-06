@@ -19,12 +19,15 @@
 package org.apache.polaris.service.storage.aws;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -36,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.policybuilder.iam.IamAction;
 import software.amazon.awssdk.policybuilder.iam.IamCondition;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
@@ -46,6 +50,8 @@ import software.amazon.awssdk.policybuilder.iam.IamStatement;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
+import software.amazon.awssdk.services.sts.model.AssumeRoleWithWebIdentityRequest;
+import software.amazon.awssdk.services.sts.model.AssumeRoleWithWebIdentityResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
 class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
@@ -62,11 +68,21 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .expiration(EXPIRE_TIME)
                   .build())
           .build();
+  public static final AssumeRoleWithWebIdentityResponse ASSUME_ROLE_WITH_WEB_IDENTITY_RESPONSE =
+      AssumeRoleWithWebIdentityResponse.builder()
+          .credentials(
+              Credentials.builder()
+                  .accessKeyId("accessKey")
+                  .secretAccessKey("secretKey")
+                  .sessionToken("sess")
+                  .expiration(EXPIRE_TIME)
+                  .build())
+          .build();
   public static final String AWS_PARTITION = "aws";
 
   @ParameterizedTest
   @ValueSource(strings = {"s3a", "s3"})
-  public void testGetSubscopedCreds(String scheme) {
+  public void testGetSubscopedCredsWithExternalId(String scheme) {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String externalId = "externalId";
@@ -107,6 +123,61 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
             String.valueOf(EXPIRE_TIME.toEpochMilli()));
     assertThat(storageAccessConfig.extraProperties())
+        .containsEntry(
+            StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
+            "/namespace/table/credentials");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"s3a", "s3"})
+  public void testGetSubscopedCredsWithUserWebToken(String scheme) {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String webIdentityToken = "webIdentityToken";
+    PolarisPrincipal principal = mock(PolarisPrincipal.class);
+    SecurityContext context = mock(SecurityContext.class);
+    Mockito.when(context.getUserPrincipal()).thenReturn(principal);
+    Mockito.when(
+            stsClient.assumeRoleWithWebIdentity(
+                Mockito.isA(AssumeRoleWithWebIdentityRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleWithWebIdentityRequest.class)
+                  .asInstanceOf(
+                      InstanceOfAssertFactories.type(AssumeRoleWithWebIdentityRequest.class))
+                  .returns(webIdentityToken, AssumeRoleWithWebIdentityRequest::webIdentityToken)
+                  .returns(roleARN, AssumeRoleWithWebIdentityRequest::roleArn);
+              return ASSUME_ROLE_WITH_WEB_IDENTITY_RESPONSE;
+            });
+    Mockito.when(principal.getToken()).thenReturn(webIdentityToken);
+    String warehouseDir = scheme + "://bucket/path/to/warehouse";
+    Optional<AwsCredentialsProvider> credentialsProvider = Optional.empty();
+    StorageAccessConfig accessConfig =
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(warehouseDir)
+                    .roleARN(roleARN)
+                    .propagateApiUserIdentity(true)
+                    .build(),
+                (destination) -> stsClient,
+                credentialsProvider,
+                context)
+            .getSubscopedCreds(
+                EMPTY_REALM_CONFIG,
+                true,
+                Set.of(warehouseDir + "/namespace/table"),
+                Set.of(warehouseDir + "/namespace/table"),
+                Optional.of("/namespace/table/credentials"));
+    assertThat(accessConfig.credentials())
+        .isNotEmpty()
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
+        .containsEntry(
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
+            String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    assertThat(accessConfig.extraProperties())
         .containsEntry(
             StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
             "/namespace/table/credentials");
@@ -250,6 +321,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
+                    Optional.empty(),
                     Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
@@ -351,6 +423,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)),
+                Optional.empty(),
                 Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -466,6 +539,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
+                Optional.empty(),
                 Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -553,6 +627,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 true, /* allowList = true */
                 Set.of(),
                 Set.of(),
+                Optional.empty(),
                 Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -596,6 +671,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true, /* allowList = true */
                     Set.of(),
                     Set.of(),
+                    Optional.empty(),
                     Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -637,6 +713,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true, /* allowList = true */
                     Set.of(),
                     Set.of(),
+                    Optional.empty(),
                     Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
@@ -720,6 +797,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Optional.empty(),
             Optional.empty());
 
     // Test with allowed KMS keys and read-only permissions
@@ -765,6 +843,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
+            Optional.empty(),
             Optional.empty());
 
     // Test with no KMS keys and read-only (should add wildcard KMS access)
@@ -801,6 +880,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
+            Optional.empty(),
             Optional.empty());
 
     // Test with no KMS keys and write permissions (should not add KMS statement)
@@ -834,6 +914,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Optional.empty(),
             Optional.empty());
   }
 

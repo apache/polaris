@@ -324,7 +324,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<String> token) {
     return delegate.getSubscopedCredsForEntity(
         callCtx,
         catalogId,
@@ -333,7 +334,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint);
+        refreshCredentialsEndpoint,
+        token);
   }
 
   @Override

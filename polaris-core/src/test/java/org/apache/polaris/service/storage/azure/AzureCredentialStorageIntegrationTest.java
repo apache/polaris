@@ -354,6 +354,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
+        Optional.empty(),
         Optional.empty());
   }
 

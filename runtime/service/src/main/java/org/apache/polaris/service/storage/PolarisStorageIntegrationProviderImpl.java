@@ -114,7 +114,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                   boolean allowListOperation,
                   @Nonnull Set<String> allowedReadLocations,
                   @Nonnull Set<String> allowedWriteLocations,
-                  Optional<String> refreshCredentialsEndpoint) {
+                  Optional<String> refreshCredentialsEndpoint,
+                  Optional<String> token) {
                 return StorageAccessConfig.builder().supportsCredentialVending(false).build();
               }
 

@@ -32,12 +32,25 @@ public interface PolarisCredential extends Credential {
 
   static PolarisCredential of(
       @Nullable Long principalId, @Nullable String principalName, Set<String> principalRoles) {
+    return of(null, principalId, principalName, principalRoles);
+  }
+
+  static PolarisCredential of(
+      @Nullable String token,
+      @Nullable Long principalId,
+      @Nullable String principalName,
+      Set<String> principalRoles) {
     return ImmutablePolarisCredential.builder()
+        .token(token)
         .principalId(principalId)
         .principalName(principalName)
         .principalRoles(principalRoles)
         .build();
   }
+
+  /** the JWT token used to authenticate the user to Polaris */
+  @Nullable
+  String getToken();
 
   /** The principal id, or null if unknown. Used for principal lookups by id. */
   @Nullable
