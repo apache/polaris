@@ -22,6 +22,7 @@ import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 
@@ -53,5 +54,6 @@ public interface PolarisCredentialVendor {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint);
 }

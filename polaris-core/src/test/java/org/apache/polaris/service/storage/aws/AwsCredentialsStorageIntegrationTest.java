@@ -23,8 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -63,6 +65,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .build())
           .build();
   public static final String AWS_PARTITION = "aws";
+  public static final PolarisPrincipal POLARIS_PRINCIPAL =
+      PolarisPrincipal.of("principal", Map.of(), Set.of());
 
   @ParameterizedTest
   @ValueSource(strings = {"s3a", "s3"})
@@ -70,6 +74,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String externalId = "externalId";
+
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
             invocation -> {
@@ -78,6 +83,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
                   .returns(externalId, AssumeRoleRequest::externalId)
                   .returns(roleARN, AssumeRoleRequest::roleArn)
+                  .returns("polaris-principal", AssumeRoleRequest::roleSessionName)
                   // ensure that the policy content does not refer to S3A
                   .extracting(AssumeRoleRequest::policy)
                   .doesNotMatch(s -> s.contains("s3a"));
@@ -97,6 +103,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
+                POLARIS_PRINCIPAL,
                 Optional.of("/namespace/table/credentials"));
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -250,6 +257,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true,
                     Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                     Set.of(s3Path(bucket, firstPath)),
+                    POLARIS_PRINCIPAL,
                     Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
@@ -351,6 +359,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)),
+                POLARIS_PRINCIPAL,
                 Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -466,6 +475,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(),
+                POLARIS_PRINCIPAL,
                 Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -553,6 +563,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 true, /* allowList = true */
                 Set.of(),
                 Set.of(),
+                POLARIS_PRINCIPAL,
                 Optional.empty());
     assertThat(storageAccessConfig.credentials())
         .isNotEmpty()
@@ -596,6 +607,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true, /* allowList = true */
                     Set.of(),
                     Set.of(),
+                    POLARIS_PRINCIPAL,
                     Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -637,6 +649,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     true, /* allowList = true */
                     Set.of(),
                     Set.of(),
+                    POLARIS_PRINCIPAL,
                     Optional.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
@@ -657,6 +670,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             true, /* allowList = true */
                             Set.of(),
                             Set.of(),
+                            POLARIS_PRINCIPAL,
                             Optional.empty()))
             .isInstanceOf(IllegalArgumentException.class);
         break;
@@ -720,6 +734,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            POLARIS_PRINCIPAL,
             Optional.empty());
 
     // Test with allowed KMS keys and read-only permissions
@@ -765,6 +780,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
+            POLARIS_PRINCIPAL,
             Optional.empty());
 
     // Test with no KMS keys and read-only (should add wildcard KMS access)
@@ -801,6 +817,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(),
+            POLARIS_PRINCIPAL,
             Optional.empty());
 
     // Test with no KMS keys and write permissions (should not add KMS statement)
@@ -834,7 +851,49 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            POLARIS_PRINCIPAL,
             Optional.empty());
+  }
+
+  @Test
+  public void testGetSubscopedCredsLongPrincipalName() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    PolarisPrincipal polarisPrincipalWithLongName =
+        PolarisPrincipal.of(
+            "very-long-principal-name-that-exceeds-the-maximum-allowed-length-of-64-characters",
+            Map.of(),
+            Set.of());
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleRequest.class)
+                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                  .returns(externalId, AssumeRoleRequest::externalId)
+                  .returns(roleARN, AssumeRoleRequest::roleArn)
+                  .returns(
+                      "polaris-very-long-principal-name-that-exceeds-the-maximum-allowe",
+                      AssumeRoleRequest::roleSessionName);
+              return ASSUME_ROLE_RESPONSE;
+            });
+    String warehouseDir = "s3://bucket/path/to/warehouse";
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(warehouseDir)
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(warehouseDir + "/namespace/table"),
+            Set.of(warehouseDir + "/namespace/table"),
+            polarisPrincipalWithLongName,
+            Optional.of("/namespace/table/credentials"));
   }
 
   private static @Nonnull String s3Arn(String partition, String bucket, String keyPrefix) {

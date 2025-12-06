@@ -45,8 +45,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -354,6 +357,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
+        PolarisPrincipal.of("principal", Map.of(), Set.of()),
         Optional.empty());
   }
 
