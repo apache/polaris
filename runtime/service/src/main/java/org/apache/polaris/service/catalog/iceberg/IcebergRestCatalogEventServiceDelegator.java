@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
@@ -34,6 +35,7 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
+import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.CreateNamespaceResponse;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
@@ -105,6 +107,22 @@ public class IcebergRestCatalogEventServiceDelegator
   @Inject PolarisEventListener polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
+
+  // Constructor for testing - allows manual dependency injection
+  @VisibleForTesting
+  public IcebergRestCatalogEventServiceDelegator(
+      IcebergCatalogAdapter delegate,
+      PolarisEventListener polarisEventListener,
+      PolarisEventMetadataFactory eventMetadataFactory,
+      CatalogPrefixParser prefixParser) {
+    this.delegate = delegate;
+    this.polarisEventListener = polarisEventListener;
+    this.eventMetadataFactory = eventMetadataFactory;
+    this.prefixParser = prefixParser;
+  }
+
+  // Default constructor for CDI
+  public IcebergRestCatalogEventServiceDelegator() {}
 
   @Override
   public Response createNamespace(
@@ -597,11 +615,30 @@ public class IcebergRestCatalogEventServiceDelegator
     polarisEventListener.onBeforeCommitTransaction(
         new IcebergRestCatalogEvents.BeforeCommitTransactionEvent(
             eventMetadataFactory.create(), catalogName, commitTransactionRequest));
+    for (UpdateTableRequest req : commitTransactionRequest.tableChanges()) {
+      polarisEventListener.onBeforeUpdateTable(
+          new BeforeUpdateTableEvent(
+              eventMetadataFactory.create(),
+              catalogName,
+              req.identifier().namespace(),
+              req.identifier().name(),
+              req));
+    }
     Response resp =
         delegate.commitTransaction(prefix, commitTransactionRequest, realmContext, securityContext);
     polarisEventListener.onAfterCommitTransaction(
         new IcebergRestCatalogEvents.AfterCommitTransactionEvent(
             eventMetadataFactory.create(), catalogName, commitTransactionRequest));
+    for (UpdateTableRequest req : commitTransactionRequest.tableChanges()) {
+      polarisEventListener.onAfterUpdateTable(
+          new AfterUpdateTableEvent(
+              eventMetadataFactory.create(),
+              catalogName,
+              req.identifier().namespace(),
+              req.identifier().name(),
+              req,
+              null));
+    }
     return resp;
   }
 

@@ -51,6 +51,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - The EclipseLink Persistence implementation has been completely removed.
 - The default request ID header name has changed from `Polaris-Request-Id` to `X-Request-ID`.
+- The (Before/After)CommitTableEvent has been removed.
 
 ### New Features
 
@@ -64,7 +65,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
 - Added checksum to helm deployment so that it will restart when the configmap has changed.
 - Generic Table is no longer in beta and is generally-available.
-- Added Windows support for Python client
+- Added Windows support for Python client.
+- (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
 
 ### Deprecations
 
