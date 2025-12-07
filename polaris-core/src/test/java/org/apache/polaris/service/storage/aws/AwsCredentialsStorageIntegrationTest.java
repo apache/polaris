@@ -27,6 +27,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -53,6 +58,21 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   public static final Instant EXPIRE_TIME = Instant.now().plusMillis(3600_000);
+
+  public static final RealmConfig PRINCIPAL_INCLUDER_REALM_CONFIG =
+      new RealmConfigImpl(
+          new PolarisConfigurationStore() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
+              if (configName.equals(
+                  FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key())) {
+                return "true";
+              }
+              return null;
+            }
+          },
+          () -> "realm");
 
   public static final AssumeRoleResponse ASSUME_ROLE_RESPONSE =
       AssumeRoleResponse.builder()
@@ -83,7 +103,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
                   .returns(externalId, AssumeRoleRequest::externalId)
                   .returns(roleARN, AssumeRoleRequest::roleArn)
-                  .returns("polaris-principal", AssumeRoleRequest::roleSessionName)
+                  .returns("polaris", AssumeRoleRequest::roleSessionName)
                   // ensure that the policy content does not refer to S3A
                   .extracting(AssumeRoleRequest::policy)
                   .doesNotMatch(s -> s.contains("s3a"));
@@ -100,6 +120,53 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 stsClient)
             .getSubscopedCreds(
                 EMPTY_REALM_CONFIG,
+                true,
+                Set.of(warehouseDir + "/namespace/table"),
+                Set.of(warehouseDir + "/namespace/table"),
+                POLARIS_PRINCIPAL,
+                Optional.of("/namespace/table/credentials"));
+    assertThat(storageAccessConfig.credentials())
+        .isNotEmpty()
+        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
+        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
+        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
+        .containsEntry(
+            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
+            String.valueOf(EXPIRE_TIME.toEpochMilli()));
+    assertThat(storageAccessConfig.extraProperties())
+        .containsEntry(
+            StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
+            "/namespace/table/credentials");
+  }
+
+  @Test
+  public void testGetSubscopedCredsWithNameInclude() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleRequest.class)
+                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                  .returns(externalId, AssumeRoleRequest::externalId)
+                  .returns(roleARN, AssumeRoleRequest::roleArn)
+                  .returns("polaris-principal", AssumeRoleRequest::roleSessionName);
+              return ASSUME_ROLE_RESPONSE;
+            });
+    String warehouseDir = "s3://bucket/path/to/warehouse";
+    StorageAccessConfig storageAccessConfig =
+        new AwsCredentialsStorageIntegration(
+                AwsStorageConfigurationInfo.builder()
+                    .addAllowedLocation(warehouseDir)
+                    .roleARN(roleARN)
+                    .externalId(externalId)
+                    .build(),
+                stsClient)
+            .getSubscopedCreds(
+                PRINCIPAL_INCLUDER_REALM_CONFIG,
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"),
@@ -888,7 +955,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 .build(),
             stsClient)
         .getSubscopedCreds(
-            EMPTY_REALM_CONFIG,
+            PRINCIPAL_INCLUDER_REALM_CONFIG,
             true,
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),

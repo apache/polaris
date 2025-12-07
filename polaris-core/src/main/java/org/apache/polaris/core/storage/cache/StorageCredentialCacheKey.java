@@ -50,7 +50,7 @@ public interface StorageCredentialCacheKey {
   Set<String> allowedWriteLocations();
 
   @Value.Parameter(order = 7)
-  String principalName();
+  Optional<String> principalName();
 
   @Value.Parameter(order = 8)
   Optional<String> refreshCredentialsEndpoint();
@@ -61,7 +61,7 @@ public interface StorageCredentialCacheKey {
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
-      PolarisPrincipal polarisPrincipal,
+      Optional<PolarisPrincipal> polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
     String storageConfigSerializedStr =
         entity
@@ -74,7 +74,7 @@ public interface StorageCredentialCacheKey {
         allowedListAction,
         allowedReadLocations,
         allowedWriteLocations,
-        polarisPrincipal.getName(),
+        polarisPrincipal.map(PolarisPrincipal::getName),
         refreshCredentialsEndpoint);
   }
 }

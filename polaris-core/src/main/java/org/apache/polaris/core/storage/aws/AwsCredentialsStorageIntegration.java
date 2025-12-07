@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -90,7 +91,14 @@ public class AwsCredentialsStorageIntegration
     String region = storageConfig.getRegion();
     String accountId = storageConfig.getAwsAccountId();
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
-    String roleSessionName = "polaris-" + polarisPrincipal.getName();
+
+    boolean includePrincipalNameInSubscopedCredential =
+        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
+
+    String roleSessionName =
+        includePrincipalNameInSubscopedCredential
+            ? "polaris-" + polarisPrincipal.getName()
+            : "polaris";
     String cappedRoleSessionName =
         roleSessionName.substring(0, Math.min(roleSessionName.length(), 64));
 

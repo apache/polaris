@@ -29,6 +29,7 @@ import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
@@ -55,7 +56,6 @@ public class StorageCredentialCacheTest {
   private final RealmConfig realmConfig =
       new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
   private final StorageCredentialsVendor storageCredentialsVendor;
-
   private StorageCredentialCache storageCredentialCache;
 
   public StorageCredentialCacheTest() {
@@ -147,9 +147,86 @@ public class StorageCredentialCacheTest {
         polarisPrincipal,
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    Optional<PolarisPrincipal> emptyPrincipal = Optional.empty();
+
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        polarisPrincipal,
+        Optional.empty());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
   }
 
+  @Test
   public void testCacheMissForAnotherPrincipal() {
+
+    List<ScopedCredentialsResult> mockedScopedCreds =
+        getFakeScopedCreds(3, /* expireSoon= */ false);
+    Mockito.when(
+            storageCredentialsVendor.getSubscopedCredsForEntity(
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anySet(),
+                Mockito.anySet(),
+                Mockito.any(),
+                Mockito.any()))
+        .thenReturn(mockedScopedCreds.get(0))
+        .thenReturn(mockedScopedCreds.get(1))
+        .thenReturn(mockedScopedCreds.get(1));
+    PolarisBaseEntity baseEntity =
+        new PolarisBaseEntity(
+            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
+    PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
+    PolarisPrincipal anotherPolarisPrincipal =
+        PolarisPrincipal.of("anotherPrincipal", Map.of(), Set.of());
+
+    // add an item to the cache
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        polarisPrincipal,
+        Optional.empty());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    // subscope for the same entity and same allowed locations, will hit the cache
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        anotherPolarisPrincipal,
+        Optional.empty());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+  }
+
+  @Test
+  public void testCacheHitForAnotherPrincipal() {
+    Mockito.when(storageCredentialsVendor.getRealmConfig())
+        .thenReturn(
+            new RealmConfigImpl(
+                new PolarisConfigurationStore() {
+                  @SuppressWarnings("unchecked")
+                  @Override
+                  public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
+                    if (configName.equals(
+                        FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL
+                            .key())) {
+                      return "true";
+                    }
+                    return null;
+                  }
+                },
+                () -> "realm"));
+
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
     Mockito.when(
@@ -223,7 +300,7 @@ public class StorageCredentialCacheTest {
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket/path"),
-            polarisPrincipal,
+            Optional.of(polarisPrincipal),
             Optional.empty());
 
     // the entry will be evicted immediately because the token is expired
