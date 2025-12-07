@@ -23,9 +23,6 @@ import static org.apache.polaris.service.catalog.validation.IcebergPropertiesVal
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -34,17 +31,12 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.iceberg.exceptions.NotFoundException;
-import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -56,7 +48,6 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
-import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -67,14 +58,9 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
-import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
-import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
@@ -102,37 +88,6 @@ public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService, CatalogAdapter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
-
-  private static final Set<Endpoint> DEFAULT_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(Endpoint.V1_LIST_NAMESPACES)
-          .add(Endpoint.V1_LOAD_NAMESPACE)
-          .add(Endpoint.V1_NAMESPACE_EXISTS)
-          .add(Endpoint.V1_CREATE_NAMESPACE)
-          .add(Endpoint.V1_UPDATE_NAMESPACE)
-          .add(Endpoint.V1_DELETE_NAMESPACE)
-          .add(Endpoint.V1_LIST_TABLES)
-          .add(Endpoint.V1_LOAD_TABLE)
-          .add(Endpoint.V1_TABLE_EXISTS)
-          .add(Endpoint.V1_CREATE_TABLE)
-          .add(Endpoint.V1_UPDATE_TABLE)
-          .add(Endpoint.V1_DELETE_TABLE)
-          .add(Endpoint.V1_RENAME_TABLE)
-          .add(Endpoint.V1_REGISTER_TABLE)
-          .add(Endpoint.V1_REPORT_METRICS)
-          .add(Endpoint.V1_COMMIT_TRANSACTION)
-          .build();
-
-  private static final Set<Endpoint> VIEW_ENDPOINTS =
-      ImmutableSet.<Endpoint>builder()
-          .add(Endpoint.V1_LIST_VIEWS)
-          .add(Endpoint.V1_LOAD_VIEW)
-          .add(Endpoint.V1_VIEW_EXISTS)
-          .add(Endpoint.V1_CREATE_VIEW)
-          .add(Endpoint.V1_UPDATE_VIEW)
-          .add(Endpoint.V1_DELETE_VIEW)
-          .add(Endpoint.V1_RENAME_VIEW)
-          .build();
 
   private final PolarisDiagnostics diagnostics;
   private final RealmContext realmContext;
@@ -195,6 +150,13 @@ public class IcebergCatalogAdapter
       String prefix,
       Function<IcebergCatalogHandler, Response> action) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    return withCatalogByName(securityContext, catalogName, action);
+  }
+
+  private Response withCatalogByName(
+      SecurityContext securityContext,
+      String catalogName,
+      Function<IcebergCatalogHandler, Response> action) {
     try (IcebergCatalogHandler wrapper = newHandlerWrapper(securityContext, catalogName)) {
       return action.apply(wrapper);
     } catch (RuntimeException e) {
@@ -213,6 +175,8 @@ public class IcebergCatalogAdapter
     return new IcebergCatalogHandler(
         diagnostics,
         callContext,
+        prefixParser,
+        resolverFactory,
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
@@ -785,46 +749,7 @@ public class IcebergCatalogAdapter
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
-    // 'warehouse' as an input here is catalogName.
-    // 'warehouse' as an output will be treated by the client as a default catalog
-    // storage
-    //    base location.
-    // 'prefix' as an output is the REST subpath that routes to the catalog
-    // resource,
-    //    which may be URL-escaped catalogName or potentially a different unique
-    // identifier for
-    //    the catalog being accessed.
-    // TODO: Push this down into PolarisCatalogHandlerWrapper for authorizing "any" catalog
-    // role in this catalog.
-    PolarisPrincipal authenticatedPrincipal = (PolarisPrincipal) securityContext.getUserPrincipal();
-    if (authenticatedPrincipal == null) {
-      throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
-    }
-    if (warehouse == null) {
-      throw new BadRequestException("Please specify a warehouse");
-    }
-    Resolver resolver = resolverFactory.createResolver(authenticatedPrincipal, warehouse);
-    ResolverStatus resolverStatus = resolver.resolveAll();
-    if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
-      throw new NotFoundException("Unable to find warehouse %s", warehouse);
-    }
-    ResolvedPolarisEntity resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
-    Map<String, String> properties =
-        PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
-
-    String prefix = prefixParser.catalogNameToPrefix(realmContext, warehouse);
-    return Response.ok(
-            ConfigResponse.builder()
-                .withDefaults(properties) // catalog properties are defaults
-                .withOverrides(ImmutableMap.of("prefix", prefix))
-                .withEndpoints(
-                    ImmutableList.<Endpoint>builder()
-                        .addAll(DEFAULT_ENDPOINTS)
-                        .addAll(VIEW_ENDPOINTS)
-                        .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig))
-                        .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig))
-                        .build())
-                .build())
-        .build();
+    return withCatalogByName(
+        securityContext, warehouse, catalog -> Response.ok(catalog.getConfig()).build());
   }
 }

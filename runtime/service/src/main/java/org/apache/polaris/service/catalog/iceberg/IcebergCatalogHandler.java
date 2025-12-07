@@ -23,6 +23,9 @@ import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATIO
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
@@ -60,6 +63,8 @@ import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.credentials.ImmutableCredential;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -69,6 +74,7 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.CreateNamespaceResponse;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
@@ -93,16 +99,22 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverFactory;
+import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.common.CatalogHandler;
 import org.apache.polaris.service.catalog.common.CatalogUtils;
@@ -133,6 +145,39 @@ import org.slf4j.LoggerFactory;
 public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandler.class);
 
+  private static final Set<Endpoint> DEFAULT_ENDPOINTS =
+      ImmutableSet.<Endpoint>builder()
+          .add(Endpoint.V1_LIST_NAMESPACES)
+          .add(Endpoint.V1_LOAD_NAMESPACE)
+          .add(Endpoint.V1_NAMESPACE_EXISTS)
+          .add(Endpoint.V1_CREATE_NAMESPACE)
+          .add(Endpoint.V1_UPDATE_NAMESPACE)
+          .add(Endpoint.V1_DELETE_NAMESPACE)
+          .add(Endpoint.V1_LIST_TABLES)
+          .add(Endpoint.V1_LOAD_TABLE)
+          .add(Endpoint.V1_TABLE_EXISTS)
+          .add(Endpoint.V1_CREATE_TABLE)
+          .add(Endpoint.V1_UPDATE_TABLE)
+          .add(Endpoint.V1_DELETE_TABLE)
+          .add(Endpoint.V1_RENAME_TABLE)
+          .add(Endpoint.V1_REGISTER_TABLE)
+          .add(Endpoint.V1_REPORT_METRICS)
+          .add(Endpoint.V1_COMMIT_TRANSACTION)
+          .build();
+
+  private static final Set<Endpoint> VIEW_ENDPOINTS =
+      ImmutableSet.<Endpoint>builder()
+          .add(Endpoint.V1_LIST_VIEWS)
+          .add(Endpoint.V1_LOAD_VIEW)
+          .add(Endpoint.V1_VIEW_EXISTS)
+          .add(Endpoint.V1_CREATE_VIEW)
+          .add(Endpoint.V1_UPDATE_VIEW)
+          .add(Endpoint.V1_DELETE_VIEW)
+          .add(Endpoint.V1_RENAME_VIEW)
+          .build();
+
+  private final CatalogPrefixParser prefixParser;
+  private final ResolverFactory resolverFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final CallContextCatalogFactory catalogFactory;
   private final ReservedProperties reservedProperties;
@@ -151,6 +196,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   public IcebergCatalogHandler(
       PolarisDiagnostics diagnostics,
       CallContext callContext,
+      CatalogPrefixParser prefixParser,
+      ResolverFactory resolverFactory,
       ResolutionManifestFactory resolutionManifestFactory,
       PolarisMetaStoreManager metaStoreManager,
       PolarisCredentialManager credentialManager,
@@ -171,6 +218,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         authorizer,
         credentialManager,
         externalCatalogFactories);
+    this.prefixParser = prefixParser;
+    this.resolverFactory = resolverFactory;
     this.metaStoreManager = metaStoreManager;
     this.catalogFactory = catalogFactory;
     this.reservedProperties = reservedProperties;
@@ -1264,5 +1313,38 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     if (baseCatalog instanceof Closeable closeable) {
       closeable.close();
     }
+  }
+
+  public ConfigResponse getConfig() {
+    // 'catalogName' is taken from the REST request's 'warehouse' query parameter..
+    // 'warehouse' as an output will be treated by the client as a default catalog
+    //   storage base location.
+    // 'prefix' as an output is the REST subpath that routes to the catalog
+    //   resource, which may be URL-escaped catalogName or potentially a different
+    //   unique identifier for the catalog being accessed.
+    if (catalogName == null) {
+      throw new BadRequestException("Please specify a warehouse");
+    }
+    Resolver resolver = resolverFactory.createResolver(polarisPrincipal, catalogName);
+    ResolverStatus resolverStatus = resolver.resolveAll();
+    if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
+      throw new NotFoundException("Unable to find warehouse %s", catalogName);
+    }
+    ResolvedPolarisEntity resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
+    Map<String, String> properties =
+        PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
+
+    String prefix = prefixParser.catalogNameToPrefix(callContext.getRealmContext(), catalogName);
+    return ConfigResponse.builder()
+        .withDefaults(properties) // catalog properties are defaults
+        .withOverrides(ImmutableMap.of("prefix", prefix))
+        .withEndpoints(
+            ImmutableList.<Endpoint>builder()
+                .addAll(DEFAULT_ENDPOINTS)
+                .addAll(VIEW_ENDPOINTS)
+                .addAll(PolarisEndpoints.getSupportedGenericTableEndpoints(realmConfig))
+                .addAll(PolarisEndpoints.getSupportedPolicyEndpoints(realmConfig))
+                .build())
+        .build();
   }
 }
