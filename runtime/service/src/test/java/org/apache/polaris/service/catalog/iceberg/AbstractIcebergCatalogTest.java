@@ -200,7 +200,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
           .put("polaris.features.\"ALLOW_TABLE_LOCATION_OVERLAP\"", "true")
           .put("polaris.features.\"LIST_PAGINATION_ENABLED\"", "true")
           .put("polaris.behavior-changes.\"ALLOW_NAMESPACE_CUSTOM_LOCATION\"", "true")
-          .put("test.augmentor.enabled", "true")
+          .put("polaris.test.rootAugmentor.enabled", "true")
           .build();
     }
   }

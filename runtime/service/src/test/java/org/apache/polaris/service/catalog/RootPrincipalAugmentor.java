@@ -39,13 +39,13 @@ public class RootPrincipalAugmentor implements SecurityIdentityAugmentor {
   @Inject PolarisMetaStoreManager innerMetaStoreManager;
   @Inject CallContext innerCallContext;
 
-  @ConfigProperty(name = "test.augmentor.enabled", defaultValue = "false")
+  @ConfigProperty(name = "polaris.test.rootAugmentor.enabled", defaultValue = "false")
   boolean enabled;
 
   @Override
   public Uni<SecurityIdentity> augment(
       SecurityIdentity identity, AuthenticationRequestContext context) {
-    if (!enabled) {
+    if (!enabled || !identity.isAnonymous()) {
       return Uni.createFrom().item(identity);
     }
 

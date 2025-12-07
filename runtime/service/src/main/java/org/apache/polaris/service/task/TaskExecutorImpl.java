@@ -40,12 +40,14 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.function.TriConsumer;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
@@ -70,6 +72,8 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
   private final RealmContextHolder realmContextHolder;
+  @Inject PolarisPrincipalHolder polarisPrincipalHolder;
+  @Inject PolarisPrincipal polarisPrincipal;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
   private final Optional<TriConsumer<Long, Boolean, Throwable>> errorHandler;
   private final PolarisEventListener polarisEventListener;
@@ -145,6 +149,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     // Note: PolarisCallContext has request-scoped beans as well, and must be cloned.
     // FIXME replace with context propagation?
     CallContext clone = callContext.copy();
+
     // Capture the metadata now in order to capture the principal and request ID, if any.
     PolarisEventMetadata eventMetadata = eventMetadataFactory.create();
     tryHandleTask(taskEntityId, clone, eventMetadata, null, 1);
@@ -160,9 +165,17 @@ public class TaskExecutorImpl implements TaskExecutor {
       return CompletableFuture.failedFuture(e);
     }
     String realmId = callContext.getRealmContext().getRealmIdentifier();
+
+    PolarisPrincipal principalClone =
+        PolarisPrincipal.of(
+            polarisPrincipal.getName(),
+            polarisPrincipal.getProperties(),
+            polarisPrincipal.getRoles());
+
     return CompletableFuture.runAsync(
             () -> {
-              handleTaskWithTracing(realmId, taskEntityId, callContext, eventMetadata, attempt);
+              handleTaskWithTracing(
+                  realmId, taskEntityId, callContext, principalClone, eventMetadata, attempt);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, null));
             },
             executor)
@@ -234,10 +247,13 @@ public class TaskExecutorImpl implements TaskExecutor {
       String realmId,
       long taskEntityId,
       CallContext callContext,
+      PolarisPrincipal principal,
       PolarisEventMetadata eventMetadata,
       int attempt) {
     // Note: each call to this method runs in a new CDI request context
+
     realmContextHolder.set(() -> realmId);
+    polarisPrincipalHolder.set(principal);
 
     if (tracer == null) {
       handleTask(taskEntityId, callContext, eventMetadata, attempt);

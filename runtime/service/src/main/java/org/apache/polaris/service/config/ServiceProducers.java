@@ -19,8 +19,6 @@
 package org.apache.polaris.service.config;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.quarkus.security.identity.CurrentIdentityAssociation;
-import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -32,7 +30,6 @@ import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
-import java.security.Principal;
 import java.time.Clock;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
@@ -41,7 +38,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
@@ -188,24 +184,6 @@ public class ServiceProducers {
   public ResolutionManifestFactory resolutionManifestFactory(
       PolarisDiagnostics diagnostics, RealmContext realmContext, ResolverFactory resolverFactory) {
     return new ResolutionManifestFactoryImpl(diagnostics, realmContext, resolverFactory);
-  }
-
-  @Produces
-  @RequestScoped
-  public PolarisPrincipal polarisPrincipal(
-      PolarisDiagnostics diagnostics, CurrentIdentityAssociation currentIdentityAssociation) {
-    SecurityIdentity identity =
-        currentIdentityAssociation.getDeferredIdentity().subscribeAsCompletionStage().getNow(null);
-
-    Principal userPrincipal = identity.getPrincipal();
-
-    diagnostics.check(
-        userPrincipal instanceof PolarisPrincipal,
-        "unexpected_principal_type",
-        "class={}",
-        userPrincipal.getClass().getName());
-
-    return (PolarisPrincipal) userPrincipal;
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans

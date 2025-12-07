@@ -48,7 +48,7 @@ public final class Profiles {
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
           .putAll(super.getConfigOverrides())
-          .put("test.augmentor.enabled", "true")
+          .put("polaris.test.rootAugmentor.enabled", "true")
           .build();
     }
   }
