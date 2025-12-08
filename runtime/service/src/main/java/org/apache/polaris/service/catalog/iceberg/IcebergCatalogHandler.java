@@ -1316,7 +1316,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public ConfigResponse getConfig() {
-    // 'catalogName' is taken from the REST request's 'warehouse' query parameter..
+    // 'catalogName' is taken from the REST request's 'warehouse' query parameter.
     // 'warehouse' as an output will be treated by the client as a default catalog
     //   storage base location.
     // 'prefix' as an output is the REST subpath that routes to the catalog
