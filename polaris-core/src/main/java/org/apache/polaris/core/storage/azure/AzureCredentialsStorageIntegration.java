@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.core.storage.azure;
 
-import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_API_RETRY_COUNT;
-import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_API_RETRY_DELAY_MILLIS;
-import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_API_RETRY_JITTER_FACTOR;
-import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_API_TIMEOUT_MILLIS;
+import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_RETRY_COUNT;
+import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_RETRY_DELAY_MILLIS;
+import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_RETRY_JITTER_FACTOR;
+import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_TIMEOUT_MILLIS;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import com.azure.core.credential.AccessToken;
@@ -327,12 +327,11 @@ public class AzureCredentialsStorageIntegration
    * <p>This method implements a defensive strategy against slow or failing cloud provider requests:
    *
    * <ul>
-   *   <li>Per-attempt timeout (configurable via STORAGE_API_TIMEOUT_MILLIS, default 15000ms)
-   *   <li>Exponential backoff retry (configurable count and initial delay via
-   *       STORAGE_API_RETRY_COUNT and STORAGE_API_RETRY_DELAY_MILLIS, defaults: 3 attempts starting
-   *       at 2000ms)
-   *   <li>Jitter to prevent thundering herd (configurable via STORAGE_API_RETRY_JITTER_FACTOR,
-   *       default 0.5 = 50%%) default 0.5 = 50%%)
+   *   <li>Per-attempt timeout (configurable via AZURE_TIMEOUT_MILLIS, default 15000ms)
+   *   <li>Exponential backoff retry (configurable count and initial delay via AZURE_RETRY_COUNT and
+   *       AZURE_RETRY_DELAY_MILLIS, defaults: 3 attempts starting at 2000ms)
+   *   <li>Jitter to prevent thundering herd (configurable via AZURE_RETRY_JITTER_FACTOR, default
+   *       0.5 = 50%%)
    * </ul>
    *
    * @param realmConfig the realm configuration to get timeout and retry settings
@@ -341,10 +340,10 @@ public class AzureCredentialsStorageIntegration
    * @throws RuntimeException if token fetch fails after all retries or times out
    */
   private AccessToken getAccessToken(RealmConfig realmConfig, String tenantId) {
-    int timeoutMillis = realmConfig.getConfig(STORAGE_API_TIMEOUT_MILLIS);
-    int retryCount = realmConfig.getConfig(STORAGE_API_RETRY_COUNT);
-    int initialDelayMillis = realmConfig.getConfig(STORAGE_API_RETRY_DELAY_MILLIS);
-    double jitter = realmConfig.getConfig(STORAGE_API_RETRY_JITTER_FACTOR);
+    int timeoutMillis = realmConfig.getConfig(AZURE_TIMEOUT_MILLIS);
+    int retryCount = realmConfig.getConfig(AZURE_RETRY_COUNT);
+    int initialDelayMillis = realmConfig.getConfig(AZURE_RETRY_DELAY_MILLIS);
+    double jitter = realmConfig.getConfig(AZURE_RETRY_JITTER_FACTOR);
     int maxAttempts = retryCount + 1;
 
     String scope = "https://storage.azure.com/.default";

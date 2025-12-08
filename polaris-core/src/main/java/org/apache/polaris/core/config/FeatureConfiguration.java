@@ -439,46 +439,42 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Integer> STORAGE_API_TIMEOUT_MILLIS =
+  public static final FeatureConfiguration<Integer> AZURE_TIMEOUT_MILLIS =
       PolarisConfiguration.<Integer>builder()
-          .key("STORAGE_API_TIMEOUT_MILLIS")
+          .key("AZURE_TIMEOUT_MILLIS")
           .description(
-              "Timeout in milliseconds for cloud storage provider API requests. "
-                  + "Prevents indefinite blocking when cloud provider endpoints are slow or unresponsive. "
-                  + "Used internally by storage integrations for credential vending and other cloud operations. "
-                  + "Currently only used by Azure storage integration. Designed to be applicable to AWS S3, GCP, and other cloud storage providers.")
+              "Timeout in milliseconds for Azure API requests. "
+                  + "Prevents indefinite blocking when Azure endpoints are slow or unresponsive. "
+                  + "Used internally by Azure storage integration for credential vending and other operations.")
           .defaultValue(15000)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Integer> STORAGE_API_RETRY_COUNT =
+  public static final FeatureConfiguration<Integer> AZURE_RETRY_COUNT =
       PolarisConfiguration.<Integer>builder()
-          .key("STORAGE_API_RETRY_COUNT")
+          .key("AZURE_RETRY_COUNT")
           .description(
-              "Number of retry attempts for cloud storage provider API requests. "
-                  + "Uses exponential backoff with jitter to handle transient failures. "
-                  + "Currently only used by Azure storage integration. Designed to be applicable to AWS S3, GCP, and other cloud storage providers.")
+              "Number of retry attempts for Azure API requests. "
+                  + "Uses exponential backoff with jitter to handle transient failures.")
           .defaultValue(3)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Integer> STORAGE_API_RETRY_DELAY_MILLIS =
+  public static final FeatureConfiguration<Integer> AZURE_RETRY_DELAY_MILLIS =
       PolarisConfiguration.<Integer>builder()
-          .key("STORAGE_API_RETRY_DELAY_MILLIS")
+          .key("AZURE_RETRY_DELAY_MILLIS")
           .description(
-              "Initial delay in milliseconds before first retry for cloud storage provider API requests. "
-                  + "Delay doubles with each retry (exponential backoff). "
-                  + "Currently only used by Azure storage integration. Designed to be applicable to AWS S3, GCP, and other cloud storage providers.")
+              "Initial delay in milliseconds before first retry for Azure API requests. "
+                  + "Delay doubles with each retry (exponential backoff).")
           .defaultValue(2000)
           .buildFeatureConfiguration();
 
-  public static final FeatureConfiguration<Double> STORAGE_API_RETRY_JITTER_FACTOR =
+  public static final FeatureConfiguration<Double> AZURE_RETRY_JITTER_FACTOR =
       PolarisConfiguration.<Double>builder()
-          .key("STORAGE_API_RETRY_JITTER_FACTOR")
+          .key("AZURE_RETRY_JITTER_FACTOR")
           .description(
-              "Jitter factor (0.0 to 1.0) applied to retry delays for cloud storage provider API requests. "
+              "Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. "
                   + "The jitter is applied as a random percentage of the computed exponential backoff delay. "
                   + "For example, 0.5 means up to 50%% random jitter will be added to each retry delay. "
-                  + "Helps prevent thundering herd when multiple requests fail simultaneously. "
-                  + "Currently only used by Azure storage integration. Designed to be applicable to AWS S3, GCP, and other cloud storage providers.")
+                  + "Helps prevent thundering herd when multiple requests fail simultaneously.")
           .defaultValue(0.5)
           .buildFeatureConfiguration();
 }
