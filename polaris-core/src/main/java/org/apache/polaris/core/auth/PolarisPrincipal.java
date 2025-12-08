@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.core.auth;
 
-import com.google.common.base.Optional;
 import java.security.Principal;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -44,7 +44,7 @@ public interface PolarisPrincipal extends Principal {
         principalEntity.getName(),
         principalEntity.getInternalPropertiesAsMap(),
         roles,
-        Optional.absent());
+        Optional.empty());
   }
 
   /**
