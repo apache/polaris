@@ -73,7 +73,7 @@ public interface PolarisPrincipal extends Principal {
    * @param roles the set of roles associated with the principal
    */
   static PolarisPrincipal of(String name, Map<String, String> properties, Set<String> roles) {
-    return of(name, properties, roles, Optional.absent());
+    return of(name, properties, roles, Optional.empty());
   }
 
   /**
