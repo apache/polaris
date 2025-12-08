@@ -32,10 +32,19 @@ public interface PolarisCredential extends Credential {
 
   static PolarisCredential of(
       @Nullable Long principalId, @Nullable String principalName, Set<String> principalRoles) {
+    return of(principalId, principalName, principalRoles, null);
+  }
+
+  static PolarisCredential of(
+      @Nullable Long principalId,
+      @Nullable String principalName,
+      Set<String> principalRoles,
+      @Nullable String token) {
     return ImmutablePolarisCredential.builder()
         .principalId(principalId)
         .principalName(principalName)
         .principalRoles(principalRoles)
+        .token(token)
         .build();
   }
 
@@ -49,4 +58,8 @@ public interface PolarisCredential extends Credential {
 
   /** The principal roles, or empty if the principal has no roles. */
   Set<String> getPrincipalRoles();
+
+  /** The access token of the current user, or null if not applicable. */
+  @Nullable
+  String getToken();
 }
