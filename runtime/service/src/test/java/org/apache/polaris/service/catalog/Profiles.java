@@ -19,7 +19,6 @@
 
 package org.apache.polaris.service.catalog;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import java.util.Map;
 
@@ -40,16 +39,6 @@ public final class Profiles {
           "test",
           "polaris.readiness.ignore-severe-issues",
           "true");
-    }
-  }
-
-  public static class AuthProfile extends DefaultProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return ImmutableMap.<String, String>builder()
-          .putAll(super.getConfigOverrides())
-          .put("polaris.test.rootAugmentor.enabled", "true")
-          .build();
     }
   }
 }

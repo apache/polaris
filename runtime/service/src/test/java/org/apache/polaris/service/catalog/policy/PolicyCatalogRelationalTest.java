@@ -23,5 +23,5 @@ import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.service.catalog.Profiles;
 
 @QuarkusTest
-@TestProfile(Profiles.AuthProfile.class)
+@TestProfile(Profiles.DefaultProfile.class)
 public class PolicyCatalogRelationalTest extends AbstractPolicyCatalogTest {}

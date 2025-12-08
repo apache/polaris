@@ -129,10 +129,10 @@ public class StorageCredentialCache {
             allowListOperation,
             allowedReadLocations,
             allowedWriteLocations,
+            refreshCredentialsEndpoint,
             includePrincipalNameInSubscopedCredential
                 ? Optional.of(polarisPrincipal)
-                : Optional.empty(),
-            refreshCredentialsEndpoint);
+                : Optional.empty());
     LOGGER.atDebug().addKeyValue("key", key).log("subscopedCredsCache");
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {

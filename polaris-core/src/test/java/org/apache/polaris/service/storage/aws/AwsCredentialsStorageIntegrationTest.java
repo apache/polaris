@@ -86,7 +86,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
           .build();
   public static final String AWS_PARTITION = "aws";
   public static final PolarisPrincipal POLARIS_PRINCIPAL =
-      PolarisPrincipal.of("principal", Map.of(), Set.of());
+      PolarisPrincipal.of("test-principal", Map.of(), Set.of());
 
   @ParameterizedTest
   @ValueSource(strings = {"s3a", "s3"})
@@ -103,7 +103,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
                   .returns(externalId, AssumeRoleRequest::externalId)
                   .returns(roleARN, AssumeRoleRequest::roleArn)
-                  .returns("polaris", AssumeRoleRequest::roleSessionName)
+                  .returns(
+                      "PolarisAwsCredentialsStorageIntegration", AssumeRoleRequest::roleSessionName)
                   // ensure that the policy content does not refer to S3A
                   .extracting(AssumeRoleRequest::policy)
                   .doesNotMatch(s -> s.contains("s3a"));
@@ -153,7 +154,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
                   .returns(externalId, AssumeRoleRequest::externalId)
                   .returns(roleARN, AssumeRoleRequest::roleArn)
-                  .returns("polaris-principal", AssumeRoleRequest::roleSessionName);
+                  .returns("polaris-test-principal", AssumeRoleRequest::roleSessionName);
               return ASSUME_ROLE_RESPONSE;
             });
     String warehouseDir = "s3://bucket/path/to/warehouse";

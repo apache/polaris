@@ -40,6 +40,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.function.TriConsumer;
+import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -72,8 +73,8 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
   private final RealmContextHolder realmContextHolder;
-  @Inject PolarisPrincipalHolder polarisPrincipalHolder;
-  @Inject PolarisPrincipal polarisPrincipal;
+  private final PolarisPrincipalHolder polarisPrincipalHolder;
+  private final PolarisPrincipal polarisPrincipal;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
   private final Optional<TriConsumer<Long, Boolean, Throwable>> errorHandler;
   private final PolarisEventListener polarisEventListener;
@@ -82,7 +83,7 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   @SuppressWarnings("unused") // Required by CDI
   protected TaskExecutorImpl() {
-    this(null, null, null, null, null, null, null, null, null);
+    this(null, null, null, null, null, null, null, null, null, null, null);
   }
 
   @Inject
@@ -96,7 +97,9 @@ public class TaskExecutorImpl implements TaskExecutor {
       RealmContextHolder realmContextHolder,
       PolarisEventListener polarisEventListener,
       PolarisEventMetadataFactory eventMetadataFactory,
-      @Nullable Tracer tracer) {
+      @Nullable Tracer tracer,
+      PolarisPrincipalHolder polarisPrincipalHolder,
+      PolarisPrincipal polarisPrincipal) {
     this.executor = executor;
     this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -105,6 +108,8 @@ public class TaskExecutorImpl implements TaskExecutor {
     this.polarisEventListener = polarisEventListener;
     this.eventMetadataFactory = eventMetadataFactory;
     this.tracer = tracer;
+    this.polarisPrincipalHolder = polarisPrincipalHolder;
+    this.polarisPrincipal = polarisPrincipal;
 
     if (errorHandler != null && errorHandler.isResolvable()) {
       this.errorHandler = Optional.of(errorHandler.get());
@@ -167,10 +172,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     String realmId = callContext.getRealmContext().getRealmIdentifier();
 
     PolarisPrincipal principalClone =
-        PolarisPrincipal.of(
-            polarisPrincipal.getName(),
-            polarisPrincipal.getProperties(),
-            polarisPrincipal.getRoles());
+        ImmutablePolarisPrincipal.builder().from(polarisPrincipal).build();
 
     return CompletableFuture.runAsync(
             () -> {
@@ -253,6 +255,9 @@ public class TaskExecutorImpl implements TaskExecutor {
     // Note: each call to this method runs in a new CDI request context
 
     realmContextHolder.set(() -> realmId);
+    // since this is now a different context we store clone of the principal in a holder object
+    // which essentially reauthenticates the principal. PolarisPrincipal bean always looks for a
+    // principal set in PolarisPrincipalHolder first and assumes that identity if set.
     polarisPrincipalHolder.set(principal);
 
     if (tracer == null) {

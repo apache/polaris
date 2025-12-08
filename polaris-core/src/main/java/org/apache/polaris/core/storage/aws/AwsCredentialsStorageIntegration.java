@@ -98,7 +98,7 @@ public class AwsCredentialsStorageIntegration
     String roleSessionName =
         includePrincipalNameInSubscopedCredential
             ? "polaris-" + polarisPrincipal.getName()
-            : "polaris";
+            : "PolarisAwsCredentialsStorageIntegration";
     String cappedRoleSessionName =
         roleSessionName.substring(0, Math.min(roleSessionName.length(), 64));
 
