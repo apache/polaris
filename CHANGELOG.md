@@ -65,7 +65,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added checksum to helm deployment so that it will restart when the configmap has changed.
 - Generic Table is no longer in beta and is generally-available.
 - Added Windows support for Python client
-- Ensure createEntitiesIfNotExist and createPrincipal return the entity actually persisted.
 
 ### Deprecations
 
