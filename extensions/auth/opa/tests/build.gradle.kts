@@ -43,7 +43,7 @@ dependencies {
 
   // Test container dependencies
   intTestImplementation(platform(libs.testcontainers.bom))
-  intTestImplementation("org.testcontainers:junit-jupiter")
+  intTestImplementation("org.testcontainers:testcontainers-junit-jupiter")
   intTestImplementation(project(":polaris-container-spec-helper"))
 }
 

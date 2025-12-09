@@ -51,7 +51,7 @@ dependencies {
   testFixturesApi(project(":polaris-container-spec-helper"))
   testFixturesApi(platform(libs.testcontainers.bom))
   testFixturesApi("org.testcontainers:testcontainers")
-  testFixturesApi("org.testcontainers:postgresql")
+  testFixturesApi("org.testcontainers:testcontainers-postgresql")
 
   testRuntimeOnly("org.postgresql:postgresql")
 }
