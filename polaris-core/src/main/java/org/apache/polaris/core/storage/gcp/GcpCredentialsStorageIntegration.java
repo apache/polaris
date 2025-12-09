@@ -21,15 +21,24 @@ package org.apache.polaris.core.storage.gcp;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.http.HttpTransportFactory;
+import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
 import com.google.auth.oauth2.DownscopedCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
+import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
+import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
+import com.google.cloud.iam.credentials.v1.IamCredentialsSettings;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.Duration;
+import com.google.protobuf.Timestamp;
 import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Date;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -84,18 +93,20 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
 
+    GoogleCredentials credentialsToDownscope = getBaseCredentials();
+    
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(
             allowListOperation, allowedReadLocations, allowedWriteLocations);
     DownscopedCredentials credentials =
         DownscopedCredentials.newBuilder()
             .setHttpTransportFactory(transportFactory)
-            .setSourceCredential(sourceCredentials)
+            .setSourceCredential(credentialsToDownscope)
             .setCredentialAccessBoundary(accessBoundary)
             .build();
     AccessToken token;
     try {
-      token = credentials.refreshAccessToken();
+      token = refreshAccessToken(credentials);
     } catch (IOException e) {
       LOGGER
           .atError()
@@ -121,6 +132,43 @@ public class GcpCredentialsStorageIntegration
         });
 
     return accessConfig.build();
+  }
+
+/**
+   * Returns the credential to be used as the source for downscoping.
+   * If a specific service account is configured, it impersonates that account first.
+   */
+  private GoogleCredentials getBaseCredentials() {
+    if (config().getGcpServiceAccount() != null) {
+      return createImpersonatedCredentials(sourceCredentials, config().getGcpServiceAccount());
+    }
+    return sourceCredentials;
+  }
+
+  private GoogleCredentials createImpersonatedCredentials(GoogleCredentials source, String targetServiceAccount) {
+    try (IamCredentialsClient iamCredentialsClient = createIamCredentialsClient(source)) {
+      GenerateAccessTokenRequest request =
+          GenerateAccessTokenRequest.newBuilder()
+              .setName("projects/-/serviceAccounts/" + targetServiceAccount)
+              .addAllDelegates(new ArrayList<>())
+              // 'cloud-platform' is often preferred for impersonation, 
+              // but devstorage.read_write is sufficient for GCS specific operations.
+              // See https://docs.cloud.google.com/storage/docs/oauth-scopes
+              .addScope("https://www.googleapis.com/auth/devstorage.read_write")
+              .setLifetime(Duration.newBuilder().setSeconds(3600).build())
+              .build();
+              
+      GenerateAccessTokenResponse response = iamCredentialsClient.generateAccessToken(request);
+      
+      Timestamp expirationTime = response.getExpireTime();
+      // Use Instant to avoid precision loss or overflow issues with Date multiplication
+      Date expirationDate = Date.from(Instant.ofEpochSecond(expirationTime.getSeconds(), expirationTime.getNanos()));
+      
+      AccessToken accessToken = new AccessToken(response.getAccessToken(), expirationDate);
+      return GoogleCredentials.create(accessToken);
+    } catch (IOException e) {
+      throw new RuntimeException("Unable to impersonate GCP service account: " + targetServiceAccount, e);
+    }
   }
 
   private String convertToString(CredentialAccessBoundary accessBoundary) {
@@ -209,6 +257,20 @@ public class GcpCredentialsStorageIntegration
           accessBoundaryBuilder.addRule(builder.build());
         });
     return accessBoundaryBuilder.build();
+  }
+
+  @VisibleForTesting
+  protected AccessToken refreshAccessToken(DownscopedCredentials credentials) throws IOException {
+    return credentials.refreshAccessToken();
+  }
+
+  @VisibleForTesting
+  protected IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials)
+      throws IOException {
+    return IamCredentialsClient.create(
+        IamCredentialsSettings.newBuilder()
+            .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
+            .build());
   }
 
   private static String bucketResource(String bucket) {
