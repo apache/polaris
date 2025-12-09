@@ -143,10 +143,8 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Override
   public PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext) {
     var realmId = realmContext.getRealmIdentifier();
-    var persistence = initializedRealmPersistence(realmId);
 
-    return new NoSqlMetaStoreManager(
-        () -> purgeRealm(realmId), null, () -> newPersistenceMetaStore(persistence), clock);
+    return new NoSqlMetaStoreManager(() -> purgeRealm(realmId), null, clock);
   }
 
   private NoSqlMetaStore newPersistenceMetaStore(Persistence persistence) {
@@ -267,7 +265,6 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
               throw new IllegalStateException("Cannot purge while bootstrapping");
             },
             rootCredentialsSet,
-            () -> metaStore,
             clock);
 
     var secretsResult =

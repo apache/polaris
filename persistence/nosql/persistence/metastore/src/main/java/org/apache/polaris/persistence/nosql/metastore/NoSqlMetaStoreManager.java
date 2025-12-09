@@ -79,15 +79,8 @@ import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 
 record NoSqlMetaStoreManager(
-    Supplier<BaseResult> purgeRealm,
-    RootCredentialsSet rootCredentialsSet,
-    Supplier<NoSqlMetaStore> metaStoreSupplier,
-    Clock clock)
+    Supplier<BaseResult> purgeRealm, RootCredentialsSet rootCredentialsSet, Clock clock)
     implements PolarisMetaStoreManager {
-
-  NoSqlMetaStore ms() {
-    return metaStoreSupplier.get();
-  }
 
   NoSqlMetaStore ms(PolarisCallContext callContext) {
     var existing = callContext.getMetaStore();
@@ -349,7 +342,7 @@ record NoSqlMetaStoreManager(
   @Nonnull
   @Override
   public GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
-    return new GenerateEntityIdResult(metaStoreSupplier.get().generateNewId());
+    return new GenerateEntityIdResult(ms(callCtx).generateNewId());
   }
 
   @Nonnull
@@ -537,7 +530,7 @@ record NoSqlMetaStoreManager(
   public <T extends PolarisEntity & LocationBasedEntity>
       Optional<Optional<String>> hasOverlappingSiblings(
           @Nonnull PolarisCallContext callContext, T entity) {
-    return Optional.of(ms().hasOverlappingSiblings(entity));
+    return Optional.of(ms(callContext).hasOverlappingSiblings(entity));
   }
 
   @Nonnull
@@ -787,7 +780,7 @@ record NoSqlMetaStoreManager(
         !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
         "allowed_locations_to_subscope_is_required");
 
-    // reload the entity, error out if not found
+    // reload the entity or error out if not found
     var reloadedEntity = loadEntity(callCtx, catalogId, entityId, entityType);
     if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
       return new ScopedCredentialsResult(
