@@ -18,6 +18,10 @@
  */
 package org.apache.polaris.core.storage.azure;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_RETRY_COUNT;
+import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_RETRY_DELAY_MILLIS;
+import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_RETRY_JITTER_FACTOR;
+import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_TIMEOUT_MILLIS;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import com.azure.core.credential.AccessToken;
@@ -39,6 +43,7 @@ import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.Period;
@@ -56,6 +61,7 @@ import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 /** Azure credential vendor that supports generating SAS token */
 public class AzureCredentialsStorageIntegration
@@ -122,7 +128,7 @@ public class AzureCredentialsStorageIntegration
         OffsetDateTime.ofInstant(
             start.plusSeconds(3600), ZoneOffset.UTC); // 1 hr to sync with AWS and GCP Access token
 
-    AccessToken accessToken = getAccessToken(config().getTenantId());
+    AccessToken accessToken = getAccessToken(realmConfig, config().getTenantId());
     // Get user delegation key.
     // Set the new generated user delegation key expiry to 7 days and minute 1 min
     // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
@@ -314,16 +320,101 @@ public class AzureCredentialsStorageIntegration
         });
   }
 
-  private AccessToken getAccessToken(String tenantId) {
+  /**
+   * Fetches an Azure AD access token with timeout and retry logic to handle transient failures.
+   *
+   * <p>This access token is used internally to obtain a user delegation key from Azure Storage,
+   * which is then used to generate SAS tokens for client credential vending.
+   *
+   * <p>This method implements a defensive strategy against slow or failing cloud provider requests:
+   *
+   * <ul>
+   *   <li>Per-attempt timeout (configurable via AZURE_TIMEOUT_MILLIS, default 15000ms)
+   *   <li>Exponential backoff retry (configurable count and initial delay via AZURE_RETRY_COUNT and
+   *       AZURE_RETRY_DELAY_MILLIS, defaults: 3 attempts starting at 2000ms)
+   *   <li>Jitter to prevent thundering herd (configurable via AZURE_RETRY_JITTER_FACTOR, default
+   *       0.5 = 50%%)
+   * </ul>
+   *
+   * @param realmConfig the realm configuration to get timeout and retry settings
+   * @param tenantId the Azure tenant ID
+   * @return the access token
+   * @throws RuntimeException if token fetch fails after all retries or times out
+   */
+  private AccessToken getAccessToken(RealmConfig realmConfig, String tenantId) {
+    int timeoutMillis = realmConfig.getConfig(AZURE_TIMEOUT_MILLIS);
+    int retryCount = realmConfig.getConfig(AZURE_RETRY_COUNT);
+    int initialDelayMillis = realmConfig.getConfig(AZURE_RETRY_DELAY_MILLIS);
+    double jitter = realmConfig.getConfig(AZURE_RETRY_JITTER_FACTOR);
+    int maxAttempts = retryCount + 1;
+
     String scope = "https://storage.azure.com/.default";
     AccessToken accessToken =
         defaultAzureCredential
             .getToken(new TokenRequestContext().addScopes(scope).setTenantId(tenantId))
+            .timeout(Duration.ofMillis(timeoutMillis))
+            .doOnError(
+                error ->
+                    LOGGER.warn("Error fetching Azure access token for tenant {}", tenantId, error))
+            .retryWhen(
+                Retry.backoff(retryCount, Duration.ofMillis(initialDelayMillis))
+                    .jitter(jitter) // Apply jitter factor to computed delay
+                    .filter(this::isRetriableAzureException)
+                    .doBeforeRetry(
+                        retrySignal ->
+                            LOGGER.info(
+                                "Retrying Azure token fetch for tenant {} (attempt {}/{})",
+                                tenantId,
+                                retrySignal.totalRetries() + 1,
+                                maxAttempts))
+                    .onRetryExhaustedThrow(
+                        (retryBackoffSpec, retrySignal) ->
+                            new RuntimeException(
+                                String.format(
+                                    "Azure token fetch exhausted after %d attempts for tenant %s",
+                                    retrySignal.totalRetries(), tenantId),
+                                retrySignal.failure())))
             .blockOptional()
             .orElse(null);
+
     if (accessToken == null) {
-      throw new RuntimeException("No access token fetched!");
+      throw new RuntimeException(
+          String.format("Failed to fetch Azure access token for tenant %s", tenantId));
     }
     return accessToken;
+  }
+
+  /**
+   * Determines if an exception is retriable for Azure token requests.
+   *
+   * <p>Retries are attempted for:
+   *
+   * <ul>
+   *   <li>TimeoutException - per-attempt timeout exceeded
+   *   <li>AADSTS50058 - Token endpoint timeout
+   *   <li>AADSTS50078 - Service temporarily unavailable
+   *   <li>AADSTS700084 - Token refresh required
+   *   <li>503 - Service unavailable
+   *   <li>429 - Too many requests (rate limited)
+   * </ul>
+   *
+   * @param throwable the exception to check
+   * @return true if the exception should trigger a retry
+   */
+  private boolean isRetriableAzureException(Throwable throwable) {
+    // Retry on timeout exceptions
+    if (throwable instanceof java.util.concurrent.TimeoutException) {
+      return true;
+    }
+    // Retry on common transient Azure credential exceptions
+    String message = throwable.getMessage();
+    if (message != null) {
+      return message.contains("AADSTS50058") // Token endpoint timeout
+          || message.contains("AADSTS50078") // Service temporarily unavailable
+          || message.contains("AADSTS700084") // Token refresh required
+          || message.contains("503") // Service unavailable
+          || message.contains("429"); // Too many requests
+    }
+    return false;
   }
 }

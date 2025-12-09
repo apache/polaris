@@ -294,6 +294,12 @@ affinity: {}
 #                values:
 #                  - polaris
 
+# -- Topology spread constraints for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/#topologyspreadconstraints-field.
+topologySpreadConstraints: []
+  # - maxSkew: 1
+  #   topologyKey: topology.kubernetes.io/zone
+  #   whenUnsatisfiable: DoNotSchedule
+
 # -- Configures the liveness probe for polaris pods.
 livenessProbe:
   # -- Number of seconds after the container has started before liveness probes are initiated. Minimum value is 0.

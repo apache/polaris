@@ -808,7 +808,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     // success, return the two entities
-    return new CreatePrincipalResult(updatedPrincipal, principalSecrets);
+    return new CreatePrincipalResult(lowLevelResult.getEntity(), principalSecrets);
   }
 
   /** {@inheritDoc} */

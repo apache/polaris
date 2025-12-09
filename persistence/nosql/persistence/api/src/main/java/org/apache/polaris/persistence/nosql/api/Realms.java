@@ -23,8 +23,8 @@ public final class Realms {
 
   /**
    * Realms with special meanings and "non-standard behavior" (as per {@code
-   * org.apache.polaris.realms.api.RealmDefinition.RealmStatus}) have to have an ID that starts with
-   * this prefix.
+   * org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus}) have to have an
+   * ID that starts with this prefix.
    */
   public static final String SYSTEM_REALM_PREFIX = "::";
 
