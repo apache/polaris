@@ -161,9 +161,7 @@ public class StorageCredentialCacheTest {
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
   }
 
-  @Test
-  public void testCacheMissForAnotherPrincipal() {
-
+  private void testCacheForAnotherPrincipal(boolean hitExpected) {
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
     Mockito.when(
@@ -196,7 +194,6 @@ public class StorageCredentialCacheTest {
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
-    // subscope for the same entity and same allowed locations, will hit the cache
     storageCredentialCache.getOrGenerateSubScopeCreds(
         storageCredentialsVendor,
         polarisEntity,
@@ -205,11 +202,16 @@ public class StorageCredentialCacheTest {
         Set.of("s3://bucket3/path", "s3://bucket4/path"),
         anotherPolarisPrincipal,
         Optional.empty());
-    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(hitExpected ? 1 : 2);
   }
 
   @Test
   public void testCacheHitForAnotherPrincipal() {
+    testCacheForAnotherPrincipal(true);
+  }
+
+  @Test
+  public void testCacheMissForAnotherPrincipal() {
     Mockito.when(storageCredentialsVendor.getRealmConfig())
         .thenReturn(
             new RealmConfigImpl(
@@ -227,48 +229,7 @@ public class StorageCredentialCacheTest {
                 },
                 () -> "realm"));
 
-    List<ScopedCredentialsResult> mockedScopedCreds =
-        getFakeScopedCreds(3, /* expireSoon= */ false);
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(mockedScopedCreds.get(0))
-        .thenReturn(mockedScopedCreds.get(1))
-        .thenReturn(mockedScopedCreds.get(1));
-    PolarisBaseEntity baseEntity =
-        new PolarisBaseEntity(
-            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
-    PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
-    PolarisPrincipal anotherPolarisPrincipal =
-        PolarisPrincipal.of("anotherPrincipal", Map.of(), Set.of());
-
-    // add an item to the cache
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket3/path", "s3://bucket4/path"),
-        polarisPrincipal,
-        Optional.empty());
-    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
-
-    // subscope for the same entity and same allowed locations, will hit the cache
-    storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
-        polarisEntity,
-        true,
-        Set.of("s3://bucket1/path", "s3://bucket2/path"),
-        Set.of("s3://bucket3/path", "s3://bucket4/path"),
-        anotherPolarisPrincipal,
-        Optional.empty());
-    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(2);
+    testCacheForAnotherPrincipal(false);
   }
 
   @RepeatedTest(10)

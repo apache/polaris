@@ -140,8 +140,10 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             "/namespace/table/credentials");
   }
 
+  // uses different realm config with INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL set to true
+  // tests that the resulting role session name includes principal name
   @Test
-  public void testGetSubscopedCredsWithNameInclude() {
+  public void testGetSubscopedCredsRoleSessionNameWithPrincipalIncluded() {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     String externalId = "externalId";
@@ -173,18 +175,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 Set.of(warehouseDir + "/namespace/table"),
                 POLARIS_PRINCIPAL,
                 Optional.of("/namespace/table/credentials"));
-    assertThat(storageAccessConfig.credentials())
-        .isNotEmpty()
-        .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
-        .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
-        .containsEntry(StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(), "secretKey")
-        .containsEntry(
-            StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS.getPropertyName(),
-            String.valueOf(EXPIRE_TIME.toEpochMilli()));
-    assertThat(storageAccessConfig.extraProperties())
-        .containsEntry(
-            StorageAccessProperty.AWS_REFRESH_CREDENTIALS_ENDPOINT.getPropertyName(),
-            "/namespace/table/credentials");
   }
 
   @ParameterizedTest

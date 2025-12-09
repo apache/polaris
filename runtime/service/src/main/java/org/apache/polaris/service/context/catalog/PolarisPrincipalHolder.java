@@ -23,6 +23,7 @@ import io.quarkus.security.identity.CurrentIdentityAssociation;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Produces;
+import jakarta.enterprise.inject.UnsatisfiedResolutionException;
 import java.security.Principal;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -45,6 +46,10 @@ public class PolarisPrincipalHolder {
 
     SecurityIdentity identity =
         currentIdentityAssociation.getDeferredIdentity().subscribeAsCompletionStage().getNow(null);
+
+    if (identity == null) {
+      throw new UnsatisfiedResolutionException("Not authenticated");
+    }
 
     Principal userPrincipal = identity.getPrincipal();
 
