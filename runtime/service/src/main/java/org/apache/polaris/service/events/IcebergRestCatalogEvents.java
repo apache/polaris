@@ -337,9 +337,7 @@ public class IcebergRestCatalogEvents {
     }
   }
 
-  /**
-   * LoadTableResponse is optional; it will not be populated in case of a transaction.
-   */
+  /** LoadTableResponse is optional; it will not be populated in case of a transaction. */
   public record AfterUpdateTableEvent(
       PolarisEventMetadata metadata,
       String catalogName,
