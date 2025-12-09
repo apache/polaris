@@ -21,25 +21,6 @@ Title: Polaris Helm Chart
 type: docs
 weight: 675
 ---
-
-<!---
-  This README.md file was generated with:
-  https://github.com/norwoodj/helm-docs
-  Do not modify the README.md file directly, please modify README.md.gotmpl instead.
-  To re-generate the README.md file, install helm-docs then run from the repo root:
-  helm-docs --chart-search-root=helm
--->
-
-![Version: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/Version-1.2.0--incubating--SNAPSHOT-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.2.0--incubating--SNAPSHOT-informational?style=flat-square)
-
-A Helm chart for Apache Polaris (incubating).
-
-**Homepage:** <https://polaris.apache.org/>
-
-## Source Code
-
-* <https://github.com/apache/polaris>
-
 ## Installation
 
 The instructions below are for the local Minikube cluster. They assume Minikube and Helm are installed.
