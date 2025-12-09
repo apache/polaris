@@ -256,4 +256,12 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     var path = (List<PolarisEntityCore>) (List) catalogPath;
     return metaStore.createEntityIfNotExists(callContext, path, newEntity);
   }
+
+  @Override
+  @Test
+  @Disabled(
+      "The test is not applicable to the NoSQL metastore implementation, "
+          + "because both the creation and modification timestamps are enforced by the implementation and "
+          + "cannot be tweaked by call sites")
+  protected void testCreatePrincipalReturnedEntitySameAsPersisted() {}
 }
