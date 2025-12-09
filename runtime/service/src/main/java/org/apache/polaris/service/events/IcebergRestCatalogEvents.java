@@ -20,7 +20,6 @@
 package org.apache.polaris.service.events;
 
 import java.util.Map;
-import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -30,12 +29,12 @@ import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
+import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.iceberg.view.ViewMetadata;
-import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
 
@@ -330,7 +329,7 @@ public class IcebergRestCatalogEvents {
       String catalogName,
       Namespace namespace,
       String sourceTable,
-      CommitTableRequest commitTableRequest)
+      UpdateTableRequest commitTableRequest)
       implements PolarisEvent {
     @Override
     public PolarisEventType type() {
@@ -338,12 +337,13 @@ public class IcebergRestCatalogEvents {
     }
   }
 
+  /** LoadTableResponse is optional; it will not be populated in case of a transaction. */
   public record AfterUpdateTableEvent(
       PolarisEventMetadata metadata,
       String catalogName,
       Namespace namespace,
       String sourceTable,
-      CommitTableRequest commitTableRequest,
+      UpdateTableRequest commitTableRequest,
       LoadTableResponse loadTableResponse)
       implements PolarisEvent {
     @Override
@@ -584,32 +584,6 @@ public class IcebergRestCatalogEvents {
   }
 
   // Legacy events
-  public record BeforeCommitTableEvent(
-      PolarisEventMetadata metadata,
-      String catalogName,
-      TableIdentifier identifier,
-      TableMetadata metadataBefore,
-      TableMetadata metadataAfter)
-      implements PolarisEvent {
-    @Override
-    public PolarisEventType type() {
-      return PolarisEventType.BEFORE_COMMIT_TABLE;
-    }
-  }
-
-  public record AfterCommitTableEvent(
-      PolarisEventMetadata metadata,
-      String catalogName,
-      TableIdentifier identifier,
-      TableMetadata metadataBefore,
-      TableMetadata metadataAfter)
-      implements PolarisEvent {
-    @Override
-    public PolarisEventType type() {
-      return PolarisEventType.AFTER_COMMIT_TABLE;
-    }
-  }
-
   public record BeforeCommitViewEvent(
       PolarisEventMetadata metadata,
       String catalogName,

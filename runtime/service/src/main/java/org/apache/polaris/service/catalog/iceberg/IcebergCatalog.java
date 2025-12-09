@@ -1408,10 +1408,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     public void doCommit(TableMetadata base, TableMetadata metadata) {
-      polarisEventListener.onBeforeCommitTable(
-          new IcebergRestCatalogEvents.BeforeCommitTableEvent(
-              eventMetadataFactory.create(), catalogName, tableIdentifier, base, metadata));
-
       LOGGER.debug(
           "doCommit for table {} with metadataBefore {}, metadataAfter {}",
           tableIdentifier,
@@ -1560,10 +1556,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(tableIdentifier, entity);
       }
-
-      polarisEventListener.onAfterCommitTable(
-          new IcebergRestCatalogEvents.AfterCommitTableEvent(
-              eventMetadataFactory.create(), catalogName, tableIdentifier, base, metadata));
     }
 
     @Override
