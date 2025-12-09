@@ -24,6 +24,7 @@ import static java.lang.String.format;
 import static org.apache.polaris.persistence.nosql.api.Realms.SYSTEM_REALM_ID;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
+import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.PURGING;
 import static org.apache.polaris.persistence.nosql.realms.store.RealmsStateObj.REALMS_REF_NAME;
 
 import com.google.common.collect.Streams;
@@ -35,12 +36,14 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.StreamUtil;
 import org.apache.polaris.persistence.nosql.api.SystemPersistence;
+import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.commit.Committer;
 import org.apache.polaris.persistence.nosql.api.index.IndexContainer;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
@@ -54,15 +57,17 @@ import org.apache.polaris.persistence.nosql.realms.spi.RealmStore;
 class RealmStoreImpl implements RealmStore {
   private final Persistence systemPersistence;
   private final Committer<RealmsStateObj, RealmObj> committer;
+  private final Backend backend;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
-  RealmStoreImpl(@Nonnull @SystemPersistence Persistence systemPersistence) {
+  RealmStoreImpl(@Nonnull @SystemPersistence Persistence systemPersistence, Backend backend) {
     checkArgument(
         SYSTEM_REALM_ID.equals(systemPersistence.realmId()),
         "Realms management must happen in the %s realm",
         SYSTEM_REALM_ID);
 
+    this.backend = backend;
     this.systemPersistence = systemPersistence;
 
     this.committer =
@@ -206,7 +211,18 @@ class RealmStoreImpl implements RealmStore {
               return state.commitResult(obj, newRealms, refObj);
             });
 
-    return objToDefinition(realmId, realm.orElseThrow());
+    var result = realm.orElseThrow();
+    if (result.status() == PURGING && "InMemory".equals(backend.type())) {
+      // Handle the test/development case when using the in-memory backend:
+      // In this case there is no chance to run the maintenance service. To remove no longer
+      // necessary data from the Java heap, call the in-memory backend directly.
+      // This is "nice behavior" when running tests.
+      // The only "cost" is that the state PURGING may never be pushed to PURGED, but that is
+      // acceptable.
+      backend.deleteRealms(Set.of(realmId));
+    }
+
+    return objToDefinition(realmId, result);
   }
 
   @SuppressWarnings("DuplicatedCode") // looks similar, but extracting isn't worth it
