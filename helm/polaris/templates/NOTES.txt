@@ -16,6 +16,38 @@
   specific language governing permissions and limitations
   under the License.
 */}}
+{{/*
+  Helper template to generate access instructions for a service.
+  Parameters:
+  - serviceType: ClusterIP, NodePort, or LoadBalancer
+  - serviceName: Kubernetes service name
+  - port: Service port number
+  - namespace: Kubernetes namespace
+  - label: Display label (e.g., "API" or "Health")
+  - path: Optional URL path (e.g., "/q/health")
+  - isFirstNodePort: Whether to export NODE_IP (set to true only for the first NodePort service to avoid duplicate exports)
+*/}}
+{{- define "polaris.accessInstructions" -}}
+{{- $serviceType := .serviceType -}}
+{{- $serviceName := .serviceName -}}
+{{- $port := .port -}}
+{{- $namespace := .namespace -}}
+{{- $label := .label -}}
+{{- $path := .path | default "" -}}
+{{- $isFirstNodePort := .isFirstNodePort | default false }}
+{{- if eq $serviceType "LoadBalancer" }}
+  export {{ upper $label }}_IP=$(kubectl get svc -n {{ $namespace }} {{ $serviceName }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "{{ $label }}: http://${{ upper $label }}_IP:{{ $port }}{{ $path }}"
+{{- else if eq $serviceType "NodePort" }}
+{{- if $isFirstNodePort }}
+  export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
+{{- end }}
+  export {{ upper $label }}_PORT=$(kubectl get svc -n {{ $namespace }} {{ $serviceName }} -o jsonpath='{.spec.ports[0].nodePort}')
+  echo "{{ $label }}: http://$NODE_IP:${{ upper $label }}_PORT{{ $path }}"
+{{- else }}
+  {{ $label }}: http://localhost:{{ $port }}{{ $path }}
+{{- end }}
+{{- end -}}
 
 Apache Polaris deployed successfully!
 
@@ -29,48 +61,22 @@ Version:    {{ .Chart.Version }} (App: {{ .Chart.AppVersion }})
 {{- end }}
 
 Access Polaris:
-{{- if eq .Values.service.type "LoadBalancer" }}
-
-  export SERVICE_IP=$(kubectl get svc -n {{ .Release.Namespace }} {{ include "polaris.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-  echo "API: http://$SERVICE_IP:{{ (first .Values.service.ports).port }}"
-{{- else if eq .Values.service.type "NodePort" }}
-
-  export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
-  export NODE_PORT=$(kubectl get svc -n {{ .Release.Namespace }} {{ include "polaris.fullname" . }} -o jsonpath='{.spec.ports[0].nodePort}')
-  echo "API: http://$NODE_IP:$NODE_PORT"
-{{- else }}
+{{- if eq .Values.service.type "ClusterIP" }}
 
   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "polaris.fullname" . }} {{ (first .Values.service.ports).port }}:{{ (first .Values.service.ports).port }}
-  echo "API: http://localhost:{{ (first .Values.service.ports).port }}"
 {{- end }}
-{{- if eq .Values.service.type .Values.managementService.type }}
-{{- if eq .Values.managementService.type "LoadBalancer" }}
+{{ include "polaris.accessInstructions" (dict "serviceType" .Values.service.type "serviceName" (include "polaris.fullname" .) "port" (first .Values.service.ports).port "namespace" .Release.Namespace "label" "API" "isFirstNodePort" true) }}
+{{- if and (ne .Values.service.type "ClusterIP") (ne .Values.managementService.type "ClusterIP") }}
 
-  export MGMT_IP=$(kubectl get svc -n {{ .Release.Namespace }} {{ include "polaris.fullnameWithSuffix" (list . "mgmt") }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-  echo "Health: http://$MGMT_IP:{{ (first .Values.managementService.ports).port }}/q/health"
-{{- else if eq .Values.managementService.type "NodePort" }}
-
-  export MGMT_PORT=$(kubectl get svc -n {{ .Release.Namespace }} {{ include "polaris.fullnameWithSuffix" (list . "mgmt") }} -o jsonpath='{.spec.ports[0].nodePort}')
-  echo "Health: http://$NODE_IP:$MGMT_PORT/q/health"
-{{- else }}
-
-  echo "Health: http://localhost:{{ (first .Values.managementService.ports).port }}/q/health"
 {{- end }}
-{{- else }}
-{{- if eq .Values.managementService.type "LoadBalancer" }}
-
-  export MGMT_IP=$(kubectl get svc -n {{ .Release.Namespace }} {{ include "polaris.fullnameWithSuffix" (list . "mgmt") }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-  echo "Health: http://$MGMT_IP:{{ (first .Values.managementService.ports).port }}/q/health"
-{{- else if eq .Values.managementService.type "NodePort" }}
-
-  export MGMT_PORT=$(kubectl get svc -n {{ .Release.Namespace }} {{ include "polaris.fullnameWithSuffix" (list . "mgmt") }} -o jsonpath='{.spec.ports[0].nodePort}')
-  echo "Health: http://$NODE_IP:$MGMT_PORT/q/health"
-{{- else }}
+{{- if and (ne .Values.service.type "ClusterIP") (eq .Values.managementService.type "ClusterIP") }}
 
   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "polaris.fullnameWithSuffix" (list . "mgmt") }} {{ (first .Values.managementService.ports).port }}:{{ (first .Values.managementService.ports).port }}
-  echo "Health: http://localhost:{{ (first .Values.managementService.ports).port }}/q/health"
+{{- else if and (eq .Values.service.type "ClusterIP") (eq .Values.managementService.type "ClusterIP") }}
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "polaris.fullnameWithSuffix" (list . "mgmt") }} {{ (first .Values.managementService.ports).port }}:{{ (first .Values.managementService.ports).port }}
 {{- end }}
-{{- end }}
+{{ include "polaris.accessInstructions" (dict "serviceType" .Values.managementService.type "serviceName" (include "polaris.fullnameWithSuffix" (list . "mgmt")) "port" (first .Values.managementService.ports).port "namespace" .Release.Namespace "label" "Health" "path" "/q/health" "isFirstNodePort" (ne .Values.service.type "NodePort")) }}
 
 View logs:
 
