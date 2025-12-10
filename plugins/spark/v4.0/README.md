@@ -1,40 +1,31 @@
 <!--
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
 -->
 
-# Polaris Spark Plugins
+# Polaris Spark 4.0 Plugin
 
-This directory contains the Polaris Spark plugins. The plugins are built for specific versions of Spark:
-- [Spark 3.5](./v3.5/README.md)
-- [Spark 4.0](./v4.0/README.md)
-
-The Polaris Spark plugin provides a SparkCatalog class, which communicates with the Polaris
+The Polaris Spark 4.0 plugin provides a SparkCatalog class, which communicates with the Polaris
 REST endpoints, and provides implementations for Apache Spark's
-- [TableCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java)
-- [ViewCatalog](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java)
-- [SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.6/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java)
+[TableCatalog](https://github.com/apache/spark/blob/v4.0.1/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java),
+[ViewCatalog](https://github.com/apache/spark/blob/v4.0.1/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java),
+[SupportsNamespaces](https://github.com/apache/spark/blob/v4.0.1/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java).
 
-Right now, the plugin only provides support for Spark 3.5, Scala version 2.12 and 2.13, and depends on iceberg-spark-runtime 1.9.1.
-
-The Polaris Spark client supports catalog management for both Iceberg and Delta tables. It routes all Iceberg table
-requests to the Iceberg REST endpoints and routes all Delta table requests to the Generic Table REST endpoints.
-
-The Spark Client requires at least delta 3.2.1 to work with Delta tables, which requires at least Apache Spark 3.5.3.
+This plugin depends on iceberg-spark-runtime-4.0_2.13:1.10.0.
 
 # Start Spark with local Polaris service using the Polaris Spark plugin
 The following command starts a Polaris server for local testing, it runs on localhost:8181 with default
@@ -49,7 +40,7 @@ option with the Polaris Spark package, or the `--jars` option with the Polaris S
 The following sections explain how to build and run Spark with both the Polaris package and the bundle JAR.
 
 # Build and run with Polaris spark package locally
-The Polaris Spark client source code is located in plugins/spark/v3.5/spark. To use the Polaris Spark package
+The Polaris Spark 4.0 client source code is located in plugins/spark/v4.0/spark. To use the Polaris Spark package
 with Spark, you first need to publish the source JAR to your local Maven repository.
 
 Run the following command to build the Polaris Spark project and publish the source JAR to your local Maven repository:
@@ -58,7 +49,7 @@ Run the following command to build the Polaris Spark project and publish the sou
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-<spark_version>_<scala_version>:<polaris_version>,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.13:4.0.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -73,15 +64,15 @@ bin/spark-shell \
 
 The Polaris version is defined in the `versions.txt` file located in the root directory of the Polaris project.
 Assume the following values:
-- `spark_version`: 3.5
-- `scala_version`: 2.12
+- `spark_version`: 4.0
+- `scala_version`: 2.13 (only Scala 2.13 is supported for Spark 4.0)
 - `polaris_version`: 1.2.0-incubating-SNAPSHOT
 - `catalog-name`: `polaris`
-The Spark command would look like following:
+  The Spark command would look like following:
 
 ```shell
 bin/spark-shell \
---packages org.apache.polaris:polaris-spark-3.5_2.12:1.2.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.polaris:polaris-spark-4.0_2.13:1.2.0-incubating-SNAPSHOT,org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.13:4.0.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.polaris.warehouse=polaris \
@@ -97,17 +88,16 @@ bin/spark-shell \
 # Build and run with Polaris spark bundle JAR
 The polaris-spark project also provides a Spark bundle JAR for the `--jars` use case. The resulting JAR will follow this naming format:
 polaris-spark-<spark_version>_<scala_version>-<polaris_version>-bundle.jar
-For example:
-polaris-spark-bundle-3.5_2.12-1.2.0-incubating-SNAPSHOT-bundle.jar
+For example: polaris-spark-4.0_2.13-1.2.0-incubating-SNAPSHOT-bundle.jar
 
 Run `./gradlew assemble` to build the entire Polaris project without running tests. After the build completes,
-the bundle JAR can be found under: plugins/spark/v3.5/spark/build/<scala_version>/libs/.
+the bundle JAR can be found under: plugins/spark/v4.0/spark/build/2.13/libs/.
 To start Spark using the bundle JAR, specify it with the `--jars` option as shown below:
 
 ```shell
 bin/spark-shell \
 --jars <path-to-spark-client-jar> \
---packages org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.12:3.3.1 \
+--packages org.apache.iceberg:iceberg-aws-bundle:1.10.0,io.delta:delta-spark_2.13:4.0.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,io.delta.sql.DeltaSparkSessionExtension \
 --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog \
 --conf spark.sql.catalog.<catalog-name>.warehouse=<catalog-name> \
@@ -120,16 +110,14 @@ bin/spark-shell \
 --conf spark.sql.sources.useV1SourceList=''
 ```
 
-# Current Limitations
-The following describes the current limitations of the Polaris Spark client:
+# Limitations
+The Polaris Spark 4.0 client supports catalog management for both Iceberg and Delta tables, it routes all Iceberg table
+requests to the Iceberg REST endpoints, and routes all Delta table requests to the Generic Table REST endpoints.
 
-## General Limitations
-1. The Polaris Spark client only supports Iceberg and Delta tables. It does not support other table formats like CSV, JSON, etc.
-2. Generic tables (non-Iceberg tables) do not currently support credential vending.
-
-## Delta Table Limitations
-1. Create table as select (CTAS) is not supported for Delta tables. As a result, the `saveAsTable` method of `Dataframe`
-   is also not supported, since it relies on the CTAS support.
-2. Create a Delta table without explicit location is not supported.
-3. Rename a Delta table is not supported.
-4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.
+The Spark 4.0 Client requires Delta Lake 4.0.0 or higher to work with Delta tables.
+Following describes the current functionality limitations of the Polaris Spark 4.0 client:
+1. Create table as select (CTAS) is not supported for Delta tables. As a result, the `saveAsTable` method of `Dataframe` is also not supported, since it relies on the CTAS support.
+2. Create a Delta table without explicit location is not supported. 
+3. Rename a Delta table is not supported. 
+4. ALTER TABLE ... SET LOCATION is not supported for DELTA table. 
+5. For other non-Iceberg tables like csv, it is not supported today.
