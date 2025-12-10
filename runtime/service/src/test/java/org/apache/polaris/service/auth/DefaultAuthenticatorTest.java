@@ -71,6 +71,11 @@ public class DefaultAuthenticatorTest extends PolarisAuthzTestBase {
   }
 
   @Test
+  void credentialsDefaultToInternal() {
+    assertThat(PolarisCredential.of(null, PRINCIPAL_NAME, Set.of()).isExternal()).isFalse();
+  }
+
+  @Test
   void testNullPrincipalIdAndName() {
     // Given: credentials with both null principal ID and name
     PolarisCredential credentials =
