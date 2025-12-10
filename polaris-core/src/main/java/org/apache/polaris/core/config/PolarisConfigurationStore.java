@@ -107,6 +107,10 @@ public interface PolarisConfigurationStore {
    * Retrieve the current value for a configuration, overriding with a catalog config if it is
    * present.
    *
+   * <p>Prefer using {@link #getConfiguration(RealmContext, Map, PolarisConfiguration)} when the
+   * catalog properties are already available or are needed repeatedly to prevent unnecessary JSON
+   * deserialization.
+   *
    * @param realmContext the current realm context
    * @param catalogEntity the catalog to check for an override
    * @param config the configuration to load
@@ -117,15 +121,31 @@ public interface PolarisConfigurationStore {
       @Nonnull RealmContext realmContext,
       @Nonnull CatalogEntity catalogEntity,
       PolarisConfiguration<T> config) {
+    return getConfiguration(realmContext, catalogEntity.getPropertiesAsMap(), config);
+  }
+
+  /**
+   * Retrieve the current value for a configuration, overriding with a catalog config if it is
+   * present.
+   *
+   * @param realmContext the current realm context
+   * @param catalogProperties the catalog configuration to check for an override
+   * @param config the configuration to load
+   * @return the current value set for the configuration key or null if not set
+   * @param <T> the type of the configuration value
+   */
+  default <T> @Nonnull T getConfiguration(
+      @Nonnull RealmContext realmContext,
+      @Nonnull Map<String, String> catalogProperties,
+      PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig() || config.hasCatalogConfigUnsafe()) {
-      Map<String, String> propertiesMap = catalogEntity.getPropertiesAsMap();
       String propertyValue = null;
       if (config.hasCatalogConfig()) {
-        propertyValue = propertiesMap.get(config.catalogConfig());
+        propertyValue = catalogProperties.get(config.catalogConfig());
       }
       if (propertyValue == null) {
         if (config.hasCatalogConfigUnsafe()) {
-          propertyValue = propertiesMap.get(config.catalogConfigUnsafe());
+          propertyValue = catalogProperties.get(config.catalogConfigUnsafe());
         }
         if (propertyValue != null) {
           LOGGER.warn(
