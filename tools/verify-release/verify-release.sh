@@ -107,7 +107,7 @@ maven_repo_id="${BASH_REMATCH[1]}"
 fatal_reported=0
 finished=0
 
-run_id="polaris-release-verify-$(date "+%Y-%m-%d-%k-%M-%S")"
+run_id="polaris-release-verify-$(date "+%Y-%m-%d-%H-%M-%S")"
 temp_dir="$(mktemp --tmpdir --directory "${run_id}-XXXXXXXXX")"
 function purge_temp_dir {
   if [[ $keep_temp_dir -eq 0 ]] ; then
