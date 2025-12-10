@@ -269,7 +269,7 @@ function verify_checksums {
     if [[ -f "$fn.sha512" ]] ; then
       echo -n "sha512 "
       provided="$(cut -d\  -f1 < "$fn.sha512")" || log_fatal "sha512 provided $fn failed"
-      calc="$(shasum -a 512 "$fn" | cut -d\  -f1)" || log_fatal "sha512 calc $fn failed"
+      calc="$(shasum -b -a 512 "$fn" | cut -d\  -f1)" || log_fatal "sha512 calc $fn failed"
       [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA512 $calc - provided $provided"
     else
       log_fatal "$fn : Mandatory SHA512 missing"
@@ -277,19 +277,19 @@ function verify_checksums {
     if [[ -f "$fn.sha256" ]] ; then
       echo -n "sha256 "
       provided="$(cut -d\  -f1 < "$fn.sha256")" || log_fatal "sha256 provided $fn failed"
-      calc="$(shasum -a 256 "$fn" | cut -d\  -f1)" || log_fatal "sha256 calc $fn failed"
+      calc="$(shasum -b -a 256 "$fn" | cut -d\  -f1)" || log_fatal "sha256 calc $fn failed"
       [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA256 $calc - provided $provided"
     fi
     if [[ -f "$fn.sha1" ]] ; then
       echo -n "sha1 "
       provided="$(cut -d\  -f1 < "$fn.sha1")" || log_fatal "sha1 provided $fn failed"
-      calc="$(shasum -a 1 "$fn" | cut -d\  -f1)" || log_fatal "sha1 calc $fn failed"
+      calc="$(shasum -b -a 1 "$fn" | cut -d\  -f1)" || log_fatal "sha1 calc $fn failed"
       [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA1 $calc - provided $provided"
     fi
     if [[ -f "$fn.md5" ]] ; then
       echo -n "md5 "
       provided="$(cut -d\  -f1 < "$fn.md5")" || log_fatal "md5 provided $fn failed"
-      calc="$(md5sum "$fn" | cut -d\  -f1)" || log_fatal "md5 calc $fn failed"
+      calc="$(md5sum -b "$fn" | cut -d\  -f1)" || log_fatal "md5 calc $fn failed"
       [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected MD5 $calc - provided $provided"
     fi
     echo ""
