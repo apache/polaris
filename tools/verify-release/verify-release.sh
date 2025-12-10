@@ -262,7 +262,10 @@ function verify_checksums {
     echo -n ".. $fn ... "
     if [[ -f "$fn.asc" ]] ; then
       echo -n "sig "
-      proc_exec "$fn : Invalid signature" gpg --no-default-keyring --keyring "${gpg_keyring}" --verify "$fn.asc" "$fn" || true
+      # gpg signature check:
+      # --no-auto-check-trustdb             to prevent a "too many open files" error on macOS
+      # --no-default-keyring + --keyring    to only use the KEYS file of the project
+      proc_exec "$fn : Invalid signature" gpg --no-auto-check-trustdb --no-default-keyring --keyring "${gpg_keyring}" --verify "$fn.asc" "$fn" || true
     else
       log_fatal "$fn : Mandatory ASC signature missing"
     fi
