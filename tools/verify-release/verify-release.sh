@@ -274,43 +274,42 @@ function verify_checksums {
     # especially on macOS with the quite long temp dir paths.
     cd "${dir}"
     find . -mindepth 1 -type f "${find_excludes[@]}" | while read -r fn ; do
-    echo -n ".. $fn ... "
-    if [[ -f "$fn.asc" ]] ; then
-      echo -n "sig "
-      proc_exec "$fn : Invalid signature" gpg "${gpg_verify_options[@]}" --keyring "${gpg_keyring}" --verify "$fn.asc" "$fn" || true
-    else
-      log_fatal "$fn : Mandatory ASC signature missing"
-    fi
-    if [[ -f "$fn.sha512" ]] ; then
-      echo -n "sha512 "
-      provided="$(cut -d\  -f1 < "$fn.sha512")" || log_fatal "sha512 provided $fn failed"
-      calc="$($sha512_exec -b "$fn" | cut -d\  -f1)" || log_fatal "sha512 calc $fn failed"
-      [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA512 $calc - provided $provided"
-    else
-      log_fatal "$fn : Mandatory SHA512 missing"
-    fi
-    if [[ -f "$fn.sha256" ]] ; then
-      echo -n "sha256 "
-      provided="$(cut -d\  -f1 < "$fn.sha256")" || log_fatal "sha256 provided $fn failed"
-      calc="$($sha256_exec -b "$fn" | cut -d\  -f1)" || log_fatal "sha256 calc $fn failed"
-      [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA256 $calc - provided $provided"
-    fi
-    if [[ -f "$fn.sha1" ]] ; then
-      echo -n "sha1 "
-      provided="$(cut -d\  -f1 < "$fn.sha1")" || log_fatal "sha1 provided $fn failed"
-      calc="$($sha1_exec -b "$fn" | cut -d\  -f1)" || log_fatal "sha1 calc $fn failed"
-      [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA1 $calc - provided $provided"
-    fi
-    if [[ -f "$fn.md5" ]] ; then
-      echo -n "md5 "
-      provided="$(cut -d\  -f1 < "$fn.md5")" || log_fatal "md5 provided $fn failed"
-      calc="$(md5sum -b "$fn" | cut -d\  -f1)" || log_fatal "md5 calc $fn failed"
-      [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected MD5 $calc - provided $provided"
-    fi
-    echo ""
-  done || log_fatal "find failed, please try again"
+      echo -n ".. $fn ... "
+      if [[ -f "$fn.asc" ]] ; then
+        echo -n "sig "
+        proc_exec "$fn : Invalid signature" gpg "${gpg_verify_options[@]}" --keyring "${gpg_keyring}" --verify "$fn.asc" "$fn" || true
+      else
+        log_fatal "$fn : Mandatory ASC signature missing"
+      fi
+      if [[ -f "$fn.sha512" ]] ; then
+        echo -n "sha512 "
+        provided="$(cat "$fn.sha512")" || log_fatal "read of $dir/$fn.sha512 failed"
+        calc="$($sha512_exec -b "$fn")" || log_fatal "sha512 calc of $dir/$fn failed"
+        [[ "${provided/ */}" != "${calc/ */}" ]] && log_fatal "$fn : Expected SHA512 $calc - provided $provided"
+      else
+        log_fatal "$fn : Mandatory SHA512 missing"
+      fi
+      if [[ -f "$fn.sha256" ]] ; then
+        echo -n "sha256 "
+        provided="$(cat "$fn.sha256")" || log_fatal "read of $dir/$fn.sha256 failed"
+        calc="$($sha256_exec -b "$fn")" || log_fatal "sha256 calc of $dir/$fn failed"
+        [[ "${provided/ */}" != "${calc/ */}" ]] && log_fatal "$fn : Expected SHA256 $calc - provided $provided"
+      fi
+      if [[ -f "$fn.sha1" ]] ; then
+        echo -n "sha1 "
+        provided="$(cat "$fn.sha1")" || log_fatal "read of $dir/$fn.sha1 failed"
+        calc="$($sha1_exec -b "$fn")" || log_fatal "sha1 calc of $dir/$fn failed"
+        [[ "${provided/ */}" != "${calc/ */}" ]] && log_fatal "$fn : Expected SHA1 $calc - provided $provided"
+      fi
+      if [[ -f "$fn.md5" ]] ; then
+        echo -n "md5 "
+        provided="$(cat "$fn.md5")" || log_fatal "read of $dir/$fn.md5 failed"
+        calc="$(md5sum -b "$fn")" || log_fatal "md5 calc of $dir/$fn failed"
+        [[ "${provided/ */}" != "${calc/ */}" ]] && log_fatal "$fn : Expected MD5 $calc - provided $provided"
+      fi
+      echo ""
+    done || log_fatal "verify_checksums failed, please inspect previously logged errors"
   )
-  log_part_end
 }
 
 function report_mismatch {
