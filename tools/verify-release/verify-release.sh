@@ -458,10 +458,10 @@ log_part_end
 
 # Check that the the set of locally built Maven artifacts and staged Maven artifacts is the same.
 log_part_start "Comparing Maven build artifacts ..."
-find "${maven_local_dir}" -mindepth 2 -type f "${find_excludes[@]}" -printf '%P\n' \
+(cd "${maven_local_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
   | sort \
   > "${temp_dir}/maven-local-files"
-find "${maven_repo_dir}" -mindepth 2 -type f "${find_excludes[@]}" -printf '%P\n' \
+(cd "${maven_repo_dir}" ; find . -mindepth 1 -type f "${find_excludes[@]}" -print) \
   | sort \
   > "${temp_dir}/maven-repo-files"
 proc_exec "List of locally build Maven artifacts and staged artifacts differs!" \
