@@ -382,7 +382,13 @@ if ! which wget2 > /dev/null; then
 fi
 
 # Prefer the native tools, if available. It doesn't matter on Linux, but it's important for macOS as shasum,
-# implemented in Perl, can cause problems surfacing as a Perl compilation issue.
+# implemented in Perl, can cause problems surfacing as a Perl compilation issue:
+#   Can't locate warnings/register.pm in @INC (you may need to install the warnings::register module) (@INC contains: /Library/Perl/5.34/darwin-thread-multi-2level /Library/Perl/5.34 /Network/Library/Perl/5.34/darwin-thread-multi-2level /Network/Library/Perl/5.34 /Library/Perl/Updates/5.34.1 /System/Library/Perl/5.34/darwin-thread-multi-2level /System/Library/Perl/5.34 /System/Library/Perl/Extras/5.34/darwin-thread-multi-2level /System/Library/Perl/Extras/5.34) at /System/Library/Perl/5.34/vars.pm line 7.
+#   BEGIN failed--compilation aborted at /System/Library/Perl/5.34/vars.pm line 7.
+#   Compilation failed in require at /System/Library/Perl/5.34/Getopt/Long.pm line 20.
+#   BEGIN failed--compilation aborted at /System/Library/Perl/5.34/Getopt/Long.pm line 20.
+#   Compilation failed in require at /usr/bin/shasum line 23.
+#   BEGIN failed--compilation aborted at /usr/bin/shasum line 23
 sha256_exec="shasum -a 256"
 which sha256sum > /dev/null && sha256_exec=sha256sum
 sha512_exec="shasum -a 512"
