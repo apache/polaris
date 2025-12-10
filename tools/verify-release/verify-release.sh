@@ -388,7 +388,7 @@ if [[ -z $git_sha || -z $version || -z $rc_num || -z $maven_repo_id ]]; then
 fi
 
 tar_opts=""
-[[ $OSTYPE == "linux-gnu" ]] && tar_opts="--warning-no-timestamp"
+[[ $OSTYPE == "linux-gnu" ]] && tar_opts="--warning=no-timestamp"
 
 touch "${failures_file}"
 
