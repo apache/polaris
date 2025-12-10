@@ -32,13 +32,13 @@ import com.google.auth.oauth2.CredentialAccessBoundary;
 import com.google.auth.oauth2.DownscopedCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
+import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
+import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
+import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
-import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
-import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
-import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
 import com.google.cloud.storage.StorageOptions;
 import com.google.protobuf.Timestamp;
 import java.io.IOException;
@@ -60,7 +60,6 @@ import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguratio
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentMatcher;
 import org.mockito.Mockito;
 
 class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
