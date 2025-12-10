@@ -309,7 +309,8 @@ function verify_checksums {
       [[ "${provided}" != "${calc}" ]] && log_fatal "$dir/$fn : Expected MD5 $calc - provided $provided"
     fi
     echo ""
-  done < <(find . -mindepth 1 -type f "${find_excludes[@]}") || log_fatal "verify_checksums failed, please inspect previously logged errors"
+  done < <(find . -mindepth 1 -type f "${find_excludes[@]}") || \
+    log_fatal "verify_checksums failed, please inspect previously logged errors"
 }
 
 function report_mismatch {
@@ -375,7 +376,8 @@ function compare_binary_file {
   filename="$2"
   local_file="$3/${filename}"
   repo_file="$4/${filename}"
-  diff "${local_file}" "${repo_file}" > /dev/null || report_mismatch "${local_file}" "${repo_file}" "Locally built and staged $name $filename differ"
+  diff "${local_file}" "${repo_file}" > /dev/null || \
+    report_mismatch "${local_file}" "${repo_file}" "Locally built and staged $name $filename differ"
 }
 
 missing_tools=()
@@ -455,9 +457,8 @@ mkdir -p "${worktree_dir}"
 )
 read -r git_sha_on_tag < <(git -C "${worktree_dir}" rev-parse HEAD)
 log_info "Git commit on tag '${git_tag_full}':   ${git_sha_on_tag}"
-if [[ "$git_sha_on_tag" != "$git_sha" ]]; then
+[[ "$git_sha_on_tag" != "$git_sha" ]] && \
   log_fatal "Expected Git SHA ${git_sha} is different from the current SHA ${git_sha_on_tag}"
-fi
 log_part_end
 
 log_part_start "Verify mandatory files in source tree"
@@ -510,13 +511,10 @@ while read -r fn ; do
   echo -n "diff "
   compare_binary_file "Maven repository artifact" "${fn}" "${maven_local_dir}" "${maven_repo_dir}"
   # verify that the "main" and sources jars contain LICENSE + NOTICE files
-  echo -n "content "
-  [[ "${fn}" =~ .*-$version(-sources)?[.]jar ]] && (
-    echo -n "zipinfo "
-    if [[ $(zipinfo -1 "${maven_repo_dir}/${fn}" | grep --extended-regexp --count "^META-INF/(LICENSE|NOTICE)$") -ne 2 ]] ; then
-      log_fatal "${fn}: Mandatory LICENSE/NOTICE files not in META-INF/"
-    fi
-  )
+  [[ "${fn}" =~ .*-$version(-sources)?[.]jar &&
+    $(zipinfo -1 "${maven_repo_dir}/${fn}" | grep --extended-regexp --count "^META-INF/(LICENSE|NOTICE)$") -ne 2
+    ]] &&
+    log_fatal "${fn}: Mandatory LICENSE/NOTICE files not in META-INF/"
   echo ""
 done < "${temp_dir}/maven-local-files"
 log_part_end
@@ -525,13 +523,11 @@ log_part_start "Comparing main distribution artifacts"
 compare_binary_file "source tarball" "apache-polaris-${version}.tar.gz" "${worktree_dir}/build/distributions" "${dist_dir}"
 dist_file_prefix="polaris-bin-${version}"
 compare_binary_file "Polaris distribution tarball" "${dist_file_prefix}.tgz" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
-if [[ $(tar -tf "${dist_dir}/${dist_file_prefix}.tgz" | grep --extended-regexp --count "^${dist_file_prefix}/(DISCLAIMER|LICENSE|NOTICE)$") -ne 3 ]] ; then
+[[ $(tar -tf "${dist_dir}/${dist_file_prefix}.tgz" | grep --extended-regexp --count "^${dist_file_prefix}/(DISCLAIMER|LICENSE|NOTICE)$") -ne 3 ]] && \
   log_fatal "${dist_file_prefix}.tgz: Mandatory DISCLAIMER/LICENSE/NOTICE files not in ${dist_file_prefix}/"
-fi
 compare_binary_file "Polaris distribution zip" "${dist_file_prefix}.zip" "${worktree_dir}/runtime/distribution/build/distributions" "${dist_dir}"
-if [[ $(zipinfo -1 "${dist_dir}/${dist_file_prefix}.zip" | grep --extended-regexp --count "^${dist_file_prefix}/(DISCLAIMER|LICENSE|NOTICE)$") -ne 3 ]] ; then
+[[ $(zipinfo -1 "${dist_dir}/${dist_file_prefix}.zip" | grep --extended-regexp --count "^${dist_file_prefix}/(DISCLAIMER|LICENSE|NOTICE)$") -ne 3 ]] && \
   log_fatal "${dist_file_prefix}.zip: Mandatory DISCLAIMER/LICENSE/NOTICE files not in ${dist_file_prefix}/"
-fi
 log_part_end
 
 log_part_start "Comparing helm chart artifacts"
