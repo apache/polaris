@@ -269,7 +269,7 @@ function verify_checksums {
     if [[ -f "$fn.sha512" ]] ; then
       echo -n "sha512 "
       provided="$(cut -d\  -f1 < "$fn.sha512")" || log_fatal "sha512 provided $fn failed"
-      calc="$(shasum -b -a 512 "$fn" | cut -d\  -f1)" || log_fatal "sha512 calc $fn failed"
+      calc="$($sha512_exec -b "$fn" | cut -d\  -f1)" || log_fatal "sha512 calc $fn failed"
       [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA512 $calc - provided $provided"
     else
       log_fatal "$fn : Mandatory SHA512 missing"
@@ -277,13 +277,13 @@ function verify_checksums {
     if [[ -f "$fn.sha256" ]] ; then
       echo -n "sha256 "
       provided="$(cut -d\  -f1 < "$fn.sha256")" || log_fatal "sha256 provided $fn failed"
-      calc="$(shasum -b -a 256 "$fn" | cut -d\  -f1)" || log_fatal "sha256 calc $fn failed"
+      calc="$(sha256_exec -b "$fn" | cut -d\  -f1)" || log_fatal "sha256 calc $fn failed"
       [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA256 $calc - provided $provided"
     fi
     if [[ -f "$fn.sha1" ]] ; then
       echo -n "sha1 "
       provided="$(cut -d\  -f1 < "$fn.sha1")" || log_fatal "sha1 provided $fn failed"
-      calc="$(shasum -b -a 1 "$fn" | cut -d\  -f1)" || log_fatal "sha1 calc $fn failed"
+      calc="$($sha1_exec -b "$fn" | cut -d\  -f1)" || log_fatal "sha1 calc $fn failed"
       [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA1 $calc - provided $provided"
     fi
     if [[ -f "$fn.md5" ]] ; then
@@ -380,6 +380,13 @@ if ! which wget2 > /dev/null; then
   log_warn "For improved website mirroring performance consider installing 'wget2' as it allows multi-threaded downloads."
   log_warn "  wget2 however may print misleading warnings like 'Failed to parse date '"
 fi
+
+sha256_exec="shasum -a 256"
+[[ -x sha256sum ]] && sha256_exec=sha256sum
+sha512_exec="shasum -a 512"
+[[ -x sha512sum ]] && sha512_exec=sha512sum
+sha1_exec="shasum -a 1"
+[[ -x sha1sum ]] && sha1_exec=sha1sum
 
 if [[ -z $git_sha || -z $version || -z $rc_num || -z $maven_repo_id ]]; then
   echo "Mandatory parameter missing" > /dev/stderr
