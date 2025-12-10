@@ -382,11 +382,11 @@ if ! which wget2 > /dev/null; then
 fi
 
 sha256_exec="shasum -a 256"
-[[ -x sha256sum ]] && sha256_exec=sha256sum
+which sha256sum > /dev/null && sha256_exec=sha256sum
 sha512_exec="shasum -a 512"
-[[ -x sha512sum ]] && sha512_exec=sha512sum
+which sha512sum > /dev/null && sha512_exec=sha512sum
 sha1_exec="shasum -a 1"
-[[ -x sha1sum ]] && sha1_exec=sha1sum
+which sha1sum > /dev/null && sha1_exec=sha1sum
 
 if [[ -z $git_sha || -z $version || -z $rc_num || -z $maven_repo_id ]]; then
   echo "Mandatory parameter missing" > /dev/stderr
