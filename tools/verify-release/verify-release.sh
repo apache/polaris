@@ -375,16 +375,12 @@ function compare_binary_file {
   filename="$2"
   local_file="$3/${filename}"
   repo_file="$4/${filename}"
-  if ! diff "${local_file}" "${repo_file}" > /dev/null ; then
-    report_mismatch "${local_file}" "${repo_file}" "Locally built and staged $name $filename differ"
-  fi
+  diff "${local_file}" "${repo_file}" > /dev/null || report_mismatch "${local_file}" "${repo_file}" "Locally built and staged $name $filename differ"
 }
 
 missing_tools=()
 for mandatory_tool in wget gunzip find git helm java gpg md5sum shasum tar curl zipcmp zipinfo ; do
-  if ! which "${mandatory_tool}" > /dev/null; then
-    missing_tools+=("${mandatory_tool}")
-  fi
+  which "${mandatory_tool}" > /dev/null || missing_tools+=("${mandatory_tool}")
 done
 if [[ ${#missing_tools} -ne 0 ]]; then
   log_fatal "Mandatory tools ${missing_tools[*]} are missing, please install those first."
@@ -507,15 +503,21 @@ log_part_end
 
 # Verify that the locally built Maven artifacts are reproducible (binary equal)
 log_part_start "Comparing Maven repository artifacts, this will take a little while..."
+echo "  Local Maven repo:       ${maven_local_dir}"
+echo "  Downloaded Maven repo:  ${maven_repo_dir}"
 while read -r fn ; do
-  echo ".. $fn ..."
+  echo -n ".. $fn ... "
+  echo -n "diff "
   compare_binary_file "Maven repository artifact" "${fn}" "${maven_local_dir}" "${maven_repo_dir}"
   # verify that the "main" and sources jars contain LICENSE + NOTICE files
+  echo -n "content "
   [[ "${fn}" =~ .*-$version(-sources)?[.]jar ]] && (
+    echo -n "zipinfo "
     if [[ $(zipinfo -1 "${maven_repo_dir}/${fn}" | grep --extended-regexp --count "^META-INF/(LICENSE|NOTICE)$") -ne 2 ]] ; then
       log_fatal "${fn}: Mandatory LICENSE/NOTICE files not in META-INF/"
     fi
   )
+  echo ""
 done < "${temp_dir}/maven-local-files"
 log_part_end
 
