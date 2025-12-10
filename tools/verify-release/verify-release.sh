@@ -134,6 +134,14 @@ maven_local_dir="${temp_dir}/maven-local"
 keys_file="${temp_dir}/KEYS"
 gpg_keyring="${temp_dir}/keyring.gpg"
 
+# gpg signature verification options:
+gpg_verify_options=(
+  "--no-auto-key-retrieve"    # don't retrieve keys automatically
+  "--no-auto-key-import"      # don't import keys automatically
+  "--no-auto-check-trustdb"   # to prevent a "too many open files" error on macOS
+  "--no-default-keyring"      # to only use the (keyring generated from the) KEYS file of the project
+)
+
 failures_file="$(pwd)/${run_id}.log"
 
 dist_url_prefix="https://dist.apache.org/repos/dist/dev/incubator/polaris/"
@@ -258,14 +266,15 @@ function verify_checksums {
   local dir
   dir="$1"
   log_part_start "Verifying signatures and checksums in ${dir} ..."
-  find "${dir}" -mindepth 1 -type f "${find_excludes[@]}" | while read -r fn ; do
+  (
+    # Run in a sub-shell with cwd $dir to prevent overly long progress output,
+    # especially on macOS with the quite long temp dir paths.
+    cd "${dir}"
+    find . -mindepth 1 -type f "${find_excludes[@]}" | while read -r fn ; do
     echo -n ".. $fn ... "
     if [[ -f "$fn.asc" ]] ; then
       echo -n "sig "
-      # gpg signature check:
-      # --no-auto-check-trustdb             to prevent a "too many open files" error on macOS
-      # --no-default-keyring + --keyring    to only use the KEYS file of the project
-      proc_exec "$fn : Invalid signature" gpg --no-auto-check-trustdb --no-default-keyring --keyring "${gpg_keyring}" --verify "$fn.asc" "$fn" || true
+      proc_exec "$fn : Invalid signature" gpg "${gpg_verify_options[@]}" --keyring "${gpg_keyring}" --verify "$fn.asc" "$fn" || true
     else
       log_fatal "$fn : Mandatory ASC signature missing"
     fi
@@ -297,6 +306,7 @@ function verify_checksums {
     fi
     echo ""
   done || log_fatal "find failed, please try again"
+  )
   log_part_end
 }
 
