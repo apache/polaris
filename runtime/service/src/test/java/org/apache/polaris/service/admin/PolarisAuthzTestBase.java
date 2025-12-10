@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -226,13 +227,20 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
+  private static final AtomicInteger REALM_COUNTER = new AtomicInteger();
+
   @BeforeEach
   public void before(TestInfo testInfo) {
     storageCredentialCache.invalidateAll();
 
-    RealmContext realmContext = testInfo::getDisplayName;
-    QuarkusMock.installMockForType(realmContext, RealmContext.class);
+    var realmId =
+        testInfo.getTestMethod().orElseThrow().getName() + "_" + REALM_COUNTER.incrementAndGet();
+    RealmContext realmContext = () -> realmId;
     realmContextHolder.set(realmContext);
+
+    bootstrapRealm(realmContext.getRealmIdentifier());
+
+    QuarkusMock.installMockForType(realmContext, RealmContext.class);
     polarisContext = callContext.getPolarisCallContext();
 
     polarisAuthorizer = new PolarisAuthorizerImpl(realmConfig);
@@ -419,6 +427,8 @@ public abstract class PolarisAuthzTestBase {
         .withQuery("spark", VIEW_QUERY)
         .create();
   }
+
+  protected void bootstrapRealm(String realmIdentifier) {}
 
   @AfterEach
   public void after() {
