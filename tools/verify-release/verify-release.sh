@@ -501,8 +501,10 @@ mkdir -p "${helm_work_dir}/local" "${helm_work_dir}/staged"
 find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
 proc_exec "Helm packaging failed" helm package --destination "${helm_work_dir}" "${worktree_dir}/helm/polaris"
 helm_package_file="polaris-${version}.tgz"
-tar --warning=no-timestamp -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
-tar --warning=no-timestamp -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
+helm_tar_opts=""
+[[ $OSTYPE == "linux-gnu" ]] && helm_tar_opts="--warning-no-timestamp"
+tar ${helm_tar_opts} -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
+tar ${helm_tar_opts} -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
 proc_exec "Helm package ${helm_package_file} contents" diff -r "${helm_work_dir}/local" "${helm_work_dir}/staged"
 [[ -e "${helm_work_dir}/staged/polaris/DISCLAIMER" ]] || log_fatal "Mandatory DISCLAIMER file missing in Helm package ${helm_package_file}"
 [[ -e "${helm_work_dir}/staged/polaris/LICENSE" ]] || log_fatal "Mandatory LICENSE file missing in Helm package ${helm_package_file}"
