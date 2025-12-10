@@ -20,7 +20,7 @@
 services:
 
   mon1:
-    image: quay.io/ceph/ceph:v19.2.3
+    image: quay.io/ceph/ceph:v20.2.0
     entrypoint: "/bin/sh"
     command:
       - "-c"
@@ -49,7 +49,7 @@ services:
       - ./bootstrap-osd:/var/lib/ceph/bootstrap-osd
 
   mgr:
-    image: quay.io/ceph/ceph:v19.2.3
+    image: quay.io/ceph/ceph:v20.2.0
     entrypoint: "/bin/sh"
     command:
       - "-c"
@@ -68,7 +68,7 @@ services:
   osd1:
     pid: host
     privileged: true
-    image: quay.io/ceph/ceph:v19.2.3
+    image: quay.io/ceph/ceph:v20.2.0
     environment:
       OSD_UUID_1: ${OSD_UUID_1}
     entrypoint: "/bin/sh"
@@ -96,7 +96,7 @@ services:
       - mon1
 
   rgw1:
-    image: quay.io/ceph/ceph:v19.2.3
+    image: quay.io/ceph/ceph:v20.2.0
     container_name: rgw1
     environment:
       MON_IP: ${MON_IP}
