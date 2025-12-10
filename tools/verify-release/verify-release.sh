@@ -508,6 +508,7 @@ log_part_end
 # Verify that the locally built Maven artifacts are reproducible (binary equal)
 log_part_start "Comparing Maven repository artifacts, this will take a little while..."
 while read -r fn ; do
+  echo ".. $fn ..."
   compare_binary_file "Maven repository artifact" "${fn}" "${maven_local_dir}" "${maven_repo_dir}"
   # verify that the "main" and sources jars contain LICENSE + NOTICE files
   [[ "${fn}" =~ .*-$version(-sources)?[.]jar ]] && (
