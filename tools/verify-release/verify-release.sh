@@ -381,6 +381,8 @@ fi
 # .sha256/sha512 files with a trailing character added
 if ! which wget2 > /dev/null; then
   [[ $OSTYPE == "linux-gnu" ]] && log_warn "For improved website mirroring performance consider installing 'wget2' as it allows multi-threaded downloads."
+else
+  [[ $OSTYPE != "linux-gnu" ]] && log_warn "'wget2' can cause broken checksum files on macOS, consider uninstalling the tool."
 fi
 
 if [[ -z $git_sha || -z $version || -z $rc_num || -z $maven_repo_id ]]; then
