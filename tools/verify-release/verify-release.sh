@@ -108,6 +108,8 @@ fatal_reported=0
 finished=0
 
 run_id="polaris-release-verify-$(date "+%Y-%m-%d-%H-%M-%S")"
+# Note mktemp/GNU yields no trailing slash, mktemp/BSD does yield a trailing slash.
+# The difference is not an issue though.
 temp_dir="$(mktemp --tmpdir --directory "${run_id}-XXXXXXXXX")"
 function purge_temp_dir {
   if [[ $keep_temp_dir -eq 0 ]] ; then
