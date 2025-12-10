@@ -277,7 +277,7 @@ function verify_checksums {
     if [[ -f "$fn.sha256" ]] ; then
       echo -n "sha256 "
       provided="$(cut -d\  -f1 < "$fn.sha256")" || log_fatal "sha256 provided $fn failed"
-      calc="$(sha256_exec -b "$fn" | cut -d\  -f1)" || log_fatal "sha256 calc $fn failed"
+      calc="$($sha256_exec -b "$fn" | cut -d\  -f1)" || log_fatal "sha256 calc $fn failed"
       [[ "$provided" != "$calc" ]] && log_fatal "$fn : Expected SHA256 $calc - provided $provided"
     fi
     if [[ -f "$fn.sha1" ]] ; then
@@ -381,6 +381,8 @@ if ! which wget2 > /dev/null; then
   log_warn "  wget2 however may print misleading warnings like 'Failed to parse date '"
 fi
 
+# Prefer the native tools, if available. It doesn't matter on Linux, but it's important for macOS as shasum,
+# implemented in Perl, can cause problems surfacing as a Perl compilation issue.
 sha256_exec="shasum -a 256"
 which sha256sum > /dev/null && sha256_exec=sha256sum
 sha512_exec="shasum -a 512"
