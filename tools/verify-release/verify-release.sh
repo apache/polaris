@@ -142,6 +142,9 @@ gpg_verify_options=(
   "--no-default-keyring"      # to only use the (keyring generated from the) KEYS file of the project
 )
 
+# Increase ulimit (open files), primarily for gpg verify operations on macOS
+ulimit -n 8191
+
 failures_file="$(pwd)/${run_id}.log"
 
 dist_url_prefix="https://dist.apache.org/repos/dist/dev/incubator/polaris/"
