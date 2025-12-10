@@ -110,7 +110,7 @@ finished=0
 run_id="polaris-release-verify-$(date "+%Y-%m-%d-%H-%M-%S")"
 # Note mktemp/GNU yields no trailing slash, mktemp/BSD does yield a trailing slash.
 # The difference is not an issue though.
-temp_dir="$(mktemp --tmpdir --directory "${run_id}-XXXXXXXXX")"
+read -r temp_dir < <(mktemp --tmpdir --directory "${run_id}-XXXXXXXXX")
 function purge_temp_dir {
   if [[ $keep_temp_dir -eq 0 ]] ; then
     if [[ $fatal_reported -eq 0 && $finished -eq 1 ]] ; then
@@ -256,60 +256,60 @@ function mirror {
   # The following is a hack for wget2, which behaves a bit different than wget.
   # If the server returns `Content-Type: application/x-gzip`, the file is stored gzipped,
   # although it's "plain text". Leaving it as gzip breaks signature + checksum tests.
-  find "${dir}" -name "*.prov" | while read -r helmProv; do
+  while read -r helmProv; do
     if gunzip -c "${helmProv}" > /dev/null 2>&1 ; then
       mv "${helmProv}" "${helmProv}.gz"
       gunzip "${helmProv}.gz"
     fi
-  done || log_fatal "find failed, please try again"
+  done < <(find "${dir}" -name "*.prov") || log_fatal "find failed, please try again"
   log_part_end
 }
 
 function verify_checksums {
   local dir
   dir="$1"
+  local provided
+  local calc
+  local fn
+
   log_part_start "Verifying signatures and checksums in ${dir} ..."
-  (
-    # Run in a sub-shell with cwd $dir to prevent overly long progress output,
-    # especially on macOS with the quite long temp dir paths.
-    cd "${dir}"
-    find . -mindepth 1 -type f "${find_excludes[@]}" | while read -r fn ; do
-      echo -n ".. $fn ... "
-      if [[ -f "$fn.asc" ]] ; then
-        echo -n "sig "
-        proc_exec "$fn : Invalid signature" gpg "${gpg_verify_options[@]}" --keyring "${gpg_keyring}" --verify "$fn.asc" "$fn" || true
-      else
-        log_fatal "$fn : Mandatory ASC signature missing"
-      fi
-      if [[ -f "$fn.sha512" ]] ; then
-        echo -n "sha512 "
-        provided="$(cat "$fn.sha512")" || log_fatal "read of $dir/$fn.sha512 failed"
-        calc="$($sha512_exec -b "$fn")" || log_fatal "sha512 calc of $dir/$fn failed"
-        [[ "${provided/ */}" != "${calc/ */}" ]] && log_fatal "$fn : Expected SHA512 $calc - provided $provided"
-      else
-        log_fatal "$fn : Mandatory SHA512 missing"
-      fi
-      if [[ -f "$fn.sha256" ]] ; then
-        echo -n "sha256 "
-        provided="$(cat "$fn.sha256")" || log_fatal "read of $dir/$fn.sha256 failed"
-        calc="$($sha256_exec -b "$fn")" || log_fatal "sha256 calc of $dir/$fn failed"
-        [[ "${provided/ */}" != "${calc/ */}" ]] && log_fatal "$fn : Expected SHA256 $calc - provided $provided"
-      fi
-      if [[ -f "$fn.sha1" ]] ; then
-        echo -n "sha1 "
-        provided="$(cat "$fn.sha1")" || log_fatal "read of $dir/$fn.sha1 failed"
-        calc="$($sha1_exec -b "$fn")" || log_fatal "sha1 calc of $dir/$fn failed"
-        [[ "${provided/ */}" != "${calc/ */}" ]] && log_fatal "$fn : Expected SHA1 $calc - provided $provided"
-      fi
-      if [[ -f "$fn.md5" ]] ; then
-        echo -n "md5 "
-        provided="$(cat "$fn.md5")" || log_fatal "read of $dir/$fn.md5 failed"
-        calc="$(md5sum -b "$fn")" || log_fatal "md5 calc of $dir/$fn failed"
-        [[ "${provided/ */}" != "${calc/ */}" ]] && log_fatal "$fn : Expected MD5 $calc - provided $provided"
-      fi
-      echo ""
-    done || log_fatal "verify_checksums failed, please inspect previously logged errors"
-  )
+  cd "${dir}"
+  while read -r fn ; do
+    echo -n ".. $fn ... "
+    if [[ -f "$fn.asc" ]] ; then
+      echo -n "sig "
+      proc_exec "$fn : Invalid signature" gpg "${gpg_verify_options[@]}" --keyring "${gpg_keyring}" --verify "$fn.asc" "$fn" || true
+    else
+      log_fatal "$dir/$fn : Mandatory ASC signature missing"
+    fi
+    if [[ -f "$fn.sha512" ]] ; then
+      echo -n "sha512 "
+      read -r -n 128 provided < "$fn.sha512" || log_fatal "read of $dir/$fn.sha512 failed"
+      read -r -n 128 calc < <($sha512_exec -b "$fn") || log_fatal "sha512 calc of $dir/$fn failed"
+      [[ "${provided}" != "${calc}" ]] && log_fatal "$dir/$fn : Expected SHA512 $calc - provided $provided"
+    else
+      log_fatal "$dir/$fn : Mandatory SHA512 missing"
+    fi
+    if [[ -f "$fn.sha256" ]] ; then
+      echo -n "sha256 "
+      read -r -n 64 provided < "$fn.sha256" || log_fatal "read of $dir/$fn.sha256 failed"
+      read -r -n 64 calc < <($sha256_exec -b "$fn") || log_fatal "sha256 calc of $dir/$fn failed"
+      [[ "${provided}" != "${calc}" ]] && log_fatal "$dir/$fn : Expected SHA256 $calc - provided $provided"
+    fi
+    if [[ -f "$fn.sha1" ]] ; then
+      echo -n "sha1 "
+      read -r -n 40 provided < "$fn.sha1" || log_fatal "read of $dir/$fn.sha1 failed"
+      read -r -n 40 calc < <($sha1_exec -b "$fn") || log_fatal "sha1 calc of $dir/$fn failed"
+      [[ "${provided}" != "${calc}" ]] && log_fatal "$dir/$fn : Expected SHA1 $calc - provided $provided"
+    fi
+    if [[ -f "$fn.md5" ]] ; then
+      echo -n "md5 "
+      read -r -n 32 provided < "$fn.md5" || log_fatal "read of $dir/$fn.md5 failed"
+      read -r -n 32 calc < <(md5sum -b "$fn") || log_fatal "md5 calc of $dir/$fn failed"
+      [[ "${provided}" != "${calc}" ]] && log_fatal "$dir/$fn : Expected MD5 $calc - provided $provided"
+    fi
+    echo ""
+  done < <(find . -mindepth 1 -type f "${find_excludes[@]}") || log_fatal "verify_checksums failed, please inspect previously logged errors"
 }
 
 function report_mismatch {
@@ -457,7 +457,7 @@ mkdir -p "${worktree_dir}"
   proc_exec "git fetch failed" git fetch origin tag "${git_tag_full}"
   proc_exec "git checkout failed" git checkout "${git_tag_full}"
 )
-git_sha_on_tag="$(cd "${worktree_dir}" ; git rev-parse HEAD)"
+read -r git_sha_on_tag < <(git -C "${worktree_dir}" rev-parse HEAD)
 log_info "Git commit on tag '${git_tag_full}':   ${git_sha_on_tag}"
 if [[ "$git_sha_on_tag" != "$git_sha" ]]; then
   log_fatal "Expected Git SHA ${git_sha} is different from the current SHA ${git_sha_on_tag}"
