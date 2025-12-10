@@ -506,17 +506,16 @@ log_part_end
 log_part_start "Comparing Maven repository artifacts, this will take a little while..."
 echo "  Local Maven repo:       ${maven_local_dir}"
 echo "  Downloaded Maven repo:  ${maven_repo_dir}"
+echo "Checking for binary equality..."
 while read -r fn ; do
-  echo -n ".. $fn ... "
-  echo -n "diff "
   compare_binary_file "Maven repository artifact" "${fn}" "${maven_local_dir}" "${maven_repo_dir}"
-  # verify that the "main" and sources jars contain LICENSE + NOTICE files
-  [[ "${fn}" =~ .*-$version(-sources)?[.]jar &&
-    $(zipinfo -1 "${maven_repo_dir}/${fn}" | grep --extended-regexp --count "^META-INF/(LICENSE|NOTICE)$") -ne 2
-    ]] &&
-    log_fatal "${fn}: Mandatory LICENSE/NOTICE files not in META-INF/"
-  echo ""
 done < "${temp_dir}/maven-local-files"
+# verify that the "main" and sources jars contain LICENSE + NOTICE files
+echo "Checking for mandatory jar file content..."
+while read -r fn ; do
+  [[ $(zipinfo -1 "${maven_repo_dir}/${fn}" | grep --extended-regexp --count "^META-INF/(LICENSE|NOTICE)$") -ne 2 ]] && \
+    log_fatal "${fn}: Mandatory LICENSE/NOTICE files not in META-INF/"
+done < <(grep --extended-regexp ".*-$version(-sources)?[.]jar$" < "${temp_dir}/maven-local-files")
 log_part_end
 
 log_part_start "Comparing main distribution artifacts"
