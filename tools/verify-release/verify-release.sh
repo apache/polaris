@@ -376,9 +376,11 @@ if [[ ${#missing_tools} -ne 0 ]]; then
   log_info " Note for macOS: zipcmp can be installed with brew via libzip"
   exit 1
 fi
+# Do not recommend wget2 for macOS, it may cause "interesting" issues, for example
+# Spurious "Failed to parse date" warnings
+# .sha256/sha512 files with a trailing character added
 if ! which wget2 > /dev/null; then
-  log_warn "For improved website mirroring performance consider installing 'wget2' as it allows multi-threaded downloads."
-  log_warn "  wget2 however may print misleading warnings like 'Failed to parse date '"
+  [[ $OSTYPE == "linux-gnu" ]] && log_warn "For improved website mirroring performance consider installing 'wget2' as it allows multi-threaded downloads."
 fi
 
 if [[ -z $git_sha || -z $version || -z $rc_num || -z $maven_repo_id ]]; then
