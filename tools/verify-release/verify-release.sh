@@ -320,17 +320,17 @@ function report_mismatch {
     ;;
   *.tar.gz | *.tgz | *.tar)
     mkdir "${local_file}.extracted" "${repo_file}.extracted"
-    tar --warning=no-timestamp -xf "${local_file}" --directory "${local_file}.extracted" || true
+    tar ${tar_opts} -xf "${local_file}" --directory "${local_file}.extracted" || true
     log_info "  extracted to ${local_file}.extracted"
-    tar --warning=no-timestamp -xf "${repo_file}" --directory "${repo_file}.extracted" || true
+    tar ${tar_opts} -xf "${repo_file}" --directory "${repo_file}.extracted" || true
     log_info "  extracted to ${repo_file}.extracted"
     if proc_exec "${title}" diff --recursive "${local_file}.extracted" "${repo_file}.extracted"; then
       # Dump tar listing only when the contents are equal (to inspect mtime and posix attributes)
       log_warn "${title}"
       (
         echo "${title}" # log_warn above prints ANSI escape sequences
-        tar --warning=no-timestamp -tvf "${local_file}" > "${local_file}.contents-listing" || true
-        tar --warning=no-timestamp -tvf "${repo_file}" > "${repo_file}.contents-listing" || true
+        tar ${tar_opts} -tvf "${local_file}" > "${local_file}.contents-listing" || true
+        tar ${tar_opts} -tvf "${repo_file}" > "${repo_file}.contents-listing" || true
         echo "Diff of archives contents:"
         diff "${local_file}.contents-listing" "${repo_file}.contents-listing"
         echo ">>>>>>>>>>>>>>> tar tvf ${local_file}"
@@ -386,6 +386,9 @@ if [[ -z $git_sha || -z $version || -z $rc_num || -z $maven_repo_id ]]; then
   usage
   exit 1
 fi
+
+tar_opts=""
+[[ $OSTYPE == "linux-gnu" ]] && tar_opts="--warning-no-timestamp"
 
 touch "${failures_file}"
 
@@ -505,10 +508,8 @@ mkdir -p "${helm_work_dir}/local" "${helm_work_dir}/staged"
 find "${worktree_dir}/helm/polaris" -exec touch -d "1980-01-01 00:00:00" {} +
 proc_exec "Helm packaging failed" helm package --destination "${helm_work_dir}" "${worktree_dir}/helm/polaris"
 helm_package_file="polaris-${version}.tgz"
-helm_tar_opts=""
-[[ $OSTYPE == "linux-gnu" ]] && helm_tar_opts="--warning-no-timestamp"
-tar ${helm_tar_opts} -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
-tar ${helm_tar_opts} -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
+tar ${tar_opts} -xf "${helm_dir}/${helm_package_file}" --directory "${helm_work_dir}/staged" || true
+tar ${tar_opts} -xf "${helm_work_dir}/${helm_package_file}" --directory "${helm_work_dir}/local" || true
 proc_exec "Helm package ${helm_package_file} contents" diff -r "${helm_work_dir}/local" "${helm_work_dir}/staged"
 [[ -e "${helm_work_dir}/staged/polaris/DISCLAIMER" ]] || log_fatal "Mandatory DISCLAIMER file missing in Helm package ${helm_package_file}"
 [[ -e "${helm_work_dir}/staged/polaris/LICENSE" ]] || log_fatal "Mandatory LICENSE file missing in Helm package ${helm_package_file}"
