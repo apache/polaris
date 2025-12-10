@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +32,7 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -43,7 +45,8 @@ import org.mockito.Mockito;
 @TestProfile(IcebergCatalogHandlerFineGrainedDisabledTest.Profile.class)
 public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTestBase {
 
-  @jakarta.inject.Inject CallContextCatalogFactory callContextCatalogFactory;
+  @Inject CallContextCatalogFactory callContextCatalogFactory;
+  @Inject CatalogPrefixParser prefixParser;
 
   @SuppressWarnings("unchecked")
   private static Instance<org.apache.polaris.core.catalog.ExternalCatalogFactory>
@@ -60,6 +63,8 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
     return new IcebergCatalogHandler(
         diagServices,
         callContext,
+        prefixParser,
+        resolverFactory,
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
