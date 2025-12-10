@@ -1160,6 +1160,17 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             }
             return realmConfig.getConfig(config, catalogEntity);
           }
+
+          @Override
+          @SuppressWarnings("unchecked")
+          public <T> T getConfig(
+              PolarisConfiguration<T> config, Map<String, String> catalogProperties) {
+            // Override the specific configuration we want to test
+            if (config.equals(FeatureConfiguration.ENABLE_FINE_GRAINED_UPDATE_TABLE_PRIVILEGES)) {
+              return (T) Boolean.valueOf(fineGrainedAuthzEnabled);
+            }
+            return realmConfig.getConfig(config, catalogProperties);
+          }
         };
 
     // Mock the regular CallContext calls
