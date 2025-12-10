@@ -377,7 +377,7 @@ if [[ ${#missing_tools} -ne 0 ]]; then
   exit 1
 fi
 if ! which wget2 > /dev/null; then
-1  log_warn "For improved website mirroring performance consider installing 'wget2' as it allows multi-threaded downloads."
+  log_warn "For improved website mirroring performance consider installing 'wget2' as it allows multi-threaded downloads."
   log_warn "  wget2 however may print misleading warnings like 'Failed to parse date '"
 fi
 
