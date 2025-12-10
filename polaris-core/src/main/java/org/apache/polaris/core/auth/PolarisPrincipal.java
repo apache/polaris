@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /** Represents a {@link Principal} in the Polaris system. */
 @PolarisImmutable
@@ -113,5 +114,6 @@ public interface PolarisPrincipal extends Principal {
   Map<String, String> getProperties();
 
   /** Optionally returns the access token of the current user. */
+  @Value.Redacted
   Optional<String> getToken();
 }
