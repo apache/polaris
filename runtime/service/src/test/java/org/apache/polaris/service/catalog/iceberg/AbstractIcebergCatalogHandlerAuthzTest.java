@@ -67,6 +67,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -94,6 +95,7 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
 
   @Inject CallContextCatalogFactory callContextCatalogFactory;
   @Inject Instance<ExternalCatalogFactory> externalCatalogFactories;
+  @Inject CatalogPrefixParser prefixParser;
 
   @SuppressWarnings("unchecked")
   private static Instance<ExternalCatalogFactory> emptyExternalCatalogFactory() {
@@ -118,6 +120,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     return new IcebergCatalogHandler(
         diagServices,
         callContext,
+        prefixParser,
+        resolverFactory,
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
@@ -257,6 +261,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         new IcebergCatalogHandler(
             diagServices,
             callContext,
+            prefixParser,
+            resolverFactory,
             resolutionManifestFactory,
             metaStoreManager,
             credentialManager,
@@ -294,6 +300,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         new IcebergCatalogHandler(
             diagServices,
             callContext,
+            prefixParser,
+            resolverFactory,
             resolutionManifestFactory,
             metaStoreManager,
             credentialManager,
@@ -1181,6 +1189,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
     return new IcebergCatalogHandler(
         diagServices,
         mockCallContext,
+        prefixParser,
+        resolverFactory,
         resolutionManifestFactory,
         metaStoreManager,
         credentialManager,
