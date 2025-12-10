@@ -143,7 +143,7 @@ gpg_verify_options=(
 )
 
 # Increase ulimit (open files), primarily for gpg verify operations on macOS
-ulimit -n 8191
+ulimit -n 16384
 
 failures_file="$(pwd)/${run_id}.log"
 
