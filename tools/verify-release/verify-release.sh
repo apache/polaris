@@ -159,7 +159,7 @@ find_excludes=(
 
 dist_url="${dist_url_prefix}${version}"
 helm_url="${dist_url_prefix}helm-chart/${version}"
-maven_repo_url="${maven_repo_url_prefix}${maven_repo_id}/"
+maven_repo_url="${maven_repo_url_prefix}${maven_repo_id}"
 
 function log_part_start {
   local heading
