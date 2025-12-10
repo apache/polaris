@@ -371,10 +371,12 @@ for mandatory_tool in wget gunzip find git helm java gpg md5sum shasum tar curl 
 done
 if [[ ${#missing_tools} -ne 0 ]]; then
   log_fatal "Mandatory tools ${missing_tools[*]} are missing, please install those first."
+  log_info " Note for macOS: zipcmp can be installed with brew via libzip"
   exit 1
 fi
 if ! which wget2 > /dev/null; then
-  log_warn "For improved website mirroring performance install 'wget2' as it allows multi-threaded downloads."
+1  log_warn "For improved website mirroring performance consider installing 'wget2' as it allows multi-threaded downloads."
+  log_warn "  wget2 however may print misleading warnings like 'Failed to parse date '"
 fi
 
 if [[ -z $git_sha || -z $version || -z $rc_num || -z $maven_repo_id ]]; then
