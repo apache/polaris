@@ -39,25 +39,23 @@ on:
 
 jobs:
   build-artifacts:
-    name: Build artifacts on ${{ matrix.os }}
+    name: Build artifacts on ${{ matrix.os }} with Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ ubuntu-24.04, macos-14, macos-15] # current build script is not compatible with windows
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
 
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
-          python-version: |
-            3.10
-            3.11
-            3.12
-            3.13
+          python-version: ${{ matrix.python-version }}
+
       - name: Set up JDK for openapi-generator-cli
         uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
         with:
@@ -71,30 +69,26 @@ jobs:
         run: make client-set-version VERSION="${{ env.VERSION }}"
 
       - name: Build source distribution
+        if: matrix.python-version == '3.13' && startsWith(matrix.os, 'ubuntu-24.04')
         run: |
           make client-build FORMAT=sdist
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v3.1.4
-        with:
-          output-dir: wheelhouse
-          package-dir: "./client/python"
-          config-file: "{package}/pyproject.toml"
-        env:
-          # Ignore 32 bit architectures
-          CIBW_ARCHS: "auto64"
-          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.10,<3.14"
-          CIBW_REPAIR_WHEEL_COMMAND_MACOS: "" # Disable wheel repair since there will be no binary in the wheel
-          CIBW_REPAIR_WHEEL_COMMAND_LINUX: ""
-          CIBW_ENVIRONMENT: POLARIS_CLI_SKIP_CLIENT_GENERATION="true" # java is not available in linux containers during wheel build, skip client generation
+      - name: Build wheel
+        run: |
+          make client-build FORMAT=wheel
+
+      - name: Prepare artifacts directory
+        run: |
+          mkdir -p wheelhouse
+          cp ./client/python/dist/*.whl wheelhouse/
 
       - name: Add source distribution
-        if: startsWith(matrix.os, 'ubuntu-24.04')
-        run: ls -lah ./client/python/dist/* && cp ./client/python/dist/* wheelhouse/
+        if: matrix.python-version == '3.13' && startsWith(matrix.os, 'ubuntu-24.04')
+        run: cp ./client/python/dist/*.tar.gz wheelhouse/
 
       - uses: actions/upload-artifact@v4
         with:
-          name: "python-client-artifacts-${{ matrix.os }}"
+          name: "python-client-artifacts-${{ matrix.os }}-py${{ matrix.python-version }}"
           path: ./wheelhouse/*
 
   merge-artifacts:
