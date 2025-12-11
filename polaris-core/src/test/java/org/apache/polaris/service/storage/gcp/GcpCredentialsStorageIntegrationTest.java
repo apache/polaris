@@ -365,11 +365,15 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .generateAccessToken(
             Mockito.argThat(
                 request ->
-                    request.getName().equals("projects/-/serviceAccounts/" + serviceAccount)
+                    request
+                            .getName()
+                            .equals(
+                                GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
+                                    + serviceAccount)
                         && request.getScopeCount() > 0
                         && request
                             .getScope(0)
-                            .equals("https://www.googleapis.com/auth/devstorage.read_write")));
+                            .equals(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE)));
   }
 
   private boolean isNotNull(JsonNode node) {

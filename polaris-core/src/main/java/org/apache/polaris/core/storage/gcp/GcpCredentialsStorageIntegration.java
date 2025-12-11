@@ -64,6 +64,9 @@ public class GcpCredentialsStorageIntegration
     extends InMemoryStorageIntegration<GcpStorageConfigurationInfo> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(GcpCredentialsStorageIntegration.class);
+  public static final String SERVICE_ACCOUNT_PREFIX = "projects/-/serviceAccounts/";
+  public static final String IMPERSONATION_SCOPE =
+      "https://www.googleapis.com/auth/devstorage.read_write";
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
@@ -150,12 +153,12 @@ public class GcpCredentialsStorageIntegration
     try (IamCredentialsClient iamCredentialsClient = createIamCredentialsClient(source)) {
       GenerateAccessTokenRequest request =
           GenerateAccessTokenRequest.newBuilder()
-              .setName("projects/-/serviceAccounts/" + targetServiceAccount)
+              .setName(SERVICE_ACCOUNT_PREFIX + targetServiceAccount)
               .addAllDelegates(new ArrayList<>())
               // 'cloud-platform' is often preferred for impersonation,
               // but devstorage.read_write is sufficient for GCS specific operations.
               // See https://docs.cloud.google.com/storage/docs/oauth-scopes
-              .addScope("https://www.googleapis.com/auth/devstorage.read_write")
+              .addScope(IMPERSONATION_SCOPE)
               .setLifetime(Duration.newBuilder().setSeconds(3600).build())
               .build();
 
