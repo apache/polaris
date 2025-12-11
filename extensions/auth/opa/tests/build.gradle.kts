@@ -32,6 +32,8 @@ dependencies {
   implementation(project(":polaris-extensions-auth-opa"))
 
   // Include all runtime-service dependencies
+  implementation(project(":polaris-runtime-defaults"))
+  implementation(project(":polaris-runtime-common"))
   implementation(project(":polaris-runtime-service"))
 
   // Test common for integration testing

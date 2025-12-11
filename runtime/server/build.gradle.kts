@@ -38,6 +38,8 @@ val distributionElements by
   }
 
 dependencies {
+  implementation(project(":polaris-runtime-defaults"))
+  implementation(project(":polaris-runtime-common"))
   implementation(project(":polaris-runtime-service"))
 
   runtimeOnly("org.postgresql:postgresql")

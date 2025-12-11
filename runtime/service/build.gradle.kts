@@ -33,9 +33,6 @@ dependencies {
 
   runtimeOnly(project(":polaris-relational-jdbc"))
 
-  implementation(project(":polaris-runtime-defaults"))
-  implementation(project(":polaris-runtime-common"))
-
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
 
@@ -185,6 +182,8 @@ dependencies {
   testFixturesImplementation("com.azure:azure-storage-blob")
   testFixturesImplementation("com.azure:azure-storage-file-datalake")
 
+  intTestRuntimeOnly(project(":polaris-runtime-defaults"))
+  intTestRuntimeOnly(project(":polaris-runtime-common"))
   // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
   // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
   intTestRuntimeOnly(libs.keycloak.admin.client)
