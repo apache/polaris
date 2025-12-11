@@ -289,13 +289,9 @@ class NoSqlMetaStore extends NonFunctionalBasePersistence {
           byName.put(nameKey, objRef(catalogObj));
           byId.put(idKey, nameKey);
 
-          if (existing == null) {
-            // created
-            return new ChangeResult.CommitChange<>(
-                new CreateCatalogResult(catalog, catalogAdminRole));
-          }
-          // retry
-          return new ChangeResult.NoChange<>(new CreateCatalogResult(ENTITY_ALREADY_EXISTS, null));
+          // created
+          return new ChangeResult.CommitChange<>(
+              new CreateCatalogResult(catalog, catalogAdminRole));
         }));
   }
 
