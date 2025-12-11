@@ -49,6 +49,7 @@ Tasks that need human attention:
     * SVN repository with the Helm chart
     * Link to the KEYS file (_MUST_ be equal to `https://downloads.apache.org/incubator/polaris/KEYS`)
     * Maven staging repository
+    * A link to this page is included.
 * The contents of the `DISCLAIMER`, `LICENSE` and `NOTICE` files are correct for the repository.
 * Contents of jar artifacts `META-INF/LICENSE` and `META-INF/NOTICE` files are correct.
 * All files have license headers, if necessary.
