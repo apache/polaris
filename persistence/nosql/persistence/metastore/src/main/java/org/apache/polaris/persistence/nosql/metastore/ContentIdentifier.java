@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.nosql.api.index.IndexKey;
 import org.apache.polaris.service.types.PolicyIdentifier;
@@ -63,13 +64,22 @@ public interface ContentIdentifier {
     return identifier(namespace.levels());
   }
 
+  /**
+   * Constructs a {@link ContentIdentifier} from a storage location without the scheme.
+   *
+   * <p>This is used for the locations index for location-overlap checks.
+   *
+   * <p>Valid inputs follow the values returned by {@link StorageLocation#withoutScheme()
+   * StorageLocation.of(previousBaseLocation).withoutScheme()}, which can, in case of "file"
+   * locations, contain system-specific file separators.
+   */
   static ContentIdentifier identifierFromLocationString(String locationString) {
     var builder = builder();
     var len = locationString.length();
     var off = -1;
     for (var i = 0; i < len; i++) {
       var c = locationString.charAt(i);
-      checkArgument(c >= ' ', "Control characters are forbidden in locations");
+      checkArgument(c >= ' ' && c != 127, "Control characters are forbidden in locations");
       if (c == '/' || c == '\\') {
         if (off != -1) {
           builder.addElements(locationString.substring(off, i));
