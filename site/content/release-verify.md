@@ -73,6 +73,14 @@ these frameworks can provide fully reproducible builds yet.
 The Polaris project's release verification tool will therefore report some issues that are currently expected.
 See [below](#reproducible-builds) for details.
 
+After you have completed the verification of the release candidate, respond to the release vote email,
+detailing the checks and tests you performed, and providing a summary of their outcomes.
+Remember to include your
+[vote (+1/0/-1)](https://www.apache.org/foundation/glossary.html#MajorityApproval)
+and whether it's "binding."
+A -1 vote requires a technical justification.
+As a (P)PMC member, your vote is "binding," all other votes are "non-binding."
+
 # Verifying a release candidate
 
 Instead of performing all mentioned steps manually, you can leverage the script
