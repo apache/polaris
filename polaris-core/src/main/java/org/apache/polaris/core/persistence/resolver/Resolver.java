@@ -41,6 +41,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.cache.EntityCache;
@@ -744,6 +745,20 @@ public class Resolver {
   private ResolverStatus resolveCallerPrincipalAndPrincipalRoles(
       List<ResolvedPolarisEntity> toValidate) {
 
+    if (isExternalPrincipal()) {
+      PrincipalEntity externalPrincipal = createExternalPrincipalEntity();
+      this.resolvedCallerPrincipal =
+          new ResolvedPolarisEntity(
+              diagnostics,
+              externalPrincipal,
+              List.of(),
+              externalPrincipal.getGrantRecordsVersion());
+      this.resolvedEntriesById.put(
+          this.resolvedCallerPrincipal.getEntity().getId(), this.resolvedCallerPrincipal);
+      this.resolvedCallerPrincipalRoles = List.of();
+      return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+    }
+
     // resolve the principal, by name or id
     this.resolvedCallerPrincipal =
         this.resolveByName(toValidate, PolarisEntityType.PRINCIPAL, polarisPrincipal.getName());
@@ -751,6 +766,21 @@ public class Resolver {
     // if the principal was not found, we can end right there
     if (this.resolvedCallerPrincipal == null
         || this.resolvedCallerPrincipal.getEntity().isDropped()) {
+      if (isExternalPrincipal()) {
+        // For external principals we do not maintain principal entities in the metastore,
+        // so synthesize a placeholder entry and continue without resolving grants.
+        PrincipalEntity externalPrincipal = createExternalPrincipalEntity();
+        this.resolvedCallerPrincipal =
+            new ResolvedPolarisEntity(
+                diagnostics,
+                externalPrincipal,
+                List.of(),
+                externalPrincipal.getGrantRecordsVersion());
+        this.resolvedEntriesById.put(
+            this.resolvedCallerPrincipal.getEntity().getId(), this.resolvedCallerPrincipal);
+        this.resolvedCallerPrincipalRoles = List.of();
+        return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+      }
       return new ResolverStatus(ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST);
     }
 
@@ -762,6 +792,17 @@ public class Resolver {
 
     // total success
     return new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+  }
+
+  private boolean isExternalPrincipal() {
+    return Boolean.parseBoolean(polarisPrincipal.getProperties().getOrDefault("external", "false"));
+  }
+
+  private PrincipalEntity createExternalPrincipalEntity() {
+    return new PrincipalEntity.Builder()
+        .setName(polarisPrincipal.getName())
+        .setProperties(polarisPrincipal.getProperties())
+        .build();
   }
 
   /**

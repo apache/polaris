@@ -42,11 +42,17 @@ abstract class InternalPolarisToken implements PolarisCredential {
 
   static InternalPolarisToken of(
       String principalName, Long principalId, String clientId, String scope) {
+    return of(principalName, principalId, clientId, scope, false);
+  }
+
+  static InternalPolarisToken of(
+      String principalName, Long principalId, String clientId, String scope, boolean external) {
     return ImmutableInternalPolarisToken.builder()
         .principalName(principalName)
         .principalId(principalId)
         .clientId(clientId)
         .scope(scope)
+        .external(external)
         .build();
   }
 
@@ -59,6 +65,12 @@ abstract class InternalPolarisToken implements PolarisCredential {
   @Override
   @SuppressWarnings("NullableProblems")
   public abstract Long getPrincipalId();
+
+  @Value.Default
+  @Override
+  public boolean isExternal() {
+    return false;
+  }
 
   @Value.Lazy
   @Override

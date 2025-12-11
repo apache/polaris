@@ -22,6 +22,7 @@ import io.quarkus.security.credential.Credential;
 import jakarta.annotation.Nullable;
 import java.util.Set;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /**
  * A Quarkus Security {@link Credential} exposing Polaris-specific attributes: the principal id,
@@ -32,10 +33,19 @@ public interface PolarisCredential extends Credential {
 
   static PolarisCredential of(
       @Nullable Long principalId, @Nullable String principalName, Set<String> principalRoles) {
+    return of(principalId, principalName, principalRoles, false);
+  }
+
+  static PolarisCredential of(
+      @Nullable Long principalId,
+      @Nullable String principalName,
+      Set<String> principalRoles,
+      boolean external) {
     return ImmutablePolarisCredential.builder()
         .principalId(principalId)
         .principalName(principalName)
         .principalRoles(principalRoles)
+        .external(external)
         .build();
   }
 
@@ -49,4 +59,10 @@ public interface PolarisCredential extends Credential {
 
   /** The principal roles, or empty if the principal has no roles. */
   Set<String> getPrincipalRoles();
+
+  /** True if the credential represents an external principal. */
+  @Value.Default
+  default boolean isExternal() {
+    return false;
+  }
 }

@@ -38,8 +38,12 @@ dependencies {
   testImplementation(project(":polaris-runtime-test-common"))
 
   // Test dependencies
+  intTestImplementation(platform(libs.iceberg.bom))
+  intTestImplementation("org.apache.iceberg:iceberg-api")
+  intTestImplementation(project(":polaris-core"))
   intTestImplementation("io.quarkus:quarkus-junit5")
   intTestImplementation("io.rest-assured:rest-assured")
+  intTestImplementation("io.quarkus:quarkus-security")
 
   // Test container dependencies
   intTestImplementation(platform(libs.testcontainers.bom))

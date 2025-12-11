@@ -36,6 +36,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -103,6 +105,50 @@ public class OpaPolarisAuthorizerTest {
       assertThat(input.has("action")).as("Input should have 'action' field").isTrue();
       assertThat(input.has("resource")).as("Input should have 'resource' field").isTrue();
       assertThat(input.has("context")).as("Input should have 'context' field").isTrue();
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void testExternalPrincipalRolesAndNameAreSentToOpa() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      URI policyUri =
+          URI.create(
+              "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
+      OpaPolarisAuthorizer authorizer =
+          new OpaPolarisAuthorizer(
+              policyUri, HttpClients.createDefault(), new ObjectMapper(), null);
+
+      PolarisPrincipal principal =
+          PolarisPrincipal.of(
+              "external-user",
+              Map.of("external", "true", "principalId", "42"),
+              Set.of("ext-role", "common-role"));
+
+      PolarisResolvedPathWrapper target = new PolarisResolvedPathWrapper(List.of());
+
+      assertThatNoException()
+          .isThrownBy(
+              () ->
+                  authorizer.authorizeOrThrow(
+                      principal,
+                      Set.of(),
+                      PolarisAuthorizableOperation.LIST_NAMESPACES,
+                      target,
+                      null));
+
+      JsonNode actorNode =
+          new ObjectMapper().readTree(capturedRequestBody[0]).path("input").path("actor");
+      assertThat(actorNode.get("principal").asText()).isEqualTo("external-user");
+      assertThat(
+              StreamSupport.stream(actorNode.get("roles").spliterator(), false)
+                  .map(JsonNode::asText)
+                  .collect(Collectors.toSet()))
+          .containsExactlyInAnyOrder("ext-role", "common-role");
     } finally {
       server.stop(0);
     }

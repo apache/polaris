@@ -25,7 +25,6 @@ import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.AuthenticationRequest;
-import io.quarkus.security.identity.request.TokenAuthenticationRequest;
 import io.quarkus.vertx.http.runtime.security.ChallengeData;
 import io.quarkus.vertx.http.runtime.security.HttpAuthenticationMechanism;
 import io.quarkus.vertx.http.runtime.security.HttpCredentialTransport;
@@ -118,7 +117,7 @@ class InternalAuthenticationMechanism implements HttpAuthenticationMechanism {
 
   @Override
   public Set<Class<? extends AuthenticationRequest>> getCredentialTypes() {
-    return Collections.singleton(TokenAuthenticationRequest.class);
+    return Collections.singleton(InternalAuthenticationRequest.class);
   }
 
   @Override
