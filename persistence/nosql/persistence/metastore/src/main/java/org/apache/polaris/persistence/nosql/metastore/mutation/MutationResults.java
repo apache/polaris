@@ -91,10 +91,6 @@ public final class MutationResults {
     anyChange = true;
   }
 
-  void entityResultNoChange(PolarisBaseEntity entity) {
-    add(new EntityResult(entity));
-  }
-
   void unchangedEntityResult(PolarisBaseEntity entity) {
     add(new EntityResult(entity));
   }

@@ -490,7 +490,7 @@ public record MutationAttempt(
         if (originalObj != null) {
           var unchangedCompareObj = objForChangeComparison(entity, Optional.empty(), originalObj);
           if (unchangedCompareObj.equals(originalObj)) {
-            mutationResults.entityResultNoChange(entity);
+            mutationResults.unchangedEntityResult(entity);
             return;
           }
         }
