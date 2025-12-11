@@ -91,7 +91,9 @@ automatable tasks. The script is intended to be run on Linux or macOS.
 
 Verifying a release using any kind of automation, like this script, requires "trust" into the automation.
 It is therefore recommended to verify the script before running it on a release candidate.
-You can inspect it by [looking at the source code](https://github.com/snazy/polaris/blob/main/tools/verify-release/verify-release.sh) before running it.
+You can inspect it by
+[looking at the source code](https://github.com/snazy/polaris/blob/main/tools/verify-release/verify-release.sh)
+before running it.
 The link to the `Raw` file must be the same as the one used in the command below to run the script.
 
 ## Running the script
