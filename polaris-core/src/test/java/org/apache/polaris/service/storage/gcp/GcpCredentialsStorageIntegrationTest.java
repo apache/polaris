@@ -29,13 +29,18 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
+import com.google.auth.oauth2.DownscopedCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
+import com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest;
+import com.google.cloud.iam.credentials.v1.GenerateAccessTokenResponse;
+import com.google.cloud.iam.credentials.v1.IamCredentialsClient;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
+import com.google.protobuf.Timestamp;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -55,6 +60,7 @@ import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguratio
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 
 class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
@@ -307,6 +313,67 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             List.of("gs://bucket1/path/to/data"), List.of("gs://bucket1/path/to/data"), true);
     assertThat(storageAccessConfig.get(StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT))
         .isEqualTo(REFRESH_ENDPOINT);
+  }
+
+  @Test
+  public void testImpersonation() throws IOException {
+    String serviceAccount = "test-sa@project.iam.gserviceaccount.com";
+    GcpStorageConfigurationInfo config =
+        GcpStorageConfigurationInfo.builder()
+            .addAllAllowedLocations(List.of("gs://bucket/path"))
+            .gcpServiceAccount(serviceAccount)
+            .build();
+
+    IamCredentialsClient mockIamClient = Mockito.mock(IamCredentialsClient.class);
+    GenerateAccessTokenResponse mockResponse =
+        GenerateAccessTokenResponse.newBuilder()
+            .setAccessToken("impersonated-token")
+            .setExpireTime(
+                Timestamp.newBuilder().setSeconds(System.currentTimeMillis() / 1000 + 3600).build())
+            .build();
+    Mockito.when(mockIamClient.generateAccessToken(Mockito.any(GenerateAccessTokenRequest.class)))
+        .thenReturn(mockResponse);
+
+    GoogleCredentials mockCreds = Mockito.mock(GoogleCredentials.class);
+    Mockito.when(mockCreds.createScoped(Mockito.any(String.class))).thenReturn(mockCreds);
+
+    GcpCredentialsStorageIntegration integration =
+        new GcpCredentialsStorageIntegration(
+            config,
+            mockCreds,
+            ServiceOptions.getFromServiceLoader(
+                HttpTransportFactory.class, NetHttpTransport::new)) {
+          @Override
+          protected IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
+            return mockIamClient;
+          }
+
+          @Override
+          protected AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+            return new AccessToken("downscoped-token", new Date());
+          }
+        };
+
+    integration.getSubscopedCreds(
+        EMPTY_REALM_CONFIG,
+        true,
+        Set.of("gs://bucket/path"),
+        Set.of("gs://bucket/path"),
+        Optional.empty());
+
+    Mockito.verify(mockIamClient)
+        .generateAccessToken(
+            Mockito.argThat(
+                request ->
+                    request
+                            .getName()
+                            .equals(
+                                GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
+                                    + serviceAccount)
+                        && request.getScopeCount() > 0
+                        && request
+                            .getScope(0)
+                            .equals(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE)));
   }
 
   private boolean isNotNull(JsonNode node) {

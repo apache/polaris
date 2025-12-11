@@ -52,6 +52,7 @@ cel-bom = { module = "org.projectnessie.cel:cel-bom", version = "0.5.3" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.20.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.15.0" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.45.0" }
+google-cloud-iamcredentials = { module = "com.google.cloud:google-cloud-iamcredentials", version = "2.60.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.60.0" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.4.240" }
