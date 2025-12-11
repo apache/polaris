@@ -169,7 +169,7 @@ After that, release candidate verification starts immediately, performing the fo
 
 1. Create `gpg` keyring for signature verification from the project's `KEYS` file.
 2. Clone the Git repository directly from GitHub.
-3. Git commit SHA and Git tag match
+3. Verifies that the Git tag corresponds to the provided Git SHA
 4. Verifies that the mandatory files are present in the source tree
 5. Helm chart GPG signature and checksum checks
 6. Source tarball and binary artifacts GPG signature and checksum checks
