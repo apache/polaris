@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -774,6 +775,7 @@ record NoSqlMetaStoreManager(
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
 
     checkArgument(
@@ -804,6 +806,7 @@ record NoSqlMetaStoreManager(
               allowListOperation,
               allowedReadLocations,
               allowedWriteLocations,
+              polarisPrincipal,
               refreshCredentialsEndpoint);
       return new ScopedCredentialsResult(creds);
     } catch (Exception ex) {
