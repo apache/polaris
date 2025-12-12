@@ -362,6 +362,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         true,
         Set.of("gs://bucket/path"),
         Set.of("gs://bucket/path"),
+        PolarisPrincipal.of("principal", Map.of(), Set.of()),
         Optional.empty());
 
     Mockito.verify(mockIamClient)
