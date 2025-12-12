@@ -76,7 +76,7 @@ runs:
       run: ./gradlew -h
 
     - name: Download existing workflow artifacts
-      uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
       # Just in case, don't know the exact inner workings of Gradle's build cache and whether
       # the download-action complains about duplicate files.
       continue-on-error: true
