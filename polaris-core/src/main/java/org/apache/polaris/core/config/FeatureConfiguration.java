@@ -79,6 +79,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL =
+      PolarisConfiguration.<Boolean>builder()
+          .key("INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL")
+          .description(
+              "If set to true, principal name will be included in temporary subscoped credentials.\n"
+                  + "Currently only AWS credentials are supported for which session name of the generated credentials \n"
+                  + "will look like 'polaris-<principal>' rather than simple 'polaris'.\n"
+                  + "Note that enabling this feature leads to degradation in temporary credential caching as \n"
+                  + "catalog will no longer be able to reuse credentials for multiple principals.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")

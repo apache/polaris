@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
@@ -109,6 +110,7 @@ public class StorageCredentialCache {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
     RealmContext realmContext = storageCredentialsVendor.getRealmContext();
     RealmConfig realmConfig = storageCredentialsVendor.getRealmConfig();
@@ -116,6 +118,10 @@ public class StorageCredentialCache {
       diagnostics.fail(
           "entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
     }
+
+    boolean includePrincipalNameInSubscopedCredential =
+        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
+
     StorageCredentialCacheKey key =
         StorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
@@ -123,7 +129,10 @@ public class StorageCredentialCache {
             allowListOperation,
             allowedReadLocations,
             allowedWriteLocations,
-            refreshCredentialsEndpoint);
+            refreshCredentialsEndpoint,
+            includePrincipalNameInSubscopedCredential
+                ? Optional.of(polarisPrincipal)
+                : Optional.empty());
     LOGGER.atDebug().addKeyValue("key", key).log("subscopedCredsCache");
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
@@ -134,6 +143,7 @@ public class StorageCredentialCache {
                   allowListOperation,
                   allowedReadLocations,
                   allowedWriteLocations,
+                  polarisPrincipal,
                   refreshCredentialsEndpoint);
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(realmConfig);

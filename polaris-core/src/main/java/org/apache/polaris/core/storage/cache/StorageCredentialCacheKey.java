@@ -21,6 +21,7 @@ package org.apache.polaris.core.storage.cache;
 import jakarta.annotation.Nullable;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -51,13 +52,17 @@ public interface StorageCredentialCacheKey {
   @Value.Parameter(order = 7)
   Optional<String> refreshCredentialsEndpoint();
 
+  @Value.Parameter(order = 8)
+  Optional<String> principalName();
+
   static StorageCredentialCacheKey of(
       String realmId,
       PolarisEntity entity,
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      Optional<PolarisPrincipal> polarisPrincipal) {
     String storageConfigSerializedStr =
         entity
             .getInternalPropertiesAsMap()
@@ -69,6 +74,7 @@ public interface StorageCredentialCacheKey {
         allowedListAction,
         allowedReadLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint);
+        refreshCredentialsEndpoint,
+        polarisPrincipal.map(PolarisPrincipal::getName));
   }
 }
