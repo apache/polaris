@@ -20,9 +20,11 @@ package org.apache.polaris.core.auth;
 
 import java.security.Principal;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /** Represents a {@link Principal} in the Polaris system. */
 @PolarisImmutable
@@ -39,7 +41,28 @@ public interface PolarisPrincipal extends Principal {
    * @param roles the set of roles associated with the principal
    */
   static PolarisPrincipal of(PrincipalEntity principalEntity, Set<String> roles) {
-    return of(principalEntity.getName(), principalEntity.getInternalPropertiesAsMap(), roles);
+    return of(
+        principalEntity.getName(),
+        principalEntity.getInternalPropertiesAsMap(),
+        roles,
+        Optional.empty());
+  }
+
+  /**
+   * Creates a new instance of {@link PolarisPrincipal} from the given {@link PrincipalEntity} and
+   * roles.
+   *
+   * <p>The created principal will have the same ID and name as the {@link PrincipalEntity}, and its
+   * properties will be derived from the internal properties of the entity.
+   *
+   * @param principalEntity the principal entity representing the user or service
+   * @param roles the set of roles associated with the principal
+   * @param token the access token of the current user
+   */
+  static PolarisPrincipal of(
+      PrincipalEntity principalEntity, Set<String> roles, Optional<String> token) {
+    return of(
+        principalEntity.getName(), principalEntity.getInternalPropertiesAsMap(), roles, token);
   }
 
   /**
@@ -51,9 +74,24 @@ public interface PolarisPrincipal extends Principal {
    * @param roles the set of roles associated with the principal
    */
   static PolarisPrincipal of(String name, Map<String, String> properties, Set<String> roles) {
+    return of(name, properties, roles, Optional.empty());
+  }
+
+  /**
+   * Creates a new instance of {@link PolarisPrincipal} with the specified ID, name, roles, and
+   * properties.
+   *
+   * @param name the name of the principal
+   * @param properties additional properties associated with the principal
+   * @param roles the set of roles associated with the principal
+   * @param token the access token of the current user
+   */
+  static PolarisPrincipal of(
+      String name, Map<String, String> properties, Set<String> roles, Optional<String> token) {
     return ImmutablePolarisPrincipal.builder()
         .name(name)
         .properties(properties)
+        .token(token)
         .roles(roles)
         .build();
   }
@@ -74,4 +112,8 @@ public interface PolarisPrincipal extends Principal {
    * as permissions, preferences, or other metadata.
    */
   Map<String, String> getProperties();
+
+  /** Optionally returns the access token of the current user. */
+  @Value.Redacted
+  Optional<String> getToken();
 }
