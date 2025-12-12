@@ -87,12 +87,17 @@ public record MutationAttempt(
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MutationAttempt.class);
 
+  /**
+   * Produces an {@linkplain ObjBase obj instance} that can be used to detect whether an update
+   * operation results in an actual change or a noop. For this, the entity is mapped to an object,
+   * but the technical attributes are taken from the existing object.
+   */
   public static ObjBase objForChangeComparison(
       PolarisBaseEntity entity,
       Optional<PolarisPrincipalSecrets> currentSecrets,
       ObjBase originalObj) {
     return mapToObj(entity, currentSecrets)
-        .updateTimestamp(originalObj.createTimestamp())
+        .updateTimestamp(originalObj.updateTimestamp())
         .id(originalObj.id())
         .numParts(originalObj.numParts())
         .entityVersion(originalObj.entityVersion())
@@ -355,10 +360,7 @@ public record MutationAttempt(
         mutationResults.entityResult(ENTITY_CANNOT_BE_RENAMED);
         return;
       }
-      if (!byName.remove(originalNameKey)) {
-        mutationResults.entityResult(ENTITY_NOT_FOUND);
-        return;
-      }
+      checkState(byName.remove(originalNameKey));
 
       var newNameKey = nameKeyForEntity(entity, byId, mutationResults::entityResult);
       if (newNameKey == null) {
