@@ -26,7 +26,6 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Spanner;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -57,21 +56,12 @@ public class GoogleCloudSpannerDatabaseClientLifecycleManager {
 
   protected List<String> getSpannerDatabaseDdl(SchemaOptions options) {
     final InputStream schemaStream;
-    if (options.schemaFile().isPresent()) {
-      try {
-        schemaStream = new FileInputStream(options.schemaFile().get());
-      } catch (IOException e) {
-        throw new IllegalArgumentException("Unable to load file " + options.schemaFile().get(), e);
-      }
-    } else {
-      int version = options.schemaVersion().orElse(1);
-      if (version == 1) {
-        schemaStream =
-            getClass().getResourceAsStream("/org/apache/polaris/persistence/spanner/schema-v1.sql");
-      } else {
-        throw new IllegalArgumentException("Unknown schema version " + version);
-      }
+    int schemaVersion = options.schemaVersion().orElse(1);
+    if (schemaVersion != 1) {
+      throw new IllegalArgumentException("Unknown or invalid schema version " + schemaVersion);
     }
+
+    schemaStream = getClass().getResourceAsStream("/spanner/schema-v1.sql");
     try (schemaStream) {
       String schema = new String(schemaStream.readAllBytes(), Charset.forName("UTF-8"));
       List<String> lines = new ArrayList<>();

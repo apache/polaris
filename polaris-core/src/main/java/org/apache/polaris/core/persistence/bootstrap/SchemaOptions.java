@@ -25,6 +25,4 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 public interface SchemaOptions {
   Optional<Integer> schemaVersion();
-
-  Optional<String> schemaFile();
 }
