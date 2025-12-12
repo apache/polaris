@@ -17,14 +17,27 @@
  * under the License.
  */
 
-package org.apache.polaris.core.persistence.bootstrap;
+plugins {
+  id("polaris-server")
+  id("org.kordamp.gradle.jandex")
+}
 
-import java.util.Optional;
-import org.apache.polaris.immutables.PolarisImmutable;
+dependencies {
+  implementation(project(":polaris-core"))
+  implementation(libs.slf4j.api)
+  implementation(libs.guava)
 
-@PolarisImmutable
-public interface SchemaOptions {
-  Optional<Integer> schemaVersion();
+  implementation(platform(libs.google.cloud.libraries.bom))
+  implementation("com.google.cloud:google-cloud-spanner")
 
-  Optional<String> schemaFile();
+  compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
+
+  compileOnly(libs.smallrye.common.annotation) // @Identifier
+  compileOnly(libs.smallrye.config.core) // @ConfigMapping
+
+  testImplementation(libs.mockito.junit.jupiter)
+  testImplementation(libs.h2)
+  testImplementation(testFixtures(project(":polaris-core")))
 }

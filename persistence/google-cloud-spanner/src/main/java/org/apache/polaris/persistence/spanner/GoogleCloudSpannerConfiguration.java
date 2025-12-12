@@ -17,14 +17,21 @@
  * under the License.
  */
 
-package org.apache.polaris.core.persistence.bootstrap;
+package org.apache.polaris.persistence.spanner;
 
+import io.smallrye.config.ConfigMapping;
 import java.util.Optional;
-import org.apache.polaris.immutables.PolarisImmutable;
 
-@PolarisImmutable
-public interface SchemaOptions {
-  Optional<Integer> schemaVersion();
+@ConfigMapping(prefix = "polaris.persistence.spanner")
+public interface GoogleCloudSpannerConfiguration {
 
-  Optional<String> schemaFile();
+  public Optional<String> quotaProjectId();
+
+  public Optional<String> projectId();
+
+  public Optional<String> instanceId();
+
+  public Optional<String> databaseId();
+
+  public Optional<String> emulatorHost();
 }

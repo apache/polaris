@@ -17,14 +17,20 @@
  * under the License.
  */
 
-package org.apache.polaris.core.persistence.bootstrap;
+package org.apache.polaris.persistence.spanner.model;
 
-import java.util.Optional;
-import org.apache.polaris.immutables.PolarisImmutable;
+import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.Mutation;
 
-@PolarisImmutable
-public interface SchemaOptions {
-  Optional<Integer> schemaVersion();
+public final class Realm {
 
-  Optional<String> schemaFile();
+  public static final String TABLE_NAME = "Realms";
+
+  public static Mutation upsert(String realmId) {
+    return Mutation.newInsertOrUpdateBuilder(TABLE_NAME).set("RealmId").to(realmId).build();
+  }
+
+  public static Mutation delete(String realmId) {
+    return Mutation.delete(TABLE_NAME, Key.of(realmId));
+  }
 }

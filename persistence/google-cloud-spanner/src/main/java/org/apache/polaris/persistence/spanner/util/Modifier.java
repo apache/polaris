@@ -17,14 +17,41 @@
  * under the License.
  */
 
-package org.apache.polaris.core.persistence.bootstrap;
+package org.apache.polaris.persistence.spanner.util;
 
 import java.util.Optional;
-import org.apache.polaris.immutables.PolarisImmutable;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
-@PolarisImmutable
-public interface SchemaOptions {
-  Optional<Integer> schemaVersion();
+public final class Modifier<T> {
+  T wrapped;
 
-  Optional<String> schemaFile();
+  protected Modifier(T wrapped) {
+    this.wrapped = wrapped;
+  }
+
+  public Modifier<T> apply(Function<T, T> fn) {
+    wrapped = fn.apply(wrapped);
+    return this;
+  }
+
+  public <V> Modifier<T> orElse(Optional<V> toApply, V other, BiFunction<T, V, T> fn) {
+    wrapped = fn.apply(wrapped, toApply.orElse(other));
+    return this;
+  }
+
+  public <V> Modifier<T> ifPresent(Optional<V> toApply, BiFunction<T, V, T> fn) {
+    if (toApply.isPresent()) {
+      wrapped = fn.apply(wrapped, toApply.get());
+    }
+    return this;
+  }
+
+  public T get() {
+    return wrapped;
+  }
+
+  public static <T> Modifier<T> of(T value) {
+    return new Modifier<>(value);
+  }
 }

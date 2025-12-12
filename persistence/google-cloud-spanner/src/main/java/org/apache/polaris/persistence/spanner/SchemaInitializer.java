@@ -17,14 +17,9 @@
  * under the License.
  */
 
-package org.apache.polaris.core.persistence.bootstrap;
+package org.apache.polaris.persistence.spanner;
 
-import java.util.Optional;
-import org.apache.polaris.immutables.PolarisImmutable;
+import java.util.function.Consumer;
+import org.apache.polaris.core.persistence.bootstrap.SchemaOptions;
 
-@PolarisImmutable
-public interface SchemaOptions {
-  Optional<Integer> schemaVersion();
-
-  Optional<String> schemaFile();
-}
+public interface SchemaInitializer extends Consumer<SchemaOptions> {}
