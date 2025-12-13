@@ -56,7 +56,7 @@ public class CatalogPolicyEventServiceDelegator
       CreatePolicyRequest createPolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeCreatePolicy(
         new CatalogPolicyServiceEvents.BeforeCreatePolicyEvent(
             eventMetadataFactory.create(), catalogName, namespace, createPolicyRequest));
@@ -81,7 +81,7 @@ public class CatalogPolicyEventServiceDelegator
       String policyType,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeListPolicies(
         new CatalogPolicyServiceEvents.BeforeListPoliciesEvent(
             eventMetadataFactory.create(), catalogName, namespace, policyType));
@@ -101,7 +101,7 @@ public class CatalogPolicyEventServiceDelegator
       String policyName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeLoadPolicy(
         new CatalogPolicyServiceEvents.BeforeLoadPolicyEvent(
             eventMetadataFactory.create(), catalogName, namespace, policyName));
@@ -124,7 +124,7 @@ public class CatalogPolicyEventServiceDelegator
       UpdatePolicyRequest updatePolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeUpdatePolicy(
         new CatalogPolicyServiceEvents.BeforeUpdatePolicyEvent(
             eventMetadataFactory.create(),
@@ -152,7 +152,7 @@ public class CatalogPolicyEventServiceDelegator
       Boolean detachAll,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeDropPolicy(
         new CatalogPolicyServiceEvents.BeforeDropPolicyEvent(
             eventMetadataFactory.create(), catalogName, namespace, policyName, detachAll));
@@ -173,7 +173,7 @@ public class CatalogPolicyEventServiceDelegator
       AttachPolicyRequest attachPolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeAttachPolicy(
         new CatalogPolicyServiceEvents.BeforeAttachPolicyEvent(
             eventMetadataFactory.create(),
@@ -202,7 +202,7 @@ public class CatalogPolicyEventServiceDelegator
       DetachPolicyRequest detachPolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeDetachPolicy(
         new CatalogPolicyServiceEvents.BeforeDetachPolicyEvent(
             eventMetadataFactory.create(),
@@ -233,7 +233,7 @@ public class CatalogPolicyEventServiceDelegator
       String policyType,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeGetApplicablePolicies(
         new CatalogPolicyServiceEvents.BeforeGetApplicablePoliciesEvent(
             eventMetadataFactory.create(), catalogName, namespace, targetName, policyType));

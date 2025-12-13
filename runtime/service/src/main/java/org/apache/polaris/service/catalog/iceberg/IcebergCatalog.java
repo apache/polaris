@@ -2081,7 +2081,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Map<String, String> tableProperties,
       Set<PolarisStorageActions> storageActions) {
     StorageAccessConfig storageAccessConfig =
-        storageAccessConfigProvider.getStorageAccessConfig(
+        storageAccessConfigProvider.getStorageAccessConfigForCredentialsVending(
             identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
     // Reload fileIO based on table specific context
     FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, tableProperties);

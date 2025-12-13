@@ -99,6 +99,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANT
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_STRUCTURE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOTE_SIGN;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_SNAPSHOTS;
@@ -144,7 +145,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Performs hierarchical resolution logic by matching the transively expanded set of grants to a
+ * Performs hierarchical resolution logic by matching the transitively expanded set of grants to a
  * calling principal against the cascading permissions over the parent hierarchy of a target
  * Securable.
  *
@@ -461,6 +462,10 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     SUPER_PRIVILEGES.putAll(
         VIEW_FULL_METADATA,
         List.of(CATALOG_MANAGE_CONTENT, CATALOG_MANAGE_METADATA, VIEW_FULL_METADATA));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_REMOTE_SIGN,
+        List.of(
+            CATALOG_MANAGE_CONTENT, CATALOG_MANAGE_METADATA, TABLE_CREATE, TABLE_FULL_METADATA));
 
     // Catalog privileges
     SUPER_PRIVILEGES.putAll(
