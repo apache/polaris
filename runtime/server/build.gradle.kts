@@ -53,6 +53,32 @@ dependencies {
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
+
+  testImplementation("io.quarkus:quarkus-junit5")
+
+  testImplementation(testFixtures(project(":polaris-runtime-service")))
+  testImplementation(project(":polaris-runtime-test-common"))
+  testImplementation(project(":polaris-core"))
+  testImplementation(project(":polaris-api-management-model"))
+  testImplementation(project(":polaris-minio-testcontainer"))
+
+  testImplementation(project(":polaris-tests")) {
+    // exclude all spark dependencies
+    exclude(group = "org.apache.iceberg", module = "iceberg-spark-3.5_2.12")
+    exclude(group = "org.apache.iceberg", module = "iceberg-spark-extensions-3.5_2.12")
+    exclude(group = "org.apache.spark", module = "spark-sql_2.12")
+  }
+
+  testImplementation(platform(libs.iceberg.bom))
+  testImplementation("org.apache.iceberg:iceberg-api")
+  testImplementation("org.apache.iceberg:iceberg-core")
+  testImplementation("org.apache.iceberg:iceberg-aws")
+  testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
+  testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
+
+  // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
+  // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.
+  intTestRuntimeOnly(libs.keycloak.admin.client)
 }
 
 quarkus {
@@ -100,3 +126,70 @@ artifacts {
   }
   add("distributionElements", layout.buildDirectory.dir("quarkus-app")) { builtBy("quarkusBuild") }
 }
+
+tasks.withType(Test::class.java).configureEach {
+  if (System.getenv("AWS_REGION") == null) {
+    environment("AWS_REGION", "us-west-2")
+  }
+  // Note: the test secrets are referenced in
+  // org.apache.polaris.service.it.ServerManager
+  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+  jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
+  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
+  // "getSubject is supported only if a security manager is allowed".
+  systemProperty("java.security.manager", "allow")
+}
+
+listOf("intTest", "cloudTest")
+  .map { tasks.named<Test>(it) }
+  .forEach {
+    it.configure {
+      maxParallelForks = 1
+
+      val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
+
+      // JVM arguments provider does not interfere with Gradle's cache keys
+      jvmArgumentProviders.add(
+        CommandLineArgumentProvider {
+          // Same issue as above: allow a java security manager after Java 21
+          // (this setting is for the application under test, while the setting above is for test
+          // code).
+          val securityManagerAllow = "-Djava.security.manager=allow"
+
+          val args = mutableListOf<String>()
+
+          // Example: to attach a debugger to the spawned JVM running Quarkus, add
+          // -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+          // to your test configuration.
+          val explicitQuarkusTestArgLine = System.getProperty("quarkus.test.arg-line")
+          var quarkusTestArgLine =
+            if (explicitQuarkusTestArgLine != null)
+              "$explicitQuarkusTestArgLine $securityManagerAllow"
+            else securityManagerAllow
+
+          args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
+          // This property is not honored in a per-profile application.properties file,
+          // so we need to set it here.
+          args.add("-Dquarkus.log.file.path=${logsDir.resolve("polaris.log").absolutePath}")
+
+          // Add `quarkus.*` system properties, other than the ones explicitly set above
+          System.getProperties()
+            .filter {
+              it.key.toString().startsWith("quarkus.") &&
+                !"quarkus.test.arg-line".equals(it.key) &&
+                !"quarkus.log.file.path".equals(it.key)
+            }
+            .forEach { args.add("${it.key}=${it.value}") }
+
+          args
+        }
+      )
+      // delete files from previous runs
+      doFirst {
+        // delete log files written by Polaris
+        logsDir.deleteRecursively()
+        // delete quarkus.log file (captured Polaris stdout/stderr)
+        project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
+      }
+    }
+  }
