@@ -280,7 +280,7 @@ public final class EntityObjMappings {
   }
 
   /**
-   * Retrieve the objet type that {@linkplain ContainerObj contains} the given entity-type.
+   * Retrieve the object type that {@linkplain ContainerObj contains} the given entity-type.
    *
    * <p>For example, all catalog content is contained in a {@link CatalogStateObj}, all principals
    * in a {@link PrincipalsObj}.
