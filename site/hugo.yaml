@@ -126,6 +126,11 @@ menu:
       parent: "doc"
       weight: 1000
 
+    - name: "Tools"
+      identifier: "tools"
+      url: "/tools"
+      weight: 150
+
     - name: "Releases"
       identifier: "releases"
       url: "/downloads"
