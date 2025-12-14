@@ -16,40 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.catalog.iceberg;
 
-package org.apache.polaris.service.catalog;
+import static org.apache.polaris.service.catalog.Profiles.NOSQL_IN_MEM;
 
 import com.google.common.collect.ImmutableMap;
-import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
+import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 
-public final class Profiles {
-  private Profiles() {}
+@QuarkusTest
+@TestProfile(IcebergViewCatalogNoSqlInMemTest.Profile.class)
+public class IcebergViewCatalogNoSqlInMemTest extends AbstractIcebergCatalogViewTest {
 
-  public static final Map<String, String> NOSQL_IN_MEM =
-      ImmutableMap.<String, String>builder()
-          .put("polaris.persistence.type", "nosql")
-          .put("polaris.persistence.nosql.backend", "InMemory")
-          .build();
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
 
-  public static class DefaultProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\",\"S3\"]",
-          "polaris.event-listener.type",
-          "test",
-          "polaris.readiness.ignore-severe-issues",
-          "true");
-    }
-  }
-
-  public static class DefaultNoSqlProfile extends DefaultProfile {
+  public static class Profile extends AbstractIcebergCatalogViewTest.Profile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
@@ -57,5 +43,14 @@ public final class Profiles {
           .putAll(NOSQL_IN_MEM)
           .build();
     }
+  }
+
+  @Override
+  protected void bootstrapRealm(String realmName) {
+    metaStoreManagerFactory
+        .bootstrapRealms(
+            List.of(realmName),
+            RootCredentialsSet.fromList(List.of(realmName + ",aClientId,aSecret")))
+        .get(realmName);
   }
 }
