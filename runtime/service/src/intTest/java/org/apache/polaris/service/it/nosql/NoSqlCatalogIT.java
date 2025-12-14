@@ -16,45 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.it.nosql;
 
 import com.google.common.collect.ImmutableMap;
-import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.TestProfile;
 import java.util.Map;
+import org.apache.polaris.service.it.PolarisRestCatalogMinIOIT;
 
-public final class Profiles {
-  private Profiles() {}
-
-  public static final Map<String, String> NOSQL_IN_MEM =
-      ImmutableMap.<String, String>builder()
-          .put("polaris.persistence.type", "nosql")
-          .put("polaris.persistence.nosql.backend", "InMemory")
-          .build();
-
-  public static class DefaultProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.features.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
-          "true",
-          "polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"",
-          "true",
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\",\"S3\"]",
-          "polaris.event-listener.type",
-          "test",
-          "polaris.readiness.ignore-severe-issues",
-          "true");
-    }
-  }
-
-  public static class DefaultNoSqlProfile extends DefaultProfile {
+@QuarkusIntegrationTest
+@TestProfile(value = NoSqlCatalogIT.Profile.class)
+public class NoSqlCatalogIT extends PolarisRestCatalogMinIOIT {
+  public static class Profile extends NoSqlTesting.PersistenceInMemoryProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
           .putAll(super.getConfigOverrides())
-          .putAll(NOSQL_IN_MEM)
+          .put("polaris.storage.aws.access-key", MINIO_ACCESS_KEY)
+          .put("polaris.storage.aws.secret-key", MINIO_SECRET_KEY)
+          .put("polaris.features.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "false")
           .build();
     }
   }
