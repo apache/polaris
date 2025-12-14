@@ -26,6 +26,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -87,9 +88,13 @@ public abstract class PolarisStorageConfigurationInfo {
   private static final ObjectMapper DEFAULT_MAPPER;
 
   static {
-    DEFAULT_MAPPER = new ObjectMapper();
-    DEFAULT_MAPPER.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
-    DEFAULT_MAPPER.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    DEFAULT_MAPPER =
+        JsonMapper.builder()
+            .defaultPropertyInclusion(
+                JsonInclude.Value.construct(
+                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
   }
 
   public String serialize() {

@@ -20,6 +20,7 @@ package org.apache.polaris.core.storage.gcp;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
@@ -68,6 +69,8 @@ public class GcpCredentialsStorageIntegration
   public static final String SERVICE_ACCOUNT_PREFIX = "projects/-/serviceAccounts/";
   public static final String IMPERSONATION_SCOPE =
       "https://www.googleapis.com/auth/devstorage.read_write";
+
+  private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder().build();
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
@@ -181,7 +184,7 @@ public class GcpCredentialsStorageIntegration
 
   private String convertToString(CredentialAccessBoundary accessBoundary) {
     try {
-      return new ObjectMapper().writeValueAsString(accessBoundary);
+      return OBJECT_MAPPER.writeValueAsString(accessBoundary);
     } catch (JsonProcessingException e) {
       LOGGER.warn("Unable to convert access boundary to json", e);
       return Objects.toString(accessBoundary);

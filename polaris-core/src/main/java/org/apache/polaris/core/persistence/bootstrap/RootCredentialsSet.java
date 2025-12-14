@@ -25,7 +25,7 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
@@ -151,9 +151,8 @@ public interface RootCredentialsSet {
   }
 
   private static RootCredentialsSet fromInputStream(InputStream in) throws IOException {
-    YAMLFactory factory = new YAMLFactory();
-    ObjectMapper mapper = new ObjectMapper(factory).configure(FAIL_ON_UNKNOWN_PROPERTIES, false);
-    try (var parser = factory.createParser(in)) {
+    ObjectMapper mapper = YAMLMapper.builder().configure(FAIL_ON_UNKNOWN_PROPERTIES, false).build();
+    try (var parser = mapper.createParser(in)) {
       var values = mapper.readValues(parser, RootCredentialsSet.class);
       var builder = ImmutableRootCredentialsSet.builder();
       while (values.hasNext()) {

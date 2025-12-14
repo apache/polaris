@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.persistence.nosql.impl;
 
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.lang.String.format;
@@ -28,7 +30,6 @@ import static org.apache.polaris.persistence.nosql.api.obj.ObjSerializationHelpe
 import static org.apache.polaris.persistence.nosql.api.obj.ObjTypes.objTypeById;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.util.ByteBufferBackedInputStream;
@@ -77,9 +78,11 @@ import org.apache.polaris.persistence.nosql.impl.indexes.IndexesProvider;
  */
 public final class PersistenceImplementation implements Persistence {
   private static final ObjectMapper SMILE_MAPPER =
-      new SmileMapper()
-          .findAndRegisterModules()
-          .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+      SmileMapper.builder()
+          .findAndAddModules()
+          .disable(FAIL_ON_UNKNOWN_PROPERTIES)
+          .enable(DEFAULT_VIEW_INCLUSION)
+          .build();
   private static final ObjectWriter OBJ_WRITER =
       SMILE_MAPPER.writer().withView(Obj.StorageView.class);
 

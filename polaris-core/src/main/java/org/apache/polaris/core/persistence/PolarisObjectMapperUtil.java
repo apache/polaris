@@ -25,6 +25,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.util.Map;
@@ -42,7 +43,7 @@ public final class PolarisObjectMapperUtil {
   private static final ObjectMapper MAPPER = configureMapper();
 
   private static ObjectMapper configureMapper() {
-    ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = JsonMapper.builder().build();
     mapper.configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, false);
     RESTSerializers.registerAll(mapper);
     return mapper;

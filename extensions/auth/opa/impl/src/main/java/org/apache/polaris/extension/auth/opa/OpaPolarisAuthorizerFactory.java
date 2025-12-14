@@ -19,6 +19,7 @@
 package org.apache.polaris.extension.auth.opa;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -60,7 +61,7 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     this.opaConfig = opaConfig;
     this.clock = clock;
     this.asyncExec = asyncExec;
-    this.objectMapper = new ObjectMapper();
+    this.objectMapper = JsonMapper.builder().build();
   }
 
   /**

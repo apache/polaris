@@ -23,6 +23,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -46,7 +47,7 @@ public class PolarisStorageConfigurationInfoTest {
 
   @BeforeAll
   public static void setup() {
-    mapper = new ObjectMapper();
+    mapper = JsonMapper.builder().build();
   }
 
   @ParameterizedTest

@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.ws.rs.client.Client;
 import java.net.URI;
 import java.util.Map;
@@ -64,7 +65,7 @@ public final class PolarisClient implements AutoCloseable {
    * ObjectMapper} if the make custom {@link PolarisServerManager#createClient() clients}.
    */
   public static ObjectMapper buildObjectMapper() {
-    ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = JsonMapper.builder().build();
     mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     mapper.setPropertyNamingStrategy(new PropertyNamingStrategies.KebabCaseStrategy());

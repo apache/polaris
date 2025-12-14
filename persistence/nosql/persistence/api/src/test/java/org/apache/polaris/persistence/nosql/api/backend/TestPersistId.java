@@ -22,6 +22,7 @@ import static java.lang.String.format;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -47,8 +48,8 @@ public class TestPersistId {
 
   @BeforeEach
   protected void setUp() {
-    mapper = new ObjectMapper();
-    smile = new SmileMapper();
+    mapper = JsonMapper.builder().build();
+    smile = SmileMapper.builder().build();
   }
 
   @Test
