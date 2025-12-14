@@ -23,7 +23,7 @@ type: docs
 weight: 601
 ---
 
-This guide provides instructions for configuring the Polaris Helm chart for a production environment. For full list of chart values, see the [main Helm chart documentation](../helm.md).
+This guide provides instructions for configuring the Polaris Helm chart for a production environment. For full list of chart values, see the [main Helm chart documentation](../../helm/).
 
 The default Helm chart values are suitable for development and testing, but they are not recommended for production. Following are the key areas to consider for production deployment.
 
