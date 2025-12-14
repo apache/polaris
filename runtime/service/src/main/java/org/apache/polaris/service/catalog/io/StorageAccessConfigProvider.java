@@ -27,11 +27,12 @@ import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,17 +50,20 @@ public class StorageAccessConfigProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageAccessConfigProvider.class);
 
   private final StorageCredentialCache storageCredentialCache;
-  private final StorageCredentialsVendor storageCredentialsVendor;
   private final PolarisPrincipal polarisPrincipal;
+  private final PolarisMetaStoreManager metaStoreManager;
+  private final CallContext callContext;
 
   @Inject
   public StorageAccessConfigProvider(
       StorageCredentialCache storageCredentialCache,
-      StorageCredentialsVendor storageCredentialsVendor,
-      PolarisPrincipal polarisPrincipal) {
+      PolarisPrincipal polarisPrincipal,
+      PolarisMetaStoreManager polarisMetaStoreManager,
+      CallContext callContext) {
     this.storageCredentialCache = storageCredentialCache;
-    this.storageCredentialsVendor = storageCredentialsVendor;
     this.polarisPrincipal = polarisPrincipal;
+    this.metaStoreManager = polarisMetaStoreManager;
+    this.callContext = callContext;
   }
 
   /**
@@ -96,7 +100,7 @@ public class StorageAccessConfigProvider {
     PolarisEntity storageInfoEntity = storageInfo.get();
 
     boolean skipCredentialSubscopingIndirection =
-        storageCredentialsVendor
+        callContext
             .getRealmConfig()
             .getConfig(FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION);
     if (skipCredentialSubscopingIndirection) {
@@ -118,7 +122,7 @@ public class StorageAccessConfigProvider {
             : Set.of();
     StorageAccessConfig accessConfig =
         storageCredentialCache.getOrGenerateSubScopeCreds(
-            storageCredentialsVendor,
+            metaStoreManager,
             storageInfoEntity,
             allowList,
             tableLocations,

@@ -26,48 +26,65 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.mockito.stubbing.OngoingStubbing;
 
 public class StorageCredentialCacheTest {
   private final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
   private final RealmContext realmContext = () -> "testRealm";
-  private final RealmConfig realmConfig =
-      new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
-  private final StorageCredentialsVendor storageCredentialsVendor;
+  private final BasePersistence persistence;
   private StorageCredentialCache storageCredentialCache;
+  private final PolarisCredentialVendor polarisCredentialVendor;
 
   public StorageCredentialCacheTest() {
-    storageCredentialsVendor = Mockito.mock(StorageCredentialsVendor.class);
-    Mockito.when(storageCredentialsVendor.getRealmContext()).thenReturn(realmContext);
-    Mockito.when(storageCredentialsVendor.getRealmConfig()).thenReturn(realmConfig);
+    persistence = Mockito.mock(BasePersistence.class);
+    polarisCredentialVendor = Mockito.mock(PolarisCredentialVendor.class);
   }
 
   @BeforeEach
   void beforeEach() {
     StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
-    storageCredentialCache = new StorageCredentialCache(diagServices, storageCredentialCacheConfig);
+
+    CallContext callContext = new PolarisCallContext(realmContext, persistence);
+    storageCredentialCache =
+        new StorageCredentialCache(diagServices, storageCredentialCacheConfig, callContext);
+  }
+
+  OngoingStubbing<ScopedCredentialsResult> mockAnyCredentialCall() {
+    return Mockito.when(
+        polarisCredentialVendor.getSubscopedCredsForEntity(
+            Mockito.any(),
+            Mockito.anyLong(),
+            Mockito.anyLong(),
+            Mockito.any(),
+            Mockito.anyBoolean(),
+            Mockito.anySet(),
+            Mockito.anySet(),
+            Mockito.any(),
+            Mockito.any()));
   }
 
   @Test
@@ -75,15 +92,7 @@ public class StorageCredentialCacheTest {
     ScopedCredentialsResult badResult =
         new ScopedCredentialsResult(
             BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, "extra_error_info");
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(badResult);
+    mockAnyCredentialCall().thenReturn(badResult);
     PolarisEntity polarisEntity =
         new PolarisEntity(
             new PolarisBaseEntity(
@@ -94,7 +103,7 @@ public class StorageCredentialCacheTest {
     Assertions.assertThatThrownBy(
             () ->
                 storageCredentialCache.getOrGenerateSubScopeCreds(
-                    storageCredentialsVendor,
+                    polarisCredentialVendor,
                     polarisEntity,
                     true,
                     Set.of("s3://bucket1/path"),
@@ -109,14 +118,8 @@ public class StorageCredentialCacheTest {
   public void testCacheHit() {
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any()))
+
+    mockAnyCredentialCall()
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(1));
@@ -128,7 +131,7 @@ public class StorageCredentialCacheTest {
 
     // add an item to the cache
     storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
+        polarisCredentialVendor,
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -139,7 +142,7 @@ public class StorageCredentialCacheTest {
 
     // subscope for the same entity and same allowed locations, will hit the cache
     storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
+        polarisCredentialVendor,
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -151,7 +154,7 @@ public class StorageCredentialCacheTest {
     Optional<PolarisPrincipal> emptyPrincipal = Optional.empty();
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
+        polarisCredentialVendor,
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -164,14 +167,7 @@ public class StorageCredentialCacheTest {
   private void testCacheForAnotherPrincipal(boolean hitExpected) {
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any()))
+    mockAnyCredentialCall()
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(1));
@@ -185,7 +181,7 @@ public class StorageCredentialCacheTest {
 
     // add an item to the cache
     storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
+        polarisCredentialVendor,
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -195,7 +191,7 @@ public class StorageCredentialCacheTest {
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
+        polarisCredentialVendor,
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -212,22 +208,24 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testCacheMissForAnotherPrincipal() {
-    Mockito.when(storageCredentialsVendor.getRealmConfig())
-        .thenReturn(
-            new RealmConfigImpl(
-                new PolarisConfigurationStore() {
-                  @SuppressWarnings("unchecked")
-                  @Override
-                  public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
-                    if (configName.equals(
-                        FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL
-                            .key())) {
-                      return "true";
-                    }
-                    return null;
-                  }
-                },
-                () -> "realm"));
+    PolarisConfigurationStore store =
+        new PolarisConfigurationStore() {
+          @SuppressWarnings("unchecked")
+          @Override
+          public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
+            if (configName.equals(
+                FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key())) {
+              return "true";
+            }
+            return null;
+          }
+        };
+    CallContext callContext = new PolarisCallContext(realmContext, persistence, store);
+
+    StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
+
+    storageCredentialCache =
+        new StorageCredentialCache(diagServices, storageCredentialCacheConfig, callContext);
 
     testCacheForAnotherPrincipal(false);
   }
@@ -236,14 +234,7 @@ public class StorageCredentialCacheTest {
   public void testCacheEvict() throws Exception {
     List<ScopedCredentialsResult> mockedScopedCreds = getFakeScopedCreds(3, /* expireSoon= */ true);
 
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any()))
+    mockAnyCredentialCall()
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(2));
@@ -266,7 +257,7 @@ public class StorageCredentialCacheTest {
 
     // the entry will be evicted immediately because the token is expired
     storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
+        polarisCredentialVendor,
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -276,7 +267,7 @@ public class StorageCredentialCacheTest {
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
+        polarisCredentialVendor,
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -286,7 +277,7 @@ public class StorageCredentialCacheTest {
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
-        storageCredentialsVendor,
+        polarisCredentialVendor,
         polarisEntity,
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -300,14 +291,7 @@ public class StorageCredentialCacheTest {
   public void testCacheGenerateNewEntries() {
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any()))
+    mockAnyCredentialCall()
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(2));
@@ -317,7 +301,7 @@ public class StorageCredentialCacheTest {
     // different catalog will generate new cache entries
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           entity,
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -335,7 +319,7 @@ public class StorageCredentialCacheTest {
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           PolarisEntity.of(updateEntity),
           /* allowedListAction= */ true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -347,7 +331,7 @@ public class StorageCredentialCacheTest {
     // allowedListAction changed to different value FALSE, will generate new entry
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           entity,
           /* allowedListAction= */ false,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -359,7 +343,7 @@ public class StorageCredentialCacheTest {
     // different allowedWriteLocations, will generate new entry
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           entity,
           /* allowedListAction= */ false,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -376,7 +360,7 @@ public class StorageCredentialCacheTest {
       PolarisBaseEntity updateEntity =
           new PolarisBaseEntity.Builder(entity).internalPropertiesAsMap(internalMap).build();
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           PolarisEntity.of(updateEntity),
           /* allowedListAction= */ false,
           Set.of("s3://differentbucket/path", "s3://bucket2/path"),
@@ -392,14 +376,7 @@ public class StorageCredentialCacheTest {
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
 
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any()))
+    mockAnyCredentialCall()
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(2));
@@ -407,7 +384,7 @@ public class StorageCredentialCacheTest {
     PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           entity,
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -420,7 +397,7 @@ public class StorageCredentialCacheTest {
     // entity ID does not affect the cache
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).id(1234).build()),
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -433,7 +410,7 @@ public class StorageCredentialCacheTest {
     // other property changes does not affect the cache
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
@@ -445,7 +422,7 @@ public class StorageCredentialCacheTest {
     // order of the allowedReadLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
           Set.of("s3://bucket2/path", "s3://bucket1/path"),
@@ -458,7 +435,7 @@ public class StorageCredentialCacheTest {
     // order of the allowedWriteLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
-          storageCredentialsVendor,
+          polarisCredentialVendor,
           new PolarisEntity(new PolarisBaseEntity.Builder(entity).entityVersion(5).build()),
           true,
           Set.of("s3://bucket2/path", "s3://bucket1/path"),
@@ -537,21 +514,13 @@ public class StorageCredentialCacheTest {
                 .put(StorageAccessProperty.AWS_ENDPOINT, "test-endpoint1")
                 .put(StorageAccessProperty.AWS_PATH_STYLE_ACCESS, "true")
                 .build());
-    Mockito.when(
-            storageCredentialsVendor.getSubscopedCredsForEntity(
-                Mockito.any(),
-                Mockito.anyBoolean(),
-                Mockito.anySet(),
-                Mockito.anySet(),
-                Mockito.any(),
-                Mockito.any()))
-        .thenReturn(properties);
+    mockAnyCredentialCall().thenReturn(properties);
     List<PolarisEntity> entityList = getPolarisEntities();
     PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
 
     StorageAccessConfig config =
         storageCredentialCache.getOrGenerateSubScopeCreds(
-            storageCredentialsVendor,
+            polarisCredentialVendor,
             entityList.get(0),
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
