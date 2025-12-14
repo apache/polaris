@@ -34,7 +34,6 @@ By default, the Polaris Helm chart uses an `in-memory` metastore, which is not s
 To use a persistent backend, `persistence.type` must be set to `relational-jdbc`, and a Kubernetes secret containing the database connection details must be provided.
 
 ```yaml
-# values.yaml
 persistence:
   type: relational-jdbc
   relationalJdbc:
@@ -52,7 +51,6 @@ For a production environment, it is crucial to define resource requests and limi
 Resource requests and limits can be set in the `values.yaml` file:
 
 ```yaml
-# values.yaml
 resources:
   requests:
     memory: "1Gi"
@@ -73,7 +71,6 @@ To use a shared set of keys, a Kubernetes secret to store an RSA key pair or a s
 ### RSA Key Pair
 
 ```yaml
-# values.yaml
 authentication:
   tokenBroker:
     type: rsa-key-pair
@@ -87,7 +84,6 @@ authentication:
 ### Symmetric Key
 
 ```yaml
-# values.yaml
 authentication:
   tokenBroker:
     type: symmetric-key
@@ -106,7 +102,6 @@ For high availability, multiple replicas of the Polaris server can be run. This 
 `replicaCount` must be set to the desired number of pods.
 
 ```yaml
-# values.yaml
 replicaCount: 3
 ```
 
@@ -115,7 +110,6 @@ replicaCount: 3
 `autoscaling` can be enabled to define the minimum and maximum number of replicas, and CPU or memory utilization targets.
 
 ```yaml
-# values.yaml
 autoscaling:
   enabled: true
   minReplicas: 2
@@ -131,7 +125,6 @@ For better fault tolerance, `topologySpreadConstraints` can be used to distribut
 Here is an example that spreads pods across different zones and keeps the number of pods in each zone from differing by more than one:
 
 ```yaml
-# values.yaml
 topologySpreadConstraints:
   - maxSkew: 1
     topologyKey: "topology.kubernetes.io/zone"
