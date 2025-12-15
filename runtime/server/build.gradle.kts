@@ -54,27 +54,28 @@ dependencies {
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
 
+  testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
 
-  testImplementation(testFixtures(project(":polaris-runtime-service")))
-  testImplementation(project(":polaris-runtime-test-common"))
-  testImplementation(project(":polaris-core"))
-  testImplementation(project(":polaris-api-management-model"))
-  testImplementation(project(":polaris-minio-testcontainer"))
+  intTestImplementation(testFixtures(project(":polaris-runtime-service")))
+  intTestImplementation(project(":polaris-runtime-test-common"))
+  intTestImplementation(project(":polaris-core"))
+  intTestImplementation(project(":polaris-api-management-model"))
+  intTestImplementation(project(":polaris-minio-testcontainer"))
 
-  testImplementation(project(":polaris-tests")) {
+  intTestImplementation(project(":polaris-tests")) {
     // exclude all spark dependencies
     exclude(group = "org.apache.iceberg", module = "iceberg-spark-3.5_2.12")
     exclude(group = "org.apache.iceberg", module = "iceberg-spark-extensions-3.5_2.12")
     exclude(group = "org.apache.spark", module = "spark-sql_2.12")
   }
 
-  testImplementation(platform(libs.iceberg.bom))
-  testImplementation("org.apache.iceberg:iceberg-api")
-  testImplementation("org.apache.iceberg:iceberg-core")
-  testImplementation("org.apache.iceberg:iceberg-aws")
-  testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
-  testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
+  intTestImplementation(platform(libs.iceberg.bom))
+  intTestImplementation("org.apache.iceberg:iceberg-api")
+  intTestImplementation("org.apache.iceberg:iceberg-core")
+  intTestImplementation("org.apache.iceberg:iceberg-aws")
+  intTestImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
+  intTestImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
 
   // This dependency brings in RESTEasy Classic, which conflicts with Quarkus RESTEasy Reactive;
   // it must not be present during Quarkus augmentation otherwise Quarkus tests won't start.

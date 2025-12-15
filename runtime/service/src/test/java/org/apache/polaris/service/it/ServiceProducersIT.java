@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.server.it;
+package org.apache.polaris.service.it;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

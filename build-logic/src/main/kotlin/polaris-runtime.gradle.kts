@@ -48,19 +48,31 @@ testing {
         tasks.named(sources.compileJavaTaskName).configure {
           dependsOn("compileQuarkusTestGeneratedSourcesJava")
         }
-        configurations.named(sources.runtimeOnlyConfigurationName).configure {
-          extendsFrom(configurations.getByName("testRuntimeOnly"))
-        }
-        configurations.named(sources.implementationConfigurationName).configure {
-          // Let the test's implementation config extend testImplementation, so it also inherits the
-          // project's "main" implementation dependencies (not just the "api" configuration)
-          extendsFrom(configurations.getByName("testImplementation"))
-        }
         sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
       }
 
     listOf("intTest", "cloudTest").forEach {
       register<JvmTestSuite>(it).configure { intTestSuiteConfigure(this) }
+    }
+
+    named<JvmTestSuite>("intTest").configure {
+      configurations.named(sources.runtimeOnlyConfigurationName).configure {
+        extendsFrom(configurations.getByName("testRuntimeOnly"))
+      }
+      configurations.named(sources.implementationConfigurationName).configure {
+        // Let the test's implementation config extend testImplementation, so it also inherits the
+        // project's "main" implementation dependencies (not just the "api" configuration)
+        extendsFrom(configurations.getByName("testImplementation"))
+      }
+    }
+
+    named<JvmTestSuite>("cloudTest").configure {
+      configurations.named(sources.runtimeOnlyConfigurationName).configure {
+        extendsFrom(configurations.getByName("intTestRuntimeOnly"))
+      }
+      configurations.named(sources.implementationConfigurationName).configure {
+        extendsFrom(configurations.getByName("intTestImplementation"))
+      }
     }
   }
 }
