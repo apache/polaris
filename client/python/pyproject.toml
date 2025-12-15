@@ -19,7 +19,7 @@
 
 [project]
 name = "apache-polaris"
-version = "1.2.0"
+version = "1.4.0"
 description = "Apache Polaris"
 authors = [
     {name = "Apache Software Foundation", email = "dev@polaris.apache.org"}
