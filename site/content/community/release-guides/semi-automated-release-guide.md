@@ -31,7 +31,7 @@ params:
 The steps performed in the [Manual Release Guide](../manual-release-guide/) have been automated to a large extent. This semi-automated release guide outlines the workflows that can be used to perform a release with little manual intervention.
 
 ## Dry-run mode
-Each of the Github Workflows that have been develop comes with a `dry-run` mode.  It is enabled ticking the `Dry run mode` checkbox before starting the workflow.  When enabled, the workflow will not perform any destructive action (e.g. tag creation, branch deletion, etc.) but instead print out the commands that would have been executed.
+Each of the Github Workflows that have been developed comes with a `dry-run` mode.  It is enabled ticking the `Dry run mode` checkbox before starting the workflow.  When enabled, the workflow will not perform any destructive action (e.g. tag creation, branch deletion, etc.) but instead print out the commands that would have been executed.
 
 Dry-run mode is enabled by default.  So ensure that you uncheck the `Dry run mode` checkbox before starting the workflow.
 
@@ -62,7 +62,7 @@ Thanks,
 As part of Polaris development process, for each major change in the codebase, a new entry should be added to the `CHANGELOG.md` file.  This is usually verified during pull request reviews.  But some changes may have been missed.  So before cutting a release, it is important to ensure that the changelog is up to date.
 
 ## Release branch creation workflow
-The first Github workflow to run is [`Release - 1 - Create Release Branch`](https://github.com/apache/polaris/actions/workflows/release-1-create-release-branch.yml).  This workflow will create a release branch from the main branch.  The release branch is named after the release number and does not include the patch version.  For instance, the release branch for version 1.3.0 is named `release/1.3.x`.  It should **only be executed only once** per `major.minor` version.
+The first Github workflow to run is [`Release - 1 - Create Release Branch`](https://github.com/apache/polaris/actions/workflows/release-1-create-release-branch.yml). This workflow will create a release branch from the main branch. The release branch is named after the release number and does not include the patch version. For instance, the release branch for version 1.3.0 is named `release/1.3.x`. It should **only be executed only once** per `major.minor` version.
 
 
 ![Screenshot of the first release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-1.png "Screenshot of the first release workflow for 1.3.0-incubating")
@@ -97,6 +97,12 @@ Each code change that should be added to the release branch must be cherry-picke
 Once the pull requests have been merged, create a new `apache-polaris-[major].[minor].[patch]-incubating-rc[N]` tag.  The commands below assume that the `apache/polaris` Git repository corresponds to the `apache` remote.
 
 ```bash
+# Ensure you're on the correct release branch and have the latest changes
+git fetch apache
+git checkout release/[major].[minor].x
+git pull apache release/[major].[minor].x
+
+# Create and push the release candidate tag
 git tag -a apache-polaris-[major].[minor].[patch]-incubating-rc[N] -m "Apache Polaris [major].[minor].[patch] (incubating) release candidate [N]"
 git push apache apache-polaris-[major].[minor].[patch]-incubating-rc[N]
 ```

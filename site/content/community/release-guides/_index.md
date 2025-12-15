@@ -36,10 +36,10 @@ If you want to verify a release, head to the release verification guide.
 ## Available Release Guides
 
 ### Semi-Automated Release Guide
-The [semi-automated release guide](semi-automated-release-guide/) describes how workflows are used to perform a release with little manual intervention. This guide automates many of the manual steps while maintaining the necessary oversight and validation required for Apache releases.  It is the preferred approach for cutting Apache Polaris releases.
+The [semi-automated release guide](semi-automated-release-guide/) describes how GitHub workflows are used to perform a release with little manual intervention. This guide automates many of the manual steps while maintaining the necessary oversight and validation required for Apache releases.  It is the preferred approach for cutting Apache Polaris releases.
 
 ### Manual Release Guide (deprecated)
-The [manual release guide](manual-release-guide/) walks through each step of creating an Apache Polaris release. This guide provides detailed instructions for every aspect of the release process but requires significant manual intervention. It is deprecated in favor of the semi-automated approach below, but is maintained for reference and fallback scenarios.
+The [manual release guide](manual-release-guide/) walks through each step of creating an Apache Polaris release. This guide provides detailed instructions for every aspect of the release process but requires significant manual intervention. It is deprecated in favor of the semi-automated approach above, but is maintained for reference and fallback scenarios.
 
 ### Release Verification Guide
 The [release verification guide](release-verification-guide/) provides instructions for verifying an Apache Polaris release, like verifying checksums and signatures, ensuring release artifacts integrity, ...
