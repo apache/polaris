@@ -31,17 +31,17 @@ params:
 The steps performed in the [Manual Release Guide](../manual-release-guide/) have been automated to a large extent. This semi-automated release guide outlines the workflows that can be used to perform a release with little manual intervention.
 
 ## Dry-run mode
-Each of the Github Workflows that have been developed comes with a `dry-run` mode.  It is enabled ticking the `Dry run mode` checkbox before starting the workflow.  When enabled, the workflow will not perform any destructive action (e.g. tag creation, branch deletion, etc.) but instead print out the commands that would have been executed.
+Each of the Github Workflows that have been developed comes with a `dry-run` mode. It is enabled ticking the `Dry run mode` checkbox before starting the workflow. When enabled, the workflow will not perform any destructive action (e.g. tag creation, branch deletion, etc.) but instead print out the commands that would have been executed.
 
-Dry-run mode is enabled by default.  So ensure that you uncheck the `Dry run mode` checkbox before starting the workflow.
+Dry-run mode is enabled by default. So ensure that you uncheck the `Dry run mode` checkbox before starting the workflow.
 
 ## Prerequisites
 ### Announce the intent to cut a release
-Polaris follows a schedule-driven release model.  The first thing to do is to send an e-mail to the dev@polaris.apache.org mailing list to announce the intent to cut a release, approximately a week before the scheduled release date.  The e-mail should include the following information:
+Polaris follows a schedule-driven release model. The first thing to do is to send an e-mail to the dev@polaris.apache.org mailing list to announce the intent to cut a release, approximately a week before the scheduled release date. The e-mail should include the following information:
 * The version number of the release (e.g. 1.4.0)
 * The tentative date of the release (e.g. 2026-01-19)
 
-Note that the tentative date is only a suggestion.  The actual date of the release will be determined by taking community feedback into account.  For instance, if specific pull requests are about to be merged, the release may be delayed by a couple of days to include them.
+Note that the tentative date is only a suggestion. The actual date of the release will be determined by taking community feedback into account. For instance, if specific pull requests are about to be merged, the release may be delayed by a couple of days to include them.
 
 ```
 [DISCUSS] Apache Polaris x.y.z
@@ -51,7 +51,7 @@ Note that the tentative date is only a suggestion.  The actual date of the relea
 Hello everyone,
 
 The purpose of this e-mail is to collect feedback on the upcoming Apache
-Polaris x.y.z release.  The tentative release date is YYYY-MM-DD.  Please let
+Polaris x.y.z release. The tentative release date is YYYY-MM-DD. Please let
 me know if you have any concerns or comments, or if there are some specific
 pull requests that you would like to see included in the release.
 
@@ -59,7 +59,7 @@ Thanks,
 ```
 
 ### Ensure that the changelog is up to date
-As part of Polaris development process, for each major change in the codebase, a new entry should be added to the `CHANGELOG.md` file.  This is usually verified during pull request reviews.  But some changes may have been missed.  So before cutting a release, it is important to ensure that the changelog is up to date.
+As part of Polaris development process, for each major change in the codebase, a new entry should be added to the `CHANGELOG.md` file. This is usually verified during pull request reviews. But some changes may have been missed. So before cutting a release, it is important to ensure that the changelog is up to date.
 
 ## Release branch creation workflow
 The first Github workflow to run is [`Release - 1 - Create Release Branch`](https://github.com/apache/polaris/actions/workflows/release-1-create-release-branch.yml). This workflow will create a release branch from the main branch. The release branch is named after the release number and does not include the patch version. For instance, the release branch for version 1.3.0 is named `release/1.3.x`. It should **only be executed only once** per `major.minor` version.
@@ -72,16 +72,16 @@ Once the workflow has run, the run details page contains a recap of the main inf
 ![Screenshot of a detailed run of the first release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-1-detail.png "Screenshot of a detailed run of the first release workflow for 1.3.0-incubating")
 
 ## RC0 only - Changelog and version update workflow
-The second Github workflow to run is [`Release - 2 - Update version and Changelog for Release Candidate`](https://github.com/apache/polaris/actions/workflows/release-2-update-release-candidate.yml).  This workflow will:
+The second Github workflow to run is [`Release - 2 - Update version and Changelog for Release Candidate`](https://github.com/apache/polaris/actions/workflows/release-2-update-release-candidate.yml). This workflow will:
 * Verify that all Github checks are green for the release branch.
 * Increase the patch version number by 1 if the workflow has already been run for that `major.minor` version.
 * Update the project version files with the final version number
 * Commit the changes to the release branch
 * Create the `major.minor.patch-rc0` tag
 
-This workflow can only be run from a `release/x.y.z` branch.  Selecting any other branch in the Github Actions UI will result in a failure.
+This workflow can only be run from a `release/x.y.z` branch. Selecting any other branch in the Github Actions UI will result in a failure.
 
-Note that the tag that is created is for RC0.  This workflow should **only be executed only once** per `major.minor.patch` version.
+Note that the tag that is created is for RC0. This workflow should **only be executed only once** per `major.minor.patch` version.
 
 ![Screenshot of the second release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-2.png "Screenshot of the second release workflow for 1.3.0-incubating")
 
@@ -90,11 +90,11 @@ Like for the other workflow runs, the run details page contains a recap of the m
 ![Screenshot of a detailed run of the second release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-2-detail.png "Screenshot of a detailed run of the second release workflow for 1.3.0-incubating")
 
 ## RC≥1 only - Update release branch and create tag
-If the first release candidate is rejected, additional code changes may be needed.  These steps have not been automated yet.
+If the first release candidate is rejected, additional code changes may be needed. These steps have not been automated yet.
 
-Each code change that should be added to the release branch must be cherry-picked from the main branch and proposed in a dedicated pull request.  The pull request must be reviewed and approved before being merged.  This step is mandatory so that Github runs the CI checks.  The subsequent workflows will verify that those checks passed.
+Each code change that should be added to the release branch must be cherry-picked from the main branch and proposed in a dedicated pull request. The pull request must be reviewed and approved before being merged. This step is mandatory so that Github runs the CI checks. The subsequent workflows will verify that those checks passed.
 
-Once the pull requests have been merged, create a new `apache-polaris-[major].[minor].[patch]-incubating-rc[N]` tag.  The commands below assume that the `apache/polaris` Git repository corresponds to the `apache` remote.
+Once the pull requests have been merged, create a new `apache-polaris-[major].[minor].[patch]-incubating-rc[N]` tag. The commands below assume that the `apache/polaris` Git repository corresponds to the `apache` remote.
 
 ```bash
 # Ensure you're on the correct release branch and have the latest changes
@@ -108,7 +108,7 @@ git push apache apache-polaris-[major].[minor].[patch]-incubating-rc[N]
 ```
 
 ## Build and publish release artifacts
-The third Github workflow to run is [`Release - 3 - Build and publish release artifacts`](https://github.com/apache/polaris/actions/workflows/release-3-build-and-publish-artifacts.yml).  This workflow will:
+The third Github workflow to run is [`Release - 3 - Build and publish release artifacts`](https://github.com/apache/polaris/actions/workflows/release-3-build-and-publish-artifacts.yml). This workflow will:
 * Build the source and binary artifacts
 * Stage artifacts to the Apache dist dev repository
 * Publish the source and binary artifacts to the Apache Nexus repository
@@ -118,7 +118,7 @@ The third Github workflow to run is [`Release - 3 - Build and publish release ar
 * Create signature and checksum for all package files
 * Copy package files to Apache dist dev repository
 
-This workflow can only be run from a `release/x.y.z` branch.  Selecting any other branch in the Github Actions UI will result in a failure.
+This workflow can only be run from a `release/x.y.z` branch. Selecting any other branch in the Github Actions UI will result in a failure.
 
 ![Screenshot of the third release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-3.png "Screenshot of the third release workflow for 1.3.0-incubating")
 
@@ -159,7 +159,7 @@ Convenience binary artifacts are staged on Nexus. The Maven repositories URLs
 are:
 * https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
 
-Please download, verify, and test.  A verification guide is available at
+Please download, verify, and test. A verification guide is available at
 https://polaris.apache.org/community/release-verify/.
 
 Please vote in the next 72 hours.
@@ -256,7 +256,7 @@ Convenience binary artifacts are staged on Nexus. The Maven
 repositories URLs are:
 * https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
 
-Please download, verify, and test.  A verification guide is available at
+Please download, verify, and test. A verification guide is available at
 https://polaris.apache.org/community/release-verify/.
 
 Please vote in the next 72 hours.
@@ -321,7 +321,7 @@ We will proceed with publishing the approved artifacts and sending out the annou
 ```
 
 ## Publish the release
-The final workflow to run is [`Release - 4 - Publish Release After Vote Success`](https://github.com/apache/polaris/actions/workflows/release-4-publish-release.yml).  This workflow will:
+The final workflow to run is [`Release - 4 - Publish Release After Vote Success`](https://github.com/apache/polaris/actions/workflows/release-4-publish-release.yml). This workflow will:
 * Copy artifacts from the dist dev to the dist release SVN repository
 * Update the Helm index in dist release repository accordingly
 * Create a final release tag

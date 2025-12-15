@@ -27,7 +27,7 @@ cascade:
 
 This section contains documentation related to Apache Polaris releases.
 
-If you're new to releasing Apache Polaris, we recommend reading the manual release guide first to understand the process.  Do not perform any actions described in the manual guide, as the semi-automated guide will handle them for you.  Simply read through the manual guide to understand the process.
+If you're new to releasing Apache Polaris, we recommend reading the manual release guide first to understand the process. Do not perform any actions described in the manual guide, as the semi-automated guide will handle them for you. Simply read through the manual guide to understand the process.
 
 Once you are familiar with the manual release process, use the semi-automated guide to cut the release.
 
@@ -36,7 +36,7 @@ If you want to verify a release, head to the release verification guide.
 ## Available Release Guides
 
 ### Semi-Automated Release Guide
-The [semi-automated release guide](semi-automated-release-guide/) describes how GitHub workflows are used to perform a release with little manual intervention. This guide automates many of the manual steps while maintaining the necessary oversight and validation required for Apache releases.  It is the preferred approach for cutting Apache Polaris releases.
+The [semi-automated release guide](semi-automated-release-guide/) describes how GitHub workflows are used to perform a release with little manual intervention. This guide automates many of the manual steps while maintaining the necessary oversight and validation required for Apache releases. It is the preferred approach for cutting Apache Polaris releases.
 
 ### Manual Release Guide (deprecated)
 The [manual release guide](manual-release-guide/) walks through each step of creating an Apache Polaris release. This guide provides detailed instructions for every aspect of the release process but requires significant manual intervention. It is deprecated in favor of the semi-automated approach above, but is maintained for reference and fallback scenarios.

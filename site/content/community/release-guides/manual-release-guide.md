@@ -101,7 +101,7 @@ For more information, see the Gradle [signing documentation](https://docs.gradle
 
 ### Helm chart signing
 
-Helm chart artifacts are signed with your key, using the [helm gpg plugin](https://github.com/technosophos/helm-gpg).  Ensure the plugin is installed locally.
+Helm chart artifacts are signed with your key, using the [helm gpg plugin](https://github.com/technosophos/helm-gpg). Ensure the plugin is installed locally.
 
 ### GitHub Repository
 
