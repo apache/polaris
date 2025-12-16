@@ -274,7 +274,7 @@ class Hints:
 
         class External:
             CATALOG_CONNECTION_TYPE = (
-                "The type of external catalog in [ICEBERG, HADOOP, HIVE]."
+                "The type of external catalog in [ICEBERG-REST, HADOOP, HIVE]."
             )
             CATALOG_AUTHENTICATION_TYPE = (
                 "The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]"
