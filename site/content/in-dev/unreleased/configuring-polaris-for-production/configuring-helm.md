@@ -53,11 +53,11 @@ Resource requests and limits can be set in the `values.yaml` file:
 ```yaml
 resources:
   requests:
-    memory: "1Gi"
-    cpu: "500m"
+    memory: "8Gi"
+    cpu: "4"
   limits:
-    memory: "2Gi"
-    cpu: "1"
+    memory: "8Gi"
+    cpu: "4"
 ```
 
 Adjust these values based on expected workload and available cluster resources.
