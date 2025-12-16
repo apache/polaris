@@ -76,7 +76,7 @@ jobs:
 
       - name: Run Helm unit tests
         run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git || true
+          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
           helm unittest helm/polaris
 
       - name: Run chart-testing (lint)
