@@ -40,8 +40,6 @@ dependencies {
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
-  implementation(project(":polaris-runtime-common"))
-
   testImplementation(project(":polaris-runtime-test-common"))
   testFixturesApi(project(":polaris-core"))
 
