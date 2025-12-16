@@ -158,7 +158,7 @@ options:
       --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
       --service-account  (Only for GCS) The service account to use when connecting to GCS
       --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
-      --catalog-connection-type  The type of external catalog in [ICEBERG, HADOOP, HIVE].
+      --catalog-connection-type  The type of external catalog in [ICEBERG-REST, HADOOP, HIVE].
       --iceberg-remote-catalog-name  The remote catalog name when federating to an Iceberg REST catalog
       --hadoop-warehouse  The warehouse to use when federating to a HADOOP catalog
       --hive-warehouse  The warehouse to use when federating to a HIVE catalog
