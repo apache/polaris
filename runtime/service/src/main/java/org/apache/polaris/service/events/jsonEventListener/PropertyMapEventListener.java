@@ -20,8 +20,11 @@
 package org.apache.polaris.service.events.jsonEventListener;
 
 import java.util.HashMap;
-import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
+import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 /**
@@ -37,10 +40,15 @@ public abstract class PropertyMapEventListener implements PolarisEventListener {
       HashMap<String, Object> properties, PolarisEventMetadata metadata);
 
   @Override
-  public void onAfterRefreshTable(IcebergRestCatalogEvents.AfterRefreshTableEvent event) {
-    HashMap<String, Object> properties = new HashMap<>();
-    properties.put("event_type", event.getClass().getSimpleName());
-    properties.put("table_identifier", event.tableIdentifier().toString());
-    transformAndSendEvent(properties, event.metadata());
+  public void onEvent(PolarisEvent event) {
+    if (event.type() == PolarisEventType.AFTER_REFRESH_TABLE) {
+      HashMap<String, Object> properties = new HashMap<>();
+      properties.put("event_type", event.type().name());
+      event
+          .attribute(EventAttributes.TABLE_IDENTIFIER)
+          .map(TableIdentifier::toString)
+          .ifPresent(id -> properties.put("table_identifier", id));
+      transformAndSendEvent(properties, event.metadata());
+    }
   }
 }

@@ -36,8 +36,10 @@ import java.util.concurrent.TimeUnit;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.service.config.PolarisIcebergObjectMapperCustomizer;
-import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
+import org.apache.polaris.service.events.PolarisEventType;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -187,11 +189,13 @@ class AwsCloudWatchEventListenerTest {
     try {
       // Create and send a test event
       TableIdentifier testTable = TableIdentifier.of("test_namespace", "test_table");
-      listener.onAfterRefreshTable(
-          new IcebergRestCatalogEvents.AfterRefreshTableEvent(
-              PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
-              "test_catalog",
-              testTable));
+      listener.onEvent(
+          PolarisEvent.builder(
+                  PolarisEventType.AFTER_REFRESH_TABLE,
+                  PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build())
+              .attribute(EventAttributes.CATALOG_NAME, "test_catalog")
+              .attribute(EventAttributes.TABLE_IDENTIFIER, testTable)
+              .build());
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))
@@ -225,9 +229,7 @@ class AwsCloudWatchEventListenerTest {
               logEvent -> {
                 String message = logEvent.message();
                 assertThat(message).contains(REALM);
-                assertThat(message)
-                    .contains(
-                        IcebergRestCatalogEvents.AfterRefreshTableEvent.class.getSimpleName());
+                assertThat(message).contains(PolarisEventType.AFTER_REFRESH_TABLE.name());
                 assertThat(message).contains(TEST_USER);
                 assertThat(message).contains(testTable.toString());
               });
@@ -249,11 +251,13 @@ class AwsCloudWatchEventListenerTest {
     try {
       // Create and send a test event synchronously
       TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
-      syncListener.onAfterRefreshTable(
-          new IcebergRestCatalogEvents.AfterRefreshTableEvent(
-              PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
-              "test_catalog",
-              syncTestTable));
+      syncListener.onEvent(
+          PolarisEvent.builder(
+                  PolarisEventType.AFTER_REFRESH_TABLE,
+                  PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build())
+              .attribute(EventAttributes.CATALOG_NAME, "test_catalog")
+              .attribute(EventAttributes.TABLE_IDENTIFIER, syncTestTable)
+              .build());
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))

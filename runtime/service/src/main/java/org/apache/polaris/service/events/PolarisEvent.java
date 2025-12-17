@@ -18,10 +18,57 @@
  */
 package org.apache.polaris.service.events;
 
-/** Represents an event emitted by Polaris. */
-public interface PolarisEvent {
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
-  PolarisEventType type();
+/**
+ * Represents an event emitted by Polaris. Events have a type, metadata, and a map of typed
+ * attributes. Use {@link #builder(PolarisEventType, PolarisEventMetadata)} to create instances.
+ */
+public record PolarisEvent(
+    PolarisEventType type, PolarisEventMetadata metadata, Map<AttributeKey<?>, Object> attributes) {
 
-  PolarisEventMetadata metadata();
+  public PolarisEvent {
+    attributes = Collections.unmodifiableMap(new HashMap<>(attributes));
+  }
+
+  public <T> Optional<T> attribute(AttributeKey<T> key) {
+    Object value = attributes.get(key);
+    if (value == null) {
+      return Optional.empty();
+    }
+    return Optional.of(key.cast(value));
+  }
+
+  public boolean hasAttribute(AttributeKey<?> key) {
+    return attributes.containsKey(key);
+  }
+
+  public static Builder builder(PolarisEventType type, PolarisEventMetadata metadata) {
+    return new Builder(type, metadata);
+  }
+
+  public static final class Builder {
+    private final PolarisEventType type;
+    private final PolarisEventMetadata metadata;
+    private final HashMap<AttributeKey<?>, Object> attributes = new HashMap<>();
+
+    private Builder(PolarisEventType type, PolarisEventMetadata metadata) {
+      this.type = type;
+      this.metadata = metadata;
+    }
+
+    public <T> Builder attribute(AttributeKey<T> key, T value) {
+      if (value != null) {
+        attributes.put(key, value);
+      }
+      return this;
+    }
+
+    public PolarisEvent build() {
+      return new PolarisEvent(type, metadata, Map.copyOf(attributes));
+    }
+  }
 }
