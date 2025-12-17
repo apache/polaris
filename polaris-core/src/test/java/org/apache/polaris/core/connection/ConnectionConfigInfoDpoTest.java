@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.AwsIamServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
@@ -34,7 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class ConnectionConfigInfoDpoTest {
-  private static final ObjectMapper objectMapper = new ObjectMapper();
+  private static final ObjectMapper objectMapper = JsonMapper.builder().build();
 
   static {
     objectMapper.enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);

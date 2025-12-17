@@ -20,6 +20,7 @@ package org.apache.polaris.extension.auth.opa.model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchemaGenerator;
 import java.io.IOException;
@@ -44,8 +45,7 @@ public class OpaSchemaGenerator {
    * @throws IOException if schema generation fails
    */
   public static String generateSchema() throws IOException {
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.enable(SerializationFeature.INDENT_OUTPUT);
+    ObjectMapper mapper = JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build();
 
     JsonSchemaGenerator schemaGen = new JsonSchemaGenerator(mapper);
     JsonSchema schema = schemaGen.generateSchema(OpaAuthorizationInput.class);

@@ -23,6 +23,7 @@ import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIAL
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
 import java.nio.ByteBuffer;
 import java.util.Base64;
@@ -46,8 +47,8 @@ public class TestObjRef {
 
   @BeforeEach
   protected void setUp() {
-    mapper = new ObjectMapper();
-    smile = new SmileMapper();
+    mapper = JsonMapper.builder().build();
+    smile = SmileMapper.builder().build();
   }
 
   @Test

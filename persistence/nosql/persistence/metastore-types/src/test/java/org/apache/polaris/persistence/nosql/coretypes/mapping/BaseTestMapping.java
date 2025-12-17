@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
@@ -73,7 +74,7 @@ public abstract class BaseTestMapping {
 
   @BeforeAll
   public static void beforeAll() {
-    objectMapper = new ObjectMapper().findAndRegisterModules();
+    objectMapper = JsonMapper.builder().findAndAddModules().build();
   }
 
   public BaseMapping<?, ?> mapping;

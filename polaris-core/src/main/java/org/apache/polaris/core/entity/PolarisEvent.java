@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.annotation.Nullable;
 import java.util.Map;
 
@@ -31,7 +32,7 @@ public class PolarisEvent {
 
   // to serialize/deserialize properties
   // TODO: Look into using the CDI-managed `ObjectMapper` object
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
   // catalog id
   private final String catalogId;

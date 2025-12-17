@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,7 @@ public class CatalogSerializationTest {
 
   @BeforeEach
   public void setUp() {
-    mapper = new ObjectMapper();
+    mapper = JsonMapper.builder().build();
   }
 
   @ParameterizedTest(name = "{0}")

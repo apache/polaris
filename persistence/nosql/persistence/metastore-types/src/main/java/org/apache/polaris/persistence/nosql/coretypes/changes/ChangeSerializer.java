@@ -47,9 +47,10 @@ import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
  */
 final class ChangeSerializer implements IndexValueSerializer<Change> {
   static ObjectMapper MAPPER =
-      new SmileMapper()
-          .findAndRegisterModules()
-          .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+      SmileMapper.builder()
+          .findAndAddModules()
+          .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+          .build();
 
   @Override
   public int serializedSize(@Nullable Change value) {

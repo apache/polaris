@@ -18,7 +18,11 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
 import org.apache.polaris.persistence.nosql.authz.api.AclEntry;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
@@ -39,7 +43,12 @@ public class TestAclEntryImpl {
 
   @BeforeAll
   static void setUp() {
-    mapper = new ObjectMapper().findAndRegisterModules();
+    mapper =
+        JsonMapper.builder()
+            .findAndAddModules()
+            .disable(FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(DEFAULT_VIEW_INCLUSION)
+            .build();
     privileges =
         new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
     JacksonPrivilegesModule.CDIResolver.setResolver(x -> privileges);

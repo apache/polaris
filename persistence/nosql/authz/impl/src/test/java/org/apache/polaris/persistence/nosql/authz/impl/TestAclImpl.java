@@ -19,6 +19,7 @@
 package org.apache.polaris.persistence.nosql.authz.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
 import org.apache.polaris.persistence.nosql.authz.api.Acl;
 import org.apache.polaris.persistence.nosql.authz.api.Privilege;
@@ -41,7 +42,7 @@ public class TestAclImpl {
 
   @BeforeAll
   static void setUp() {
-    mapper = new ObjectMapper().findAndRegisterModules();
+    mapper = JsonMapper.builder().findAndAddModules().build();
     privileges =
         new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
     JacksonPrivilegesModule.CDIResolver.setResolver(x -> privileges);
