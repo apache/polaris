@@ -56,7 +56,9 @@ dependencies {
   testImplementation(enforcedPlatform(libs.scala212.lang.library))
   testImplementation(enforcedPlatform(libs.scala212.lang.reflect))
   testImplementation(libs.javax.servlet.api)
-  testImplementation(libs.antlr4.runtime)
+
+  // Spark 3.5 and Delta 3.3 require ANTLR 4.9.3
+  testRuntimeOnly(libs.antlr4.runtime)
 }
 
 tasks.named<Test>("intTest").configure {
