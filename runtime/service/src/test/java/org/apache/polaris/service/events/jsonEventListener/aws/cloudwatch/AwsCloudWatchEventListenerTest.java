@@ -293,7 +293,7 @@ class AwsCloudWatchEventListenerTest {
               logEvent -> {
                 String message = logEvent.message();
                 assertThat(message).contains("test_table_sync");
-                assertThat(message).contains("AfterRefreshTableEvent");
+                assertThat(message).contains("AFTER_REFRESH_TABLE");
               });
     } finally {
       // Clean up
