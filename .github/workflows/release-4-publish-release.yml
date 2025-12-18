@@ -142,6 +142,21 @@ jobs:
             exit 1
           fi
 
+          # Verify that current HEAD is at the RC tag commit
+          rc_commit=$(git rev-parse "${rc_tag}")
+          current_commit=$(git rev-parse HEAD)
+
+          if [[ "${current_commit}" != "${rc_commit}" ]]; then
+            echo "❌ Current HEAD (\`${current_commit}\`) does not match RC tag \`${rc_tag}\` (\`${rc_commit}\`)." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "This means that some commits have been made on the release branch after the last RC was created." >> $GITHUB_STEP_SUMMARY
+            echo "You should not publish a release from a branch that has received additional commits after the last RC was created." >> $GITHUB_STEP_SUMMARY
+            echo "Either remove the commits from the release branch so that it points to the last RC that was voted on, or create a new RC from the current state of the branch." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "✅ Current HEAD matches RC tag \`${rc_tag}\`" >> $GITHUB_STEP_SUMMARY
+
           # Create final release tag name
           final_release_tag="apache-polaris-${version_without_rc}"
 
