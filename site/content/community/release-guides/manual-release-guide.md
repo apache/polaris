@@ -21,6 +21,9 @@ linkTitle: Manual Release Guide (deprecated)
 title: Manual Release Guide (deprecated)
 type: docs
 weight: 200
+aliases:
+  - /release-guide
+  - /community/release-guide
 ---
 
 **Audience**: Release Managers

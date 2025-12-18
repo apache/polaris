@@ -21,6 +21,9 @@ linkTitle: Release Verification Guide
 title: Release Verification Guide
 type: docs
 weight: 300
+aliases:
+  - /release-verify
+  - /community/release-verify
 ---
 
 **Audience**: Committers and interested contributors.
