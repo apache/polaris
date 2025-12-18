@@ -117,14 +117,14 @@ public class IcebergRestCatalogEventServiceDelegator
     polarisEventListener.onEvent(
         PolarisEvent.builder(PolarisEventType.BEFORE_LIST_NAMESPACES, eventMetadataFactory.create())
             .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.PARENT_NAMESPACE, parent)
+            .attribute(EventAttributes.PARENT_NAMESPACE_FQN, parent)
             .build());
     Response resp =
         delegate.listNamespaces(prefix, pageToken, pageSize, parent, realmContext, securityContext);
     polarisEventListener.onEvent(
         PolarisEvent.builder(PolarisEventType.AFTER_LIST_NAMESPACES, eventMetadataFactory.create())
             .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.PARENT_NAMESPACE, parent)
+            .attribute(EventAttributes.PARENT_NAMESPACE_FQN, parent)
             .build());
     return resp;
   }
@@ -186,7 +186,7 @@ public class IcebergRestCatalogEventServiceDelegator
     polarisEventListener.onEvent(
         PolarisEvent.builder(PolarisEventType.AFTER_DROP_NAMESPACE, eventMetadataFactory.create())
             .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.NAMESPACE_STRING, namespace)
+            .attribute(EventAttributes.NAMESPACE_FQN, namespace)
             .build());
     return resp;
   }

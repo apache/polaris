@@ -78,10 +78,10 @@ public final class EventAttributes {
   // Namespace attributes
   public static final AttributeKey<Namespace> NAMESPACE =
       AttributeKey.of("namespace", Namespace.class);
-  public static final AttributeKey<String> NAMESPACE_STRING =
-      AttributeKey.of("namespace_string", String.class);
-  public static final AttributeKey<String> PARENT_NAMESPACE =
-      AttributeKey.of("parent_namespace", String.class);
+  public static final AttributeKey<String> NAMESPACE_FQN =
+      AttributeKey.of("namespace_fqn", String.class);
+  public static final AttributeKey<String> PARENT_NAMESPACE_FQN =
+      AttributeKey.of("parent_namespace_fqn", String.class);
   public static final AttributeKey<CreateNamespaceRequest> CREATE_NAMESPACE_REQUEST =
       AttributeKey.of("create_namespace_request", CreateNamespaceRequest.class);
   public static final AttributeKey<UpdateNamespacePropertiesRequest>

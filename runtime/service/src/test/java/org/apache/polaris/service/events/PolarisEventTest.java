@@ -85,4 +85,25 @@ class PolarisEventTest {
     assertThat(event.hasAttribute(EventAttributes.CATALOG_NAME)).isFalse();
     assertThat(event.attributes()).isEmpty();
   }
+
+  @Test
+  void testRequiredAttributeReturnsValue() {
+    PolarisEvent event =
+        PolarisEvent.builder(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA)
+            .attribute(EventAttributes.CATALOG_NAME, "my-catalog")
+            .build();
+
+    assertThat(event.requiredAttribute(EventAttributes.CATALOG_NAME)).isEqualTo("my-catalog");
+  }
+
+  @Test
+  void testRequiredAttributeThrowsForMissingKey() {
+    PolarisEvent event =
+        PolarisEvent.builder(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA).build();
+
+    assertThatThrownBy(() -> event.requiredAttribute(EventAttributes.CATALOG_NAME))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("catalog_name")
+        .hasMessageContaining("BEFORE_CREATE_TABLE");
+  }
 }

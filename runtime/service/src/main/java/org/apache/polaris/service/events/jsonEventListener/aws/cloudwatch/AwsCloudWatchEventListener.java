@@ -31,8 +31,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
-import org.apache.polaris.service.events.PolarisEventMetadata;
-import org.apache.polaris.service.events.jsonEventListener.PropertyMapEventListener;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventType;
+import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.regions.Region;
@@ -47,7 +50,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse
 
 @ApplicationScoped
 @Identifier("aws-cloudwatch")
-public class AwsCloudWatchEventListener extends PropertyMapEventListener {
+public class AwsCloudWatchEventListener implements PolarisEventListener {
   private static final Logger LOGGER = LoggerFactory.getLogger(AwsCloudWatchEventListener.class);
 
   private CloudWatchLogsAsyncClient client;
@@ -142,17 +145,28 @@ public class AwsCloudWatchEventListener extends PropertyMapEventListener {
   }
 
   @Override
-  protected void transformAndSendEvent(
-      HashMap<String, Object> properties, PolarisEventMetadata metadata) {
-    properties.put("realm_id", metadata.realmId());
-    metadata
+  public void onEvent(PolarisEvent event) {
+    if (event.type() != PolarisEventType.AFTER_REFRESH_TABLE) {
+      return;
+    }
+    HashMap<String, Object> properties = new HashMap<>();
+    properties.put("event_type", event.type().name());
+    event
+        .attribute(EventAttributes.TABLE_IDENTIFIER)
+        .map(TableIdentifier::toString)
+        .ifPresent(id -> properties.put("table_identifier", id));
+
+    properties.put("realm_id", event.metadata().realmId());
+    event
+        .metadata()
         .user()
         .ifPresent(
             p -> {
               properties.put("principal", p.getName());
               properties.put("activated_roles", p.getRoles());
             });
-    metadata.requestId().ifPresent(id -> properties.put("request_id", id));
+    event.metadata().requestId().ifPresent(id -> properties.put("request_id", id));
+
     String eventAsJson;
     try {
       eventAsJson = objectMapper.writeValueAsString(properties);
