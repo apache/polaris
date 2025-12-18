@@ -208,7 +208,8 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         metaStoreManagerMap.remove(realm);
       } catch (IllegalStateException e) {
         // Realm is not bootstrapped, return a failed result
-        results.put(realm, new BaseResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, e.getMessage()));
+        results.put(
+            realm, new BaseResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, e.getMessage()));
       }
     }
 
