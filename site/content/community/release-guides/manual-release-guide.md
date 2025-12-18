@@ -1,29 +1,40 @@
-<!--
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
--->
-
-# Release Manager Guide
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+linkTitle: Manual Release Guide (deprecated)
+title: Manual Release Guide (deprecated)
+type: docs
+weight: 200
+aliases:
+  - /release-guide
+  - /community/release-guide
+---
 
 **Audience**: Release Managers
 
+{{< alert warning >}}
+**This guide is deprecated.** While it remains functional and comprehensive, we recommend using the Semi-Automated Release Guide for new releases when available. This manual process is maintained for reference and fallback scenarios.
+{{< /alert >}}
+
 This guide walks you through the process of **creating** a release of the Apache Polaris podling.
 
-Instructions how to verify a release candidate are available [here](release-verify.md).
+Instructions how to verify a release candidate are available [here](../release-verification-guide/).
 
 ## Setup
 
@@ -93,7 +104,7 @@ For more information, see the Gradle [signing documentation](https://docs.gradle
 
 ### Helm chart signing
 
-Helm chart artifacts are signed with your key, using the [helm gpg plugin](https://github.com/technosophos/helm-gpg).  Ensure the plugin is installed locally.
+Helm chart artifacts are signed with your key, using the [helm gpg plugin](https://github.com/technosophos/helm-gpg). Ensure the plugin is installed locally.
 
 ### GitHub Repository
 

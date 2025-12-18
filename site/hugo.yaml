@@ -167,14 +167,10 @@ menu:
       parent: "community"
       url: "/community/security-report"
       weight: 70
-    - name: "Release Manager Guide"
+    - name: "Release Guides"
       parent: "community"
-      url: "/community/release-guide"
+      url: "/community/release-guides"
       weight: 80
-    - name: "Release Verification Guide"
-      parent: "community"
-      url: "/community/release-verify"
-      weight: 81
     - name: "Blogs"
       parent: "community"
       url: "/blog"
