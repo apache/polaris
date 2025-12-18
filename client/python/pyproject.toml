@@ -19,7 +19,7 @@
 
 [project]
 name = "apache-polaris"
-version = "1.2.0"
+version = "1.4.0"
 description = "Apache Polaris"
 authors = [
     {name = "Apache Software Foundation", email = "dev@polaris.apache.org"}
@@ -61,9 +61,9 @@ pytest = ">= 7.2.1"
 pytest-cov = ">= 2.8.1"
 flake8 = ">= 4.0.0"
 types-python-dateutil = ">= 2.8.19.14"
-mypy = ">=1.19, <=1.19.0"
+mypy = ">=1.19, <=1.19.1"
 pyiceberg = "==0.10.0"
-pre-commit = "==4.5.0"
+pre-commit = "==4.5.1"
 openapi-generator-cli = "==7.17.0"
 pip-licenses-cli = "==3.0.1"
 

@@ -20,6 +20,7 @@ package org.apache.polaris.core.secrets;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.assertj.core.api.Assertions;
@@ -30,7 +31,7 @@ import org.junit.jupiter.api.Test;
  * implementation-specific unittests.
  */
 public abstract class UserSecretsManagerBaseTest {
-  private static final ObjectMapper DEFAULT_MAPPER = new ObjectMapper();
+  private static final ObjectMapper DEFAULT_MAPPER = JsonMapper.builder().build();
 
   /**
    * @return a fresh instance of a UserSecretsManager to use in test cases.

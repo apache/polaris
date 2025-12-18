@@ -22,6 +22,7 @@ package org.apache.polaris.core.storage;
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -67,6 +68,7 @@ public class StorageCredentialsVendor {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
     return polarisCredentialVendor.getSubscopedCredsForEntity(
         callContext.getPolarisCallContext(),
@@ -76,6 +78,7 @@ public class StorageCredentialsVendor {
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations,
+        polarisPrincipal,
         refreshCredentialsEndpoint);
   }
 }

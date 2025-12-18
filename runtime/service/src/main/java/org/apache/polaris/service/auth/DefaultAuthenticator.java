@@ -22,6 +22,7 @@ import com.google.common.base.Throwables;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -94,7 +95,9 @@ public class DefaultAuthenticator implements Authenticator {
 
     PrincipalEntity principalEntity = resolvePrincipalEntity(credentials);
     Set<String> principalRoles = resolvePrincipalRoles(credentials, principalEntity);
-    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of(principalEntity, principalRoles);
+    PolarisPrincipal polarisPrincipal =
+        PolarisPrincipal.of(
+            principalEntity, principalRoles, Optional.ofNullable(credentials.getToken()));
 
     LOGGER.debug("Resolved principal: {}", polarisPrincipal);
     return polarisPrincipal;

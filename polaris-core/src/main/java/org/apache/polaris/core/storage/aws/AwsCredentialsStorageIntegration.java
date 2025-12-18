@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -81,6 +83,7 @@ public class AwsCredentialsStorageIntegration
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
@@ -89,12 +92,22 @@ public class AwsCredentialsStorageIntegration
     String accountId = storageConfig.getAwsAccountId();
     StorageAccessConfig.Builder accessConfig = StorageAccessConfig.builder();
 
+    boolean includePrincipalNameInSubscopedCredential =
+        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
+
+    String roleSessionName =
+        includePrincipalNameInSubscopedCredential
+            ? "polaris-" + polarisPrincipal.getName()
+            : "PolarisAwsCredentialsStorageIntegration";
+    String cappedRoleSessionName =
+        roleSessionName.substring(0, Math.min(roleSessionName.length(), 64));
+
     if (shouldUseSts(storageConfig)) {
       AssumeRoleRequest.Builder request =
           AssumeRoleRequest.builder()
               .externalId(storageConfig.getExternalId())
               .roleArn(storageConfig.getRoleARN())
-              .roleSessionName("PolarisAwsCredentialsStorageIntegration")
+              .roleSessionName(cappedRoleSessionName)
               .policy(
                   policyString(
                           storageConfig,

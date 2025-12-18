@@ -24,6 +24,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
@@ -71,7 +72,9 @@ public class TaskExecutorImplTest {
             new RealmContextHolder(),
             testServices.polarisEventListener(),
             testServices.eventMetadataFactory(),
-            null);
+            null,
+            new PolarisPrincipalHolder(),
+            testServices.principal());
 
     executor.addTaskHandler(
         new TaskHandler() {

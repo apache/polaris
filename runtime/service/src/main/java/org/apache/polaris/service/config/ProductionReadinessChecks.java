@@ -20,7 +20,7 @@ package org.apache.polaris.service.config;
 
 import static java.lang.String.format;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.Startup;
@@ -254,7 +254,7 @@ public class ProductionReadinessChecks {
             });
 
     var storageTypes = FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES;
-    var mapper = new ObjectMapper();
+    var mapper = JsonMapper.builder().build();
     var defaults = featureConfiguration.parseDefaults(mapper);
     var realmOverrides = featureConfiguration.parseRealmOverrides(mapper);
     @SuppressWarnings("unchecked")
@@ -329,7 +329,7 @@ public class ProductionReadinessChecks {
   public ProductionReadinessCheck checkConnectionCredentialVendors(
       Instance<ConnectionCredentialVendor> credentialVendors,
       FeaturesConfiguration featureConfiguration) {
-    var mapper = new ObjectMapper();
+    var mapper = JsonMapper.builder().build();
     var defaults = featureConfiguration.parseDefaults(mapper);
     var realmOverrides = featureConfiguration.parseRealmOverrides(mapper);
 

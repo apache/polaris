@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.persistence.nosql.impl.cache;
 
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -39,7 +41,6 @@ import static org.apache.polaris.persistence.varint.VarInt.readVarInt;
 import static org.apache.polaris.persistence.varint.VarInt.varIntLen;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.smile.databind.SmileMapper;
@@ -699,9 +700,11 @@ class CaffeineCacheBackend implements CacheBackend {
   static final int CAFFEINE_OBJ_OVERHEAD = 2 * 32;
 
   static final ObjectMapper SMILE_MAPPER =
-      new SmileMapper()
-          .findAndRegisterModules()
-          .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+      SmileMapper.builder()
+          .findAndAddModules()
+          .disable(FAIL_ON_UNKNOWN_PROPERTIES)
+          .enable(DEFAULT_VIEW_INCLUSION)
+          .build();
   private static final ObjectWriter OBJ_WRITER = SMILE_MAPPER.writer().withView(Object.class);
 
   static byte[] serializeObj(Obj obj) {

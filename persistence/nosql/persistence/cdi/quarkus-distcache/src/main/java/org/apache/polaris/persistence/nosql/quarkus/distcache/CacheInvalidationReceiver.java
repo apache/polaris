@@ -22,6 +22,7 @@ import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKN
 import static java.util.Collections.emptyList;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.quarkus.vertx.http.ManagementInterface;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -70,9 +71,10 @@ class CacheInvalidationReceiver {
     this.validTokens =
         new HashSet<>(storeConfig.cacheInvalidationValidTokens().orElse(emptyList()));
     this.objectMapper =
-        new ObjectMapper()
+        JsonMapper.builder()
             // forward compatibility
-            .disable(FAIL_ON_UNKNOWN_PROPERTIES);
+            .disable(FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
   }
 
   void registerManagementRoutes(@Observes ManagementInterface mi) {

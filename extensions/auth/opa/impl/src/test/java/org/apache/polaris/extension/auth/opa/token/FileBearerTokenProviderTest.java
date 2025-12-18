@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -401,7 +402,7 @@ public class FileBearerTokenProviderTest {
   /** Helper method to create a JWT with a specific expiration time. */
   private String createJwtWithExpiration(Instant expiration) {
     try {
-      ObjectMapper mapper = new ObjectMapper();
+      ObjectMapper mapper = JsonMapper.builder().build();
 
       // Create header
       Map<String, Object> header = new HashMap<>();
@@ -438,7 +439,7 @@ public class FileBearerTokenProviderTest {
   /** Helper method to create a JWT without an expiration claim. */
   private String createJwtWithoutExpiration() {
     try {
-      ObjectMapper mapper = new ObjectMapper();
+      ObjectMapper mapper = JsonMapper.builder().build();
 
       // Create header
       Map<String, Object> header = new HashMap<>();
