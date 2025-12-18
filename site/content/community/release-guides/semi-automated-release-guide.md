@@ -159,7 +159,7 @@ Convenience binary artifacts are staged on Nexus. The Maven repositories URLs
 are:
 * https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
 
-Please download, verify, and test. A verification guide is available at
+Please download, verify, and test according to the release verification guide, which can be found at
 https://polaris.apache.org/community/release-verify/.
 
 Please vote in the next 72 hours.
@@ -256,7 +256,7 @@ Convenience binary artifacts are staged on Nexus. The Maven
 repositories URLs are:
 * https://repository.apache.org/content/repositories/orgapachepolaris-<ID>/
 
-Please download, verify, and test. A verification guide is available at
+Please download, verify, and test according to the release verification guide, which can be found at
 https://polaris.apache.org/community/release-verify/.
 
 Please vote in the next 72 hours.
