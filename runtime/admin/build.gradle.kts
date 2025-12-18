@@ -29,6 +29,7 @@ dependencies {
   implementation(project(":polaris-version"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-runtime-defaults"))
 
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 

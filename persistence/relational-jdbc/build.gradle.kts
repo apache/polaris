@@ -36,8 +36,6 @@ dependencies {
   compileOnly(libs.smallrye.config.core) // @ConfigMapping for Quarkus integration
   implementation(libs.smallrye.common.annotation) // @Identifier
   implementation(libs.postgresql)
-  implementation(platform(libs.quarkus.amazon.services.bom))
-  implementation("io.quarkiverse.amazonservices:quarkus-amazon-rds")
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))
