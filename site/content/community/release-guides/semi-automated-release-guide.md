@@ -198,8 +198,8 @@ A new release candidate will be proposed soon once the issues are addressed.
 Thanks,
 ```
 
-### If the code passed
-When a release candidate passes, send a new e-mail with the vote result:
+### If the vote passed
+When the release candidate vote passes, send a new e-mail with the vote result:
 
 ```
 [RESULT][VOTE] Release Apache Polaris x.y.z (rci)
@@ -293,8 +293,8 @@ The vote failed due to [reason].
 Thanks,
 ```
 
-### If the code passed
-When a release candidate passes, send a new e-mail with the vote result:
+### If the vote passed
+When the release candidate vote passes, send a new e-mail with the vote result:
 
 ```
 [RESULT][VOTE] Release Apache Polaris x.y.z (rci)
