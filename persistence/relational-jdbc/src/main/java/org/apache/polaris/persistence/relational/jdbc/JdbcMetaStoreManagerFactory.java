@@ -196,15 +196,20 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
-      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
-      BasePersistence session = getOrCreateSession(realmContext);
+      try {
+        PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
+        BasePersistence session = getOrCreateSession(realmContext);
 
-      PolarisCallContext callContext = new PolarisCallContext(realmContext, session);
-      BaseResult result = metaStoreManager.purge(callContext);
-      results.put(realm, result);
+        PolarisCallContext callContext = new PolarisCallContext(realmContext, session);
+        BaseResult result = metaStoreManager.purge(callContext);
+        results.put(realm, result);
 
-      sessionSupplierMap.remove(realm);
-      metaStoreManagerMap.remove(realm);
+        sessionSupplierMap.remove(realm);
+        metaStoreManagerMap.remove(realm);
+      } catch (IllegalStateException e) {
+        // Realm is not bootstrapped, return a failed result
+        results.put(realm, new BaseResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, e.getMessage()));
+      }
     }
 
     return Map.copyOf(results);
