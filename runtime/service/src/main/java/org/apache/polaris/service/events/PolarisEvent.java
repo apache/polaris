@@ -39,7 +39,7 @@ public record PolarisEvent(
     if (value == null) {
       return Optional.empty();
     }
-    return Optional.of(key.cast(value));
+    return Optional.of(key.type().cast(value));
   }
 
   public <T> T requiredAttribute(AttributeKey<T> key) {
@@ -48,7 +48,7 @@ public record PolarisEvent(
       throw new IllegalStateException(
           "Required attribute '" + key.name() + "' not found in event " + type);
     }
-    return key.cast(value);
+    return key.type().cast(value);
   }
 
   public boolean hasAttribute(AttributeKey<?> key) {

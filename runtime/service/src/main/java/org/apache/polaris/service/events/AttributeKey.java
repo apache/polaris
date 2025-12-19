@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.events;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.Objects;
 
 /**
@@ -39,24 +40,13 @@ public final class AttributeKey<T> {
     return new AttributeKey<>(name, type);
   }
 
+  @JsonValue
   public String name() {
     return name;
   }
 
   public Class<T> type() {
     return type;
-  }
-
-  @SuppressWarnings("unchecked")
-  public T cast(Object value) {
-    if (value == null) {
-      return null;
-    }
-    if (!type.isInstance(value)) {
-      throw new ClassCastException(
-          "Cannot cast " + value.getClass().getName() + " to " + type.getName());
-    }
-    return (T) value;
   }
 
   @Override

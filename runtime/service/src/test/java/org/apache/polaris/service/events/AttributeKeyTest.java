@@ -21,6 +21,8 @@ package org.apache.polaris.service.events;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 class AttributeKeyTest {
@@ -34,28 +36,28 @@ class AttributeKeyTest {
   }
 
   @Test
-  void testCastValidValue() {
+  void testTypeCastValidValue() {
     AttributeKey<String> key = AttributeKey.of("test_key", String.class);
 
-    String result = key.cast("hello");
+    String result = key.type().cast("hello");
 
     assertThat(result).isEqualTo("hello");
   }
 
   @Test
-  void testCastNullValue() {
+  void testTypeCastNullValue() {
     AttributeKey<String> key = AttributeKey.of("test_key", String.class);
 
-    String result = key.cast(null);
+    String result = key.type().cast(null);
 
     assertThat(result).isNull();
   }
 
   @Test
-  void testCastInvalidType() {
+  void testTypeCastInvalidType() {
     AttributeKey<String> key = AttributeKey.of("test_key", String.class);
 
-    assertThatThrownBy(() -> key.cast(123))
+    assertThatThrownBy(() -> key.type().cast(123))
         .isInstanceOf(ClassCastException.class)
         .hasMessageContaining("Integer")
         .hasMessageContaining("String");
@@ -91,5 +93,15 @@ class AttributeKeyTest {
   void testNullTypeThrows() {
     assertThatThrownBy(() -> AttributeKey.of("test_key", null))
         .isInstanceOf(NullPointerException.class);
+  }
+
+  @Test
+  void testJsonSerializesToName() throws JsonProcessingException {
+    AttributeKey<String> key = AttributeKey.of("catalog_name", String.class);
+    ObjectMapper mapper = new ObjectMapper();
+
+    String json = mapper.writeValueAsString(key);
+
+    assertThat(json).isEqualTo("\"catalog_name\"");
   }
 }
