@@ -19,4 +19,4 @@
 
 Helpers and information for verifying a release candidate can be found
 on the Polaris website: https://polaris.apache.org/ or
-in the Polaris source tree in the `site/content/release-verify.md` file.
+in the Polaris source tree in the `site/content/community/release-guides/release-verification-guide.md` file.
