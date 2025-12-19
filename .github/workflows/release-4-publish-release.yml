@@ -117,18 +117,13 @@ jobs:
             exit 1
           fi
 
-          # Find the next patch number for this major.minor version by looking at existing tags
+          # Find the patch number for this major.minor version by looking at existing tags
+          # Note: find_next_patch_number returns the current patch if no final tag exists,
+          # which is exactly what we need for publishing (we publish from an RC that has no final tag yet)
           find_next_patch_number "${major}" "${minor}"
-          next_patch=$((patch))
-          latest_patch=$((next_patch - 1))
 
-          if [[ ${next_patch} -eq 0 ]]; then
-            echo "❌ No existing tags found for version \`${major}.${minor}.0\`. Expected at least one RC to be created before publishing a release." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-
-          # Build the version string for the latest existing patch
-          version_without_rc="${major}.${minor}.${latest_patch}-incubating"
+          # Build the version string for the patch with RC tags
+          version_without_rc="${major}.${minor}.${patch}-incubating"
 
           # Find the latest RC tag for this version
           find_next_rc_number "${version_without_rc}"
