@@ -92,19 +92,24 @@ jobs:
         run: |
           source "${LIBS_DIR}/_version.sh"
 
-          # Get the current branch name
-          current_branch=$(git branch --show-current)
-
           echo "## Parameters" >> $GITHUB_STEP_SUMMARY
 
-          # Validate that we're on a release branch
-          if [[ ! "${current_branch}" =~ ^release/(.+)$ ]]; then
-            echo "❌ This workflow must be run from a release branch (release/major.minor.x). Current branch: \`${current_branch}\`." >> $GITHUB_STEP_SUMMARY
+          # Extract the ref name from github.ref
+          # github.ref format: refs/heads/branch-name or refs/tags/tag-name
+          ref="${{ github.ref }}"
+
+          if [[ "${ref}" =~ ^refs/heads/release/(.+)$ ]]; then
+            # Running from a release branch
+            branch_version="${BASH_REMATCH[1]}"
+            current_branch="release/${branch_version}"
+          else
+            echo "❌ This workflow must be run from a release branch (release/major.minor.x)." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Current ref: \`${ref}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please select a release branch (e.g., \`release/1.0.x\`) from the 'Use workflow from' dropdown in the GitHub UI." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-
-          # Extract version from release branch name
-          branch_version="${BASH_REMATCH[1]}"
 
           # Validate branch version format and extract components
           if ! validate_and_extract_branch_version "${branch_version}"; then
