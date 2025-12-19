@@ -44,16 +44,17 @@ Polaris follows a schedule-driven release model. The first thing to do is to sen
 Note that the tentative date is only a suggestion. The actual date of the release will be determined by taking community feedback into account. For instance, if specific pull requests are about to be merged, the release may be delayed by a couple of days to include them.
 
 ```
-[DISCUSS] Apache Polaris x.y.z
+[DISCUSS] Apache Polaris [major].[minor].[patch]
 ```
 
 ```
 Hello everyone,
 
 The purpose of this e-mail is to collect feedback on the upcoming Apache
-Polaris x.y.z release. The tentative release date is YYYY-MM-DD. Please let
-me know if you have any concerns or comments, or if there are some specific
-pull requests that you would like to see included in the release.
+Polaris [major].[minor].[patch] release. The tentative release date is
+YYYY-MM-DD. Please let me know if you have any concerns or comments, or if
+there are some specific pull requests that you would like to see included in
+the release.
 
 Thanks,
 ```
@@ -121,7 +122,7 @@ The last step for a release candidate is to create a VOTE thread on the dev mail
 Recommended title subject:
 
 ```
-[VOTE] Release Apache Polaris x.y.z (rci)
+[VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 Recommended content:
@@ -129,18 +130,18 @@ Recommended content:
 ```
 Hi everyone,
 
-I propose that we release the following RC as the official Apache Polaris x.y.z
+I propose that we release the following RC as the official Apache Polaris [major].[minor].[patch]
 release.
 
-* This corresponds to the tag: apache-polaris-x.y.z-incubating-rci
-* https://github.com/apache/polaris/commits/apache-polaris-x.y.z-incubating-rci
+* This corresponds to the tag: apache-polaris-[major].[minor].[patch]-incubating-rc[N]
+* https://github.com/apache/polaris/commits/apache-polaris-[major].[minor].[patch]-incubating-rc[N]
 * https://github.com/apache/polaris/tree/<SHA1>
 
 The release tarball, signature, and checksums are here:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z-incubating
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/[major].[minor].[patch]-incubating
 
 Helm charts are available on:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/x.y.z-incubating/
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/[major].[minor].[patch]-incubating/
 
 NB: you have to build the Docker images locally in order to test Helm charts.
 
@@ -156,7 +157,7 @@ https://polaris.apache.org/community/release-verify/.
 
 Please vote in the next 72 hours.
 
-[ ] +1 Release this as Apache polaris x.y.z
+[ ] +1 Release this as Apache polaris [major].[minor].[patch]
 [ ] +0
 [ ] -1 Do not release this because...
 
@@ -175,13 +176,13 @@ The next steps depend on the vote result.
 When a release candidate is rejected, reply with the vote result:
 
 ```
-[RESULT][VOTE] Release Apache Polaris x.y.z (rci)
+[RESULT][VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 ```
 Hello everyone,
 
-Thanks to all who participated in the vote for Release Apache Polaris x.y.z (rci).
+Thanks to all who participated in the vote for Release Apache Polaris [major].[minor].[patch] (rc[N]).
 
 The vote failed due to [reason].
 
@@ -194,11 +195,11 @@ Thanks,
 When the release candidate vote passes, send a new e-mail with the vote result:
 
 ```
-[RESULT][VOTE] Release Apache Polaris x.y.z (rci)
+[RESULT][VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 ```
-Thanks everyone who participated in the vote for Release Apache Polaris x.y.z (rci).
+Thanks everyone who participated in the vote for Release Apache Polaris [major].[minor].[patch] (rc[N]).
 
 The vote result is:
 
@@ -215,13 +216,13 @@ As Polaris is an Apache Incubator project, you now have to start a new vote on t
 You have to send this email to general@incubator.apache.org:
 
 ```
-[VOTE] Release Apache Polaris x.y.z (rci)
+[VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 ```
 Hello everyone,
 
-The Apache Polaris community has voted and approved the release of Apache Polaris x.y.z (rci).
+The Apache Polaris community has voted and approved the release of Apache Polaris [major].[minor].[patch] (rc[N]).
 We now kindly request the IPMC members review and vote for this release.
 
 Polaris community vote thread:
@@ -230,12 +231,12 @@ Polaris community vote thread:
 Vote result thread:
 * https://lists.apache.org/thread/<VOTE RESULT>
 
-* This corresponds to the tag: apache-polaris-x.y.z-rci
-* https://github.com/apache/polaris/commits/apache-polaris-x.y.z-rci
+* This corresponds to the tag: apache-polaris-[major].[minor].[patch]-incubating-rc[N]
+* https://github.com/apache/polaris/commits/apache-polaris-[major].[minor].[patch]-rc[N]
 * https://github.com/apache/polaris/tree/<SHA1>
 
 The release tarball, signature, and checksums are here:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/[major].[minor].[patch]
 
 Helm charts are available on:
 * https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart
@@ -278,7 +279,7 @@ When a release candidate is rejected, reply in the same thread with the vote res
 ```
 Hello everyone,
 
-Thanks to all who participated in the vote for Release Apache Polaris x.y.z (rci).
+Thanks to all who participated in the vote for Release Apache Polaris [major].[minor].[patch] (rc[N]).
 
 The vote failed due to [reason].
 
@@ -289,13 +290,13 @@ Thanks,
 When the release candidate vote passes, send a new e-mail with the vote result:
 
 ```
-[RESULT][VOTE] Release Apache Polaris x.y.z (rci)
+[RESULT][VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 ```
 Hello everyone,
 
-The vote to release Apache Polaris x.y.z (rci) has passed with [N] +1 binding and [M] +1 non-binding votes.
+The vote to release Apache Polaris [major].[minor].[patch] (rc[N]) has passed with [N] +1 binding and [M] +1 non-binding votes.
 
 Binding +1 votes:
 * [NAME]
