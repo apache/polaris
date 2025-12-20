@@ -56,7 +56,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *   <li>{@code false} retains the most recent commit
  * </ul>
  */
-@ConfigMapping(prefix = "polaris.persistence.maintenance.catalog")
+@ConfigMapping(prefix = "polaris.persistence.nosql.maintenance.catalog")
 @JsonSerialize(as = ImmutableBuildableCatalogsMaintenanceConfig.class)
 @JsonDeserialize(as = ImmutableBuildableCatalogsMaintenanceConfig.class)
 public interface CatalogsMaintenanceConfig {

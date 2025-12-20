@@ -35,7 +35,7 @@ import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
 /** Maintenance service configuration. */
-@ConfigMapping(prefix = "polaris.persistence.maintenance")
+@ConfigMapping(prefix = "polaris.persistence.nosql.maintenance")
 @PolarisImmutable
 @JsonSerialize(as = ImmutableMaintenanceConfig.class)
 @JsonDeserialize(as = ImmutableMaintenanceConfig.class)
