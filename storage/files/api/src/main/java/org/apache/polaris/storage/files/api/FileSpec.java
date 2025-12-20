@@ -36,7 +36,10 @@ public interface FileSpec {
   String location();
 
   /**
-   * The type of the file, if known.
+   * The type of the file, if known, as a convenience hint.
+   *
+   * <p>The type might have been guessed from the file name, in which case the returned value is not
+   * guaranteed to be accurate.
    *
    * @see #guessTypeFromName()
    */
@@ -64,6 +67,7 @@ public interface FileSpec {
     return b;
   }
 
+  /** Guesses the given file's type from its name, not guaranteed to be accurate. */
   default FileType guessTypeFromName() {
     var location = location();
     var lastSlash = location.lastIndexOf('/');

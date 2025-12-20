@@ -430,9 +430,9 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
     }
   }
 
-  /** Figure out the hard coded max batch size limit for a particular FileIO implementation. */
+  /** Figure out the hard-coded max batch size limit for a particular FileIO implementation. */
   static int implSpecificDeleteBatchLimit(SupportsBulkOperations bulkOps) {
-    var className = bulkOps.getClass().getName();
+    var className = bulkOps.getClass().getSimpleName();
     return switch (className) {
       // See https://aws.amazon.com/blogs/aws/amazon-s3-multi-object-deletion/
       case "S3FileIO" -> 1000;

@@ -20,8 +20,6 @@
 package org.apache.polaris.storage.files.impl;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import java.time.Clock;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.storage.files.api.FileOperations;
 import org.apache.polaris.storage.files.api.FileOperationsFactory;
@@ -29,14 +27,6 @@ import org.apache.polaris.storage.files.api.FileOperationsFactory;
 /** CDI application-scoped implementation of {@link FileOperationsFactory}. */
 @ApplicationScoped
 class FileOperationsFactoryImpl implements FileOperationsFactory {
-
-  private final Clock clock;
-
-  @Inject
-  @SuppressWarnings("CdiInjectionPointsInspection")
-  FileOperationsFactoryImpl(Clock clock) {
-    this.clock = clock;
-  }
 
   @Override
   public FileOperations createFileOperations(FileIO fileIO) {
