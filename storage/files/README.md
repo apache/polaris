@@ -19,7 +19,7 @@
 
 # Polaris object store operations
 
-API and implementations to perform long-running operations against object stores, mostly to purge files.
+API and implementations to perform long-running operations against object stores.
 
 Functionalities to scan an object store and to purge files are separated. Filter mechanisms are used to
 select the files to be deleted (purged).
