@@ -21,6 +21,7 @@ package org.apache.polaris.tasks.store;
 /**
  * Represents the store implementation-specific and opaque handle for one specific task execution.
  *
- * <p>Implementation note: must implement {@link Object#equals(Object)}!
+ * <p>Implementation note: implementations must override {@link Object#equals(Object)} and {@link
+ * Object#hashCode()}.
  */
 public interface TaskHandle {}

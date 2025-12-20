@@ -62,12 +62,12 @@ public interface TasksConfiguration {
   Duration DEFAULT_LOST_NOT_BEFORE = Duration.parse(DEFAULT_LOST_NOT_BEFORE_STRING);
 
   /**
-   * Tasks in status "running" are considered as "lost" when the last state-update was before the
+   * Tasks in "running" status are considered "lost" when the last state-update was before the
    * duration specified by this parameter.
    *
    * <p>Running tasks regularly update the task store with their current state (see {@code
    * updateStateInterval}). Tasks states with a {@code lostNotBefore} in the past are considered as
-   * "dead", which means that the task's execution can be resumed by another node.
+   * "dead", which means that the task's execution can be picked up by another node.
    *
    * <p>This value should be large enough and quite a multiple of {@code updateStateInterval}, in
    * the range of 1 or more minutes.
@@ -92,10 +92,10 @@ public interface TasksConfiguration {
       Duration.parse(DEFAULT_REMOTE_TASK_POLL_INTERVAL_STRING);
 
   /**
-   * The interval at which the state of a task that is running on another node is being polled.
+   * The interval at which the state of a task running on another node is being polled.
    *
-   * <p>Call sites that subscribe to the result of a task, which runs on a different node, use this
-   * value as the polling interval.
+   * <p>Call sites that subscribe to the result of a task running on a different node use this value
+   * as the polling interval.
    *
    * <p>This parameter should be lower than the duration defined by the parameter {@code
    * updateStateInterval}.
@@ -110,8 +110,13 @@ public interface TasksConfiguration {
       Duration.parse(DEFAULT_LOCAL_SCHEDULING_INTERVAL_STRING);
 
   /**
-   * New submitted that are scheduled with this interval will be scheduled for non-local execution,
-   * other tasks will be submitted to be executed on "any" node.
+   * Implementations may consider tasks that are eligible to be executed within this interval for
+   * immediate local execution.
+   *
+   * <p>This is rather a performance optimization for implementations to avoid the additional work
+   * for task acquisitions. This value implies no guarantee that this optimization will be applied.
+   *
+   * @hidden advanced usage, not in public docs
    */
   @WithDefault(DEFAULT_LOCAL_SCHEDULING_INTERVAL_STRING)
   @JsonInclude(JsonInclude.Include.NON_ABSENT)

@@ -20,6 +20,7 @@ package org.apache.polaris.tasks.store;
 
 import jakarta.annotation.Nonnull;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -56,7 +57,7 @@ public interface TaskStore {
    * @return matching tasks, the order of elements within the returned list is undefined
    */
   @Nonnull
-  List<TaskStoreResult> scheduledTasks(
+  Collection<TaskStoreResult> scheduledTasks(
       @Nonnull Instant now, @Nonnull Predicate<TaskStoreResult> filter, OptionalInt limit);
 
   /**
@@ -82,8 +83,11 @@ public interface TaskStore {
    * <p>The {@code updater} function might be called multiple times, for example, when
    * commit-retries happen. Therefore {@code updater} function must be free of side effects.
    *
-   * @param updater Update function must be idempotent and expect to be invoked multiple times. Gets
-   *     the current state as its input may throw
+   * @param updater the update function, which must be idempotent and expect to be invoked multiple
+   *     times. It receives the current state as input and returns the desired change. It may throw
+   *     an exception in the event of a failure.
+   * @return the result of the update-task operation. An empty optional is returned if no update was
+   *     applied.
    * @throws IllegalArgumentException if the task does not exist
    */
   Optional<TaskStoreResult> updateTask(@Nonnull TaskId taskId, @Nonnull TaskStateUpdater updater);

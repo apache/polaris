@@ -30,12 +30,14 @@ public interface TaskSubmission<RESULT> extends AutoCloseable {
   TaskId taskId();
 
   /**
-   * Use this completion stage to subscribe to the result of a task execution, do not use this when
-   * the task execution is about to happen "far in the future" or is a recurring task.
+   * Returns a completion stage to subscribe to the result of a task execution.
    *
-   * <p>It only makes sense to subscribe to a task execution of a non-repeating task. The behavior
-   * of the returned completion stage is undefined for re-scheduled tasks. Implementations may
-   * return the result of the "current"/next task run or not yield a result as long as the task gets
+   * <p>This should only be used for tasks that will execute soon. Do not use this for tasks
+   * scheduled far in the future or for recurring tasks.
+   *
+   * <p>It only makes sense to subscribe to the execution of a non-repeating task. The behavior of
+   * the returned completion stage is undefined for rescheduled tasks. Implementations may return
+   * the result of the current or next task run or may not yield a result as long as the task gets
    * rescheduled.
    */
   CompletionStage<RESULT> completionStage();

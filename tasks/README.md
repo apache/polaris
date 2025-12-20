@@ -19,12 +19,12 @@
 
 # Apache Polaris Asynchronous & Reliable Tasks
 
-Cluster wide task execution plus delayed and recurring scheduling, including restarts of "lost" and retries of failed
+Cluster-wide task execution plus delayed and recurring scheduling, including restarts of "lost" and retries of failed
 tasks.
 
 The "caller facing" API is literally just a single `submit()` function that is called with the _kind_ of operation and
 the parameters. The returned value provides a `CompletionStage`, which can be used - it is not required to subscribe to
-it(fire and forget).
+it (fire and forget).
 
 ## Design
 
@@ -54,7 +54,7 @@ scheduling implementation with various repetition patterns (think: `cron`).
 All tasks have a globally unique ID, which can be deterministic (i.e., computed from task parameters) for tasks that
 depend on other values, or non-deterministic for one-off tasks. For example, a task that performs a maintenance
 operation against a single global resource must have a deterministic, unique ID to ensure that no two instances of such
-a task run concurrently. How the ID is generated is defined by the _task behavior_.
+a task run concurrently. The _task behavior_ defines how the ID is generated.
 
 The task framework ensures that no task is executed on more than one Polaris node at any time.
 Shared persisted state object is used to coordinate operations against a task.
@@ -107,11 +107,11 @@ A task is eligible for execution if one of the following conditions is true:
 ### Optimization for locally created tasks
 
 Implementations _may_ opt to not persist the `CREATED` status for tasks that shall be executed immediately, but instead
-persist the `RUNNING` state directly. This prevents other nodes to pick up the task.
+persist the `RUNNING` state directly. This prevents other nodes from picking up the task.
 
 ## Requirements
 
-As with probably all systems that rely on wall clock, it is essential that all Polaris nodes have their wall clock being
+As with probably all systems that rely on the wall-clock, it is essential that all Polaris nodes have their wall clock being
 synchronized. Some reasonable amount of wall clock drift must be considered in every implementation.
 
 ## Code structure
@@ -123,9 +123,9 @@ The code is structured into multiple modules. Consuming code should almost alway
 * `polaris-tasks-store` storage-implementation, persistence agnostic.
 * `polaris-tasks-store-meta` provides the storage implementation optimized for JDBC et al.
 * `polaris-tasks-store-nosql` provides the storage implementation optimized for NoSQL.
-* `polaris-tasks-impl-base` common code for client + server.
-* `polaris-tasks-impl-server` server side implementation, can submit and execute tasks.
-* `polaris-tasks-impl-client` client side implementation, can only submit but not execute tasks.
+* `polaris-tasks-impl-base` common code for client and server implementations.
+* `polaris-tasks-impl-server` server side implementation, which can submit and execute tasks.
+* `polaris-tasks-impl-client` client side implementation, which can only submit but not execute tasks.
 * `polaris-tasks-impl-remote` a "execute remotely" implementation could go here.
 
 ## Persona
@@ -150,6 +150,4 @@ Provides a `Tasks` implementation, which can submit tasks and execute tasks.
 ### Client instance
 
 Provides a `Tasks` implementation, which can submit tasks but not execute tasks. This kind is intended for client
-application use cases, which should not be "bothered" task executions from other (Polaris service) instances. For
-example, clients should not "purge table" tasks from all users, despite that clients cannot be expected to have access
-to all service related resources.
+application use cases, which should not run task executions from other (Polaris service) instances.

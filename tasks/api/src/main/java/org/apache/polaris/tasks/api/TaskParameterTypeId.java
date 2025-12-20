@@ -27,7 +27,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 /**
- * Provide the {@linkplain TaskBehaviorId task behavior ID} using the
+ * Provides the {@linkplain TaskBehaviorId task behavior ID} using the
  * Jackson-polymorphism-mechanism.
  */
 @Target(TYPE)

@@ -42,12 +42,14 @@ public interface TaskBehavior<PARAM extends TaskParameter, RESULT extends TaskRe
   /** Globally unique ID of the task behavior. */
   TaskBehaviorId id();
 
+  /** Behavior-specific type implementing the {@link TaskParameter} interface. */
   Class<PARAM> paramType();
 
+  /** Behavior-specific type implementing the {@link TaskResult} interface. */
   Class<RESULT> resultType();
 
   /**
-   * Provide a task-runnable that can perform the task behavior's operation.
+   * Provides the task function that can perform the task behavior's operation.
    *
    * <p>No guarantees are made about whether CDI is available and which scope is active.
    *

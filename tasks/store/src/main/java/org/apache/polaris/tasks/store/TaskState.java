@@ -83,9 +83,23 @@ public interface TaskState {
     return ImmutableTaskState.builder();
   }
 
+  /**
+   * Checks whether the task is eligible to be scheduled.
+   *
+   * <p>A task is eligible to be scheduled if:
+   *
+   * <ul>
+   *   <li>its state is {@link TaskStatus#SCHEDULED}, {@link TaskStatus#FAILURE} or {@link
+   *       TaskStatus#SUCCESS} and its {@linkplain #scheduleNotBefore()} is not in the future or
+   *   <li>its state is {@link TaskStatus#RUNNING} and its {@linkplain #lostNotBefore()} is not in
+   *       the future.
+   * </ul>
+   *
+   * <p>The timestamps are compared against the given value for {@code now}.
+   */
   @SuppressWarnings("UnnecessaryDefault")
   @JsonIgnore
-  default boolean isScheduled(Instant now) {
+  default boolean canBeScheduled(Instant now) {
     var testInstant =
         switch (status()) {
           case SCHEDULED, FAILURE, SUCCESS -> scheduleNotBefore();

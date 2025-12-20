@@ -28,10 +28,10 @@ import java.util.Optional;
 public interface TaskSerializationResolver {
 
   /**
-   * Resolve the task parameter type using the ID defined in {@link TaskParameterTypeId#value()}.
+   * Resolves the task parameter type using the ID defined in {@link TaskParameterTypeId#value()}.
    */
   Optional<Class<? extends TaskParameter>> taskParameterType(@Nonnull String parameterTypeId);
 
-  /** Resolve the task result type using the ID defined in {@link TaskResultTypeId#value()}. */
+  /** Resolves the task result type using the ID defined in {@link TaskResultTypeId#value()}. */
   Optional<Class<? extends TaskResult>> taskResultType(@Nonnull String resultTypeId);
 }

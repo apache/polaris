@@ -22,8 +22,11 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 
 /**
- * Base interface for task parameter objects. This is the necessary base type for Jackson type
- * polymorphism.
+ * Base interface for task parameter objects.
+ *
+ * <p>Each task behavior defines exactly one task parameter type.
+ *
+ * <p>This is the necessary base type for Jackson type polymorphism.
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 public interface TaskParameter {

@@ -31,7 +31,10 @@ public interface TaskIdGenerator {
   TaskId generateNonDeterministicUniqueId(String realmId);
 
   /**
-   * Used to generate a deterministic task ID, from the contents of a {@link TaskParameter}.
+   * Used to generate a deterministic task ID.
+   *
+   * <p>Call sites usually include relevant parameters of the respective attributes of a {@linkplain
+   * TaskParameter task parameter} used to generate deterministic task IDs.
    *
    * <p>Deterministic task IDs are useful to converge requests for the same task to a single task
    * execution. {@link Tasks} implementations ensure that task submissions against the same task ID
