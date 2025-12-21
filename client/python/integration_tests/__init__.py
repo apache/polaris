@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -14,26 +15,4 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
-repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: debug-statements
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.1
-    hooks:
-      # Run the linter.
-      - id: ruff-check
-        args: [ --fix, --exit-non-zero-on-fix ]
-      # Run the formatter.
-      - id: ruff-format
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.0
-    hooks:
-      - id: mypy
-        args:
-          [--disallow-untyped-defs, --ignore-missing-imports, --install-types, --non-interactive, --follow-imports=skip]
-        files: '(integration_tests/.*\.py)|(test/.*\.py)|(apache_polaris/cli/.*\.py)|generate_clients.py'
+#

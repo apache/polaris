@@ -18,6 +18,7 @@
 #
 import argparse
 from abc import ABC
+from typing import Callable, Optional, Any
 
 from apache_polaris.cli.constants import Commands, Arguments
 from apache_polaris.cli.options.parser import Parser
@@ -33,7 +34,7 @@ class Command(ABC):
 
     @staticmethod
     def from_options(options: argparse.Namespace) -> "Command":
-        def options_get(key, f=lambda x: x):
+        def options_get(key: str, f: Callable[[Any], Any] = lambda x: x) -> Any:
             return f(getattr(options, key)) if hasattr(options, key) else None
 
         properties = Parser.parse_properties(options_get(Arguments.PROPERTY))
@@ -42,7 +43,7 @@ class Command(ABC):
         catalog_client_scopes = options_get(Arguments.CATALOG_CLIENT_SCOPE)
         parameters = Parser.parse_properties(options_get(Arguments.PARAMETERS))
 
-        command = None
+        command: Optional[Command] = None
         if options.command == Commands.CATALOGS:
             from apache_polaris.cli.command.catalogs import CatalogsCommand
 
@@ -65,8 +66,12 @@ class Command(ABC):
                 set_properties={} if set_properties is None else set_properties,
                 hadoop_warehouse=options_get(Arguments.HADOOP_WAREHOUSE),
                 hive_warehouse=options_get(Arguments.HIVE_WAREHOUSE),
-                iceberg_remote_catalog_name=options_get(Arguments.ICEBERG_REMOTE_CATALOG_NAME),
-                remove_properties=[] if remove_properties is None else remove_properties,
+                iceberg_remote_catalog_name=options_get(
+                    Arguments.ICEBERG_REMOTE_CATALOG_NAME
+                ),
+                remove_properties=[]
+                if remove_properties is None
+                else remove_properties,
                 endpoint=options_get(Arguments.ENDPOINT),
                 endpoint_internal=options_get(Arguments.ENDPOINT_INTERNAL),
                 sts_endpoint=options_get(Arguments.STS_ENDPOINT),
@@ -75,20 +80,30 @@ class Command(ABC):
                 current_kms_key=options_get(Arguments.KMS_KEY_CURRENT),
                 allowed_kms_keys=options_get(Arguments.KMS_KEY_ALLOWED),
                 catalog_connection_type=options_get(Arguments.CATALOG_CONNECTION_TYPE),
-                catalog_authentication_type=options_get(Arguments.CATALOG_AUTHENTICATION_TYPE),
-                catalog_service_identity_type=options_get(Arguments.CATALOG_SERVICE_IDENTITY_TYPE),
-                catalog_service_identity_iam_arn=options_get(Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN),
+                catalog_authentication_type=options_get(
+                    Arguments.CATALOG_AUTHENTICATION_TYPE
+                ),
+                catalog_service_identity_type=options_get(
+                    Arguments.CATALOG_SERVICE_IDENTITY_TYPE
+                ),
+                catalog_service_identity_iam_arn=options_get(
+                    Arguments.CATALOG_SERVICE_IDENTITY_IAM_ARN
+                ),
                 catalog_uri=options_get(Arguments.CATALOG_URI),
                 catalog_token_uri=options_get(Arguments.CATALOG_TOKEN_URI),
                 catalog_client_id=options_get(Arguments.CATALOG_CLIENT_ID),
                 catalog_client_secret=options_get(Arguments.CATALOG_CLIENT_SECRET),
-                catalog_client_scopes=[] if catalog_client_scopes is None else catalog_client_scopes,
+                catalog_client_scopes=[]
+                if catalog_client_scopes is None
+                else catalog_client_scopes,
                 catalog_bearer_token=options_get(Arguments.CATALOG_BEARER_TOKEN),
                 catalog_role_arn=options_get(Arguments.CATALOG_ROLE_ARN),
-                catalog_role_session_name=options_get(Arguments.CATALOG_ROLE_SESSION_NAME),
+                catalog_role_session_name=options_get(
+                    Arguments.CATALOG_ROLE_SESSION_NAME
+                ),
                 catalog_external_id=options_get(Arguments.CATALOG_EXTERNAL_ID),
                 catalog_signing_region=options_get(Arguments.CATALOG_SIGNING_REGION),
-                catalog_signing_name=options_get(Arguments.CATALOG_SIGNING_NAME)
+                catalog_signing_name=options_get(Arguments.CATALOG_SIGNING_NAME),
             )
         elif options.command == Commands.PRINCIPALS:
             from apache_polaris.cli.command.principals import PrincipalsCommand

@@ -48,7 +48,7 @@ class NamespacesCommand(Command):
     location: str
     properties: Optional[Dict[str, StrictStr]]
 
-    def validate(self):
+    def validate(self) -> None:
         if not self.catalog:
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
