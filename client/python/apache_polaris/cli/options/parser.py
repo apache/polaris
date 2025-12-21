@@ -18,7 +18,7 @@
 #
 import argparse
 import sys
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any, Sequence
 
 from apache_polaris.cli.constants import Arguments, DEFAULT_HEADER
 from apache_polaris.cli.options.option_tree import OptionTree, Option, Argument
@@ -59,13 +59,13 @@ class Parser(object):
             Arguments.REALM,
             str,
             hint="realm to use with header. if not defined will be used default realm from Polaris server. read more: https://polaris.apache.org/releases/1.1.0/configuration/",
-            default=None
+            default=None,
         ),
         Argument(
             Arguments.HEADER,
             str,
             hint="header is defining a header name to use as context header name. if not defined will be used default from Polaris server",
-            default=DEFAULT_HEADER
+            default=DEFAULT_HEADER,
         ),
         Argument(Arguments.PROFILE, str, hint="profile for token-based authentication"),
         Argument(Arguments.PROXY, str, hint="proxy URL"),
@@ -74,27 +74,30 @@ class Parser(object):
 
     @staticmethod
     def _build_parser() -> argparse.ArgumentParser:
-
         # Add everything from the option tree to the parser:
-        def add_arguments(parser, args: List[Argument]):
+        def add_arguments(
+            parser: argparse.ArgumentParser, args: List[Argument]
+        ) -> None:
             for arg in args:
-                kwargs = {"help": arg.hint, "type": arg.type}
+                kwargs: Dict[str, Any] = {"help": arg.hint, "type": arg.type}
                 if arg.choices:
                     kwargs["choices"] = arg.choices
                 if arg.lower:
-                    kwargs["type"] = kwargs["type"].lower
+                    kwargs["type"] = lambda s: s.lower()
                 if arg.default:
                     kwargs["default"] = arg.default
 
                 if arg.type is bool:
-                    del kwargs['type']
-                    parser.add_argument(arg.get_flag_name(), **kwargs, action='store_true')
+                    del kwargs["type"]
+                    parser.add_argument(
+                        arg.get_flag_name(), **kwargs, action="store_true"
+                    )
                 elif arg.allow_repeats:
                     parser.add_argument(arg.get_flag_name(), **kwargs, action="append")
                 else:
                     parser.add_argument(arg.get_flag_name(), **kwargs)
 
-        def recurse_options(subparser, options: List[Option]):
+        def recurse_options(subparser: Any, options: List[Option]) -> None:
             for option in options:
                 option_parser = subparser.add_parser(
                     option.name, help=option.hint or option.name
@@ -149,17 +152,21 @@ class TreeHelpParser(argparse.ArgumentParser):
 
     INDENT = " " * 2
 
-    def parse_args(self, args=None, namespace=None):
+    def parse_args(  # type: ignore[override]
+        self,
+        args: Optional[Sequence[str]] = None,
+        namespace: Optional[argparse.Namespace] = None,
+    ) -> argparse.Namespace:
         if args is None:
             args = sys.argv[1:]
         help_index = min(
-            [float("inf")] + [args.index(x) for x in ["-h", "--help"] if x in args]
+            [sys.maxsize] + [args.index(x) for x in ["-h", "--help"] if x in args]
         )
-        if help_index < float("inf"):
+        if help_index < sys.maxsize:
             tree_str = self._get_tree_str(args[:help_index])
             if tree_str:
-                print(f'input: polaris {" ".join(args)}')
-                print('options:')
+                print(f"input: polaris {' '.join(args)}")
+                print("options:")
                 print(tree_str)
                 print("\n")
                 self.print_usage()
@@ -169,8 +176,8 @@ class TreeHelpParser(argparse.ArgumentParser):
         else:
             return super().parse_args(args, namespace)
 
-    def _get_tree_str(self, args: List[str]) -> Optional[str]:
-        command_path = self._get_command_path(args, OptionTree.get_tree())
+    def _get_tree_str(self, args: Sequence[str]) -> Optional[str]:
+        command_path = self._get_command_path(list(args), OptionTree.get_tree())
         if len(command_path) == 0:
             result = TreeHelpParser.INDENT + "polaris"
             for arg in Parser._ROOT_ARGUMENTS:
@@ -189,7 +196,7 @@ class TreeHelpParser(argparse.ArgumentParser):
             else:
                 return self._get_tree_for_option(option_node)
 
-    def _get_tree_for_option(self, option: Option, indent=1) -> str:
+    def _get_tree_for_option(self, option: Option, indent: int = 1) -> str:
         result = ""
         result += (TreeHelpParser.INDENT * indent) + option.name
 
@@ -225,7 +232,7 @@ class TreeHelpParser(argparse.ArgumentParser):
             if arg in {o.name for o in options}:
                 command_path.append(arg)
                 try:
-                    parser = parser._subparsers._group_actions[0].choices.get(arg)
+                    parser = parser._subparsers._group_actions[0].choices.get(arg)  # type: ignore[union-attr]
                     if not parser:
                         break
                 except Exception:

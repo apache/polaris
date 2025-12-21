@@ -22,17 +22,17 @@ import json
 import os
 import sys
 from dataclasses import dataclass
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.constants import (
-  Subcommands,
-  Arguments,
-  DEFAULT_HEADER,
-  DEFAULT_HOSTNAME,
-  DEFAULT_PORT,
-  CONFIG_DIR,
-  CONFIG_FILE,
+    Subcommands,
+    Arguments,
+    DEFAULT_HEADER,
+    DEFAULT_HOSTNAME,
+    DEFAULT_PORT,
+    CONFIG_DIR,
+    CONFIG_FILE,
 )
 from apache_polaris.sdk.management import PolarisDefaultApi
 
@@ -55,14 +55,14 @@ class ProfilesCommand(Command):
     profiles_subcommand: str
     profile_name: str
 
-    def _load_profiles(self) -> Dict[str, Dict[str, str]]:
+    def _load_profiles(self) -> Dict[str, Dict[str, Any]]:
         if not os.path.exists(CONFIG_FILE):
             return {}
         with open(CONFIG_FILE, "r") as f:
             print(f"Loading profiles from {CONFIG_FILE}")
             return json.load(f)
 
-    def _save_profiles(self, profiles: Dict[str, Dict[str, str]]) -> None:
+    def _save_profiles(self, profiles: Dict[str, Dict[str, Any]]) -> None:
         if not os.path.exists(CONFIG_DIR):
             os.makedirs(CONFIG_DIR)
         with open(CONFIG_FILE, "w") as f:
@@ -75,8 +75,11 @@ class ProfilesCommand(Command):
             client_secret = input("Polaris Client Secret: ")
             host = input(f"Polaris Host [{DEFAULT_HOSTNAME}]: ") or DEFAULT_HOSTNAME
             port = input(f"Polaris Port [{DEFAULT_PORT}]: ") or DEFAULT_PORT
-            realm = input(f"Polaris Context Realm: ")
-            header = input(f"Polaris Context Header Name [{DEFAULT_HEADER}]: ") or DEFAULT_HEADER
+            realm = input("Polaris Context Realm: ")
+            header = (
+                input(f"Polaris Context Header Name [{DEFAULT_HEADER}]: ")
+                or DEFAULT_HEADER
+            )
             profiles[name] = {
                 "client_id": client_id,
                 "client_secret": client_secret,
@@ -90,7 +93,7 @@ class ProfilesCommand(Command):
             print(f"Profile {name} already exists.")
             sys.exit(1)
 
-    def _get_profile(self, name: str) -> Optional[Dict[str, str]]:
+    def _get_profile(self, name: str) -> Optional[Dict[str, Any]]:
         profiles = self._load_profiles()
         return profiles.get(name)
 
@@ -124,7 +127,10 @@ class ProfilesCommand(Command):
             host = input(f"Polaris Client ID [{current_host}]: ") or current_host
             port = input(f"Polaris Client Secret [{current_port}]: ") or current_port
             realm = input(f"Polaris Context Realm [{current_realm}]: ") or current_realm
-            header = input(f"Polaris Context Header Name [{current_header}]: ") or current_header
+            header = (
+                input(f"Polaris Context Header Name [{current_header}]: ")
+                or current_header
+            )
             profiles[name] = {
                 "client_id": client_id,
                 "client_secret": client_secret,
@@ -138,7 +144,7 @@ class ProfilesCommand(Command):
             print(f"Profile {name} does not exist.")
             sys.exit(1)
 
-    def validate(self):
+    def validate(self) -> None:
         pass
 
     def execute(self, api: Optional[PolarisDefaultApi] = None) -> None:
@@ -160,7 +166,7 @@ class ProfilesCommand(Command):
         elif self.profiles_subcommand == Subcommands.LIST:
             profiles = self._list_profiles()
             print("Polaris profiles:")
-            for profile in profiles:
-                print(f" - {profile}")
+            for profile_name in profiles:
+                print(f" - {profile_name}")
         else:
             raise Exception(f"{self.profiles_subcommand} is not supported in the CLI")

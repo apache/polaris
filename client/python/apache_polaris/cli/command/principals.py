@@ -18,7 +18,7 @@
 #
 import json
 from dataclasses import dataclass
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Iterator, Any
 
 from pydantic import StrictStr
 
@@ -30,7 +30,7 @@ from apache_polaris.sdk.management import (
     Principal,
     PrincipalWithCredentials,
     UpdatePrincipalRequest,
-    ResetPrincipalRequest
+    ResetPrincipalRequest,
 )
 
 
@@ -59,11 +59,11 @@ class PrincipalsCommand(Command):
     new_client_id: Optional[str] = None
     new_client_secret: Optional[str] = None
 
-    def _get_catalogs(self, api: PolarisDefaultApi):
+    def _get_catalogs(self, api: PolarisDefaultApi) -> Iterator[str]:
         for catalog in api.list_catalogs().catalogs:
             yield catalog.to_dict()["name"]
 
-    def _get_principal_roles(self, api: PolarisDefaultApi):
+    def _get_principal_roles(self, api: PolarisDefaultApi) -> Iterator[str]:
         for principal_role in api.list_principal_roles_assigned(
             self.principal_name
         ).roles:
@@ -71,7 +71,7 @@ class PrincipalsCommand(Command):
 
     def _get_catalog_roles(
         self, api: PolarisDefaultApi, principal_role_name: str, catalog_name: str
-    ):
+    ) -> Iterator[str]:
         for catalog_role in api.list_catalog_roles_for_principal_role(
             principal_role_name, catalog_name
         ).roles:
@@ -79,7 +79,7 @@ class PrincipalsCommand(Command):
 
     def _get_privileges(
         self, api: PolarisDefaultApi, catalog_name: str, catalog_role_name: str
-    ):
+    ) -> Iterator[Dict[str, Any]]:
         for grant in api.list_grants_for_catalog_role(
             catalog_name, catalog_role_name
         ).grants:
@@ -87,7 +87,7 @@ class PrincipalsCommand(Command):
 
     def build_credential_json(
         self, principal_with_credentials: PrincipalWithCredentials
-    ):
+    ) -> str:
         credentials = principal_with_credentials.credentials
         return json.dumps(
             {
@@ -96,7 +96,7 @@ class PrincipalsCommand(Command):
             }
         )
 
-    def validate(self):
+    def validate(self) -> None:
         pass
 
     def execute(self, api: PolarisDefaultApi) -> None:
@@ -154,14 +154,17 @@ class PrincipalsCommand(Command):
 
             # Construct the result structure for each principal role
             for principal_role in principal_roles:
-                role_data = {"name": principal_role, "catalog_roles": []}
+                role_data: Dict[str, Any] = {
+                    "name": principal_role,
+                    "catalog_roles": [],
+                }
                 # For each catalog role, get associated privileges
                 for catalog in self._get_catalogs(api):
                     catalog_roles = self._get_catalog_roles(
                         api, principal_role, catalog
                     )
                     for catalog_role in catalog_roles:
-                        catalog_data = {
+                        catalog_data: Dict[str, Any] = {
                             "name": catalog_role,
                             "catalog": catalog,
                             "privileges": [],
