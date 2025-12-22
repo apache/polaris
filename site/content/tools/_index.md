@@ -27,9 +27,10 @@ cascade:
 Polaris has a set of tools to bolster the Polaris ecosystem and provide additional functionality to work with Polaris and data lakehouses.
 These include:
 
-| Tool                                                    | Description                                                                                                                                             |
-|---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Iceberg Catalog Migrator](./iceberg-catalog-migrator/) | Performance benchmarks for Polaris.                                                                                                                     |
-| [Polaris Benchmarks](./polaris-benchmarks/)             | A command-line tool to migrate Iceberg tables from one Iceberg catalog to another.                                                     |
-| [Polaris Synchronizer](./polaris-synchronizer/)         | A tool to migrate entities from one Polaris instance to another. |
+| Tool                                                    | Description                                                                        |
+|---------------------------------------------------------|------------------------------------------------------------------------------------|
+| [Iceberg Catalog Migrator](./iceberg-catalog-migrator/) | A command-line tool to migrate Iceberg tables from one Iceberg catalog to another. |
+| [Polaris Benchmarks](./polaris-benchmarks/)             | Performance benchmarks for Polaris.                                                |
+| [Polaris Synchronizer](./polaris-synchronizer/)         | A tool to migrate entities from one Polaris instance to another.                   |
+| [Polaris MCP Server](./polaris-mcp-server/)             | A Polaris MCP server implementation.                                               |
 
