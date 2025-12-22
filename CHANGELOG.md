@@ -60,6 +60,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Enhanced catalog federation with SigV4 authentication support, additional authentication types for credential vending, and location-based access restrictions to block credential vending for remote tables outside allowed location lists.
 - Added `topologySpreadConstraints` support in Helm chart.
 - Added support for including principal name in subscoped credentials. `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` (default: false) can be used to toggle this feature. If enabled, cached credentials issued to one principal will no longer be available for others.
+- Added support for [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) to the Helm Chart. 
 
 ### Changes
 
