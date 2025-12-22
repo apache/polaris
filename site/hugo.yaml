@@ -20,7 +20,6 @@
 baseURL: 'https://polaris.apache.org/'
 languageCode: 'en-us'
 title: 'Apache Polaris'
-sectionPagesMenu: 'main'
 enableRobotsTXT: true
 
 permalinks:
