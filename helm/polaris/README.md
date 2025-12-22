@@ -153,7 +153,7 @@ Below are two sample deployment models for installing the chart: one with a non-
 
 ### Using the Gateway API (Advanced) 
 
-You may want to use the [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) for more advanced network routing. To do so, you need to run the following commands: 
+You may want to use the [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) for more advanced network routing. To do so, you may need to run the following commands: 
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
 helm install envoy-gateway oci://docker.io/envoyproxy/gateway-helm -n gateway --create-namespace
