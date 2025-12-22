@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
 
@@ -73,8 +73,19 @@ jobs:
 
           echo "## Parameters" >> $GITHUB_STEP_SUMMARY
 
-          if ! git_tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
-            echo "❌ Current HEAD is not on a release candidate tag. Please checkout a release candidate tag first." >> $GITHUB_STEP_SUMMARY
+          # Extract the ref name from github.ref
+          # github.ref format: refs/heads/branch-name or refs/tags/tag-name
+          ref="${{ github.ref }}"
+
+          if [[ "${ref}" =~ ^refs/tags/(.+)$ ]]; then
+            # Running from a tag
+            git_tag="${BASH_REMATCH[1]}"
+          else
+            echo "❌ Workflow must be run from a release candidate tag, not a branch." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Current ref: \`${ref}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please select a release candidate tag (e.g., \`apache-polaris-1.0.0-incubating-rc0\`) from the 'Use workflow from' dropdown in the GitHub UI." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 
@@ -117,7 +128,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
 
@@ -130,7 +141,7 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Java
-        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+        uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -176,6 +187,7 @@ jobs:
           exec_process mkdir -p "${version_dir}"
           exec_process cp build/distributions/* "${version_dir}/"
           exec_process cp runtime/distribution/build/distributions/* "${version_dir}/"
+          exec_process rm -f "${version_dir}/*vote-email{-subject,-body}.txt"
 
           exec_process cd "${dist_dev_dir}"
           exec_process svn add "${version_without_rc}"
@@ -241,7 +253,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
 
@@ -264,7 +276,7 @@ jobs:
           docker buildx inspect
 
       - name: Set up Java
-        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+        uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -313,7 +325,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           fetch-depth: 0
 
@@ -359,6 +371,9 @@ jobs:
           gpg --batch --pinentry-mode loopback --export > /tmp/pubring.gpg
 
           exec_process cd helm
+          # Prerequisite for reproducible helm packages: file modification time must be deterministic
+          # Works with helm since version 4.0.0
+          exec_process find polaris -exec touch -d "1980-01-01 00:00:00" {} +
           exec_process helm package polaris --sign --key "." --keyring /tmp/secring.gpg --passphrase-file /tmp/passphrase
           exec_process helm verify polaris-${version_without_rc}.tgz --keyring /tmp/pubring.gpg
 

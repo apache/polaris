@@ -28,6 +28,8 @@ import java.util.Set;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
@@ -54,7 +56,6 @@ public class StorageCredentialCacheTest {
   private final RealmConfig realmConfig =
       new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
   private final StorageCredentialsVendor storageCredentialsVendor;
-
   private StorageCredentialCache storageCredentialCache;
 
   public StorageCredentialCacheTest() {
@@ -80,12 +81,16 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(badResult);
     PolarisEntity polarisEntity =
         new PolarisEntity(
             new PolarisBaseEntity(
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
+
     Assertions.assertThatThrownBy(
             () ->
                 storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -94,6 +99,7 @@ public class StorageCredentialCacheTest {
                     true,
                     Set.of("s3://bucket1/path"),
                     Set.of("s3://bucket3/path"),
+                    polarisPrincipal,
                     Optional.empty()))
         .isInstanceOf(UnprocessableEntityException.class)
         .hasMessage("Failed to get subscoped credentials: extra_error_info");
@@ -109,6 +115,7 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
@@ -117,6 +124,7 @@ public class StorageCredentialCacheTest {
         new PolarisBaseEntity(
             1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
     PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
 
     // add an item to the cache
     storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -125,6 +133,7 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        polarisPrincipal,
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
@@ -135,8 +144,92 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        polarisPrincipal,
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    Optional<PolarisPrincipal> emptyPrincipal = Optional.empty();
+
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        polarisPrincipal,
+        Optional.empty());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+  }
+
+  private void testCacheForAnotherPrincipal(boolean hitExpected) {
+    List<ScopedCredentialsResult> mockedScopedCreds =
+        getFakeScopedCreds(3, /* expireSoon= */ false);
+    Mockito.when(
+            storageCredentialsVendor.getSubscopedCredsForEntity(
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anySet(),
+                Mockito.anySet(),
+                Mockito.any(),
+                Mockito.any()))
+        .thenReturn(mockedScopedCreds.get(0))
+        .thenReturn(mockedScopedCreds.get(1))
+        .thenReturn(mockedScopedCreds.get(1));
+    PolarisBaseEntity baseEntity =
+        new PolarisBaseEntity(
+            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
+    PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
+    PolarisPrincipal anotherPolarisPrincipal =
+        PolarisPrincipal.of("anotherPrincipal", Map.of(), Set.of());
+
+    // add an item to the cache
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        polarisPrincipal,
+        Optional.empty());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        Set.of("s3://bucket1/path", "s3://bucket2/path"),
+        Set.of("s3://bucket3/path", "s3://bucket4/path"),
+        anotherPolarisPrincipal,
+        Optional.empty());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(hitExpected ? 1 : 2);
+  }
+
+  @Test
+  public void testCacheHitForAnotherPrincipal() {
+    testCacheForAnotherPrincipal(true);
+  }
+
+  @Test
+  public void testCacheMissForAnotherPrincipal() {
+    Mockito.when(storageCredentialsVendor.getRealmConfig())
+        .thenReturn(
+            new RealmConfigImpl(
+                new PolarisConfigurationStore() {
+                  @SuppressWarnings("unchecked")
+                  @Override
+                  public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
+                    if (configName.equals(
+                        FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL
+                            .key())) {
+                      return "true";
+                    }
+                    return null;
+                  }
+                },
+                () -> "realm"));
+
+    testCacheForAnotherPrincipal(false);
   }
 
   @RepeatedTest(10)
@@ -149,6 +242,7 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
@@ -157,6 +251,9 @@ public class StorageCredentialCacheTest {
         new PolarisBaseEntity(
             1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
     PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
+
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
+
     StorageCredentialCacheKey cacheKey =
         StorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
@@ -164,7 +261,8 @@ public class StorageCredentialCacheTest {
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket/path"),
-            Optional.empty());
+            Optional.empty(),
+            Optional.of(polarisPrincipal));
 
     // the entry will be evicted immediately because the token is expired
     storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -173,6 +271,7 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket/path"),
+        polarisPrincipal,
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
@@ -182,6 +281,7 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket/path"),
+        polarisPrincipal,
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
@@ -191,6 +291,7 @@ public class StorageCredentialCacheTest {
         true,
         Set.of("s3://bucket1/path", "s3://bucket2/path"),
         Set.of("s3://bucket/path"),
+        polarisPrincipal,
         Optional.empty());
     Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
   }
@@ -205,11 +306,13 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(2));
     List<PolarisEntity> entityList = getPolarisEntities();
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
     int cacheSize = 0;
     // different catalog will generate new cache entries
     for (PolarisEntity entity : entityList) {
@@ -219,6 +322,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket/path"),
+          polarisPrincipal,
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -236,6 +340,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket/path"),
+          polarisPrincipal,
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -247,6 +352,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ false,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket/path"),
+          polarisPrincipal,
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -258,6 +364,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ false,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://differentbucket/path"),
+          polarisPrincipal,
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -274,6 +381,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ false,
           Set.of("s3://differentbucket/path", "s3://bucket2/path"),
           Set.of("s3://bucket/path"),
+          polarisPrincipal,
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
@@ -290,11 +398,13 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(mockedScopedCreds.get(0))
         .thenReturn(mockedScopedCreds.get(1))
         .thenReturn(mockedScopedCreds.get(2));
     List<PolarisEntity> entityList = getPolarisEntities();
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
           storageCredentialsVendor,
@@ -302,6 +412,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          polarisPrincipal,
           Optional.empty());
     }
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
@@ -314,6 +425,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          polarisPrincipal,
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
@@ -326,6 +438,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket1/path", "s3://bucket2/path"),
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          polarisPrincipal,
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
@@ -337,6 +450,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket2/path", "s3://bucket1/path"),
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
+          polarisPrincipal,
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
@@ -349,6 +463,7 @@ public class StorageCredentialCacheTest {
           true,
           Set.of("s3://bucket2/path", "s3://bucket1/path"),
           Set.of("s3://bucket4/path", "s3://bucket3/path"),
+          polarisPrincipal,
           Optional.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
@@ -428,9 +543,11 @@ public class StorageCredentialCacheTest {
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet(),
+                Mockito.any(),
                 Mockito.any()))
         .thenReturn(properties);
     List<PolarisEntity> entityList = getPolarisEntities();
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
 
     StorageAccessConfig config =
         storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -439,6 +556,7 @@ public class StorageCredentialCacheTest {
             true,
             Set.of("s3://bucket1/path", "s3://bucket2/path"),
             Set.of("s3://bucket3/path", "s3://bucket4/path"),
+            polarisPrincipal,
             Optional.empty());
     Assertions.assertThat(config.credentials())
         .containsExactly(Map.entry("s3.secret-access-key", "super-secret-123"));

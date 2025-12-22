@@ -47,7 +47,7 @@ public class CdiTestingProviders {
   @Produces
   @ApplicationScoped
   BackendConfiguration backendConfiguration() {
-    return BackendConfiguration.BuildableBackendConfiguration.builder().type("InMemory").build();
+    return BackendConfiguration.BuildableBackendConfiguration.builder().backend("InMemory").build();
   }
 
   @Produces

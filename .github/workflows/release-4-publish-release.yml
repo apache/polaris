@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           # Fetch full history for proper branch operations
           fetch-depth: 0
@@ -92,19 +92,24 @@ jobs:
         run: |
           source "${LIBS_DIR}/_version.sh"
 
-          # Get the current branch name
-          current_branch=$(git branch --show-current)
-
           echo "## Parameters" >> $GITHUB_STEP_SUMMARY
 
-          # Validate that we're on a release branch
-          if [[ ! "${current_branch}" =~ ^release/(.+)$ ]]; then
-            echo "❌ This workflow must be run from a release branch (release/major.minor.x). Current branch: \`${current_branch}\`." >> $GITHUB_STEP_SUMMARY
+          # Extract the ref name from github.ref
+          # github.ref format: refs/heads/branch-name or refs/tags/tag-name
+          ref="${{ github.ref }}"
+
+          if [[ "${ref}" =~ ^refs/heads/release/(.+)$ ]]; then
+            # Running from a release branch
+            branch_version="${BASH_REMATCH[1]}"
+            current_branch="release/${branch_version}"
+          else
+            echo "❌ This workflow must be run from a release branch (release/major.minor.x)." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Current ref: \`${ref}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please select a release branch (e.g., \`release/1.0.x\`) from the 'Use workflow from' dropdown in the GitHub UI." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-
-          # Extract version from release branch name
-          branch_version="${BASH_REMATCH[1]}"
 
           # Validate branch version format and extract components
           if ! validate_and_extract_branch_version "${branch_version}"; then
@@ -112,18 +117,13 @@ jobs:
             exit 1
           fi
 
-          # Find the next patch number for this major.minor version by looking at existing tags
+          # Find the patch number for this major.minor version by looking at existing tags
+          # Note: find_next_patch_number returns the current patch if no final tag exists,
+          # which is exactly what we need for publishing (we publish from an RC that has no final tag yet)
           find_next_patch_number "${major}" "${minor}"
-          next_patch=$((patch))
-          latest_patch=$((next_patch - 1))
 
-          if [[ ${next_patch} -eq 0 ]]; then
-            echo "❌ No existing tags found for version \`${major}.${minor}.0\`. Expected at least one RC to be created before publishing a release." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-
-          # Build the version string for the latest existing patch
-          version_without_rc="${major}.${minor}.${latest_patch}-incubating"
+          # Build the version string for the patch with RC tags
+          version_without_rc="${major}.${minor}.${patch}-incubating"
 
           # Find the latest RC tag for this version
           find_next_rc_number "${version_without_rc}"
@@ -141,6 +141,21 @@ jobs:
             echo "❌ RC tag \`${rc_tag}\` does not exist in repository." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
+
+          # Verify that current HEAD is at the RC tag commit
+          rc_commit=$(git rev-parse "${rc_tag}")
+          current_commit=$(git rev-parse HEAD)
+
+          if [[ "${current_commit}" != "${rc_commit}" ]]; then
+            echo "❌ Current HEAD (\`${current_commit}\`) does not match RC tag \`${rc_tag}\` (\`${rc_commit}\`)." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "This means that some commits have been made on the release branch after the last RC was created." >> $GITHUB_STEP_SUMMARY
+            echo "You should not publish a release from a branch that has received additional commits after the last RC was created." >> $GITHUB_STEP_SUMMARY
+            echo "Either remove the commits from the release branch so that it points to the last RC that was voted on, or create a new RC from the current state of the branch." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "✅ Current HEAD matches RC tag \`${rc_tag}\`" >> $GITHUB_STEP_SUMMARY
 
           # Create final release tag name
           final_release_tag="apache-polaris-${version_without_rc}"
@@ -254,7 +269,7 @@ jobs:
           docker buildx inspect
 
       - name: Set up Java
-        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+        uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5
         with:
           distribution: 'temurin'
           java-version: '21'

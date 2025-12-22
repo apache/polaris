@@ -44,7 +44,8 @@ import java.util.function.BooleanSupplier;
 
 final class PageTokenUtil {
 
-  private static final ObjectMapper SMILE_MAPPER = new SmileMapper().findAndRegisterModules();
+  private static final ObjectMapper SMILE_MAPPER =
+      SmileMapper.builder().findAndAddModules().build();
 
   /** Constant for {@link PageToken#readEverything()}. */
   static final PageToken READ_EVERYTHING =

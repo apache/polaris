@@ -26,7 +26,7 @@
  *
  * <h2>Schema Generation</h2>
  *
- * <p>The JSON Schema for these models can be generated using the {@link
+ * <p>The JSON Schema for these models can be generated using the {@code
  * org.apache.polaris.extension.auth.opa.model.OpaSchemaGenerator} utility or by running the Gradle
  * task:
  *

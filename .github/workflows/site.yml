@@ -20,8 +20,9 @@
 name: "Hugo Site"
 on:
   push:
-    branches: [ "main", "versioned-docs" ]
+    branches: [ "main", "release/*", "versioned-docs" ]
   pull_request:
+    branches: [ "main", "release/*" ]
 
 jobs:
   site:
@@ -30,8 +31,8 @@ jobs:
     if: github.repository == 'apache/polaris'
 
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           ref: "versioned-docs"
           path: site/content/releases

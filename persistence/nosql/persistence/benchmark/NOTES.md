@@ -28,14 +28,14 @@ podman run --rm -ti \
 
 ```bash
 ./gradlew :polaris-persistence-nosql-benchmark:jmhJar && java \
-  -Dpolaris.persistence.backend.type=InMemory \
+  -Dpolaris.persistence.nosql.backend=InMemory \
   -jar persistence/benchmark/build/libs/polaris-persistence-nosql-benchmark-1.0.0-incubating-SNAPSHOT-jmh.jar
 ```
 
 ```bash
 ./gradlew :polaris-persistence-nosql-benchmark:jmhJar && java \
-  -Dpolaris.persistence.backend.type=MongoDb \
-  -Dpolaris.persistence.backend.mongodb.connection-string=mongodb://localhost:27017/ \
-  -Dpolaris.persistence.backend.mongodb.database-name=test \
+  -Dpolaris.persistence.nosql.backend=MongoDb \
+  -Dpolaris.persistence.nosql.mongodb.connection-string=mongodb://localhost:27017/ \
+  -Dpolaris.persistence.nosql.mongodb.database-name=test \
   -jar persistence/benchmark/build/libs/polaris-persistence-nosql-benchmark-1.0.0-incubating-SNAPSHOT-jmh.jar
 ```

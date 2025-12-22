@@ -29,6 +29,7 @@ import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
@@ -159,7 +160,7 @@ public class PolarisManagementServiceIntegrationTest {
                     .build())
             .build();
 
-    ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = JsonMapper.builder().build();
     String json = mapper.writeValueAsString(catalog);
     System.out.println(json);
     Catalog deserialized = mapper.readValue(json, Catalog.class);
@@ -334,7 +335,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
-    ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = JsonMapper.builder().build();
     JsonNode storageConfig = mapper.valueToTree(awsConfigModel);
     ObjectNode catalogNode = mapper.createObjectNode();
     catalogNode.set("storageConfigInfo", storageConfig);
@@ -359,7 +360,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
-    ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = JsonMapper.builder().build();
     JsonNode storageConfig = mapper.valueToTree(awsConfigModel);
     ObjectNode catalogNode = mapper.createObjectNode();
     catalogNode.set("storageConfigInfo", storageConfig);
@@ -513,7 +514,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
-    ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = JsonMapper.builder().build();
     JsonNode storageConfig = mapper.valueToTree(awsConfigModel);
     ObjectNode catalogNode = mapper.createObjectNode();
     catalogNode.set("storageConfigInfo", storageConfig);
@@ -534,7 +535,7 @@ public class PolarisManagementServiceIntegrationTest {
   @Test
   public void serialization() {
     CatalogProperties properties = new CatalogProperties("s3://my-bucket/path/to/data");
-    ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = JsonMapper.builder().build();
     CatalogProperties translated = mapper.convertValue(properties, CatalogProperties.class);
     assertThat(translated.toMap())
         .containsEntry("default-base-location", "s3://my-bucket/path/to/data");

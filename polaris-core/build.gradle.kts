@@ -69,6 +69,7 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-gcp")
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
+  implementation(libs.google.cloud.iamcredentials)
 
   testCompileOnly(project(":polaris-immutables"))
   testAnnotationProcessor(project(":polaris-immutables", configuration = "processor"))

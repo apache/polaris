@@ -18,11 +18,14 @@
  */
 package org.apache.polaris.persistence.nosql.authz.impl;
 
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
 import static java.util.Collections.singleton;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.ArrayList;
 import java.util.Set;
@@ -54,7 +57,12 @@ public class TestPrivilegeSetImpl {
 
   @BeforeAll
   static void setUp() {
-    mapper = new ObjectMapper().findAndRegisterModules();
+    mapper =
+        JsonMapper.builder()
+            .findAndAddModules()
+            .disable(FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(DEFAULT_VIEW_INCLUSION)
+            .build();
     privileges =
         new PrivilegesImpl(Stream.of(new PrivilegesTestProvider()), new PrivilegesTestRepository());
     JacksonPrivilegesModule.CDIResolver.setResolver(x -> privileges);

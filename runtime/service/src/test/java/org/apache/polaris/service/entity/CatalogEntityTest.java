@@ -255,7 +255,7 @@ public class CatalogEntityTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"", "arn:aws:iam:0123456:role/jdoe", "aws-cn"})
+  @ValueSource(strings = {"", "arn:aws:iam:0123456:role/jdoe", "arn:aws-cn:iam:0123456:role/jdoe"})
   public void testInvalidArn(String roleArn) {
     String basedLocation = "s3://externally-owned-bucket";
     AwsStorageConfigInfo awsStorageConfigModel =
@@ -275,11 +275,7 @@ public class CatalogEntityTest {
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
     String expectedMessage =
-        switch (roleArn) {
-          case "" -> "ARN must not be empty";
-          case "aws-cn" -> "AWS China is temporarily not supported";
-          default -> "Invalid role ARN format: arn:aws:iam:0123456:role/jdoe";
-        };
+        roleArn.isEmpty() ? "ARN must not be empty" : "Invalid role ARN format: " + roleArn;
     Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(realmConfig, awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
@@ -321,6 +317,7 @@ public class CatalogEntityTest {
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/test-role")
             .setExternalId("externalId")
+            .setCurrentKmsKey("arn:aws:kms:us-east-1:012345678901:key/444343245")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(baseLocation))
@@ -334,6 +331,8 @@ public class CatalogEntityTest {
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.INTERNAL);
+    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getCurrentKmsKey())
+        .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test
@@ -342,6 +341,7 @@ public class CatalogEntityTest {
     AwsStorageConfigInfo storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/test-role")
+            .setCurrentKmsKey("arn:aws:kms:us-east-1:012345678901:key/444343245")
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -357,6 +357,8 @@ public class CatalogEntityTest {
 
     Catalog catalog = catalogEntity.asCatalog(serviceIdentityProvider);
     assertThat(catalog.getType()).isEqualTo(Catalog.TypeEnum.EXTERNAL);
+    assertThat(((AwsStorageConfigInfo) catalog.getStorageConfigInfo()).getCurrentKmsKey())
+        .isEqualTo("arn:aws:kms:us-east-1:012345678901:key/444343245");
   }
 
   @Test

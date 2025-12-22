@@ -51,20 +51,25 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - The EclipseLink Persistence implementation has been completely removed.
 - The default request ID header name has changed from `Polaris-Request-Id` to `X-Request-ID`.
+- The (Before/After)CommitTableEvent has been removed.
 
 ### New Features
 
 - Added `--no-sts` flag to CLI to support S3-compatible storage systems that do not have Security Token Service available.
 - Support credential vending for federated catalogs. `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING` (default: true) was added to toggle this feature.
 - Enhanced catalog federation with SigV4 authentication support, additional authentication types for credential vending, and location-based access restrictions to block credential vending for remote tables outside allowed location lists.
+- Added `topologySpreadConstraints` support in Helm chart.
+- Added support for including principal name in subscoped credentials. `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` (default: false) can be used to toggle this feature. If enabled, cached credentials issued to one principal will no longer be available for others.
 
 ### Changes
 
+- The `gcpServiceAccount` configuration value now affects Polaris behavior (enables service account impersonation). This value was previously defined but unused. This change may affect existing deployments that have populated this property.
 - `client.region` is no longer considered a "credential" property (related to Iceberg REST Catalog API).
 - Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
 - Added checksum to helm deployment so that it will restart when the configmap has changed.
 - Generic Table is no longer in beta and is generally-available.
-- Added Windows support for Python client
+- Added Windows support for Python client.
+- (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
 
 ### Deprecations
 
@@ -84,13 +89,14 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### New Features
 
+- Added KMS properties (optional) to catalog storage config to enable S3 data encryption.
 - Added a finer grained authorization model for UpdateTable requests. Existing privileges continue to work for granting UpdateTable, such as `TABLE_WRITE_PROPERTIES`.
   However, you can now instead grant privileges just for specific operations, such as `TABLE_ADD_SNAPSHOT`
 - Added a Management API endpoint to reset principal credentials, controlled by the `ENABLE_CREDENTIAL_RESET` (default: true) feature flag.
 - The `ENABLE_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` was added to support sub-catalog (initially namespace and table) RBAC for federated catalogs.
   The setting can be configured on a per-catalog basis by setting the catalog property: `polaris.config.enable-sub-catalog-rbac-for-federated-catalogs`.
   The realm-level feature flag `ALLOW_SETTING_SUB_CATALOG_RBAC_FOR_FEDERATED_CATALOGS` (default: true) controls whether this functionality can be enabled or modified at the catalog level.
-- Added support for S3-compatible storage that does not have STS (use `stsUavailable: true` in catalog storage configuration)
+- Added support for S3-compatible storage that does not have STS (use `stsUnavailable: true` in catalog storage configuration)
 - Python client: added support for custom realm and header
 - Python client: added support for policy management
 

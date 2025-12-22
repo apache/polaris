@@ -27,6 +27,8 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.List;
@@ -37,14 +39,21 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.function.TriConsumer;
+import org.apache.polaris.core.auth.ImmutablePolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
+import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
+import org.apache.polaris.service.events.PolarisEventMetadata;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.slf4j.Logger;
@@ -63,29 +72,50 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final Clock clock;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
+  private final RealmContextHolder realmContextHolder;
+  private final PolarisPrincipalHolder polarisPrincipalHolder;
+  private final PolarisPrincipal polarisPrincipal;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
+  private final Optional<TriConsumer<Long, Boolean, Throwable>> errorHandler;
   private final PolarisEventListener polarisEventListener;
+  private final PolarisEventMetadataFactory eventMetadataFactory;
   @Nullable private final Tracer tracer;
 
   @SuppressWarnings("unused") // Required by CDI
   protected TaskExecutorImpl() {
-    this(null, null, null, null, null, null);
+    this(null, null, null, null, null, null, null, null, null, null, null);
   }
 
   @Inject
   public TaskExecutorImpl(
       @Identifier("task-executor") Executor executor,
+      @Identifier("task-error-handler")
+          Instance<TriConsumer<Long, Boolean, Throwable>> errorHandler,
       Clock clock,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
+      RealmContextHolder realmContextHolder,
       PolarisEventListener polarisEventListener,
-      @Nullable Tracer tracer) {
+      PolarisEventMetadataFactory eventMetadataFactory,
+      @Nullable Tracer tracer,
+      PolarisPrincipalHolder polarisPrincipalHolder,
+      PolarisPrincipal polarisPrincipal) {
     this.executor = executor;
     this.clock = clock;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
+    this.realmContextHolder = realmContextHolder;
     this.polarisEventListener = polarisEventListener;
+    this.eventMetadataFactory = eventMetadataFactory;
     this.tracer = tracer;
+    this.polarisPrincipalHolder = polarisPrincipalHolder;
+    this.polarisPrincipal = polarisPrincipal;
+
+    if (errorHandler != null && errorHandler.isResolvable()) {
+      this.errorHandler = Optional.of(errorHandler.get());
+    } else {
+      this.errorHandler = Optional.empty();
+    }
   }
 
   @Startup
@@ -116,6 +146,7 @@ public class TaskExecutorImpl implements TaskExecutor {
   @Override
   @SuppressWarnings("FutureReturnValueIgnored") // it _should_ be okay in this particular case
   public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {
+    errorHandler.ifPresent(h -> h.accept(taskEntityId, true, null));
     // Unfortunately CallContext is a request-scoped bean and must be cloned now,
     // because its usage inside the TaskExecutor thread pool will outlive its
     // lifespan, so the original CallContext will eventually be closed while
@@ -123,27 +154,48 @@ public class TaskExecutorImpl implements TaskExecutor {
     // Note: PolarisCallContext has request-scoped beans as well, and must be cloned.
     // FIXME replace with context propagation?
     CallContext clone = callContext.copy();
-    tryHandleTask(taskEntityId, clone, null, 1);
+
+    // Capture the metadata now in order to capture the principal and request ID, if any.
+    PolarisEventMetadata eventMetadata = eventMetadataFactory.create();
+    tryHandleTask(taskEntityId, clone, eventMetadata, null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
-      long taskEntityId, CallContext callContext, Throwable e, int attempt) {
+      long taskEntityId,
+      CallContext callContext,
+      PolarisEventMetadata eventMetadata,
+      Throwable e,
+      int attempt) {
     if (attempt > 3) {
       return CompletableFuture.failedFuture(e);
     }
+    String realmId = callContext.getRealmContext().getRealmIdentifier();
+
+    PolarisPrincipal principalClone =
+        ImmutablePolarisPrincipal.builder().from(polarisPrincipal).build();
+
     return CompletableFuture.runAsync(
-            () -> handleTaskWithTracing(taskEntityId, callContext, attempt), executor)
+            () -> {
+              handleTaskWithTracing(
+                  realmId, taskEntityId, callContext, principalClone, eventMetadata, attempt);
+              errorHandler.ifPresent(h -> h.accept(taskEntityId, false, null));
+            },
+            executor)
         .exceptionallyComposeAsync(
             (t) -> {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
-              return tryHandleTask(taskEntityId, callContext, t, attempt + 1);
+              errorHandler.ifPresent(h -> h.accept(taskEntityId, false, e));
+              return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
   }
 
-  protected void handleTask(long taskEntityId, CallContext ctx, int attempt) {
-    polarisEventListener.onBeforeAttemptTask(new BeforeAttemptTaskEvent(taskEntityId, attempt));
+  protected void handleTask(
+      long taskEntityId, CallContext ctx, PolarisEventMetadata eventMetadata, int attempt) {
+    polarisEventListener.onBeforeAttemptTask(
+        new BeforeAttemptTaskEvent(
+            eventMetadataFactory.copy(eventMetadata), taskEntityId, attempt));
 
     boolean success = false;
     try {
@@ -187,13 +239,29 @@ public class TaskExecutorImpl implements TaskExecutor {
       }
     } finally {
       polarisEventListener.onAfterAttemptTask(
-          new AfterAttemptTaskEvent(taskEntityId, attempt, success));
+          new AfterAttemptTaskEvent(
+              eventMetadataFactory.copy(eventMetadata), taskEntityId, attempt, success));
     }
   }
 
-  protected void handleTaskWithTracing(long taskEntityId, CallContext callContext, int attempt) {
+  @ActivateRequestContext
+  protected void handleTaskWithTracing(
+      String realmId,
+      long taskEntityId,
+      CallContext callContext,
+      PolarisPrincipal principal,
+      PolarisEventMetadata eventMetadata,
+      int attempt) {
+    // Note: each call to this method runs in a new CDI request context
+
+    realmContextHolder.set(() -> realmId);
+    // since this is now a different context we store clone of the principal in a holder object
+    // which essentially reauthenticates the principal. PolarisPrincipal bean always looks for a
+    // principal set in PolarisPrincipalHolder first and assumes that identity if set.
+    polarisPrincipalHolder.set(principal);
+
     if (tracer == null) {
-      handleTask(taskEntityId, callContext, attempt);
+      handleTask(taskEntityId, callContext, eventMetadata, attempt);
     } else {
       Span span =
           tracer
@@ -206,7 +274,7 @@ public class TaskExecutorImpl implements TaskExecutor {
               .setAttribute("polaris.task.attempt", attempt)
               .startSpan();
       try (Scope ignored = span.makeCurrent()) {
-        handleTask(taskEntityId, callContext, attempt);
+        handleTask(taskEntityId, callContext, eventMetadata, attempt);
       } finally {
         span.end();
       }

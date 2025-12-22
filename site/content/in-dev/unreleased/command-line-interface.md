@@ -40,6 +40,7 @@ options:
 --header
 --profile
 --proxy
+--debug
 ```
 
 `COMMAND` must be one of the following:
@@ -146,6 +147,7 @@ options:
       --endpoint  (Only for S3) The S3 endpoint to use when connecting to S3
       --endpoint-internal  (Only for S3) The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use
       --sts-endpoint  (Only for S3) The STS endpoint to use when connecting to STS
+      --no-sts  (Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)
       --path-style-access  (Only for S3) Whether to use path-style-access for S3
       --allowed-location  An allowed location for files tracked by the catalog. Multiple locations can be provided by specifying this option more than once.
       --role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
@@ -156,9 +158,10 @@ options:
       --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
       --service-account  (Only for GCS) The service account to use when connecting to GCS
       --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
-      --catalog-connection-type  The type of external catalog in [iceberg-rest, hadoop].
+      --catalog-connection-type  The type of external catalog in [ICEBERG-REST, HADOOP, HIVE].
       --iceberg-remote-catalog-name  The remote catalog name when federating to an Iceberg REST catalog
       --hadoop-warehouse  The warehouse to use when federating to a HADOOP catalog
+      --hive-warehouse  The warehouse to use when federating to a HIVE catalog
       --catalog-authentication-type  The type of authentication in [OAUTH, BEARER, SIGV4, IMPLICIT]
       --catalog-service-identity-type  The type of service identity in [AWS_IAM]
       --catalog-service-identity-iam-arn  When using the AWS_IAM service identity type, this is the ARN of the IAM user or IAM role Polaris uses to assume roles and then access external resources.

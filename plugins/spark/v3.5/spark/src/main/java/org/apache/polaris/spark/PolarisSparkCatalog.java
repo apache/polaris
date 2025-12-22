@@ -71,7 +71,12 @@ public class PolarisSparkCatalog implements TableCatalog {
     try {
       GenericTable genericTable =
           this.polarisCatalog.loadGenericTable(Spark3Util.identifierToTableIdentifier(identifier));
-      return PolarisCatalogUtils.loadSparkTable(genericTable);
+      // Currently Hudi supports Spark Datasource V1, therefore we return a V1Table
+      if (PolarisCatalogUtils.useHudi(genericTable.getFormat())) {
+        return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
+      } else {
+        return PolarisCatalogUtils.loadV2SparkTable(genericTable);
+      }
     } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
       throw new NoSuchTableException(identifier);
     }
@@ -111,7 +116,12 @@ public class PolarisSparkCatalog implements TableCatalog {
               baseLocation,
               null,
               properties);
-      return PolarisCatalogUtils.loadSparkTable(genericTable);
+      // Currently Hudi supports Spark Datasource V1, therefore we return a V1Table
+      if (PolarisCatalogUtils.useHudi(format)) {
+        return PolarisCatalogUtils.loadV1SparkTable(genericTable, identifier, name());
+      } else {
+        return PolarisCatalogUtils.loadV2SparkTable(genericTable);
+      }
     } catch (AlreadyExistsException e) {
       throw new TableAlreadyExistsException(identifier);
     }

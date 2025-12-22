@@ -116,6 +116,7 @@ dependencies {
   }
 
   testImplementation(project(":polaris-api-management-model"))
+  testImplementation(project(":polaris-relational-jdbc"))
 
   testImplementation(project(":polaris-minio-testcontainer"))
 
@@ -150,7 +151,7 @@ dependencies {
 
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
-  testImplementation("org.testcontainers:postgresql")
+  testImplementation("org.testcontainers:testcontainers-postgresql")
 
   testFixturesImplementation(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-api-management-model"))

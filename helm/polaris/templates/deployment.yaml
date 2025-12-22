@@ -139,6 +139,17 @@ spec:
         {{- if .Values.extraVolumes }}
         {{- tpl (toYaml .Values.extraVolumes) . | nindent 8 }}
         {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+      {{- range .Values.topologySpreadConstraints }}
+        - maxSkew: {{ .maxSkew }}
+          topologyKey: {{ .topologyKey }}
+          whenUnsatisfiable: {{ .whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              {{- include "polaris.selectorLabels" $ | nindent 14 }}
+      {{- end }}
+      {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:
         {{- tpl (toYaml .Values.nodeSelector) . | nindent 8 }}

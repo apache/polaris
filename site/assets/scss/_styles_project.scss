@@ -24,3 +24,22 @@
 .td-sidebar-toc {
   padding-top: 1.75rem;
 }
+
+// Make image span full viewport width by canceling out
+// container padding
+.imageblock.full-width {
+  margin-inline: calc(0px - var(--bs-gutter-x));
+  width: calc(100% + var(--bs-gutter-x) + var(--bs-gutter-x));
+
+  img {
+    width: 100%;
+  }
+}
+
+// Screenshot styling for better visual separation
+img[alt*="Screenshot"] {
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+  margin: 1rem 0;
+}

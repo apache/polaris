@@ -79,6 +79,18 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL =
+      PolarisConfiguration.<Boolean>builder()
+          .key("INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL")
+          .description(
+              "If set to true, principal name will be included in temporary subscoped credentials.\n"
+                  + "Currently only AWS credentials are supported for which session name of the generated credentials \n"
+                  + "will look like 'polaris-<principal>' rather than simple 'polaris'.\n"
+                  + "Note that enabling this feature leads to degradation in temporary credential caching as \n"
+                  + "catalog will no longer be able to reuse credentials for multiple principals.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")
@@ -437,5 +449,44 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If set to true (default), allow credential vending for external catalogs. Note this requires ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING to be true first.")
           .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> AZURE_TIMEOUT_MILLIS =
+      PolarisConfiguration.<Integer>builder()
+          .key("AZURE_TIMEOUT_MILLIS")
+          .description(
+              "Timeout in milliseconds for Azure API requests. "
+                  + "Prevents indefinite blocking when Azure endpoints are slow or unresponsive. "
+                  + "Used internally by Azure storage integration for credential vending and other operations.")
+          .defaultValue(15000)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> AZURE_RETRY_COUNT =
+      PolarisConfiguration.<Integer>builder()
+          .key("AZURE_RETRY_COUNT")
+          .description(
+              "Number of retry attempts for Azure API requests. "
+                  + "Uses exponential backoff with jitter to handle transient failures.")
+          .defaultValue(3)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> AZURE_RETRY_DELAY_MILLIS =
+      PolarisConfiguration.<Integer>builder()
+          .key("AZURE_RETRY_DELAY_MILLIS")
+          .description(
+              "Initial delay in milliseconds before first retry for Azure API requests. "
+                  + "Delay doubles with each retry (exponential backoff).")
+          .defaultValue(2000)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Double> AZURE_RETRY_JITTER_FACTOR =
+      PolarisConfiguration.<Double>builder()
+          .key("AZURE_RETRY_JITTER_FACTOR")
+          .description(
+              "Jitter factor (0.0 to 1.0) applied to retry delays for Azure API requests. "
+                  + "The jitter is applied as a random percentage of the computed exponential backoff delay. "
+                  + "For example, 0.5 means up to 50%% random jitter will be added to each retry delay. "
+                  + "Helps prevent thundering herd when multiple requests fail simultaneously.")
+          .defaultValue(0.5)
           .buildFeatureConfiguration();
 }

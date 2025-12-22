@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -30,7 +31,7 @@ import java.util.Objects;
 public class PolarisPolicyMappingRecord {
   // to serialize/deserialize properties
   public static final String EMPTY_MAP_STRING = "{}";
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
   // id of the catalog where target entity resides
   private long targetCatalogId;

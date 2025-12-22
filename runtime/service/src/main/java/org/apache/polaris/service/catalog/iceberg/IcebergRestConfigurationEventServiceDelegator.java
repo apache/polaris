@@ -19,6 +19,7 @@
 
 package org.apache.polaris.service.catalog.iceberg;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
@@ -29,6 +30,7 @@ import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @Decorator
@@ -38,15 +40,31 @@ public class IcebergRestConfigurationEventServiceDelegator
 
   @Inject @Delegate IcebergCatalogAdapter delegate;
   @Inject PolarisEventListener polarisEventListener;
+  @Inject PolarisEventMetadataFactory eventMetadataFactory;
+
+  @VisibleForTesting
+  public IcebergRestConfigurationEventServiceDelegator(
+      IcebergCatalogAdapter delegate,
+      PolarisEventListener polarisEventListener,
+      PolarisEventMetadataFactory eventMetadataFactory) {
+    this.delegate = delegate;
+    this.polarisEventListener = polarisEventListener;
+    this.eventMetadataFactory = eventMetadataFactory;
+  }
+
+  // Default constructor for CDI
+  public IcebergRestConfigurationEventServiceDelegator() {}
 
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
     polarisEventListener.onBeforeGetConfig(
-        new IcebergRestCatalogEvents.BeforeGetConfigEvent(warehouse));
+        new IcebergRestCatalogEvents.BeforeGetConfigEvent(
+            eventMetadataFactory.create(), warehouse));
     Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
     polarisEventListener.onAfterGetConfig(
-        new IcebergRestCatalogEvents.AfterGetConfigEvent(resp.readEntity(ConfigResponse.class)));
+        new IcebergRestCatalogEvents.AfterGetConfigEvent(
+            eventMetadataFactory.create(), (ConfigResponse) resp.getEntity()));
     return resp;
   }
 }

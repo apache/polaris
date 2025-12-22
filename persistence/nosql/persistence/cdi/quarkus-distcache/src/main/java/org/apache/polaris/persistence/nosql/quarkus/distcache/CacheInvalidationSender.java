@@ -31,6 +31,7 @@ import static org.apache.polaris.persistence.nosql.quarkus.distcache.QuarkusDist
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.google.common.annotations.VisibleForTesting;
 import io.quarkus.runtime.Startup;
 import io.vertx.core.Future;
@@ -85,7 +86,7 @@ class CacheInvalidationSender implements DistributedCacheInvalidation.Sender {
   private final String invalidationUri;
   private final long requestTimeout;
 
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = JsonMapper.builder().build();
   private final Lock lock = new ReentrantLock();
   private final int batchSize;
   private final BlockingQueue<CacheInvalidation> invalidations = new LinkedBlockingQueue<>();

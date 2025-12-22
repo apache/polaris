@@ -1,0 +1,83 @@
+{{/*
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+*/}}
+{{/*
+  Helper template to generate access instructions for a service.
+  Parameters:
+  - serviceType: ClusterIP, NodePort, or LoadBalancer
+  - serviceName: Kubernetes service name
+  - port: Service port number
+  - namespace: Kubernetes namespace
+  - label: Display label (e.g., "API" or "Health")
+  - path: Optional URL path (e.g., "/q/health")
+  - isFirstNodePort: Whether to export NODE_IP (set to true only for the first NodePort service to avoid duplicate exports)
+*/}}
+{{- define "polaris.accessInstructions" -}}
+{{- $serviceType := .serviceType -}}
+{{- $serviceName := .serviceName -}}
+{{- $port := .port -}}
+{{- $namespace := .namespace -}}
+{{- $label := .label -}}
+{{- $path := .path | default "" -}}
+{{- $isFirstNodePort := .isFirstNodePort | default false }}
+{{- if eq $serviceType "LoadBalancer" }}
+  export {{ upper $label }}_IP=$(kubectl get svc -n {{ $namespace }} {{ $serviceName }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "{{ $label }}: http://${{ upper $label }}_IP:{{ $port }}{{ $path }}"
+{{- else if eq $serviceType "NodePort" }}
+{{- if $isFirstNodePort }}
+  export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
+{{- end }}
+  export {{ upper $label }}_PORT=$(kubectl get svc -n {{ $namespace }} {{ $serviceName }} -o jsonpath='{.spec.ports[0].nodePort}')
+  echo "{{ $label }}: http://$NODE_IP:${{ upper $label }}_PORT{{ $path }}"
+{{- else }}
+  {{ $label }}: http://localhost:{{ $port }}{{ $path }}
+{{- end }}
+{{- end -}}
+
+Apache Polaris deployed successfully!
+
+Release:    {{ .Release.Name }}
+Namespace:  {{ .Release.Namespace }}
+Version:    {{ .Chart.Version }} (App: {{ .Chart.AppVersion }})
+
+{{- if eq .Values.persistence.type "in-memory" }}
+
+⚠️  WARNING: Using IN-MEMORY persistence - data will be lost on pod restart!
+{{- end }}
+
+Access Polaris:
+{{- if eq .Values.service.type "ClusterIP" }}
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "polaris.fullname" . }} {{ (first .Values.service.ports).port }}:{{ (first .Values.service.ports).port }}
+{{- end }}
+{{ include "polaris.accessInstructions" (dict "serviceType" .Values.service.type "serviceName" (include "polaris.fullname" .) "port" (first .Values.service.ports).port "namespace" .Release.Namespace "label" "API" "isFirstNodePort" true) }}
+{{- if and (ne .Values.service.type "ClusterIP") (ne .Values.managementService.type "ClusterIP") }}
+
+{{- end }}
+{{- if and (ne .Values.service.type "ClusterIP") (eq .Values.managementService.type "ClusterIP") }}
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "polaris.fullnameWithSuffix" (list . "mgmt") }} {{ (first .Values.managementService.ports).port }}:{{ (first .Values.managementService.ports).port }}
+{{- else if and (eq .Values.service.type "ClusterIP") (eq .Values.managementService.type "ClusterIP") }}
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "polaris.fullnameWithSuffix" (list . "mgmt") }} {{ (first .Values.managementService.ports).port }}:{{ (first .Values.managementService.ports).port }}
+{{- end }}
+{{ include "polaris.accessInstructions" (dict "serviceType" .Values.managementService.type "serviceName" (include "polaris.fullnameWithSuffix" (list . "mgmt")) "port" (first .Values.managementService.ports).port "namespace" .Release.Namespace "label" "Health" "path" "/q/health" "isFirstNodePort" (ne .Values.service.type "NodePort")) }}
+
+View logs:
+
+  kubectl logs -l app.kubernetes.io/name={{ include "polaris.name" . }} -n {{ .Release.Namespace }} --tail=50 -f

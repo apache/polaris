@@ -29,13 +29,13 @@ import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.container.ContainerRequestContext;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -89,6 +89,8 @@ import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.context.catalog.RealmContextHolder;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -192,6 +194,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected FileIOFactory fileIOFactory;
   @Inject protected PolarisEventListener polarisEventListener;
+  @Inject protected PolarisEventMetadataFactory eventMetadataFactory;
   @Inject protected CatalogHandlerUtils catalogHandlerUtils;
   @Inject protected StorageCredentialCache storageCredentialCache;
   @Inject protected ResolverFactory resolverFactory;
@@ -200,6 +203,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected UserSecretsManager userSecretsManager;
   @Inject protected CallContext callContext;
   @Inject protected RealmConfig realmConfig;
+  @Inject protected RealmContextHolder realmContextHolder;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -223,18 +227,21 @@ public abstract class PolarisAuthzTestBase {
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
+  private static final AtomicInteger REALM_COUNTER = new AtomicInteger();
+
   @BeforeEach
   public void before(TestInfo testInfo) {
     storageCredentialCache.invalidateAll();
 
-    RealmContext realmContext = testInfo::getDisplayName;
+    var realmId =
+        testInfo.getTestMethod().orElseThrow().getName() + "_" + REALM_COUNTER.incrementAndGet();
+    RealmContext realmContext = () -> realmId;
+    realmContextHolder.set(realmContext);
+
+    bootstrapRealm(realmContext.getRealmIdentifier());
+
     QuarkusMock.installMockForType(realmContext, RealmContext.class);
     polarisContext = callContext.getPolarisCallContext();
-
-    ContainerRequestContext containerRequestContext = Mockito.mock(ContainerRequestContext.class);
-    Mockito.when(containerRequestContext.getProperty(Mockito.anyString()))
-        .thenReturn("request-id-1");
-    QuarkusMock.installMockForType(containerRequestContext, ContainerRequestContext.class);
 
     polarisAuthorizer = new PolarisAuthorizerImpl(realmConfig);
 
@@ -421,6 +428,8 @@ public abstract class PolarisAuthzTestBase {
         .create();
   }
 
+  protected void bootstrapRealm(String realmIdentifier) {}
+
   @AfterEach
   public void after() {
     try {
@@ -485,7 +494,8 @@ public abstract class PolarisAuthzTestBase {
             Mockito.mock(),
             storageAccessConfigProvider,
             fileIOFactory,
-            polarisEventListener);
+            polarisEventListener,
+            eventMetadataFactory);
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -503,7 +513,7 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisCallContextCatalogFactory() {
-      this(null, null, null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
@@ -514,6 +524,7 @@ public abstract class PolarisAuthzTestBase {
         StorageAccessConfigProvider accessConfigProvider,
         FileIOFactory fileIOFactory,
         PolarisEventListener polarisEventListener,
+        PolarisEventMetadataFactory eventMetadataFactory,
         PolarisMetaStoreManager metaStoreManager,
         CallContext callContext,
         PolarisPrincipal principal) {
@@ -524,6 +535,7 @@ public abstract class PolarisAuthzTestBase {
           accessConfigProvider,
           fileIOFactory,
           polarisEventListener,
+          eventMetadataFactory,
           metaStoreManager,
           callContext,
           principal);

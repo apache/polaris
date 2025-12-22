@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,10 +36,11 @@ public class CatalogSerializationTest {
   private static final String TEST_LOCATION = "s3://test/";
   private static final String TEST_CATALOG_NAME = "test-catalog";
   private static final String TEST_ROLE_ARN = "arn:aws:iam::123456789012:role/test-role";
+  private static final String KMS_KEY = "arn:aws:kms:us-east-1:012345678901:key/allowed-key-1";
 
   @BeforeEach
   public void setUp() {
-    mapper = new ObjectMapper();
+    mapper = JsonMapper.builder().build();
   }
 
   @ParameterizedTest(name = "{0}")
@@ -70,6 +72,36 @@ public class CatalogSerializationTest {
                 + "\"properties\":{\"default-base-location\":\"s3://test/\"},"
                 + "\"storageConfigInfo\":{"
                 + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-role\","
+                + "\"allowedKmsKeys\":[],"
+                + "\"pathStyleAccess\":false,"
+                + "\"storageType\":\"S3\","
+                + "\"allowedLocations\":[]"
+                + "}}");
+  }
+
+  @Test
+  public void testJsonFormatWithKmsProperties() throws JsonProcessingException {
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            TEST_CATALOG_NAME,
+            new CatalogProperties(TEST_LOCATION),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setRoleArn(TEST_ROLE_ARN)
+                .setCurrentKmsKey(KMS_KEY)
+                .build());
+
+    String json = mapper.writeValueAsString(catalog);
+
+    assertThat(json)
+        .isEqualTo(
+            "{\"type\":\"INTERNAL\","
+                + "\"name\":\"test-catalog\","
+                + "\"properties\":{\"default-base-location\":\"s3://test/\"},"
+                + "\"storageConfigInfo\":{"
+                + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-role\","
+                + "\"currentKmsKey\":\"arn:aws:kms:us-east-1:012345678901:key/allowed-key-1\","
+                + "\"allowedKmsKeys\":[],"
                 + "\"pathStyleAccess\":false,"
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"

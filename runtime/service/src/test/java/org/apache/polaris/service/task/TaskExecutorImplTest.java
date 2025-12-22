@@ -24,8 +24,11 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
+import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.AfterAttemptTaskEvent;
 import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
+import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -61,12 +64,17 @@ public class TaskExecutorImplTest {
     TaskExecutorImpl executor =
         new TaskExecutorImpl(
             Runnable::run,
+            null,
             testServices.clock(),
             testServices.metaStoreManagerFactory(),
             new TaskFileIOSupplier(
                 testServices.fileIOFactory(), testServices.storageAccessConfigProvider()),
+            new RealmContextHolder(),
             testServices.polarisEventListener(),
-            null);
+            testServices.eventMetadataFactory(),
+            null,
+            new PolarisPrincipalHolder(),
+            testServices.principal());
 
     executor.addTaskHandler(
         new TaskHandler() {
@@ -85,7 +93,11 @@ public class TaskExecutorImplTest {
           }
         });
 
-    executor.handleTask(taskEntity.getId(), polarisCallCtx, attempt);
+    executor.handleTask(
+        taskEntity.getId(),
+        polarisCallCtx,
+        PolarisEventMetadata.builder().realmId(realm).build(),
+        attempt);
 
     var afterAttemptTaskEvent = testPolarisEventListener.getLatest(AfterAttemptTaskEvent.class);
     Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.taskEntityId());

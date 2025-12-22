@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * Vert.x based address resolver.
  *
  * <p>Resolves names to both IPv4 and IPv6 addresses using a given search-list. These
- * functionalities are not supported vie{@code InetAddress}.
+ * functionalities are not supported via{@code InetAddress}.
  */
 record AddressResolver(DnsClient dnsClient, List<String> searchList) {
   private static final Logger LOGGER = LoggerFactory.getLogger(AddressResolver.class);
@@ -54,14 +55,27 @@ record AddressResolver(DnsClient dnsClient, List<String> searchList) {
 
   static {
     try {
+      IP_V4_ONLY = Boolean.parseBoolean(System.getProperty("java.net.preferIPv4Stack", "false"));
       LOCAL_ADDRESSES =
           networkInterfaces()
               .flatMap(
                   ni ->
-                      ni.getInterfaceAddresses().stream()
-                          // Need to do this InetAddress->byte[]->InetAddress dance to get rid of
-                          // host-address suffixes as in `0:0:0:0:0:0:0:1%lo`
-                          .map(InterfaceAddress::getAddress)
+                      Stream.concat(
+                              // localhost can be ipv6 when sysctl disable ipv6
+                              // if ::1 is registered for localhost in /etc/hosts
+                              // in this case java stack can still capture it
+                              // and it will work (even if not great)
+                              // this is a workaround to ensure at least localhost is
+                              // in the list but this could be more general to all /etc/hosts
+                              // mappings
+                              IP_V4_ONLY || !"lo".equalsIgnoreCase(ni.getName())
+                                  ? Stream.empty()
+                                  : findLocalhostAddresses(),
+                              ni.getInterfaceAddresses().stream()
+                                  // Need to do this InetAddress->byte[]->InetAddress dance to get
+                                  // rid of
+                                  // host-address suffixes as in `0:0:0:0:0:0:0:1%lo`
+                                  .map(InterfaceAddress::getAddress))
                           .map(InetAddress::getAddress)
                           .map(
                               a -> {
@@ -75,10 +89,16 @@ record AddressResolver(DnsClient dnsClient, List<String> searchList) {
                               })
                           .map(InetAddress::getHostAddress))
               .collect(toUnmodifiableSet());
-
-      IP_V4_ONLY = Boolean.parseBoolean(System.getProperty("java.net.preferIPv4Stack", "false"));
     } catch (SocketException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  private static @NonNull Stream<InetAddress> findLocalhostAddresses() {
+    try {
+      return Stream.of(InetAddress.getAllByName("localhost"));
+    } catch (final RuntimeException | UnknownHostException e) {
+      return Stream.empty();
     }
   }
 

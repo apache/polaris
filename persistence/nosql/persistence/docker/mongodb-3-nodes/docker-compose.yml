@@ -24,9 +24,9 @@
 #
 # ./gradlew :polaris-persistence-nosql-benchmark:jmhJar && \
 #   java \
-#     -Dpolaris.persistence.backend.type=MongoDb \
-#     -Dpolaris.persistence.backend.mongodb.connection-string=mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019/?replicaSet=rs0 \
-#     -Dpolaris.persistence.backend.mongodb.database-name=test \
+#     -Dpolaris.persistence.nosql.backend=MongoDb \
+#     -Dpolaris.persistence.nosql.mongodb.connection-string=mongodb://127.0.0.1:27017,127.0.0.1:27018,127.0.0.1:27019/?replicaSet=rs0 \
+#     -Dpolaris.persistence.nosql.mongodb.database-name=test \
 #     -jar persistence/benchmark/build/libs/polaris-persistence-nosql-benchmark-1.0.0-incubating-SNAPSHOT-jmh.jar
 #
 # MAKE SURE TO ADD
@@ -40,7 +40,7 @@ version: '3'
 
 services:
   mongo1:
-    image: mongo:8.2.2
+    image: docker.io/mongo:8.2.3
     command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
     ports:
       - "27017:27017"
@@ -56,7 +56,7 @@ services:
       - "mongo1_config:/data/configdb"
 
   mongo2:
-    image: mongo:8.2.2
+    image: docker.io/mongo:8.2.3
     command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27018"]
     ports:
       - "27018:27018"
@@ -67,7 +67,7 @@ services:
       - "mongo2_config:/data/configdb"
 
   mongo3:
-    image: mongo:8.2.2
+    image: docker.io/mongo:8.2.3
     command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27019"]
     ports:
       - "27019:27019"

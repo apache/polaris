@@ -41,6 +41,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.assertj.core.api.Assertions;
@@ -65,7 +66,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
   protected final MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
-  private PolarisTestMetaStoreManager polarisTestMetaStoreManager;
+  protected PolarisTestMetaStoreManager polarisTestMetaStoreManager;
 
   @BeforeEach
   public void setupPolarisMetaStoreManager() {
@@ -128,6 +129,44 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .hasSize(2)
         .extracting(PolarisEntity::toCore)
         .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
+
+    Assertions.assertThat(createdEntities).containsExactlyInAnyOrderElementsOf(listedEntities);
+  }
+
+  @Test
+  protected void testCreatePrincipalReturnedEntitySameAsPersisted() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+    PolarisBaseEntity principalEntity =
+        metaStoreManager
+            .createPrincipal(
+                callCtx,
+                new PrincipalEntity.Builder()
+                    .setId(metaStoreManager.generateNewEntityId(callCtx).getId())
+                    .setName("principal_test")
+                    .setCreateTimestamp(100L)
+                    .build())
+            .getPrincipal();
+
+    Assertions.assertThat(principalEntity)
+        .isNotNull()
+        .extracting(PolarisBaseEntity::getName)
+        .isEqualTo("principal_test");
+    Assertions.assertThat(principalEntity)
+        .extracting(PolarisBaseEntity::getCreateTimestamp)
+        .isEqualTo(100L);
+
+    PolarisBaseEntity fetchedPrincipal =
+        metaStoreManager
+            .readEntityByName(
+                callCtx,
+                null,
+                PolarisEntityType.PRINCIPAL,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                "principal_test")
+            .getEntity();
+
+    Assertions.assertThat(principalEntity).isEqualTo(fetchedPrincipal);
   }
 
   @Test

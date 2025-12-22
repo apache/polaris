@@ -20,7 +20,6 @@
 baseURL: 'https://polaris.apache.org/'
 languageCode: 'en-us'
 title: 'Apache Polaris'
-sectionPagesMenu: 'main'
 enableRobotsTXT: true
 
 permalinks:
@@ -126,6 +125,11 @@ menu:
       parent: "doc"
       weight: 1000
 
+    - name: "Tools"
+      identifier: "tools"
+      url: "/tools"
+      weight: 150
+
     - name: "Releases"
       identifier: "releases"
       url: "/downloads"
@@ -162,9 +166,9 @@ menu:
       parent: "community"
       url: "/community/security-report"
       weight: 70
-    - name: "Release Guide"
+    - name: "Release Guides"
       parent: "community"
-      url: "/community/release-guide"
+      url: "/community/release-guides"
       weight: 80
     - name: "Blogs"
       parent: "community"

@@ -68,9 +68,13 @@ import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
+import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
+import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.iceberg.CatalogHandlerUtils;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalogAdapter;
+import org.apache.polaris.service.catalog.iceberg.IcebergRestCatalogEventServiceDelegator;
+import org.apache.polaris.service.catalog.iceberg.IcebergRestConfigurationEventServiceDelegator;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
@@ -79,6 +83,8 @@ import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
 import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
+import org.apache.polaris.service.events.PolarisEventMetadata;
+import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
@@ -113,6 +119,7 @@ public record TestServices(
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor,
     PolarisEventListener polarisEventListener,
+    PolarisEventMetadataFactory eventMetadataFactory,
     StorageAccessConfigProvider storageAccessConfigProvider) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
@@ -138,12 +145,28 @@ public record TestServices(
   }
 
   public static class Builder {
-    private Clock clock = Clock.systemUTC();
-    private PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
+    private final Clock clock = Clock.systemUTC();
+    private final PolarisDiagnostics diagnostics = new PolarisDefaultDiagServiceImpl();
     private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient;
+    private boolean useEventDelegator = false;
     private Supplier<FileIOFactory> fileIOFactorySupplier = MeasuredFileIOFactory::new;
+    private final PolarisEventMetadataFactory eventMetadataFactory =
+        new PolarisEventMetadataFactory() {
+          @Override
+          public PolarisEventMetadata create() {
+            return PolarisEventMetadata.builder()
+                .realmId(realmContext.getRealmIdentifier())
+                .timestamp(clock.instant())
+                .build();
+          }
+
+          @Override
+          public PolarisEventMetadata copy(PolarisEventMetadata original) {
+            return PolarisEventMetadata.builder().from(original).timestamp(clock.instant()).build();
+          }
+        };
 
     private Builder() {
       stsClient = Mockito.mock(StsClient.class, RETURNS_DEEP_STUBS);
@@ -175,6 +198,11 @@ public record TestServices(
 
     public Builder stsClient(StsClient stsClient) {
       this.stsClient = stsClient;
+      return this;
+    }
+
+    public Builder withEventDelegator(boolean useEventDelegator) {
+      this.useEventDelegator = useEventDelegator;
       return this;
     }
 
@@ -277,7 +305,8 @@ public record TestServices(
       StorageCredentialsVendor storageCredentialsVendor =
           new StorageCredentialsVendor(metaStoreManager, callContext);
       StorageAccessConfigProvider storageAccessConfigProvider =
-          new StorageAccessConfigProvider(storageCredentialCache, storageCredentialsVendor);
+          new StorageAccessConfigProvider(
+              storageCredentialCache, storageCredentialsVendor, principal);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
@@ -291,6 +320,7 @@ public record TestServices(
               storageAccessConfigProvider,
               fileIOFactory,
               polarisEventListener,
+              eventMetadataFactory,
               metaStoreManager,
               callContext,
               principal);
@@ -322,9 +352,24 @@ public record TestServices(
               storageAccessConfigProvider,
               new DefaultMetricsReporter());
 
-      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(catalogService);
+      // Optionally wrap with event delegator
+      IcebergRestCatalogApiService finalRestCatalogService = catalogService;
+      IcebergRestConfigurationApiService finalRestConfigurationService = catalogService;
+      if (useEventDelegator) {
+        finalRestCatalogService =
+            new IcebergRestCatalogEventServiceDelegator(
+                catalogService,
+                polarisEventListener,
+                eventMetadataFactory,
+                new DefaultCatalogPrefixParser());
+        finalRestConfigurationService =
+            new IcebergRestConfigurationEventServiceDelegator(
+                catalogService, polarisEventListener, eventMetadataFactory);
+      }
+
+      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(finalRestCatalogService);
       IcebergRestConfigurationApi restConfigurationApi =
-          new IcebergRestConfigurationApi(catalogService);
+          new IcebergRestConfigurationApi(finalRestConfigurationService);
 
       PolarisAdminService adminService =
           new PolarisAdminService(
@@ -361,6 +406,7 @@ public record TestServices(
           fileIOFactory,
           taskExecutor,
           polarisEventListener,
+          eventMetadataFactory,
           storageAccessConfigProvider);
     }
   }

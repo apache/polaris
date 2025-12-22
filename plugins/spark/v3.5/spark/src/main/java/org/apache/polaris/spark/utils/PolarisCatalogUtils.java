@@ -29,14 +29,23 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.spark.SparkCatalog;
 import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.TableIdentifier;
+import org.apache.spark.sql.catalyst.catalog.CatalogTable;
+import org.apache.spark.sql.catalyst.catalog.CatalogTableType;
+import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
 import org.apache.spark.sql.connector.catalog.TableProvider;
 import org.apache.spark.sql.execution.datasources.DataSource;
 import org.apache.spark.sql.execution.datasources.v2.DataSourceV2Utils;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import scala.Option;
+import scala.Tuple2;
+import scala.collection.immutable.Map$;
+import scala.collection.mutable.Builder;
 
 public class PolarisCatalogUtils {
+
   public static final String TABLE_PROVIDER_KEY = "provider";
   public static final String TABLE_PATH_KEY = "path";
 
@@ -50,6 +59,10 @@ public class PolarisCatalogUtils {
     return "delta".equalsIgnoreCase(provider);
   }
 
+  public static boolean useHudi(String provider) {
+    return "hudi".equalsIgnoreCase(provider);
+  }
+
   /**
    * For tables whose location is managed by Spark Session Catalog, there will be no location or
    * path in the properties.
@@ -61,16 +74,11 @@ public class PolarisCatalogUtils {
   }
 
   /**
-   * Load spark table using DataSourceV2.
-   *
-   * @return V2Table if DataSourceV2 is available for the table format. For delta table, it returns
-   *     DeltaTableV2.
+   * Normalize table properties for loading Spark tables by ensuring the TABLE_PATH_KEY is properly
+   * set. DataSourceV2 requires the path property on table loading.
    */
-  public static Table loadSparkTable(GenericTable genericTable) {
-    SparkSession sparkSession = SparkSession.active();
-    TableProvider provider =
-        DataSource.lookupDataSourceV2(genericTable.getFormat(), sparkSession.sessionState().conf())
-            .get();
+  private static Map<String, String> normalizeTablePropertiesForLoadSparkTable(
+      GenericTable genericTable) {
     Map<String, String> properties = genericTable.getProperties();
     boolean hasLocationClause = properties.get(TableCatalog.PROP_LOCATION) != null;
     boolean hasPathClause = properties.get(TABLE_PATH_KEY) != null;
@@ -87,8 +95,78 @@ public class PolarisCatalogUtils {
         tableProperties.put(TABLE_PATH_KEY, properties.get(TableCatalog.PROP_LOCATION));
       }
     }
+    return tableProperties;
+  }
+
+  /**
+   * Load spark table using DataSourceV2.
+   *
+   * @return V2Table if DataSourceV2 is available for the table format. For delta table, it returns
+   *     DeltaTableV2.
+   */
+  public static Table loadV2SparkTable(GenericTable genericTable) {
+    SparkSession sparkSession = SparkSession.active();
+    TableProvider provider =
+        DataSource.lookupDataSourceV2(genericTable.getFormat(), sparkSession.sessionState().conf())
+            .get();
+    Map<String, String> tableProperties = normalizeTablePropertiesForLoadSparkTable(genericTable);
     return DataSourceV2Utils.getTableFromProvider(
         provider, new CaseInsensitiveStringMap(tableProperties), scala.Option.empty());
+  }
+
+  /**
+   * Return a Spark V1Table for formats that do not use DataSourceV2. Currently, this is being used
+   * for Hudi tables
+   */
+  public static Table loadV1SparkTable(
+      GenericTable genericTable, Identifier identifier, String catalogName) {
+    Map<String, String> tableProperties = normalizeTablePropertiesForLoadSparkTable(genericTable);
+
+    // Need full identifier in order to construct CatalogTable
+    String namespacePath = String.join(".", identifier.namespace());
+    TableIdentifier tableIdentifier =
+        new TableIdentifier(
+            identifier.name(), Option.apply(namespacePath), Option.apply(catalogName));
+
+    Builder<Tuple2<String, String>, scala.collection.immutable.Map<String, String>> mb =
+        Map$.MODULE$.newBuilder();
+    tableProperties.forEach((k, v) -> mb.$plus$eq(Tuple2.apply(k, v)));
+    scala.collection.immutable.Map<String, String> scalaOptions = mb.result();
+
+    org.apache.spark.sql.catalyst.catalog.CatalogStorageFormat storage =
+        DataSource.buildStorageFormatFromOptions(scalaOptions);
+
+    // Currently Polaris generic table does not contain any schema information, partition columns,
+    // stats, etc
+    // for now we will fill the parameters we have from polaris catalog, and let underlying client
+    // resolve the rest within its catalog implementation
+    org.apache.spark.sql.types.StructType emptySchema = new org.apache.spark.sql.types.StructType();
+    scala.collection.immutable.Seq<String> emptyStringSeq =
+        scala.collection.JavaConverters.asScalaBuffer(new java.util.ArrayList<String>()).toList();
+    CatalogTable catalogTable =
+        new CatalogTable(
+            tableIdentifier,
+            CatalogTableType.EXTERNAL(),
+            storage,
+            emptySchema,
+            Option.apply(genericTable.getFormat()),
+            emptyStringSeq,
+            scala.Option.empty(),
+            genericTable.getProperties().get(TableCatalog.PROP_OWNER),
+            System.currentTimeMillis(),
+            -1L,
+            "",
+            scalaOptions,
+            scala.Option.empty(),
+            scala.Option.empty(),
+            scala.Option.empty(),
+            emptyStringSeq,
+            false,
+            true,
+            scala.collection.immutable.Map$.MODULE$.empty(),
+            scala.Option.empty());
+
+    return new org.apache.spark.sql.connector.catalog.V1Table(catalogTable);
   }
 
   /**

@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -75,7 +76,7 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), new ObjectMapper(), null);
+              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
 
       PolarisPrincipal principal =
           PolarisPrincipal.of("eve", Map.of("department", "finance"), Set.of("auditor"));
@@ -95,7 +96,7 @@ public class OpaPolarisAuthorizerTest {
                       secondary));
 
       // Parse and verify JSON structure from captured request
-      ObjectMapper mapper = new ObjectMapper();
+      ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
       assertThat(root.has("input")).as("Root should have 'input' field").isTrue();
       var input = root.get("input");
@@ -120,7 +121,7 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), new ObjectMapper(), null);
+              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -185,7 +186,7 @@ public class OpaPolarisAuthorizerTest {
                       null));
 
       // Parse and verify the complete JSON structure
-      ObjectMapper mapper = new ObjectMapper();
+      ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
 
       // Verify top-level structure
@@ -273,7 +274,7 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), new ObjectMapper(), null);
+              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
 
       // Set up a realistic principal
       PolarisPrincipal principal =
@@ -350,7 +351,7 @@ public class OpaPolarisAuthorizerTest {
                       null));
 
       // Parse and verify the complete JSON structure
-      ObjectMapper mapper = new ObjectMapper();
+      ObjectMapper mapper = JsonMapper.builder().build();
       JsonNode root = mapper.readTree(capturedRequestBody[0]);
 
       // Verify top-level structure
@@ -437,7 +438,7 @@ public class OpaPolarisAuthorizerTest {
               "http://localhost:" + server.getAddress().getPort() + "/v1/data/polaris/allow");
       OpaPolarisAuthorizer authorizer =
           new OpaPolarisAuthorizer(
-              policyUri, HttpClients.createDefault(), new ObjectMapper(), null);
+              policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), null);
 
       PolarisPrincipal principal = PolarisPrincipal.of("alice", Map.of(), Set.of("admin"));
 
@@ -483,7 +484,7 @@ public class OpaPolarisAuthorizerTest {
     URI policyUri = URI.create("http://opa.example.com:8181/v1/data/polaris/allow");
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
-            policyUri, HttpClients.createDefault(), new ObjectMapper(), tokenProvider);
+            policyUri, HttpClients.createDefault(), JsonMapper.builder().build(), tokenProvider);
 
     assertThat(authorizer).isNotNull();
   }
@@ -499,7 +500,10 @@ public class OpaPolarisAuthorizerTest {
     BearerTokenProvider tokenProvider = new StaticBearerTokenProvider("test-bearer-token");
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
-            policyUri, mock(CloseableHttpClient.class), new ObjectMapper(), tokenProvider) {
+            policyUri,
+            mock(CloseableHttpClient.class),
+            JsonMapper.builder().build(),
+            tokenProvider) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
@@ -541,7 +545,10 @@ public class OpaPolarisAuthorizerTest {
     // Create authorizer with the token provider instead of static token
     OpaPolarisAuthorizer authorizer =
         new OpaPolarisAuthorizer(
-            policyUri, mock(CloseableHttpClient.class), new ObjectMapper(), tokenProvider) {
+            policyUri,
+            mock(CloseableHttpClient.class),
+            JsonMapper.builder().build(),
+            tokenProvider) {
           @Override
           <T> T httpClientExecute(
               ClassicHttpRequest request, HttpClientResponseHandler<? extends T> responseHandler)
