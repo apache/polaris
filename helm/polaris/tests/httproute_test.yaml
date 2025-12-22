@@ -130,9 +130,7 @@ tests:
     asserts:
       - equal:
           path: spec.hostnames
-          value:
-            - example.com
-            - api.example.com
+          value: example.com api.example.com
 
   # spec.parentRefs (with httproute enabled)
   - it: should set httproute parent refs with gateway name and namespace
