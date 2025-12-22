@@ -1,0 +1,190 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+chart:
+  version: 1.2.3
+  appVersion: 4.5.6
+
+release:
+  name: polaris-release
+  namespace: polaris-ns
+
+templates:
+  - httproute.yaml
+
+tests:
+
+  # kind
+  - it: should not create httproute by default
+    asserts:
+      - containsDocument:
+          kind: HTTPRoute
+          apiVersion: gateway.networking.k8s.io/v1
+        not: true
+  - it: should create httproute with enabled
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+    asserts:
+      - containsDocument:
+          kind: HTTPRoute
+          apiVersion: gateway.networking.k8s.io/v1
+
+  # metadata.name (with httproute enabled)
+  - it: should set httproute name
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release
+  - it: should set httproute name with override
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+      nameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release-polaris-override
+  - it: should set httproute name with full override
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+      fullnameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-override
+
+  # metadata.namespace (with httproute enabled)
+  - it: should set httproute namespace
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: polaris-ns
+
+  # metadata.labels (with httproute enabled)
+  - it: should set httproute default labels
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+            app.kubernetes.io/version: 4.5.6
+            app.kubernetes.io/managed-by: Helm
+            helm.sh/chart: polaris-1.2.3
+
+  # metadata.annotations (with httproute enabled)
+  - it: should not set httproute annotations by default
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+    asserts:
+      - notExists:
+          path: metadata.annotations
+  - it: should set httproute annotations
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+      httproute.annotations:
+        custom.annotation: value
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            custom.annotation: value
+
+  # spec.hostnames (with httproute enabled)
+  - it: should set httproute hostnames from values
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+      httproute.hosts:
+        - example.com
+        - api.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames
+          value:
+            - example.com
+            - api.example.com
+
+  # spec.parentRefs (with httproute enabled)
+  - it: should set httproute parent refs with gateway name and namespace
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+      httproute.gatewayNamespace: gateway-ns
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].name
+          value: my-gateway
+      - equal:
+          path: spec.parentRefs[0].namespace
+          value: gateway-ns
+  - it: should set httproute parent refs with section name
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+      httproute.gatewayNamespace: default
+      httproute.sectionName: http
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: http
+  - it: should not set section name when empty
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+      httproute.sectionName: ""
+    asserts:
+      - notExists:
+          path: spec.parentRefs[0].sectionName
+
+  # spec.rules (with httproute enabled)
+  - it: should set httproute rules with backend service
+    set:
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0].name
+          value: polaris-release
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 8181
+
+  # validation
+  - it: should fail when both ingress and httproute are enabled
+    set:
+      ingress.enabled: true
+      httproute.enabled: true
+      httproute.gatewayName: my-gateway
+    asserts:
+      - failedTemplate:
+          errorMessage: "Cannot enable both ingress and httproute. Please enable only one."
