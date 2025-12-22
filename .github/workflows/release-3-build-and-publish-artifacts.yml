@@ -108,7 +108,7 @@ jobs:
     permissions:
       contents: read
     outputs:
-      staging_repository_url: ${{ steps.publish-nexus.outputs.staging_repository_url }}
+      staging_repository_id: ${{ steps.publish-nexus.outputs.staging_repository_id }}
     env:
       DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
       git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
@@ -198,18 +198,15 @@ jobs:
           # Publish artifacts to staging repository
           exec_process ./gradlew publishToApache closeApacheStagingRepository -Prelease -PuseGpgAgent --info 2>&1 | tee gradle_publish_output.txt
 
-          # Extract staging repository ID and URL from Gradle output
-          staging_repo_id=""
-          staging_repo_url=""
-
-          # Look for staging repository ID in the output
+          # Extract staging repository ID from Gradle output
           if grep -q "Created staging repository" gradle_publish_output.txt; then
-            staging_repo_id=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\1/")
-            staging_repo_url=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\2/")
+            staging_repository_id=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\1/")
+          else
+            staging_repository_id="<NOT EXTRACTED, CHECK LOG>"
           fi
 
           # Set output for other jobs to consume
-          echo "staging_repository_url=${staging_repo_url}" >> $GITHUB_OUTPUT
+          echo "staging_repository_id=${staging_repository_id}" >> $GITHUB_OUTPUT
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Nexus Staging Repository
@@ -217,8 +214,7 @@ jobs:
 
           | Property | Value |
           | --- | --- |
-          | Staging Repository ID | \`${staging_repo_id:-"Not extracted"}\` |
-          | Staging Repository URL | ${staging_repo_url:-"Not extracted"} |
+          | Staging Repository ID | \`${staging_repository_id}\` |
 
           ## Summary
           🎉 Artifacts built and published successfully:
@@ -416,7 +412,7 @@ jobs:
       git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
       version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
       rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
-      staging_repository_url: ${{ needs.build-and-publish-artifacts.outputs.staging_repository_url }}
+      staging_repository_id: ${{ needs.build-and-publish-artifacts.outputs.staging_repository_id }}
 
     steps:
       - name: Checkout repository
@@ -435,12 +431,6 @@ jobs:
       - name: Generate release email body
         run: |
           source "${LIBS_DIR}/_version.sh"
-
-          # Extract staging repository ID from URL
-          staging_repo_id=""
-          if [[ -n "${staging_repository_url}" ]]; then
-            staging_repo_id=$(echo "${staging_repository_url}" | sed -n 's|.*/\(orgapachepolaris-[0-9]*\)/$|\1|p')
-          fi
 
           # Get current commit SHA
           commit_sha=$(git rev-parse HEAD)
@@ -472,9 +462,10 @@ jobs:
           * https://downloads.apache.org/incubator/polaris/KEYS
 
           Convenience binary artifacts are staged on Nexus. The Maven repositories URLs are:
-          * ${staging_repository_url:-"https://repository.apache.org/content/repositories/${staging_repo_id:-"<ID>"}/"}
+          * https://repository.apache.org/content/repositories/${staging_repository_id}/
 
-          Please download, verify, and test.
+          Please download, verify, and test according to the release verification guide, which can be found at:
+          * https://polaris.apache.org/community/release-guides/release-verification-guide/
 
           Please vote in the next 72 hours.
 
