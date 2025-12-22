@@ -146,19 +146,23 @@ function find_next_patch_number {
   # This function finds the next available patch number for a given major.minor version.
   # It returns 0 and sets the global variable patch to the next available patch number.
   # Patch numbers start from 0. It takes major and minor as input (e.g., "1", "0").
+  #
+  # The patch number should only be incremented if there is a final release tag (without -rc suffix)
+  # for the current highest patch. If only RC tags exist for the highest patch, we should reuse
+  # that patch number (allowing for additional RCs like rc1, rc2, etc.).
   local major="$1"
   local minor="$2"
 
-  # Get all existing tags for this major.minor version
-  local tag_pattern="apache-polaris-${major}.${minor}.*-incubating-rc*"
-  local existing_tags
-  existing_tags=$(git tag -l "${tag_pattern}" | sort -V)
+  # Get all existing RC tags for this major.minor version
+  local rc_tag_pattern="apache-polaris-${major}.${minor}.*-incubating-rc*"
+  local existing_rc_tags
+  existing_rc_tags=$(git tag -l "${rc_tag_pattern}" | sort -V)
 
-  if [[ -z "${existing_tags}" ]]; then
-    # No existing tags, start with patch 0
+  if [[ -z "${existing_rc_tags}" ]]; then
+    # No existing RC tags, start with patch 0
     patch=0
   else
-    # Extract all patch numbers and find the highest
+    # Extract all patch numbers from RC tags and find the highest
     local highest_patch=-1
     while IFS= read -r tag; do
       if [[ ${tag} =~ apache-polaris-${major}\.${minor}\.([0-9]+)-incubating-rc[0-9]+ ]]; then
@@ -167,10 +171,17 @@ function find_next_patch_number {
           highest_patch=${current_patch}
         fi
       fi
-    done <<< "${existing_tags}"
+    done <<< "${existing_rc_tags}"
 
-    # Increment the highest patch number found
-    patch=$((highest_patch + 1))
+    # Check if a final release tag exists for the highest patch (without -rc suffix)
+    local final_tag="apache-polaris-${major}.${minor}.${highest_patch}-incubating"
+    if git rev-parse "${final_tag}" >/dev/null 2>&1; then
+      # Final release tag exists, increment to next patch number
+      patch=$((highest_patch + 1))
+    else
+      # No final release tag yet, reuse the same patch number for additional RCs
+      patch=${highest_patch}
+    fi
   fi
 
   return 0

@@ -44,16 +44,17 @@ Polaris follows a schedule-driven release model. The first thing to do is to sen
 Note that the tentative date is only a suggestion. The actual date of the release will be determined by taking community feedback into account. For instance, if specific pull requests are about to be merged, the release may be delayed by a couple of days to include them.
 
 ```
-[DISCUSS] Apache Polaris x.y.z
+[DISCUSS] Apache Polaris [major].[minor].[patch]
 ```
 
 ```
 Hello everyone,
 
 The purpose of this e-mail is to collect feedback on the upcoming Apache
-Polaris x.y.z release. The tentative release date is YYYY-MM-DD. Please let
-me know if you have any concerns or comments, or if there are some specific
-pull requests that you would like to see included in the release.
+Polaris [major].[minor].[patch] release. The tentative release date is
+YYYY-MM-DD. Please let me know if you have any concerns or comments, or if
+there are some specific pull requests that you would like to see included in
+the release.
 
 Thanks,
 ```
@@ -71,17 +72,20 @@ Once the workflow has run, the run details page contains a recap of the main inf
 
 ![Screenshot of a detailed run of the first release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-1-detail.png "Screenshot of a detailed run of the first release workflow for 1.3.0-incubating")
 
-## RC0 only - Changelog and version update workflow
+## Release candidate tag creation workflow
 The second Github workflow to run is [`Release - 2 - Update version and Changelog for Release Candidate`](https://github.com/apache/polaris/actions/workflows/release-2-update-release-candidate.yml). This workflow will:
 * Verify that all Github checks are green for the release branch.
-* Increase the patch version number by 1 if the workflow has already been run for that `major.minor` version.
-* Update the project version files with the final version number
-* Commit the changes to the release branch
-* Create the `major.minor.patch-rc0` tag
+* For RC0 only: update the project version files with the final version number, update the changelog, and commit the changes to the release branch.
+* Create the `apache-polaris-[major].[minor].[patch]-incubating-rc[N]` tag
 
-This workflow can only be run from a `release/x.y.z` branch. Selecting any other branch in the Github Actions UI will result in a failure.
+The rules to create the `[major].[minor].[patch]-rc[N]` tag are as follows:
+* Find the last patch number for the `[major].[minor]` version by looking at existing tags, or 0 if no tag exists.
+* Find the last RC number for the `[major].[minor].[patch]` version by looking at existing tags, or 0 if no tag exists.
+* If a final release tag exists for the `[major].[minor].[patch]` version, then use `[major].[minor].[patch+1]-rc0`
+* Else if an RC tag exists for the `[major].[minor].[patch]-rc[N]` version, then create `[major].[minor].[patch]-rc[N+1]`
+* Else create `[major].[minor].[patch]-rc0`
 
-Note that the tag that is created is for RC0. This workflow should **only be executed only once** per `major.minor.patch` version.
+This workflow can only be run from a `release/[major].[minor].x` branch. Selecting any other branch in the Github Actions UI will result in a failure.
 
 ![Screenshot of the second release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-2.png "Screenshot of the second release workflow for 1.3.0-incubating")
 
@@ -90,22 +94,11 @@ Like for the other workflow runs, the run details page contains a recap of the m
 ![Screenshot of a detailed run of the second release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-2-detail.png "Screenshot of a detailed run of the second release workflow for 1.3.0-incubating")
 
 ## RC≥1 only - Update release branch and create tag
-If the first release candidate is rejected, additional code changes may be needed. These steps have not been automated yet.
+If the first release candidate is rejected, additional code changes may be needed.
 
 Each code change that should be added to the release branch must be cherry-picked from the main branch and proposed in a dedicated pull request. The pull request must be reviewed and approved before being merged. This step is mandatory so that Github runs the CI checks. The subsequent workflows will verify that those checks passed.
 
-Once the pull requests have been merged, create a new `apache-polaris-[major].[minor].[patch]-incubating-rc[N]` tag. The commands below assume that the `apache/polaris` Git repository corresponds to the `apache` remote.
-
-```bash
-# Ensure you're on the correct release branch and have the latest changes
-git fetch apache
-git checkout release/[major].[minor].x
-git pull apache release/[major].[minor].x
-
-# Create and push the release candidate tag
-git tag -a apache-polaris-[major].[minor].[patch]-incubating-rc[N] -m "Apache Polaris [major].[minor].[patch] (incubating) release candidate [N]"
-git push apache apache-polaris-[major].[minor].[patch]-incubating-rc[N]
-```
+Once the pull requests have been merged, run the second workflow again to create a new RC tag. The workflow will automatically determine the next RC number.
 
 ## Build and publish release artifacts
 The third Github workflow to run is [`Release - 3 - Build and publish release artifacts`](https://github.com/apache/polaris/actions/workflows/release-3-build-and-publish-artifacts.yml). This workflow will:
@@ -118,7 +111,7 @@ The third Github workflow to run is [`Release - 3 - Build and publish release ar
 * Create signature and checksum for all package files
 * Copy package files to Apache dist dev repository
 
-This workflow can only be run from a `release/x.y.z` branch. Selecting any other branch in the Github Actions UI will result in a failure.
+This workflow must be run from an RC tag (e.g., `apache-polaris-1.3.0-incubating-rc0`). Select the tag from the `Use workflow from` dropdown in the Github Actions UI. Selecting any other reference in the Github Actions UI will result in a failure.
 
 ![Screenshot of the third release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-3.png "Screenshot of the third release workflow for 1.3.0-incubating")
 
@@ -129,7 +122,7 @@ The last step for a release candidate is to create a VOTE thread on the dev mail
 Recommended title subject:
 
 ```
-[VOTE] Release Apache Polaris x.y.z (rci)
+[VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 Recommended content:
@@ -137,18 +130,18 @@ Recommended content:
 ```
 Hi everyone,
 
-I propose that we release the following RC as the official Apache Polaris x.y.z
+I propose that we release the following RC as the official Apache Polaris [major].[minor].[patch]
 release.
 
-* This corresponds to the tag: apache-polaris-x.y.z-incubating-rci
-* https://github.com/apache/polaris/commits/apache-polaris-x.y.z-incubating-rci
+* This corresponds to the tag: apache-polaris-[major].[minor].[patch]-incubating-rc[N]
+* https://github.com/apache/polaris/commits/apache-polaris-[major].[minor].[patch]-incubating-rc[N]
 * https://github.com/apache/polaris/tree/<SHA1>
 
 The release tarball, signature, and checksums are here:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z-incubating
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/[major].[minor].[patch]-incubating
 
 Helm charts are available on:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/x.y.z-incubating/
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/[major].[minor].[patch]-incubating/
 
 NB: you have to build the Docker images locally in order to test Helm charts.
 
@@ -164,7 +157,7 @@ https://polaris.apache.org/community/release-verify/.
 
 Please vote in the next 72 hours.
 
-[ ] +1 Release this as Apache polaris x.y.z
+[ ] +1 Release this as Apache polaris [major].[minor].[patch]
 [ ] +0
 [ ] -1 Do not release this because...
 
@@ -183,13 +176,13 @@ The next steps depend on the vote result.
 When a release candidate is rejected, reply with the vote result:
 
 ```
-[RESULT][VOTE] Release Apache Polaris x.y.z (rci)
+[RESULT][VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 ```
 Hello everyone,
 
-Thanks to all who participated in the vote for Release Apache Polaris x.y.z (rci).
+Thanks to all who participated in the vote for Release Apache Polaris [major].[minor].[patch] (rc[N]).
 
 The vote failed due to [reason].
 
@@ -202,11 +195,11 @@ Thanks,
 When the release candidate vote passes, send a new e-mail with the vote result:
 
 ```
-[RESULT][VOTE] Release Apache Polaris x.y.z (rci)
+[RESULT][VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 ```
-Thanks everyone who participated in the vote for Release Apache Polaris x.y.z (rci).
+Thanks everyone who participated in the vote for Release Apache Polaris [major].[minor].[patch] (rc[N]).
 
 The vote result is:
 
@@ -223,13 +216,13 @@ As Polaris is an Apache Incubator project, you now have to start a new vote on t
 You have to send this email to general@incubator.apache.org:
 
 ```
-[VOTE] Release Apache Polaris x.y.z (rci)
+[VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 ```
 Hello everyone,
 
-The Apache Polaris community has voted and approved the release of Apache Polaris x.y.z (rci).
+The Apache Polaris community has voted and approved the release of Apache Polaris [major].[minor].[patch] (rc[N]).
 We now kindly request the IPMC members review and vote for this release.
 
 Polaris community vote thread:
@@ -238,12 +231,12 @@ Polaris community vote thread:
 Vote result thread:
 * https://lists.apache.org/thread/<VOTE RESULT>
 
-* This corresponds to the tag: apache-polaris-x.y.z-rci
-* https://github.com/apache/polaris/commits/apache-polaris-x.y.z-rci
+* This corresponds to the tag: apache-polaris-[major].[minor].[patch]-incubating-rc[N]
+* https://github.com/apache/polaris/commits/apache-polaris-[major].[minor].[patch]-rc[N]
 * https://github.com/apache/polaris/tree/<SHA1>
 
 The release tarball, signature, and checksums are here:
-* https://dist.apache.org/repos/dist/dev/incubator/polaris/x.y.z
+* https://dist.apache.org/repos/dist/dev/incubator/polaris/[major].[minor].[patch]
 
 Helm charts are available on:
 * https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart
@@ -286,7 +279,7 @@ When a release candidate is rejected, reply in the same thread with the vote res
 ```
 Hello everyone,
 
-Thanks to all who participated in the vote for Release Apache Polaris x.y.z (rci).
+Thanks to all who participated in the vote for Release Apache Polaris [major].[minor].[patch] (rc[N]).
 
 The vote failed due to [reason].
 
@@ -297,13 +290,13 @@ Thanks,
 When the release candidate vote passes, send a new e-mail with the vote result:
 
 ```
-[RESULT][VOTE] Release Apache Polaris x.y.z (rci)
+[RESULT][VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
 ```
 
 ```
 Hello everyone,
 
-The vote to release Apache Polaris x.y.z (rci) has passed with [N] +1 binding and [M] +1 non-binding votes.
+The vote to release Apache Polaris [major].[minor].[patch] (rc[N]) has passed with [N] +1 binding and [M] +1 non-binding votes.
 
 Binding +1 votes:
 * [NAME]
@@ -322,6 +315,7 @@ We will proceed with publishing the approved artifacts and sending out the annou
 
 ## Publish the release
 The final workflow to run is [`Release - 4 - Publish Release After Vote Success`](https://github.com/apache/polaris/actions/workflows/release-4-publish-release.yml). This workflow will:
+* Verify that the release branch HEAD matches the last RC tag
 * Copy artifacts from the dist dev to the dist release SVN repository
 * Update the Helm index in dist release repository accordingly
 * Create a final release tag
@@ -329,7 +323,7 @@ The final workflow to run is [`Release - 4 - Publish Release After Vote Success`
 * Create a Github release with the release artifacts
 * Release the candidate repository on Apache Nexus
 
-This workflow can only be run from the `release/x.y.z` branch for which a vote has passed. It also requires the Nexus staging repository id (`orgapachepolaris-<ID>`) that was created by the previous workflow.
+This workflow can only be run from the `release/[major].[minor].x` branch for which a vote has passed. The workflow verifies that no commits have been added to the release branch since the last RC was created. It also requires the Nexus staging repository id (`orgapachepolaris-<ID>`) that was created by the previous workflow.
 
 ![Screenshot of the fourth release workflow for 1.3.0-incubating](/img/release-guides/github-workflow-4.png "Screenshot of the fourth release workflow for 1.3.0-incubating")
 

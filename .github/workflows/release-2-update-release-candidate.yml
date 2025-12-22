@@ -146,6 +146,7 @@ jobs:
           java-version: '21'
 
       - name: Update project versions
+        if: env.rc_number == '0'
         run: |
           source "${LIBS_DIR}/_version.sh"
 
@@ -156,6 +157,7 @@ jobs:
           EOT
 
       - name: Update changelog
+        if: env.rc_number == '0'
         run: |
           source "${LIBS_DIR}/_exec.sh"
           exec_process ./gradlew patchChangelog
@@ -166,6 +168,7 @@ jobs:
           EOT
 
       - name: Commit and push changes
+        if: env.rc_number == '0'
         run: |
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
@@ -176,18 +179,18 @@ jobs:
             "$HELM_CHART_YAML_FILE" \
             "$HELM_README_FILE" \
             "$CHANGELOG_FILE"
-          exec_process git commit -m "[chore] Bump version to ${version_without_rc} for release candidate ${rc_number}"
+          exec_process git commit -m "[chore] Bump version to ${version_without_rc}"
 
           # Push the changes
           exec_process git push origin "${release_branch}"
 
-          # Get the new commit SHA after our changes
-          new_tag_ref=$(git rev-parse HEAD)
-          echo "new_tag_ref=${new_tag_ref}" >> $GITHUB_ENV
-
       - name: Create RC tag at new commit
         run: |
           source "${LIBS_DIR}/_exec.sh"
+
+          # Get the new commit SHA after our changes
+          new_tag_ref=$(git rev-parse HEAD)
+          echo "new_tag_ref=${new_tag_ref}" >> $GITHUB_ENV
 
           # Create the tag at the new commit
           exec_process git tag "${release_tag}" "${new_tag_ref}"
