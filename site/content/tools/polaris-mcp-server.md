@@ -24,6 +24,6 @@ weight: 200
 
 Polaris MCP Server is a package that provides Python implementation of the Model Context Protocol (MCP) server for Apache Polaris.
 
-It wraps the Polaris REST APIs so MCP-compatible clients (IDEs, agents, chat applications) can issue structured requests via JSON-RPC on stdin/stdout.
+It wraps the Polaris REST APIs so MCP-compatible clients (IDEs, agents, chat applications) can issue structured requests via JSON-RPC.
 
 To use this tool, please see this [guide](https://github.com/apache/polaris-tools/blob/main/mcp-server/README.md).
