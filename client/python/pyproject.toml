@@ -71,6 +71,8 @@ pip-licenses-cli = "==3.0.1"
 [tool.pip-licenses]
 partial-match = true
 allow-only = "Apache;BSD License;BSD-3-Clause;ISC;MIT;Mozilla Public License;PSF-2.0;Python Software Foundation License;The Unlicense"
+# Ignore package 'pyparsing` due to https://github.com/pyparsing/pyparsing/issues/626
+ignore-packages = ["pyparsing"]
 
 [build-system]
 # 7.12.0 is the latest version to use due to OpenAPI spec version we are using
