@@ -118,6 +118,8 @@ jobs:
     needs: prerequisite-checks
     permissions:
       contents: read
+    outputs:
+      staging_repository_id: ${{ steps.publish-nexus.outputs.staging_repository_id }}
     env:
       DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
       git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
@@ -198,6 +200,7 @@ jobs:
           EOT
 
       - name: Publish and close Apache Nexus staging repository
+        id: publish-nexus
         env:
           ORG_GRADLE_PROJECT_apacheUsername: ${{ secrets.APACHE_USERNAME }}
           ORG_GRADLE_PROJECT_apachePassword: ${{ secrets.APACHE_PASSWORD }}
@@ -207,15 +210,15 @@ jobs:
           # Publish artifacts to staging repository
           exec_process ./gradlew publishToApache closeApacheStagingRepository -Prelease -PuseGpgAgent --info 2>&1 | tee gradle_publish_output.txt
 
-          # Extract staging repository ID and URL from Gradle output
-          staging_repo_id=""
-          staging_repo_url=""
-
-          # Look for staging repository ID in the output
+          # Extract staging repository ID from Gradle output
           if grep -q "Created staging repository" gradle_publish_output.txt; then
-            staging_repo_id=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\1/")
-            staging_repo_url=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\2/")
+            staging_repository_id=$(grep "Created staging repository" gradle_publish_output.txt | sed --regexp-extended "s/^Created staging repository .([a-z0-9-]+). at (.*)/\1/")
+          else
+            staging_repository_id="<NOT EXTRACTED, CHECK LOG>"
           fi
+
+          # Set output for other jobs to consume
+          echo "staging_repository_id=${staging_repository_id}" >> $GITHUB_OUTPUT
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Nexus Staging Repository
@@ -223,8 +226,7 @@ jobs:
 
           | Property | Value |
           | --- | --- |
-          | Staging Repository ID | \`${staging_repo_id:-"Not extracted"}\` |
-          | Staging Repository URL | ${staging_repo_url:-"Not extracted"} |
+          | Staging Repository ID | \`${staging_repository_id}\` |
 
           ## Summary
           🎉 Artifacts built and published successfully:
@@ -412,4 +414,81 @@ jobs:
           | --- | --- |
           | Helm package | ✅ Created and signed |
           | Apache dist dev repository | ✅ Staged |
+          EOT
+
+  generate-release-email:
+    name: Generate Release Email Body
+    runs-on: ubuntu-latest
+    needs: [prerequisite-checks, build-and-publish-artifacts, build-docker, build-and-stage-helm-chart]
+    permissions:
+      contents: read
+    env:
+      DRY_RUN: ${{ needs.prerequisite-checks.outputs.dry_run }}
+      git_tag: ${{ needs.prerequisite-checks.outputs.git_tag }}
+      version_without_rc: ${{ needs.prerequisite-checks.outputs.version_without_rc }}
+      rc_number: ${{ needs.prerequisite-checks.outputs.rc_number }}
+      staging_repository_id: ${{ needs.build-and-publish-artifacts.outputs.staging_repository_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+      - name: Generate release email body
+        run: |
+          source "${LIBS_DIR}/_version.sh"
+
+          # Get current commit SHA
+          commit_sha=$(git rev-parse HEAD)
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          # Vote e-mail
+
+          ## Subject
+          [VOTE] Release Apache Polaris ${version_without_rc} (rc${rc_number})
+
+          ## Body
+          Hi everyone,
+
+          I propose that we release the following RC as the official Apache Polaris ${version_without_rc} release.
+
+          This corresponds to the tag: ${git_tag}
+          * https://github.com/apache/polaris/commits/${git_tag}
+          * https://github.com/apache/polaris/tree/${commit_sha}
+
+          The release tarball, signature, and checksums are here:
+          * https://dist.apache.org/repos/dist/dev/incubator/polaris/${version_without_rc}
+
+          Helm charts are available on:
+          * https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart
+
+          NB: you have to build the Docker images locally in order to test Helm charts.
+
+          You can find the KEYS file here:
+          * https://downloads.apache.org/incubator/polaris/KEYS
+
+          Convenience binary artifacts are staged on Nexus. The Maven repositories URLs are:
+          * https://repository.apache.org/content/repositories/${staging_repository_id}/
+
+          Please download, verify, and test according to the release verification guide, which can be found at:
+          * https://polaris.apache.org/community/release-guides/release-verification-guide/
+
+          Please vote in the next 72 hours.
+
+          [ ] +1 Release this as Apache polaris ${version_without_rc}
+          [ ] +0
+          [ ] -1 Do not release this because...
+
+          Only PPMC members and mentors have binding votes, but other community members are encouraged to cast non-binding votes. This vote will pass if there are 3 binding +1 votes and more binding +1 votes than -1 votes.
+
+          NB: if this vote passes, a new vote has to be started on the Incubator general mailing list.
           EOT
