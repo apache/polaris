@@ -100,12 +100,21 @@ services:
         apk add --no-cache jq
 
         echo "Obtaining root access token..."
-        TOKEN_RESPONSE=$$(curl -s -X POST http://polaris:8181/api/catalog/v1/oauth/tokens \
+        TOKEN_RESPONSE=$$(curl --fail-with-body -s -S -X POST http://polaris:8181/api/catalog/v1/oauth/tokens \
           -H 'Content-Type: application/x-www-form-urlencoded' \
-          -d "grant_type=client_credentials&client_id=$${CLIENT_ID}&client_secret=$${CLIENT_SECRET}&scope=PRINCIPAL_ROLE:ALL")
+          -d "grant_type=client_credentials&client_id=$${CLIENT_ID}&client_secret=$${CLIENT_SECRET}&scope=PRINCIPAL_ROLE:ALL" 2>&1) || {
+          echo "❌ Failed to obtain access token"
+          echo "$$TOKEN_RESPONSE" >&2
+          exit 1
+        }
 
         TOKEN=$$(echo $$TOKEN_RESPONSE | jq -r '.access_token')
-        echo "Obtained access token"
+        if [ -z "$$TOKEN" ] || [ "$$TOKEN" = "null" ]; then
+          echo "❌ Failed to parse access token from response"
+          echo "$$TOKEN_RESPONSE"
+          exit 1
+        fi
+        echo "✅ Obtained access token"
 
         echo "Creating catalog '$$CATALOG_NAME' in realm $$REALM..."
         PAYLOAD='{
@@ -126,71 +135,97 @@ services:
           }
         }'
 
-        curl -s -X POST http://polaris:8181/api/management/v1/catalogs \
+        RESPONSE=$$(curl --fail-with-body -s -S -X POST http://polaris:8181/api/management/v1/catalogs \
           -H "Authorization: Bearer $$TOKEN" \
           -H "Accept: application/json" \
           -H "Content-Type: application/json" \
           -H "Polaris-Realm: $$REALM" \
-          -d "$$PAYLOAD" > /dev/null
-
+          -d "$$PAYLOAD" 2>&1) && echo -n "" || {
+          echo "❌ Failed to create catalog"
+          echo "$$RESPONSE" >&2
+          exit 1
+        }
         echo "✅ Catalog created"
 
         echo ""
         echo "Creating principal 'quickstart_user'..."
-        PRINCIPAL_RESPONSE=$$(curl -s -X POST http://polaris:8181/api/management/v1/principals \
+        PRINCIPAL_RESPONSE=$$(curl --fail-with-body -s -X POST http://polaris:8181/api/management/v1/principals \
           -H "Authorization: Bearer $$TOKEN" \
           -H "Polaris-Realm: $$REALM" \
           -H "Content-Type: application/json" \
-          -d '{"principal": {"name": "quickstart_user", "properties": {}}}')
+          -d '{"principal": {"name": "quickstart_user", "properties": {}}}' 2>&1) || {
+          echo "❌ Failed to create principal"
+          echo "$$PRINCIPAL_RESPONSE" >&2
+          exit 1
+        }
 
         USER_CLIENT_ID=$$(echo $$PRINCIPAL_RESPONSE | jq -r '.credentials.clientId')
         USER_CLIENT_SECRET=$$(echo $$PRINCIPAL_RESPONSE | jq -r '.credentials.clientSecret')
-
+        if [ -z "$$USER_CLIENT_ID" ] || [ "$$USER_CLIENT_ID" = "null" ] || [ -z "$$USER_CLIENT_SECRET" ] || [ "$$USER_CLIENT_SECRET" = "null" ]; then
+          echo "❌ Failed to parse user credentials from response"
+          echo "$$PRINCIPAL_RESPONSE"
+          exit 1
+        fi
         echo "✅ Principal created with clientId: $$USER_CLIENT_ID"
 
         echo "Creating principal role 'quickstart_user_role'..."
-        curl -s -X POST http://polaris:8181/api/management/v1/principal-roles \
+        RESPONSE=$$(curl --fail-with-body -s -S -X POST http://polaris:8181/api/management/v1/principal-roles \
           -H "Authorization: Bearer $$TOKEN" \
           -H "Polaris-Realm: $$REALM" \
           -H "Content-Type: application/json" \
-          -d '{"principalRole": {"name": "quickstart_user_role", "properties": {}}}' > /dev/null
-
+          -d '{"principalRole": {"name": "quickstart_user_role", "properties": {}}}' 2>&1) && echo -n "" || {
+          echo "❌ Failed to create principal role"
+          echo "$$RESPONSE" >&2
+          exit 1
+        }
         echo "✅ Principal role created"
 
         echo "Creating catalog role 'quickstart_catalog_role'..."
-        curl -s -X POST http://polaris:8181/api/management/v1/catalogs/$$CATALOG_NAME/catalog-roles \
+        RESPONSE=$$(curl --fail-with-body -s -S -X POST http://polaris:8181/api/management/v1/catalogs/$$CATALOG_NAME/catalog-roles \
           -H "Authorization: Bearer $$TOKEN" \
           -H "Polaris-Realm: $$REALM" \
           -H "Content-Type: application/json" \
-          -d '{"catalogRole": {"name": "quickstart_catalog_role", "properties": {}}}' > /dev/null
-
+          -d '{"catalogRole": {"name": "quickstart_catalog_role", "properties": {}}}' 2>&1) && echo -n "" || {
+          echo "❌ Failed to create catalog role"
+          echo "$$RESPONSE" >&2
+          exit 1
+        }
         echo "✅ Catalog role created"
 
         echo "Assigning principal role to principal..."
-        curl -s -X PUT http://polaris:8181/api/management/v1/principals/quickstart_user/principal-roles \
+        RESPONSE=$$(curl --fail-with-body -s -S -X PUT http://polaris:8181/api/management/v1/principals/quickstart_user/principal-roles \
           -H "Authorization: Bearer $$TOKEN" \
           -H "Polaris-Realm: $$REALM" \
           -H "Content-Type: application/json" \
-          -d '{"principalRole": {"name": "quickstart_user_role"}}' > /dev/null
-
+          -d '{"principalRole": {"name": "quickstart_user_role"}}' 2>&1) && echo -n "" || {
+          echo "❌ Failed to assign principal role"
+          echo "$$RESPONSE" >&2
+          exit 1
+        }
         echo "✅ Principal role assigned"
 
         echo "Assigning catalog role to principal role..."
-        curl -s -X PUT http://polaris:8181/api/management/v1/principal-roles/quickstart_user_role/catalog-roles/$$CATALOG_NAME \
+        RESPONSE=$$(curl --fail-with-body -s -S -X PUT http://polaris:8181/api/management/v1/principal-roles/quickstart_user_role/catalog-roles/$$CATALOG_NAME \
           -H "Authorization: Bearer $$TOKEN" \
           -H "Polaris-Realm: $$REALM" \
           -H "Content-Type: application/json" \
-          -d '{"catalogRole": {"name": "quickstart_catalog_role"}}' > /dev/null
-
+          -d '{"catalogRole": {"name": "quickstart_catalog_role"}}' 2>&1) && echo -n "" || {
+          echo "❌ Failed to assign catalog role"
+          echo "$$RESPONSE" >&2
+          exit 1
+        }
         echo "✅ Catalog role assigned"
 
         echo "Granting CATALOG_MANAGE_CONTENT privilege..."
-        curl -s -X PUT http://polaris:8181/api/management/v1/catalogs/$$CATALOG_NAME/catalog-roles/quickstart_catalog_role/grants \
+        RESPONSE=$$(curl --fail-with-body -s -S -X PUT http://polaris:8181/api/management/v1/catalogs/$$CATALOG_NAME/catalog-roles/quickstart_catalog_role/grants \
           -H "Authorization: Bearer $$TOKEN" \
           -H "Polaris-Realm: $$REALM" \
           -H "Content-Type: application/json" \
-          -d '{"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}' > /dev/null
-
+          -d '{"type": "catalog", "privilege": "CATALOG_MANAGE_CONTENT"}' 2>&1) && echo -n "" || {
+          echo "❌ Failed to grant privileges"
+          echo "$$RESPONSE" >&2
+          exit 1
+        }
         echo "✅ Privileges granted"
 
         echo ""
