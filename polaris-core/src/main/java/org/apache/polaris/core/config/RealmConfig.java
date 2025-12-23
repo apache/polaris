@@ -31,7 +31,9 @@ public interface RealmConfig {
    * @param <T> the type of the configuration value
    * @param configName the name of the configuration key to check
    * @return the current value set for the configuration key, or null if not set
+   * @deprecated Use typed {@link #getConfig(PolarisConfiguration)} instead.
    */
+  @Deprecated
   <T> @Nullable T getConfig(String configName);
 
   /**
