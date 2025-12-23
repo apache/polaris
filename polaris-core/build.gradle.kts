@@ -23,6 +23,7 @@ plugins {
 }
 
 dependencies {
+  api(project(":polaris-core-spi"))
   implementation(project(":polaris-api-management-model"))
 
   implementation(platform(libs.iceberg.bom))
