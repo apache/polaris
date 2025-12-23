@@ -65,7 +65,7 @@ mypy = ">=1.19, <=1.19.1"
 pyiceberg = "==0.10.0"
 pre-commit = "==4.5.1"
 # 7.12.0 is the latest version to use due to OpenAPI spec version we are using
-openapi-generator-cli = "==7.17.0"
+openapi-generator-cli = "==7.12.0"
 pip-licenses-cli = "==3.0.1"
 
 [tool.pip-licenses]

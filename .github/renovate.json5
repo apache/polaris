@@ -77,6 +77,10 @@
         "io.quarkus:io.quarkus.gradle.plugin",
       ],
     },
+    {
+      matchPackageNames: ["openapi-generator-cli"],
+      enabled: false
+    }
   ],
 
   // Max 50 PRs in total, 5 per hour.
