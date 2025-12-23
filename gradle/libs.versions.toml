@@ -44,7 +44,7 @@ antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.
 apache-httpclient5 = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6" }
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.6" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.40.8" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.40.13" }
 awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.3.3" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.3" }
@@ -82,7 +82,7 @@ keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version
 jcstress-core = { module = "org.openjdk.jcstress:jcstress-core", version = "0.16" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.22" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.23" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.16.1" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.21.0" }
