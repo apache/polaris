@@ -219,9 +219,6 @@ jobs:
         run: |
           source "${LIBS_DIR}/_version.sh"
 
-          # Get current commit SHA for the RC tag
-          commit_sha=$(git rev-parse "${git_tag}")
-
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           # Vote Failure Email
 

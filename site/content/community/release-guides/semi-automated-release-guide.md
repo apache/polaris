@@ -272,7 +272,8 @@ The next steps depend on the vote result.
 
 ## Close the vote thread on the Incubator general mailing list
 ### If the vote failed
-When a release candidate is rejected, reply in the same thread (in the general Incubator mailing list) with the vote result.
+When a release candidate is rejected during the IPMC vote, you need to send two e-mails to inform the community of the vote result.
+First, reply in the same thread (in the general Incubator mailing list) with the vote result.
 
 ```
 Hello everyone,
