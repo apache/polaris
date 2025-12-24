@@ -25,9 +25,18 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.QuarkusTestProfile.TestResourceEntry;
 import io.quarkus.test.junit.TestProfile;
+import io.restassured.http.ContentType;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -50,6 +59,11 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
       config.put(
           "polaris.authorization.opa.auth.bearer.static-token.value",
           "test-opa-bearer-token-12345");
+      config.put(
+          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]");
+      config.put("polaris.readiness.ignore-severe-issues", "true");
+      config.put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true");
 
       return config;
     }
@@ -107,5 +121,204 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
         .get("/api/management/v1/catalogs")
         .then()
         .statusCode(200); // Should succeed - admin user is allowed by policy
+  }
+
+  @Test
+  void testNamespaceAccessAuthorization() throws Exception {
+    String rootToken = getRootToken();
+    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
+    String catalogName = "opa-cat-" + UUID.randomUUID().toString().replace("-", "");
+    createCatalog(rootToken, catalogName);
+
+    given()
+        .header("Authorization", "Bearer " + strangerToken)
+        .when()
+        .get("/api/catalog/v1/{cat}/namespaces", catalogName)
+        .then()
+        .statusCode(403);
+
+    given()
+        .header("Authorization", "Bearer " + rootToken)
+        .when()
+        .get("/api/catalog/v1/{cat}/namespaces", catalogName)
+        .then()
+        .statusCode(200);
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + strangerToken)
+        .body("{\"namespace\":[\"ns_opa\"]}")
+        .when()
+        .post("/api/catalog/v1/{cat}/namespaces", catalogName)
+        .then()
+        .statusCode(403);
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + rootToken)
+        .body("{\"namespace\":[\"ns_opa\"]}")
+        .when()
+        .post("/api/catalog/v1/{cat}/namespaces", catalogName)
+        .then()
+        .statusCode(200);
+
+    given()
+        .header("Authorization", "Bearer " + rootToken)
+        .when()
+        .delete("/api/catalog/v1/{cat}/namespaces/{namespace}", catalogName, "ns_opa")
+        .then()
+        .statusCode(204);
+
+    given()
+        .header("Authorization", "Bearer " + rootToken)
+        .when()
+        .delete("/api/management/v1/catalogs/{cat}", catalogName)
+        .then()
+        .statusCode(204);
+  }
+
+  @Test
+  void testCreatePrincipalAuthorization() {
+    String rootToken = getRootToken();
+    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
+
+    String principalName = "opa-principal-" + UUID.randomUUID();
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + strangerToken)
+        .body("{\"principal\":{\"name\":\"" + principalName + "\",\"properties\":{}}}")
+        .when()
+        .post("/api/management/v1/principals")
+        .then()
+        .statusCode(403);
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + rootToken)
+        .body("{\"principal\":{\"name\":\"" + principalName + "\",\"properties\":{}}}")
+        .when()
+        .post("/api/management/v1/principals")
+        .then()
+        .statusCode(201);
+  }
+
+  @Test
+  void testCreatePrincipalRoleAuthorization() {
+    String rootToken = getRootToken();
+    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
+
+    String roleName = "opa-pr-role-" + UUID.randomUUID();
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + strangerToken)
+        .body("{\"name\":\"" + roleName + "\"}")
+        .when()
+        .post("/api/management/v1/principal-roles")
+        .then()
+        .statusCode(403);
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + rootToken)
+        .body("{\"name\":\"" + roleName + "\"}")
+        .when()
+        .post("/api/management/v1/principal-roles")
+        .then()
+        .statusCode(201);
+  }
+
+  @Test
+  void testCreateCatalogRoleAuthorization() throws Exception {
+    String rootToken = getRootToken();
+    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
+    String catalogName = "opa-catrole-" + UUID.randomUUID().toString().replace("-", "");
+    createCatalog(rootToken, catalogName);
+
+    String roleName = "opa-cat-role-" + UUID.randomUUID();
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + strangerToken)
+        .body("{\"name\":\"" + roleName + "\"}")
+        .when()
+        .post("/api/management/v1/catalogs/{cat}/catalog-roles", catalogName)
+        .then()
+        .statusCode(403);
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + rootToken)
+        .body("{\"name\":\"" + roleName + "\"}")
+        .when()
+        .post("/api/management/v1/catalogs/{cat}/catalog-roles", catalogName)
+        .then()
+        .statusCode(201);
+  }
+
+  @Test
+  void testOpaCatalogCreateEnforced() throws Exception {
+    String rootToken = getRootToken();
+    String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
+    String catalogName = "opa-create-" + UUID.randomUUID().toString().replace("-", "");
+
+    Path tempDir = Files.createTempDirectory("opa-authz-create");
+    String baseLocation = tempDir.toUri().toString();
+    CatalogProperties properties = CatalogProperties.builder(baseLocation).build();
+    FileStorageConfigInfo storageConfigInfo =
+        FileStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(List.of(baseLocation))
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setName(catalogName)
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setProperties(properties)
+            .setStorageConfigInfo(storageConfigInfo)
+            .build();
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + strangerToken)
+        .body(toJson(catalog))
+        .when()
+        .post("/api/management/v1/catalogs")
+        .then()
+        .statusCode(403);
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + rootToken)
+        .body(toJson(catalog))
+        .when()
+        .post("/api/management/v1/catalogs")
+        .then()
+        .statusCode(201);
+  }
+
+  private void createCatalog(String token, String catalogName) throws Exception {
+    Path tempDir = Files.createTempDirectory("opa-authz");
+    String baseLocation = tempDir.toUri().toString();
+    CatalogProperties properties = CatalogProperties.builder(baseLocation).build();
+    FileStorageConfigInfo storageConfigInfo =
+        FileStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(List.of(baseLocation))
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setName(catalogName)
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setProperties(properties)
+            .setStorageConfigInfo(storageConfigInfo)
+            .build();
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + token)
+        .body(toJson(catalog))
+        .when()
+        .post("/api/management/v1/catalogs")
+        .then()
+        .statusCode(201);
   }
 }

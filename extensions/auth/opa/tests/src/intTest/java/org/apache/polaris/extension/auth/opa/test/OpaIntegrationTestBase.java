@@ -21,11 +21,41 @@ package org.apache.polaris.extension.auth.opa.test;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.restassured.RestAssured;
+import io.restassured.config.ObjectMapperConfig;
+import io.restassured.http.ContentType;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+
 /**
  * Base class for OPA integration tests providing common helper methods for authentication and
  * principal management.
  */
 public abstract class OpaIntegrationTestBase {
+
+  private static final ObjectMapper JSON = new ObjectMapper();
+  private final List<String> catalogsToCleanup = new ArrayList<>();
+
+  static {
+    RestAssured.config =
+        RestAssured.config()
+            .objectMapperConfig(
+                ObjectMapperConfig.objectMapperConfig()
+                    .jackson2ObjectMapperFactory((cls, charset) -> new ObjectMapper()));
+  }
+
+  protected String toJson(Object value) {
+    try {
+      return JSON.writeValueAsString(value);
+    } catch (Exception e) {
+      throw new UncheckedIOException("Failed to serialize to JSON", new java.io.IOException(e));
+    }
+  }
 
   /**
    * Helper method to get root access token using the default test admin credentials.
@@ -127,5 +157,65 @@ public abstract class OpaIntegrationTestBase {
       return value;
     }
     return null;
+  }
+
+  @AfterEach
+  void cleanupCatalogs() {
+    // Use root token for cleanup to avoid cascading auth failures
+    String rootToken;
+    try {
+      rootToken = getRootToken();
+    } catch (Exception e) {
+      return;
+    }
+    List<String> reversed = new ArrayList<>(catalogsToCleanup);
+    Collections.reverse(reversed);
+    for (String catalog : reversed) {
+      try {
+        given()
+            .header("Authorization", "Bearer " + rootToken)
+            .delete("/api/management/v1/catalogs/{cat}", catalog)
+            .then()
+            .statusCode(org.hamcrest.Matchers.anything());
+      } catch (Exception ignored) {
+        // best effort
+      }
+    }
+    catalogsToCleanup.clear();
+  }
+
+  protected String createFileCatalog(
+      String token, String catalogName, String baseLocation, List<String> allowedLocations) {
+    // Create a File Catalog to use for testing
+    Map<String, Object> body =
+        Map.of(
+            "type",
+            "INTERNAL",
+            "name",
+            catalogName,
+            "properties",
+            Map.of("default-base-location", baseLocation),
+            "storageConfigInfo",
+            Map.of("storageType", "FILE", "allowedLocations", allowedLocations));
+
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + token)
+        .body(toJson(body))
+        .post("/api/management/v1/catalogs")
+        .then()
+        .statusCode(201);
+    catalogsToCleanup.add(catalogName);
+    return baseLocation;
+  }
+
+  protected void createNamespace(String token, String catalogName, String namespace) {
+    given()
+        .contentType(ContentType.JSON)
+        .header("Authorization", "Bearer " + token)
+        .body("{\"namespace\":[\"" + namespace + "\"]}")
+        .post("/api/catalog/v1/{cat}/namespaces", catalogName)
+        .then()
+        .statusCode(200);
   }
 }
