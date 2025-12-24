@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.config;
 
+import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.TRUE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -83,18 +85,16 @@ public class DefaultConfigurationStoreTest {
 
   @Test
   public void testGetConfiguration() {
-    Object value = configurationStore.getConfiguration(realmContext, "missingKeyWithoutDefault");
+    Object value = configurationStore.getConfigValue(realmContext, "missingKeyWithoutDefault");
     assertThat(value).isNull();
     Object defaultValue =
         configurationStore.getConfiguration(realmContext, "missingKeyWithDefault", "defaultValue");
     assertThat(defaultValue).isEqualTo("defaultValue");
 
     // the falseByDefaultKey is set to false for all realms in Profile.getConfigOverrides
-    assertThat((Boolean) configurationStore.getConfiguration(realmContext, falseByDefaultKey))
-        .isFalse();
+    assertThat(configurationStore.getConfigValue(realmContext, falseByDefaultKey)).isEqualTo(FALSE);
     // the trueByDefaultKey is set to true for all realms in Profile.getConfigOverrides
-    assertThat((Boolean) configurationStore.getConfiguration(realmContext, trueByDefaultKey))
-        .isTrue();
+    assertThat(configurationStore.getConfigValue(realmContext, trueByDefaultKey)).isEqualTo(TRUE);
   }
 
   @Test
@@ -102,55 +102,53 @@ public class DefaultConfigurationStoreTest {
     // check the realmOne configuration
     // the falseByDefaultKey is set to `false` for all realms, but overwrite with value `true` for
     // realmOne.
-    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, falseByDefaultKey))
-        .isTrue();
+    assertThat(configurationStore.getConfigValue(realmOneContext, falseByDefaultKey))
+        .isEqualTo(TRUE);
     // the trueByDefaultKey is set to `false` for all realms, no overwrite for realmOne
-    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, trueByDefaultKey))
-        .isTrue();
+    assertThat(configurationStore.getConfigValue(realmOneContext, trueByDefaultKey))
+        .isEqualTo(TRUE);
 
     // check the realmTwo configuration
     // the falseByDefaultKey is set to `false` for all realms, no overwrite for realmTwo
-    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, falseByDefaultKey))
-        .isFalse();
+    assertThat(configurationStore.getConfigValue(realmTwoContext, falseByDefaultKey))
+        .isEqualTo(FALSE);
     // the trueByDefaultKey is set to `false` for all realms, and overwrite with value `false` for
     // realmTwo
-    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, trueByDefaultKey))
-        .isFalse();
+    assertThat(configurationStore.getConfigValue(realmTwoContext, trueByDefaultKey))
+        .isEqualTo(FALSE);
   }
 
   @Test
   void testGetConfigurationWithRealm() {
     // the falseByDefaultKey is set to `false` for all realms, but overwrite with value `true` for
     // realmOne.
-    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, falseByDefaultKey))
-        .isTrue();
+    assertThat(configurationStore.getConfigValue(realmOneContext, falseByDefaultKey))
+        .isEqualTo(TRUE);
     // the trueByDefaultKey is set to `false` for all realms, no overwrite for realmOne
-    assertThat((Boolean) configurationStore.getConfiguration(realmOneContext, trueByDefaultKey))
-        .isTrue();
+    assertThat(configurationStore.getConfigValue(realmOneContext, trueByDefaultKey))
+        .isEqualTo(TRUE);
 
     // the falseByDefaultKey is set to `false` for all realms, no overwrite for realmTwo
-    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, falseByDefaultKey))
-        .isFalse();
+    assertThat(configurationStore.getConfigValue(realmTwoContext, falseByDefaultKey))
+        .isEqualTo(FALSE);
     // the trueByDefaultKey is set to `false` for all realms, and overwrite with value `false` for
     // realmTwo
-    assertThat((Boolean) configurationStore.getConfiguration(realmTwoContext, trueByDefaultKey))
-        .isFalse();
+    assertThat(configurationStore.getConfigValue(realmTwoContext, trueByDefaultKey))
+        .isEqualTo(FALSE);
   }
 
   @Test
   public void testInjectedConfigurationStore() {
     // the default value for trueByDefaultKey is `true`
-    Boolean featureDefaultValue =
-        configurationStore.getConfiguration(realmContext, trueByDefaultKey);
-    assertThat(featureDefaultValue).isTrue();
+    assertThat(configurationStore.getConfigValue(realmContext, trueByDefaultKey)).isEqualTo(TRUE);
 
     // the value for falseByDefaultKey is `false`, and no realm override for realmTwo
-    Boolean realmTwoValue = configurationStore.getConfiguration(realmTwoContext, falseByDefaultKey);
-    assertThat(realmTwoValue).isFalse();
+    assertThat(configurationStore.getConfigValue(realmTwoContext, falseByDefaultKey))
+        .isEqualTo(FALSE);
 
     // Now, realmOne override falseByDefaultKey to `True`
-    Boolean realmOneValue = configurationStore.getConfiguration(realmOneContext, falseByDefaultKey);
-    assertThat(realmOneValue).isTrue();
+    assertThat(configurationStore.getConfigValue(realmOneContext, falseByDefaultKey))
+        .isEqualTo(TRUE);
 
     assertThat(configurationStore).isInstanceOf(DefaultConfigurationStore.class);
   }

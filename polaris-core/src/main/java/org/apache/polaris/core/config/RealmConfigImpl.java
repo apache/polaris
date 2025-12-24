@@ -35,7 +35,9 @@ public class RealmConfigImpl implements RealmConfig {
 
   @Override
   public <T> @Nullable T getConfig(String configName) {
-    return configurationStore.getConfiguration(realmContext, configName);
+    @SuppressWarnings("unchecked")
+    T configValue = (T) configurationStore.getConfigValue(realmContext, configName);
+    return configValue;
   }
 
   @Override
