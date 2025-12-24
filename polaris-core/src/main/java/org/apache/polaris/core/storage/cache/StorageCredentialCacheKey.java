@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
@@ -55,6 +56,39 @@ public interface StorageCredentialCacheKey {
   @Value.Parameter(order = 8)
   Optional<String> principalName();
 
+  /**
+   * When session tags are enabled, the credential vending context is included in the cache key to
+   * ensure that credentials with different session tags are not confused. This is optional and only
+   * included when the session tags feature is enabled.
+   */
+  @Value.Parameter(order = 9)
+  Optional<CredentialVendingContext> credentialVendingContext();
+
+  /**
+   * Returns a sanitized string representation of this cache key suitable for logging. This excludes
+   * potentially sensitive information like catalog names, namespaces, table names, and request IDs
+   * that may be present in the credential vending context.
+   *
+   * @return a sanitized string representation for logging
+   */
+  default String toSanitizedLogString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("StorageCredentialCacheKey{");
+    sb.append("realmId=").append(realmId());
+    sb.append(", catalogId=").append(catalogId());
+    sb.append(", allowedListAction=").append(allowedListAction());
+    sb.append(", allowedReadLocations=").append(allowedReadLocations().size()).append(" locations");
+    sb.append(", allowedWriteLocations=")
+        .append(allowedWriteLocations().size())
+        .append(" locations");
+    sb.append(", refreshCredentialsEndpoint=").append(refreshCredentialsEndpoint().isPresent());
+    sb.append(", principalName=").append(principalName().isPresent() ? "[REDACTED]" : "empty");
+    sb.append(", credentialVendingContext=")
+        .append(credentialVendingContext().isPresent() ? "[REDACTED]" : "empty");
+    sb.append("}");
+    return sb.toString();
+  }
+
   static StorageCredentialCacheKey of(
       String realmId,
       PolarisEntity entity,
@@ -62,7 +96,8 @@ public interface StorageCredentialCacheKey {
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
-      Optional<PolarisPrincipal> polarisPrincipal) {
+      Optional<PolarisPrincipal> polarisPrincipal,
+      Optional<CredentialVendingContext> credentialVendingContext) {
     String storageConfigSerializedStr =
         entity
             .getInternalPropertiesAsMap()
@@ -75,6 +110,7 @@ public interface StorageCredentialCacheKey {
         allowedReadLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint,
-        polarisPrincipal.map(PolarisPrincipal::getName));
+        polarisPrincipal.map(PolarisPrincipal::getName),
+        credentialVendingContext);
   }
 }

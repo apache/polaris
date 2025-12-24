@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -116,7 +117,9 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                   @Nonnull Set<String> allowedReadLocations,
                   @Nonnull Set<String> allowedWriteLocations,
                   @Nonnull PolarisPrincipal polarisPrincipal,
-                  Optional<String> refreshCredentialsEndpoint) {
+                  Optional<String> refreshCredentialsEndpoint,
+                  @Nonnull CredentialVendingContext credentialVendingContext) {
+                // FILE storage does not support credential vending
                 return StorageAccessConfig.builder().supportsCredentialVending(false).build();
               }
 

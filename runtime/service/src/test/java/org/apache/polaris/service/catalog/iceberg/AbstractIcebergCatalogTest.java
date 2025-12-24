@@ -123,6 +123,7 @@ import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -1889,7 +1890,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()),
                 authenticatedRoot,
-                Optional.empty())
+                Optional.empty(),
+                CredentialVendingContext.empty())
             .getStorageAccessConfig()
             .credentials();
     Assertions.assertThat(credentials)

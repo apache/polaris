@@ -22,6 +22,7 @@ import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDEN
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -47,6 +49,7 @@ import software.amazon.awssdk.policybuilder.iam.IamStatement;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
+import software.amazon.awssdk.services.sts.model.Tag;
 
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
@@ -56,6 +59,16 @@ public class AwsCredentialsStorageIntegration
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
+
+  // AWS STS Session Tag keys for CloudTrail correlation
+  static final String TAG_KEY_CATALOG = "polaris:catalog";
+  static final String TAG_KEY_NAMESPACE = "polaris:namespace";
+  static final String TAG_KEY_TABLE = "polaris:table";
+  static final String TAG_KEY_PRINCIPAL = "polaris:principal";
+  static final String TAG_KEY_REQUEST_ID = "polaris:request-id";
+
+  // AWS limit for session tag values
+  private static final int MAX_TAG_VALUE_LENGTH = 256;
 
   public AwsCredentialsStorageIntegration(
       AwsStorageConfigurationInfo config, StsClient fixedClient) {
@@ -84,7 +97,8 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
@@ -94,6 +108,8 @@ public class AwsCredentialsStorageIntegration
 
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
+    boolean includeSessionTags =
+        realmConfig.getConfig(FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
 
     String roleSessionName =
         includePrincipalNameInSubscopedCredential
@@ -118,6 +134,19 @@ public class AwsCredentialsStorageIntegration
                           accountId)
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
+
+      // Add session tags when the feature is enabled
+      if (includeSessionTags) {
+        List<Tag> sessionTags =
+            buildSessionTags(polarisPrincipal.getName(), credentialVendingContext);
+        if (!sessionTags.isEmpty()) {
+          request.tags(sessionTags);
+          // Mark all tags as transitive for role chaining support
+          request.transitiveTagKeys(
+              sessionTags.stream().map(Tag::key).collect(java.util.stream.Collectors.toList()));
+        }
+      }
+
       credentialsProvider.ifPresent(
           cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
@@ -365,5 +394,66 @@ public class AwsCredentialsStorageIntegration
       path = path.substring(1);
     }
     return path;
+  }
+
+  /**
+   * Builds a list of AWS STS session tags from the credential vending context and principal name.
+   * These tags will appear in CloudTrail events for correlation purposes.
+   *
+   * @param principalName the name of the principal requesting credentials
+   * @param context the credential vending context containing catalog, namespace, table, and
+   *     request-id
+   * @return a list of STS Tags to attach to the AssumeRole request
+   */
+  private List<Tag> buildSessionTags(String principalName, CredentialVendingContext context) {
+    List<Tag> tags = new ArrayList<>();
+
+    // Always include all tags with "unknown" placeholder for missing values
+    // This ensures consistent tag presence in CloudTrail for correlation
+    tags.add(
+        Tag.builder().key(TAG_KEY_PRINCIPAL).value(truncateTagValue(principalName)).build());
+    tags.add(
+        Tag.builder()
+            .key(TAG_KEY_CATALOG)
+            .value(truncateTagValue(context.catalogName().orElse(null)))
+            .build());
+    tags.add(
+        Tag.builder()
+            .key(TAG_KEY_NAMESPACE)
+            .value(truncateTagValue(context.namespace().orElse(null)))
+            .build());
+    tags.add(
+        Tag.builder()
+            .key(TAG_KEY_TABLE)
+            .value(truncateTagValue(context.tableName().orElse(null)))
+            .build());
+    tags.add(
+        Tag.builder()
+            .key(TAG_KEY_REQUEST_ID)
+            .value(truncateTagValue(context.requestId().orElse(null)))
+            .build());
+
+    return tags;
+  }
+
+  /** Placeholder value used when a tag value is null or empty. */
+  static final String TAG_VALUE_UNKNOWN = "unknown";
+
+  /**
+   * Truncates a tag value to fit within AWS STS limits. AWS limits session tag values to 256
+   * characters. Returns "unknown" placeholder for null or empty values to ensure consistent tag
+   * presence in CloudTrail.
+   *
+   * @param value the value to potentially truncate
+   * @return the truncated value, or "unknown" if value is null or empty
+   */
+  static String truncateTagValue(String value) {
+    if (value == null || value.isEmpty()) {
+      return TAG_VALUE_UNKNOWN;
+    }
+    if (value.length() <= MAX_TAG_VALUE_LENGTH) {
+      return value;
+    }
+    return value.substring(0, MAX_TAG_VALUE_LENGTH);
   }
 }
