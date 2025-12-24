@@ -321,7 +321,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(s3Path(bucket, firstPath)),
                     POLARIS_PRINCIPAL,
                     Optional.empty(),
-                CredentialVendingContext.empty());
+                    CredentialVendingContext.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
@@ -675,7 +675,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(),
                     POLARIS_PRINCIPAL,
                     Optional.empty(),
-                CredentialVendingContext.empty());
+                    CredentialVendingContext.empty());
         assertThat(storageAccessConfig.credentials())
             .containsEntry(StorageAccessProperty.AWS_TOKEN.getPropertyName(), "sess")
             .containsEntry(StorageAccessProperty.AWS_KEY_ID.getPropertyName(), "accessKey")
@@ -718,7 +718,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                     Set.of(),
                     POLARIS_PRINCIPAL,
                     Optional.empty(),
-                CredentialVendingContext.empty());
+                    CredentialVendingContext.empty());
         assertThat(storageAccessConfig.credentials())
             .isNotEmpty()
             .doesNotContainKey(StorageAccessProperty.CLIENT_REGION.getPropertyName());
@@ -805,7 +805,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-                CredentialVendingContext.empty());
+            CredentialVendingContext.empty());
 
     // Test with allowed KMS keys and read-only permissions
     Mockito.reset(stsClient);
@@ -852,7 +852,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-                CredentialVendingContext.empty());
+            CredentialVendingContext.empty());
 
     // Test with no KMS keys and read-only (should add wildcard KMS access)
     Mockito.reset(stsClient);
@@ -890,7 +890,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-                CredentialVendingContext.empty());
+            CredentialVendingContext.empty());
 
     // Test with no KMS keys and write permissions (should not add KMS statement)
     Mockito.reset(stsClient);
@@ -925,7 +925,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
             POLARIS_PRINCIPAL,
             Optional.empty(),
-                CredentialVendingContext.empty());
+            CredentialVendingContext.empty());
   }
 
   @Test
@@ -967,7 +967,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Set.of(warehouseDir + "/namespace/table"),
             polarisPrincipalWithLongName,
             Optional.of("/namespace/table/credentials"),
-                CredentialVendingContext.empty());
+            CredentialVendingContext.empty());
   }
 
   private static @Nonnull String s3Arn(String partition, String bucket, String keyPrefix) {
@@ -1045,7 +1045,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:table") && tag.value().equals("my_table"));
     Assertions.assertThat(capturedRequest.tags())
-        .anyMatch(tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
+        .anyMatch(
+            tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:request-id") && tag.value().equals("req-12345"));
 
@@ -1155,7 +1156,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:catalog") && tag.value().equals("test-catalog"));
     Assertions.assertThat(capturedRequest.tags())
-        .anyMatch(tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
+        .anyMatch(
+            tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
     // Absent values should be "unknown"
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:namespace") && tag.value().equals("unknown"));
@@ -1274,7 +1276,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     // All 5 tags are always included; missing values use "unknown" placeholder
     Assertions.assertThat(capturedRequest.tags()).hasSize(5);
     Assertions.assertThat(capturedRequest.tags())
-        .anyMatch(tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
+        .anyMatch(
+            tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
     // All context tags should be "unknown" when context is empty
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:catalog") && tag.value().equals("unknown"));
@@ -1288,11 +1291,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
   /**
    * Tests graceful error handling when STS throws an exception due to missing sts:TagSession
-   * permission. When the IAM role's trust policy doesn't allow sts:TagSession, the assumeRole
-   * call should fail and the exception should be propagated appropriately.
+   * permission. When the IAM role's trust policy doesn't allow sts:TagSession, the assumeRole call
+   * should fail and the exception should be propagated appropriately.
    *
-   * <p>NOTE: Full integration tests with LocalStack or real AWS to verify sts:TagSession
-   * permission behavior are recommended but out of scope for unit tests.
+   * <p>NOTE: Full integration tests with LocalStack or real AWS to verify sts:TagSession permission
+   * behavior are recommended but out of scope for unit tests.
    */
   @Test
   public void testSessionTagsAccessDeniedGracefulHandling() {

@@ -97,4 +97,3 @@ public interface CredentialVendingContext {
     CredentialVendingContext build();
   }
 }
-

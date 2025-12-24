@@ -410,8 +410,7 @@ public class AwsCredentialsStorageIntegration
 
     // Always include all tags with "unknown" placeholder for missing values
     // This ensures consistent tag presence in CloudTrail for correlation
-    tags.add(
-        Tag.builder().key(TAG_KEY_PRINCIPAL).value(truncateTagValue(principalName)).build());
+    tags.add(Tag.builder().key(TAG_KEY_PRINCIPAL).value(truncateTagValue(principalName)).build());
     tags.add(
         Tag.builder()
             .key(TAG_KEY_CATALOG)

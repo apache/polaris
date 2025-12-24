@@ -340,7 +340,7 @@ public class StorageCredentialCacheTest {
           Set.of("s3://bucket/path"),
           polarisPrincipal,
           Optional.empty(),
-        CredentialVendingContext.empty());
+          CredentialVendingContext.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // update the entity's storage config, since StorageConfig changed, cache will generate new
@@ -359,7 +359,7 @@ public class StorageCredentialCacheTest {
           Set.of("s3://bucket/path"),
           polarisPrincipal,
           Optional.empty(),
-        CredentialVendingContext.empty());
+          CredentialVendingContext.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // allowedListAction changed to different value FALSE, will generate new entry
@@ -372,7 +372,7 @@ public class StorageCredentialCacheTest {
           Set.of("s3://bucket/path"),
           polarisPrincipal,
           Optional.empty(),
-        CredentialVendingContext.empty());
+          CredentialVendingContext.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // different allowedWriteLocations, will generate new entry
@@ -385,7 +385,7 @@ public class StorageCredentialCacheTest {
           Set.of("s3://differentbucket/path"),
           polarisPrincipal,
           Optional.empty(),
-        CredentialVendingContext.empty());
+          CredentialVendingContext.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // different allowedReadLocations, will generate new try
@@ -403,7 +403,7 @@ public class StorageCredentialCacheTest {
           Set.of("s3://bucket/path"),
           polarisPrincipal,
           Optional.empty(),
-        CredentialVendingContext.empty());
+          CredentialVendingContext.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
   }
@@ -450,7 +450,7 @@ public class StorageCredentialCacheTest {
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
           polarisPrincipal,
           Optional.empty(),
-        CredentialVendingContext.empty());
+          CredentialVendingContext.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
@@ -464,7 +464,7 @@ public class StorageCredentialCacheTest {
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
           polarisPrincipal,
           Optional.empty(),
-        CredentialVendingContext.empty());
+          CredentialVendingContext.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
     // order of the allowedReadLocations does not affect the cache
@@ -477,7 +477,7 @@ public class StorageCredentialCacheTest {
           Set.of("s3://bucket3/path", "s3://bucket4/path"),
           polarisPrincipal,
           Optional.empty(),
-        CredentialVendingContext.empty());
+          CredentialVendingContext.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
@@ -491,7 +491,7 @@ public class StorageCredentialCacheTest {
           Set.of("s3://bucket4/path", "s3://bucket3/path"),
           polarisPrincipal,
           Optional.empty(),
-        CredentialVendingContext.empty());
+          CredentialVendingContext.empty());
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
   }
