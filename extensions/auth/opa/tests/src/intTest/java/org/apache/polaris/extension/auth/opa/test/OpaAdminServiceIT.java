@@ -77,7 +77,7 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(java.util.Map.of("name", catalogRole, "properties", java.util.Map.of())))
+        .body(toJson(Map.of("name", catalogRole, "properties", Map.of())))
         .post("/api/management/v1/catalogs/{cat}/catalog-roles", baseCatalogName)
         .then()
         .statusCode(201);
@@ -86,14 +86,13 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + rootToken)
-        .body(toJson(java.util.Map.of("name", principalRole, "properties", java.util.Map.of())))
+        .body(toJson(Map.of("name", principalRole, "properties", Map.of())))
         .post("/api/management/v1/principal-roles")
         .then()
         .statusCode(201);
 
-    java.util.Map<String, Object> grantRequest =
-        java.util.Map.of(
-            "catalogRole", java.util.Map.of("name", catalogRole, "properties", java.util.Map.of()));
+    Map<String, Object> grantRequest =
+        Map.of("catalogRole", Map.of("name", catalogRole, "properties", Map.of()));
 
     // stranger cannot bind
     given()
@@ -155,19 +154,15 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
         .header("Authorization", "Bearer " + strangerToken)
         .body(
             toJson(
-                java.util.Map.of(
+                Map.of(
                     "type",
                     "INTERNAL",
                     "name",
                     "unauth-" + catalogName,
                     "properties",
-                    java.util.Map.of("default-base-location", baseLocation),
+                    Map.of("default-base-location", baseLocation),
                     "storageConfigInfo",
-                    java.util.Map.of(
-                        "storageType",
-                        "FILE",
-                        "allowedLocations",
-                        java.util.List.of(baseLocation)))))
+                    Map.of("storageType", "FILE", "allowedLocations", List.of(baseLocation)))))
         .post("/api/management/v1/catalogs")
         .then()
         .statusCode(403);
@@ -178,19 +173,15 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
         .header("Authorization", "Bearer " + rootToken)
         .body(
             toJson(
-                java.util.Map.of(
+                Map.of(
                     "type",
                     "INTERNAL",
                     "name",
                     catalogName,
                     "properties",
-                    java.util.Map.of("default-base-location", baseLocation),
+                    Map.of("default-base-location", baseLocation),
                     "storageConfigInfo",
-                    java.util.Map.of(
-                        "storageType",
-                        "FILE",
-                        "allowedLocations",
-                        java.util.List.of(baseLocation)))))
+                    Map.of("storageType", "FILE", "allowedLocations", List.of(baseLocation)))))
         .post("/api/management/v1/catalogs")
         .then()
         .statusCode(201);

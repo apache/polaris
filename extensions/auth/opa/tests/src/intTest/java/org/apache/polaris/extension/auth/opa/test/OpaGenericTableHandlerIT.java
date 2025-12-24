@@ -111,6 +111,5 @@ public class OpaGenericTableHandlerIT extends OpaIntegrationTestBase {
             tableName)
         .then()
         .statusCode(204);
-
   }
 }
