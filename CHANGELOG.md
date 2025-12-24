@@ -70,6 +70,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Generic Table is no longer in beta and is generally-available.
 - Added Windows support for Python client.
 - (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
+- Added KMS options to Polaris CLI
 
 ### Deprecations
 
