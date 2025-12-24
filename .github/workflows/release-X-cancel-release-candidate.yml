@@ -17,6 +17,8 @@
 # under the License.
 #
 
+# Note: This workflow uses "X" instead of a number because it's an exceptional
+# workflow. It may be run after the third workflow has been run for a given RC.
 name: Release - X - Cancel Release Candidate After Vote Failure
 
 on:
