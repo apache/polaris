@@ -30,6 +30,8 @@ params:
 ## Overview
 The steps performed in the [Manual Release Guide](../manual-release-guide/) have been automated to a large extent. This semi-automated release guide outlines the workflows that can be used to perform a release with little manual intervention.
 
+_Note that all screenshots in this page are for illustration purposes only. The actual repository name, version numbers, etc. may be different._
+
 ## Dry-run mode
 Each of the Github Workflows that have been developed comes with a `dry-run` mode. It is enabled ticking the `Dry run mode` checkbox before starting the workflow. When enabled, the workflow will not perform any destructive action (e.g. tag creation, branch deletion, etc.) but instead print out the commands that would have been executed.
 
@@ -173,23 +175,19 @@ The next steps depend on the vote result.
 
 ## Close the vote thread
 ### If the vote failed
-When a release candidate is rejected, reply with the vote result:
+If the vote failed, run the Github workflow [`Release - X - Cancel Release Candidate After Vote Failure`](https://github.com/apache/polaris/actions/workflows/release-X-cancel-release-candidate.yml). This workflow will:
+* Drop the Apache Nexus staging repository
+* Delete the release artifacts (including Helm Chart) from the Apache dist dev repository
+* Prepare an e-mail template to notify the community of the vote result
 
-```
-[RESULT][VOTE] Release Apache Polaris [major].[minor].[patch] (rc[N])
-```
+![Screenshot of the cancel RC workflow for 1.3.0-incubating](/img/release-guides/github-workflow-X.png "Screenshot of the cancel RC workflow for 1.3.0-incubating")
 
-```
-Hello everyone,
+The run details page contains a recap of the main information, with all the steps that were executed.
+It also contains the e-mail template to notify the community of the vote result.
+Ensure to replace the `[REASON - TO BE FILLED BY RELEASE MANAGER]` placeholder with the actual reason for the vote failure.
+Then send the e-mail to the Polaris dev mailing list.
 
-Thanks to all who participated in the vote for Release Apache Polaris [major].[minor].[patch] (rc[N]).
-
-The vote failed due to [reason].
-
-A new release candidate will be proposed soon once the issues are addressed.
-
-Thanks,
-```
+![Screenshot of a detailed run of the cancel RC workflow for 1.3.0-incubating](/img/release-guides/github-workflow-X-detail.png "Screenshot of a detailed run of the cancel RC workflow for 1.3.0-incubating")
 
 ### If the vote passed
 When the release candidate vote passes, send a new e-mail with the vote result:
@@ -274,7 +272,7 @@ The next steps depend on the vote result.
 
 ## Close the vote thread on the Incubator general mailing list
 ### If the vote failed
-When a release candidate is rejected, reply in the same thread with the vote result.
+When a release candidate is rejected, reply in the same thread (in the general Incubator mailing list) with the vote result.
 
 ```
 Hello everyone,
@@ -285,6 +283,20 @@ The vote failed due to [reason].
 
 Thanks,
 ```
+
+Then, run the Github workflow [`Release - X - Cancel Release Candidate After Vote Failure`](https://github.com/apache/polaris/actions/workflows/release-X-cancel-release-candidate.yml). This workflow will:
+* Drop the Apache Nexus staging repository
+* Delete the release artifacts (including Helm Chart) from the Apache dist dev repository
+* Prepare an e-mail template to notify the community of the vote result
+
+![Screenshot of the cancel RC workflow for 1.3.0-incubating](/img/release-guides/github-workflow-X.png "Screenshot of the cancel RC workflow for 1.3.0-incubating")
+
+The run details page contains a recap of the main information, with all the steps that were executed.
+It also contains the e-mail template to notify the community of the vote result.
+Ensure to replace the `[REASON - TO BE FILLED BY RELEASE MANAGER]` placeholder with the actual reason for the vote failure.
+Then send the e-mail to the Polaris dev mailing list.
+
+![Screenshot of a detailed run of the cancel RC workflow for 1.3.0-incubating](/img/release-guides/github-workflow-X-detail.png "Screenshot of a detailed run of the cancel RC workflow for 1.3.0-incubating")
 
 ### If the vote passed
 When the release candidate vote passes, send a new e-mail with the vote result:
