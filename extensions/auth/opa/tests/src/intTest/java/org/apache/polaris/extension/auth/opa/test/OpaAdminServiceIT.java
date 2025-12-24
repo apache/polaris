@@ -38,10 +38,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * PolarisAdminService OPA authz coverage for management endpoints: - GET
- * /api/management/v1/catalogs (catalog list) - PUT
- * /api/management/v1/principal-roles/{pr}/catalog-roles/{cat} (role binding) - PUT
- * /api/management/v1/catalogs/{cat}/catalog-roles/{role}/grants (table grants)
+ * OPA authorization coverage for management endpoints:
+ *
+ * <ul>
+ *   <li>Catalog list/create
+ *   <li>Principal-role to catalog-role bindings
+ *   <li>Catalog-role grant management
+ *   <li>Catalog-role assignee listings
+ *   <li>Catalog-role grant listings
+ * </ul>
  */
 @QuarkusTest
 @TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)

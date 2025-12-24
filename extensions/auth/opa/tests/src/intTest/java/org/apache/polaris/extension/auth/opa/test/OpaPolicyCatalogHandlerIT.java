@@ -30,10 +30,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * PolicyCatalogHandler OPA authz coverage for catalog-scope policy endpoints: - GET/POST
- * /api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies (list/create) - PUT/POST
- * /api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies/{policy}/mappings (attach/detach) - DELETE
- * /api/catalog/polaris/v1/{cat}/namespaces/{ns}/policies/{policy} (delete)
+ * OPA authorization coverage for catalog policy endpoints:
+ *
+ * <ul>
+ *   <li>List/create policies
+ *   <li>Attach/detach policy mappings
+ *   <li>Delete policies
+ * </ul>
  */
 @QuarkusTest
 @TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)

@@ -38,9 +38,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Iceberg catalog handler OPA authz coverage: - GET /api/catalog/v1/{cat}/namespaces (list) - POST
- * /api/catalog/v1/{cat}/namespaces/{ns}/register (register table) - DELETE
- * /api/catalog/v1/{cat}/namespaces/{ns}/tables/{tbl} (drop table)
+ * OPA authorization coverage for Iceberg catalog endpoints:
+ *
+ * <ul>
+ *   <li>List namespaces
+ *   <li>Register/create table
+ *   <li>Drop table
+ * </ul>
  */
 @QuarkusTest
 @TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)

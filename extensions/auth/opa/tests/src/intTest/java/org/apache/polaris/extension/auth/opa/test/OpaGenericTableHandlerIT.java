@@ -31,9 +31,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * PolarisGenericTableCatalogHandler OPA authz coverage for generic-table catalog endpoints: -
- * GET/POST /api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables (list/create) - DELETE
- * /api/catalog/polaris/v1/{cat}/namespaces/{ns}/generic-tables/{table} (drop)
+ * OPA authorization coverage for generic table endpoints:
+ *
+ * <ul>
+ *   <li>List generic tables
+ *   <li>Create generic table
+ *   <li>Drop generic table
+ * </ul>
  */
 @QuarkusTest
 @TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)

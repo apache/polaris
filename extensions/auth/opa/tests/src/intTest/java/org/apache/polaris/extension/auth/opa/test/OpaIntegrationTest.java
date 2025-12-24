@@ -44,9 +44,17 @@ import org.junit.jupiter.api.Test;
 public class OpaIntegrationTest extends OpaIntegrationTestBase {
 
   /**
-   * Test demonstrates OPA integration with bearer token authentication. The OPA container runs with
-   * HTTP for simplicity in CI environments. The OpaPolarisAuthorizer is configured to disable SSL
-   * verification for test purposes.
+   * OPA integration sanity for authz + token plumbing:
+   *
+   * <ul>
+   *   <li>Bearer token auth wiring to OPA
+   *   <li>Namespace access enforcement
+   *   <li>Create principals/roles/catalog roles
+   *   <li>Catalog creation
+   * </ul>
+   *
+   * <p>The OPA container runs with HTTP for simplicity in CI; OpaPolarisAuthorizer disables SSL
+   * verification for these tests.
    */
   public static class StaticTokenOpaProfile implements QuarkusTestProfile {
     @Override
