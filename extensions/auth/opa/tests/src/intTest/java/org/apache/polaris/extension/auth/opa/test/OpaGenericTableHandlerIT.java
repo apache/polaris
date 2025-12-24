@@ -112,16 +112,5 @@ public class OpaGenericTableHandlerIT extends OpaIntegrationTestBase {
         .then()
         .statusCode(204);
 
-    // Cleanup namespace and catalog
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .delete("/api/catalog/v1/{cat}/namespaces/{ns}", catalogName, namespace)
-        .then()
-        .statusCode(204);
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .delete("/api/management/v1/catalogs/{cat}", catalogName)
-        .then()
-        .statusCode(204);
   }
 }

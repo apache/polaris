@@ -113,18 +113,6 @@ public class OpaIcebergCatalogHandlerIT extends OpaIntegrationTestBase {
             "/api/catalog/v1/{cat}/namespaces/{ns}/tables/{tbl}", catalogName, namespace, tableName)
         .then()
         .statusCode(204);
-
-    // Cleanup namespace and catalog
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .delete("/api/catalog/v1/{cat}/namespaces/{ns}", catalogName, namespace)
-        .then()
-        .statusCode(204);
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .delete("/api/management/v1/catalogs/{cat}", catalogName)
-        .then()
-        .statusCode(204);
   }
 
   private String createCatalog(String token, String catalogName, String namespace)
@@ -133,28 +121,11 @@ public class OpaIcebergCatalogHandlerIT extends OpaIntegrationTestBase {
     String baseLocation = tempDir.toUri().toString();
     String allowedNamespacePath =
         baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
-    Map<String, Object> body =
-        Map.of(
-            "type",
-            "INTERNAL",
-            "name",
-            catalogName,
-            "properties",
-            Map.of("default-base-location", baseLocation),
-            "storageConfigInfo",
-            Map.of(
-                "storageType",
-                "FILE",
-                "allowedLocations",
-                List.of(allowedNamespacePath, allowedNamespacePath + "/")));
-
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + token)
-        .body(toJson(body))
-        .post("/api/management/v1/catalogs")
-        .then()
-        .statusCode(201);
+    createFileCatalog(
+        token,
+        catalogName,
+        baseLocation,
+        List.of(allowedNamespacePath, allowedNamespacePath + "/"));
     return baseLocation;
   }
 

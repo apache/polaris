@@ -136,7 +136,7 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
     String rootToken = getRootToken();
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String catalogName = "opa-cat-" + UUID.randomUUID().toString().replace("-", "");
-    createCatalog(rootToken, catalogName);
+    createCatalogWithCleanup(rootToken, catalogName);
 
     given()
         .header("Authorization", "Bearer " + strangerToken)
@@ -170,19 +170,6 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
         .then()
         .statusCode(200);
 
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .when()
-        .delete("/api/catalog/v1/{cat}/namespaces/{namespace}", catalogName, "ns_opa")
-        .then()
-        .statusCode(204);
-
-    given()
-        .header("Authorization", "Bearer " + rootToken)
-        .when()
-        .delete("/api/management/v1/catalogs/{cat}", catalogName)
-        .then()
-        .statusCode(204);
   }
 
   @Test
@@ -240,7 +227,7 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
     String rootToken = getRootToken();
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String catalogName = "opa-catrole-" + UUID.randomUUID().toString().replace("-", "");
-    createCatalog(rootToken, catalogName);
+    createCatalogWithCleanup(rootToken, catalogName);
 
     String roleName = "opa-cat-role-" + UUID.randomUUID();
     given()
@@ -303,7 +290,7 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
         .statusCode(201);
   }
 
-  private void createCatalog(String token, String catalogName) throws Exception {
+  private void createCatalogWithCleanup(String token, String catalogName) throws Exception {
     Path tempDir = Files.createTempDirectory("opa-authz");
     String baseLocation = tempDir.toUri().toString();
     CatalogProperties properties = CatalogProperties.builder(baseLocation).build();
@@ -328,5 +315,7 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
         .post("/api/management/v1/catalogs")
         .then()
         .statusCode(201);
+    // ensure cleanup via base class hook
+    registerCatalogForCleanup(catalogName);
   }
 }

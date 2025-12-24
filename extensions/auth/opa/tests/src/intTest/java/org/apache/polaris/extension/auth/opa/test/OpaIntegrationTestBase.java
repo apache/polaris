@@ -52,8 +52,8 @@ public abstract class OpaIntegrationTestBase {
   protected String toJson(Object value) {
     try {
       return JSON.writeValueAsString(value);
-    } catch (Exception e) {
-      throw new UncheckedIOException("Failed to serialize to JSON", new java.io.IOException(e));
+    } catch (java.io.IOException e) {
+      throw new UncheckedIOException("Failed to serialize to JSON", e);
     }
   }
 
@@ -207,6 +207,10 @@ public abstract class OpaIntegrationTestBase {
         .statusCode(201);
     catalogsToCleanup.add(catalogName);
     return baseLocation;
+  }
+
+  protected void registerCatalogForCleanup(String catalogName) {
+    catalogsToCleanup.add(catalogName);
   }
 
   protected void createNamespace(String token, String catalogName, String namespace) {
