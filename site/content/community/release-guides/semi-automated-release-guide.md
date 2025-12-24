@@ -100,7 +100,7 @@ If the first release candidate is rejected, additional code changes may be neede
 
 Each code change that should be added to the release branch must be cherry-picked from the main branch and proposed in a dedicated pull request. The pull request must be reviewed and approved before being merged. This step is mandatory so that Github runs the CI checks. The subsequent workflows will verify that those checks passed.
 
-Once the pull requests have been merged, run the second workflow again to create a new RC tag. The workflow will automatically determine the next RC number.
+Once the pull requests have been merged, run the [`Release - 2 - Update version and Changelog for Release Candidate`](https://github.com/apache/polaris/actions/workflows/release-2-update-release-candidate.yml) workflow again to create a new RC tag. The workflow will automatically determine the next RC number.
 
 ## Build and publish release artifacts
 The third Github workflow to run is [`Release - 3 - Build and publish release artifacts`](https://github.com/apache/polaris/actions/workflows/release-3-build-and-publish-artifacts.yml). This workflow will:
