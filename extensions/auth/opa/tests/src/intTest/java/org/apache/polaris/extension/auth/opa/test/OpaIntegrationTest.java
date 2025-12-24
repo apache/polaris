@@ -136,7 +136,8 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
     String rootToken = getRootToken();
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String catalogName = "opa-cat-" + UUID.randomUUID().toString().replace("-", "");
-    createCatalogWithCleanup(rootToken, catalogName);
+    String baseLocation = Files.createTempDirectory("opa-authz").toUri().toString();
+    createFileCatalog(rootToken, catalogName, baseLocation, List.of(baseLocation));
 
     given()
         .header("Authorization", "Bearer " + strangerToken)
@@ -227,7 +228,8 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
     String rootToken = getRootToken();
     String strangerToken = createPrincipalAndGetToken("stranger-" + UUID.randomUUID());
     String catalogName = "opa-catrole-" + UUID.randomUUID().toString().replace("-", "");
-    createCatalogWithCleanup(rootToken, catalogName);
+    String baseLocation = Files.createTempDirectory("opa-authz").toUri().toString();
+    createFileCatalog(rootToken, catalogName, baseLocation, List.of(baseLocation));
 
     String roleName = "opa-cat-role-" + UUID.randomUUID();
     given()
@@ -290,32 +292,4 @@ public class OpaIntegrationTest extends OpaIntegrationTestBase {
         .statusCode(201);
   }
 
-  private void createCatalogWithCleanup(String token, String catalogName) throws Exception {
-    Path tempDir = Files.createTempDirectory("opa-authz");
-    String baseLocation = tempDir.toUri().toString();
-    CatalogProperties properties = CatalogProperties.builder(baseLocation).build();
-    FileStorageConfigInfo storageConfigInfo =
-        FileStorageConfigInfo.builder()
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of(baseLocation))
-            .build();
-    Catalog catalog =
-        PolarisCatalog.builder()
-            .setName(catalogName)
-            .setType(Catalog.TypeEnum.INTERNAL)
-            .setProperties(properties)
-            .setStorageConfigInfo(storageConfigInfo)
-            .build();
-
-    given()
-        .contentType(ContentType.JSON)
-        .header("Authorization", "Bearer " + token)
-        .body(toJson(catalog))
-        .when()
-        .post("/api/management/v1/catalogs")
-        .then()
-        .statusCode(201);
-    // ensure cleanup via base class hook
-    registerCatalogForCleanup(catalogName);
-  }
 }

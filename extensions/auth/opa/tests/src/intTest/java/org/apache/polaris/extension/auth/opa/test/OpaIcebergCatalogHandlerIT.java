@@ -60,7 +60,15 @@ public class OpaIcebergCatalogHandlerIT extends OpaIntegrationTestBase {
     rootToken = getRootToken();
     catalogName = "opa-iceberg-" + UUID.randomUUID().toString().replace("-", "");
     namespace = "ns_" + UUID.randomUUID().toString().replace("-", "");
-    baseLocation = createCatalog(rootToken, catalogName, namespace);
+    Path tempDir = Files.createTempDirectory("opa-iceberg");
+    baseLocation = tempDir.toUri().toString();
+    String allowedNamespacePath =
+        baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
+    createFileCatalog(
+        rootToken,
+        catalogName,
+        baseLocation,
+        List.of(allowedNamespacePath, allowedNamespacePath + "/"));
     // base namespace for list assertions
     createNamespace(rootToken, catalogName, namespace);
   }
@@ -113,20 +121,6 @@ public class OpaIcebergCatalogHandlerIT extends OpaIntegrationTestBase {
             "/api/catalog/v1/{cat}/namespaces/{ns}/tables/{tbl}", catalogName, namespace, tableName)
         .then()
         .statusCode(204);
-  }
-
-  private String createCatalog(String token, String catalogName, String namespace)
-      throws Exception {
-    Path tempDir = Files.createTempDirectory("opa-iceberg");
-    String baseLocation = tempDir.toUri().toString();
-    String allowedNamespacePath =
-        baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
-    createFileCatalog(
-        token,
-        catalogName,
-        baseLocation,
-        List.of(allowedNamespacePath, allowedNamespacePath + "/"));
-    return baseLocation;
   }
 
   private Map<String, Object> buildCreateTableRequest(
