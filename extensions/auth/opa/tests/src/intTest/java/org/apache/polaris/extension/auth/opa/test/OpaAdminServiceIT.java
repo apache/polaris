@@ -49,7 +49,7 @@ import org.junit.jupiter.api.Test;
  * </ul>
  */
 @QuarkusTest
-@TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)
+@TestProfile(OpaTestProfiles.StaticToken.class)
 public class OpaAdminServiceIT extends OpaIntegrationTestBase {
 
   private String baseCatalogName;
@@ -147,22 +147,22 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     String catalogName = "opa-cat-create-" + UUID.randomUUID().toString().replace("-", "");
     String baseLocation =
         java.nio.file.Files.createTempDirectory("opa-cat-create").toUri().toString();
+    Map<String, Object> createCatalogRequest =
+        Map.of(
+            "type",
+            "INTERNAL",
+            "name",
+            catalogName,
+            "properties",
+            Map.of("default-base-location", baseLocation),
+            "storageConfigInfo",
+            Map.of("storageType", "FILE", "allowedLocations", List.of(baseLocation)));
 
     // Stranger cannot create catalog
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + strangerToken)
-        .body(
-            toJson(
-                Map.of(
-                    "type",
-                    "INTERNAL",
-                    "name",
-                    "unauth-" + catalogName,
-                    "properties",
-                    Map.of("default-base-location", baseLocation),
-                    "storageConfigInfo",
-                    Map.of("storageType", "FILE", "allowedLocations", List.of(baseLocation)))))
+        .body(toJson(createCatalogRequest))
         .post("/api/management/v1/catalogs")
         .then()
         .statusCode(403);
@@ -171,17 +171,7 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + rootToken)
-        .body(
-            toJson(
-                Map.of(
-                    "type",
-                    "INTERNAL",
-                    "name",
-                    catalogName,
-                    "properties",
-                    Map.of("default-base-location", baseLocation),
-                    "storageConfigInfo",
-                    Map.of("storageType", "FILE", "allowedLocations", List.of(baseLocation)))))
+        .body(toJson(createCatalogRequest))
         .post("/api/management/v1/catalogs")
         .then()
         .statusCode(201);
@@ -212,6 +202,19 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
 
     Map<String, Object> registerPayload =
         buildRegisterTableRequest(tableName, baseLocation, namespace);
+    Map<String, Object> grantRequest =
+        Map.of(
+            "grant",
+            Map.of(
+                "type",
+                "table",
+                "namespace",
+                List.of(namespace),
+                "tableName",
+                tableName,
+                "privilege",
+                "TABLE_READ_DATA"));
+
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + rootToken)
@@ -227,19 +230,6 @@ public class OpaAdminServiceIT extends OpaIntegrationTestBase {
         .post("/api/management/v1/catalogs/{cat}/catalog-roles", catalogName)
         .then()
         .statusCode(201);
-
-    Map<String, Object> grantRequest =
-        Map.of(
-            "grant",
-            Map.of(
-                "type",
-                "table",
-                "namespace",
-                List.of(namespace),
-                "tableName",
-                tableName,
-                "privilege",
-                "TABLE_READ_DATA"));
 
     given()
         .contentType(ContentType.JSON)

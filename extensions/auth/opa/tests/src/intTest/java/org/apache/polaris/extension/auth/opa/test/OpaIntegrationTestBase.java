@@ -21,9 +21,8 @@ package org.apache.polaris.extension.auth.opa.test;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.restassured.RestAssured;
-import io.restassured.config.ObjectMapperConfig;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.restassured.http.ContentType;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
@@ -38,20 +37,12 @@ import org.junit.jupiter.api.AfterEach;
  */
 public abstract class OpaIntegrationTestBase {
 
-  private static final ObjectMapper JSON = new ObjectMapper();
+  private static final JsonMapper mapper = JsonMapper.builder().build();
   private final List<String> catalogsToCleanup = new ArrayList<>();
-
-  static {
-    RestAssured.config =
-        RestAssured.config()
-            .objectMapperConfig(
-                ObjectMapperConfig.objectMapperConfig()
-                    .jackson2ObjectMapperFactory((cls, charset) -> new ObjectMapper()));
-  }
 
   protected String toJson(Object value) {
     try {
-      return JSON.writeValueAsString(value);
+      return mapper.writeValueAsString(value);
     } catch (java.io.IOException e) {
       throw new UncheckedIOException("Failed to serialize to JSON", e);
     }
@@ -96,11 +87,13 @@ public abstract class OpaIntegrationTestBase {
     String rootToken = getRootToken();
 
     // Create the principal using the root token
+    Map<String, Object> createPrincipalBody =
+        Map.of("principal", Map.of("name", principalName, "properties", Map.of()));
     String createResponse =
         given()
             .contentType("application/json")
             .header("Authorization", "Bearer " + rootToken)
-            .body("{\"principal\":{\"name\":\"" + principalName + "\",\"properties\":{}}}")
+            .body(toJson(createPrincipalBody))
             .when()
             .post("/api/management/v1/principals")
             .then()
@@ -149,14 +142,15 @@ public abstract class OpaIntegrationTestBase {
    * @return the extracted value, or null if not found
    */
   protected String extractJsonValue(String json, String key) {
-    String searchKey = "\"" + key + "\"";
-    if (json.contains(searchKey)) {
-      String value = json.substring(json.indexOf(searchKey) + searchKey.length());
-      value = value.substring(value.indexOf("\"") + 1);
-      value = value.substring(0, value.indexOf("\""));
-      return value;
+    try {
+      JsonNode valueNode = mapper.readTree(json).findValue(key);
+      if (valueNode == null || valueNode.isMissingNode() || valueNode.isNull()) {
+        return null;
+      }
+      return valueNode.asText();
+    } catch (java.io.IOException e) {
+      throw new UncheckedIOException("Failed to parse JSON response", e);
     }
-    return null;
   }
 
   @AfterEach
@@ -214,10 +208,11 @@ public abstract class OpaIntegrationTestBase {
   }
 
   protected void createNamespace(String token, String catalogName, String namespace) {
+    Map<String, Object> namespaceBody = Map.of("namespace", List.of(namespace));
     given()
         .contentType(ContentType.JSON)
         .header("Authorization", "Bearer " + token)
-        .body("{\"namespace\":[\"" + namespace + "\"]}")
+        .body(toJson(namespaceBody))
         .post("/api/catalog/v1/{cat}/namespaces", catalogName)
         .then()
         .statusCode(200);

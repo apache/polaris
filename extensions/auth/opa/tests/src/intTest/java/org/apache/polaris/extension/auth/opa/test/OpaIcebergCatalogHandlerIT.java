@@ -36,6 +36,7 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * OPA authorization coverage for Iceberg catalog endpoints:
@@ -47,7 +48,7 @@ import org.junit.jupiter.api.Test;
  * </ul>
  */
 @QuarkusTest
-@TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)
+@TestProfile(OpaTestProfiles.StaticToken.class)
 public class OpaIcebergCatalogHandlerIT extends OpaIntegrationTestBase {
 
   private String catalogName;
@@ -56,12 +57,13 @@ public class OpaIcebergCatalogHandlerIT extends OpaIntegrationTestBase {
   private String rootToken;
 
   @BeforeEach
-  void setupBaseCatalog() throws Exception {
+  void setupBaseCatalog(@TempDir Path tempDir) throws Exception {
     rootToken = getRootToken();
     catalogName = "opa-iceberg-" + UUID.randomUUID().toString().replace("-", "");
     namespace = "ns_" + UUID.randomUUID().toString().replace("-", "");
-    Path tempDir = Files.createTempDirectory("opa-iceberg");
-    baseLocation = tempDir.toUri().toString();
+    Path warehouse = tempDir.resolve("warehouse");
+    Files.createDirectory(warehouse);
+    baseLocation = warehouse.toUri().toString();
     String allowedNamespacePath =
         baseLocation + (baseLocation.endsWith("/") ? "" : "/") + namespace;
     createFileCatalog(

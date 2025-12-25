@@ -22,56 +22,12 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.QuarkusTestProfile.TestResourceEntry;
 import io.quarkus.test.junit.TestProfile;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)
+@TestProfile(OpaTestProfiles.StaticToken.class)
 public class OpaIntegrationTest extends OpaIntegrationTestBase {
-
-  /**
-   * OPA integration sanity for authz + token plumbing:
-   *
-   * <ul>
-   *   <li>Bearer token auth wiring to OPA
-   *   <li>Namespace access enforcement
-   *   <li>Create principals/roles/catalog roles
-   *   <li>Catalog creation
-   * </ul>
-   *
-   * <p>The OPA container runs with HTTP for simplicity in CI; OpaPolarisAuthorizer disables SSL
-   * verification for these tests.
-   */
-  public static class StaticTokenOpaProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.type", "opa");
-
-      // Configure static token authentication
-      config.put("polaris.authorization.opa.auth.type", "bearer");
-      config.put(
-          "polaris.authorization.opa.auth.bearer.static-token.value",
-          "test-opa-bearer-token-12345");
-      config.put(
-          "polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]");
-      config.put("polaris.readiness.ignore-severe-issues", "true");
-      config.put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true");
-
-      return config;
-    }
-
-    @Override
-    public List<TestResourceEntry> testResources() {
-      return List.of(new TestResourceEntry(OpaTestResource.class));
-    }
-  }
 
   @Test
   void testOpaAllowsRootUser() {

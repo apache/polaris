@@ -39,7 +39,7 @@ import org.junit.jupiter.api.Test;
  * </ul>
  */
 @QuarkusTest
-@TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)
+@TestProfile(OpaTestProfiles.StaticToken.class)
 public class OpaPolicyCatalogHandlerIT extends OpaIntegrationTestBase {
 
   private String catalogName;
