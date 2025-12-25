@@ -39,6 +39,7 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -62,9 +63,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   public static final RealmConfig PRINCIPAL_INCLUDER_REALM_CONFIG =
       new RealmConfigImpl(
           new PolarisConfigurationStore() {
-            @SuppressWarnings("unchecked")
             @Override
-            public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
+            public @Nullable Object getConfigValue(@Nonnull RealmContext ctx, String configName) {
               if (configName.equals(
                   FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key())) {
                 return "true";

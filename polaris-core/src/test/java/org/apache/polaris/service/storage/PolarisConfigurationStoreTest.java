@@ -52,12 +52,11 @@ public class PolarisConfigurationStoreTest {
            * Ad-hoc configuration store implementation that just returns the stringified version of
            * the config's default value
            */
-          @SuppressWarnings("unchecked")
           @Override
-          public <T> @Nullable T getConfiguration(@Nonnull RealmContext ctx, String configName) {
+          public Object getConfigValue(@Nonnull RealmContext ctx, String configName) {
             for (PolarisConfiguration<?> c : configs) {
               if (c.key().equals(configName)) {
-                return (T) String.valueOf(c.defaultValue());
+                return String.valueOf(c.defaultValue());
               }
             }
 
@@ -83,10 +82,9 @@ public class PolarisConfigurationStoreTest {
 
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
-          @SuppressWarnings("unchecked")
           @Override
-          public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
-            return (T) "abc123";
+          public Object getConfigValue(@Nonnull RealmContext ctx, String configName) {
+            return "abc123";
           }
         };
 
@@ -164,10 +162,9 @@ public class PolarisConfigurationStoreTest {
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
           @Override
-          public <T> @Nullable T getConfiguration(
+          public @Nullable Object getConfigValue(
               @Nonnull RealmContext realmContext, String configName) {
-            //noinspection unchecked
-            return (T) Map.of("key2", "config-value2").get(configName);
+            return Map.of("key2", "config-value2").get(configName);
           }
         };
 
