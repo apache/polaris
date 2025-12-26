@@ -254,9 +254,7 @@ class Hints:
             STS_ENDPOINT = (
                 "(Only for S3) The STS endpoint to use when connecting to STS"
             )
-            STS_UNAVAILABLE = (
-                "(Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)"
-            )
+            STS_UNAVAILABLE = "(Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)"
             PATH_STYLE_ACCESS = "(Only for S3) Whether to use path-style-access for S3"
 
             TENANT_ID = "(Required for Azure) A tenant ID to use when connecting to Azure Storage"
@@ -291,9 +289,7 @@ class Hints:
             HADOOP_WAREHOUSE = (
                 "The warehouse to use when federating to a HADOOP catalog"
             )
-            HIVE_WAREHOUSE = (
-                "The warehouse to use when federating to a HIVE catalog"
-            )
+            HIVE_WAREHOUSE = "The warehouse to use when federating to a HIVE catalog"
             ICEBERG_REMOTE_CATALOG_NAME = (
                 "The remote catalog name when federating to an Iceberg REST catalog"
             )
@@ -400,7 +396,9 @@ class Hints:
         POLICY_FILE = "The path to a JSON file containing the policy definition"
         POLICY_TYPE = "The type of the policy, e.g., 'system.data-compaction'"
         POLICY_DESCRIPTION = "An optional description for the policy."
-        TARGET_NAME = "The name of the target entity (e.g., table name, namespace name)."
+        TARGET_NAME = (
+            "The name of the target entity (e.g., table name, namespace name)."
+        )
         PARAMETERS = "Optional key-value pairs for the attachment/detachment, e.g., key=value. Can be specified multiple times."
         DETACH_ALL = "When set to true, the policy will be deleted along with all its attached mappings."
         APPLICABLE = "When set, lists policies applicable to the target entity (considering inheritance) instead of policies defined directly in the target."
@@ -417,5 +415,7 @@ HEADER_ENV = "HEADER"
 DEFAULT_HEADER = "Polaris-Realm"
 DEFAULT_HOSTNAME = "localhost"
 DEFAULT_PORT = 8181
-CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduser("~/.polaris")
+CONFIG_DIR = (os.environ.get("POLARIS_HOME") or "").strip() or os.path.expanduser(
+    "~/.polaris"
+)
 CONFIG_FILE = os.path.join(CONFIG_DIR, ".polaris.json")

@@ -23,9 +23,13 @@ from typing import Dict, Optional, List
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.constants import Subcommands, Arguments
 from apache_polaris.cli.options.option_tree import Argument
-from apache_polaris.sdk.management import PolarisDefaultApi, \
-  CreatePrincipalRoleRequest, PrincipalRole, UpdatePrincipalRoleRequest, \
-  GrantPrincipalRoleRequest
+from apache_polaris.sdk.management import (
+    PolarisDefaultApi,
+    CreatePrincipalRoleRequest,
+    PrincipalRole,
+    UpdatePrincipalRoleRequest,
+    GrantPrincipalRoleRequest,
+)
 
 
 @dataclass
@@ -49,7 +53,7 @@ class PrincipalRolesCommand(Command):
     set_properties: Dict[str, StrictStr]
     remove_properties: List[str]
 
-    def validate(self):
+    def validate(self) -> None:
         if self.principal_roles_subcommand == Subcommands.LIST:
             if self.principal_name and self.catalog_role_name:
                 raise Exception(
