@@ -242,6 +242,48 @@ ingress:
 #        - chart-example2.local
 #      secretName: secret1
 
+# Polaris Gateway settings.
+# These settings generate a Gateway resource for Gateway API-based routing.
+# A Gateway can be shared across multiple HTTPRoutes.
+gateway:
+  # -- Specifies whether a Gateway should be created.
+  enabled: false
+  # -- Annotations to add to the Gateway.
+  annotations: {}
+  # -- The name of the GatewayClass to use.
+  className: ""
+  # -- Gateway listeners configuration.
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      # hostname: "*.example.local"
+      # allowedRoutes:
+      #   namespaces:
+      #     from: Same
+  # -- Optional addresses to request for the Gateway.
+  addresses: []
+  #  - type: IPAddress
+  #    value: 192.168.1.1
+
+# Polaris HTTPRoute settings.
+# These settings generate an HTTPRoute resource for Gateway API-based routing.
+# HTTPRoute and Ingress are mutually exclusive; only one can be enabled at a time.
+httproute:
+  # -- Specifies whether an HTTPRoute should be created.
+  enabled: false
+  # -- Annotations to add to the HTTPRoute.
+  annotations: {}
+  # -- Name of the Gateway resource to attach to.
+  gatewayName: ""
+  # -- Namespace where the Gateway is deployed.
+  gatewayNamespace: default
+  # -- Section name within the gateway to use (optional).
+  sectionName: ""
+  # -- A list of hostnames that the HTTPRoute should match.
+  hosts:
+    - chart-example.local
+
 # -- Configures the resources requests and limits for polaris pods.
 # We usually recommend not to specify default resources and to leave this as a conscious
 # choice for the user. This also increases chances charts run on environments with little
