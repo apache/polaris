@@ -179,6 +179,8 @@ class Arguments:
     ENDPOINT_INTERNAL = "endpoint_internal"
     STS_ENDPOINT = "sts_endpoint"
     STS_UNAVAILABLE = "no_sts"
+    KMS_KEY_CURRENT = "current_kms_key"
+    KMS_KEY_ALLOWED = "allowed_kms_key"
     PATH_STYLE_ACCESS = "path_style_access"
     CATALOG_CONNECTION_TYPE = "catalog_connection_type"
     CATALOG_AUTHENTICATION_TYPE = "catalog_authentication_type"
@@ -258,6 +260,12 @@ class Hints:
                 "(Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)"
             )
             PATH_STYLE_ACCESS = "(Only for S3) Whether to use path-style-access for S3"
+            KMS_KEY_CURRENT = (
+                "(Only for AWS S3) The AWS KMS key ARN to be used for encrypting new S3 data"
+            )
+            KMS_KEY_ALLOWED = (
+                "(Only for AWS S3) AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)"
+            )
 
             TENANT_ID = "(Required for Azure) A tenant ID to use when connecting to Azure Storage"
             MULTI_TENANT_APP_NAME = (
