@@ -373,6 +373,7 @@ ct install --namespace polaris --charts ./helm/polaris
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
 | podSecurityContext.fsGroup | int | `10001` | GID 10001 is compatible with Polaris OSS default images; change this if you are using a different image. |
+| priorityClassName | string | `nil` | Priority class name for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#pod-priority |
 | rateLimiter | object | `{"tokenBucket":{"requestsPerSecond":9999,"type":"default","window":"PT10S"},"type":"no-op"}` | Polaris rate limiter configuration. |
 | rateLimiter.tokenBucket | object | `{"requestsPerSecond":9999,"type":"default","window":"PT10S"}` | The configuration for the default rate limiter, which uses the token bucket algorithm with one bucket per realm. |
 | rateLimiter.tokenBucket.requestsPerSecond | int | `9999` | The maximum number of requests per second allowed for each realm. |
