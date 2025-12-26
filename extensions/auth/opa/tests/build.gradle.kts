@@ -58,6 +58,8 @@ tasks.withType<Test> {
     environment("AWS_REGION", "us-west-2")
   }
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+  val apiVersion = System.getenv("DOCKER_API_VERSION") ?: "1.44"
+  systemProperty("api.version", apiVersion)
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   systemProperty("java.security.manager", "allow")
   maxParallelForks = 1

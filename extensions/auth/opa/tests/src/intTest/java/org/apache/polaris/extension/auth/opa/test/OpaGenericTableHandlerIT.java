@@ -24,11 +24,13 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * OPA authorization coverage for generic table endpoints:
@@ -49,11 +51,13 @@ public class OpaGenericTableHandlerIT extends OpaIntegrationTestBase {
   private String rootToken;
 
   @BeforeEach
-  void setupBaseCatalog() throws Exception {
+  void setupBaseCatalog(@TempDir Path tempDir) throws Exception {
     rootToken = getRootToken();
     catalogName = "opa-gt-" + UUID.randomUUID().toString().replace("-", "");
     namespace = "ns_" + UUID.randomUUID().toString().replace("-", "");
-    baseLocation = Files.createTempDirectory("opa-gt").toUri().toString();
+    Path warehouse = tempDir.resolve("warehouse");
+    Files.createDirectory(warehouse);
+    baseLocation = warehouse.toUri().toString();
     createFileCatalog(rootToken, catalogName, baseLocation, List.of(baseLocation));
     createNamespace(rootToken, catalogName, namespace);
   }
