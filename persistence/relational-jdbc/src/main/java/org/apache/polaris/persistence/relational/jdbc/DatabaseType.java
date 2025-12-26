@@ -23,6 +23,7 @@ import java.util.Locale;
 
 public enum DatabaseType {
   POSTGRES("postgres"),
+  COCKROACHDB("postgres"), // CockroachDB uses PostgreSQL wire protocol and schemas
   H2("h2");
 
   private final String displayName; // Store the user-friendly name
@@ -40,6 +41,7 @@ public enum DatabaseType {
     return switch (displayName.toLowerCase(Locale.ROOT)) {
       case "h2" -> DatabaseType.H2;
       case "postgresql" -> DatabaseType.POSTGRES;
+      case "cockroachdb" -> DatabaseType.COCKROACHDB;
       default -> throw new IllegalStateException("Unsupported DatabaseType: '" + displayName + "'");
     };
   }

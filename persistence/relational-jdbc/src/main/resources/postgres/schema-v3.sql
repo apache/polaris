@@ -134,3 +134,15 @@ CREATE TABLE IF NOT EXISTS events (
     additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
     PRIMARY KEY (event_id)
 );
+
+-- Migration to INT4 for CockroachDB JDBC compatibility
+-- CockroachDB requires explicit INT4 type declarations to correctly map columns to Java's Integer type.
+-- Using generic INTEGER or INT types causes type mapping failures in CockroachDB's JDBC driver.
+-- These ALTER statements ensure compatibility with both PostgreSQL and CockroachDB.
+ALTER TABLE version ALTER COLUMN version_value TYPE INT4;
+ALTER TABLE entities ALTER COLUMN entity_version TYPE INT4;
+ALTER TABLE entities ALTER COLUMN type_code TYPE INT4;
+ALTER TABLE entities ALTER COLUMN sub_type_code TYPE INT4;
+ALTER TABLE entities ALTER COLUMN grant_records_version TYPE INT4;
+ALTER TABLE grant_records ALTER COLUMN privilege_code TYPE INT4;
+ALTER TABLE policy_mapping_record ALTER COLUMN policy_type_code TYPE INT4;
