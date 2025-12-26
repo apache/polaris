@@ -296,8 +296,8 @@ public class DatasourceOperationsTest {
 
   /**
    * Test that when a Connection is provided to executeSelect, it reuses that connection instead of
-   * creating a new one. This is critical for transaction consistency - queries within a
-   * transaction must use the same connection to see uncommitted changes and maintain isolation.
+   * creating a new one. This is critical for transaction consistency - queries within a transaction
+   * must use the same connection to see uncommitted changes and maintain isolation.
    */
   @Test
   void testExecuteSelect_reusesConnection() throws Exception {
@@ -316,9 +316,10 @@ public class DatasourceOperationsTest {
     // Execute: Call executeSelect WITH a connection
     datasourceOperations.executeSelect(query, new ModelEntity(1), mockConnection);
 
-    // CRITICAL VERIFICATION: DataSource.getConnection() should NOT be called
-    // because we're reusing the provided connection
-    verify(mockDataSource, times(0)).getConnection();
+    // CRITICAL VERIFICATION: DataSource.getConnection() should be called ONCE i.e. during INIT
+    // because we're reusing the provided connection, no more calls to get connection should
+    // be called.
+    verify(mockDataSource, times(1)).getConnection();
 
     // Verify the provided connection was used to prepare the statement
     verify(mockConnection, times(1)).prepareStatement(query.sql());

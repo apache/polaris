@@ -473,7 +473,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     try {
       List<PolarisBaseEntity> results =
           connection != null
-              ? datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion), connection)
+              ? datasourceOperations.executeSelect(
+                  query, new ModelEntity(schemaVersion), connection)
               : datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
       if (results.isEmpty()) {
         return null;
