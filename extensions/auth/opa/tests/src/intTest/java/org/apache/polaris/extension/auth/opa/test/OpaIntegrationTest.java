@@ -22,43 +22,12 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.QuarkusTestProfile.TestResourceEntry;
 import io.quarkus.test.junit.TestProfile;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@TestProfile(OpaIntegrationTest.StaticTokenOpaProfile.class)
+@TestProfile(OpaTestProfiles.StaticToken.class)
 public class OpaIntegrationTest extends OpaIntegrationTestBase {
-
-  /**
-   * Test demonstrates OPA integration with bearer token authentication. The OPA container runs with
-   * HTTP for simplicity in CI environments. The OpaPolarisAuthorizer is configured to disable SSL
-   * verification for test purposes.
-   */
-  public static class StaticTokenOpaProfile implements QuarkusTestProfile {
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      Map<String, String> config = new HashMap<>();
-      config.put("polaris.authorization.type", "opa");
-
-      // Configure static token authentication
-      config.put("polaris.authorization.opa.auth.type", "bearer");
-      config.put(
-          "polaris.authorization.opa.auth.bearer.static-token.value",
-          "test-opa-bearer-token-12345");
-
-      return config;
-    }
-
-    @Override
-    public List<TestResourceEntry> testResources() {
-      return List.of(new TestResourceEntry(OpaTestResource.class));
-    }
-  }
 
   @Test
   void testOpaAllowsRootUser() {

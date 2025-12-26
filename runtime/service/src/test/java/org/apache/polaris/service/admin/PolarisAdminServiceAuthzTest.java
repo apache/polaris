@@ -1291,6 +1291,90 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   }
 
   @Test
+  public void testListAssigneePrincipalRolesForCatalogRoleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .listAssigneePrincipalRolesForCatalogRole(CATALOG_NAME, CATALOG_ROLE2),
+        null, // cleanupAction
+        privilege ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        privilege ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testListAssigneePrincipalRolesForCatalogRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS,
+            PolarisPrivilege.CATALOG_ROLE_LIST,
+            PolarisPrivilege.CATALOG_ROLE_READ_PROPERTIES,
+            PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_ROLE_CREATE,
+            PolarisPrivilege.CATALOG_ROLE_DROP,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .listAssigneePrincipalRolesForCatalogRole(CATALOG_NAME, CATALOG_ROLE2),
+        privilege ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        privilege ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testListGrantsForCatalogRoleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2),
+        null, // cleanupAction
+        privilege ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        privilege ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testListGrantsForCatalogRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS,
+            PolarisPrivilege.CATALOG_ROLE_LIST,
+            PolarisPrivilege.CATALOG_ROLE_READ_PROPERTIES,
+            PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_ROLE_CREATE,
+            PolarisPrivilege.CATALOG_ROLE_DROP,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2),
+        privilege ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        privilege ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
   public void testGrantPrivilegeOnRootContainerToPrincipalRoleSufficientPrivileges() {
     doTestSufficientPrivileges(
         List.of(PolarisPrivilege.SERVICE_MANAGE_ACCESS),
