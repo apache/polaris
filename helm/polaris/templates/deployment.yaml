@@ -57,6 +57,9 @@ spec:
       {{- end }}
       {{- end }}
       serviceAccountName: {{ include "polaris.serviceAccountName" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ tpl .Values.priorityClassName  . | quote}}
+      {{- end }}
       {{- if .Values.podSecurityContext }}
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}
