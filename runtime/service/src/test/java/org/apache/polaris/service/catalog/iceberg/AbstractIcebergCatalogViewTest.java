@@ -58,8 +58,10 @@ import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
+import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -254,27 +256,44 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     view.updateProperties().set(key, valOld).commit();
     view.updateProperties().set(key, valNew).commit();
 
-    var beforeRefreshEvent =
-        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.BeforeRefreshViewEvent.class);
-    Assertions.assertThat(beforeRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
+    PolarisEvent beforeRefreshEvent =
+        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);
+    Assertions.assertThat(beforeRefreshEvent.attribute(EventAttributes.VIEW_IDENTIFIER))
+        .hasValue(TestData.TABLE);
 
-    var afterRefreshEvent =
-        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.AfterRefreshViewEvent.class);
-    Assertions.assertThat(afterRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
+    PolarisEvent afterRefreshEvent =
+        testPolarisEventListener.getLatest(PolarisEventType.AFTER_REFRESH_VIEW);
+    Assertions.assertThat(afterRefreshEvent.attribute(EventAttributes.VIEW_IDENTIFIER))
+        .hasValue(TestData.TABLE);
 
-    var beforeCommitEvent =
-        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.BeforeCommitViewEvent.class);
-    Assertions.assertThat(beforeCommitEvent.identifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(beforeCommitEvent.metadataBefore().properties().get(key))
-        .isEqualTo(valOld);
-    Assertions.assertThat(beforeCommitEvent.metadataAfter().properties().get(key))
-        .isEqualTo(valNew);
+    PolarisEvent beforeCommitEvent =
+        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_COMMIT_VIEW);
+    Assertions.assertThat(beforeCommitEvent.attribute(EventAttributes.VIEW_IDENTIFIER))
+        .hasValue(TestData.TABLE);
+    Assertions.assertThat(
+            beforeCommitEvent
+                .attribute(EventAttributes.VIEW_METADATA_BEFORE)
+                .map(m -> m.properties().get(key)))
+        .hasValue(valOld);
+    Assertions.assertThat(
+            beforeCommitEvent
+                .attribute(EventAttributes.VIEW_METADATA_AFTER)
+                .map(m -> m.properties().get(key)))
+        .hasValue(valNew);
 
-    var afterCommitEvent =
-        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.AfterCommitViewEvent.class);
-    Assertions.assertThat(afterCommitEvent.identifier()).isEqualTo(TestData.TABLE);
-    Assertions.assertThat(afterCommitEvent.metadataBefore().properties().get(key))
-        .isEqualTo(valOld);
-    Assertions.assertThat(afterCommitEvent.metadataAfter().properties().get(key)).isEqualTo(valNew);
+    PolarisEvent afterCommitEvent =
+        testPolarisEventListener.getLatest(PolarisEventType.AFTER_COMMIT_VIEW);
+    Assertions.assertThat(afterCommitEvent.attribute(EventAttributes.VIEW_IDENTIFIER))
+        .hasValue(TestData.TABLE);
+    Assertions.assertThat(
+            afterCommitEvent
+                .attribute(EventAttributes.VIEW_METADATA_BEFORE)
+                .map(m -> m.properties().get(key)))
+        .hasValue(valOld);
+    Assertions.assertThat(
+            afterCommitEvent
+                .attribute(EventAttributes.VIEW_METADATA_AFTER)
+                .map(m -> m.properties().get(key)))
+        .hasValue(valNew);
   }
 }
