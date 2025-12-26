@@ -22,17 +22,24 @@ package org.apache.polaris.service.catalog.io;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.service.tracing.RequestIdFilter;
+import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
+import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
+import org.jboss.resteasy.reactive.server.jaxrs.ContainerRequestContextImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,6 +123,11 @@ public class StorageAccessConfigProvider {
                 || storageActions.contains(PolarisStorageActions.ALL)
             ? tableLocations
             : Set.of();
+
+    // Build credential vending context for session tags
+    CredentialVendingContext credentialVendingContext =
+        buildCredentialVendingContext(tableIdentifier, resolvedPath);
+
     StorageAccessConfig accessConfig =
         storageCredentialCache.getOrGenerateSubScopeCreds(
             storageCredentialsVendor,
@@ -124,7 +136,8 @@ public class StorageAccessConfigProvider {
             tableLocations,
             writeLocations,
             polarisPrincipal,
-            refreshCredentialsEndpoint);
+            refreshCredentialsEndpoint,
+            credentialVendingContext);
 
     LOGGER
         .atDebug()
@@ -136,5 +149,57 @@ public class StorageAccessConfigProvider {
       LOGGER.debug("No credentials found for table");
     }
     return accessConfig;
+  }
+
+  /**
+   * Builds a credential vending context from the table identifier and resolved path. This context
+   * is used to populate session tags in cloud provider credentials for audit/correlation purposes.
+   *
+   * @param tableIdentifier the table identifier containing namespace and table name
+   * @param resolvedPath the resolved entity path containing the catalog entity
+   * @return a credential vending context with catalog, namespace, table, and request ID
+   */
+  private CredentialVendingContext buildCredentialVendingContext(
+      TableIdentifier tableIdentifier, PolarisResolvedPathWrapper resolvedPath) {
+    CredentialVendingContext.Builder builder = CredentialVendingContext.builder();
+
+    // Extract catalog name from the first entity in the resolved path
+    List<PolarisEntity> fullPath = resolvedPath.getRawFullPath();
+    if (fullPath != null && !fullPath.isEmpty()) {
+      builder.catalogName(fullPath.get(0).getName());
+    }
+
+    // Extract namespace from table identifier
+    Namespace namespace = tableIdentifier.namespace();
+    if (namespace != null && namespace.length() > 0) {
+      builder.namespace(String.join(".", namespace.levels()));
+    }
+
+    // Extract table name from table identifier
+    builder.tableName(tableIdentifier.name());
+
+    // Extract request ID from the current request context
+    getRequestId().ifPresent(builder::requestId);
+
+    return builder.build();
+  }
+
+  /**
+   * Extracts the request ID from the current request context.
+   *
+   * <p>Note: we must avoid injecting {@link jakarta.ws.rs.container.ContainerRequestContext} here,
+   * because this may cause some tests to fail, e.g. when running with no active request scope.
+   *
+   * @return the request ID if available, empty otherwise
+   */
+  private Optional<String> getRequestId() {
+    // See org.jboss.resteasy.reactive.server.injection.ContextProducers
+    ResteasyReactiveRequestContext context = CurrentRequestManager.get();
+    if (context != null) {
+      ContainerRequestContextImpl request = context.getContainerRequestContext();
+      String requestId = (String) request.getProperty(RequestIdFilter.REQUEST_ID_KEY);
+      return Optional.ofNullable(requestId);
+    }
+    return Optional.empty();
   }
 }

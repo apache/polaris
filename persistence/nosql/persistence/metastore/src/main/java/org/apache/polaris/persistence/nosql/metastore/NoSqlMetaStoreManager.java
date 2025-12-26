@@ -77,6 +77,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.persistence.nosql.metastore.privs.SecurableGranteePrivilegeTuple;
 
 record NoSqlMetaStoreManager(
@@ -776,7 +777,8 @@ record NoSqlMetaStoreManager(
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
 
     checkArgument(
         !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
@@ -807,7 +809,8 @@ record NoSqlMetaStoreManager(
               allowedReadLocations,
               allowedWriteLocations,
               polarisPrincipal,
-              refreshCredentialsEndpoint);
+              refreshCredentialsEndpoint,
+              credentialVendingContext);
       return new ScopedCredentialsResult(creds);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(SUBSCOPE_CREDS_ERROR, ex.getMessage());
