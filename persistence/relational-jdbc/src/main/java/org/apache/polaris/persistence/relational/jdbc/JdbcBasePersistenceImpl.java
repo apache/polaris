@@ -195,7 +195,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                   entity.getCatalogId(),
                   entity.getParentId(),
                   entity.getTypeCode(),
-                  entity.getName());
+                  entity.getName(),
+                  connection);
           // This happens in two scenarios:
           // 1. PRIMARY KEY violated
           // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
@@ -419,6 +420,22 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       long parentId,
       int typeCode,
       @Nonnull String name) {
+    return lookupEntityByName(callCtx, catalogId, parentId, typeCode, name, null);
+  }
+
+  /**
+   * Lookup entity by name, optionally using an existing connection to maintain transaction
+   * consistency.
+   *
+   * @param connection optional connection to reuse; if null, a new connection will be obtained
+   */
+  private PolarisBaseEntity lookupEntityByName(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      int typeCode,
+      @Nonnull String name,
+      @Nullable Connection connection) {
     Map<String, Object> params =
         Map.of(
             "catalog_id",
@@ -431,15 +448,33 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             name,
             "realm_id",
             realmId);
-    return getPolarisBaseEntity(
+    QueryGenerator.PreparedQuery query =
         QueryGenerator.generateSelectQuery(
-            ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+            ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params);
+    return getPolarisBaseEntity(query, connection);
   }
 
   @Nullable
   private PolarisBaseEntity getPolarisBaseEntity(QueryGenerator.PreparedQuery query) {
+    return getPolarisBaseEntity(query, null);
+  }
+
+  /**
+   * Execute entity lookup, optionally using an existing connection to maintain transaction
+   * consistency.
+   *
+   * @param query the prepared query to execute
+   * @param connection optional connection to reuse; if null, a new connection will be obtained
+   * @return the entity if found, null otherwise
+   */
+  @Nullable
+  private PolarisBaseEntity getPolarisBaseEntity(
+      QueryGenerator.PreparedQuery query, @Nullable Connection connection) {
     try {
-      var results = datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
+      List<PolarisBaseEntity> results =
+          connection != null
+              ? datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion), connection)
+              : datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
       if (results.isEmpty()) {
         return null;
       } else if (results.size() > 1) {

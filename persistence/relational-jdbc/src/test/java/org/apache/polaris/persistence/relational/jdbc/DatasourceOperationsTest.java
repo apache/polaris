@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -32,6 +33,7 @@ import static org.mockito.Mockito.when;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -290,5 +292,35 @@ public class DatasourceOperationsTest {
 
     assertThrows(SQLException.class, () -> datasourceOperations.withRetries(mockOperation));
     verify(mockOperation, times(1)).execute();
+  }
+
+  /**
+   * Test that when a Connection is provided to executeSelect, it reuses that connection instead of
+   * creating a new one. This is critical for transaction consistency - queries within a
+   * transaction must use the same connection to see uncommitted changes and maintain isolation.
+   */
+  @Test
+  void testExecuteSelect_reusesConnection() throws Exception {
+    // Setup query
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("SELECT * FROM entities WHERE id = ?", List.of(1L));
+
+    // Setup connection to return a prepared statement
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+
+    // Setup empty result set
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
+    when(mockResultSet.next()).thenReturn(false); // Empty result
+
+    // Execute: Call executeSelect WITH a connection
+    datasourceOperations.executeSelect(query, new ModelEntity(1), mockConnection);
+
+    // CRITICAL VERIFICATION: DataSource.getConnection() should NOT be called
+    // because we're reusing the provided connection
+    verify(mockDataSource, times(0)).getConnection();
+
+    // Verify the provided connection was used to prepare the statement
+    verify(mockConnection, times(1)).prepareStatement(query.sql());
   }
 }

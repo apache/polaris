@@ -143,6 +143,56 @@ public class DatasourceOperations {
   }
 
   /**
+   * Executes SELECT Query using an existing connection (for use within transactions). Returns the
+   * results after applying a transformer.
+   *
+   * @param query : Query to execute
+   * @param converterInstance : An instance of the type being selected, used to convert to a
+   *     business entity like PolarisBaseEntity
+   * @param connection : The connection to use for the query
+   * @return The list of results yielded by the query
+   * @param <T> : Business entity class
+   * @throws SQLException : Exception during the query execution.
+   */
+  public <T> List<T> executeSelect(
+      @Nonnull QueryGenerator.PreparedQuery query,
+      @Nonnull Converter<T> converterInstance,
+      @Nonnull Connection connection)
+      throws SQLException {
+    logQuery(query);
+    return executeSelectWithConnection(query, converterInstance, connection);
+  }
+
+  /**
+   * Helper method to execute a SELECT query with a given connection and collect results.
+   *
+   * @param query : Query to execute
+   * @param converterInstance : Converter to transform ResultSet rows
+   * @param connection : Connection to use (must not be closed by this method)
+   * @return List of converted results
+   * @param <T> : Business entity class
+   * @throws SQLException : Exception during query execution
+   */
+  private <T> List<T> executeSelectWithConnection(
+      @Nonnull QueryGenerator.PreparedQuery query,
+      @Nonnull Converter<T> converterInstance,
+      @Nonnull Connection connection)
+      throws SQLException {
+    try (PreparedStatement statement = connection.prepareStatement(query.sql())) {
+      List<Object> params = query.parameters();
+      for (int i = 0; i < params.size(); i++) {
+        statement.setObject(i + 1, params.get(i));
+      }
+      try (ResultSet resultSet = statement.executeQuery()) {
+        ResultSetIterator<T> iterator = new ResultSetIterator<>(resultSet, converterInstance);
+        ArrayList<T> results = new ArrayList<>();
+        iterator.toStream().forEach(results::add);
+        return results;
+      }
+    }
+  }
+
+  /**
    * Executes SELECT Query and takes a consumer over the results. For callers that want more
    * sophisticated control over how query results are handled.
    *
@@ -186,21 +236,35 @@ public class DatasourceOperations {
     return withRetries(
         () -> {
           logQuery(preparedQuery);
-          try (Connection connection = borrowConnection();
-              PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
-            List<Object> params = preparedQuery.parameters();
-            for (int i = 0; i < params.size(); i++) {
-              statement.setObject(i + 1, params.get(i));
-            }
+          try (Connection connection = borrowConnection()) {
             boolean autoCommit = connection.getAutoCommit();
             connection.setAutoCommit(true);
             try {
-              return statement.executeUpdate();
+              return executeUpdateWithConnection(preparedQuery, connection);
             } finally {
               connection.setAutoCommit(autoCommit);
             }
           }
         });
+  }
+
+  /**
+   * Helper method to execute an UPDATE/INSERT query with a given connection.
+   *
+   * @param preparedQuery : Query to execute
+   * @param connection : Connection to use (must not be closed by this method)
+   * @return Number of rows modified
+   * @throws SQLException : Exception during query execution
+   */
+  private int executeUpdateWithConnection(
+      QueryGenerator.PreparedQuery preparedQuery, Connection connection) throws SQLException {
+    try (PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
+      List<Object> params = preparedQuery.parameters();
+      for (int i = 0; i < params.size(); i++) {
+        statement.setObject(i + 1, params.get(i));
+      }
+      return statement.executeUpdate();
+    }
   }
 
   /**
@@ -291,16 +355,18 @@ public class DatasourceOperations {
         });
   }
 
+  /**
+   * Executes UPDATE/INSERT query using an existing connection (for use within transactions).
+   *
+   * @param connection : Connection to use
+   * @param preparedQuery : Query to execute
+   * @return Number of rows modified
+   * @throws SQLException : Exception during query execution
+   */
   public Integer execute(Connection connection, QueryGenerator.PreparedQuery preparedQuery)
       throws SQLException {
     logQuery(preparedQuery);
-    try (PreparedStatement statement = connection.prepareStatement(preparedQuery.sql())) {
-      List<Object> params = preparedQuery.parameters();
-      for (int i = 0; i < params.size(); i++) {
-        statement.setObject(i + 1, params.get(i));
-      }
-      return statement.executeUpdate();
-    }
+    return executeUpdateWithConnection(preparedQuery, connection);
   }
 
   private boolean isRetryable(SQLException e) {
