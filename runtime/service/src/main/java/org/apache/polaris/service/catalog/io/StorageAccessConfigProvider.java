@@ -164,20 +164,20 @@ public class StorageAccessConfigProvider {
     // Extract catalog name from the first entity in the resolved path
     List<PolarisEntity> fullPath = resolvedPath.getRawFullPath();
     if (fullPath != null && !fullPath.isEmpty()) {
-      builder.catalogName(fullPath.get(0).getName());
+      builder.catalogName(Optional.of(fullPath.get(0).getName()));
     }
 
     // Extract namespace from table identifier
     Namespace namespace = tableIdentifier.namespace();
     if (namespace != null && namespace.length() > 0) {
-      builder.namespace(String.join(".", namespace.levels()));
+      builder.namespace(Optional.of(String.join(".", namespace.levels())));
     }
 
     // Extract table name from table identifier
-    builder.tableName(tableIdentifier.name());
+    builder.tableName(Optional.of(tableIdentifier.name()));
 
     // Extract request ID from the current request context
-    getRequestId().ifPresent(builder::requestId);
+    builder.requestId(getRequestId());
 
     return builder.build();
   }

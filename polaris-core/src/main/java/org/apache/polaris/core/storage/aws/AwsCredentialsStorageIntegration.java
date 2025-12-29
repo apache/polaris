@@ -60,13 +60,6 @@ public class AwsCredentialsStorageIntegration
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
 
-  // AWS STS Session Tag keys for CloudTrail correlation
-  static final String TAG_KEY_CATALOG = "polaris:catalog";
-  static final String TAG_KEY_NAMESPACE = "polaris:namespace";
-  static final String TAG_KEY_TABLE = "polaris:table";
-  static final String TAG_KEY_PRINCIPAL = "polaris:principal";
-  static final String TAG_KEY_REQUEST_ID = "polaris:request-id";
-
   // AWS limit for session tag values
   private static final int MAX_TAG_VALUE_LENGTH = 256;
 
@@ -410,25 +403,29 @@ public class AwsCredentialsStorageIntegration
 
     // Always include all tags with "unknown" placeholder for missing values
     // This ensures consistent tag presence in CloudTrail for correlation
-    tags.add(Tag.builder().key(TAG_KEY_PRINCIPAL).value(truncateTagValue(principalName)).build());
     tags.add(
         Tag.builder()
-            .key(TAG_KEY_CATALOG)
+            .key(CredentialVendingContext.TAG_KEY_PRINCIPAL)
+            .value(truncateTagValue(principalName))
+            .build());
+    tags.add(
+        Tag.builder()
+            .key(CredentialVendingContext.TAG_KEY_CATALOG)
             .value(truncateTagValue(context.catalogName().orElse(null)))
             .build());
     tags.add(
         Tag.builder()
-            .key(TAG_KEY_NAMESPACE)
+            .key(CredentialVendingContext.TAG_KEY_NAMESPACE)
             .value(truncateTagValue(context.namespace().orElse(null)))
             .build());
     tags.add(
         Tag.builder()
-            .key(TAG_KEY_TABLE)
+            .key(CredentialVendingContext.TAG_KEY_TABLE)
             .value(truncateTagValue(context.tableName().orElse(null)))
             .build());
     tags.add(
         Tag.builder()
-            .key(TAG_KEY_REQUEST_ID)
+            .key(CredentialVendingContext.TAG_KEY_REQUEST_ID)
             .value(truncateTagValue(context.requestId().orElse(null)))
             .build());
 

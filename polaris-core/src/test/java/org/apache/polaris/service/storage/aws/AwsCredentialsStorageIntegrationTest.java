@@ -1014,10 +1014,10 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     CredentialVendingContext context =
         CredentialVendingContext.builder()
-            .catalogName("test-catalog")
-            .namespace("db.schema")
-            .tableName("my_table")
-            .requestId("req-12345")
+            .catalogName(Optional.of("test-catalog"))
+            .namespace(Optional.of("db.schema"))
+            .tableName(Optional.of("my_table"))
+            .requestId(Optional.of("req-12345"))
             .build();
 
     new AwsCredentialsStorageIntegration(
@@ -1074,10 +1074,10 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     CredentialVendingContext context =
         CredentialVendingContext.builder()
-            .catalogName("test-catalog")
-            .namespace("db.schema")
-            .tableName("my_table")
-            .requestId("req-12345")
+            .catalogName(Optional.of("test-catalog"))
+            .namespace(Optional.of("db.schema"))
+            .tableName(Optional.of("my_table"))
+            .requestId(Optional.of("req-12345"))
             .build();
 
     // Use EMPTY_REALM_CONFIG which has session tags disabled by default
@@ -1132,7 +1132,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     // Only provide catalog name, no namespace/table/request-id
     CredentialVendingContext context =
-        CredentialVendingContext.builder().catalogName("test-catalog").build();
+        CredentialVendingContext.builder().catalogName(Optional.of("test-catalog")).build();
 
     new AwsCredentialsStorageIntegration(
             AwsStorageConfigurationInfo.builder()
@@ -1198,8 +1198,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     String longNamespace = "db." + "a".repeat(300) + ".schema";
     CredentialVendingContext context =
         CredentialVendingContext.builder()
-            .catalogName("test-catalog")
-            .namespace(longNamespace)
+            .catalogName(Optional.of("test-catalog"))
+            .namespace(Optional.of(longNamespace))
             .build();
 
     new AwsCredentialsStorageIntegration(
@@ -1342,10 +1342,10 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     CredentialVendingContext context =
         CredentialVendingContext.builder()
-            .catalogName("test-catalog")
-            .namespace("test-namespace")
-            .tableName("test-table")
-            .requestId("test-request-id")
+            .catalogName(Optional.of("test-catalog"))
+            .namespace(Optional.of("test-namespace"))
+            .tableName(Optional.of("test-table"))
+            .requestId(Optional.of("test-request-id"))
             .build();
 
     // Verify that the StsException is thrown (not swallowed) when sts:TagSession is denied

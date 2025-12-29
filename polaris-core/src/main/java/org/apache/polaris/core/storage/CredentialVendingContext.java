@@ -41,6 +41,14 @@ import org.apache.polaris.immutables.PolarisImmutable;
 @PolarisImmutable
 public interface CredentialVendingContext {
 
+  // Default session tag keys for cloud provider credentials (e.g., AWS STS session tags).
+  // These appear in cloud audit logs (e.g., CloudTrail) for correlation purposes.
+  String TAG_KEY_CATALOG = "polaris:catalog";
+  String TAG_KEY_NAMESPACE = "polaris:namespace";
+  String TAG_KEY_TABLE = "polaris:table";
+  String TAG_KEY_PRINCIPAL = "polaris:principal";
+  String TAG_KEY_REQUEST_ID = "polaris:request-id";
+
   /** The name of the catalog that is vending credentials. */
   Optional<String> catalogName();
 
@@ -78,19 +86,11 @@ public interface CredentialVendingContext {
   }
 
   interface Builder {
-    Builder catalogName(String catalogName);
-
     Builder catalogName(Optional<String> catalogName);
-
-    Builder namespace(String namespace);
 
     Builder namespace(Optional<String> namespace);
 
-    Builder tableName(String tableName);
-
     Builder tableName(Optional<String> tableName);
-
-    Builder requestId(String requestId);
 
     Builder requestId(Optional<String> requestId);
 

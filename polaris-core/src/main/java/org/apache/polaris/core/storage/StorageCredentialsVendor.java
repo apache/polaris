@@ -61,6 +61,40 @@ public class StorageCredentialsVendor {
    *     supported by the storage type it will be returned to the client in the appropriate
    *     properties. The endpoint may be relative to the base URI and the client is responsible for
    *     handling the relative path
+   * @return an enum map containing the scoped credentials
+   */
+  @Nonnull
+  public ScopedCredentialsResult getSubscopedCredsForEntity(
+      @Nonnull PolarisEntity entity,
+      boolean allowListOperation,
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      Optional<String> refreshCredentialsEndpoint) {
+    return getSubscopedCredsForEntity(
+        entity,
+        allowListOperation,
+        allowedReadLocations,
+        allowedWriteLocations,
+        polarisPrincipal,
+        refreshCredentialsEndpoint,
+        CredentialVendingContext.empty());
+  }
+
+  /**
+   * Get sub-scoped credentials for an entity against the provided allowed read and write locations,
+   * with credential vending context for session tags.
+   *
+   * @param entity the entity
+   * @param allowListOperation whether to allow LIST operation on the allowedReadLocations and
+   *     allowedWriteLocations
+   * @param allowedReadLocations a set of allowed to read locations
+   * @param allowedWriteLocations a set of allowed to write locations
+   * @param polarisPrincipal the principal requesting credentials
+   * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
+   *     supported by the storage type it will be returned to the client in the appropriate
+   *     properties. The endpoint may be relative to the base URI and the client is responsible for
+   *     handling the relative path
    * @param credentialVendingContext context containing metadata for session tags (catalog,
    *     namespace, table, request-id) that can be attached to credentials for audit/correlation
    *     purposes
