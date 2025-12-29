@@ -106,7 +106,7 @@ public class StorageCredentialCache {
    * @param polarisPrincipal the principal requesting credentials
    * @param refreshCredentialsEndpoint optional endpoint for credential refresh
    * @param credentialVendingContext context containing metadata for session tags (catalog,
-   *     namespace, table) for audit/correlation purposes
+   *     namespace, table, roles) for audit/correlation purposes
    * @return the a map of string containing the scoped creds information
    */
   public StorageAccessConfig getOrGenerateSubScopeCreds(
@@ -132,7 +132,7 @@ public class StorageCredentialCache {
 
     // When session tags are enabled, the cache key needs to include:
     // 1. The credential vending context to avoid returning cached credentials with different
-    //    session tags (catalog/namespace/table)
+    //    session tags (catalog/namespace/table/roles)
     // 2. The principal, because the polaris:principal session tag is included in AWS credentials
     //    and we must not serve credentials tagged for principal A to principal B
     // When session tags are disabled, we only include principal if explicitly configured.

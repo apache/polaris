@@ -95,12 +95,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL")
           .description(
-              "If set to true, session tags (catalog, namespace, table, principal) will be included\n"
+              "If set to true, session tags (catalog, namespace, table, principal, roles) will be included\n"
                   + "in AWS STS AssumeRole requests for credential vending. These tags appear in CloudTrail events,\n"
                   + "enabling correlation between catalog operations and S3 data access.\n"
                   + "Requires the IAM role trust policy to allow sts:TagSession action.\n"
                   + "Note that enabling this feature leads to degradation in temporary credential caching as \n"
-                  + "catalog will no longer be able to reuse credentials for different tables/namespaces.")
+                  + "catalog will no longer be able to reuse credentials for different tables/namespaces/roles.")
           .defaultValue(false)
           .buildFeatureConfiguration();
 

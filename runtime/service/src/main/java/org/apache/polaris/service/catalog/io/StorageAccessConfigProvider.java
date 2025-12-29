@@ -153,7 +153,7 @@ public class StorageAccessConfigProvider {
    *
    * @param tableIdentifier the table identifier containing namespace and table name
    * @param resolvedPath the resolved entity path containing the catalog entity
-   * @return a credential vending context with catalog, namespace, and table
+   * @return a credential vending context with catalog, namespace, table, and activated roles
    */
   private CredentialVendingContext buildCredentialVendingContext(
       TableIdentifier tableIdentifier, PolarisResolvedPathWrapper resolvedPath) {
@@ -173,6 +173,15 @@ public class StorageAccessConfigProvider {
 
     // Extract table name from table identifier
     builder.tableName(Optional.of(tableIdentifier.name()));
+
+    // Extract activated roles from the principal
+    Set<String> roles = polarisPrincipal.getRoles();
+    if (roles != null && !roles.isEmpty()) {
+      // Sort roles for consistent ordering and join with comma
+      String rolesString =
+          roles.stream().sorted().collect(java.util.stream.Collectors.joining(","));
+      builder.activatedRoles(Optional.of(rolesString));
+    }
 
     return builder.build();
   }

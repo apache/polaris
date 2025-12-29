@@ -89,7 +89,7 @@ public interface PolarisCredentialVendor {
    *     properties. The endpoint may be relative to the base URI and the client is responsible for
    *     handling the relative path
    * @param credentialVendingContext context containing metadata for session tags (catalog,
-   *     namespace, table) that can be attached to credentials for audit/correlation purposes
+   *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
    * @return an enum map containing the scoped credentials
    */
   @Nonnull
