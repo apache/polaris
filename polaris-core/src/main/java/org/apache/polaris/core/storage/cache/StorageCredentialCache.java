@@ -148,10 +148,15 @@ public class StorageCredentialCache {
             refreshCredentialsEndpoint,
             includePrincipalInCacheKey ? Optional.of(polarisPrincipal) : Optional.empty(),
             includeSessionTags ? Optional.of(credentialVendingContext) : Optional.empty());
-    LOGGER.atDebug().addKeyValue("key", key.toSanitizedLogString()).log("subscopedCredsCache");
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
+          // Use credentialVendingContext from the cache key for correctness.
+          // When session tags are disabled, the key stores Optional.empty(), and we should
+          // use an empty context to ensure consistent behavior regardless of what the
+          // local variable contains.
+          CredentialVendingContext contextFromKey =
+              k.credentialVendingContext().orElse(CredentialVendingContext.empty());
           ScopedCredentialsResult scopedCredentialsResult =
               storageCredentialsVendor.getSubscopedCredsForEntity(
                   polarisEntity,
@@ -160,7 +165,7 @@ public class StorageCredentialCache {
                   allowedWriteLocations,
                   polarisPrincipal,
                   refreshCredentialsEndpoint,
-                  credentialVendingContext);
+                  contextFromKey);
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
             return new StorageCredentialCacheEntry(

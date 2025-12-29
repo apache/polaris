@@ -37,11 +37,9 @@ import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.tracing.RequestIdFilter;
-import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
-import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
-import org.jboss.resteasy.reactive.server.jaxrs.ContainerRequestContextImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * Provides temporary, scoped credentials for accessing table data in object storage (S3, GCS, Azure
@@ -185,21 +183,15 @@ public class StorageAccessConfigProvider {
   }
 
   /**
-   * Extracts the request ID from the current request context.
+   * Extracts the request ID from the current context.
    *
-   * <p>Note: we must avoid injecting {@link jakarta.ws.rs.container.ContainerRequestContext} here,
-   * because this may cause some tests to fail, e.g. when running with no active request scope.
+   * <p>Uses SLF4J MDC to retrieve the request ID, which is set by {@link
+   * org.apache.polaris.service.logging.LoggingMDCFilter}. This approach works both within REST API
+   * request handlers and in async tasks where the MDC context is propagated.
    *
    * @return the request ID if available, empty otherwise
    */
   private Optional<String> getRequestId() {
-    // See org.jboss.resteasy.reactive.server.injection.ContextProducers
-    ResteasyReactiveRequestContext context = CurrentRequestManager.get();
-    if (context != null) {
-      ContainerRequestContextImpl request = context.getContainerRequestContext();
-      String requestId = (String) request.getProperty(RequestIdFilter.REQUEST_ID_KEY);
-      return Optional.ofNullable(requestId);
-    }
-    return Optional.empty();
+    return Optional.ofNullable(MDC.get(RequestIdFilter.REQUEST_ID_KEY));
   }
 }

@@ -91,15 +91,6 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
-  /**
-   * When enabled, includes session tags (catalog, namespace, table, principal, request-id) in AWS
-   * STS AssumeRole requests for credential vending. These tags appear in CloudTrail events,
-   * enabling correlation between catalog operations and S3 access.
-   *
-   * <p>Requires the IAM role trust policy to allow the sts:TagSession action.
-   *
-   * <p>Default: false (to avoid breaking existing deployments without sts:TagSession permission)
-   */
   public static final FeatureConfiguration<Boolean> INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL =
       PolarisConfiguration.<Boolean>builder()
           .key("INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL")
