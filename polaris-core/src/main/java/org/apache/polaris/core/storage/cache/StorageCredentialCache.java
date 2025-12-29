@@ -34,12 +34,12 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.StorageAccessConfig;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,11 +50,15 @@ public class StorageCredentialCache {
 
   private final PolarisDiagnostics diagnostics;
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
+  private final CallContext callContext;
 
   /** Initialize the creds cache */
   public StorageCredentialCache(
-      PolarisDiagnostics diagnostics, StorageCredentialCacheConfig cacheConfig) {
+      PolarisDiagnostics diagnostics,
+      StorageCredentialCacheConfig cacheConfig,
+      CallContext callContext) {
     this.diagnostics = diagnostics;
+    this.callContext = callContext;
     cache =
         Caffeine.newBuilder()
             .maximumSize(cacheConfig.maxEntries())
@@ -96,7 +100,7 @@ public class StorageCredentialCache {
   /**
    * Either get from the cache or generate a new entry for a scoped creds
    *
-   * @param storageCredentialsVendor the credential vendor used to generate a new scoped creds if
+   * @param polarisCredentialVendor the credential vendor used to generate a new scoped creds if
    *     needed
    * @param polarisEntity the polaris entity that is going to scoped creds
    * @param allowListOperation whether allow list action on the provided read and write locations
@@ -105,26 +109,26 @@ public class StorageCredentialCache {
    * @return the a map of string containing the scoped creds information
    */
   public StorageAccessConfig getOrGenerateSubScopeCreds(
-      @Nonnull StorageCredentialsVendor storageCredentialsVendor,
+      @Nonnull PolarisCredentialVendor polarisCredentialVendor,
       @Nonnull PolarisEntity polarisEntity,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
-    RealmContext realmContext = storageCredentialsVendor.getRealmContext();
-    RealmConfig realmConfig = storageCredentialsVendor.getRealmConfig();
     if (!isTypeSupported(polarisEntity.getType())) {
       diagnostics.fail(
           "entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
     }
 
     boolean includePrincipalNameInSubscopedCredential =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
+        callContext
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
 
     StorageCredentialCacheKey key =
         StorageCredentialCacheKey.of(
-            realmContext.getRealmIdentifier(),
+            callContext.getRealmContext().getRealmIdentifier(),
             polarisEntity,
             allowListOperation,
             allowedReadLocations,
@@ -138,15 +142,18 @@ public class StorageCredentialCache {
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
           ScopedCredentialsResult scopedCredentialsResult =
-              storageCredentialsVendor.getSubscopedCredsForEntity(
-                  polarisEntity,
+              polarisCredentialVendor.getSubscopedCredsForEntity(
+                  callContext.getPolarisCallContext(),
+                  polarisEntity.getCatalogId(),
+                  polarisEntity.getId(),
+                  polarisEntity.getType(),
                   allowListOperation,
                   allowedReadLocations,
                   allowedWriteLocations,
                   polarisPrincipal,
                   refreshCredentialsEndpoint);
           if (scopedCredentialsResult.isSuccess()) {
-            long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
+            long maxCacheDurationMs = maxCacheDurationMs(callContext.getRealmConfig());
             return new StorageCredentialCacheEntry(
                 scopedCredentialsResult.getStorageAccessConfig(), maxCacheDurationMs);
           }
