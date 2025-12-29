@@ -32,11 +32,10 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *   <li>{@code catalogName} - The name of the catalog vending credentials
  *   <li>{@code namespace} - The namespace/database being accessed (e.g., "db.schema")
  *   <li>{@code tableName} - The name of the table being accessed
- *   <li>{@code requestId} - A unique request identifier for correlation with catalog audit logs
  * </ul>
  *
  * <p>These values appear in cloud provider audit logs (e.g., AWS CloudTrail), enabling
- * deterministic correlation between catalog operations and data access events.
+ * correlation between catalog operations and data access events.
  */
 @PolarisImmutable
 public interface CredentialVendingContext {
@@ -47,7 +46,6 @@ public interface CredentialVendingContext {
   String TAG_KEY_NAMESPACE = "polaris:namespace";
   String TAG_KEY_TABLE = "polaris:table";
   String TAG_KEY_PRINCIPAL = "polaris:principal";
-  String TAG_KEY_REQUEST_ID = "polaris:request-id";
 
   /** The name of the catalog that is vending credentials. */
   Optional<String> catalogName();
@@ -59,12 +57,6 @@ public interface CredentialVendingContext {
 
   /** The name of the table being accessed. */
   Optional<String> tableName();
-
-  /**
-   * A unique request identifier that can be used to correlate this credential vending operation
-   * with catalog audit logs.
-   */
-  Optional<String> requestId();
 
   /**
    * Creates a new builder for CredentialVendingContext.
@@ -91,8 +83,6 @@ public interface CredentialVendingContext {
     Builder namespace(Optional<String> namespace);
 
     Builder tableName(Optional<String> tableName);
-
-    Builder requestId(Optional<String> requestId);
 
     CredentialVendingContext build();
   }

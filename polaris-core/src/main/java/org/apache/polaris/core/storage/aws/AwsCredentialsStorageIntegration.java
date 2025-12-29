@@ -394,8 +394,7 @@ public class AwsCredentialsStorageIntegration
    * These tags will appear in CloudTrail events for correlation purposes.
    *
    * @param principalName the name of the principal requesting credentials
-   * @param context the credential vending context containing catalog, namespace, table, and
-   *     request-id
+   * @param context the credential vending context containing catalog, namespace, and table
    * @return a list of STS Tags to attach to the AssumeRole request
    */
   private List<Tag> buildSessionTags(String principalName, CredentialVendingContext context) {
@@ -422,11 +421,6 @@ public class AwsCredentialsStorageIntegration
         Tag.builder()
             .key(CredentialVendingContext.TAG_KEY_TABLE)
             .value(truncateTagValue(context.tableName().orElse(null)))
-            .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_REQUEST_ID)
-            .value(truncateTagValue(context.requestId().orElse(null)))
             .build());
 
     return tags;

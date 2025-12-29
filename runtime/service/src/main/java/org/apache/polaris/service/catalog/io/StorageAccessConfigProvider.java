@@ -36,10 +36,8 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.service.tracing.RequestIdFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 /**
  * Provides temporary, scoped credentials for accessing table data in object storage (S3, GCS, Azure
@@ -155,7 +153,7 @@ public class StorageAccessConfigProvider {
    *
    * @param tableIdentifier the table identifier containing namespace and table name
    * @param resolvedPath the resolved entity path containing the catalog entity
-   * @return a credential vending context with catalog, namespace, table, and request ID
+   * @return a credential vending context with catalog, namespace, and table
    */
   private CredentialVendingContext buildCredentialVendingContext(
       TableIdentifier tableIdentifier, PolarisResolvedPathWrapper resolvedPath) {
@@ -176,22 +174,6 @@ public class StorageAccessConfigProvider {
     // Extract table name from table identifier
     builder.tableName(Optional.of(tableIdentifier.name()));
 
-    // Extract request ID from the current request context
-    builder.requestId(getRequestId());
-
     return builder.build();
-  }
-
-  /**
-   * Extracts the request ID from the current context.
-   *
-   * <p>Uses SLF4J MDC to retrieve the request ID, which is set by {@link
-   * org.apache.polaris.service.logging.LoggingMDCFilter}. This approach works both within REST API
-   * request handlers and in async tasks where the MDC context is propagated.
-   *
-   * @return the request ID if available, empty otherwise
-   */
-  private Optional<String> getRequestId() {
-    return Optional.ofNullable(MDC.get(RequestIdFilter.REQUEST_ID_KEY));
   }
 }

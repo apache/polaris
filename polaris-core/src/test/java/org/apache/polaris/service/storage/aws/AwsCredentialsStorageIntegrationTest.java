@@ -1017,7 +1017,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .catalogName(Optional.of("test-catalog"))
             .namespace(Optional.of("db.schema"))
             .tableName(Optional.of("my_table"))
-            .requestId(Optional.of("req-12345"))
             .build();
 
     new AwsCredentialsStorageIntegration(
@@ -1047,17 +1046,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(
             tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
-    Assertions.assertThat(capturedRequest.tags())
-        .anyMatch(tag -> tag.key().equals("polaris:request-id") && tag.value().equals("req-12345"));
 
     // Verify transitive tag keys are set
     Assertions.assertThat(capturedRequest.transitiveTagKeys())
         .containsExactlyInAnyOrder(
-            "polaris:catalog",
-            "polaris:namespace",
-            "polaris:table",
-            "polaris:principal",
-            "polaris:request-id");
+            "polaris:catalog", "polaris:namespace", "polaris:table", "polaris:principal");
   }
 
   @Test
@@ -1077,7 +1070,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .catalogName(Optional.of("test-catalog"))
             .namespace(Optional.of("db.schema"))
             .tableName(Optional.of("my_table"))
-            .requestId(Optional.of("req-12345"))
             .build();
 
     // Use EMPTY_REALM_CONFIG which has session tags disabled by default
@@ -1130,7 +1122,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         ArgumentCaptor.forClass(AssumeRoleRequest.class);
     Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
 
-    // Only provide catalog name, no namespace/table/request-id
+    // Only provide catalog name, no namespace/table
     CredentialVendingContext context =
         CredentialVendingContext.builder().catalogName(Optional.of("test-catalog")).build();
 
@@ -1151,8 +1143,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             context);
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
-    // All 5 tags are always included; missing values use "unknown" placeholder
-    Assertions.assertThat(capturedRequest.tags()).hasSize(5);
+    // All 4 tags are always included; missing values use "unknown" placeholder
+    Assertions.assertThat(capturedRequest.tags()).hasSize(4);
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:catalog") && tag.value().equals("test-catalog"));
     Assertions.assertThat(capturedRequest.tags())
@@ -1163,8 +1155,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .anyMatch(tag -> tag.key().equals("polaris:namespace") && tag.value().equals("unknown"));
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:table") && tag.value().equals("unknown"));
-    Assertions.assertThat(capturedRequest.tags())
-        .anyMatch(tag -> tag.key().equals("polaris:request-id") && tag.value().equals("unknown"));
   }
 
   @Test
@@ -1273,8 +1263,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             CredentialVendingContext.empty());
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
-    // All 5 tags are always included; missing values use "unknown" placeholder
-    Assertions.assertThat(capturedRequest.tags()).hasSize(5);
+    // All 4 tags are always included; missing values use "unknown" placeholder
+    Assertions.assertThat(capturedRequest.tags()).hasSize(4);
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(
             tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
@@ -1285,8 +1275,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .anyMatch(tag -> tag.key().equals("polaris:namespace") && tag.value().equals("unknown"));
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:table") && tag.value().equals("unknown"));
-    Assertions.assertThat(capturedRequest.tags())
-        .anyMatch(tag -> tag.key().equals("polaris:request-id") && tag.value().equals("unknown"));
   }
 
   /**
@@ -1345,7 +1333,6 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .catalogName(Optional.of("test-catalog"))
             .namespace(Optional.of("test-namespace"))
             .tableName(Optional.of("test-table"))
-            .requestId(Optional.of("test-request-id"))
             .build();
 
     // Verify that the StsException is thrown (not swallowed) when sts:TagSession is denied

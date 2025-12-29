@@ -63,8 +63,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    *     properties. The endpoint may be relative to the base URI and the client is responsible for
    *     handling the relative path
    * @param credentialVendingContext context containing metadata for session tags (catalog,
-   *     namespace, table, request-id) that can be attached to credentials for audit/correlation
-   *     purposes
+   *     namespace, table) that can be attached to credentials for audit/correlation purposes
    * @return An enum map including the scoped credentials
    */
   public abstract StorageAccessConfig getSubscopedCreds(
