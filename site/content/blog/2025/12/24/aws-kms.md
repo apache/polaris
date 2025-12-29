@@ -88,7 +88,8 @@ Polaris needs to know all related key ARNs in order to properly form policies fo
 This can be achieved by using the `--allowed-kms-key` CLI option to add zero or more extra KMS key ARNs to the
 catalog's storage configuration.
 
-Note: if the key material is rotated without introducing a new key ARN, no catalog changes are necessary.
+Note: the key material may be automatically rotated by AWS services (if configured) without introducing a new key ARN,
+in that case no catalog changes are necessary.
 
 ## Acknowledgements
 
