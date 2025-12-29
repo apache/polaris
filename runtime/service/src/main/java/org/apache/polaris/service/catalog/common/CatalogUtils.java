@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -77,7 +78,7 @@ public class CatalogUtils {
             restrictions -> restrictions.validate(realmConfig, identifier, locations),
             () -> {
               List<String> allowedStorageTypes =
-                  realmConfig.getConfig("SUPPORTED_CATALOG_STORAGE_TYPES");
+                  realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
               if (allowedStorageTypes != null
                   && !allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
                 List<String> invalidLocations =
