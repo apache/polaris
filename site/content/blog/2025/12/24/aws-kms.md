@@ -83,7 +83,8 @@ Caused by: java.io.IOException: software.amazon.awssdk.services.s3.model.S3Excep
 ## Using Multiple KMS Keys
 
 If the bucket used by the catalog has had multiple different KMS key ARNs associated with it over time,
-Polaris needs to know all related key ARNs in order to properly form policies for accessing old and new data.
+Polaris needs to know all related key ARNs. This is necessary for the catalog server to properly form policies
+associated with vended credentials so that accessing both old and new data is possible.
 
 This can be achieved by using the `--allowed-kms-key` CLI option to add zero or more extra KMS key ARNs to the
 catalog's storage configuration.
