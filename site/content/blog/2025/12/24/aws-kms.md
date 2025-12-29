@@ -57,8 +57,9 @@ For example:
 ```
 
 Once the KMS key is configured in the catalog, Polaris will automatically add appropriate access
-policy entries to vended credentials. Clients (such as Spark) do not need to take any extra actions
-to benefit from KMS-based server-side data encryption and decryption.
+policy entries to vended credentials. Clients do not need to take any extra actions to benefit
+from KMS-based server-side data encryption and decryption. This applies to engines (like Spark)
+and to AWS clients used inside Polaris itself (for reading and writing metadata JSON files).
 
 ## Common Failure Modes
 
