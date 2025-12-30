@@ -64,30 +64,6 @@ public interface StorageCredentialCacheKey {
   @Value.Parameter(order = 9)
   CredentialVendingContext credentialVendingContext();
 
-  /**
-   * Returns a sanitized string representation of this cache key suitable for logging. This excludes
-   * potentially sensitive information like catalog names, namespaces, table names, and request IDs
-   * that may be present in the credential vending context.
-   *
-   * @return a sanitized string representation for logging
-   */
-  default String toSanitizedLogString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("StorageCredentialCacheKey{");
-    sb.append("realmId=").append(realmId());
-    sb.append(", catalogId=").append(catalogId());
-    sb.append(", allowedListAction=").append(allowedListAction());
-    sb.append(", allowedReadLocations=").append(allowedReadLocations().size()).append(" locations");
-    sb.append(", allowedWriteLocations=")
-        .append(allowedWriteLocations().size())
-        .append(" locations");
-    sb.append(", refreshCredentialsEndpoint=").append(refreshCredentialsEndpoint().isPresent());
-    sb.append(", principalName=").append(principalName().isPresent() ? "[REDACTED]" : "empty");
-    sb.append(", credentialVendingContext=[REDACTED]");
-    sb.append("}");
-    return sb.toString();
-  }
-
   static StorageCredentialCacheKey of(
       String realmId,
       PolarisEntity entity,
