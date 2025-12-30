@@ -53,7 +53,7 @@ public interface StorageCredentialCacheKey {
   Optional<String> refreshCredentialsEndpoint();
 
   @Value.Parameter(order = 8)
-  Optional<String> principalName();
+  Optional<PolarisPrincipal> principal();
 
   static StorageCredentialCacheKey of(
       String realmId,
@@ -75,6 +75,6 @@ public interface StorageCredentialCacheKey {
         allowedReadLocations,
         allowedWriteLocations,
         refreshCredentialsEndpoint,
-        polarisPrincipal.map(PolarisPrincipal::getName));
+        polarisPrincipal);
   }
 }

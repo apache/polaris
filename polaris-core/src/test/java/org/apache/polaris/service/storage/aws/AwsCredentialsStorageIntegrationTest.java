@@ -85,8 +85,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                   .build())
           .build();
   public static final String AWS_PARTITION = "aws";
-  public static final PolarisPrincipal POLARIS_PRINCIPAL =
-      PolarisPrincipal.of("test-principal", Map.of(), Set.of());
+  public static final Optional<PolarisPrincipal> POLARIS_PRINCIPAL =
+      Optional.of(PolarisPrincipal.of("test-principal", Map.of(), Set.of()));
 
   @ParameterizedTest
   @ValueSource(strings = {"s3a", "s3"})
@@ -950,7 +950,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(warehouseDir + "/namespace/table"),
             Set.of(warehouseDir + "/namespace/table"),
-            polarisPrincipalWithLongName,
+            Optional.of(polarisPrincipalWithLongName),
             Optional.of("/namespace/table/credentials"));
   }
 

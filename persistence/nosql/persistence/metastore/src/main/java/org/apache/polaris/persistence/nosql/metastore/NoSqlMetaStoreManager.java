@@ -775,7 +775,7 @@ record NoSqlMetaStoreManager(
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      Optional<PolarisPrincipal> polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
 
     checkArgument(

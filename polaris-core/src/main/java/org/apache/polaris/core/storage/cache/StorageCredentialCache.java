@@ -140,11 +140,11 @@ public class StorageCredentialCache {
           ScopedCredentialsResult scopedCredentialsResult =
               storageCredentialsVendor.getSubscopedCredsForEntity(
                   polarisEntity,
-                  allowListOperation,
-                  allowedReadLocations,
-                  allowedWriteLocations,
-                  polarisPrincipal,
-                  refreshCredentialsEndpoint);
+                  k.allowedListAction(),
+                  k.allowedReadLocations(),
+                  k.allowedWriteLocations(),
+                  k.principal(),
+                  k.refreshCredentialsEndpoint());
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
             return new StorageCredentialCacheEntry(

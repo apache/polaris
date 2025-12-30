@@ -184,7 +184,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
+        Optional.of(PolarisPrincipal.of("principal", Map.of(), Set.of())),
         Optional.of(REFRESH_ENDPOINT));
   }
 
@@ -363,7 +363,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         true,
         Set.of("gs://bucket/path"),
         Set.of("gs://bucket/path"),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
+        Optional.of(PolarisPrincipal.of("principal", Map.of(), Set.of())),
         Optional.empty());
 
     Mockito.verify(mockIamClient)

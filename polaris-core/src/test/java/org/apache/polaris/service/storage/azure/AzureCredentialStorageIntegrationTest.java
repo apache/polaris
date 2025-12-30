@@ -357,7 +357,7 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         allowListAction,
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
-        PolarisPrincipal.of("principal", Map.of(), Set.of()),
+        Optional.of(PolarisPrincipal.of("principal", Map.of(), Set.of())),
         Optional.empty());
   }
 

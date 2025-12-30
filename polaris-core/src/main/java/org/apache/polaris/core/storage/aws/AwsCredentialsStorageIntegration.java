@@ -83,7 +83,7 @@ public class AwsCredentialsStorageIntegration
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      Optional<PolarisPrincipal> polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
@@ -96,9 +96,10 @@ public class AwsCredentialsStorageIntegration
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
 
     String roleSessionName =
-        includePrincipalNameInSubscopedCredential
-            ? "polaris-" + polarisPrincipal.getName()
-            : "PolarisAwsCredentialsStorageIntegration";
+        polarisPrincipal
+            .filter(p -> includePrincipalNameInSubscopedCredential)
+            .map(p -> "polaris-" + p.getName())
+            .orElse("PolarisAwsCredentialsStorageIntegration");
     String cappedRoleSessionName =
         roleSessionName.substring(0, Math.min(roleSessionName.length(), 64));
 

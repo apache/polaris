@@ -68,7 +68,7 @@ public class StorageCredentialsVendor {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
-      @Nonnull PolarisPrincipal polarisPrincipal,
+      Optional<PolarisPrincipal> polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint) {
     return polarisCredentialVendor.getSubscopedCredsForEntity(
         callContext.getPolarisCallContext(),
