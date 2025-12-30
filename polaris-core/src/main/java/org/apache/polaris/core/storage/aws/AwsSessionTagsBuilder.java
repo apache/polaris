@@ -61,22 +61,22 @@ public final class AwsSessionTagsBuilder {
     tags.add(
         Tag.builder()
             .key(CredentialVendingContext.TAG_KEY_ROLES)
-            .value(truncateTagValue(context.activatedRoles().orElse(null)))
+            .value(truncateTagValue(context.activatedRoles().orElse(TAG_VALUE_UNKNOWN)))
             .build());
     tags.add(
         Tag.builder()
             .key(CredentialVendingContext.TAG_KEY_CATALOG)
-            .value(truncateTagValue(context.catalogName().orElse(null)))
+            .value(truncateTagValue(context.catalogName().orElse(TAG_VALUE_UNKNOWN)))
             .build());
     tags.add(
         Tag.builder()
             .key(CredentialVendingContext.TAG_KEY_NAMESPACE)
-            .value(truncateTagValue(context.namespace().orElse(null)))
+            .value(truncateTagValue(context.namespace().orElse(TAG_VALUE_UNKNOWN)))
             .build());
     tags.add(
         Tag.builder()
             .key(CredentialVendingContext.TAG_KEY_TABLE)
-            .value(truncateTagValue(context.tableName().orElse(null)))
+            .value(truncateTagValue(context.tableName().orElse(TAG_VALUE_UNKNOWN)))
             .build());
 
     return tags;
