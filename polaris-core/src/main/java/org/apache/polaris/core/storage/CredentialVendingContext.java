@@ -35,8 +35,8 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *   <li>{@code activatedRoles} - The activated principal roles (comma-separated)
  * </ul>
  *
- * <p>These values appear in cloud provider audit logs (e.g., AWS CloudTrail), enabling
- * correlation between catalog operations and data access events.
+ * <p>These values appear in cloud provider audit logs (e.g., AWS CloudTrail), enabling correlation
+ * between catalog operations and data access events.
  */
 @PolarisImmutable
 public interface CredentialVendingContext {

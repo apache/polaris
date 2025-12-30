@@ -19,10 +19,9 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
-
-import jakarta.annotation.Nonnull;
 import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
+import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.List;

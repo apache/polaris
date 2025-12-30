@@ -47,8 +47,7 @@ public final class AwsSessionTagsBuilder {
    * @param context the credential vending context containing catalog, namespace, table, and roles
    * @return a list of STS Tags to attach to the AssumeRole request
    */
-  public static List<Tag> buildSessionTags(
-      String principalName, CredentialVendingContext context) {
+  public static List<Tag> buildSessionTags(String principalName, CredentialVendingContext context) {
     List<Tag> tags = new ArrayList<>();
 
     // Always include all tags with "unknown" placeholder for missing values
@@ -100,4 +99,3 @@ public final class AwsSessionTagsBuilder {
     return value.substring(0, MAX_TAG_VALUE_LENGTH);
   }
 }
-
