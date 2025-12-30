@@ -72,6 +72,8 @@ class Command(ABC):
                 sts_endpoint=options_get(Arguments.STS_ENDPOINT),
                 sts_unavailable=options_get(Arguments.STS_UNAVAILABLE),
                 path_style_access=options_get(Arguments.PATH_STYLE_ACCESS),
+                current_kms_key=options_get(Arguments.KMS_KEY_CURRENT),
+                allowed_kms_keys=options_get(Arguments.KMS_KEY_ALLOWED),
                 catalog_connection_type=options_get(Arguments.CATALOG_CONNECTION_TYPE),
                 catalog_authentication_type=options_get(Arguments.CATALOG_AUTHENTICATION_TYPE),
                 catalog_service_identity_type=options_get(Arguments.CATALOG_SERVICE_IDENTITY_TYPE),

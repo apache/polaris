@@ -77,6 +77,8 @@ class CatalogsCommand(Command):
     sts_endpoint: str
     sts_unavailable: bool
     path_style_access: bool
+    current_kms_key: str
+    allowed_kms_keys: List[str]
     catalog_connection_type: str
     catalog_authentication_type: str
     catalog_service_identity_type: str
@@ -145,6 +147,8 @@ class CatalogsCommand(Command):
                     f" {Argument.to_flag_name(Arguments.USER_ARN)},"
                     f" {Argument.to_flag_name(Arguments.ENDPOINT)},"
                     f" {Argument.to_flag_name(Arguments.ENDPOINT_INTERNAL)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_KEY_CURRENT)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED)},"
                     f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)},"
                     f" {Argument.to_flag_name(Arguments.STS_UNAVAILABLE)}, and"
                     f" {Argument.to_flag_name(Arguments.PATH_STYLE_ACCESS)}"
@@ -179,7 +183,17 @@ class CatalogsCommand(Command):
                 )
 
     def _has_aws_storage_info(self):
-        return self.role_arn or self.external_id or self.user_arn or self.region or self.endpoint or self.endpoint_internal or self.sts_endpoint or self.path_style_access
+        return (self.role_arn
+                or self.external_id
+                or self.user_arn
+                or self.region
+                or self.endpoint
+                or self.endpoint_internal
+                or self.sts_endpoint
+                or self.current_kms_key
+                or self.allowed_kms_keys
+                or self.path_style_access
+                )
 
     def _has_azure_storage_info(self):
         return self.tenant_id or self.multi_tenant_app_name or self.consent_url
@@ -202,6 +216,8 @@ class CatalogsCommand(Command):
                 sts_endpoint=self.sts_endpoint,
                 sts_unavailable=self.sts_unavailable,
                 path_style_access=self.path_style_access,
+                current_kms_key=self.current_kms_key,
+                allowed_kms_keys=self.allowed_kms_keys,
             )
         elif self.storage_type == StorageType.AZURE.value:
             config = AzureStorageConfigInfo(
