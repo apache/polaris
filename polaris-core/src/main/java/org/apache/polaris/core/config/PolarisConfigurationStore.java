@@ -39,11 +39,26 @@ public interface PolarisConfigurationStore {
   /**
    * Retrieve the current value for a configuration key for a given realm. May be null if not set.
    *
+   * <p>This method is meant to be overridden by concrete configuration store implementations. This
+   * method is not meant to be calls by code that needs access to configuration values.
+   * Configuration consumers should call typed methods that take a {@link PolarisConfiguration}
+   * parameter instead.
+   *
    * @param realmContext the realm context
    * @param configName the name of the configuration key to check
    * @return the current value set for the configuration key for the given realm, or null if not set
-   * @param <T> the type of the configuration value
    */
+  default @Nullable Object getConfigValue(@Nonnull RealmContext realmContext, String configName) {
+    return getConfiguration(realmContext, configName);
+  }
+
+  /**
+   * Legacy method for getting current value for a configuration key.
+   *
+   * @deprecated Call / override {@link #getConfigValue(RealmContext, String)} instead.
+   */
+  @Deprecated
+  @SuppressWarnings("DeprecatedIsStillUsed")
   default <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
     return null;
   }
@@ -61,7 +76,8 @@ public interface PolarisConfigurationStore {
   default <T> @Nonnull T getConfiguration(
       @Nonnull RealmContext realmContext, String configName, @Nonnull T defaultValue) {
     Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
-    T configValue = getConfiguration(realmContext, configName);
+    @SuppressWarnings("unchecked")
+    T configValue = (T) getConfigValue(realmContext, configName);
     return configValue != null ? configValue : defaultValue;
   }
 
