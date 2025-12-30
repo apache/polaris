@@ -176,6 +176,21 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throws SQLException {
     ModelEntity modelEntity = ModelEntity.fromEntity(entity, schemaVersion);
     if (originalEntity == null) {
+      // Check if entity already exists before attempting INSERT to avoid constraint violations
+      // that would abort the transaction in PostgreSQL
+      PolarisBaseEntity existingEntity =
+          lookupEntityByName(
+              callCtx,
+              entity.getCatalogId(),
+              entity.getParentId(),
+              entity.getTypeCode(),
+              entity.getName(),
+              connection);
+
+      if (existingEntity != null) {
+        throw new EntityAlreadyExistsException(existingEntity);
+      }
+
       try {
         List<Object> values =
             modelEntity.toMap(datasourceOperations.getDatabaseType()).values().stream().toList();
@@ -188,22 +203,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
                 realmId));
       } catch (SQLException e) {
         if (datasourceOperations.isConstraintViolation(e)) {
-          PolarisBaseEntity existingEntity =
-              lookupEntityByName(
-                  callCtx,
-                  entity.getCatalogId(),
-                  entity.getParentId(),
-                  entity.getTypeCode(),
-                  entity.getName(),
-                  connection);
-          // This happens in two scenarios:
-          // 1. PRIMARY KEY violated
-          // 2. UNIQUE CONSTRAINT on (realm_id, catalog_id, parent_id, type_code, name) violated
-          // With SERIALIZABLE isolation, the conflicting entity may _not_ be visible and
-          // existingEntity can be null, which would cause an NPE in
-          // EntityAlreadyExistsException.message().
-          throw new EntityAlreadyExistsException(
-              existingEntity != null ? existingEntity : entity, e);
+          // Constraint violation despite our check above - this can happen due to race conditions
+          // where another transaction inserted the same entity between our SELECT and INSERT.
+          // We cannot lookup again here because PostgreSQL aborts the transaction after any error.
+          throw new EntityAlreadyExistsException(entity, e);
         }
         throw new RuntimeException(
             String.format("Failed to write entity due to %s", e.getMessage()), e);
