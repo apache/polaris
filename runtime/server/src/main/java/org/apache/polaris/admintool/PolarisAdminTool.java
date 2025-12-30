@@ -15,13 +15,10 @@
  */
 package org.apache.polaris.admintool;
 
-import io.quarkus.picocli.runtime.annotations.TopCommand;
-import java.io.PrintWriter;
 import org.apache.polaris.version.PolarisVersionProvider;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.HelpCommand;
 
-@TopCommand
 @Command(
     name = "polaris-admin-tool.jar",
     mixinStandardHelpOptions = true,
@@ -36,8 +33,8 @@ public class PolarisAdminTool extends BaseMetaStoreCommand {
 
   @Override
   public Integer call() {
-    PrintWriter out = spec.commandLine().getOut();
-    spec.commandLine().usage(out);
+    // When invoked without a subcommand, show usage
+    spec.commandLine().usage(spec.commandLine().getOut());
     return 0;
   }
 }

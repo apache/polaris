@@ -75,6 +75,10 @@ public class ProductionReadinessChecks {
       @Observes Startup event,
       Instance<ProductionReadinessCheck> checks,
       ReadinessConfiguration config) {
+    // Skip production readiness checks in CLI mode - they're only relevant for server deployments
+    if ("cli".equals(System.getProperty("quarkus.profile"))) {
+      return;
+    }
     List<Error> errors = checks.stream().flatMap(check -> check.getErrors().stream()).toList();
     if (!errors.isEmpty()) {
       var utf8 = Charset.defaultCharset().equals(StandardCharsets.UTF_8);

@@ -65,7 +65,7 @@ jobs:
         run: |
           ./gradlew check sourceTarball distTar distZip publishToMavenLocal \
             -x :polaris-runtime-service:test \
-            -x :polaris-admin:test \
+            -x :polaris-server:test \
             -x intTest --continue
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
@@ -154,9 +154,9 @@ jobs:
             **/build/reports/tests/**
 
   # Durations (approximates from GH CI):
-  # - :polaris-admin:test 6m
-  quarkus-admin-tests:
-    name: Quarkus Admin Tests
+  # - :polaris-server:test 6m
+  quarkus-server-tests:
+    name: Quarkus Server Tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -169,21 +169,21 @@ jobs:
           distribution: 'temurin'
       - name: Prepare Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-prepare
-      - name: Run Quarkus admin tests
+      - name: Run Quarkus server tests
         env:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
         run: |
-          ./gradlew :polaris-admin:test --continue
+          ./gradlew :polaris-server:test --continue
       - name: Save partial Gradle build cache
         uses: ./.github/actions/ci-incr-build-cache-save
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          job-name: 'quarkus-admin-tests'
+          job-name: 'quarkus-server-tests'
       - name: Archive test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
         with:
-          name: upload-quarkus-admin-test-artifacts
+          name: upload-quarkus-server-test-artifacts
           path: |
             **/build/test-results/**
             **/build/reports/tests/**
@@ -238,7 +238,7 @@ jobs:
     needs:
       - unit-tests
       - quarkus-tests
-      - quarkus-admin-tests
+      - quarkus-server-tests
       - quarkus-int-tests
       - integration-tests
     steps:

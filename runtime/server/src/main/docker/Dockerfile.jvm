@@ -19,7 +19,7 @@
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.24-2.1767639862
 
 LABEL org.opencontainers.image.source=https://github.com/apache/polaris \
-      org.opencontainers.image.description="Apache Polaris (incubating)" \
+      org.opencontainers.image.description="Apache Polaris (incubating) - Server and Admin Tool" \
       org.opencontainers.image.licenses=Apache-2.0
 
 ENV LANGUAGE='en_US:en' \
@@ -50,3 +50,9 @@ COPY --chown=polaris:polaris distribution/NOTICE /deployments/
 COPY --chown=polaris:polaris distribution/DISCLAIMER /deployments/
 
 EXPOSE 8181 8182
+
+# This image supports both server and CLI admin modes:
+# - Server mode (default): docker run -p 8181:8181 apache/polaris
+# - CLI admin mode: docker run apache/polaris bootstrap --realm test
+# When command-line arguments are provided, PicoCLI commands execute and exit.
+# When no arguments are provided, the HTTP server starts.

@@ -33,7 +33,10 @@ dependencies {
   compileOnly(libs.jakarta.enterprise.cdi.api)
   compileOnly(libs.jakarta.inject.api)
 
+  compileOnly(platform(libs.quarkus.bom)) // For Quarkus dependencies
   implementation(libs.smallrye.common.annotation) // @Identifier
+  compileOnly(libs.smallrye.config.core) // @ConfigMapping
+  compileOnly("io.quarkus:quarkus-arc") // InactiveBeanException
   implementation(libs.postgresql)
 
   compileOnly(project(":polaris-immutables"))

@@ -21,7 +21,7 @@ set -euo pipefail
 
 # Get the directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR/../admin"
+cd "$SCRIPT_DIR/../server"
 
 # Get the Java command
 JAVA_CMD="${JAVA_HOME:+${JAVA_HOME%/}/bin/java}"
