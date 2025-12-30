@@ -119,13 +119,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
     try {
-      persistEntity(
-          callCtx,
-          entity,
-          originalEntity,
-          null,
-          (connection, preparedQuery) -> {
-            return datasourceOperations.executeUpdate(preparedQuery);
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            persistEntity(callCtx, entity, originalEntity, connection);
+            return true;
           });
     } catch (SQLException e) {
       throw new RuntimeException("Error persisting entity", e);
@@ -148,15 +145,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
               // return it.
               PolarisBaseEntity entityFound =
                   lookupEntity(
-                      callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
+                      callCtx,
+                      entity.getCatalogId(),
+                      entity.getId(),
+                      entity.getTypeCode(),
+                      connection);
               if (entityFound != null && originalEntity == null) {
                 // probably the client retried, simply return it
                 // TODO: Check correctness of returning entityFound vs entity here. It may have
                 // already been updated after the creation.
                 continue;
               }
-              persistEntity(
-                  callCtx, entity, originalEntity, connection, datasourceOperations::execute);
+              persistEntity(callCtx, entity, originalEntity, connection);
             }
             return true;
           });
@@ -172,15 +172,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
       PolarisBaseEntity originalEntity,
-      Connection connection,
-      QueryAction queryAction)
+      @Nonnull Connection connection)
       throws SQLException {
     ModelEntity modelEntity = ModelEntity.fromEntity(entity, schemaVersion);
     if (originalEntity == null) {
       try {
         List<Object> values =
             modelEntity.toMap(datasourceOperations.getDatabaseType()).values().stream().toList();
-        queryAction.apply(
+        datasourceOperations.execute(
             connection,
             QueryGenerator.generateInsertQuery(
                 ModelEntity.getAllColumnNames(schemaVersion),
@@ -224,7 +223,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         List<Object> values =
             modelEntity.toMap(datasourceOperations.getDatabaseType()).values().stream().toList();
         int rowsUpdated =
-            queryAction.apply(
+            datasourceOperations.execute(
                 connection,
                 QueryGenerator.generateUpdateQuery(
                     ModelEntity.getAllColumnNames(schemaVersion),
@@ -406,11 +405,30 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   @Override
   public PolarisBaseEntity lookupEntity(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
+    PreparedQuery query = buildLookupEntityQuery(catalogId, entityId, typeCode);
+    return getPolarisBaseEntity(query);
+  }
+
+  /**
+   * Lookup entity by ID using an existing connection for transaction consistency.
+   *
+   * @param connection connection to use for the query (non-null)
+   */
+  private PolarisBaseEntity lookupEntity(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      int typeCode,
+      @Nonnull Connection connection) {
+    PreparedQuery query = buildLookupEntityQuery(catalogId, entityId, typeCode);
+    return getPolarisBaseEntity(query, connection);
+  }
+
+  private PreparedQuery buildLookupEntityQuery(long catalogId, long entityId, int typeCode) {
     Map<String, Object> params =
         Map.of("catalog_id", catalogId, "id", entityId, "type_code", typeCode, "realm_id", realmId);
-    return getPolarisBaseEntity(
-        QueryGenerator.generateSelectQuery(
-            ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params));
+    return QueryGenerator.generateSelectQuery(
+        ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params);
   }
 
   @Override
@@ -420,14 +438,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       long parentId,
       int typeCode,
       @Nonnull String name) {
-    return lookupEntityByName(callCtx, catalogId, parentId, typeCode, name, null);
+    PreparedQuery query = buildLookupEntityByNameQuery(catalogId, parentId, typeCode, name);
+    return getPolarisBaseEntity(query);
   }
 
   /**
-   * Lookup entity by name, optionally using an existing connection to maintain transaction
-   * consistency.
+   * Lookup entity by name using an existing connection for transaction consistency.
    *
-   * @param connection optional connection to reuse; if null, a new connection will be obtained
+   * @param connection connection to use for the query (non-null)
    */
   private PolarisBaseEntity lookupEntityByName(
       @Nonnull PolarisCallContext callCtx,
@@ -435,7 +453,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       long parentId,
       int typeCode,
       @Nonnull String name,
-      @Nullable Connection connection) {
+      @Nonnull Connection connection) {
+    PreparedQuery query = buildLookupEntityByNameQuery(catalogId, parentId, typeCode, name);
+    return getPolarisBaseEntity(query, connection);
+  }
+
+  private PreparedQuery buildLookupEntityByNameQuery(
+      long catalogId, long parentId, int typeCode, String name) {
     Map<String, Object> params =
         Map.of(
             "catalog_id",
@@ -448,47 +472,60 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
             name,
             "realm_id",
             realmId);
-    QueryGenerator.PreparedQuery query =
-        QueryGenerator.generateSelectQuery(
-            ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params);
-    return getPolarisBaseEntity(query, connection);
+    return QueryGenerator.generateSelectQuery(
+        ModelEntity.getAllColumnNames(schemaVersion), ModelEntity.TABLE_NAME, params);
   }
 
   @Nullable
   private PolarisBaseEntity getPolarisBaseEntity(QueryGenerator.PreparedQuery query) {
-    return getPolarisBaseEntity(query, null);
+    try {
+      var results = datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
+      return extractSingleEntity(results);
+    } catch (SQLException e) {
+      throw new RuntimeException(
+          String.format("Failed to retrieve polaris entity due to %s", e.getMessage()), e);
+    }
   }
 
   /**
-   * Execute entity lookup, optionally using an existing connection to maintain transaction
-   * consistency.
+   * Execute entity lookup using an existing connection for transaction consistency.
    *
    * @param query the prepared query to execute
-   * @param connection optional connection to reuse; if null, a new connection will be obtained
+   * @param connection connection to use for the query (non-null)
    * @return the entity if found, null otherwise
    */
   @Nullable
   private PolarisBaseEntity getPolarisBaseEntity(
-      QueryGenerator.PreparedQuery query, @Nullable Connection connection) {
+      QueryGenerator.PreparedQuery query, @Nonnull Connection connection) {
     try {
-      List<PolarisBaseEntity> results =
-          connection != null
-              ? datasourceOperations.executeSelect(
-                  query, new ModelEntity(schemaVersion), connection)
-              : datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion));
-      if (results.isEmpty()) {
-        return null;
-      } else if (results.size() > 1) {
-        throw new IllegalStateException(
-            String.format(
-                "More than one(%s) entities were found for a given type code : %s",
-                results.size(), results.getFirst().getTypeCode()));
-      } else {
-        return results.getFirst();
-      }
+      var results =
+          datasourceOperations.executeSelect(query, new ModelEntity(schemaVersion), connection);
+      return extractSingleEntity(results);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to retrieve polaris entity due to %s", e.getMessage()), e);
+    }
+  }
+
+  /**
+   * Extract a single entity from query results, validating that exactly zero or one entity is
+   * returned.
+   *
+   * @param results the list of entities returned from the query
+   * @return the single entity if found, null if no results
+   * @throws IllegalStateException if more than one entity is found
+   */
+  @Nullable
+  private PolarisBaseEntity extractSingleEntity(List<PolarisBaseEntity> results) {
+    if (results.isEmpty()) {
+      return null;
+    } else if (results.size() > 1) {
+      throw new IllegalStateException(
+          String.format(
+              "More than one(%s) entities were found for a given type code : %s",
+              results.size(), results.getFirst().getTypeCode()));
+    } else {
+      return results.getFirst();
     }
   }
 
@@ -1086,7 +1123,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisPolicyMappingRecord record,
       @Nonnull PreparedQuery insertQuery,
-      Connection connection)
+      @Nonnull Connection connection)
       throws SQLException {
     List<PolarisPolicyMappingRecord> existingRecords =
         loadPoliciesOnTargetByType(
@@ -1307,10 +1344,5 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     PolarisStorageConfigurationInfo storageConfig =
         BaseMetaStoreManager.extractStorageConfiguration(diagnostics, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
-  }
-
-  @FunctionalInterface
-  private interface QueryAction {
-    Integer apply(Connection connection, QueryGenerator.PreparedQuery query) throws SQLException;
   }
 }
