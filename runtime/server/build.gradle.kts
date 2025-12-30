@@ -40,15 +40,35 @@ val distributionElements by
 dependencies {
   implementation(project(":polaris-runtime-service"))
 
+  // Dependencies from merged polaris-admin module
+  implementation(project(":polaris-core"))
+  implementation(project(":polaris-version"))
+  implementation(project(":polaris-api-management-service"))
+  implementation(project(":polaris-api-iceberg-service"))
+  implementation("io.quarkus:quarkus-picocli") // CLI support
+  implementation("io.quarkus:quarkus-jdbc-postgresql")
+
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
-  runtimeOnly("io.quarkus:quarkus-jdbc-postgresql")
   runtimeOnly(project(":polaris-extensions-federation-hadoop"))
   runtimeOnly(project(":polaris-extensions-auth-opa"))
 
   if ((project.findProperty("NonRESTCatalogs") as String?)?.contains("HIVE") == true) {
     runtimeOnly(project(":polaris-extensions-federation-hive"))
   }
+
+  // Test dependencies from merged polaris-admin module
+  testImplementation(project(":polaris-runtime-test-common"))
+  testFixturesApi(project(":polaris-core"))
+  testFixturesApi(enforcedPlatform(libs.quarkus.bom))
+  testFixturesApi("io.quarkus:quarkus-junit5")
+  testFixturesApi(project(":polaris-container-spec-helper"))
+  testFixturesApi(platform(libs.testcontainers.bom))
+  testFixturesApi("org.testcontainers:testcontainers")
+  testFixturesApi("org.testcontainers:testcontainers-postgresql")
+  testRuntimeOnly("org.postgresql:postgresql")
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))

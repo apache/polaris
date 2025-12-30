@@ -89,8 +89,6 @@ dependencies {
 
     api(project(":polaris-extensions-auth-opa"))
 
-    api(project(":polaris-admin"))
-    api(project(":polaris-runtime-common"))
     api(project(":polaris-runtime-test-common"))
     api(project(":polaris-runtime-defaults"))
     api(project(":polaris-server"))

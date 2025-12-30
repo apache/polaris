@@ -20,7 +20,9 @@ package org.apache.polaris.admintool.config;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
@@ -33,6 +35,15 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
+/**
+ * CDI producer for admin tool mode. These beans provide minimal implementations for CLI operations
+ * and take precedence over service beans when running admin commands.
+ *
+ * <p>Note: This class uses @Alternative with @Priority to override ServiceProducers beans that
+ * would conflict (Clock, PolarisDiagnostics, MetaStoreManagerFactory).
+ */
+@Alternative
+@Priority(100) // Higher priority than default to override ServiceProducers
 public class AdminToolProducers {
 
   @Produces
