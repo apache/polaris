@@ -274,7 +274,7 @@ public class StorageCredentialCacheTest {
             Set.of("s3://bucket/path"),
             Optional.empty(),
             Optional.of(polarisPrincipal),
-            Optional.empty());
+            CredentialVendingContext.empty());
 
     // the entry will be evicted immediately because the token is expired
     storageCredentialCache.getOrGenerateSubScopeCreds(

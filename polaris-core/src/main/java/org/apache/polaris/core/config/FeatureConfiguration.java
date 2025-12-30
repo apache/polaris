@@ -99,7 +99,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "in AWS STS AssumeRole requests for credential vending. These tags appear in CloudTrail events,\n"
                   + "enabling correlation between catalog operations and S3 data access.\n"
                   + "Requires the IAM role trust policy to allow sts:TagSession action.\n"
-                  + "Note that enabling this feature leads to degradation in temporary credential caching as \n"
+                  + "Note that enabling this feature may lead to degradation in temporary credential caching as \n"
                   + "catalog will no longer be able to reuse credentials for different tables/namespaces/roles.")
           .defaultValue(false)
           .buildFeatureConfiguration();

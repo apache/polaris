@@ -138,6 +138,9 @@ public class StorageCredentialCache {
     // When session tags are disabled, we only include principal if explicitly configured.
     boolean includePrincipalInCacheKey =
         includePrincipalNameInSubscopedCredential || includeSessionTags;
+    // When session tags are disabled, use empty context to ensure consistent cache key behavior
+    CredentialVendingContext contextForCacheKey =
+        includeSessionTags ? credentialVendingContext : CredentialVendingContext.empty();
     StorageCredentialCacheKey key =
         StorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
@@ -147,16 +150,12 @@ public class StorageCredentialCache {
             allowedWriteLocations,
             refreshCredentialsEndpoint,
             includePrincipalInCacheKey ? Optional.of(polarisPrincipal) : Optional.empty(),
-            includeSessionTags ? Optional.of(credentialVendingContext) : Optional.empty());
+            contextForCacheKey);
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
           // Use credentialVendingContext from the cache key for correctness.
-          // When session tags are disabled, the key stores Optional.empty(), and we should
-          // use an empty context to ensure consistent behavior regardless of what the
-          // local variable contains.
-          CredentialVendingContext contextFromKey =
-              k.credentialVendingContext().orElse(CredentialVendingContext.empty());
+          // This ensures we use the same context that was used for cache key comparison.
           ScopedCredentialsResult scopedCredentialsResult =
               storageCredentialsVendor.getSubscopedCredsForEntity(
                   polarisEntity,
@@ -165,7 +164,7 @@ public class StorageCredentialCache {
                   allowedWriteLocations,
                   polarisPrincipal,
                   refreshCredentialsEndpoint,
-                  contextFromKey);
+                  k.credentialVendingContext());
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
             return new StorageCredentialCacheEntry(

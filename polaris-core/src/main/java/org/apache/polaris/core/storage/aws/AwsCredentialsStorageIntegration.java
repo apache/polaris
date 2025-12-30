@@ -21,8 +21,9 @@ package org.apache.polaris.core.storage.aws;
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import jakarta.annotation.Nonnull;
+import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
+
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,9 +60,6 @@ public class AwsCredentialsStorageIntegration
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AwsCredentialsStorageIntegration.class);
-
-  // AWS limit for session tag values
-  private static final int MAX_TAG_VALUE_LENGTH = 256;
 
   public AwsCredentialsStorageIntegration(
       AwsStorageConfigurationInfo config, StsClient fixedClient) {
@@ -387,68 +385,5 @@ public class AwsCredentialsStorageIntegration
       path = path.substring(1);
     }
     return path;
-  }
-
-  /**
-   * Builds a list of AWS STS session tags from the credential vending context and principal name.
-   * These tags will appear in CloudTrail events for correlation purposes.
-   *
-   * @param principalName the name of the principal requesting credentials
-   * @param context the credential vending context containing catalog, namespace, table, and roles
-   * @return a list of STS Tags to attach to the AssumeRole request
-   */
-  private List<Tag> buildSessionTags(String principalName, CredentialVendingContext context) {
-    List<Tag> tags = new ArrayList<>();
-
-    // Always include all tags with "unknown" placeholder for missing values
-    // This ensures consistent tag presence in CloudTrail for correlation
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_PRINCIPAL)
-            .value(truncateTagValue(principalName))
-            .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_CATALOG)
-            .value(truncateTagValue(context.catalogName().orElse(null)))
-            .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_NAMESPACE)
-            .value(truncateTagValue(context.namespace().orElse(null)))
-            .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_TABLE)
-            .value(truncateTagValue(context.tableName().orElse(null)))
-            .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_ROLES)
-            .value(truncateTagValue(context.activatedRoles().orElse(null)))
-            .build());
-
-    return tags;
-  }
-
-  /** Placeholder value used when a tag value is null or empty. */
-  static final String TAG_VALUE_UNKNOWN = "unknown";
-
-  /**
-   * Truncates a tag value to fit within AWS STS limits. AWS limits session tag values to 256
-   * characters. Returns "unknown" placeholder for null or empty values to ensure consistent tag
-   * presence in CloudTrail.
-   *
-   * @param value the value to potentially truncate
-   * @return the truncated value, or "unknown" if value is null or empty
-   */
-  static String truncateTagValue(String value) {
-    if (value == null || value.isEmpty()) {
-      return TAG_VALUE_UNKNOWN;
-    }
-    if (value.length() <= MAX_TAG_VALUE_LENGTH) {
-      return value;
-    }
-    return value.substring(0, MAX_TAG_VALUE_LENGTH);
   }
 }

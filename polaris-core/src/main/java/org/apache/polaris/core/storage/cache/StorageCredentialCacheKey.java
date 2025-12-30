@@ -57,12 +57,12 @@ public interface StorageCredentialCacheKey {
   Optional<String> principalName();
 
   /**
-   * When session tags are enabled, the credential vending context is included in the cache key to
-   * ensure that credentials with different session tags are not confused. This is optional and only
-   * included when the session tags feature is enabled.
+   * The credential vending context for session tags. When session tags are enabled, this contains
+   * the catalog, namespace, table, and roles information. When session tags are disabled, this
+   * should be {@link CredentialVendingContext#empty()} to ensure consistent cache key behavior.
    */
   @Value.Parameter(order = 9)
-  Optional<CredentialVendingContext> credentialVendingContext();
+  CredentialVendingContext credentialVendingContext();
 
   /**
    * Returns a sanitized string representation of this cache key suitable for logging. This excludes
@@ -83,8 +83,7 @@ public interface StorageCredentialCacheKey {
         .append(" locations");
     sb.append(", refreshCredentialsEndpoint=").append(refreshCredentialsEndpoint().isPresent());
     sb.append(", principalName=").append(principalName().isPresent() ? "[REDACTED]" : "empty");
-    sb.append(", credentialVendingContext=")
-        .append(credentialVendingContext().isPresent() ? "[REDACTED]" : "empty");
+    sb.append(", credentialVendingContext=[REDACTED]");
     sb.append("}");
     return sb.toString();
   }
@@ -97,7 +96,7 @@ public interface StorageCredentialCacheKey {
       Set<String> allowedWriteLocations,
       Optional<String> refreshCredentialsEndpoint,
       Optional<PolarisPrincipal> polarisPrincipal,
-      Optional<CredentialVendingContext> credentialVendingContext) {
+      CredentialVendingContext credentialVendingContext) {
     String storageConfigSerializedStr =
         entity
             .getInternalPropertiesAsMap()

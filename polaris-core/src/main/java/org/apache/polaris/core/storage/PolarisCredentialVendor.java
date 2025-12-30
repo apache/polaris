@@ -46,7 +46,11 @@ public interface PolarisCredentialVendor {
    *     properties. The endpoint may be relative to the base URI and the client is responsible for
    *     handling the relative path
    * @return an enum map containing the scoped credentials
+   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisCallContext, long, long,
+   *     PolarisEntityType, boolean, Set, Set, PolarisPrincipal, Optional, CredentialVendingContext)}
+   *     instead. This method will be removed in a future release.
    */
+  @Deprecated(forRemoval = true)
   @Nonnull
   default ScopedCredentialsResult getSubscopedCredsForEntity(
       @Nonnull PolarisCallContext callCtx,

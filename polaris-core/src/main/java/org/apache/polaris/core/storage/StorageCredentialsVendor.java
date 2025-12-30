@@ -62,7 +62,11 @@ public class StorageCredentialsVendor {
    *     properties. The endpoint may be relative to the base URI and the client is responsible for
    *     handling the relative path
    * @return an enum map containing the scoped credentials
+   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisEntity, boolean, Set, Set,
+   *     PolarisPrincipal, Optional, CredentialVendingContext)} instead. This method will be removed
+   *     in a future release.
    */
+  @Deprecated(forRemoval = true)
   @Nonnull
   public ScopedCredentialsResult getSubscopedCredsForEntity(
       @Nonnull PolarisEntity entity,
