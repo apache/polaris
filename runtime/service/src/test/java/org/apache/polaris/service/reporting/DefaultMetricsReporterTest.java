@@ -30,6 +30,7 @@ public class DefaultMetricsReporterTest {
 
   @Test
   void testLogging() {
+    @SuppressWarnings("unchecked")
     TriConsumer<String, TableIdentifier, MetricsReport> mockConsumer = mock(TriConsumer.class);
     DefaultMetricsReporter reporter = new DefaultMetricsReporter(mockConsumer);
     String warehouse = "testWarehouse";
