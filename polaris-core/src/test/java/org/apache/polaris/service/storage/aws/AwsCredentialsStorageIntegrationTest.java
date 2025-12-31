@@ -1014,16 +1014,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         ArgumentCaptor.forClass(AssumeRoleRequest.class);
     Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
 
+    // Roles are included in context (not extracted from principal) to be part of cache key
     CredentialVendingContext context =
         CredentialVendingContext.builder()
             .catalogName(Optional.of("test-catalog"))
             .namespace(Optional.of("db.schema"))
             .tableName(Optional.of("my_table"))
+            .activatedRoles(Optional.of("admin,reader"))
             .build();
-
-    // Create a principal with roles for this test
-    PolarisPrincipal principalWithRoles =
-        PolarisPrincipal.of("test-principal", Map.of(), Set.of("admin", "reader"));
 
     new AwsCredentialsStorageIntegration(
             AwsStorageConfigurationInfo.builder()
@@ -1037,7 +1035,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
-            principalWithRoles,
+            POLARIS_PRINCIPAL,
             Optional.empty(),
             context);
 

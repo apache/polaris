@@ -32,10 +32,8 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *   <li>{@code catalogName} - The name of the catalog vending credentials
  *   <li>{@code namespace} - The namespace/database being accessed (e.g., "db.schema")
  *   <li>{@code tableName} - The name of the table being accessed
+ *   <li>{@code activatedRoles} - Comma-separated list of activated principal roles
  * </ul>
- *
- * <p>Principal information (name and activated roles) is obtained directly from {@link
- * org.apache.polaris.core.auth.PolarisPrincipal} rather than being duplicated in this context.
  *
  * <p>These values appear in cloud provider audit logs (e.g., AWS CloudTrail), enabling correlation
  * between catalog operations and data access events.
@@ -63,6 +61,13 @@ public interface CredentialVendingContext {
   Optional<String> tableName();
 
   /**
+   * The activated roles for the principal, represented as a comma-separated sorted string. This is
+   * included in the context (rather than extracted from PolarisPrincipal) to ensure it is part of
+   * the cache key when session tags are enabled.
+   */
+  Optional<String> activatedRoles();
+
+  /**
    * Creates a new builder for CredentialVendingContext.
    *
    * @return a new builder instance
@@ -87,6 +92,8 @@ public interface CredentialVendingContext {
     Builder namespace(Optional<String> namespace);
 
     Builder tableName(Optional<String> tableName);
+
+    Builder activatedRoles(Optional<String> activatedRoles);
 
     CredentialVendingContext build();
   }

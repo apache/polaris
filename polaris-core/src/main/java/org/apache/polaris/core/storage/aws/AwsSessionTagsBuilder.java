@@ -20,9 +20,6 @@ package org.apache.polaris.core.storage.aws;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.CredentialVendingContext;
 import software.amazon.awssdk.services.sts.model.Tag;
 
@@ -43,24 +40,15 @@ public final class AwsSessionTagsBuilder {
   }
 
   /**
-   * Builds a list of AWS STS session tags from the principal and credential vending context. These
-   * tags will appear in CloudTrail events for correlation purposes.
+   * Builds a list of AWS STS session tags from the principal name and credential vending context.
+   * These tags will appear in CloudTrail events for correlation purposes.
    *
-   * @param principal the principal requesting credentials (provides name and activated roles)
-   * @param context the credential vending context containing catalog, namespace, and table
+   * @param principalName the name of the principal requesting credentials
+   * @param context the credential vending context containing catalog, namespace, table, and roles
    * @return a list of STS Tags to attach to the AssumeRole request
    */
-  public static List<Tag> buildSessionTags(
-      PolarisPrincipal principal, CredentialVendingContext context) {
+  public static List<Tag> buildSessionTags(String principalName, CredentialVendingContext context) {
     List<Tag> tags = new ArrayList<>();
-
-    // Extract principal name and roles
-    String principalName = principal.getName();
-    Set<String> roles = principal.getRoles();
-    String rolesString =
-        (roles != null && !roles.isEmpty())
-            ? roles.stream().sorted().collect(Collectors.joining(","))
-            : TAG_VALUE_UNKNOWN;
 
     // Always include all tags with "unknown" placeholder for missing values
     // This ensures consistent tag presence in CloudTrail for correlation
@@ -72,7 +60,7 @@ public final class AwsSessionTagsBuilder {
     tags.add(
         Tag.builder()
             .key(CredentialVendingContext.TAG_KEY_ROLES)
-            .value(truncateTagValue(rolesString))
+            .value(truncateTagValue(context.activatedRoles().orElse(TAG_VALUE_UNKNOWN)))
             .build());
     tags.add(
         Tag.builder()

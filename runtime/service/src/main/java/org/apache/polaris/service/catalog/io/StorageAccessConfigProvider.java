@@ -25,6 +25,7 @@ import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -151,12 +152,14 @@ public class StorageAccessConfigProvider {
    * Builds a credential vending context from the table identifier and resolved path. This context
    * is used to populate session tags in cloud provider credentials for audit/correlation purposes.
    *
-   * <p>Note: Principal information (name and activated roles) is obtained directly from {@link
-   * PolarisPrincipal} during session tag generation, not from this context.
+   * <p>The activated roles are included in this context (rather than extracted from
+   * PolarisPrincipal during session tag generation) to ensure they are part of the cache key when
+   * session tags are enabled. This prevents false positive cache hits when a principal's roles
+   * change.
    *
    * @param tableIdentifier the table identifier containing namespace and table name
    * @param resolvedPath the resolved entity path containing the catalog entity
-   * @return a credential vending context with catalog, namespace, and table
+   * @return a credential vending context with catalog, namespace, table, and activated roles
    */
   private CredentialVendingContext buildCredentialVendingContext(
       TableIdentifier tableIdentifier, PolarisResolvedPathWrapper resolvedPath) {
@@ -176,6 +179,13 @@ public class StorageAccessConfigProvider {
 
     // Extract table name from table identifier
     builder.tableName(Optional.of(tableIdentifier.name()));
+
+    // Extract activated roles from principal - included in context to be part of cache key
+    Set<String> roles = polarisPrincipal.getRoles();
+    if (roles != null && !roles.isEmpty()) {
+      String rolesString = roles.stream().sorted().collect(Collectors.joining(","));
+      builder.activatedRoles(Optional.of(rolesString));
+    }
 
     return builder.build();
   }
