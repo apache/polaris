@@ -45,6 +45,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.policybuilder.iam.IamAction;
 import software.amazon.awssdk.policybuilder.iam.IamCondition;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
@@ -56,6 +57,7 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
@@ -1017,8 +1019,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .catalogName(Optional.of("test-catalog"))
             .namespace(Optional.of("db.schema"))
             .tableName(Optional.of("my_table"))
-            .activatedRoles(Optional.of("admin,reader"))
             .build();
+
+    // Create a principal with roles for this test
+    PolarisPrincipal principalWithRoles =
+        PolarisPrincipal.of("test-principal", Map.of(), Set.of("admin", "reader"));
 
     new AwsCredentialsStorageIntegration(
             AwsStorageConfigurationInfo.builder()
@@ -1032,7 +1037,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             true,
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
             Set.of(s3Path(bucket, warehouseKeyPrefix)),
-            POLARIS_PRINCIPAL,
+            principalWithRoles,
             Optional.empty(),
             context);
 
@@ -1047,6 +1052,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(
             tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
+    // Roles are sorted alphabetically and joined with comma
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:roles") && tag.value().equals("admin,reader"));
 
@@ -1321,14 +1327,14 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     // Simulate STS throwing AccessDeniedException when sts:TagSession is not allowed
     // In AWS SDK v2, this is represented as StsException with error code "AccessDenied"
-    software.amazon.awssdk.services.sts.model.StsException accessDeniedException =
-        (software.amazon.awssdk.services.sts.model.StsException)
-            software.amazon.awssdk.services.sts.model.StsException.builder()
+    StsException accessDeniedException =
+        (StsException)
+            StsException.builder()
                 .message(
                     "User: arn:aws:iam::012345678901:user/test is not authorized to perform: "
                         + "sts:TagSession on resource: arn:aws:iam::012345678901:role/jdoe")
                 .awsErrorDetails(
-                    software.amazon.awssdk.awscore.exception.AwsErrorDetails.builder()
+                    AwsErrorDetails.builder()
                         .errorCode("AccessDenied")
                         .errorMessage("Not authorized to perform sts:TagSession")
                         .serviceName("STS")

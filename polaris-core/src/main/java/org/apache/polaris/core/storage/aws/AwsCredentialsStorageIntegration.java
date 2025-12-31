@@ -127,8 +127,7 @@ public class AwsCredentialsStorageIntegration
 
       // Add session tags when the feature is enabled
       if (includeSessionTags) {
-        List<Tag> sessionTags =
-            buildSessionTags(polarisPrincipal.getName(), credentialVendingContext);
+        List<Tag> sessionTags = buildSessionTags(polarisPrincipal, credentialVendingContext);
         if (!sessionTags.isEmpty()) {
           request.tags(sessionTags);
           // Mark all tags as transitive for role chaining support

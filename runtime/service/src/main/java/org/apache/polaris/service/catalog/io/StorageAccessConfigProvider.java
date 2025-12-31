@@ -151,9 +151,12 @@ public class StorageAccessConfigProvider {
    * Builds a credential vending context from the table identifier and resolved path. This context
    * is used to populate session tags in cloud provider credentials for audit/correlation purposes.
    *
+   * <p>Note: Principal information (name and activated roles) is obtained directly from {@link
+   * PolarisPrincipal} during session tag generation, not from this context.
+   *
    * @param tableIdentifier the table identifier containing namespace and table name
    * @param resolvedPath the resolved entity path containing the catalog entity
-   * @return a credential vending context with catalog, namespace, table, and activated roles
+   * @return a credential vending context with catalog, namespace, and table
    */
   private CredentialVendingContext buildCredentialVendingContext(
       TableIdentifier tableIdentifier, PolarisResolvedPathWrapper resolvedPath) {
@@ -173,15 +176,6 @@ public class StorageAccessConfigProvider {
 
     // Extract table name from table identifier
     builder.tableName(Optional.of(tableIdentifier.name()));
-
-    // Extract activated roles from the principal
-    Set<String> roles = polarisPrincipal.getRoles();
-    if (roles != null && !roles.isEmpty()) {
-      // Sort roles for consistent ordering and join with comma
-      String rolesString =
-          roles.stream().sorted().collect(java.util.stream.Collectors.joining(","));
-      builder.activatedRoles(Optional.of(rolesString));
-    }
 
     return builder.build();
   }
