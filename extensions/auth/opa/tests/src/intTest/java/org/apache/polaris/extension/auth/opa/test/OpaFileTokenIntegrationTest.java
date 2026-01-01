@@ -22,15 +22,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.QuarkusTestProfile.TestResourceEntry;
 import io.quarkus.test.junit.TestProfile;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -40,44 +32,8 @@ import org.junit.jupiter.api.Test;
  * uses them to authenticate with OPA.
  */
 @QuarkusTest
-@TestProfile(OpaFileTokenIntegrationTest.FileTokenOpaProfile.class)
+@TestProfile(OpaTestProfiles.FileToken.class)
 public class OpaFileTokenIntegrationTest extends OpaIntegrationTestBase {
-
-  /**
-   * Test profile for OPA integration with file-based bearer token authentication. The OPA container
-   * runs with HTTP for simplicity in CI environments.
-   */
-  public static class FileTokenOpaProfile implements QuarkusTestProfile {
-    // Static field to hold token file path for test access
-    public static Path tokenFilePath;
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      try {
-        // Create token file early so SmallRye Config validation sees the property
-        tokenFilePath = Files.createTempFile("opa-test-token", ".txt");
-        Files.writeString(tokenFilePath, "test-opa-bearer-token-from-file");
-
-        Map<String, String> config = new HashMap<>();
-        config.put("polaris.authorization.type", "opa");
-
-        // Configure file-based bearer token authentication
-        config.put("polaris.authorization.opa.auth.type", "bearer");
-        config.put(
-            "polaris.authorization.opa.auth.bearer.file-based.path", tokenFilePath.toString());
-        config.put("polaris.authorization.opa.auth.bearer.file-based.refresh-interval", "PT1S");
-
-        return config;
-      } catch (IOException e) {
-        throw new RuntimeException("Failed to create test token file", e);
-      }
-    }
-
-    @Override
-    public List<TestResourceEntry> testResources() {
-      return List.of(new TestResourceEntry(OpaTestResource.class));
-    }
-  }
 
   @Test
   void testOpaAllowsRootUser() {
