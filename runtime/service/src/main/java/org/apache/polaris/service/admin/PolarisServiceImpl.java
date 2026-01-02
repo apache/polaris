@@ -136,18 +136,6 @@ public class PolarisServiceImpl
     return Response.status(Response.Status.CREATED).entity(newCatalog).build();
   }
 
-  private void validateClientId(String clientId) {
-    if (!clientId.matches("^[0-9a-f]{16}$")) {
-      throw new IllegalArgumentException("Invalid clientId format");
-    }
-  }
-
-  private void validateClientSecret(String clientSecret) {
-    if (!clientSecret.matches("^[0-9a-f]{32}$")) {
-      throw new IllegalArgumentException("Invalid clientSecret format");
-    }
-  }
-
   private void validateStorageConfig(StorageConfigInfo storageConfigInfo) {
     List<String> allowedStorageTypes =
         realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
@@ -304,12 +292,6 @@ public class PolarisServiceImpl
             ? resetPrincipalRequest
             : new ResetPrincipalRequest(null, null);
 
-    if (safeResetPrincipalRequest.getClientId() != null) {
-      validateClientId(safeResetPrincipalRequest.getClientId());
-    }
-    if (safeResetPrincipalRequest.getClientSecret() != null) {
-      validateClientSecret(safeResetPrincipalRequest.getClientSecret());
-    }
     return Response.ok(adminService.resetCredentials(principalName, safeResetPrincipalRequest))
         .build();
   }
