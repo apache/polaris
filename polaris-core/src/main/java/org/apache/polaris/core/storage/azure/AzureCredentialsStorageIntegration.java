@@ -36,12 +36,14 @@ import com.azure.storage.blob.models.UserDelegationKey;
 import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
 import com.azure.storage.file.datalake.DataLakeFileSystemClientBuilder;
+import com.azure.storage.file.datalake.DataLakePathClientBuilder;
 import com.azure.storage.file.datalake.DataLakeServiceClient;
 import com.azure.storage.file.datalake.DataLakeServiceClientBuilder;
 import com.azure.storage.file.datalake.models.DataLakeStorageException;
 import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import java.time.Duration;
 import java.time.Instant;
@@ -169,6 +171,17 @@ public class AzureCredentialsStorageIntegration
               blobSasPermission,
               Mono.just(accessToken));
     } else if (location.getEndpoint().equalsIgnoreCase(AzureLocation.ADLS_ENDPOINT)) {
+      String path = null;
+      if (Boolean.TRUE.equals(config().isHierarchical())) {
+        Preconditions.checkArgument(
+            allowedReadLocations.size() <= 1,
+            "Allowed read locations must not have more that one entry");
+        Preconditions.checkArgument(
+            allowedWriteLocations.size() <= 1,
+            "Allowed write locations must not have more that one entry");
+        path = location.getFilePath();
+      }
+
       sasToken =
           getAdlsUserDelegationSas(
               startTime,
@@ -177,6 +190,7 @@ public class AzureCredentialsStorageIntegration
               storageDnsName,
               location.getContainer(),
               pathSasPermission,
+              path,
               Mono.just(accessToken));
     } else {
       throw new RuntimeException(
@@ -275,6 +289,7 @@ public class AzureCredentialsStorageIntegration
       String storageDnsName,
       String fileSystemNameOrContainer,
       PathSasPermission pathSasPermission,
+      String path,
       Mono<AccessToken> accessTokenMono) {
     String endpoint = "https://" + storageDnsName;
     try {
@@ -289,11 +304,22 @@ public class AzureCredentialsStorageIntegration
       DataLakeServiceSasSignatureValues signatureValues =
           new DataLakeServiceSasSignatureValues(sasExpiry, pathSasPermission);
 
-      return new DataLakeFileSystemClientBuilder()
-          .endpoint(endpoint)
-          .fileSystemName(fileSystemNameOrContainer)
-          .buildClient()
-          .generateUserDelegationSas(signatureValues, userDelegationKey);
+      if (path != null) {
+        LOGGER.warn("PATH: {}", path);
+        return new DataLakePathClientBuilder()
+            .endpoint(endpoint)
+            .fileSystemName(fileSystemNameOrContainer)
+            .pathName(path) // TODO: drop authority part
+            .buildDirectoryClient()
+            .generateUserDelegationSas(signatureValues, userDelegationKey);
+
+      } else {
+        return new DataLakeFileSystemClientBuilder()
+            .endpoint(endpoint)
+            .fileSystemName(fileSystemNameOrContainer)
+            .buildClient()
+            .generateUserDelegationSas(signatureValues, userDelegationKey);
+      }
     } catch (DataLakeStorageException ex) {
       LOGGER.debug(
           "Azure DataLakeStorageException for getAdlsUserDelegationSas. keyStart={} keyEnd={}, storageDns={}, fileSystemName={}",

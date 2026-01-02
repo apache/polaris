@@ -405,11 +405,11 @@ public class CatalogEntityTest {
 
   @ParameterizedTest
   @MethodSource
-  public void testAwsConfigRoundTrip(AwsStorageConfigInfo config) throws JsonProcessingException {
+  public void testStorageConfigRoundTrip(StorageConfigInfo config) throws JsonProcessingException {
     String configStr = MAPPER.writeValueAsString(config);
     CatalogEntity catalogEntity =
         new CatalogEntity.Builder()
-            .setName("testAwsConfigRoundTrip")
+            .setName("testStorageConfigRoundTrip")
             .setDefaultBaseLocation(config.getAllowedLocations().getFirst())
             .setCatalogType(Catalog.TypeEnum.INTERNAL.name())
             .setStorageConfigurationInfo(
@@ -482,18 +482,36 @@ public class CatalogEntityTest {
         .isEqualTo("arn:aws:iam::123456789012:user/test-user");
   }
 
-  public static Stream<Arguments> testAwsConfigRoundTrip() {
+  public static Stream<Arguments> testStorageConfigRoundTrip() {
     AwsStorageConfigInfo.Builder b =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://example.com"))
             .setRoleArn("arn:aws:iam::012345678901:role/test-role");
+    AzureStorageConfigInfo.Builder a =
+        AzureStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+            .setTenantId("test-tenant")
+            .setAllowedLocations(List.of("abfss://test@example.dfs.core.windows.net/"));
     return Stream.of(
         Arguments.of(b.build()),
         Arguments.of(b.setExternalId("ex1").build()),
         Arguments.of(b.setRegion("us-west-2").build()),
         Arguments.of(b.setEndpoint("http://s3.example.com:1234").build()),
         Arguments.of(b.setStsEndpoint("http://sts.example.com:1234").build()),
-        Arguments.of(b.setPathStyleAccess(true).build()));
+        Arguments.of(b.setPathStyleAccess(true).build()),
+        Arguments.of(a.build()),
+        Arguments.of(a.setHierarchical(true).build()));
+  }
+
+  @Test
+  public void testAzureConfigJsonPropertiesPresence() throws JsonProcessingException {
+    AzureStorageConfigInfo.Builder b =
+        AzureStorageConfigInfo.builder().setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE);
+    assertThat(MAPPER.writeValueAsString(b.build())).contains("storageType");
+    assertThat(MAPPER.writeValueAsString(b.build())).doesNotContain("hierarchical");
+
+    b.setHierarchical(true);
+    assertThat(MAPPER.writeValueAsString(b.build())).contains("hierarchical");
   }
 }
