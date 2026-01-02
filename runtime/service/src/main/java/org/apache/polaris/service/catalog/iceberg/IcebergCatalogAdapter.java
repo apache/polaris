@@ -718,6 +718,9 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    // Validate that the caller is authenticated (consistent with other endpoints)
+    validatePrincipal(securityContext);
+
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));

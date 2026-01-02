@@ -61,6 +61,7 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 
 /**
  * Wraps an existing impl of PolarisMetaStoreManager and delegates expected "read" operations
@@ -326,7 +327,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
     return delegate.getSubscopedCredsForEntity(
         callCtx,
         catalogId,
@@ -336,7 +338,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
         allowedReadLocations,
         allowedWriteLocations,
         polarisPrincipal,
-        refreshCredentialsEndpoint);
+        refreshCredentialsEndpoint,
+        credentialVendingContext);
   }
 
   @Override

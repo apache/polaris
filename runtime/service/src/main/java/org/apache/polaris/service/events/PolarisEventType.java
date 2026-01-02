@@ -200,4 +200,8 @@ public enum PolarisEventType {
 
   // Rate Limiting Events
   BEFORE_LIMIT_REQUEST_RATE,
+
+  // Metrics Reporting Events
+  BEFORE_REPORT_METRICS,
+  AFTER_REPORT_METRICS,
 }

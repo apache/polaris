@@ -28,6 +28,7 @@ import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.CreateViewRequest;
 import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
@@ -643,6 +644,57 @@ public class IcebergRestCatalogEvents {
     @Override
     public PolarisEventType type() {
       return PolarisEventType.AFTER_REFRESH_VIEW;
+    }
+  }
+
+  // Metrics Reporting Events
+
+  /**
+   * Event emitted before a metrics report is processed.
+   *
+   * @param metadata Event metadata including timestamp, realm, user, and request context
+   * @param catalogName The name of the catalog
+   * @param namespace The namespace containing the table
+   * @param table The table name for which metrics are being reported
+   * @param reportMetricsRequest The metrics report request (ScanReport or CommitReport)
+   */
+  public record BeforeReportMetricsEvent(
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      String table,
+      ReportMetricsRequest reportMetricsRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.BEFORE_REPORT_METRICS;
+    }
+  }
+
+  /**
+   * Event emitted after a metrics report has been processed.
+   *
+   * <p>This event enables audit logging of compute engine metrics reports, including scan metrics
+   * (files scanned, bytes read, planning duration) and commit metrics (files added/removed,
+   * operation type). The metadata map in the report can contain trace context for correlation with
+   * other audit events.
+   *
+   * @param metadata Event metadata including timestamp, realm, user, and request context
+   * @param catalogName The name of the catalog
+   * @param namespace The namespace containing the table
+   * @param table The table name for which metrics were reported
+   * @param reportMetricsRequest The metrics report request (ScanReport or CommitReport)
+   */
+  public record AfterReportMetricsEvent(
+      PolarisEventMetadata metadata,
+      String catalogName,
+      Namespace namespace,
+      String table,
+      ReportMetricsRequest reportMetricsRequest)
+      implements PolarisEvent {
+    @Override
+    public PolarisEventType type() {
+      return PolarisEventType.AFTER_REPORT_METRICS;
     }
   }
 }

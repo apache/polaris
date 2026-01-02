@@ -19,16 +19,22 @@
 
 package org.apache.polaris.service.catalog.io;
 
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
@@ -116,6 +122,11 @@ public class StorageAccessConfigProvider {
                 || storageActions.contains(PolarisStorageActions.ALL)
             ? tableLocations
             : Set.of();
+
+    // Build credential vending context for session tags
+    CredentialVendingContext credentialVendingContext =
+        buildCredentialVendingContext(tableIdentifier, resolvedPath);
+
     StorageAccessConfig accessConfig =
         storageCredentialCache.getOrGenerateSubScopeCreds(
             storageCredentialsVendor,
@@ -124,7 +135,8 @@ public class StorageAccessConfigProvider {
             tableLocations,
             writeLocations,
             polarisPrincipal,
-            refreshCredentialsEndpoint);
+            refreshCredentialsEndpoint,
+            credentialVendingContext);
 
     LOGGER
         .atDebug()
@@ -136,5 +148,65 @@ public class StorageAccessConfigProvider {
       LOGGER.debug("No credentials found for table");
     }
     return accessConfig;
+  }
+
+  /**
+   * Builds a credential vending context from the table identifier and resolved path. This context
+   * is used to populate session tags in cloud provider credentials for audit/correlation purposes.
+   *
+   * <p>The activated roles are included in this context (rather than extracted from
+   * PolarisPrincipal during session tag generation) to ensure they are part of the cache key when
+   * session tags are enabled. This prevents false positive cache hits when a principal's roles
+   * change.
+   *
+   * @param tableIdentifier the table identifier containing namespace and table name
+   * @param resolvedPath the resolved entity path containing the catalog entity
+   * @return a credential vending context with catalog, namespace, table, and activated roles
+   */
+  private CredentialVendingContext buildCredentialVendingContext(
+      TableIdentifier tableIdentifier, PolarisResolvedPathWrapper resolvedPath) {
+    CredentialVendingContext.Builder builder = CredentialVendingContext.builder();
+
+    // Extract catalog name from the first entity in the resolved path
+    List<PolarisEntity> fullPath = resolvedPath.getRawFullPath();
+    if (fullPath != null && !fullPath.isEmpty()) {
+      builder.catalogName(Optional.of(fullPath.get(0).getName()));
+    }
+
+    // Extract namespace from table identifier
+    Namespace namespace = tableIdentifier.namespace();
+    if (namespace != null && namespace.length() > 0) {
+      builder.namespace(Optional.of(String.join(".", namespace.levels())));
+    }
+
+    // Extract table name from table identifier
+    builder.tableName(Optional.of(tableIdentifier.name()));
+
+    // Extract activated roles from principal - included in context to be part of cache key
+    Set<String> roles = polarisPrincipal.getRoles();
+    if (roles != null && !roles.isEmpty()) {
+      String rolesString = roles.stream().sorted().collect(Collectors.joining(","));
+      builder.activatedRoles(Optional.of(rolesString));
+    }
+
+    // Extract OpenTelemetry trace ID for end-to-end correlation
+    // This enables correlation between credential vending (CloudTrail), catalog operations
+    // (Polaris events), and metrics reports from compute engines
+    builder.traceId(getCurrentTraceId());
+
+    return builder.build();
+  }
+
+  /**
+   * Extracts the current OpenTelemetry trace ID from the active span context.
+   *
+   * @return the trace ID if a valid span context exists, empty otherwise
+   */
+  private Optional<String> getCurrentTraceId() {
+    SpanContext spanContext = Span.current().getSpanContext();
+    if (spanContext.isValid()) {
+      return Optional.of(spanContext.getTraceId());
+    }
+    return Optional.empty();
   }
 }
