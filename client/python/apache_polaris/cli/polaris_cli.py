@@ -21,6 +21,7 @@ import json
 import os
 import sys
 from json import JSONDecodeError
+from typing import Optional, List, Any, cast
 
 import urllib3
 
@@ -28,6 +29,8 @@ from apache_polaris.cli.api_client_builder import ApiClientBuilder
 from apache_polaris.cli.constants import Commands
 from apache_polaris.cli.options.parser import Parser
 from apache_polaris.sdk.management import PolarisDefaultApi
+from apache_polaris.sdk.management.exceptions import ApiException
+from apache_polaris.cli.command.profiles import ProfilesCommand
 
 
 class PolarisCli:
@@ -47,12 +50,13 @@ class PolarisCli:
     DIRECT_AUTHENTICATION_ENABLED = False
 
     @staticmethod
-    def execute(args=None):
+    def execute(args: Optional[List[str]] = None) -> None:
         options = Parser.parse(args)
         if options.command == Commands.PROFILES:
             from apache_polaris.cli.command import Command
 
             command = Command.from_options(options)
+            command = cast(ProfilesCommand, command)
             command.execute()
         else:
             api_client = ApiClientBuilder(
@@ -66,19 +70,24 @@ class PolarisCli:
                 if options.debug:
                     PolarisCli._enable_api_request_logging()
                 command.execute(admin_api)
-            except Exception as e:
+            except ApiException as e:
                 PolarisCli._try_print_exception(e)
+                sys.exit(1)
+            except Exception as e:
+                sys.stderr.write(f"An unexpected error occurred: {e}{os.linesep}")
                 sys.exit(1)
 
     @staticmethod
-    def _enable_api_request_logging():
+    def _enable_api_request_logging() -> None:
         # Store the original urlopen method
         if not hasattr(urllib3.PoolManager, "original_urlopen"):
             urllib3.PoolManager.original_urlopen = urllib3.PoolManager.urlopen
 
         # Define the wrapper function
         @functools.wraps(urllib3.PoolManager.original_urlopen)
-        def urlopen_wrapper(self, method, url, **kwargs):
+        def urlopen_wrapper(
+            self: urllib3.PoolManager, method: str, url: str, **kwargs: Any
+        ) -> Any:
             sys.stderr.write(f"Request: {method} {url}\n")
             if "headers" in kwargs:
                 sys.stderr.write(f"Headers: {kwargs['headers']}\n")
@@ -91,7 +100,7 @@ class PolarisCli:
         urllib3.PoolManager.urlopen = urlopen_wrapper
 
     @staticmethod
-    def _try_print_exception(e):
+    def _try_print_exception(e: ApiException) -> None:
         try:
             error = json.loads(e.body)["error"]
             sys.stderr.write(
@@ -109,7 +118,7 @@ class PolarisCli:
             )
 
 
-def main():
+def main() -> None:
     PolarisCli.execute()
 
 

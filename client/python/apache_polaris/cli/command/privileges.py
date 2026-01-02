@@ -62,7 +62,7 @@ class PrivilegesCommand(Command):
     privilege: str
     cascade: bool
 
-    def validate(self):
+    def validate(self) -> None:
         if not self.catalog_name:
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"

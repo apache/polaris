@@ -20,24 +20,24 @@ import json
 import os
 from argparse import Namespace
 from functools import cached_property
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from apache_polaris.cli.constants import (
-  CONFIG_FILE,
-  CLIENT_PROFILE_ENV,
-  CLIENT_ID_ENV,
-  CLIENT_SECRET_ENV,
-  REALM_ENV,
-  HEADER_ENV,
-  Arguments,
-  DEFAULT_HOSTNAME,
-  DEFAULT_PORT
+    CONFIG_FILE,
+    CLIENT_PROFILE_ENV,
+    CLIENT_ID_ENV,
+    CLIENT_SECRET_ENV,
+    REALM_ENV,
+    HEADER_ENV,
+    Arguments,
+    DEFAULT_HOSTNAME,
+    DEFAULT_PORT,
 )
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.management import ApiClient, Configuration
 
 
-def _load_profiles() -> Dict[str, str]:
+def _load_profiles() -> Dict[str, Dict[str, Any]]:
     if not os.path.exists(CONFIG_FILE):
         return {}
     with open(CONFIG_FILE, "r") as f:
@@ -51,14 +51,15 @@ class BuilderConfig:
         self.access_token = options.access_token
 
     @cached_property
-    def profile(self) -> Dict[str, str]:
-        profile = {}
+    def profile(self) -> Dict[str, Any]:
+        profile: Dict[str, Any] = {}
         client_profile = self.options.profile or os.getenv(CLIENT_PROFILE_ENV)
         if client_profile:
             profiles = _load_profiles()
-            profile = profiles.get(client_profile)
-            if not profile:
+            loaded_profile = profiles.get(client_profile)
+            if loaded_profile is None:
                 raise Exception(f"Polaris profile {client_profile} not found")
+            profile = loaded_profile
         return profile
 
     @cached_property
@@ -87,34 +88,34 @@ class BuilderConfig:
     @cached_property
     def client_id(self) -> Optional[str]:
         return (
-                self.options.client_id
-                or os.getenv(CLIENT_ID_ENV)
-                or self.profile.get(Arguments.CLIENT_ID)
+            self.options.client_id
+            or os.getenv(CLIENT_ID_ENV)
+            or self.profile.get(Arguments.CLIENT_ID)
         )
 
     @cached_property
     def client_secret(self) -> Optional[str]:
         return (
-                self.options.client_secret
-                or os.getenv(CLIENT_SECRET_ENV)
-                or self.profile.get(Arguments.CLIENT_SECRET)
+            self.options.client_secret
+            or os.getenv(CLIENT_SECRET_ENV)
+            or self.profile.get(Arguments.CLIENT_SECRET)
         )
 
     @cached_property
     def realm(self) -> Optional[str]:
         realms = (
-                self.options.realm
-                or os.getenv(REALM_ENV)
-                or self.profile.get(Arguments.REALM)
+            self.options.realm
+            or os.getenv(REALM_ENV)
+            or self.profile.get(Arguments.REALM)
         )
         return realms
 
     @cached_property
     def header(self) -> Optional[str]:
         return (
-                self.options.header
-                or os.getenv(HEADER_ENV)
-                or self.profile.get(Arguments.HEADER)
+            self.options.header
+            or os.getenv(HEADER_ENV)
+            or self.profile.get(Arguments.HEADER)
         )
 
 
@@ -123,7 +124,7 @@ class ApiClientBuilder:
         self.conf = BuilderConfig(options)
         self.direct_auth_enabled = direct_authentication
 
-    def _get_token(self):
+    def _get_token(self) -> str:
         header_params = {"Content-Type": "application/x-www-form-urlencoded"}
         if self.conf.header and self.conf.realm:
             header_params[self.conf.header] = self.conf.realm
@@ -148,7 +149,9 @@ class ApiClientBuilder:
 
     def _build(self) -> ApiClient:
         has_access_token = self.conf.access_token is not None
-        has_client_secret = self.conf.client_id is not None and self.conf.client_secret is not None
+        has_client_secret = (
+            self.conf.client_id is not None and self.conf.client_secret is not None
+        )
         if has_access_token and (self.conf.client_id or self.conf.client_secret):
             raise Exception(
                 f"Please provide credentials via either {Argument.to_flag_name(Arguments.CLIENT_ID)} &"

@@ -54,7 +54,7 @@ class CatalogRolesCommand(Command):
     set_properties: Dict[str, StrictStr]
     remove_properties: List[str]
 
-    def validate(self):
+    def validate(self) -> None:
         if not self.catalog_name:
             raise Exception(
                 f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
