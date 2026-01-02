@@ -53,6 +53,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.storage.BaseStorageIntegrationTest;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
@@ -185,7 +186,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         new HashSet<>(allowedReadLoc),
         new HashSet<>(allowedWriteLoc),
         PolarisPrincipal.of("principal", Map.of(), Set.of()),
-        Optional.of(REFRESH_ENDPOINT));
+        Optional.of(REFRESH_ENDPOINT),
+        CredentialVendingContext.empty());
   }
 
   private JsonNode readResource(ObjectMapper mapper, String name) throws IOException {
@@ -364,7 +366,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         Set.of("gs://bucket/path"),
         Set.of("gs://bucket/path"),
         PolarisPrincipal.of("principal", Map.of(), Set.of()),
-        Optional.empty());
+        Optional.empty(),
+        CredentialVendingContext.empty());
 
     Mockito.verify(mockIamClient)
         .generateAccessToken(

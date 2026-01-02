@@ -201,7 +201,8 @@ class InMemoryStorageIntegrationTest {
         @Nonnull Set<String> allowedReadLocations,
         @Nonnull Set<String> allowedWriteLocations,
         @Nonnull PolarisPrincipal polarisPrincipal,
-        Optional<String> refreshCredentialsEndpoint) {
+        Optional<String> refreshCredentialsEndpoint,
+        @Nonnull CredentialVendingContext credentialVendingContext) {
       return null;
     }
   }

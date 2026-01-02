@@ -67,6 +67,7 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -108,6 +109,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject RealmConfig realmConfig;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject FileIOFactory fileIOFactory;
+  @Inject PolarisPrincipalHolder polarisPrincipalHolder;
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
@@ -150,6 +152,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     PrincipalEntity rootPrincipal =
         metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
     authenticatedRoot = PolarisPrincipal.of(rootPrincipal, Set.of());
+    polarisPrincipalHolder.set(authenticatedRoot);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(realmConfig);
     ReservedProperties reservedProperties = ReservedProperties.NONE;
