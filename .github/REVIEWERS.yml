@@ -1,0 +1,173 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# If you would like to be excluded from consideration for reviewing a certain label,
+# add yourself to that label's exclusionList
+# FallbackReviewers is for reviewers who can review any area of the code base that might
+# not receive a label. These should generally be more experienced committers.
+labels:
+  - name: build
+    reviewers:
+      - snazy
+      - jbonofre
+    exclusionList: []
+  - name: api
+    reviewers:
+      - flyrain
+      - dimas-b
+      - dennishuo
+      - collado-mike
+    exclusionList: []
+  - name: client-python
+    reviewers:
+      - MonkeyCanCode
+      - flyrain
+    exclusionList: []
+  - name: auth-opa
+    reviewers:
+      - adutra
+      - flyrain
+      - dimas-b
+    exclusionList: []
+  - name: auth-federation
+    reviewers:
+      - adutra
+      - collado-mike
+      - dennishuo
+    exclusionList: []
+  - name: docs
+    reviewers:
+      - jbonofre
+      - flyrain
+    exclusionList: []
+  - name: helm
+    reviewers:
+      - adutra
+      - MonkeyCanCode
+      - jbonofre
+    exclusionList: []
+  - name: tests
+    reviewers:
+      - collado-mike
+      - snazy
+      - adutra
+    exclusionList: []
+  - name: persistence-nosql
+    reviewers:
+      - snazy
+      - dimas-b
+      - singhpl234
+      - flyrain
+      - dennishuo
+    exclusionList: []
+  - name: persistence-relational-jdbc
+    reviewers:
+      - singhpl234
+      - dennishuo
+      - dimas-b
+      - jbonofre
+    exclusionList: []
+  - name: plugin-spark
+    reviewers:
+      - gh-yzou
+      - MonkeyCanCode
+      - jbonofre
+    exclusionList: []
+  - name: core
+    reviewers:
+      - snazy
+      - jbonofre
+      - flyrain
+      - dimas-b
+      - adutra
+      - dennishuo
+      - collado-mike
+    exclusionList: []
+  - name: runtime-admin
+    reviewers:
+      - snazy
+      - jbonofre
+      - MonkeyCanCode
+      - flyrain
+      - dimas-b
+      - adutra
+      - dennishuo
+      - collado-mike
+    exclusionList: []
+  - name: runtime-common
+    reviewers:
+      - snazy
+      - jbonofre
+      - MonkeyCanCode
+      - flyrain
+      - dimas-b
+      - adutra
+      - dennishuo
+      - collado-mike
+    exclusionList: []
+  - name: runtime-defaults
+    reviewers:
+      - snazy
+      - jbonofre
+      - MonkeyCanCode
+      - flyrain
+      - dimas-b
+      - adutra
+      - dennishuo
+      - collado-mike
+    exclusionList: []
+  - name: runtime-distribution
+    reviewers:
+      - snazy
+      - jbonofre
+      - MonkeyCanCode
+      - flyrain
+      - dimas-b
+      - adutra
+      - dennishuo
+      - collado-mike
+    exclusionList: []
+  - name: runtime-server
+    reviewers:
+      - snazy
+      - jbonofre
+      - MonkeyCanCode
+      - flyrain
+      - dimas-b
+      - adutra
+      - dennishuo
+      - collado-mike
+    exclusionList: []
+  - name: runtime-service
+    reviewers:
+      - snazy
+      - jbonofre
+      - MonkeyCanCode
+      - flyrain
+      - dimas-b
+      - adutra
+      - dennishuo
+      - collado-mike
+    exclusionList: []
+  - name: tools
+    reviewers:
+      - snazy
+      - jbonofre
+    exclusionList: []
+fallbackReviwers:
+  - snazy
+  - jbonofre
+  - MonkeyCanCode
+  - flyrain
