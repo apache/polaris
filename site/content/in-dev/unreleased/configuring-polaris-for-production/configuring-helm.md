@@ -62,6 +62,28 @@ resources:
 
 Adjust these values based on expected workload and available cluster resources.
 
+## Pod Priority
+
+In a production environment, it is advisable to set a `priorityClassName` for the Polaris pods. This ensures that the Kubernetes scheduler gives them higher priority over less critical workloads, and helps prevent them from being evicted from a node that is running out of resources.
+
+First, a `PriorityClass` must be created in the cluster. For example:
+
+```yaml
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: polaris-high-priority
+value: 1000000
+globalDefault: false
+description: "This priority class should be used for Polaris service pods only."
+```
+
+Then, the `priorityClassName` can be set in the `values.yaml` file:
+
+```yaml
+priorityClassName: "polaris-high-priority"
+```
+
 ## Authentication
 
 In a multi-replica production environment, all Polaris pods must share the same token signing keys. The default chart generates random keys for each pod, which will cause token validation failures.

@@ -1,0 +1,247 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# Note: This workflow uses "X" instead of a number because it's an exceptional
+# workflow. It may be run after the third workflow has been run for a given RC.
+name: Release - X - Cancel Release Candidate After Vote Failure
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (check to enable, uncheck to perform actual operations)'
+        required: false
+        type: boolean
+        default: true
+      staging_repository_id:
+        description: 'Nexus staging repository ID to drop (e.g., orgapachepolaris-1234)'
+        required: true
+        type: string
+
+jobs:
+  cancel-release-candidate:
+    name: Release - X - Cancel Release Candidate After Vote Failure
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup test environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Set up environment variables
+        run: |
+          echo "RELEASEY_DIR=$(pwd)/releasey" >> $GITHUB_ENV
+          echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
+
+          echo "## Mode" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "DRY_RUN=1" >> $GITHUB_ENV
+            echo "‼️ DRY_RUN mode enabled - No actual changes will be made" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "DRY_RUN=0" >> $GITHUB_ENV
+            echo "DRY_RUN mode disabled - Performing actual operations" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Validate staging repository ID parameter
+          staging_repo_id="${{ github.event.inputs.staging_repository_id }}"
+          if [[ -z "${staging_repo_id}" ]]; then
+            echo "❌ Staging repository ID is required but not provided." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          echo "STAGING_REPOSITORY_ID=${staging_repo_id}" >> $GITHUB_ENV
+
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion
+
+      - name: Validate and extract version from RC tag
+        run: |
+          source "${LIBS_DIR}/_version.sh"
+
+          echo "## Parameters" >> $GITHUB_STEP_SUMMARY
+
+          # Extract the ref name from github.ref
+          # github.ref format: refs/heads/branch-name or refs/tags/tag-name
+          ref="${{ github.ref }}"
+
+          if [[ "${ref}" =~ ^refs/tags/(.+)$ ]]; then
+            # Running from a tag
+            git_tag="${BASH_REMATCH[1]}"
+          else
+            echo "❌ Workflow must be run from a release candidate tag, not a branch." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Current ref: \`${ref}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please select a release candidate tag (e.g., \`apache-polaris-1.0.0-incubating-rc0\`) from the 'Use workflow from' dropdown in the GitHub UI." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Validate git tag format and extract version components
+          if ! validate_and_extract_git_tag_version "${git_tag}"; then
+            echo "❌ Invalid git tag format: \`${git_tag}\`. Expected format: apache-polaris-x.y.z-incubating-rcN." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          # Export variables for next steps
+          echo "git_tag=${git_tag}" >> $GITHUB_ENV
+          echo "version_without_rc=${version_without_rc}" >> $GITHUB_ENV
+          echo "rc_number=${rc_number}" >> $GITHUB_ENV
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          | Parameter | Value |
+          | --- | --- |
+          | Git tag | \`${git_tag}\` |
+          | Version | \`${version_without_rc}\` |
+          | RC number | \`${rc_number}\` |
+          | Staging Repository ID | \`${STAGING_REPOSITORY_ID}\` |
+          EOT
+
+      - name: Drop Apache Nexus staging repository
+        env:
+          NEXUS_USERNAME: ${{ secrets.APACHE_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          echo "::add-mask::$NEXUS_PASSWORD"
+
+          source "${LIBS_DIR}/_exec.sh"
+
+          # Drop the staging repository using Nexus REST API
+          # The Gradle nexus-publish plugin doesn't provide a drop task, so we use the REST API directly
+          nexus_url="https://repository.apache.org/service/local"
+          drop_url="${nexus_url}/staging/bulk/drop"
+
+          # Create the JSON payload for dropping the repository
+          drop_payload=$(cat <<EOF
+          {
+            "data": {
+              "stagedRepositoryIds": ["${STAGING_REPOSITORY_ID}"],
+              "description": "Dropping release candidate after vote failure"
+            }
+          }
+          EOF
+          )
+
+          # Execute the drop request
+          if [[ ${DRY_RUN:-1} -ne 1 ]]; then
+            echo "Executing: Dropping staging repository ${STAGING_REPOSITORY_ID}"
+            response=$(curl -s -w "\n%{http_code}" --max-time 60 -X POST \
+              -u "${NEXUS_USERNAME}:${NEXUS_PASSWORD}" \
+              -H "Content-Type: application/json" \
+              -d "${drop_payload}" \
+              "${drop_url}")
+
+            http_code=$(echo "$response" | tail -n1)
+            response_body=$(echo "$response" | sed '$d')
+
+            if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
+              echo "✅ Successfully dropped staging repository ${STAGING_REPOSITORY_ID}"
+            else
+              echo "❌ Failed to drop staging repository. HTTP status: ${http_code}"
+              echo "Response: ${response_body}"
+              exit 1
+            fi
+          else
+            echo "Dry-run, WOULD execute: curl -X POST --max-time 60 -u \${NEXUS_USERNAME}:\${NEXUS_PASSWORD} -H 'Content-Type: application/json' -d '${drop_payload}' ${drop_url}"
+          fi
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Nexus Staging Repository
+          ✅ Staging repository \`${STAGING_REPOSITORY_ID}\` dropped successfully
+          EOT
+
+      - name: Delete artifacts from Apache dist dev repository
+        env:
+          SVN_USERNAME: ${{ secrets.APACHE_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.APACHE_PASSWORD }}
+        run: |
+          echo "::add-mask::$SVN_PASSWORD"
+
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          # Define URLs for artifacts and Helm chart in dist dev
+          dev_artifacts_url="${APACHE_DIST_URL}/dev/incubator/polaris/${version_without_rc}"
+          dev_helm_url="${APACHE_DIST_URL}/dev/incubator/polaris/helm-chart/${version_without_rc}"
+
+          # Check if artifacts directory exists and delete it
+          if svn ls --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${dev_artifacts_url}" >/dev/null 2>&1; then
+            exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+              "${dev_artifacts_url}" \
+              -m "Cancel Apache Polaris ${version_without_rc} RC${rc_number}"
+            echo "✅ Deleted artifacts from ${dev_artifacts_url}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Artifacts directory not found at ${dev_artifacts_url}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Check if Helm chart directory exists and delete it
+          if svn ls --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${dev_helm_url}" >/dev/null 2>&1; then
+            exec_process svn rm --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
+              "${dev_helm_url}" \
+              -m "Cancel Apache Polaris Helm chart ${version_without_rc} RC${rc_number}"
+            echo "✅ Deleted Helm chart from ${dev_helm_url}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Helm chart directory not found at ${dev_helm_url}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          ## Distribution Cleanup
+          Artifacts and Helm chart removed from dist dev repository
+          EOT
+
+      - name: Generate vote failure email
+        run: |
+          source "${LIBS_DIR}/_version.sh"
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+          # Vote Failure Email
+
+          ## Subject
+          [RESULT][VOTE] Release Apache Polaris ${version_without_rc} (rc${rc_number})
+
+          ## Body
+          Hello everyone,
+
+          Thanks to all who participated in the vote for Release Apache Polaris ${version_without_rc} (rc${rc_number}).
+
+          The vote failed due to [REASON - TO BE FILLED BY RELEASE MANAGER].
+
+          A new release candidate will be proposed soon once the issues are addressed.
+
+          Thanks,
+          EOT
+
+          cat <<EOT >> $GITHUB_STEP_SUMMARY
+
+          ## Summary
+          🔄 Release candidate cancellation completed:
+
+          | Component | Status |
+          | --- | --- |
+          | Nexus staging repository | ✅ Dropped |
+          | Distribution artifacts (dist dev) | ✅ Deleted |
+          | Helm chart (dist dev) | ✅ Deleted |
+          EOT
+

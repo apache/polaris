@@ -128,7 +128,7 @@ client-setup-env: $(VENV_DIR) client-install-dependencies
 .PHONY: client-lint
 client-lint: client-setup-env ## Run linting checks for Polaris client
 	@echo "--- Running client linting checks ---"
-	@$(ACTIVATE_AND_CD) && poetry run pre-commit run --files integration_tests/* python/cli/*
+	@$(ACTIVATE_AND_CD) && poetry run pre-commit run --files integration_tests/* generate_clients.py apache_polaris/cli/* apache_polaris/cli/command/* apache_polaris/cli/options/* test/*
 	@echo "--- Client linting checks complete ---"
 
 .PHONY: client-regenerate

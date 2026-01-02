@@ -269,6 +269,9 @@ autoscaling:
   # -- Optional; set to zero or empty to disable.
   targetMemoryUtilizationPercentage:
 
+# -- Priority class name for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#pod-priority
+priorityClassName: ~
+
 # -- Node labels which must match for the polaris pod to be scheduled on that node. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector.
 nodeSelector:
   {}

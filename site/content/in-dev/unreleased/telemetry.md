@@ -25,8 +25,8 @@ weight: 450
 ## Metrics
 
 Metrics are published using [Micrometer]; they are available from Polaris's management interface
-(port 8282 by default) under the path `/q/metrics`. For example, if the server is running on
-localhost, the metrics can be accessed via http://localhost:8282/q/metrics.
+(port 8182 by default) under the path `/q/metrics`. For example, if the server is running on
+localhost, the metrics can be accessed via http://localhost:8182/q/metrics.
 
 [Micrometer]: https://quarkus.io/guides/telemetry-micrometer
 

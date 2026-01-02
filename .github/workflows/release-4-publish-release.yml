@@ -83,11 +83,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y subversion
 
-          echo "## Input Parameters" >> $GITHUB_STEP_SUMMARY
-          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| Staging Repository ID | \`${staging_repo_id}\` |" >> $GITHUB_STEP_SUMMARY
-
       - name: Auto-determine release parameters from branch and Git state
         run: |
           source "${LIBS_DIR}/_version.sh"
@@ -179,6 +174,7 @@ jobs:
           | RC tag to promote | \`${rc_tag}\` |
           | Final release tag | \`${final_release_tag}\` |
           | Release branch | \`${current_branch}\` |
+          | Staging Repository ID | \`${staging_repo_id}\` |
           EOT
 
       - name: Copy distribution from SVN dev to release space

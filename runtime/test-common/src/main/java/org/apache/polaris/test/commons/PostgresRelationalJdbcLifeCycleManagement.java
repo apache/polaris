@@ -23,13 +23,13 @@ import static org.apache.polaris.containerspec.ContainerSpecHelper.containerSpec
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import java.util.Map;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 public class PostgresRelationalJdbcLifeCycleManagement
     implements QuarkusTestResourceLifecycleManager, DevServicesContext.ContextAware {
   public static final String INIT_SCRIPT = "init-script";
 
-  private PostgreSQLContainer<?> postgres;
+  private PostgreSQLContainer postgres;
   private String initScript;
   private DevServicesContext context;
 
@@ -42,7 +42,7 @@ public class PostgresRelationalJdbcLifeCycleManagement
   @SuppressWarnings("resource")
   public Map<String, String> start() {
     postgres =
-        new PostgreSQLContainer<>(
+        new PostgreSQLContainer(
                 containerSpecHelper("postgres", PostgresRelationalJdbcLifeCycleManagement.class)
                     .dockerImageName(null)
                     .asCompatibleSubstituteFor("postgres"))

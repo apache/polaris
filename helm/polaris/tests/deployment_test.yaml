@@ -260,6 +260,21 @@ tests:
           path: spec.template.spec.serviceAccountName
           value: polaris-sa
 
+  # spec.template.spec.priorityClassName
+  - it: should not set priorityClassName by default
+    template: deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.priorityClassName
+  - it: should set custom priorityClassName
+    template: deployment.yaml
+    set:
+      priorityClassName: polaris-high-priority
+    asserts:
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: polaris-high-priority
+
   # spec.template.spec.securityContext
   - it: should set securityContext by default
     template: deployment.yaml
