@@ -28,7 +28,6 @@ import sys
 import os.path
 import subprocess
 from pathlib import Path
-import fnmatch
 import logging
 import argparse
 import shutil
@@ -45,10 +44,10 @@ OPEN_API_GENERATOR_IGNORE = CLIENT_DIR / ".openapi-generator-ignore"
 
 # Open API Generator Configs
 PACKAGE_NAME_POLARIS_MANAGEMENT = (
-  "--additional-properties=packageName=apache_polaris.sdk.management"
+    "--additional-properties=packageName=apache_polaris.sdk.management"
 )
 PACKAGE_NAME_POLARIS_CATALOG = (
-  "--additional-properties=packageName=apache_polaris.sdk.catalog"
+    "--additional-properties=packageName=apache_polaris.sdk.catalog"
 )
 PYTHON_VERSION = "--additional-properties=pythonVersion=3.10"
 
@@ -250,7 +249,10 @@ def prepend_licenses() -> None:
         # Check if the path should be excluded.
         is_excluded = False
         for excluded_path in all_excluded_paths:
-            if relative_file_path == excluded_path or excluded_path in relative_file_path.parents:
+            if (
+                relative_file_path == excluded_path
+                or excluded_path in relative_file_path.parents
+            ):
                 is_excluded = True
                 break
 
@@ -269,7 +271,7 @@ def prepend_licenses() -> None:
     logger.info("License fix complete.")
 
 
-def prepare_spec_dir():
+def prepare_spec_dir() -> None:
     logger.info("Preparing spec directory...")
     spec_dir = Path(SPEC_DIR)
     spec_source_dir = CLIENT_DIR.parent.parent / "spec"
@@ -346,7 +348,7 @@ def fix_catalog_models_init() -> None:
     logger.info("Catalog models __init__.py fixed.")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Generate Polaris Python clients.")
     parser.add_argument(
         "-v",

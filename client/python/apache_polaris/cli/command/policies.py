@@ -19,25 +19,21 @@
 
 import json
 
-import os
 from dataclasses import dataclass
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from apache_polaris.cli.command import Command
 from apache_polaris.cli.command.utils import get_catalog_api_client
 from apache_polaris.cli.constants import Subcommands, Arguments, UNIT_SEPARATOR
 from apache_polaris.cli.options.option_tree import Argument
 from apache_polaris.sdk.catalog.api.policy_api import PolicyAPI
-from apache_polaris.sdk.catalog.models.attach_policy_request import \
-  AttachPolicyRequest
-from apache_polaris.sdk.catalog.models.create_policy_request import \
-  CreatePolicyRequest
-from apache_polaris.sdk.catalog.models.detach_policy_request import \
-  DetachPolicyRequest
-from apache_polaris.sdk.catalog.models.policy_attachment_target import \
-  PolicyAttachmentTarget
-from apache_polaris.sdk.catalog.models.update_policy_request import \
-  UpdatePolicyRequest
+from apache_polaris.sdk.catalog.models.attach_policy_request import AttachPolicyRequest
+from apache_polaris.sdk.catalog.models.create_policy_request import CreatePolicyRequest
+from apache_polaris.sdk.catalog.models.detach_policy_request import DetachPolicyRequest
+from apache_polaris.sdk.catalog.models.policy_attachment_target import (
+    PolicyAttachmentTarget,
+)
+from apache_polaris.sdk.catalog.models.update_policy_request import UpdatePolicyRequest
 from apache_polaris.sdk.management import PolarisDefaultApi
 
 
@@ -61,18 +57,30 @@ class PoliciesCommand(Command):
     attachment_type: Optional[str]
     attachment_path: Optional[str]
 
-    def validate(self):
+    def validate(self) -> None:
         if not self.catalog_name:
-            raise Exception(f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}")
+            raise Exception(
+                f"Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}"
+            )
         if self.policies_subcommand in [Subcommands.CREATE, Subcommands.UPDATE]:
             if not self.policy_file:
-                raise Exception(f"Missing required argument: {Argument.to_flag_name(Arguments.POLICY_FILE)}")
+                raise Exception(
+                    f"Missing required argument: {Argument.to_flag_name(Arguments.POLICY_FILE)}"
+                )
         if self.policies_subcommand in [Subcommands.ATTACH, Subcommands.DETACH]:
             if not self.attachment_type:
-                raise Exception(f"Missing required argument: {Argument.to_flag_name(Arguments.ATTACHMENT_TYPE)}")
-            if self.attachment_type != 'catalog' and not self.attachment_path:
-                raise Exception(f"'{Argument.to_flag_name(Arguments.ATTACHMENT_PATH)}' is required when attachment type is not 'catalog'")
-        if self.policies_subcommand == Subcommands.LIST and self.applicable and self.target_name:
+                raise Exception(
+                    f"Missing required argument: {Argument.to_flag_name(Arguments.ATTACHMENT_TYPE)}"
+                )
+            if self.attachment_type != "catalog" and not self.attachment_path:
+                raise Exception(
+                    f"'{Argument.to_flag_name(Arguments.ATTACHMENT_PATH)}' is required when attachment type is not 'catalog'"
+                )
+        if (
+            self.policies_subcommand == Subcommands.LIST
+            and self.applicable
+            and self.target_name
+        ):
             if not self.namespace:
                 raise Exception(
                     f"Missing required argument: {Argument.to_flag_name(Arguments.NAMESPACE)}"
@@ -89,7 +97,9 @@ class PoliciesCommand(Command):
         catalog_api_client = get_catalog_api_client(api)
         policy_api = PolicyAPI(catalog_api_client)
 
-        namespace_str = self.namespace.replace('.', UNIT_SEPARATOR) if self.namespace else ""
+        namespace_str = (
+            self.namespace.replace(".", UNIT_SEPARATOR) if self.namespace else ""
+        )
         if self.policies_subcommand == Subcommands.CREATE:
             with open(self.policy_file, "r") as f:
                 policy = json.load(f)
@@ -100,22 +110,24 @@ class PoliciesCommand(Command):
                     name=self.policy_name,
                     type=self.policy_type,
                     description=self.policy_description,
-                    content=json.dumps(policy)
-                )
+                    content=json.dumps(policy),
+                ),
             )
         elif self.policies_subcommand == Subcommands.DELETE:
             policy_api.drop_policy(
                 prefix=self.catalog_name,
                 namespace=namespace_str,
                 policy_name=self.policy_name,
-                detach_all=self.detach_all
+                detach_all=self.detach_all,
             )
         elif self.policies_subcommand == Subcommands.GET:
-            print(policy_api.load_policy(
-                prefix=self.catalog_name,
-                namespace=namespace_str,
-                policy_name=self.policy_name
-            ).to_json())
+            print(
+                policy_api.load_policy(
+                    prefix=self.catalog_name,
+                    namespace=namespace_str,
+                    policy_name=self.policy_name,
+                ).to_json()
+            )
         elif self.policies_subcommand == Subcommands.LIST:
             if self.applicable:
                 applicable_policies_list = []
@@ -126,20 +138,19 @@ class PoliciesCommand(Command):
                         prefix=self.catalog_name,
                         namespace=namespace_str,
                         target_name=self.target_name,
-                        policy_type=self.policy_type
+                        policy_type=self.policy_type,
                     ).applicable_policies
                 elif self.namespace:
                     # Namespace level policies
                     applicable_policies_list = policy_api.get_applicable_policies(
                         prefix=self.catalog_name,
                         namespace=namespace_str,
-                        policy_type=self.policy_type
+                        policy_type=self.policy_type,
                     ).applicable_policies
                 else:
                     # Catalog level policies
                     applicable_policies_list = policy_api.get_applicable_policies(
-                        prefix=self.catalog_name,
-                        policy_type=self.policy_type
+                        prefix=self.catalog_name, policy_type=self.policy_type
                     ).applicable_policies
                 for policy in applicable_policies_list:
                     print(policy.to_json())
@@ -148,7 +159,7 @@ class PoliciesCommand(Command):
                 policies_response = policy_api.list_policies(
                     prefix=self.catalog_name,
                     namespace=namespace_str,
-                    policy_type=self.policy_type
+                    policy_type=self.policy_type,
                 ).to_json()
                 print(policies_response)
         elif self.policies_subcommand == Subcommands.UPDATE:
@@ -158,12 +169,14 @@ class PoliciesCommand(Command):
             loaded_policy_response = policy_api.load_policy(
                 prefix=self.catalog_name,
                 namespace=namespace_str,
-                policy_name=self.policy_name
+                policy_name=self.policy_name,
             )
             if loaded_policy_response and loaded_policy_response.policy:
                 current_policy_version = loaded_policy_response.policy.version
             else:
-                raise Exception(f"Could not retrieve current policy version for {self.policy_name}")
+                raise Exception(
+                    f"Could not retrieve current policy version for {self.policy_name}"
+                )
 
             policy_api.update_policy(
                 prefix=self.catalog_name,
@@ -172,38 +185,42 @@ class PoliciesCommand(Command):
                 update_policy_request=UpdatePolicyRequest(
                     description=self.policy_description,
                     content=json.dumps(policy_document),
-                    current_policy_version=current_policy_version
-                )
+                    current_policy_version=current_policy_version,
+                ),
             )
-        elif self.policies_subcommand == Subcommands.ATTACH:
-            attachment_path_list = [] if self.attachment_type == "catalog" else self.attachment_path.split('.')
+        elif self.policies_subcommand in [Subcommands.ATTACH, Subcommands.DETACH]:
+            attachment_path_list: List[str] = []
+            if self.attachment_type != "catalog" and self.attachment_path:
+                attachment_path_list = self.attachment_path.split(".")
 
-            policy_api.attach_policy(
-                prefix=self.catalog_name,
-                namespace=namespace_str,
-                policy_name=self.policy_name,
-                attach_policy_request=AttachPolicyRequest(
-                    target=PolicyAttachmentTarget(
-                        type=self.attachment_type,
-                        path=attachment_path_list
+            if self.policies_subcommand == Subcommands.ATTACH:
+                policy_api.attach_policy(
+                    prefix=self.catalog_name,
+                    namespace=namespace_str,
+                    policy_name=self.policy_name,
+                    attach_policy_request=AttachPolicyRequest(
+                        target=PolicyAttachmentTarget(
+                            type=self.attachment_type, path=attachment_path_list
+                        ),
+                        parameters=self.parameters
+                        if isinstance(self.parameters, dict)
+                        else None,
                     ),
-                    parameters=self.parameters if isinstance(self.parameters, dict) else None
                 )
-            )
-        elif self.policies_subcommand == Subcommands.DETACH:
-            attachment_path_list = [] if self.attachment_type == "catalog" else self.attachment_path.split('.')
+            else:
+                policy_api.detach_policy(
+                    prefix=self.catalog_name,
+                    namespace=namespace_str,
+                    policy_name=self.policy_name,
+                    detach_policy_request=DetachPolicyRequest(
+                        target=PolicyAttachmentTarget(
+                            type=self.attachment_type, path=attachment_path_list
+                        ),
+                        parameters=self.parameters
+                        if isinstance(self.parameters, dict)
+                        else None,
+                    ),
+                )
 
-            policy_api.detach_policy(
-                prefix=self.catalog_name,
-                namespace=namespace_str,
-                policy_name=self.policy_name,
-                detach_policy_request=DetachPolicyRequest(
-                    target=PolicyAttachmentTarget(
-                        type=self.attachment_type,
-                        path=attachment_path_list
-                    ),
-                    parameters=self.parameters if isinstance(self.parameters, dict) else None
-                )
-            )
         else:
             raise Exception(f"{self.policies_subcommand} is not supported in the CLI")
