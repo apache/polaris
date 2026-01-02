@@ -228,13 +228,13 @@ class OptionTree:
                             Argument(
                                 Arguments.KMS_KEY_CURRENT,
                                 str,
-                                Hints.Catalogs.Create.KMS_KEY_CURRENT
+                                Hints.Catalogs.Create.KMS_KEY_CURRENT,
                             ),
                             Argument(
                                 Arguments.KMS_KEY_ALLOWED,
                                 str,
                                 Hints.Catalogs.Create.KMS_KEY_ALLOWED,
-                                allow_repeats=True
+                                allow_repeats=True,
                             ),
                             Argument(
                                 Arguments.ALLOWED_LOCATION,

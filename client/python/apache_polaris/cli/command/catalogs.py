@@ -230,7 +230,7 @@ class CatalogsCommand(Command):
             or self.endpoint_internal
             or self.sts_endpoint
             or self.current_kms_key
-            or self.allowed_kms_keys            
+            or self.allowed_kms_keys
             or self.path_style_access
         )
 
