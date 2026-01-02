@@ -58,6 +58,10 @@ public abstract class AzureStorageConfigurationInfo extends PolarisStorageConfig
   @Nullable
   public abstract String getConsentUrl();
 
+  /** The flag indicating whether the storage account supports hierarchical namespaces. */
+  @Nullable
+  public abstract Boolean isHierarchical();
+
   @Override
   public void validatePrefixForStorageType(String loc) {
     AzureLocation location = new AzureLocation(loc);

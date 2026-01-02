@@ -21,6 +21,7 @@ package org.apache.polaris.service.it.test;
 import com.google.common.base.Strings;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -32,6 +33,7 @@ public abstract class PolarisRestCatalogViewAdlsIntegrationTestBase
     extends PolarisRestCatalogViewIntegrationBase {
   public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_AZURE_TENANT_ID");
   public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_AZURE_PATH");
+  public static final String HIERARCHICAL = System.getenv("INTEGRATION_TEST_AZURE_HIERARCHICAL");
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
@@ -39,6 +41,7 @@ public abstract class PolarisRestCatalogViewAdlsIntegrationTestBase
         .setTenantId(TENANT_ID)
         .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
         .setAllowedLocations(List.of(BASE_LOCATION))
+        .setHierarchical(Optional.ofNullable(HIERARCHICAL).map(Boolean::parseBoolean).orElse(null))
         .build();
   }
 
