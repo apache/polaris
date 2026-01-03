@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 import static org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation.validateIcebergProperties;
 
@@ -32,6 +33,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.catalog.Namespace;
@@ -149,7 +151,7 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext,
       String prefix,
       Function<IcebergCatalogHandler, Response> action) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     return withCatalogByName(securityContext, catalogName, action);
   }
 
@@ -305,11 +307,13 @@ public class IcebergCatalogAdapter
         catalog -> Response.ok(catalog.updateNamespaceProperties(ns, revisedRequest)).build());
   }
 
-  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
+  private static Set<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
     EnumSet<AccessDelegationMode> delegationModes =
         AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
     Preconditions.checkArgument(
-        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
+        delegationModes.isEmpty()
+            || delegationModes.contains(VENDED_CREDENTIALS)
+            || delegationModes.contains(REMOTE_SIGNING),
         "Unsupported access delegation mode: %s",
         accessDelegationMode);
     return delegationModes;
@@ -324,8 +328,7 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     validateIcebergProperties(realmConfig, createTableRequest.properties());
-    EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+    Set<AccessDelegationMode> delegationModes = parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
     return withCatalog(
         securityContext,
@@ -377,8 +380,7 @@ public class IcebergCatalogAdapter
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    EnumSet<AccessDelegationMode> delegationModes =
-        parseAccessDelegationModes(accessDelegationMode);
+    Set<AccessDelegationMode> delegationModes = parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
@@ -410,9 +412,7 @@ public class IcebergCatalogAdapter
   }
 
   private static Optional<String> getRefreshCredentialsEndpoint(
-      EnumSet<AccessDelegationMode> delegationModes,
-      String prefix,
-      TableIdentifier tableIdentifier) {
+      Set<AccessDelegationMode> delegationModes, String prefix, TableIdentifier tableIdentifier) {
     return delegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)
         ? Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier))
         : Optional.empty();
@@ -580,6 +580,7 @@ public class IcebergCatalogAdapter
               catalog.loadTableWithAccessDelegation(
                   tableIdentifier,
                   "all",
+                  EnumSet.of(VENDED_CREDENTIALS),
                   Optional.of(new PolarisResourcePaths(prefix).credentialsPath(tableIdentifier)));
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
@@ -718,7 +719,7 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
