@@ -223,7 +223,9 @@ listOf("intTest", "cloudTest")
   .map { tasks.named<Test>(it) }
   .forEach {
     it.configure {
-      maxParallelForks = 1
+      // Allow parallel test execution for different database backends (PostgreSQL and CockroachDB)
+      // Each test with a different @TestProfile runs in a separate JVM, providing isolation
+      maxParallelForks = Runtime.getRuntime().availableProcessors().coerceAtMost(2)
 
       val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
 
