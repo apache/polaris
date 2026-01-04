@@ -21,9 +21,15 @@ package org.apache.polaris.persistence.relational.jdbc;
 import java.io.InputStream;
 import java.util.Locale;
 
+/**
+ * Database types supported by Polaris relational JDBC persistence.
+ *
+ * <p>Note: CockroachDB is also supported but uses the POSTGRES type since it implements the
+ * PostgreSQL wire protocol and uses the same schemas. CockroachDB compatibility is ensured
+ * through INT4 type declarations in schemas and comprehensive test coverage.
+ */
 public enum DatabaseType {
   POSTGRES("postgres"),
-  COCKROACHDB("postgres"), // CockroachDB uses PostgreSQL wire protocol and schemas
   H2("h2");
 
   private final String displayName; // Store the user-friendly name
@@ -41,7 +47,6 @@ public enum DatabaseType {
     return switch (displayName.toLowerCase(Locale.ROOT)) {
       case "h2" -> DatabaseType.H2;
       case "postgresql" -> DatabaseType.POSTGRES;
-      case "cockroachdb" -> DatabaseType.COCKROACHDB;
       default -> throw new IllegalStateException("Unsupported DatabaseType: '" + displayName + "'");
     };
   }
