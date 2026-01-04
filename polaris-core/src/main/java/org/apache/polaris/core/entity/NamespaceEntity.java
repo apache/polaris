@@ -91,8 +91,7 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
                 "Namespace depth %d exceeds supported limit of %d. "
                     + "Deeply nested namespaces can generate oversized AWS STS policies. "
                     + "Consider flattening the namespace hierarchy.",
-                depth,
-                MAX_NAMESPACE_DEPTH));
+                depth, MAX_NAMESPACE_DEPTH));
       }
 
       setType(PolarisEntityType.NAMESPACE);
