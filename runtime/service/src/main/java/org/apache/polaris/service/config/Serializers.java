@@ -21,7 +21,6 @@ package org.apache.polaris.service.config;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.core.util.JsonParserDelegate;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -32,7 +31,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.BeanDeserializerModifier;
 import com.fasterxml.jackson.databind.jsontype.TypeIdResolver;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.TokenBuffer;
 import java.io.IOException;
@@ -51,10 +49,6 @@ import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
-import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
-import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 
 public final class Serializers {
   private Serializers() {}
@@ -109,8 +103,7 @@ public final class Serializers {
         throw new JsonMappingException(
             ctxt.getParser(),
             String.format(
-                "Invalid storage type '%s'. Valid values are: S3, GCS, AZURE, FILE",
-                subTypeId));
+                "Invalid storage type '%s'. Valid values are: S3, GCS, AZURE, FILE", subTypeId));
       }
       return null; // fall back to default handling for other types
     }

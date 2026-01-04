@@ -26,9 +26,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -62,8 +62,7 @@ public class StorageTypeDeserializationTest {
   void testGcsStorageTypeCaseInsensitive(String storageType) throws Exception {
     String json =
         String.format(
-            "{\"storageType\":\"%s\",\"allowedLocations\":[\"gs://bucket/\"]}",
-            storageType);
+            "{\"storageType\":\"%s\",\"allowedLocations\":[\"gs://bucket/\"]}", storageType);
     StorageConfigInfo config = mapper.readValue(json, StorageConfigInfo.class);
     assertThat(config.getStorageType()).isEqualTo(StorageConfigInfo.StorageTypeEnum.GCS);
     assertThat(config).isInstanceOf(GcpStorageConfigInfo.class);
@@ -86,12 +85,10 @@ public class StorageTypeDeserializationTest {
   void testFileStorageTypeCaseInsensitive(String storageType) throws Exception {
     String json =
         String.format(
-            "{\"storageType\":\"%s\",\"allowedLocations\":[\"file:///tmp/\"]}",
-            storageType);
+            "{\"storageType\":\"%s\",\"allowedLocations\":[\"file:///tmp/\"]}", storageType);
     StorageConfigInfo config = mapper.readValue(json, StorageConfigInfo.class);
     assertThat(config.getStorageType()).isEqualTo(StorageConfigInfo.StorageTypeEnum.FILE);
     assertThat(config).isInstanceOf(FileStorageConfigInfo.class);
-    
   }
 
   @Test
