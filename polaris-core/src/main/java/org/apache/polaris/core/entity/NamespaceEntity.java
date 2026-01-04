@@ -30,11 +30,13 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
  * internalProperties specific to the NAMESPACE type.
  */
 public class NamespaceEntity extends PolarisEntity implements LocationBasedEntity {
+
   // RESTUtil-encoded parent namespace.
   public static final String PARENT_NAMESPACE_KEY = "parent-namespace";
 
   public NamespaceEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
+
     Preconditions.checkState(
         getType() == PolarisEntityType.NAMESPACE, "Invalid entity type: %s", getType());
     Preconditions.checkState(
@@ -75,8 +77,24 @@ public class NamespaceEntity extends PolarisEntity implements LocationBasedEntit
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<NamespaceEntity, Builder> {
+
+    private static final int MAX_NAMESPACE_DEPTH = 10;
+
     public Builder(Namespace namespace) {
       super();
+      Preconditions.checkArgument(namespace != null, "Namespace must not be null");
+
+      int depth = namespace.length();
+      if (depth > MAX_NAMESPACE_DEPTH) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Namespace depth %d exceeds supported limit of %d. "
+                    + "Deeply nested namespaces can generate oversized AWS STS policies. "
+                    + "Consider flattening the namespace hierarchy.",
+                depth,
+                MAX_NAMESPACE_DEPTH));
+      }
+
       setType(PolarisEntityType.NAMESPACE);
       setParentNamespace(PolarisCatalogHelpers.getParentNamespace(namespace));
       setName(namespace.level(namespace.length() - 1));
