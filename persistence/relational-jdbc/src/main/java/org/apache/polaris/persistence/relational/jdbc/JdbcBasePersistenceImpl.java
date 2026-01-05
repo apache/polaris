@@ -28,11 +28,13 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -137,6 +139,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisBaseEntity> entities,
       List<PolarisBaseEntity> originalEntities) {
+    Set<Long> seenEntityIds = new HashSet<>();
+    for (PolarisBaseEntity entity : entities) {
+      if (!seenEntityIds.add(entity.getId())) {
+        throw new RetryOnConcurrencyException(
+            "Multiple updates to entity id '%s' in the same transaction", entity.getId());
+      }
+    }
+
     try {
       datasourceOperations.runWithinTransaction(
           connection -> {
