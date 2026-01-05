@@ -198,20 +198,28 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
 
       var nextStatus =
           switch (existing.status()) {
-            case CREATED, LOADING, INITIALIZING, INACTIVE -> PURGING;
+            case CREATED, LOADING, INITIALIZING, INACTIVE, PURGING ->
+                // PURGING is the state telling the maintenance service to delete the realm data.
+                PURGING;
             case ACTIVE -> INACTIVE;
-            case PURGING ->
-                // TODO this state should really happen during maintenance!!
+            case PURGED ->
+                // The PURGED state is also handled by the maintenance service.
                 PURGED;
-            case PURGED -> PURGED;
           };
+
+      if (nextStatus == existing.status()) {
+        // No status change (PURGING/PURGED), stop here.
+        // Maintenance service will handle the actual deletion of the realm data.
+        break;
+      }
 
       var update = RealmDefinition.builder().from(existing).status(nextStatus).build();
 
       var updated = realmManagement.update(existing, update);
 
-      if (updated.status() == PURGED) {
-        realmManagement.delete(updated);
+      if (updated.status() == PURGING || updated.status() == PURGED) {
+        // Final status (PURGING/PURGED), stop here.
+        // Maintenance service will handle the actual deletion of the realm data.
         break;
       }
     }
