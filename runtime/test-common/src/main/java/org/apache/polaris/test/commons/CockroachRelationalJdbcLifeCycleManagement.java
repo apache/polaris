@@ -50,9 +50,12 @@ public class CockroachRelationalJdbcLifeCycleManagement
     cockroach.start();
 
     // CockroachDB uses PostgreSQL JDBC driver and wire protocol
+    // Explicitly configure database type as cockroachdb for proper identification
     return Map.of(
         "polaris.persistence.type",
         "relational-jdbc",
+        "polaris.persistence.relational.jdbc.database-type",
+        "cockroachdb",
         "polaris.persistence.relational.jdbc.max-retries",
         "2",
         "quarkus.datasource.db-kind",

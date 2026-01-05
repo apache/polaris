@@ -30,6 +30,7 @@ public class JdbcBootstrapUtils {
   /**
    * Determines the correct schema version to use for bootstrapping a realm.
    *
+   * @param databaseType The database type being used (determines latest available schema version).
    * @param currentSchemaVersion The current version of the database schema.
    * @param requiredSchemaVersion The requested schema version (-1 for auto-detection).
    * @param hasAlreadyBootstrappedRealms Flag indicating if any realms already exist.
@@ -37,7 +38,12 @@ public class JdbcBootstrapUtils {
    * @throws IllegalStateException if the combination of parameters represents an invalid state.
    */
   public static int getRealmBootstrapSchemaVersion(
-      int currentSchemaVersion, int requiredSchemaVersion, boolean hasAlreadyBootstrappedRealms) {
+      DatabaseType databaseType,
+      int currentSchemaVersion,
+      int requiredSchemaVersion,
+      boolean hasAlreadyBootstrappedRealms) {
+
+    int latestSchemaVersion = databaseType.getLatestSchemaVersion();
 
     // If versions already match, no change is needed.
     if (currentSchemaVersion == requiredSchemaVersion) {
@@ -52,23 +58,23 @@ public class JdbcBootstrapUtils {
           return 1;
         }
       } else {
-        // A truly fresh start. Default to v3 for auto-detection, otherwise use the specified
-        // version.
-        return requiredSchemaVersion == -1 ? 3 : requiredSchemaVersion;
+        // A truly fresh start. Default to latest version for this database type for auto-detection,
+        // otherwise use the specified version.
+        return requiredSchemaVersion == -1 ? latestSchemaVersion : requiredSchemaVersion;
       }
     }
 
     // Handle auto-detection on an existing installation (current version > 0).
     if (requiredSchemaVersion == -1) {
-      // Use the current version if realms already exist; otherwise, use v3 for the new realm.
-      return hasAlreadyBootstrappedRealms ? currentSchemaVersion : 3;
+      // Use the current version if realms already exist; otherwise, use latest version for the new realm.
+      return hasAlreadyBootstrappedRealms ? currentSchemaVersion : latestSchemaVersion;
     }
 
     // Any other combination is an unhandled or invalid migration path.
     throw new IllegalStateException(
         String.format(
-            "Cannot determine bootstrap schema version. Current: %d, Required: %d, Bootstrapped: %b",
-            currentSchemaVersion, requiredSchemaVersion, hasAlreadyBootstrappedRealms));
+            "Cannot determine bootstrap schema version. Current: %d, Required: %d, Bootstrapped: %b, Database: %s",
+            currentSchemaVersion, requiredSchemaVersion, hasAlreadyBootstrappedRealms, databaseType));
   }
 
   /**

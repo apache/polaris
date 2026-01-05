@@ -29,4 +29,11 @@ public interface RelationalJdbcConfiguration {
 
   // initial delay
   Optional<Long> initialDelayInMs();
+
+  /**
+   * Explicitly configured database type.
+   * If not specified, the database type will be inferred from the JDBC connection metadata.
+   * Supported values: "postgresql", "cockroachdb", "h2"
+   */
+  Optional<String> databaseType();
 }
