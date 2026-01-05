@@ -21,26 +21,29 @@ package org.apache.polaris.service.events;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class PolarisEventTest {
 
+  private static final String TEST_REALM = "test-realm";
+  private static final String TEST_CATALOG = "my-catalog";
+  private static final String TEST_TABLE = "my-table";
+
   private static final PolarisEventMetadata TEST_METADATA =
-      ImmutablePolarisEventMetadata.builder().realmId("test-realm").build();
+      ImmutablePolarisEventMetadata.builder().realmId(TEST_REALM).build();
 
   @Test
   void testBuilderCreatesEvent() {
     PolarisEvent event =
         PolarisEvent.builder(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA)
-            .attribute(EventAttributes.CATALOG_NAME, "my-catalog")
-            .attribute(EventAttributes.TABLE_NAME, "my-table")
+            .attribute(EventAttributes.CATALOG_NAME, TEST_CATALOG)
+            .attribute(EventAttributes.TABLE_NAME, TEST_TABLE)
             .build();
 
     assertThat(event.type()).isEqualTo(PolarisEventType.BEFORE_CREATE_TABLE);
     assertThat(event.metadata()).isEqualTo(TEST_METADATA);
-    assertThat(event.attribute(EventAttributes.CATALOG_NAME)).isEqualTo(Optional.of("my-catalog"));
-    assertThat(event.attribute(EventAttributes.TABLE_NAME)).isEqualTo(Optional.of("my-table"));
+    assertThat(event.requiredAttribute(EventAttributes.CATALOG_NAME)).isEqualTo(TEST_CATALOG);
+    assertThat(event.requiredAttribute(EventAttributes.TABLE_NAME)).isEqualTo(TEST_TABLE);
   }
 
   @Test
@@ -55,7 +58,7 @@ class PolarisEventTest {
   void testHasAttribute() {
     PolarisEvent event =
         PolarisEvent.builder(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA)
-            .attribute(EventAttributes.CATALOG_NAME, "my-catalog")
+            .attribute(EventAttributes.CATALOG_NAME, TEST_CATALOG)
             .build();
 
     assertThat(event.hasAttribute(EventAttributes.CATALOG_NAME)).isTrue();
@@ -66,12 +69,12 @@ class PolarisEventTest {
   void testAttributesReturnsUnmodifiableMap() {
     PolarisEvent event =
         PolarisEvent.builder(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA)
-            .attribute(EventAttributes.CATALOG_NAME, "my-catalog")
+            .attribute(EventAttributes.CATALOG_NAME, TEST_CATALOG)
             .build();
 
     assertThat(event.attributes()).hasSize(1);
-    assertThat(event.attributes().get(EventAttributes.CATALOG_NAME)).isEqualTo("my-catalog");
-    assertThatThrownBy(() -> event.attributes().put(EventAttributes.TABLE_NAME, "table"))
+    assertThat(event.attributes().get(EventAttributes.CATALOG_NAME)).isEqualTo(TEST_CATALOG);
+    assertThatThrownBy(() -> event.attributes().put(EventAttributes.TABLE_NAME, TEST_TABLE))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
@@ -90,10 +93,10 @@ class PolarisEventTest {
   void testRequiredAttributeReturnsValue() {
     PolarisEvent event =
         PolarisEvent.builder(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA)
-            .attribute(EventAttributes.CATALOG_NAME, "my-catalog")
+            .attribute(EventAttributes.CATALOG_NAME, TEST_CATALOG)
             .build();
 
-    assertThat(event.requiredAttribute(EventAttributes.CATALOG_NAME)).isEqualTo("my-catalog");
+    assertThat(event.requiredAttribute(EventAttributes.CATALOG_NAME)).isEqualTo(TEST_CATALOG);
   }
 
   @Test
@@ -103,7 +106,9 @@ class PolarisEventTest {
 
     assertThatThrownBy(() -> event.requiredAttribute(EventAttributes.CATALOG_NAME))
         .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Required attribute")
         .hasMessageContaining("catalog_name")
+        .hasMessageContaining("not found")
         .hasMessageContaining("BEFORE_CREATE_TABLE");
   }
 }

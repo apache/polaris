@@ -132,4 +132,3 @@ final class AllowedAttributeTypes {
     return ALLOWED_TYPES.contains(type);
   }
 }
-

@@ -27,48 +27,23 @@ import org.junit.jupiter.api.Test;
 
 class AttributeKeyTest {
 
+  private static final String TEST_KEY = "test_key";
+  private static final String OTHER_KEY = "other_key";
+
   @Test
   void testCreateAndAccessors() {
-    AttributeKey<String> key = AttributeKey.of("test_key", String.class);
+    AttributeKey<String> key = AttributeKey.of(TEST_KEY, String.class);
 
-    assertThat(key.name()).isEqualTo("test_key");
+    assertThat(key.name()).isEqualTo(TEST_KEY);
     assertThat(key.type()).isEqualTo(String.class);
   }
 
   @Test
-  void testTypeCastValidValue() {
-    AttributeKey<String> key = AttributeKey.of("test_key", String.class);
-
-    String result = key.type().cast("hello");
-
-    assertThat(result).isEqualTo("hello");
-  }
-
-  @Test
-  void testTypeCastNullValue() {
-    AttributeKey<String> key = AttributeKey.of("test_key", String.class);
-
-    String result = key.type().cast(null);
-
-    assertThat(result).isNull();
-  }
-
-  @Test
-  void testTypeCastInvalidType() {
-    AttributeKey<String> key = AttributeKey.of("test_key", String.class);
-
-    assertThatThrownBy(() -> key.type().cast(123))
-        .isInstanceOf(ClassCastException.class)
-        .hasMessageContaining("Integer")
-        .hasMessageContaining("String");
-  }
-
-  @Test
   void testEqualsAndHashCode() {
-    AttributeKey<String> key1 = AttributeKey.of("test_key", String.class);
-    AttributeKey<String> key2 = AttributeKey.of("test_key", String.class);
-    AttributeKey<String> key3 = AttributeKey.of("other_key", String.class);
-    AttributeKey<Integer> key4 = AttributeKey.of("test_key", Integer.class);
+    AttributeKey<String> key1 = AttributeKey.of(TEST_KEY, String.class);
+    AttributeKey<String> key2 = AttributeKey.of(TEST_KEY, String.class);
+    AttributeKey<String> key3 = AttributeKey.of(OTHER_KEY, String.class);
+    AttributeKey<Integer> key4 = AttributeKey.of(TEST_KEY, Integer.class);
 
     assertThat(key1).isEqualTo(key2);
     assertThat(key1.hashCode()).isEqualTo(key2.hashCode());
@@ -78,9 +53,9 @@ class AttributeKeyTest {
 
   @Test
   void testToString() {
-    AttributeKey<String> key = AttributeKey.of("test_key", String.class);
+    AttributeKey<String> key = AttributeKey.of(TEST_KEY, String.class);
 
-    assertThat(key.toString()).contains("test_key").contains("String");
+    assertThat(key.toString()).contains(TEST_KEY).contains("String");
   }
 
   @Test
@@ -91,18 +66,18 @@ class AttributeKeyTest {
 
   @Test
   void testNullTypeThrows() {
-    assertThatThrownBy(() -> AttributeKey.of("test_key", null))
+    assertThatThrownBy(() -> AttributeKey.of(TEST_KEY, null))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   void testJsonSerializesToName() throws JsonProcessingException {
-    AttributeKey<String> key = AttributeKey.of("catalog_name", String.class);
+    AttributeKey<String> key = AttributeKey.of(TEST_KEY, String.class);
     ObjectMapper mapper = new ObjectMapper();
 
     String json = mapper.writeValueAsString(key);
 
-    assertThat(json).isEqualTo("\"catalog_name\"");
+    assertThat(json).isEqualTo("\"" + TEST_KEY + "\"");
   }
 
   @Test

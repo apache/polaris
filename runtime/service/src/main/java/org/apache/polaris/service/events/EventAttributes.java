@@ -246,6 +246,5 @@ public final class EventAttributes {
   public static final AttributeKey<Boolean> EXISTS = AttributeKey.of("exists", Boolean.class);
   public static final AttributeKey<String> ERROR_MESSAGE =
       AttributeKey.of("error_message", String.class);
-  public static final AttributeKey<String> ERROR_TYPE =
-      AttributeKey.of("error_type", String.class);
+  public static final AttributeKey<String> ERROR_TYPE = AttributeKey.of("error_type", String.class);
 }
