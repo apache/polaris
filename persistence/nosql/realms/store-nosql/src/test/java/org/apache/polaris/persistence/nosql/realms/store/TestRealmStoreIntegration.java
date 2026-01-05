@@ -36,6 +36,7 @@ import java.util.function.IntFunction;
 import java.util.stream.IntStream;
 import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.PersistenceParams;
+import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.realms.api.RealmAlreadyExistsException;
 import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition;
 import org.apache.polaris.persistence.nosql.realms.api.RealmExpectedStateMismatchException;
@@ -62,12 +63,14 @@ public class TestRealmStoreIntegration {
 
   @Test
   public void nonSystemPersistence() {
+    @SuppressWarnings("resource")
+    var backend = mock(Backend.class);
     var nonSystemPersistence = mock(Persistence.class);
     var params = mock(PersistenceParams.class);
     when(nonSystemPersistence.realmId()).thenReturn("nonSystemPersistence");
     when(nonSystemPersistence.params()).thenReturn(params);
     soft.assertThatIllegalArgumentException()
-        .isThrownBy(() -> new RealmStoreImpl(nonSystemPersistence))
+        .isThrownBy(() -> new RealmStoreImpl(nonSystemPersistence, backend))
         .withMessage("Realms management must happen in the ::system:: realm");
   }
 
