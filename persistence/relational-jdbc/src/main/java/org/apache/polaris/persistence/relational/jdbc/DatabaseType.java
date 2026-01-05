@@ -24,10 +24,10 @@ import java.util.Locale;
 /**
  * Database types supported by Polaris relational JDBC persistence.
  *
- * <p>CockroachDB uses the PostgreSQL wire protocol but has its own schema resources
- * in the "cockroachdb" directory. While CockroachDB is PostgreSQL-compatible, having
- * separate schemas allows for CockroachDB-specific optimizations and avoids experimental
- * ALTER operations that CockroachDB doesn't fully support.
+ * <p>CockroachDB uses the PostgreSQL wire protocol but has its own schema resources in the
+ * "cockroachdb" directory. While CockroachDB is PostgreSQL-compatible, having separate schemas
+ * allows for CockroachDB-specific optimizations and avoids experimental ALTER operations that
+ * CockroachDB doesn't fully support.
  */
 public enum DatabaseType {
   POSTGRES("postgres"),
@@ -46,14 +46,14 @@ public enum DatabaseType {
   }
 
   /**
-   * Returns the latest schema version available for this database type.
-   * This is used as the default schema version for new installations.
+   * Returns the latest schema version available for this database type. This is used as the default
+   * schema version for new installations.
    */
   public int getLatestSchemaVersion() {
     return switch (this) {
-      case POSTGRES -> 3;  // PostgreSQL has schemas v1, v2, v3
-      case COCKROACHDB -> 1;  // CockroachDB currently has only schema v1
-      case H2 -> 3;  // H2 uses same schemas as PostgreSQL
+      case POSTGRES -> 3; // PostgreSQL has schemas v1, v2, v3
+      case COCKROACHDB -> 1; // CockroachDB currently has only schema v1
+      case H2 -> 3; // H2 uses same schemas as PostgreSQL
     };
   }
 
@@ -67,13 +67,15 @@ public enum DatabaseType {
   }
 
   /**
-   * Determines the database type from JDBC connection metadata and validates against configured type.
+   * Determines the database type from JDBC connection metadata and validates against configured
+   * type.
    *
    * <p>Logic:
+   *
    * <ul>
    *   <li>If configuredType is provided: uses it as the authoritative type and validates it matches
-   *       what the connection reports. Throws an exception if there's a mismatch.</li>
-   *   <li>If configuredType is null: infers the type from connection metadata.</li>
+   *       what the connection reports. Throws an exception if there's a mismatch.
+   *   <li>If configuredType is null: infers the type from connection metadata.
    * </ul>
    *
    * @param connection JDBC connection to inspect
@@ -110,7 +112,7 @@ public enum DatabaseType {
             throw new IllegalStateException(
                 String.format(
                     "Configured database type '%s' does not match detected type '%s' from connection (product: '%s'). "
-                    + "Please check your polaris.persistence.relational.jdbc.database-type configuration.",
+                        + "Please check your polaris.persistence.relational.jdbc.database-type configuration.",
                     configuredType, inferredType, productName));
           }
         }
@@ -125,15 +127,18 @@ public enum DatabaseType {
 
       // Couldn't infer and no configured type
       throw new IllegalStateException(
-          "Cannot infer database type from product name: '" + productName + "'. "
-          + "Please set polaris.persistence.relational.jdbc.database-type explicitly.");
+          "Cannot infer database type from product name: '"
+              + productName
+              + "'. "
+              + "Please set polaris.persistence.relational.jdbc.database-type explicitly.");
 
     } catch (java.sql.SQLException e) {
       // If we can't get metadata, must have a configured type
       if (configuredType != null) {
         return configuredType;
       }
-      throw new IllegalStateException("Cannot determine database type: unable to read connection metadata", e);
+      throw new IllegalStateException(
+          "Cannot determine database type: unable to read connection metadata", e);
     }
   }
 

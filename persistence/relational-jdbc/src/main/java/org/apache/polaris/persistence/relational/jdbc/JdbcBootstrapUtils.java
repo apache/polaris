@@ -66,7 +66,8 @@ public class JdbcBootstrapUtils {
 
     // Handle auto-detection on an existing installation (current version > 0).
     if (requiredSchemaVersion == -1) {
-      // Use the current version if realms already exist; otherwise, use latest version for the new realm.
+      // Use the current version if realms already exist; otherwise, use latest version for the new
+      // realm.
       return hasAlreadyBootstrappedRealms ? currentSchemaVersion : latestSchemaVersion;
     }
 
@@ -74,7 +75,10 @@ public class JdbcBootstrapUtils {
     throw new IllegalStateException(
         String.format(
             "Cannot determine bootstrap schema version. Current: %d, Required: %d, Bootstrapped: %b, Database: %s",
-            currentSchemaVersion, requiredSchemaVersion, hasAlreadyBootstrappedRealms, databaseType));
+            currentSchemaVersion,
+            requiredSchemaVersion,
+            hasAlreadyBootstrappedRealms,
+            databaseType));
   }
 
   /**
