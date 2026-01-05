@@ -46,6 +46,7 @@ dependencies {
   // TODO: extract a polaris-rest module as a thin layer for
   //  client to depends on.
   implementation(project(":polaris-core")) { isTransitive = false }
+  implementation(project(":polaris-core-spi")) { isTransitive = false }
 
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
