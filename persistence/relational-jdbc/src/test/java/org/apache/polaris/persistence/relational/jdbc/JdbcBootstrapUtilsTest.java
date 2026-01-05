@@ -44,9 +44,13 @@ class JdbcBootstrapUtilsTest {
 
     // Act & Assert
     assertEquals(
-        version, JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(version, version, true));
+        version,
+        JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+            DatabaseType.POSTGRES, version, version, true));
     assertEquals(
-        version, JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(version, version, false));
+        version,
+        JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+            DatabaseType.POSTGRES, version, version, false));
   }
 
   @Test
@@ -57,11 +61,17 @@ class JdbcBootstrapUtilsTest {
 
     // Act & Assert
     assertEquals(
-        3, JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(currentVersion, -1, hasRealms));
+        3,
+        JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+            DatabaseType.POSTGRES, currentVersion, -1, hasRealms));
     assertEquals(
-        2, JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(currentVersion, 2, hasRealms));
+        2,
+        JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+            DatabaseType.POSTGRES, currentVersion, 2, hasRealms));
     assertEquals(
-        3, JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(currentVersion, 3, hasRealms));
+        3,
+        JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+            DatabaseType.POSTGRES, currentVersion, 3, hasRealms));
   }
 
   @Test
@@ -72,9 +82,13 @@ class JdbcBootstrapUtilsTest {
 
     // Act & Assert
     assertEquals(
-        1, JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(currentVersion, -1, hasRealms));
+        1,
+        JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+            DatabaseType.POSTGRES, currentVersion, -1, hasRealms));
     assertEquals(
-        1, JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(currentVersion, 1, hasRealms));
+        1,
+        JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+            DatabaseType.POSTGRES, currentVersion, 1, hasRealms));
   }
 
   @ParameterizedTest
@@ -84,7 +98,8 @@ class JdbcBootstrapUtilsTest {
     // Act & Assert
     assertEquals(
         expectedVersion,
-        JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(currentVersion, -1, hasRealms));
+        JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+            DatabaseType.POSTGRES, currentVersion, -1, hasRealms));
   }
 
   @Test
@@ -99,7 +114,7 @@ class JdbcBootstrapUtilsTest {
         IllegalStateException.class,
         () ->
             JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
-                currentVersion, invalidRequiredVersion, hasRealms));
+                DatabaseType.POSTGRES, currentVersion, invalidRequiredVersion, hasRealms));
   }
 
   @Test
@@ -113,13 +128,13 @@ class JdbcBootstrapUtilsTest {
         IllegalStateException.class,
         () ->
             JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
-                currentVersion, requiredVersion, true));
+                DatabaseType.POSTGRES, currentVersion, requiredVersion, true));
 
     assertThrows(
         IllegalStateException.class,
         () ->
             JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
-                currentVersion, requiredVersion, false));
+                DatabaseType.POSTGRES, currentVersion, requiredVersion, false));
   }
 
   @Nested
