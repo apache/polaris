@@ -1171,7 +1171,8 @@ components:
               description: >-
                 If set to `true`, instructs Polaris Servers to scope SAS tokens down to the most specific path
                 in the storage container (in most cases the table's base location). This flag should be set only
-                if hierarchical namespace is enabled in the Azure storage account.
+                if hierarchical namespace is enabled in the Azure storage account. Using this feature with 
+                non-hierarchical storage will lead to storage authorization errors in runtime in most cases.
           required:
             - tenantId
 
