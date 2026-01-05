@@ -25,7 +25,11 @@ import java.util.Map;
 public class CockroachRelationalJdbcProfile implements QuarkusTestProfile {
   @Override
   public Map<String, String> getConfigOverrides() {
-    return Map.of("polaris.persistence.auto-bootstrap-types", "relational-jdbc");
+    return Map.of(
+        "polaris.persistence.auto-bootstrap-types",
+        "relational-jdbc",
+        "polaris.persistence.relational.jdbc.database-type",
+        "cockroachdb");
   }
 
   @Override
