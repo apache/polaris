@@ -45,6 +45,35 @@ public interface IdempotencyStore {
   }
 
   /**
+   * Result of attempting to update the heartbeat for an in-progress idempotency record.
+   *
+   * <p>This allows callers to distinguish between different "no update" scenarios instead of
+   * overloading them into a boolean.
+   */
+  enum HeartbeatResult {
+    /** The heartbeat was successfully updated for the in-progress record owned by this executor. */
+    UPDATED,
+
+    /**
+     * The idempotency record exists but has already been finalized with an HTTP status; there is no
+     * longer an in-progress reservation to heartbeat.
+     */
+    FINALIZED,
+
+    /**
+     * No idempotency record exists for the specified realm and key. This can happen if the record
+     * was never created or has already been purged.
+     */
+    NOT_FOUND,
+
+    /**
+     * An in-progress idempotency record exists for the key, but it is owned by a different
+     * executor. The caller should stop heartbeating as it no longer owns the reservation.
+     */
+    LOST_OWNERSHIP
+  }
+
+  /**
    * Result of a {@link #reserve(String, String, String, String, Instant, String, Instant)} call,
    * including the outcome and, when applicable, the existing idempotency record.
    */
@@ -120,9 +149,10 @@ public interface IdempotencyStore {
    * @param idempotencyKey application-provided idempotency key
    * @param executorId identifier of the executor that owns the reservation
    * @param now timestamp representing the current time
-   * @return {@code true} if the heartbeat was updated, {@code false} otherwise
+   * @return {@link HeartbeatResult} describing whether the heartbeat was updated or why it was not
    */
-  boolean updateHeartbeat(String realmId, String idempotencyKey, String executorId, Instant now);
+  HeartbeatResult updateHeartbeat(
+      String realmId, String idempotencyKey, String executorId, Instant now);
 
   /**
    * Marks an idempotency record as finalized, recording HTTP status and response metadata.

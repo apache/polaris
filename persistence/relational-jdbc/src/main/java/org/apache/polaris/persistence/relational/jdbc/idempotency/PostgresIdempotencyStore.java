@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.IdempotencyStore;
+import org.apache.polaris.core.persistence.IdempotencyStore.HeartbeatResult;
 import org.apache.polaris.idempotency.IdempotencyRecord;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
@@ -123,7 +124,7 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public boolean updateHeartbeat(
+  public HeartbeatResult updateHeartbeat(
       String realmId, String idempotencyKey, String executorId, Instant now) {
     String sql =
         "UPDATE "
@@ -143,7 +144,23 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
                       realmId,
                       idempotencyKey,
                       executorId)));
-      return rows > 0;
+      if (rows > 0) {
+        return HeartbeatResult.UPDATED;
+      }
+
+      // No rows updated: determine why by loading the current record, if any.
+      Optional<IdempotencyRecord> existing = load(realmId, idempotencyKey);
+      if (existing.isEmpty()) {
+        return HeartbeatResult.NOT_FOUND;
+      }
+
+      IdempotencyRecord record = existing.get();
+      if (record.getHttpStatus() != null) {
+        return HeartbeatResult.FINALIZED;
+      }
+
+      // Record is still IN_PROGRESS but owned by a different executor.
+      return HeartbeatResult.LOST_OWNERSHIP;
     } catch (SQLException e) {
       throw new RuntimeException("Failed to update heartbeat", e);
     }

@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.Optional;
 import javax.sql.DataSource;
 import org.apache.polaris.core.persistence.IdempotencyStore;
+import org.apache.polaris.core.persistence.IdempotencyStore.HeartbeatResult;
 import org.apache.polaris.idempotency.IdempotencyRecord;
 import org.apache.polaris.persistence.relational.jdbc.DatasourceOperations;
 import org.apache.polaris.persistence.relational.jdbc.RelationalJdbcConfiguration;
@@ -124,8 +125,8 @@ public class PostgresIdempotencyStoreIT {
     Instant exp = now.plus(Duration.ofMinutes(5));
 
     store.reserve(realm, key, op, rid, exp, "A", now);
-    boolean hb = store.updateHeartbeat(realm, key, "A", now.plusSeconds(1));
-    assertThat(hb).isTrue();
+    HeartbeatResult hb = store.updateHeartbeat(realm, key, "A", now.plusSeconds(1));
+    assertThat(hb).isEqualTo(HeartbeatResult.UPDATED);
 
     boolean fin =
         store.finalizeRecord(
