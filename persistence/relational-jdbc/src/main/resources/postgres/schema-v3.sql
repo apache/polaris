@@ -160,5 +160,5 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
 );
 
 -- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_idemp_expires ON idempotency_records (expires_at);
-CREATE INDEX IF NOT EXISTS idx_idemp_active  ON idempotency_records (http_status, heartbeat_at);
+CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
+    ON idempotency_records (realm_id, expires_at);

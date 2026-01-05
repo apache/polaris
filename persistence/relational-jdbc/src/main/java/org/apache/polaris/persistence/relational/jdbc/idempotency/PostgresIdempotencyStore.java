@@ -202,11 +202,11 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
   }
 
   @Override
-  public int purgeExpired(Instant before) {
-    String sql = "DELETE FROM " + TABLE + " WHERE expires_at < ?";
+  public int purgeExpired(String realmId, Instant before) {
+    String sql = "DELETE FROM " + TABLE + " WHERE realm_id = ? AND expires_at < ?";
     try {
       return ops.executeUpdate(
-          new QueryGenerator.PreparedQuery(sql, List.of(Timestamp.from(before))));
+          new QueryGenerator.PreparedQuery(sql, List.of(realmId, Timestamp.from(before))));
     } catch (SQLException e) {
       throw new RuntimeException("Failed to purge expired idempotency records", e);
     }

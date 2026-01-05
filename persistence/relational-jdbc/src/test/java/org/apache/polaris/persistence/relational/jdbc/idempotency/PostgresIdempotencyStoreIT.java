@@ -167,7 +167,7 @@ public class PostgresIdempotencyStoreIT {
     Instant expPast = now.minus(Duration.ofMinutes(1));
 
     store.reserve(realm, key, op, rid, expPast, "A", now);
-    int purged = store.purgeExpired(Instant.now());
+    int purged = store.purgeExpired(realm, Instant.now());
     assertThat(purged).isEqualTo(1);
   }
 

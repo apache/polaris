@@ -180,10 +180,11 @@ public interface IdempotencyStore {
       Instant finalizedAt);
 
   /**
-   * Purges records whose expiration time is strictly before the given instant.
+   * Purges records in a given realm whose expiration time is strictly before the given instant.
    *
+   * @param realmId logical tenant or realm identifier
    * @param before cutoff instant; records expiring before this time may be removed
    * @return number of records that were purged
    */
-  int purgeExpired(Instant before);
+  int purgeExpired(String realmId, Instant before);
 }
