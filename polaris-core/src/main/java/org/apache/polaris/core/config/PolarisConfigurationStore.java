@@ -39,10 +39,11 @@ public interface PolarisConfigurationStore {
   /**
    * Retrieve the current value for a configuration key for a given realm. May be null if not set.
    *
-   * <p>This method is meant to be overridden by concrete configuration store implementations. This
-   * method is not meant to be calls by code that needs access to configuration values.
-   * Configuration consumers should call typed methods that take a {@link PolarisConfiguration}
-   * parameter instead.
+   * <p>This method is meant to be overridden by concrete configuration store implementations.
+   *
+   * <p>This method is <strong>not</strong> meant to be called by code that needs access to
+   * configuration values. Configuration consumers should call typed methods that take a {@link
+   * PolarisConfiguration} parameter instead.
    *
    * @param realmContext the realm context
    * @param configName the name of the configuration key to check
