@@ -76,8 +76,15 @@ public class DatasourceOperations {
     this.datasource = datasource;
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
     try (Connection connection = this.datasource.getConnection()) {
-      String productName = connection.getMetaData().getDatabaseProductName();
-      this.databaseType = DatabaseType.fromDisplayName(productName);
+      // Get explicitly configured database type, if any
+      DatabaseType configuredType = relationalJdbcConfiguration.databaseType()
+          .map(DatabaseType::fromDisplayName)
+          .orElse(null);
+
+      // Infer database type from connection, falling back to configured type
+      this.databaseType = DatabaseType.inferFromConnection(connection, configuredType);
+
+      LOGGER.info("Detected database type: {}", databaseType);
     }
   }
 
