@@ -29,6 +29,8 @@ public class CockroachJdbcAdminProfile extends RelationalJdbcProfile {
     return Map.of(
         "polaris.persistence.type",
         "relational-jdbc",
+        "polaris.persistence.relational.jdbc.database-type",
+        "cockroachdb",
         // These two options are required to "trigger" the enablement of JDBC data sources in
         // admin-tool tests, but do not harm other tests.
         "quarkus.datasource.active",

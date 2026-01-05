@@ -162,6 +162,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
         int effectiveSchemaVersion =
             JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
+                datasourceOperations.getDatabaseType(),
                 currentSchemaVersion,
                 requestedSchemaVersion,
                 JdbcBasePersistenceImpl.entityTableExists(datasourceOperations));
