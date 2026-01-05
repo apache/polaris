@@ -188,13 +188,13 @@ read permission on that resource.</p><p>Here is an example to find all policies 
 </span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;content&#34;</span>: {
 </span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;version&#34;</span>: <span style=color:#e6db74>&#34;2025-02-03&#34;</span>,
 </span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;enable&#34;</span>: <span style=color:#66d9ef>true</span>,
-</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;config&#34;</span>: <span style=color:#960050;background-color:#1e0010>{</span>
-</span></span><span style=display:flex><span>          <span style=color:#e6db74>&#34;min_snapshot_to_keep&#34;</span>: <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&#34;config&#34;</span>: {
+</span></span><span style=display:flex><span>          <span style=color:#f92672>&#34;min_snapshot_to_keep&#34;</span>: <span style=color:#ae81ff>1</span>,
 </span></span><span style=display:flex><span>          <span style=color:#f92672>&#34;max_snapshot_age_days&#34;</span>: <span style=color:#ae81ff>2</span>,
 </span></span><span style=display:flex><span>          <span style=color:#f92672>&#34;max_ref_age_days&#34;</span>: <span style=color:#ae81ff>3</span>
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>      }
-</span></span><span style=display:flex><span>    <span style=color:#960050;background-color:#1e0010>}</span>,
+</span></span><span style=display:flex><span>    },
 </span></span><span style=display:flex><span>    {
 </span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;name&#34;</span>: <span style=color:#e6db74>&#34;compaction-policy&#34;</span>,
 </span></span><span style=display:flex><span>      <span style=color:#f92672>&#34;type&#34;</span>: <span style=color:#e6db74>&#34;system.data-compaction&#34;</span>,
