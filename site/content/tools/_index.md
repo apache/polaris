@@ -33,4 +33,5 @@ These include:
 | [Polaris Benchmarks](./polaris-benchmarks/)             | Performance benchmarks for Polaris.                                                |
 | [Polaris Synchronizer](./polaris-synchronizer/)         | A tool to migrate entities from one Polaris instance to another.                   |
 | [Polaris MCP Server](./polaris-mcp-server/)             | A Polaris MCP server implementation.                                               |
+| [Polaris Console](./polaris-console/)                           | A Web Console for the Polaris server.                                              |
 
