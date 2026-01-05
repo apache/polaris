@@ -25,6 +25,9 @@ import java.util.Objects;
  * A type-safe key for event attributes. This allows for strongly-typed attribute access while
  * maintaining flexibility for custom attributes.
  *
+ * <p>Attribute types are validated at key creation time to ensure they can be serialized. See
+ * {@link AllowedAttributeTypes} for the list of allowed types.
+ *
  * @param <T> the type of the attribute value
  */
 public final class AttributeKey<T> {
@@ -34,6 +37,10 @@ public final class AttributeKey<T> {
   private AttributeKey(String name, Class<T> type) {
     this.name = Objects.requireNonNull(name, "name");
     this.type = Objects.requireNonNull(type, "type");
+    if (!AllowedAttributeTypes.isAllowed(type)) {
+      throw new IllegalArgumentException(
+          "Type " + type.getName() + " is not allowed for event attributes");
+    }
   }
 
   public static <T> AttributeKey<T> of(String name, Class<T> type) {

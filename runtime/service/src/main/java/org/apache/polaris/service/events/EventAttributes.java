@@ -244,5 +244,8 @@ public final class EventAttributes {
   // Operation result attributes
   public static final AttributeKey<Boolean> SUCCESS = AttributeKey.of("success", Boolean.class);
   public static final AttributeKey<Boolean> EXISTS = AttributeKey.of("exists", Boolean.class);
-  public static final AttributeKey<Throwable> ERROR = AttributeKey.of("error", Throwable.class);
+  public static final AttributeKey<String> ERROR_MESSAGE =
+      AttributeKey.of("error_message", String.class);
+  public static final AttributeKey<String> ERROR_TYPE =
+      AttributeKey.of("error_type", String.class);
 }

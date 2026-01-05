@@ -104,4 +104,32 @@ class AttributeKeyTest {
 
     assertThat(json).isEqualTo("\"catalog_name\"");
   }
+
+  @Test
+  void testAllowedTypes() {
+    assertThat(AttributeKey.of("s", String.class)).isNotNull();
+    assertThat(AttributeKey.of("b", Boolean.class)).isNotNull();
+    assertThat(AttributeKey.of("i", Integer.class)).isNotNull();
+    assertThat(AttributeKey.of("l", Long.class)).isNotNull();
+    assertThat(AttributeKey.of("d", Double.class)).isNotNull();
+    assertThat(AttributeKey.of("list", java.util.List.class)).isNotNull();
+    assertThat(AttributeKey.of("map", java.util.Map.class)).isNotNull();
+    assertThat(AttributeKey.of("set", java.util.Set.class)).isNotNull();
+  }
+
+  @Test
+  void testDisallowedTypes() {
+    assertThatThrownBy(() -> AttributeKey.of("x", java.util.Optional.class))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("not allowed");
+    assertThatThrownBy(() -> AttributeKey.of("x", java.util.function.Function.class))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("not allowed");
+    assertThatThrownBy(() -> AttributeKey.of("x", Throwable.class))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("not allowed");
+    assertThatThrownBy(() -> AttributeKey.of("x", StringBuilder.class))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("not allowed");
+  }
 }
