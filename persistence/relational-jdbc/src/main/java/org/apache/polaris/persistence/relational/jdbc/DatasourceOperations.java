@@ -77,9 +77,11 @@ public class DatasourceOperations {
     this.relationalJdbcConfiguration = relationalJdbcConfiguration;
     try (Connection connection = this.datasource.getConnection()) {
       // Get explicitly configured database type, if any
-      DatabaseType configuredType = relationalJdbcConfiguration.databaseType()
-          .map(DatabaseType::fromDisplayName)
-          .orElse(null);
+      DatabaseType configuredType =
+          relationalJdbcConfiguration
+              .databaseType()
+              .map(DatabaseType::fromDisplayName)
+              .orElse(null);
 
       // Infer database type from connection, falling back to configured type
       this.databaseType = DatabaseType.inferFromConnection(connection, configuredType);
@@ -410,7 +412,7 @@ public class DatasourceOperations {
 
   public boolean isRelationDoesNotExist(SQLException e) {
     return (RELATION_DOES_NOT_EXIST.equals(e.getSQLState())
-            && databaseType == DatabaseType.POSTGRES)
+            && (databaseType == DatabaseType.POSTGRES || databaseType == DatabaseType.COCKROACHDB))
         || ((H2_SCHEMA_DOES_NOT_EXIST.equals(e.getSQLState())
                 || H2_TABLE_DOES_NOT_EXIST.equals(e.getSQLState()))
             && databaseType == DatabaseType.H2);
