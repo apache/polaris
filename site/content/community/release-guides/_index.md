@@ -43,3 +43,6 @@ The [manual release guide](manual-release-guide/) walks through each step of cre
 
 ### Release Verification Guide
 The [release verification guide](release-verification-guide/) provides instructions for verifying an Apache Polaris release, like verifying checksums and signatures, ensuring release artifacts integrity, ...
+
+### Polaris Tools Releqse Guide
+The [Polaris Tools manual release guide](tools-manual-release-guide/) provides instructions to release one of the Polaris Tools atomatically. For now, this release guide is manual (waiting the automatic release for Polaris Tools).
