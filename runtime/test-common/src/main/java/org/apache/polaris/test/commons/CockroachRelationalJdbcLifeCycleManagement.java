@@ -21,7 +21,7 @@ package org.apache.polaris.test.commons;
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import java.util.Map;
-import org.testcontainers.containers.CockroachContainer;
+import org.testcontainers.cockroachdb.CockroachContainer;
 
 public class CockroachRelationalJdbcLifeCycleManagement
     implements QuarkusTestResourceLifecycleManager, DevServicesContext.ContextAware {
@@ -37,7 +37,6 @@ public class CockroachRelationalJdbcLifeCycleManagement
   }
 
   @Override
-  @SuppressWarnings("resource")
   public Map<String, String> start() {
     // CockroachDB testcontainers uses PostgreSQL wire protocol compatibility
     cockroach = new CockroachContainer("cockroachdb/cockroach:v24.3.0");
