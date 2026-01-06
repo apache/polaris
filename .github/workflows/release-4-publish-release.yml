@@ -289,8 +289,7 @@ jobs:
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          # polaris-admin merged into polaris-server - admin build handled by server build
-          exec_process ./gradlew :polaris-server:assemble :polaris-server:quarkusAppPartsBuild --rerun \
+          exec_process ./gradlew :polaris-admin:assemble :polaris-admin:quarkusAppPartsBuild --rerun \
             -Dquarkus.container-image.build=true \
             -Dquarkus.container-image.push=true \
             -Dquarkus.docker.buildx.platform="linux/amd64,linux/arm64" \
@@ -344,7 +343,8 @@ jobs:
           All artifacts have been signed with GPG and include SHA-512 checksums for verification.
 
           ## Docker Images
-          - \`apache/polaris:${final_release_tag}\` - Polaris Server (includes admin CLI tools)"
+          - \`apache/polaris:${final_release_tag}\` - Polaris Server
+          - \`apache/polaris-admin:${final_release_tag}\` - Polaris Admin Tool"
           # ********************************************************************************
 
           # Create GitHub release
