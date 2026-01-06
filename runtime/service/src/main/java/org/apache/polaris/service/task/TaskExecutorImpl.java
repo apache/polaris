@@ -184,7 +184,7 @@ public class TaskExecutorImpl implements TaskExecutor {
         .exceptionallyComposeAsync(
             (t) -> {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
-              errorHandler.ifPresent(h -> h.accept(taskEntityId, false, e));
+              errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
               return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
