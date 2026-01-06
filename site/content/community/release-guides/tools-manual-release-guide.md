@@ -103,6 +103,10 @@ Set it as remote with name `apache` for release if it's not already set up.
 
 ## Creating a release candidate
 
+## Identify the tool
+
+The name of the tool used in Git branches and tags is equal to the name of the directory of the tool in the Git source tree. For example, a release of the Polaris Console (web UI) uses `console` (e.g. `release/console/1.2.3`, and the Iceberg Catalog Migrator uses `iceberg-catalog-migrator`.
+Replace every reference to `tool` in the following branch tag names with the directory of the tool in the Git source tree.
 ### Initiate a discussion about the release with the community
 
 This step can be useful to gather ongoing patches that the community thinks should be in the upcoming Polaris Tool release.
