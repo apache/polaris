@@ -164,10 +164,10 @@ public class TaskExecutorImpl implements TaskExecutor {
       long taskEntityId,
       CallContext callContext,
       PolarisEventMetadata eventMetadata,
-      Throwable e,
+      Throwable previousError,
       int attempt) {
     if (attempt > 3) {
-      return CompletableFuture.failedFuture(e);
+      return CompletableFuture.failedFuture(previousError);
     }
     String realmId = callContext.getRealmContext().getRealmIdentifier();
 
@@ -183,6 +183,7 @@ public class TaskExecutorImpl implements TaskExecutor {
             executor)
         .exceptionallyComposeAsync(
             (t) -> {
+              t.addSuppressed(previousError);
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
               errorHandler.ifPresent(h -> h.accept(taskEntityId, false, t));
               return tryHandleTask(taskEntityId, callContext, eventMetadata, t, attempt + 1);
