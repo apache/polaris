@@ -30,7 +30,7 @@ aliases:
 
 This guide walks you through the process of **creating** a release for a Polaris Tool. The guide uses `iceberg-catalog-migrator` as an example.
 
-## Setup
+## Prerequisites
 
 To create a release candidate, you will need:
 
