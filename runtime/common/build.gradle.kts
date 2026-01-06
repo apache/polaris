@@ -16,17 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
 
-import java.util.Optional;
+plugins {
+  id("org.kordamp.gradle.jandex")
+  id("polaris-server")
+}
 
-public interface RelationalJdbcConfiguration {
-  // max retries before giving up
-  Optional<Integer> maxRetries();
-
-  // max retry duration
-  Optional<Long> maxDurationInMs();
-
-  // initial delay
-  Optional<Long> initialDelayInMs();
+dependencies {
+  compileOnly(libs.smallrye.config.core)
+  implementation(project(":polaris-relational-jdbc"))
+  implementation(platform(libs.quarkus.amazon.services.bom))
+  implementation("io.quarkiverse.amazonservices:quarkus-amazon-rds")
 }

@@ -19,7 +19,6 @@
 
 package org.apache.polaris.persistence.relational.jdbc;
 
-import io.quarkus.arc.InactiveBeanException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
@@ -40,11 +39,6 @@ public class RelationalJdbcProductionReadinessChecks {
       return ProductionReadinessCheck.OK;
     }
 
-    // Skip check if datasource is not available (e.g., in CLI mode before configuration)
-    if (dataSource.isUnsatisfied() || dataSource.isAmbiguous()) {
-      return ProductionReadinessCheck.OK;
-    }
-
     try {
       DatasourceOperations datasourceOperations =
           new DatasourceOperations(dataSource.get(), relationalJdbcConfiguration);
@@ -54,9 +48,6 @@ public class RelationalJdbcProductionReadinessChecks {
                 "The current persistence (jdbc:h2) is intended for tests only.",
                 "quarkus.datasource.jdbc.url"));
       }
-    } catch (InactiveBeanException e) {
-      // Datasource is inactive (e.g., in CLI mode before configuration)
-      return ProductionReadinessCheck.OK;
     } catch (SQLException e) {
       return ProductionReadinessCheck.of(
           ProductionReadinessCheck.Error.of(
