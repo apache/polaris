@@ -18,12 +18,10 @@
  */
 package org.apache.polaris;
 
+import io.quarkus.picocli.runtime.PicocliRunner;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.QuarkusApplication;
 import io.quarkus.runtime.annotations.QuarkusMain;
-import jakarta.inject.Inject;
-import org.apache.polaris.admintool.PolarisAdminTool;
-import picocli.CommandLine;
 
 /**
  * Main entry point for Polaris application. Supports both HTTP server mode and CLI admin mode: - No
@@ -31,27 +29,19 @@ import picocli.CommandLine;
  */
 @QuarkusMain
 public class PolarisApplication implements QuarkusApplication {
-
-  @Inject CommandLine.IFactory factory;
-
   /** Main method that detects CLI mode and activates the appropriate Quarkus profile. */
   public static void main(String... args) {
     if (args.length > 0) {
-      // CLI mode - activate the 'cli' profile for quieter logging
       System.setProperty("quarkus.profile", "cli");
+      Quarkus.run(PicocliRunner.class, args);
+    } else {
+      Quarkus.run(PolarisApplication.class, args);
     }
-    Quarkus.run(PolarisApplication.class, args);
   }
 
   @Override
-  public int run(String... args) throws Exception {
-    if (args.length == 0) {
-      // No arguments - run as HTTP server
-      Quarkus.waitForExit();
-      return 0;
-    } else {
-      // Arguments present - run as CLI tool
-      return new CommandLine(new PolarisAdminTool(), factory).execute(args);
-    }
+  public int run(String... args) {
+    Quarkus.waitForExit();
+    return 0;
   }
 }
