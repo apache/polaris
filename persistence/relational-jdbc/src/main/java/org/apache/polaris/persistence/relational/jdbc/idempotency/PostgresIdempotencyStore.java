@@ -149,6 +149,9 @@ public final class PostgresIdempotencyStore implements IdempotencyStore {
       }
 
       // No rows updated: determine why by loading the current record, if any.
+      // TODO: consider using a single atomic read/write (for example, PostgreSQL
+      // UPDATE ... RETURNING) to avoid this follow-up lookup and make the
+      // conflicting state observable in the same operation.
       Optional<IdempotencyRecord> existing = load(realmId, idempotencyKey);
       if (existing.isEmpty()) {
         return HeartbeatResult.NOT_FOUND;
