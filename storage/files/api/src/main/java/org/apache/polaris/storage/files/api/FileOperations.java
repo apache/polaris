@@ -138,7 +138,7 @@ public interface FileOperations {
 
   /**
    * Purges all files that are within the base location of the given view-metadata, purge only files
-   * that match the given filter. *
+   * that match the given filter.
    *
    * <p>In case "container" files like the metadata are not readable, those files are just ignored.
    *
