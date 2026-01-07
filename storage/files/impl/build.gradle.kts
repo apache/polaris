@@ -43,7 +43,6 @@ dependencies {
 
   implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.validation.api)
-  implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.enterprise.cdi.api)
 
   implementation(platform(libs.nessie.bom))
