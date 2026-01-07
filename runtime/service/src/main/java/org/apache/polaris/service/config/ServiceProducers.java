@@ -274,6 +274,9 @@ public class ServiceProducers {
       MetaStoreManagerFactory factory,
       PersistenceConfiguration config,
       RealmContextConfiguration realmContextConfiguration) {
+    if ("cli".equals(System.getProperty("quarkus.profile"))) {
+      return;
+    }
     var rootCredentialsSet = RootCredentialsSet.fromEnvironment();
     var rootCredentials = rootCredentialsSet.credentials();
     if (config.isAutoBootstrap()) {
