@@ -34,6 +34,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import org.apache.iceberg.ContentFile;
@@ -109,51 +110,51 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
     var metadataFileSpec =
         FileSpec.fromLocation(tableMetadataLocation).fileType(FileType.ICEBERG_METADATA).build();
 
-    var metadataFiles = Stream.of(metadataFileSpec);
+    var fileSources = new ArrayList<Stream<FileSpec>>();
+
+    fileSources.add(Stream.of(metadataFileSpec));
 
     var statisticsFiles = metadata.statisticsFiles();
     if (statisticsFiles != null) {
-      var statisticsFileSpecs =
+      fileSources.addFirst(
           statisticsFiles.stream()
               .map(
                   statisticsFile ->
                       FileSpec.fromLocationAndSize(
                               statisticsFile.path(), statisticsFile.fileSizeInBytes())
                           .fileType(FileType.ICEBERG_STATISTICS)
-                          .build());
-      metadataFiles = Stream.concat(statisticsFileSpecs, metadataFiles);
+                          .build()));
     }
 
     var previousFiles = metadata.previousFiles();
     if (previousFiles != null) {
-      metadataFiles =
-          Stream.concat(
-              metadataFiles,
-              previousFiles.stream()
-                  .filter(
-                      metadataLogEntry ->
-                          metadataLogEntry.file() != null && !metadataLogEntry.file().isEmpty())
-                  .map(
-                      metadataLogEntry ->
-                          FileSpec.fromLocation(metadataLogEntry.file())
-                              .fileType(FileType.ICEBERG_METADATA)
-                              .build()));
+      fileSources.add(
+          previousFiles.stream()
+              .filter(
+                  metadataLogEntry ->
+                      metadataLogEntry.file() != null && !metadataLogEntry.file().isEmpty())
+              .map(
+                  metadataLogEntry ->
+                      FileSpec.fromLocation(metadataLogEntry.file())
+                          .fileType(FileType.ICEBERG_METADATA)
+                          .build()));
     }
 
     var specsById = metadata.specsById();
 
     var addPredicate = deduplicator(deduplicate);
 
-    var manifestsAndDataFiles =
+    fileSources.addFirst(
         metadata.snapshots().stream()
             // Newest snapshots first
             .sorted((s1, s2) -> Long.compare(s2.timestampMillis(), s1.timestampMillis()))
             .flatMap(
-                snapshot -> identifyIcebergTableSnapshotFiles(snapshot, specsById, addPredicate));
+                snapshot -> identifyIcebergTableSnapshotFiles(snapshot, specsById, addPredicate)));
 
     // Return "dependencies" before the "metadata" itself, so the probability of being able to
     // resume a failed/aborted purge is higher.
-    return Stream.concat(manifestsAndDataFiles, metadataFiles);
+
+    return fileSources.stream().flatMap(Function.identity());
   }
 
   static Predicate<String> deduplicator(boolean deduplicate) {
@@ -210,7 +211,7 @@ record FileOperationsImpl(@Nonnull FileIO fileIO) implements FileOperations {
 
       // Return "dependencies" before the "metadata" itself, so a failed/aborted purge can be
       // resumed.
-      return Stream.concat(allManifestsFiles, manifestListFileSpecStream);
+      return Stream.of(allManifestsFiles, manifestListFileSpecStream).flatMap(Function.identity());
     } catch (Exception e) {
       LOGGER.warn("Failure reading manifest list file {}: {}", manifestListLocation, e.toString());
       LOGGER.debug("Failure reading manifest list file {}", manifestListLocation);
