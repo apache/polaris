@@ -304,6 +304,53 @@ public class IcebergAllowedLocationTest {
         .build();
   }
 
+  @Test
+  void testSetWriteDataPathToSubdirectoryUnderTableLocation(@TempDir Path tmpDir) {
+    var services = getTestServices();
+    var tableName = getTableName();
+    var tableId = TableIdentifier.of(namespace, tableName);
+
+    var catalogLocation = tmpDir.resolve(catalog).toAbsolutePath().toUri().toString();
+    var namespaceLocation = catalogLocation + "/" + namespace;
+
+    createCatalog(services, Map.of(), catalogLocation, List.of(catalogLocation));
+    createNamespace(services, namespaceLocation);
+
+    var createTableRequest =
+        CreateTableRequest.builder().withName(tableName).withSchema(SCHEMA).build();
+
+    var createResponse =
+        services
+            .restApi()
+            .createTable(
+                catalog,
+                namespace,
+                createTableRequest,
+                null,
+                services.realmContext(),
+                services.securityContext());
+    assertThat(createResponse.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+    var tableLocation = namespaceLocation + "/" + tableName;
+
+    // Update the table to set write.data.path to a subdirectory under the table's location
+    String writeDataPath = tableLocation + "/alternative_data";
+    Map<String, String> updatedProperties = new HashMap<>();
+    updatedProperties.put("write.data.path", writeDataPath);
+
+    var updateRequest =
+        UpdateTableRequest.create(
+            tableId, List.of(), List.of(new MetadataUpdate.SetProperties(updatedProperties)));
+
+    var updateResponse =
+        services
+            .catalogAdapter()
+            .newHandlerWrapper(services.securityContext(), catalog)
+            .updateTable(tableId, updateRequest);
+
+    assertThat(updateResponse.tableMetadata().properties())
+        .containsEntry("write.data.path", writeDataPath);
+  }
+
   private void createCatalog(
       TestServices services,
       Map<String, String> catalogConfig,
