@@ -149,28 +149,22 @@ public class PolarisSparkIntegrationTest extends PolarisSparkIntegrationTestBase
 
   @Test
   public void testSetWriteDataPathToSubdirectory() {
-    // Setup: create namespace
     onSpark("CREATE NAMESPACE ns1");
     onSpark("USE ns1");
-
-    // Create a table
     onSpark("CREATE TABLE tb1 (col1 integer, col2 string)");
 
-    // Fetch the current table's location using the loadTable helper
     LoadTableResponse tableResponse = loadTable(catalogName, "ns1", "tb1");
     String tableLocation = tableResponse.tableMetadata().location();
     assertThat(tableLocation).isNotNull();
 
-
+    // Set a custom write data path to a subdirectory within the table location
     String writeDataPath = tableLocation + "/alternative_data";
     onSpark("ALTER TABLE tb1 SET TBLPROPERTIES ('write.data.path' = '" + writeDataPath + "')");
 
-    // Verify that the table property is set
     tableResponse = loadTable(catalogName, "ns1", "tb1");
     assertThat(tableResponse.tableMetadata().properties())
         .containsEntry("write.data.path", writeDataPath);
 
-    // Insert data and verify it can be read back
     onSpark("INSERT INTO tb1 VALUES (1, 'a'), (2, 'b'), (3, 'c')");
     long recordCount = onSpark("SELECT * FROM tb1").count();
     assertThat(recordCount).isEqualTo(3);
