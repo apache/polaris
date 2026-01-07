@@ -33,7 +33,7 @@ CLI support will be made available in the release following `1.3.0-incubating`.
 
 ## Configuring Polaris Catalog
 
-KMS settings in Polaris are relevant to S3 buckets that have been confugure to use KMS on the AWS side
+KMS settings in Polaris are relevant to S3 buckets that have been configure to use KMS on the AWS side
 (e.g. using SSE-KMS).
 
 Make a note of the KMS keys ARN that the bucket uses and pass it to the `--current-kms-key` CLI option

@@ -41,9 +41,9 @@ import org.apache.polaris.persistence.nosql.coretypes.realm.ImmediateTasksObj;
  * Abstracts common {@link ContainerObj#stableIdToName()} and {@link ContainerObj#nameToObjRef()}
  * handling for committing operations, for non-catalog related types.
  *
- * @param <REF_OBJ> commited object type
+ * @param <REF_OBJ> committed object type
  * @param <B> builder type for {@link REF_OBJ}
- * @param <RESULT> result of the commiting operation
+ * @param <RESULT> result of the committing operation
  */
 public record ChangeCommitterWrapper<
         REF_OBJ extends ContainerObj, B extends ContainerObj.Builder<REF_OBJ, B>, RESULT>(
