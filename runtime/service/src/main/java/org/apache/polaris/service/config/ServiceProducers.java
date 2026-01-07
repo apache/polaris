@@ -19,6 +19,7 @@
 package org.apache.polaris.service.config;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.quarkus.runtime.configuration.ConfigUtils;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -274,7 +275,7 @@ public class ServiceProducers {
       MetaStoreManagerFactory factory,
       PersistenceConfiguration config,
       RealmContextConfiguration realmContextConfiguration) {
-    if ("cli".equals(System.getProperty("quarkus.profile"))) {
+    if (ConfigUtils.isProfileActive("cli")) {
       return;
     }
     var rootCredentialsSet = RootCredentialsSet.fromEnvironment();
