@@ -35,7 +35,7 @@ import org.apache.polaris.persistence.nosql.coretypes.principals.PrincipalsObj;
  * Abstracts common {@link ContainerObj#stableIdToName()} and {@link ContainerObj#nameToObjRef()}
  * handling for committing operations, for principals.
  *
- * @param <RESULT> result of the commiting operation
+ * @param <RESULT> result of the committing operation
  */
 public record PrincipalsChangeCommitterWrapper<RESULT>(
     PrincipalsChangeCommitter<RESULT> changeCommitter)

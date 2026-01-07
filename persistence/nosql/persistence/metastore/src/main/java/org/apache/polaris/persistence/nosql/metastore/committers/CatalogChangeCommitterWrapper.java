@@ -37,7 +37,7 @@ import org.apache.polaris.persistence.nosql.coretypes.catalog.CatalogStateObj;
  * Abstracts common {@link ContainerObj#stableIdToName()} and {@link ContainerObj#nameToObjRef()}
  * handling for committing operations, for catalog related types.
  *
- * @param <RESULT> result of the commiting operation
+ * @param <RESULT> result of the committing operation
  */
 public record CatalogChangeCommitterWrapper<RESULT>(CatalogChangeCommitter<RESULT> changeCommitter)
     implements CommitRetryable<CatalogStateObj, RESULT> {
