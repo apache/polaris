@@ -56,7 +56,6 @@ github:
           - "Unit Tests"
           - "Quarkus Tests"
           - "Quarkus Integration Tests"
-          - "Quarkus Admin Tests"
           - "Integration Tests"
           - regtest
           - spark-plugin-regtest
