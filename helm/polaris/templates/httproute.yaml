@@ -35,7 +35,6 @@ metadata:
   {{- end }}
 spec:
   hostnames: {{ .Values.httproute.hosts }}
-  # This will be different depending on which Gateway implementation is in use and the configuration of the Gateway resource
   parentRefs:
     - name: {{ .Values.httproute.gatewayName}}
       namespace: {{ .Values.httproute.gatewayNamespace }}
