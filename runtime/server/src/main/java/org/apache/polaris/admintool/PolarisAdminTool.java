@@ -25,7 +25,6 @@ import picocli.CommandLine.HelpCommand;
 
 @TopCommand
 @Command(
-    name = "polaris-admin-tool.jar",
     mixinStandardHelpOptions = true,
     versionProvider = PolarisVersionProvider.class,
     description = "Polaris administration & maintenance tool",
