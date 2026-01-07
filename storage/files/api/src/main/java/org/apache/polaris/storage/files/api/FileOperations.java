@@ -123,7 +123,7 @@ public interface FileOperations {
       @Nonnull String tableMetadataLocation, PurgeSpec purgeSpec);
 
   /**
-   * Purges all files that are referenced by the given view-metadata, respecting the given filter. *
+   * Purges all files that are referenced by the given view-metadata, respecting the given filter.
    *
    * <p>In case "container" files like the metadata are not readable, those files are just ignored.
    *
