@@ -30,7 +30,7 @@ JAVA_CMD="${JAVA_CMD:-$(command -v java)}"
 
 # Show the usage when no argument is provided
 if [ "$#" -eq 0 ]; then
-  set -- -h
+  set -- --help
 fi
 
 exec "$JAVA_CMD" ${POLARIS_JAVA_OPTS:-} -Dquarkus.profile=cli -jar quarkus-run.jar "$@"
