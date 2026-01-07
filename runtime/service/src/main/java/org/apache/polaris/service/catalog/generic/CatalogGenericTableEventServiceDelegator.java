@@ -52,7 +52,7 @@ public class CatalogGenericTableEventServiceDelegator
       CreateGenericTableRequest createGenericTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeCreateGenericTable(
         new CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent(
             eventMetadataFactory.create(), catalogName, namespace, createGenericTableRequest));
@@ -75,7 +75,7 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeDropGenericTable(
         new CatalogGenericTableServiceEvents.BeforeDropGenericTableEvent(
             eventMetadataFactory.create(), catalogName, namespace, genericTable));
@@ -95,7 +95,7 @@ public class CatalogGenericTableEventServiceDelegator
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeListGenericTables(
         new CatalogGenericTableServiceEvents.BeforeListGenericTablesEvent(
             eventMetadataFactory.create(), catalogName, namespace));
@@ -115,7 +115,7 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    String catalogName = prefixParser.prefixToCatalogName(prefix);
     polarisEventListener.onBeforeLoadGenericTable(
         new CatalogGenericTableServiceEvents.BeforeLoadGenericTableEvent(
             eventMetadataFactory.create(), catalogName, namespace, genericTable));
