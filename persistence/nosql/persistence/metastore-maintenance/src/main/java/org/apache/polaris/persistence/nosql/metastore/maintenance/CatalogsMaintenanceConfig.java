@@ -26,7 +26,7 @@ import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
- * Polaris stores a history of changes per kind of object (principals, principal roles, grants,
+ * No SQL persistence implementation of Polaris stores a history of changes per kind of object (principals, principal roles, grants,
  * immediate tasks, catalog roles and catalog state).
  *
  * <p>The rules are defined using a <a href="https://github.com/projectnessie/cel-java/">CEL
