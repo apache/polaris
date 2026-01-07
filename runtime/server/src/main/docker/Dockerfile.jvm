@@ -19,7 +19,7 @@
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.24-2.1767639862
 
 LABEL org.opencontainers.image.source=https://github.com/apache/polaris \
-      org.opencontainers.image.description="Apache Polaris (incubating) - Server and Admin Tool" \
+      org.opencontainers.image.description="Apache Polaris (incubating)" \
       org.opencontainers.image.licenses=Apache-2.0
 
 ENV LANGUAGE='en_US:en' \
