@@ -30,7 +30,7 @@ weight: 675
   helm-docs --chart-search-root=helm
 -->
 
-![Version: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/Version-1.2.0--incubating--SNAPSHOT-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.2.0--incubating--SNAPSHOT-informational?style=flat-square)
+![Version: 1.4.0-incubating-SNAPSHOT](https://img.shields.io/badge/Version-1.4.0--incubating--SNAPSHOT-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.4.0-incubating-SNAPSHOT](https://img.shields.io/badge/AppVersion-1.4.0--incubating--SNAPSHOT-informational?style=flat-square)
 
 A Helm chart for Apache Polaris (incubating).
 
@@ -151,17 +151,6 @@ Below are two sample deployment models for installing the chart: one with a non-
 > **These files are intended for testing purposes primarily, and may not be suitable for production use**.
 > For production deployments, create your own values files based on the provided examples.
 
-### Using the Gateway API (Advanced) 
-
-You may want to use the [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) for more advanced network routing. To do so, you may need to run the following commands: 
-```bash
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
-helm install envoy-gateway oci://docker.io/envoyproxy/gateway-helm -n gateway --create-namespace
-```
-
-This will make it possible to use the HTTPRoute resource. 
-[!NOTE]
-Only one of HTTPRoute or Ingress can be defined. Defining both will result in errors. 
 #### Non-persistent backend
 
 Install the chart with a non-persistent backend. From the Polaris repo root:
@@ -199,6 +188,18 @@ export QUARKUS_DATASOURCE_JDBC_URL=$(echo "$container_envs" | grep quarkus.datas
 
 java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap -c POLARIS,root,pass -r POLARIS
 ```
+
+### Using the Gateway API (Advanced)
+
+You may want to use the [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) for more advanced network routing. In most cases this would already be installed by your cluster admins. The following is an example set of commands to run to install the gateway:
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
+helm install gateway oci://docker.io/envoyproxy/gateway-helm -n gateway --create-namespace
+```
+
+This will make it possible to use the HTTPRoute resource.
+[!NOTE]
+Only one of HTTPRoute or Ingress can be defined. Defining both will result in errors.
 
 ### Uninstalling
 
