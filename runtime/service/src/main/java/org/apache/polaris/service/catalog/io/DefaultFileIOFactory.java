@@ -28,6 +28,7 @@ import java.util.Map;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.storage.StorageAccessConfig;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
@@ -59,6 +60,12 @@ public class DefaultFileIOFactory implements FileIOFactory {
     properties.putAll(storageAccessConfig.credentials());
     properties.putAll(storageAccessConfig.extraProperties());
     properties.putAll(storageAccessConfig.internalProperties());
+    AwsStorageConfigurationInfo awsConfig =
+        storageAccessConfig.storageConfigurationInfo().as(AwsStorageConfigurationInfo.class);
+
+    if (awsConfig != null && Boolean.TRUE.equals(awsConfig.getDisableS3TrailingChecksum())) {
+      properties.put("s3.checksum.enabled", "false");
+    }
 
     return loadFileIOInternal(ioImplClassName, properties);
   }
