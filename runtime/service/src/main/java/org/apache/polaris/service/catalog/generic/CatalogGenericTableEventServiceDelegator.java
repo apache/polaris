@@ -52,19 +52,39 @@ public class CatalogGenericTableEventServiceDelegator
       CreateGenericTableRequest createGenericTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+
     polarisEventListener.onBeforeCreateGenericTable(
         new CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent(
-            eventMetadataFactory.create(), catalogName, namespace, createGenericTableRequest));
+            eventMetadataFactory.create(),
+            catalogName,
+            namespace,
+            createGenericTableRequest));
+
     Response resp =
         delegate.createGenericTable(
             prefix, namespace, createGenericTableRequest, realmContext, securityContext);
+
+    LoadGenericTableResponse responseEntity =
+        (LoadGenericTableResponse) resp.getEntity();
+
+    /*
+     * NOTE:
+     * At this point, only data available via the API response can be attached
+     * to the AfterCreateGenericTable event. Any intermediate objects created
+     * earlier in the request lifecycle are not accessible here.
+     *
+     * This highlights the limitation described in #3209 and motivates the need
+     * for a request-scoped mechanism to pass non-response data to events.
+     */
     polarisEventListener.onAfterCreateGenericTable(
         new CatalogGenericTableServiceEvents.AfterCreateGenericTableEvent(
             eventMetadataFactory.create(),
             catalogName,
             namespace,
-            ((LoadGenericTableResponse) resp.getEntity()).getTable()));
+            responseEntity.getTable()));
+
     return resp;
   }
 
@@ -75,15 +95,26 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
+
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+
     polarisEventListener.onBeforeDropGenericTable(
         new CatalogGenericTableServiceEvents.BeforeDropGenericTableEvent(
-            eventMetadataFactory.create(), catalogName, namespace, genericTable));
+            eventMetadataFactory.create(),
+            catalogName,
+            namespace,
+            genericTable));
+
     Response resp =
         delegate.dropGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
+
     polarisEventListener.onAfterDropGenericTable(
         new CatalogGenericTableServiceEvents.AfterDropGenericTableEvent(
-            eventMetadataFactory.create(), catalogName, namespace, genericTable));
+            eventMetadataFactory.create(),
+            catalogName,
+            namespace,
+            genericTable));
+
     return resp;
   }
 
@@ -95,16 +126,25 @@ public class CatalogGenericTableEventServiceDelegator
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
+
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+
     polarisEventListener.onBeforeListGenericTables(
         new CatalogGenericTableServiceEvents.BeforeListGenericTablesEvent(
-            eventMetadataFactory.create(), catalogName, namespace));
+            eventMetadataFactory.create(),
+            catalogName,
+            namespace));
+
     Response resp =
         delegate.listGenericTables(
             prefix, namespace, pageToken, pageSize, realmContext, securityContext);
+
     polarisEventListener.onAfterListGenericTables(
         new CatalogGenericTableServiceEvents.AfterListGenericTablesEvent(
-            eventMetadataFactory.create(), catalogName, namespace));
+            eventMetadataFactory.create(),
+            catalogName,
+            namespace));
+
     return resp;
   }
 
@@ -115,18 +155,29 @@ public class CatalogGenericTableEventServiceDelegator
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
+
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+
     polarisEventListener.onBeforeLoadGenericTable(
         new CatalogGenericTableServiceEvents.BeforeLoadGenericTableEvent(
-            eventMetadataFactory.create(), catalogName, namespace, genericTable));
+            eventMetadataFactory.create(),
+            catalogName,
+            namespace,
+            genericTable));
+
     Response resp =
         delegate.loadGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
+
+    LoadGenericTableResponse responseEntity =
+        (LoadGenericTableResponse) resp.getEntity();
+
     polarisEventListener.onAfterLoadGenericTable(
         new CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent(
             eventMetadataFactory.create(),
             catalogName,
             namespace,
-            ((LoadGenericTableResponse) resp.getEntity()).getTable()));
+            responseEntity.getTable()));
+
     return resp;
   }
 }
