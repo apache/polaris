@@ -305,7 +305,6 @@ public class AzureCredentialsStorageIntegration
           new DataLakeServiceSasSignatureValues(sasExpiry, pathSasPermission);
 
       if (path != null) {
-        LOGGER.warn("PATH: {}", path);
         return new DataLakePathClientBuilder()
             .endpoint(endpoint)
             .fileSystemName(fileSystemNameOrContainer)
