@@ -308,7 +308,7 @@ public class AzureCredentialsStorageIntegration
         return new DataLakePathClientBuilder()
             .endpoint(endpoint)
             .fileSystemName(fileSystemNameOrContainer)
-            .pathName(path) // TODO: drop authority part
+            .pathName(path)
             .buildDirectoryClient()
             .generateUserDelegationSas(signatureValues, userDelegationKey);
 
