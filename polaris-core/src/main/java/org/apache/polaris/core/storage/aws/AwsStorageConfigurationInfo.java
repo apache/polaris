@@ -117,9 +117,6 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract String getStsEndpoint();
 
-  /** Flag indicating whether S3 trailing checksum validation should be disabled. */
-  public abstract @Nullable Boolean getDisableS3TrailingChecksum();
-
   /** Returns the STS endpoint if set, defaulting to {@link #getEndpointUri()} otherwise. */
   @JsonIgnore
   @Nullable
