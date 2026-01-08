@@ -27,5 +27,3 @@ public class AtomicMetastoreManagerWithJdbcBasePersistenceImplV4SchemaTest
     return 4;
   }
 }
-
-
