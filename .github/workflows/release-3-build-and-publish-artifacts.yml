@@ -469,7 +469,7 @@ jobs:
           * https://dist.apache.org/repos/dist/dev/incubator/polaris/${version_without_rc}
 
           Helm charts are available on:
-          * https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart
+          * https://dist.apache.org/repos/dist/dev/incubator/polaris/helm-chart/${version_without_rc}
 
           NB: you have to build the Docker images locally in order to test Helm charts.
 
