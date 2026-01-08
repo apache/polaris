@@ -106,7 +106,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
 
   /** Flag indicating whether path-style bucket access should be forced in S3 clients. */
   public abstract @Nullable Boolean getPathStyleAccess();
-  
+
   /** Flag indicating whether S3 trailing checksum validation should be disabled. */
   public abstract @Nullable Boolean getDisableS3TrailingChecksum();
 

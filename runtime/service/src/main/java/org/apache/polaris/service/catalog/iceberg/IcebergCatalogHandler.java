@@ -113,6 +113,7 @@ import org.apache.polaris.core.rest.PolarisEndpoints;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageUtil;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.SupportsNotifications;
@@ -126,8 +127,6 @@ import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-
 
 /**
  * Authorization-aware adapter between REST stubs and shared Iceberg SDK CatalogHandlers.
@@ -488,22 +487,16 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       throw new AlreadyExistsException("Table already exists: %s", tableIdentifier);
     }
 
-   Map<String, String> properties = Maps.newHashMap();
-   properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
-   properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
+    Map<String, String> properties = Maps.newHashMap();
+    properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
+    properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
 
-   AwsStorageConfigurationInfo awsConfig =
-     storageAccessConfig.storageConfigurationInfo()
-         .as(AwsStorageConfigurationInfo.class);
+    AwsStorageConfigurationInfo awsConfig =
+        storageAccessConfig.storageConfigurationInfo().as(AwsStorageConfigurationInfo.class);
 
-   if (awsConfig != null
-     && Boolean.TRUE.equals(awsConfig.getDisableS3TrailingChecksum())) {
-    properties.put("s3.checksum.enabled", "false");
-   }
-
-
-
-
+    if (awsConfig != null && Boolean.TRUE.equals(awsConfig.getDisableS3TrailingChecksum())) {
+      properties.put("s3.checksum.enabled", "false");
+    }
 
     Table table =
         baseCatalog
