@@ -19,6 +19,7 @@
 
 -- Changes from v2:
 --  * Added `events` table
+--  * Added `idempotency_records` table for REST idempotency
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET SCHEMA POLARIS_SCHEMA;
