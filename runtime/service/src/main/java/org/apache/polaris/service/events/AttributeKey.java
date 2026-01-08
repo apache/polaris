@@ -19,6 +19,7 @@
 package org.apache.polaris.service.events;
 
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.google.common.reflect.TypeToken;
 import java.util.Objects;
 
 /**
@@ -30,50 +31,27 @@ import java.util.Objects;
  *
  * @param <T> the type of the attribute value
  */
-public final class AttributeKey<T> {
-  private final String name;
-  private final Class<T> type;
+public record AttributeKey<T>(@JsonValue String name, TypeToken<T> type) {
 
-  private AttributeKey(String name, Class<T> type) {
-    this.name = Objects.requireNonNull(name, "name");
-    this.type = Objects.requireNonNull(type, "type");
+  public AttributeKey {
+    Objects.requireNonNull(name, "name");
+    Objects.requireNonNull(type, "type");
     if (!AllowedAttributeTypes.isAllowed(type)) {
-      throw new IllegalArgumentException(
-          "Type " + type.getName() + " is not allowed for event attributes");
+      throw new IllegalArgumentException("Type " + type + " is not allowed for event attributes");
     }
   }
 
-  public static <T> AttributeKey<T> of(String name, Class<T> type) {
-    return new AttributeKey<>(name, type);
+  public AttributeKey(String name, Class<T> type) {
+    this(name, TypeToken.of(type));
   }
 
-  @JsonValue
-  public String name() {
-    return name;
-  }
-
-  public Class<T> type() {
-    return type;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof AttributeKey<?> that)) {
-      return false;
-    }
-    return name.equals(that.name) && type.equals(that.type);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(name, type);
+  @SuppressWarnings("unchecked")
+  public T cast(Object value) {
+    return (T) type.getRawType().cast(value);
   }
 
   @Override
   public String toString() {
-    return "AttributeKey{" + name + ", " + type.getSimpleName() + "}";
+    return "AttributeKey{" + name + ", " + type.getRawType().getSimpleName() + "}";
   }
 }

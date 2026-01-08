@@ -66,16 +66,14 @@ class PolarisEventTest {
   }
 
   @Test
-  void testAttributesReturnsUnmodifiableMap() {
+  void testAttributeMapSize() {
     PolarisEvent event =
         PolarisEvent.builder(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA)
             .attribute(EventAttributes.CATALOG_NAME, TEST_CATALOG)
             .build();
 
-    assertThat(event.attributes()).hasSize(1);
-    assertThat(event.attributes().get(EventAttributes.CATALOG_NAME)).isEqualTo(TEST_CATALOG);
-    assertThatThrownBy(() -> event.attributes().put(EventAttributes.TABLE_NAME, TEST_TABLE))
-        .isInstanceOf(UnsupportedOperationException.class);
+    assertThat(event.attributes().size()).isEqualTo(1);
+    assertThat(event.attributes().get(EventAttributes.CATALOG_NAME)).contains(TEST_CATALOG);
   }
 
   @Test
@@ -86,7 +84,7 @@ class PolarisEventTest {
             .build();
 
     assertThat(event.hasAttribute(EventAttributes.CATALOG_NAME)).isFalse();
-    assertThat(event.attributes()).isEmpty();
+    assertThat(event.attributes().isEmpty()).isTrue();
   }
 
   @Test

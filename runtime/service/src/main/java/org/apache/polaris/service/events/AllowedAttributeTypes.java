@@ -18,34 +18,22 @@
  */
 package org.apache.polaris.service.events;
 
+import com.google.common.reflect.TypeToken;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.rest.requests.CommitTransactionRequest;
-import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
-import org.apache.iceberg.rest.requests.CreateTableRequest;
-import org.apache.iceberg.rest.requests.CreateViewRequest;
-import org.apache.iceberg.rest.requests.RegisterTableRequest;
-import org.apache.iceberg.rest.requests.RenameTableRequest;
-import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
-import org.apache.iceberg.rest.requests.UpdateTableRequest;
-import org.apache.iceberg.rest.responses.ConfigResponse;
-import org.apache.iceberg.rest.responses.LoadTableResponse;
-import org.apache.iceberg.rest.responses.LoadViewResponse;
-import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.iceberg.rest.RESTMessage;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogRole;
-import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
-import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.RevokeGrantRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
@@ -72,41 +60,19 @@ final class AllowedAttributeTypes {
           // Primitives
           String.class,
           Boolean.class,
-          Integer.class,
-          Long.class,
-          Double.class,
-          // Collections
-          List.class,
-          Map.class,
-          Set.class,
-          // Iceberg catalog types
+          Number.class,
+          // Iceberg types
+          RESTMessage.class,
           Namespace.class,
           TableIdentifier.class,
-          // Iceberg metadata types
           TableMetadata.class,
           ViewMetadata.class,
-          // Iceberg REST request types
-          CreateNamespaceRequest.class,
-          UpdateNamespacePropertiesRequest.class,
-          CreateTableRequest.class,
-          UpdateTableRequest.class,
-          RegisterTableRequest.class,
-          RenameTableRequest.class,
-          CreateViewRequest.class,
-          CommitTransactionRequest.class,
-          // Iceberg REST response types
-          UpdateNamespacePropertiesResponse.class,
-          LoadTableResponse.class,
-          LoadViewResponse.class,
-          ConfigResponse.class,
           // Polaris admin model types
           Catalog.class,
           Principal.class,
           PrincipalRole.class,
-          PrincipalWithCredentials.class,
           CatalogRole.class,
           GrantResource.class,
-          CreatePrincipalRequest.class,
           UpdatePrincipalRequest.class,
           CreatePrincipalRoleRequest.class,
           UpdatePrincipalRoleRequest.class,
@@ -114,7 +80,6 @@ final class AllowedAttributeTypes {
           UpdateCatalogRoleRequest.class,
           AddGrantRequest.class,
           RevokeGrantRequest.class,
-          // Polaris core types
           PolarisPrivilege.class,
           // Polaris service types
           CommitViewRequest.class,
@@ -128,7 +93,23 @@ final class AllowedAttributeTypes {
           GetApplicablePoliciesResponse.class,
           NotificationRequest.class);
 
-  static boolean isAllowed(Class<?> type) {
-    return ALLOWED_TYPES.contains(type);
+  private static final Set<Class<?>> COLLECTION_TYPES = Set.of(List.class, Set.class, Map.class);
+
+  static boolean isAllowed(TypeToken<?> type) {
+    Class<?> rawType = type.getRawType();
+    if (COLLECTION_TYPES.contains(rawType)) {
+      for (var typeParam : rawType.getTypeParameters()) {
+        TypeToken<?> resolvedType = type.resolveType(typeParam);
+        if (!isSubtypeOfAllowedType(resolvedType.getRawType())) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return isSubtypeOfAllowedType(rawType);
+  }
+
+  private static boolean isSubtypeOfAllowedType(Class<?> rawType) {
+    return ALLOWED_TYPES.stream().anyMatch(t -> t.isAssignableFrom(rawType));
   }
 }

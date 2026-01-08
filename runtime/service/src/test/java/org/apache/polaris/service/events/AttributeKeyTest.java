@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
 
 class AttributeKeyTest {
@@ -32,18 +33,18 @@ class AttributeKeyTest {
 
   @Test
   void testCreateAndAccessors() {
-    AttributeKey<String> key = AttributeKey.of(TEST_KEY, String.class);
+    AttributeKey<String> key = new AttributeKey<>(TEST_KEY, String.class);
 
     assertThat(key.name()).isEqualTo(TEST_KEY);
-    assertThat(key.type()).isEqualTo(String.class);
+    assertThat(key.type()).isEqualTo(TypeToken.of(String.class));
   }
 
   @Test
   void testEqualsAndHashCode() {
-    AttributeKey<String> key1 = AttributeKey.of(TEST_KEY, String.class);
-    AttributeKey<String> key2 = AttributeKey.of(TEST_KEY, String.class);
-    AttributeKey<String> key3 = AttributeKey.of(OTHER_KEY, String.class);
-    AttributeKey<Integer> key4 = AttributeKey.of(TEST_KEY, Integer.class);
+    AttributeKey<String> key1 = new AttributeKey<>(TEST_KEY, String.class);
+    AttributeKey<String> key2 = new AttributeKey<>(TEST_KEY, String.class);
+    AttributeKey<String> key3 = new AttributeKey<>(OTHER_KEY, String.class);
+    AttributeKey<Integer> key4 = new AttributeKey<>(TEST_KEY, Integer.class);
 
     assertThat(key1).isEqualTo(key2);
     assertThat(key1.hashCode()).isEqualTo(key2.hashCode());
@@ -53,26 +54,26 @@ class AttributeKeyTest {
 
   @Test
   void testToString() {
-    AttributeKey<String> key = AttributeKey.of(TEST_KEY, String.class);
+    AttributeKey<String> key = new AttributeKey<>(TEST_KEY, String.class);
 
     assertThat(key.toString()).contains(TEST_KEY).contains("String");
   }
 
   @Test
   void testNullNameThrows() {
-    assertThatThrownBy(() -> AttributeKey.of(null, String.class))
+    assertThatThrownBy(() -> new AttributeKey<>(null, String.class))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   void testNullTypeThrows() {
-    assertThatThrownBy(() -> AttributeKey.of(TEST_KEY, null))
+    assertThatThrownBy(() -> new AttributeKey<>(TEST_KEY, (Class<String>) null))
         .isInstanceOf(NullPointerException.class);
   }
 
   @Test
   void testJsonSerializesToName() throws JsonProcessingException {
-    AttributeKey<String> key = AttributeKey.of(TEST_KEY, String.class);
+    AttributeKey<String> key = new AttributeKey<>(TEST_KEY, String.class);
     ObjectMapper mapper = new ObjectMapper();
 
     String json = mapper.writeValueAsString(key);
@@ -82,28 +83,29 @@ class AttributeKeyTest {
 
   @Test
   void testAllowedTypes() {
-    assertThat(AttributeKey.of("s", String.class)).isNotNull();
-    assertThat(AttributeKey.of("b", Boolean.class)).isNotNull();
-    assertThat(AttributeKey.of("i", Integer.class)).isNotNull();
-    assertThat(AttributeKey.of("l", Long.class)).isNotNull();
-    assertThat(AttributeKey.of("d", Double.class)).isNotNull();
-    assertThat(AttributeKey.of("list", java.util.List.class)).isNotNull();
-    assertThat(AttributeKey.of("map", java.util.Map.class)).isNotNull();
-    assertThat(AttributeKey.of("set", java.util.Set.class)).isNotNull();
+    assertThat(new AttributeKey<>("s", String.class)).isNotNull();
+    assertThat(new AttributeKey<>("b", Boolean.class)).isNotNull();
+    assertThat(new AttributeKey<>("i", Integer.class)).isNotNull();
+    assertThat(new AttributeKey<>("l", Long.class)).isNotNull();
+    assertThat(new AttributeKey<>("d", Double.class)).isNotNull();
+    assertThat(new AttributeKey<>("list", new TypeToken<java.util.List<String>>() {})).isNotNull();
+    assertThat(new AttributeKey<>("map", new TypeToken<java.util.Map<String, String>>() {}))
+        .isNotNull();
+    assertThat(new AttributeKey<>("set", new TypeToken<java.util.Set<String>>() {})).isNotNull();
   }
 
   @Test
   void testDisallowedTypes() {
-    assertThatThrownBy(() -> AttributeKey.of("x", java.util.Optional.class))
+    assertThatThrownBy(() -> new AttributeKey<>("x", java.util.Optional.class))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("not allowed");
-    assertThatThrownBy(() -> AttributeKey.of("x", java.util.function.Function.class))
+    assertThatThrownBy(() -> new AttributeKey<>("x", java.util.function.Function.class))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("not allowed");
-    assertThatThrownBy(() -> AttributeKey.of("x", Throwable.class))
+    assertThatThrownBy(() -> new AttributeKey<>("x", Throwable.class))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("not allowed");
-    assertThatThrownBy(() -> AttributeKey.of("x", StringBuilder.class))
+    assertThatThrownBy(() -> new AttributeKey<>("x", StringBuilder.class))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("not allowed");
   }

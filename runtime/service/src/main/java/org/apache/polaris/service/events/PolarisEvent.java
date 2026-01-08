@@ -18,9 +18,6 @@
  */
 package org.apache.polaris.service.events;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -28,31 +25,23 @@ import java.util.Optional;
  * attributes. Use {@link #builder(PolarisEventType, PolarisEventMetadata)} to create instances.
  */
 public record PolarisEvent(
-    PolarisEventType type, PolarisEventMetadata metadata, Map<AttributeKey<?>, Object> attributes) {
-
-  public PolarisEvent {
-    attributes = Collections.unmodifiableMap(new HashMap<>(attributes));
-  }
+    PolarisEventType type, PolarisEventMetadata metadata, AttributeMap attributes) {
 
   public <T> Optional<T> attribute(AttributeKey<T> key) {
-    Object value = attributes.get(key);
-    if (value == null) {
-      return Optional.empty();
-    }
-    return Optional.of(key.type().cast(value));
+    return attributes.get(key);
   }
 
   public <T> T requiredAttribute(AttributeKey<T> key) {
-    Object value = attributes.get(key);
-    if (value == null) {
-      throw new IllegalStateException(
-          "Required attribute '" + key.name() + "' not found in event " + type);
-    }
-    return key.type().cast(value);
+    return attributes
+        .get(key)
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Required attribute '" + key.name() + "' not found in event " + type));
   }
 
   public boolean hasAttribute(AttributeKey<?> key) {
-    return attributes.containsKey(key);
+    return attributes.contains(key);
   }
 
   public static Builder builder(PolarisEventType type, PolarisEventMetadata metadata) {
@@ -62,7 +51,7 @@ public record PolarisEvent(
   public static final class Builder {
     private final PolarisEventType type;
     private final PolarisEventMetadata metadata;
-    private final HashMap<AttributeKey<?>, Object> attributes = new HashMap<>();
+    private final AttributeMap attributes = new AttributeMap();
 
     private Builder(PolarisEventType type, PolarisEventMetadata metadata) {
       this.type = type;
@@ -70,14 +59,12 @@ public record PolarisEvent(
     }
 
     public <T> Builder attribute(AttributeKey<T> key, T value) {
-      if (value != null) {
-        attributes.put(key, value);
-      }
+      attributes.put(key, value);
       return this;
     }
 
     public PolarisEvent build() {
-      return new PolarisEvent(type, metadata, Map.copyOf(attributes));
+      return new PolarisEvent(type, metadata, new AttributeMap(attributes));
     }
   }
 }
