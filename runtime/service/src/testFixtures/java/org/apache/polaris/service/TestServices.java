@@ -60,7 +60,6 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
-import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -220,10 +219,6 @@ public record TestServices(
           new InMemoryPolarisMetaStoreManagerFactory(
               clock, diagnostics, storageIntegrationProvider);
 
-      StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
-      StorageCredentialCache storageCredentialCache =
-          new StorageCredentialCache(diagnostics, storageCredentialCacheConfig);
-
       UserSecretsManagerFactory userSecretsManagerFactory =
           new UnsafeInMemorySecretsManagerFactory();
 
@@ -231,6 +226,10 @@ public record TestServices(
       CallContext callContext =
           new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
       RealmConfig realmConfig = callContext.getRealmConfig();
+
+      StorageCredentialCacheConfig storageCredentialCacheConfig = () -> 10_000;
+      StorageCredentialCache storageCredentialCache =
+          new StorageCredentialCache(diagnostics, storageCredentialCacheConfig, callContext);
 
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -302,11 +301,9 @@ public record TestServices(
       PolarisCredentialManager credentialManager =
           new DefaultPolarisCredentialManager(realmContext, mockCredentialVendors);
 
-      StorageCredentialsVendor storageCredentialsVendor =
-          new StorageCredentialsVendor(metaStoreManager, callContext);
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              storageCredentialCache, storageCredentialsVendor, principal);
+              storageCredentialCache, principal, metaStoreManager, callContext);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
