@@ -50,6 +50,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
+import org.apache.polaris.service.events.AttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
@@ -195,11 +196,12 @@ public class TaskExecutorImpl implements TaskExecutor {
   protected void handleTask(
       long taskEntityId, CallContext ctx, PolarisEventMetadata eventMetadata, int attempt) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_ATTEMPT_TASK, eventMetadataFactory.copy(eventMetadata))
-            .attribute(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-            .attribute(EventAttributes.TASK_ATTEMPT, attempt)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_ATTEMPT_TASK,
+            eventMetadataFactory.copy(eventMetadata),
+            new AttributeMap()
+                .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                .put(EventAttributes.TASK_ATTEMPT, attempt)));
 
     boolean success = false;
     try {
@@ -243,12 +245,13 @@ public class TaskExecutorImpl implements TaskExecutor {
       }
     } finally {
       polarisEventListener.onEvent(
-          PolarisEvent.builder(
-                  PolarisEventType.AFTER_ATTEMPT_TASK, eventMetadataFactory.copy(eventMetadata))
-              .attribute(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-              .attribute(EventAttributes.TASK_ATTEMPT, attempt)
-              .attribute(EventAttributes.TASK_SUCCESS, success)
-              .build());
+          new PolarisEvent(
+              PolarisEventType.AFTER_ATTEMPT_TASK,
+              eventMetadataFactory.copy(eventMetadata),
+              new AttributeMap()
+                  .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                  .put(EventAttributes.TASK_ATTEMPT, attempt)
+                  .put(EventAttributes.TASK_SUCCESS, success)));
     }
   }
 

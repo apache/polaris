@@ -18,53 +18,18 @@
  */
 package org.apache.polaris.service.events;
 
-import java.util.Optional;
-
 /**
  * Represents an event emitted by Polaris. Events have a type, metadata, and a map of typed
- * attributes. Use {@link #builder(PolarisEventType, PolarisEventMetadata)} to create instances.
+ * attributes
  */
 public record PolarisEvent(
     PolarisEventType type, PolarisEventMetadata metadata, AttributeMap attributes) {
 
-  public <T> Optional<T> attribute(AttributeKey<T> key) {
-    return attributes.get(key);
+  public PolarisEvent {
+    attributes = new AttributeMap(attributes);
   }
 
-  public <T> T requiredAttribute(AttributeKey<T> key) {
-    return attributes
-        .get(key)
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "Required attribute '" + key.name() + "' not found in event " + type));
-  }
-
-  public boolean hasAttribute(AttributeKey<?> key) {
-    return attributes.contains(key);
-  }
-
-  public static Builder builder(PolarisEventType type, PolarisEventMetadata metadata) {
-    return new Builder(type, metadata);
-  }
-
-  public static final class Builder {
-    private final PolarisEventType type;
-    private final PolarisEventMetadata metadata;
-    private final AttributeMap attributes = new AttributeMap();
-
-    private Builder(PolarisEventType type, PolarisEventMetadata metadata) {
-      this.type = type;
-      this.metadata = metadata;
-    }
-
-    public <T> Builder attribute(AttributeKey<T> key, T value) {
-      attributes.put(key, value);
-      return this;
-    }
-
-    public PolarisEvent build() {
-      return new PolarisEvent(type, metadata, new AttributeMap(attributes));
-    }
+  public PolarisEvent(PolarisEventType type, PolarisEventMetadata metadata) {
+    this(type, metadata, new AttributeMap());
   }
 }

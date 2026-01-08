@@ -152,7 +152,8 @@ public class AwsCloudWatchEventListener implements PolarisEventListener {
     HashMap<String, Object> properties = new HashMap<>();
     properties.put("event_type", event.type().name());
     event
-        .attribute(EventAttributes.TABLE_IDENTIFIER)
+        .attributes()
+        .get(EventAttributes.TABLE_IDENTIFIER)
         .map(TableIdentifier::toString)
         .ifPresent(id -> properties.put("table_identifier", id));
 

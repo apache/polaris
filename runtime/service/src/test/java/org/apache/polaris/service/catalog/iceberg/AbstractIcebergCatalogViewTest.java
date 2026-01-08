@@ -258,41 +258,45 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);
-    Assertions.assertThat(beforeRefreshEvent.attribute(EventAttributes.VIEW_IDENTIFIER))
+    Assertions.assertThat(beforeRefreshEvent.attributes().get(EventAttributes.VIEW_IDENTIFIER))
         .hasValue(TestData.TABLE);
 
     PolarisEvent afterRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.AFTER_REFRESH_VIEW);
-    Assertions.assertThat(afterRefreshEvent.attribute(EventAttributes.VIEW_IDENTIFIER))
+    Assertions.assertThat(afterRefreshEvent.attributes().get(EventAttributes.VIEW_IDENTIFIER))
         .hasValue(TestData.TABLE);
 
     PolarisEvent beforeCommitEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_COMMIT_VIEW);
-    Assertions.assertThat(beforeCommitEvent.attribute(EventAttributes.VIEW_IDENTIFIER))
+    Assertions.assertThat(beforeCommitEvent.attributes().get(EventAttributes.VIEW_IDENTIFIER))
         .hasValue(TestData.TABLE);
     Assertions.assertThat(
             beforeCommitEvent
-                .attribute(EventAttributes.VIEW_METADATA_BEFORE)
+                .attributes()
+                .get(EventAttributes.VIEW_METADATA_BEFORE)
                 .map(m -> m.properties().get(key)))
         .hasValue(valOld);
     Assertions.assertThat(
             beforeCommitEvent
-                .attribute(EventAttributes.VIEW_METADATA_AFTER)
+                .attributes()
+                .get(EventAttributes.VIEW_METADATA_AFTER)
                 .map(m -> m.properties().get(key)))
         .hasValue(valNew);
 
     PolarisEvent afterCommitEvent =
         testPolarisEventListener.getLatest(PolarisEventType.AFTER_COMMIT_VIEW);
-    Assertions.assertThat(afterCommitEvent.attribute(EventAttributes.VIEW_IDENTIFIER))
+    Assertions.assertThat(afterCommitEvent.attributes().get(EventAttributes.VIEW_IDENTIFIER))
         .hasValue(TestData.TABLE);
     Assertions.assertThat(
             afterCommitEvent
-                .attribute(EventAttributes.VIEW_METADATA_BEFORE)
+                .attributes()
+                .get(EventAttributes.VIEW_METADATA_BEFORE)
                 .map(m -> m.properties().get(key)))
         .hasValue(valOld);
     Assertions.assertThat(
             afterCommitEvent
-                .attribute(EventAttributes.VIEW_METADATA_AFTER)
+                .attributes()
+                .get(EventAttributes.VIEW_METADATA_AFTER)
                 .map(m -> m.properties().get(key)))
         .hasValue(valNew);
   }

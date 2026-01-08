@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import java.io.IOException;
 import org.apache.polaris.service.config.FilterPriorities;
+import org.apache.polaris.service.events.AttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -61,11 +62,13 @@ public class RateLimiterFilter implements ContainerRequestFilter {
   public void filter(ContainerRequestContext ctx) throws IOException {
     if (!rateLimiter.canProceed()) {
       polarisEventListener.onEvent(
-          PolarisEvent.builder(
-                  PolarisEventType.BEFORE_LIMIT_REQUEST_RATE, eventMetadataFactory.create())
-              .attribute(EventAttributes.HTTP_METHOD, ctx.getMethod())
-              .attribute(EventAttributes.REQUEST_URI, ctx.getUriInfo().getAbsolutePath().toString())
-              .build());
+          new PolarisEvent(
+              PolarisEventType.BEFORE_LIMIT_REQUEST_RATE,
+              eventMetadataFactory.create(),
+              new AttributeMap()
+                  .put(EventAttributes.HTTP_METHOD, ctx.getMethod())
+                  .put(
+                      EventAttributes.REQUEST_URI, ctx.getUriInfo().getAbsolutePath().toString())));
       ctx.abortWith(Response.status(Response.Status.TOO_MANY_REQUESTS).build());
       LOGGER.atDebug().log("Rate limiting request");
     }

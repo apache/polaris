@@ -29,6 +29,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.events.AttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -56,24 +57,26 @@ public class CatalogGenericTableEventServiceDelegator
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_CREATE_GENERIC_TABLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.NAMESPACE_NAME, namespace)
-            .attribute(EventAttributes.CREATE_GENERIC_TABLE_REQUEST, createGenericTableRequest)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_CREATE_GENERIC_TABLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE_NAME, namespace)
+                .put(EventAttributes.CREATE_GENERIC_TABLE_REQUEST, createGenericTableRequest)));
     Response resp =
         delegate.createGenericTable(
             prefix, namespace, createGenericTableRequest, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_CREATE_GENERIC_TABLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.NAMESPACE_NAME, namespace)
-            .attribute(
-                EventAttributes.GENERIC_TABLE,
-                ((LoadGenericTableResponse) resp.getEntity()).getTable())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_CREATE_GENERIC_TABLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE_NAME, namespace)
+                .put(
+                    EventAttributes.GENERIC_TABLE,
+                    ((LoadGenericTableResponse) resp.getEntity()).getTable())));
     return resp;
   }
 
@@ -86,21 +89,23 @@ public class CatalogGenericTableEventServiceDelegator
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_DROP_GENERIC_TABLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.NAMESPACE_NAME, namespace)
-            .attribute(EventAttributes.GENERIC_TABLE_NAME, genericTable)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_DROP_GENERIC_TABLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE_NAME, namespace)
+                .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
     Response resp =
         delegate.dropGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_DROP_GENERIC_TABLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.NAMESPACE_NAME, namespace)
-            .attribute(EventAttributes.GENERIC_TABLE_NAME, genericTable)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_DROP_GENERIC_TABLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE_NAME, namespace)
+                .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
     return resp;
   }
 
@@ -114,20 +119,22 @@ public class CatalogGenericTableEventServiceDelegator
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_LIST_GENERIC_TABLES, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.NAMESPACE_NAME, namespace)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_LIST_GENERIC_TABLES,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE_NAME, namespace)));
     Response resp =
         delegate.listGenericTables(
             prefix, namespace, pageToken, pageSize, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_LIST_GENERIC_TABLES, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.NAMESPACE_NAME, namespace)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_LIST_GENERIC_TABLES,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE_NAME, namespace)));
     return resp;
   }
 
@@ -140,23 +147,25 @@ public class CatalogGenericTableEventServiceDelegator
       SecurityContext securityContext) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_LOAD_GENERIC_TABLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.NAMESPACE_NAME, namespace)
-            .attribute(EventAttributes.GENERIC_TABLE_NAME, genericTable)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_LOAD_GENERIC_TABLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE_NAME, namespace)
+                .put(EventAttributes.GENERIC_TABLE_NAME, genericTable)));
     Response resp =
         delegate.loadGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_LOAD_GENERIC_TABLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.NAMESPACE_NAME, namespace)
-            .attribute(
-                EventAttributes.GENERIC_TABLE,
-                ((LoadGenericTableResponse) resp.getEntity()).getTable())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_LOAD_GENERIC_TABLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE_NAME, namespace)
+                .put(
+                    EventAttributes.GENERIC_TABLE,
+                    ((LoadGenericTableResponse) resp.getEntity()).getTable())));
     return resp;
   }
 }

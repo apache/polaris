@@ -130,6 +130,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
+import org.apache.polaris.service.events.AttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -1382,11 +1383,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         disableRefresh();
       } else {
         polarisEventListener.onEvent(
-            PolarisEvent.builder(
-                    PolarisEventType.BEFORE_REFRESH_TABLE, eventMetadataFactory.create())
-                .attribute(EventAttributes.CATALOG_NAME, catalogName)
-                .attribute(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)
-                .build());
+            new PolarisEvent(
+                PolarisEventType.BEFORE_REFRESH_TABLE,
+                eventMetadataFactory.create(),
+                new AttributeMap()
+                    .put(EventAttributes.CATALOG_NAME, catalogName)
+                    .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1407,11 +1409,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
         polarisEventListener.onEvent(
-            PolarisEvent.builder(
-                    PolarisEventType.AFTER_REFRESH_TABLE, eventMetadataFactory.create())
-                .attribute(EventAttributes.CATALOG_NAME, catalogName)
-                .attribute(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)
-                .build());
+            new PolarisEvent(
+                PolarisEventType.AFTER_REFRESH_TABLE,
+                eventMetadataFactory.create(),
+                new AttributeMap()
+                    .put(EventAttributes.CATALOG_NAME, catalogName)
+                    .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
       }
     }
 
@@ -1790,11 +1793,12 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         disableRefresh();
       } else {
         polarisEventListener.onEvent(
-            PolarisEvent.builder(
-                    PolarisEventType.BEFORE_REFRESH_VIEW, eventMetadataFactory.create())
-                .attribute(EventAttributes.CATALOG_NAME, catalogName)
-                .attribute(EventAttributes.VIEW_IDENTIFIER, identifier)
-                .build());
+            new PolarisEvent(
+                PolarisEventType.BEFORE_REFRESH_VIEW,
+                eventMetadataFactory.create(),
+                new AttributeMap()
+                    .put(EventAttributes.CATALOG_NAME, catalogName)
+                    .put(EventAttributes.VIEW_IDENTIFIER, identifier)));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1817,21 +1821,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
         polarisEventListener.onEvent(
-            PolarisEvent.builder(PolarisEventType.AFTER_REFRESH_VIEW, eventMetadataFactory.create())
-                .attribute(EventAttributes.CATALOG_NAME, catalogName)
-                .attribute(EventAttributes.VIEW_IDENTIFIER, identifier)
-                .build());
+            new PolarisEvent(
+                PolarisEventType.AFTER_REFRESH_VIEW,
+                eventMetadataFactory.create(),
+                new AttributeMap()
+                    .put(EventAttributes.CATALOG_NAME, catalogName)
+                    .put(EventAttributes.VIEW_IDENTIFIER, identifier)));
       }
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
       polarisEventListener.onEvent(
-          PolarisEvent.builder(PolarisEventType.BEFORE_COMMIT_VIEW, eventMetadataFactory.create())
-              .attribute(EventAttributes.CATALOG_NAME, catalogName)
-              .attribute(EventAttributes.VIEW_IDENTIFIER, identifier)
-              .attribute(EventAttributes.VIEW_METADATA_BEFORE, base)
-              .attribute(EventAttributes.VIEW_METADATA_AFTER, metadata)
-              .build());
+          new PolarisEvent(
+              PolarisEventType.BEFORE_COMMIT_VIEW,
+              eventMetadataFactory.create(),
+              new AttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.VIEW_IDENTIFIER, identifier)
+                  .put(EventAttributes.VIEW_METADATA_BEFORE, base)
+                  .put(EventAttributes.VIEW_METADATA_AFTER, metadata)));
 
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug(
@@ -1932,12 +1940,14 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       }
 
       polarisEventListener.onEvent(
-          PolarisEvent.builder(PolarisEventType.AFTER_COMMIT_VIEW, eventMetadataFactory.create())
-              .attribute(EventAttributes.CATALOG_NAME, catalogName)
-              .attribute(EventAttributes.VIEW_IDENTIFIER, identifier)
-              .attribute(EventAttributes.VIEW_METADATA_BEFORE, base)
-              .attribute(EventAttributes.VIEW_METADATA_AFTER, metadata)
-              .build());
+          new PolarisEvent(
+              PolarisEventType.AFTER_COMMIT_VIEW,
+              eventMetadataFactory.create(),
+              new AttributeMap()
+                  .put(EventAttributes.CATALOG_NAME, catalogName)
+                  .put(EventAttributes.VIEW_IDENTIFIER, identifier)
+                  .put(EventAttributes.VIEW_METADATA_BEFORE, base)
+                  .put(EventAttributes.VIEW_METADATA_AFTER, metadata)));
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {

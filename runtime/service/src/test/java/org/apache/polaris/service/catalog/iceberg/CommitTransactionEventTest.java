@@ -80,12 +80,12 @@ public class CommitTransactionEventTest {
     assertThat(testEventListener.getLatest(PolarisEventType.BEFORE_COMMIT_TRANSACTION)).isNotNull();
     PolarisEvent beforeUpdateEvent =
         testEventListener.getLatest(PolarisEventType.BEFORE_UPDATE_TABLE);
-    assertThat(beforeUpdateEvent.attribute(EventAttributes.TABLE_NAME)).hasValue(table2Name);
+    assertThat(beforeUpdateEvent.attributes().get(EventAttributes.TABLE_NAME)).hasValue(table2Name);
 
     assertThat(testEventListener.getLatest(PolarisEventType.AFTER_COMMIT_TRANSACTION)).isNotNull();
     PolarisEvent afterUpdateEvent =
         testEventListener.getLatest(PolarisEventType.AFTER_UPDATE_TABLE);
-    assertThat(afterUpdateEvent.attribute(EventAttributes.TABLE_NAME)).hasValue(table2Name);
+    assertThat(afterUpdateEvent.attributes().get(EventAttributes.TABLE_NAME)).hasValue(table2Name);
   }
 
   @Test
@@ -106,7 +106,7 @@ public class CommitTransactionEventTest {
     assertThat(testEventListener.getLatest(PolarisEventType.BEFORE_COMMIT_TRANSACTION)).isNotNull();
     PolarisEvent beforeUpdateEvent =
         testEventListener.getLatest(PolarisEventType.BEFORE_UPDATE_TABLE);
-    assertThat(beforeUpdateEvent.attribute(EventAttributes.TABLE_NAME)).hasValue(table4Name);
+    assertThat(beforeUpdateEvent.attributes().get(EventAttributes.TABLE_NAME)).hasValue(table4Name);
 
     assertThatThrownBy(() -> testEventListener.getLatest(PolarisEventType.AFTER_COMMIT_TRANSACTION))
         .isInstanceOf(IllegalStateException.class);

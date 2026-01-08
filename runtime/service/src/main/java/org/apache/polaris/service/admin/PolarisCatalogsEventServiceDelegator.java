@@ -42,6 +42,7 @@ import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
+import org.apache.polaris.service.events.AttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -60,14 +61,16 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   public Response createCatalog(
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.BEFORE_CREATE_CATALOG, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, request.getCatalog().getName())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_CREATE_CATALOG,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.CATALOG_NAME, request.getCatalog().getName())));
     Response resp = delegate.createCatalog(request, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.AFTER_CREATE_CATALOG, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG, (Catalog) resp.getEntity())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_CREATE_CATALOG,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.CATALOG, (Catalog) resp.getEntity())));
     return resp;
   }
 
@@ -75,14 +78,16 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   public Response deleteCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.BEFORE_DELETE_CATALOG, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_DELETE_CATALOG,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.CATALOG_NAME, catalogName)));
     Response resp = delegate.deleteCatalog(catalogName, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.AFTER_DELETE_CATALOG, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_DELETE_CATALOG,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.CATALOG_NAME, catalogName)));
     return resp;
   }
 
@@ -90,14 +95,16 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   public Response getCatalog(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.BEFORE_GET_CATALOG, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_GET_CATALOG,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.CATALOG_NAME, catalogName)));
     Response resp = delegate.getCatalog(catalogName, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.AFTER_GET_CATALOG, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG, (Catalog) resp.getEntity())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_GET_CATALOG,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.CATALOG, (Catalog) resp.getEntity())));
     return resp;
   }
 
@@ -108,28 +115,35 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RealmContext realmContext,
       SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.BEFORE_UPDATE_CATALOG, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.UPDATE_CATALOG_REQUEST, updateRequest)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_UPDATE_CATALOG,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.UPDATE_CATALOG_REQUEST, updateRequest)));
     Response resp =
         delegate.updateCatalog(catalogName, updateRequest, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.AFTER_UPDATE_CATALOG, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG, (Catalog) resp.getEntity())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_UPDATE_CATALOG,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.CATALOG, (Catalog) resp.getEntity())));
     return resp;
   }
 
   @Override
   public Response listCatalogs(RealmContext realmContext, SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.BEFORE_LIST_CATALOGS, eventMetadataFactory.create())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_LIST_CATALOGS,
+            eventMetadataFactory.create(),
+            new AttributeMap()));
     Response resp = delegate.listCatalogs(realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.AFTER_LIST_CATALOGS, eventMetadataFactory.create())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_LIST_CATALOGS,
+            eventMetadataFactory.create(),
+            new AttributeMap()));
     return resp;
   }
 
@@ -140,18 +154,20 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RealmContext realmContext,
       SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_CREATE_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, request.getCatalogRole().getName())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_CREATE_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, request.getCatalogRole().getName())));
     Response resp = delegate.createCatalogRole(catalogName, request, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_CREATE_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE, (CatalogRole) resp.getEntity())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_CREATE_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE, (CatalogRole) resp.getEntity())));
     return resp;
   }
 
@@ -162,19 +178,21 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RealmContext realmContext,
       SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_DELETE_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_DELETE_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)));
     Response resp =
         delegate.deleteCatalogRole(catalogName, catalogRoleName, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_DELETE_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_DELETE_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)));
     return resp;
   }
 
@@ -185,18 +203,21 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RealmContext realmContext,
       SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_GET_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_GET_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)));
     Response resp =
         delegate.getCatalogRole(catalogName, catalogRoleName, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(PolarisEventType.AFTER_GET_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE, (CatalogRole) resp.getEntity())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_GET_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE, (CatalogRole) resp.getEntity())));
     return resp;
   }
 
@@ -208,21 +229,23 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RealmContext realmContext,
       SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_UPDATE_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .attribute(EventAttributes.UPDATE_CATALOG_ROLE_REQUEST, updateRequest)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_UPDATE_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
+                .put(EventAttributes.UPDATE_CATALOG_ROLE_REQUEST, updateRequest)));
     Response resp =
         delegate.updateCatalogRole(
             catalogName, catalogRoleName, updateRequest, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_UPDATE_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE, (CatalogRole) resp.getEntity())
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_UPDATE_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE, (CatalogRole) resp.getEntity())));
     return resp;
   }
 
@@ -230,16 +253,16 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
   public Response listCatalogRoles(
       String catalogName, RealmContext realmContext, SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_LIST_CATALOG_ROLES, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_LIST_CATALOG_ROLES,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.CATALOG_NAME, catalogName)));
     Response resp = delegate.listCatalogRoles(catalogName, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_LIST_CATALOG_ROLES, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_LIST_CATALOG_ROLES,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.CATALOG_NAME, catalogName)));
     return resp;
   }
 
@@ -251,24 +274,26 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RealmContext realmContext,
       SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_ADD_GRANT_TO_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .attribute(EventAttributes.ADD_GRANT_REQUEST, grantRequest)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_ADD_GRANT_TO_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
+                .put(EventAttributes.ADD_GRANT_REQUEST, grantRequest)));
     Response resp =
         delegate.addGrantToCatalogRole(
             catalogName, catalogRoleName, grantRequest, realmContext, securityContext);
     GrantResource grantResource = grantRequest.getGrant();
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_ADD_GRANT_TO_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .attribute(EventAttributes.PRIVILEGE, getPrivilegeFromGrantResource(grantResource))
-            .attribute(EventAttributes.GRANT_RESOURCE, grantResource)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_ADD_GRANT_TO_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
+                .put(EventAttributes.PRIVILEGE, getPrivilegeFromGrantResource(grantResource))
+                .put(EventAttributes.GRANT_RESOURCE, grantResource)));
     return resp;
   }
 
@@ -281,28 +306,28 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RealmContext realmContext,
       SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_REVOKE_GRANT_FROM_CATALOG_ROLE,
-                eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .attribute(EventAttributes.REVOKE_GRANT_REQUEST, grantRequest)
-            .attribute(EventAttributes.CASCADE, cascade)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_REVOKE_GRANT_FROM_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
+                .put(EventAttributes.REVOKE_GRANT_REQUEST, grantRequest)
+                .put(EventAttributes.CASCADE, cascade)));
     Response resp =
         delegate.revokeGrantFromCatalogRole(
             catalogName, catalogRoleName, cascade, grantRequest, realmContext, securityContext);
     GrantResource grantResource = grantRequest.getGrant();
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_REVOKE_GRANT_FROM_CATALOG_ROLE,
-                eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .attribute(EventAttributes.PRIVILEGE, getPrivilegeFromGrantResource(grantResource))
-            .attribute(EventAttributes.GRANT_RESOURCE, grantResource)
-            .attribute(EventAttributes.CASCADE, cascade)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_REVOKE_GRANT_FROM_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
+                .put(EventAttributes.PRIVILEGE, getPrivilegeFromGrantResource(grantResource))
+                .put(EventAttributes.GRANT_RESOURCE, grantResource)
+                .put(EventAttributes.CASCADE, cascade)));
     return resp;
   }
 
@@ -313,22 +338,22 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RealmContext realmContext,
       SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE,
-                eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)));
     Response resp =
         delegate.listAssigneePrincipalRolesForCatalogRole(
             catalogName, catalogRoleName, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE,
-                eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_LIST_ASSIGNEE_PRINCIPAL_ROLES_FOR_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)));
     return resp;
   }
 
@@ -339,20 +364,22 @@ public class PolarisCatalogsEventServiceDelegator implements PolarisCatalogsApiS
       RealmContext realmContext,
       SecurityContext securityContext) {
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.BEFORE_LIST_GRANTS_FOR_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.BEFORE_LIST_GRANTS_FOR_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)));
     Response resp =
         delegate.listGrantsForCatalogRole(
             catalogName, catalogRoleName, realmContext, securityContext);
     polarisEventListener.onEvent(
-        PolarisEvent.builder(
-                PolarisEventType.AFTER_LIST_GRANTS_FOR_CATALOG_ROLE, eventMetadataFactory.create())
-            .attribute(EventAttributes.CATALOG_NAME, catalogName)
-            .attribute(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)
-            .build());
+        new PolarisEvent(
+            PolarisEventType.AFTER_LIST_GRANTS_FOR_CATALOG_ROLE,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.CATALOG_ROLE_NAME, catalogRoleName)));
     return resp;
   }
 

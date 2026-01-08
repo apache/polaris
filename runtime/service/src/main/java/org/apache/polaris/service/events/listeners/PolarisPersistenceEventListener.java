@@ -46,11 +46,11 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
 
   private void handleAfterCreateTable(PolarisEvent event) {
     LoadTableResponse loadTableResponse =
-        event.requiredAttribute(EventAttributes.LOAD_TABLE_RESPONSE);
+        event.attributes().getRequired(EventAttributes.LOAD_TABLE_RESPONSE);
     TableMetadata tableMetadata = loadTableResponse.tableMetadata();
-    String catalogName = event.requiredAttribute(EventAttributes.CATALOG_NAME);
-    Namespace namespace = event.requiredAttribute(EventAttributes.NAMESPACE);
-    String tableName = event.requiredAttribute(EventAttributes.TABLE_NAME);
+    String catalogName = event.attributes().getRequired(EventAttributes.CATALOG_NAME);
+    Namespace namespace = event.attributes().getRequired(EventAttributes.NAMESPACE);
+    String tableName = event.attributes().getRequired(EventAttributes.TABLE_NAME);
 
     org.apache.polaris.core.entity.PolarisEvent polarisEvent =
         new org.apache.polaris.core.entity.PolarisEvent(
@@ -72,7 +72,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
   }
 
   private void handleAfterCreateCatalog(PolarisEvent event) {
-    Catalog catalog = event.requiredAttribute(EventAttributes.CATALOG);
+    Catalog catalog = event.attributes().getRequired(EventAttributes.CATALOG);
     org.apache.polaris.core.entity.PolarisEvent polarisEvent =
         new org.apache.polaris.core.entity.PolarisEvent(
             catalog.getName(),

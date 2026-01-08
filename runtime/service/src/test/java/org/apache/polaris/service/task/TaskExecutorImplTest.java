@@ -90,10 +90,16 @@ public class TaskExecutorImplTest {
                 testPolarisEventListener.getLatest(PolarisEventType.BEFORE_ATTEMPT_TASK);
             Assertions.assertEquals(
                 taskEntity.getId(),
-                beforeTaskAttemptedEvent.attribute(EventAttributes.TASK_ENTITY_ID).orElse(null));
+                beforeTaskAttemptedEvent
+                    .attributes()
+                    .get(EventAttributes.TASK_ENTITY_ID)
+                    .orElse(null));
             Assertions.assertEquals(
                 attempt,
-                beforeTaskAttemptedEvent.attribute(EventAttributes.TASK_ATTEMPT).orElse(null));
+                beforeTaskAttemptedEvent
+                    .attributes()
+                    .get(EventAttributes.TASK_ATTEMPT)
+                    .orElse(null));
             return true;
           }
         });
@@ -108,10 +114,10 @@ public class TaskExecutorImplTest {
         testPolarisEventListener.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
     Assertions.assertEquals(
         taskEntity.getId(),
-        afterAttemptTaskEvent.attribute(EventAttributes.TASK_ENTITY_ID).orElse(null));
+        afterAttemptTaskEvent.attributes().get(EventAttributes.TASK_ENTITY_ID).orElse(null));
     Assertions.assertEquals(
-        attempt, afterAttemptTaskEvent.attribute(EventAttributes.TASK_ATTEMPT).orElse(null));
+        attempt, afterAttemptTaskEvent.attributes().get(EventAttributes.TASK_ATTEMPT).orElse(null));
     Assertions.assertEquals(
-        true, afterAttemptTaskEvent.attribute(EventAttributes.TASK_SUCCESS).orElse(null));
+        true, afterAttemptTaskEvent.attributes().get(EventAttributes.TASK_SUCCESS).orElse(null));
   }
 }

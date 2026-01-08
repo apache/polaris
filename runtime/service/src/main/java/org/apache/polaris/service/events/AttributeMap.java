@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-/** A type-safe container for event attributes. */
+/** A type-safe container for event attributes. This class is mutable and not thread-safe! */
 public final class AttributeMap {
   private final Map<AttributeKey<?>, Object> attributes;
 
@@ -39,14 +39,21 @@ public final class AttributeMap {
     return Optional.ofNullable((T) attributes.get(key));
   }
 
-  public boolean contains(AttributeKey<?> key) {
-    return attributes.containsKey(key);
+  public <T> T getRequired(AttributeKey<T> key) {
+    return get(key)
+        .orElseThrow(
+            () -> new IllegalStateException("Required attribute " + key.name() + " not found"));
   }
 
-  public <T> void put(AttributeKey<T> key, T value) {
+  public <T> AttributeMap put(AttributeKey<T> key, T value) {
     if (value != null) {
       attributes.put(key, value);
     }
+    return this;
+  }
+
+  public boolean contains(AttributeKey<?> key) {
+    return attributes.containsKey(key);
   }
 
   public int size() {
