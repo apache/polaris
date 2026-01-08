@@ -491,13 +491,6 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
     properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
 
-    AwsStorageConfigurationInfo awsConfig =
-        storageAccessConfig.storageConfigurationInfo().as(AwsStorageConfigurationInfo.class);
-
-    if (awsConfig != null && Boolean.TRUE.equals(awsConfig.getDisableS3TrailingChecksum())) {
-      properties.put("s3.checksum.enabled", "false");
-    }
-
     Table table =
         baseCatalog
             .buildTable(tableIdentifier, request.schema())
@@ -870,6 +863,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               actions,
               refreshCredentialsEndpoint,
               resolvedStoragePath);
+
+      AwsStorageConfigurationInfo awsConfig =
+          storageAccessConfig.storageConfigurationInfo().as(AwsStorageConfigurationInfo.class);
+
+      if (awsConfig != null && Boolean.TRUE.equals(awsConfig.getDisableS3TrailingChecksum())) {
+        properties.put("s3.checksum.enabled", "false");
+      }
       Map<String, String> credentialConfig = storageAccessConfig.credentials();
       if (delegationModes.contains(VENDED_CREDENTIALS)) {
         if (!credentialConfig.isEmpty()) {
