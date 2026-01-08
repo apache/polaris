@@ -38,18 +38,15 @@ val distributionElements by
   }
 
 dependencies {
+  implementation(project(":polaris-core"))
+  implementation(project(":polaris-version"))
+  implementation(project(":polaris-api-management-service"))
+  implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-runtime-service"))
 
-  // Additional dependencies for CLI mode
-  implementation("io.quarkus:quarkus-picocli")
-  implementation(project(":polaris-version"))
-
-  // These are already provided transitively by polaris-runtime-service
-  // but we need them at compile time for CLI code
-  compileOnly(project(":polaris-core"))
-  compileOnly(project(":polaris-api-management-service"))
-  compileOnly(project(":polaris-api-iceberg-service"))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+
+  implementation("io.quarkus:quarkus-picocli")
 
   runtimeOnly("org.postgresql:postgresql")
   runtimeOnly(project(":polaris-relational-jdbc"))
