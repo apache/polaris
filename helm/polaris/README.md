@@ -193,11 +193,11 @@ java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap -c POLARIS,r
 
 You may want to use the [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) for more advanced network routing. In most cases this would already be installed by your cluster admins. The following is an example set of commands to run to install the gateway:
 ```bash
+# ref: https://gateway-api.sigs.k8s.io/guides/getting-started/#install-standard-channel
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
-helm install gateway oci://docker.io/envoyproxy/gateway-helm -n gateway --create-namespace
 ```
 
-This will make it possible to use the HTTPRoute resource.
+With that installed, you can enable and configure the `gateway` values. This will make it possible to use the HTTPRoute resource, enable and configure the `httproute` values.
 [!NOTE]
 Only one of HTTPRoute or Ingress can be defined. Defining both will result in errors.
 
