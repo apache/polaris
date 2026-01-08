@@ -238,6 +238,8 @@ jobs:
               exit 1
             fi
             echo "WARNING: SVN checkout failed (attempt ${attempt}/${max_attempts}), retrying in 60 seconds..."
+            # Clean up any partial checkout before retrying
+            rm -rf "${release_helm_dir}"
             sleep 60
             ((attempt++))
           done
