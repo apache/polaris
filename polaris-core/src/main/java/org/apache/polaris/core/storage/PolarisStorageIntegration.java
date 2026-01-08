@@ -57,10 +57,13 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    *     locations
    * @param allowedReadLocations a set of allowed to read locations
    * @param allowedWriteLocations a set of allowed to write locations
+   * @param polarisPrincipal the principal requesting credentials
    * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
    *     supported by the storage type it will be returned to the client in the appropriate
    *     properties. The endpoint may be relative to the base URI and the client is responsible for
    *     handling the relative path
+   * @param credentialVendingContext context containing metadata for session tags (catalog,
+   *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
    * @return An enum map including the scoped credentials
    */
   public abstract StorageAccessConfig getSubscopedCreds(
@@ -69,7 +72,8 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint);
+      Optional<String> refreshCredentialsEndpoint,
+      @Nonnull CredentialVendingContext credentialVendingContext);
 
   /**
    * Validate access for the provided operation actions and locations.

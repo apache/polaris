@@ -56,10 +56,51 @@ public class StorageCredentialsVendor {
    *     allowedWriteLocations
    * @param allowedReadLocations a set of allowed to read locations
    * @param allowedWriteLocations a set of allowed to write locations
+   * @param polarisPrincipal the principal requesting credentials
    * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
    *     supported by the storage type it will be returned to the client in the appropriate
    *     properties. The endpoint may be relative to the base URI and the client is responsible for
    *     handling the relative path
+   * @return an enum map containing the scoped credentials
+   * @deprecated Use {@link #getSubscopedCredsForEntity(PolarisEntity, boolean, Set, Set,
+   *     PolarisPrincipal, Optional, CredentialVendingContext)} instead. This method will be removed
+   *     in a future release.
+   */
+  @Deprecated(forRemoval = true)
+  @Nonnull
+  public ScopedCredentialsResult getSubscopedCredsForEntity(
+      @Nonnull PolarisEntity entity,
+      boolean allowListOperation,
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations,
+      @Nonnull PolarisPrincipal polarisPrincipal,
+      Optional<String> refreshCredentialsEndpoint) {
+    return getSubscopedCredsForEntity(
+        entity,
+        allowListOperation,
+        allowedReadLocations,
+        allowedWriteLocations,
+        polarisPrincipal,
+        refreshCredentialsEndpoint,
+        CredentialVendingContext.empty());
+  }
+
+  /**
+   * Get sub-scoped credentials for an entity against the provided allowed read and write locations,
+   * with credential vending context for session tags.
+   *
+   * @param entity the entity
+   * @param allowListOperation whether to allow LIST operation on the allowedReadLocations and
+   *     allowedWriteLocations
+   * @param allowedReadLocations a set of allowed to read locations
+   * @param allowedWriteLocations a set of allowed to write locations
+   * @param polarisPrincipal the principal requesting credentials
+   * @param refreshCredentialsEndpoint an optional endpoint to use for refreshing credentials. If
+   *     supported by the storage type it will be returned to the client in the appropriate
+   *     properties. The endpoint may be relative to the base URI and the client is responsible for
+   *     handling the relative path
+   * @param credentialVendingContext context containing metadata for session tags (catalog,
+   *     namespace, table, roles) that can be attached to credentials for audit/correlation purposes
    * @return an enum map containing the scoped credentials
    */
   @Nonnull
@@ -69,7 +110,8 @@ public class StorageCredentialsVendor {
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
     return polarisCredentialVendor.getSubscopedCredsForEntity(
         callContext.getPolarisCallContext(),
         entity.getCatalogId(),
@@ -79,6 +121,7 @@ public class StorageCredentialsVendor {
         allowedReadLocations,
         allowedWriteLocations,
         polarisPrincipal,
-        refreshCredentialsEndpoint);
+        refreshCredentialsEndpoint,
+        credentialVendingContext);
   }
 }
