@@ -96,6 +96,9 @@ Validate that only one of ingress or httproute is enabled
 {{- if and .Values.ingress.enabled .Values.httproute.enabled }}
 {{- fail "Cannot enable both ingress and httproute. Please enable only one." }}
 {{- end }}
+{{- if and .Values.ingress.enabled (and (not .Values.httproute.enabled) .Values.gateway.enabled) }}
+{{- fail "In order to use the gateway please enable the httproute and disable the ingress."}}
+{{- end }}
 {{- end }}
 
 {{/*
