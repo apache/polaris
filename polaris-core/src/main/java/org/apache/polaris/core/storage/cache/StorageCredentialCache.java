@@ -38,6 +38,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.slf4j.Logger;
@@ -102,6 +103,10 @@ public class StorageCredentialCache {
    * @param allowListOperation whether allow list action on the provided read and write locations
    * @param allowedReadLocations a set of allowed to read locations
    * @param allowedWriteLocations a set of allowed to write locations.
+   * @param polarisPrincipal the principal requesting credentials
+   * @param refreshCredentialsEndpoint optional endpoint for credential refresh
+   * @param credentialVendingContext context containing metadata for session tags (catalog,
+   *     namespace, table, roles) for audit/correlation purposes
    * @return the a map of string containing the scoped creds information
    */
   public StorageAccessConfig getOrGenerateSubScopeCreds(
@@ -111,7 +116,8 @@ public class StorageCredentialCache {
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
     RealmContext realmContext = storageCredentialsVendor.getRealmContext();
     RealmConfig realmConfig = storageCredentialsVendor.getRealmConfig();
     if (!isTypeSupported(polarisEntity.getType())) {
@@ -121,7 +127,20 @@ public class StorageCredentialCache {
 
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
+    boolean includeSessionTags =
+        realmConfig.getConfig(FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
 
+    // When session tags are enabled, the cache key needs to include:
+    // 1. The credential vending context to avoid returning cached credentials with different
+    //    session tags (catalog/namespace/table/roles)
+    // 2. The principal, because the polaris:principal session tag is included in AWS credentials
+    //    and we must not serve credentials tagged for principal A to principal B
+    // When session tags are disabled, we only include principal if explicitly configured.
+    boolean includePrincipalInCacheKey =
+        includePrincipalNameInSubscopedCredential || includeSessionTags;
+    // When session tags are disabled, use empty context to ensure consistent cache key behavior
+    CredentialVendingContext contextForCacheKey =
+        includeSessionTags ? credentialVendingContext : CredentialVendingContext.empty();
     StorageCredentialCacheKey key =
         StorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
@@ -130,13 +149,13 @@ public class StorageCredentialCache {
             allowedReadLocations,
             allowedWriteLocations,
             refreshCredentialsEndpoint,
-            includePrincipalNameInSubscopedCredential
-                ? Optional.of(polarisPrincipal)
-                : Optional.empty());
-    LOGGER.atDebug().addKeyValue("key", key).log("subscopedCredsCache");
+            includePrincipalInCacheKey ? Optional.of(polarisPrincipal) : Optional.empty(),
+            contextForCacheKey);
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
+          // Use credentialVendingContext from the cache key for correctness.
+          // This ensures we use the same context that was used for cache key comparison.
           ScopedCredentialsResult scopedCredentialsResult =
               storageCredentialsVendor.getSubscopedCredsForEntity(
                   polarisEntity,
@@ -144,7 +163,8 @@ public class StorageCredentialCache {
                   allowedReadLocations,
                   allowedWriteLocations,
                   polarisPrincipal,
-                  refreshCredentialsEndpoint);
+                  refreshCredentialsEndpoint,
+                  k.credentialVendingContext());
           if (scopedCredentialsResult.isSuccess()) {
             long maxCacheDurationMs = maxCacheDurationMs(realmConfig);
             return new StorageCredentialCacheEntry(

@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.storage.aws.AwsSessionTagsBuilder.buildSessionTags;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
@@ -31,6 +32,7 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.storage.CredentialVendingContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
@@ -47,6 +49,7 @@ import software.amazon.awssdk.policybuilder.iam.IamStatement;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
+import software.amazon.awssdk.services.sts.model.Tag;
 
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
@@ -84,7 +87,8 @@ public class AwsCredentialsStorageIntegration
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
-      Optional<String> refreshCredentialsEndpoint) {
+      Optional<String> refreshCredentialsEndpoint,
+      @Nonnull CredentialVendingContext credentialVendingContext) {
     int storageCredentialDurationSeconds =
         realmConfig.getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS);
     AwsStorageConfigurationInfo storageConfig = config();
@@ -94,6 +98,8 @@ public class AwsCredentialsStorageIntegration
 
     boolean includePrincipalNameInSubscopedCredential =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
+    boolean includeSessionTags =
+        realmConfig.getConfig(FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
 
     String roleSessionName =
         includePrincipalNameInSubscopedCredential
@@ -118,6 +124,19 @@ public class AwsCredentialsStorageIntegration
                           accountId)
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
+
+      // Add session tags when the feature is enabled
+      if (includeSessionTags) {
+        List<Tag> sessionTags =
+            buildSessionTags(polarisPrincipal.getName(), credentialVendingContext);
+        if (!sessionTags.isEmpty()) {
+          request.tags(sessionTags);
+          // Mark all tags as transitive for role chaining support
+          request.transitiveTagKeys(
+              sessionTags.stream().map(Tag::key).collect(java.util.stream.Collectors.toList()));
+        }
+      }
+
       credentialsProvider.ifPresent(
           cp -> request.overrideConfiguration(b -> b.credentialsProvider(cp)));
 
