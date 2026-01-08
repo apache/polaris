@@ -47,9 +47,11 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
 
   // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$, but we've
   // generalized it to support non-aws S3 implementations
-  @JsonIgnore public static final String ROLE_ARN_PATTERN = "^.+:(.*):iam:.*:(.*):role/.+$";
+  @JsonIgnore
+  public static final String ROLE_ARN_PATTERN = "^.+:(.*):iam:.*:(.*):role/.+$";
 
-  private static final Pattern ROLE_ARN_PATTERN_COMPILED = Pattern.compile(ROLE_ARN_PATTERN);
+  private static final Pattern ROLE_ARN_PATTERN_COMPILED =
+      Pattern.compile(ROLE_ARN_PATTERN);
 
   @Override
   public StorageType getStorageType() {
@@ -64,7 +66,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract String getRoleARN();
 
-  /** KMS Key ARN for server-side encryption,used for writes, optional */
+  /** KMS Key ARN for server-side encryption, used for writes, optional */
   @Nullable
   public abstract String getCurrentKmsKey();
 
@@ -101,11 +103,16 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @JsonIgnore
   @Nullable
   public URI getInternalEndpointUri() {
-    return getEndpointInternal() == null ? getEndpointUri() : URI.create(getEndpointInternal());
+    return getEndpointInternal() == null
+        ? getEndpointUri()
+        : URI.create(getEndpointInternal());
   }
 
   /** Flag indicating whether path-style bucket access should be forced in S3 clients. */
   public abstract @Nullable Boolean getPathStyleAccess();
+
+  /** Flag indicating whether S3 trailing checksum validation should be disabled. */
+  public abstract @Nullable Boolean getDisableS3TrailingChecksum();
 
   /**
    * Flag indicating whether STS is available or not. It is modeled in the negative to simplify
@@ -121,7 +128,9 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @JsonIgnore
   @Nullable
   public URI getStsEndpointUri() {
-    return getStsEndpoint() == null ? getInternalEndpointUri() : URI.create(getStsEndpoint());
+    return getStsEndpoint() == null
+        ? getInternalEndpointUri()
+        : URI.create(getStsEndpoint());
   }
 
   @JsonIgnore
@@ -157,7 +166,8 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     if (arn != null) {
       Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
       if (!matcher.matches()) {
-        throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
+        throw new IllegalArgumentException(
+            "ARN does not match the expected role ARN pattern");
       }
     }
   }
@@ -169,6 +179,9 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     if (arn.isEmpty()) {
       throw new IllegalArgumentException("ARN must not be empty");
     }
-    checkArgument(Pattern.matches(ROLE_ARN_PATTERN, arn), "Invalid role ARN format: %s", arn);
+    checkArgument(
+        Pattern.matches(ROLE_ARN_PATTERN, arn),
+        "Invalid role ARN format: %s",
+        arn);
   }
 }

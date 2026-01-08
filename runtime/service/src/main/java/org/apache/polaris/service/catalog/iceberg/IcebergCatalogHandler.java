@@ -21,6 +21,8 @@ package org.apache.polaris.service.catalog.iceberg;
 import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING;
 import static org.apache.polaris.core.config.FeatureConfiguration.LIST_PAGINATION_ENABLED;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -489,6 +491,15 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     Map<String, String> properties = Maps.newHashMap();
     properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
     properties.putAll(reservedProperties.removeReservedProperties(request.properties()));
+    AwsStorageConfigurationInfo awsConfig =
+    storageAccessConfig.storageConfigurationInfo()
+        .as(AwsStorageConfigurationInfo.class);
+
+if (awsConfig != null
+    && Boolean.TRUE.equals(awsConfig.getDisableS3TrailingChecksum())) {
+  properties.put("s3.checksum.enabled", "false");
+}
+
 
     Table table =
         baseCatalog
@@ -1347,4 +1358,60 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 .build())
         .build();
   }
+
+    public LoadTableResponse bootstrapIcebergTableFromPath(
+            Namespace namespace,
+            String tableName,
+            String rootPath,
+            Map<String, String> props) throws IOException {
+
+        TableIdentifier tableIdentifier = TableIdentifier.of(namespace.levels()).withName(tableName);
+
+        if (baseCatalog.tableExists(tableIdentifier)) {
+            throw new AlreadyExistsException("Table already exists: %s", tableIdentifier);
+        }
+
+        Map<String, String> properties = new HashMap<>();
+        if (props != null) {
+            properties.putAll(props);
+        }
+        properties.put("created-at", OffsetDateTime.now(ZoneOffset.UTC).toString());
+
+        File sampleParquet = findOneParquetFile(rootPath);
+        Schema schema = ParquetUtil.readSchema(new Path(sampleParquet.getAbsolutePath()));
+
+        Table table = baseCatalog.buildTable(tableIdentifier, schema)
+                .withLocation(rootPath)
+                .withPartitionSpec(PartitionSpec.unpartitioned())
+                .withProperties(properties)
+                .create();
+
+        AppendFiles append = table.newAppend();
+        for (File parquet : listAllParquetFiles(rootPath)) {
+            DataFile dataFile = ParquetUtil.buildDataFile(
+                parquet, table.spec(), schema, table.io(), rootPath);
+            append.appendFile(dataFile);
+        }
+        append.commit();
+
+        TableMetadata metadata = ((BaseTable) table).operations().current();
+        return LoadTableResponse.builder().withTableMetadata(metadata).build();
+    }
+
+    private File findOneParquetFile(String rootPath) throws IOException {
+        try (Stream<java.nio.file.Path> files = Files.walk(Paths.get(rootPath))) {
+            return files.filter(p -> p.toString().endsWith(".parquet"))
+                        .map(java.nio.file.Path::toFile)
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("No Parquet files found under: " + rootPath));
+        }
+    }
+
+    private List<File> listAllParquetFiles(String rootPath) throws IOException {
+        try (Stream<java.nio.file.Path> files = Files.walk(Paths.get(rootPath))) {
+            return files.filter(p -> p.toString().endsWith(".parquet"))
+                        .map(java.nio.file.Path::toFile)
+                        .collect(Collectors.toList());
+        }
+    }
 }
