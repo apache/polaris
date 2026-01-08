@@ -57,17 +57,13 @@ public class CatalogGenericTableEventServiceDelegator
 
     polarisEventListener.onBeforeCreateGenericTable(
         new CatalogGenericTableServiceEvents.BeforeCreateGenericTableEvent(
-            eventMetadataFactory.create(),
-            catalogName,
-            namespace,
-            createGenericTableRequest));
+            eventMetadataFactory.create(), catalogName, namespace, createGenericTableRequest));
 
     Response resp =
         delegate.createGenericTable(
             prefix, namespace, createGenericTableRequest, realmContext, securityContext);
 
-    LoadGenericTableResponse responseEntity =
-        (LoadGenericTableResponse) resp.getEntity();
+    LoadGenericTableResponse responseEntity = (LoadGenericTableResponse) resp.getEntity();
 
     /*
      * NOTE:
@@ -80,10 +76,7 @@ public class CatalogGenericTableEventServiceDelegator
      */
     polarisEventListener.onAfterCreateGenericTable(
         new CatalogGenericTableServiceEvents.AfterCreateGenericTableEvent(
-            eventMetadataFactory.create(),
-            catalogName,
-            namespace,
-            responseEntity.getTable()));
+            eventMetadataFactory.create(), catalogName, namespace, responseEntity.getTable()));
 
     return resp;
   }
@@ -100,20 +93,14 @@ public class CatalogGenericTableEventServiceDelegator
 
     polarisEventListener.onBeforeDropGenericTable(
         new CatalogGenericTableServiceEvents.BeforeDropGenericTableEvent(
-            eventMetadataFactory.create(),
-            catalogName,
-            namespace,
-            genericTable));
+            eventMetadataFactory.create(), catalogName, namespace, genericTable));
 
     Response resp =
         delegate.dropGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
 
     polarisEventListener.onAfterDropGenericTable(
         new CatalogGenericTableServiceEvents.AfterDropGenericTableEvent(
-            eventMetadataFactory.create(),
-            catalogName,
-            namespace,
-            genericTable));
+            eventMetadataFactory.create(), catalogName, namespace, genericTable));
 
     return resp;
   }
@@ -131,9 +118,7 @@ public class CatalogGenericTableEventServiceDelegator
 
     polarisEventListener.onBeforeListGenericTables(
         new CatalogGenericTableServiceEvents.BeforeListGenericTablesEvent(
-            eventMetadataFactory.create(),
-            catalogName,
-            namespace));
+            eventMetadataFactory.create(), catalogName, namespace));
 
     Response resp =
         delegate.listGenericTables(
@@ -141,9 +126,7 @@ public class CatalogGenericTableEventServiceDelegator
 
     polarisEventListener.onAfterListGenericTables(
         new CatalogGenericTableServiceEvents.AfterListGenericTablesEvent(
-            eventMetadataFactory.create(),
-            catalogName,
-            namespace));
+            eventMetadataFactory.create(), catalogName, namespace));
 
     return resp;
   }
@@ -160,23 +143,16 @@ public class CatalogGenericTableEventServiceDelegator
 
     polarisEventListener.onBeforeLoadGenericTable(
         new CatalogGenericTableServiceEvents.BeforeLoadGenericTableEvent(
-            eventMetadataFactory.create(),
-            catalogName,
-            namespace,
-            genericTable));
+            eventMetadataFactory.create(), catalogName, namespace, genericTable));
 
     Response resp =
         delegate.loadGenericTable(prefix, namespace, genericTable, realmContext, securityContext);
 
-    LoadGenericTableResponse responseEntity =
-        (LoadGenericTableResponse) resp.getEntity();
+    LoadGenericTableResponse responseEntity = (LoadGenericTableResponse) resp.getEntity();
 
     polarisEventListener.onAfterLoadGenericTable(
         new CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent(
-            eventMetadataFactory.create(),
-            catalogName,
-            namespace,
-            responseEntity.getTable()));
+            eventMetadataFactory.create(), catalogName, namespace, responseEntity.getTable()));
 
     return resp;
   }
