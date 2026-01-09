@@ -24,11 +24,13 @@ import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.plugins.JavaLibraryPlugin
 import org.gradle.api.provider.ListProperty
+import org.gradle.api.publish.maven.tasks.GenerateMavenPom
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 import org.gradle.jvm.tasks.Jar
+import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.withType
 
 @CacheableTask
@@ -90,9 +92,17 @@ fun addAdditionalJarContent(project: Project): Unit =
         } else if (name == "javadocJar") {
           from("src/main/resources") { include("META-INF/NOTICE") }
         }
-        from(tasks.named("generatePomFileForMavenPublication")) {
-          include("pom-default.xml")
-          eachFile { path = "META-INF/maven/${project.group}/${project.name}/pom.xml" }
+        // Only add the pom.xml to jars for 'release' builds, but not for developer/snapshot builds.
+        // Letting jars depend on the pom.xml (Gradle's `GenerateMavenPom` task, annotated with
+        // `@UntrackedTask`)
+        // breaks up-to-date checks for all jars and dependent project dependencies, leading to
+        // unnecessarily long
+        // build times.
+        if (project.hasProperty("release")) {
+          from(tasks.named<GenerateMavenPom>("generatePomFileForMavenPublication")) {
+            include("pom-default.xml")
+            eachFile { path = "META-INF/maven/${project.group}/${project.name}/pom.xml" }
+          }
         }
         from(generatePomProperties) {
           include("**")
