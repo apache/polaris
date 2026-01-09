@@ -54,15 +54,16 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   private final StsClientProvider stsClientProvider;
   private final Optional<AwsCredentialsProvider> stsCredentials;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
+  private final StorageConfiguration storageConfiguration;
 
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
   public PolarisStorageIntegrationProviderImpl(
       StorageConfiguration storageConfiguration, StsClientProvider stsClientProvider, Clock clock) {
-    this(
-        stsClientProvider,
-        Optional.ofNullable(storageConfiguration.stsCredentials()),
-        storageConfiguration.gcpCredentialsSupplier(clock));
+    this.storageConfiguration = storageConfiguration;
+    this.stsClientProvider = stsClientProvider;
+    this.stsCredentials = Optional.empty(); // ofNullable(storageConfiguration.stsCredentials());
+    this.gcpCredsProvider = storageConfiguration.gcpCredentialsSupplier(clock);
   }
 
   public PolarisStorageIntegrationProviderImpl(
@@ -72,6 +73,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     this.stsClientProvider = stsClientProvider;
     this.stsCredentials = stsCredentials;
     this.gcpCredsProvider = gcpCredsProvider;
+    this.storageConfiguration = null;
   }
 
   @Override
@@ -90,7 +92,18 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 new AwsCredentialsStorageIntegration(
                     (AwsStorageConfigurationInfo) polarisStorageConfigurationInfo,
                     stsClientProvider,
-                    stsCredentials);
+                    stsCredentials.or(
+                        () -> {
+                          if (storageConfiguration != null) {
+                            return Optional.ofNullable(
+                                storageConfiguration.stsCredentials(
+                                    polarisStorageConfigurationInfo
+                                        .resolveStorageName()
+                                        .orElse(null)));
+                          } else {
+                            return Optional.empty();
+                          }
+                        }));
         break;
       case GCS:
         storageIntegration =
