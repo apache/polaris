@@ -21,7 +21,7 @@
 # They are provided by a third-party and are governed by
 # separate terms of service, privacy policy, and support
 # documentation.
-# This workflow will build a Python project with Poetry and cache/restore any dependencies to improve the workflow execution time
+# This workflow will build a Python project with UV and cache/restore any dependencies to improve the workflow execution time
 # For more information see: https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-python
 
 name: Python Client CI

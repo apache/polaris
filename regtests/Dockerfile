@@ -50,7 +50,7 @@ RUN python3 -m venv /home/spark/polaris/polaris-venv && \
     . /home/spark/polaris/polaris-venv/bin/activate && \
     pip install -r /home/spark/polaris/regtests/requirements.txt && \
     cd /home/spark/polaris/client/python && \
-    poetry install && \
+    uv sync --active --all-extras && \
     deactivate && \
     /home/spark/polaris/regtests/setup.sh
 

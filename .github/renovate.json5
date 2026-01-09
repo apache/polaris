@@ -46,7 +46,7 @@
     {
       matchManagers: [
         "gradle", "gradle-wrapper",
-        "pip_requirements", "pip_setup", "poetry", "setup-cfg",
+        "pip_requirements", "pip_setup", "uv", "setup-cfg",
         "dockerfile", "devcontainer", "docker-compose",
         "github-actions"],
       automerge: false, // just be explicit (false is the default)
@@ -61,7 +61,7 @@
     },
     //   boto3 (release frequency: multiple times per week)
     {
-      matchManagers: ["pip_requirements", "pip_setup", "poetry"],
+      matchManagers: ["pip_requirements", "pip_setup", "uv"],
       matchPackagePrefixes: ["boto3"],
       extends: ["schedule:weekly"],
     },

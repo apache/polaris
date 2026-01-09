@@ -113,7 +113,7 @@ tasks.named<RatTask>("rat").configure {
   // Python
   excludes.add("**/.venv/**")
   excludes.add("**/polaris-venv/**")
-  excludes.add("**/poetry.lock")
+  excludes.add("**/uv.lock")
   excludes.add("**/.ruff_cache/**")
   excludes.add("**/.mypy_cache/**")
   excludes.add("**/.pytest_cache/**")

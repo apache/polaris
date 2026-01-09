@@ -40,10 +40,11 @@ COPY --chown=spark plugins/spark/v3.5/spark/build/2.12/libs/*bundle.jar /opt/spa
 
 RUN python3 -m venv /home/spark/venv && \
     . /home/spark/venv/bin/activate && \
-    pip install -r /tmp/requirements.txt -r /tmp/notebook_requirements.txt && \
+    pip install -r /tmp/requirements.txt && \
     cd client/python && \
-    poetry lock && \
-    poetry install --all-extras
+    uv lock && \
+    uv sync --active --all-extras && \
+    uv pip install -r /tmp/notebook_requirements.txt
 
 EXPOSE 8888
 CMD ["/home/spark/venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--NotebookApp.token=''"]

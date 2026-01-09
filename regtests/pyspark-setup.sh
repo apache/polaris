@@ -27,6 +27,6 @@ fi
 pip install -r requirements.txt
 
 cd ../client/python
-python3 -m poetry install --no-root
+python3 -m uv sync --active --all-extras
 
 deactivate

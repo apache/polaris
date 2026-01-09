@@ -21,14 +21,16 @@
 name = "apache-polaris"
 version = "1.4.0"
 description = "Apache Polaris"
-authors = [
-    {name = "Apache Software Foundation", email = "dev@polaris.apache.org"}
-]
-readme = "README.md"
+authors = [{ name = "Apache Software Foundation", email = "dev@polaris.apache.org" }]
 requires-python = ">=3.10,<4.0"
+readme = "README.md"
 license = "Apache-2.0"
-keywords = ["Apache Polaris", "Polaris", "Polaris Management Service", "Apache Iceberg REST Catalog API"]
-dynamic = ["classifiers"]
+keywords = [
+    "Apache Polaris",
+    "Polaris",
+    "Polaris Management Service",
+    "Apache Iceberg REST Catalog API",
+]
 dependencies = [
     "urllib3>=1.25.3,<3.0.0",
     "python-dateutil>=2.8.2",
@@ -44,39 +46,48 @@ repository = "https://github.com/apache/polaris/"
 [project.scripts]
 polaris = "apache_polaris.cli.polaris_cli:main"
 
-[tool.poetry]
-requires-poetry = "==2.2.1"
-packages = [
-    { include = "apache_polaris" }
-]
-include = [
-    { path = "apache_polaris/cli", format = ["sdist", "wheel"] },
-    { path = "apache_polaris/sdk", format = ["sdist", "wheel"] },
-    { path = "templates/**", format = "sdist" },
-    { path = "spec/**", format = "sdist" },
+[dependency-groups]
+dev = [
+    "pytest>= 7.2.1",
+    "pytest-cov>= 2.8.1",
+    "flake8>= 4.0.0",
+    "types-python-dateutil>= 2.8.19.14",
+    "mypy>=1.19, <=1.19.1",
+    "pyiceberg==0.10.0",
+    "pre-commit==4.5.1",
+    # 7.12.0 is the latest version to use due to OpenAPI spec version we are using
+    "openapi-generator-cli==7.12.0",
+    "pip-licenses-cli==3.0.1",
 ]
 
-[tool.poetry.group.dev.dependencies]
-pytest = ">= 7.2.1"
-pytest-cov = ">= 2.8.1"
-flake8 = ">= 4.0.0"
-types-python-dateutil = ">= 2.8.19.14"
-mypy = ">=1.19, <=1.19.1"
-pyiceberg = "==0.10.0"
-pre-commit = "==4.5.1"
+[tool.hatch.build.targets.sdist]
+include = [
+    "generate_clients.py",
+    "apache_polaris",
+    "templates/",
+    ".openapi-generator-ignore"
+]
+
+[tool.hatch.build.targets.sdist.force-include]
+"spec" = "spec/"
+
+[tool.hatch.build.targets.wheel]
+include = ["apache_polaris"]
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
+[build-system]
 # 7.12.0 is the latest version to use due to OpenAPI spec version we are using
-openapi-generator-cli = "==7.12.0"
-pip-licenses-cli = "==3.0.1"
+requires = ["hatchling", "openapi-generator-cli==7.12.0"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+required-version = ">=0.9.0" # keep this as the first item for version parsing
+default-groups = [
+    "dev"
+]
 
 [tool.pip-licenses]
 partial-match = true
 allow-only = "Apache;BSD License;BSD-3-Clause;ISC;MIT;Mozilla Public License;PSF-2.0;Python Software Foundation License;The Unlicense"
-
-[build-system]
-# 7.12.0 is the latest version to use due to OpenAPI spec version we are using
-requires = ["poetry-core==2.2.1", "openapi-generator-cli==7.12.0"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.build]
-generate-setup-file = false
-script = "generate_clients.py"
