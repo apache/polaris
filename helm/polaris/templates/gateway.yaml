@@ -17,48 +17,42 @@
   under the License.
 */}}
 
-{{- include "polaris.validateRouting" . }}
-{{- if .Values.ingress.enabled }}
+{{- if .Values.gateway.enabled }}
 {{- $fullName := include "polaris.fullname" . }}
-{{- $svcPort := get (first .Values.service.ports) "port" }}
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
 metadata:
   name: {{ $fullName }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "polaris.labels" . | nindent 4 }}
-  {{- if .Values.ingress.annotations }}
+  {{- with .Values.gateway.annotations }}
   annotations:
-    {{- tpl (toYaml .Values.ingress.annotations) . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.ingress.className }}
-  ingressClassName: {{ .Values.ingress.className | quote }}
-  {{- end }}
-  {{- if .Values.ingress.tls }}
-  tls:
-    {{- range .Values.ingress.tls }}
-    - hosts:
-        {{- range .hosts }}
-        - {{ . | quote }}
-        {{- end }}
-      secretName: {{ .secretName }}
+  gatewayClassName: {{ .Values.gateway.className }}
+  listeners:
+    {{- range .Values.gateway.listeners }}
+    - name: {{ .name }}
+      protocol: {{ .protocol }}
+      port: {{ .port }}
+      {{- if .hostname }}
+      hostname: {{ .hostname | quote }}
+      {{- end }}
+      {{- if .allowedRoutes }}
+      allowedRoutes:
+        {{- toYaml .allowedRoutes | nindent 8 }}
+      {{- end }}
+      {{- if and (eq .protocol "HTTPS") .tls }}
+      tls:
+        {{- toYaml .tls | nindent 8 }}
+      {{- end }}
     {{- end }}
+  {{- with .Values.gateway.addresses }}
+  addresses:
+    {{- toYaml . | nindent 4 }}
   {{- end }}
-  rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
-      http:
-        paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
-            backend:
-              service:
-                name: {{ $fullName }}
-                port:
-                  number: {{ $svcPort }}
-          {{- end }}
-    {{- end }}
-  {{- end }}
+
+{{- end }}

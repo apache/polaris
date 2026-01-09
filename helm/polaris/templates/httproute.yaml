@@ -18,47 +18,33 @@
 */}}
 
 {{- include "polaris.validateRouting" . }}
-{{- if .Values.ingress.enabled }}
+{{- if .Values.httproute.enabled }}
 {{- $fullName := include "polaris.fullname" . }}
-{{- $svcPort := get (first .Values.service.ports) "port" }}
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
   name: {{ $fullName }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "polaris.labels" . | nindent 4 }}
-  {{- if .Values.ingress.annotations }}
+  {{- with .Values.httproute.annotations }}
   annotations:
-    {{- tpl (toYaml .Values.ingress.annotations) . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.ingress.className }}
-  ingressClassName: {{ .Values.ingress.className | quote }}
-  {{- end }}
-  {{- if .Values.ingress.tls }}
-  tls:
-    {{- range .Values.ingress.tls }}
-    - hosts:
-        {{- range .hosts }}
-        - {{ . | quote }}
-        {{- end }}
-      secretName: {{ .secretName }}
-    {{- end }}
-  {{- end }}
+  hostnames: {{ .Values.httproute.hosts }}
+  parentRefs:
+    - name: {{ .Values.httproute.gatewayName}}
+      namespace: {{ .Values.httproute.gatewayNamespace }}
+      {{- if .Values.httproute.sectionName }}
+      sectionName: {{ .Values.httproute.sectionName }}
+      {{- end }}
   rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
-      http:
-        paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
-            backend:
-              service:
-                name: {{ $fullName }}
-                port:
-                  number: {{ $svcPort }}
-          {{- end }}
-    {{- end }}
-  {{- end }}
+    # We don't specify a matches block here, so the default is a prefix path match on "/" (match every HTTP request)
+    # The backend (Service) to send matching requests to
+    - backendRefs:
+        - name: {{ $fullName }}
+          port: {{ get (first .Values.service.ports) "port" }}
+
+{{- end }}
