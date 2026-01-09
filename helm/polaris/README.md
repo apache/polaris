@@ -189,6 +189,18 @@ export QUARKUS_DATASOURCE_JDBC_URL=$(echo "$container_envs" | grep quarkus.datas
 java -jar runtime/admin/build/quarkus-app/quarkus-run.jar bootstrap -c POLARIS,root,pass -r POLARIS
 ```
 
+### Using the Gateway API (Advanced)
+
+You may want to use the [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) for more advanced network routing. In most cases this would already be installed by your cluster admins. The following is an example set of commands to run to install the gateway:
+```bash
+# ref: https://gateway-api.sigs.k8s.io/guides/getting-started/#install-standard-channel
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
+```
+
+With that installed, you can enable and configure the `gateway` values. This will make it possible to use the HTTPRoute resource, enable and configure the `httproute` values.
+[!NOTE]
+Only one of HTTPRoute or Ingress can be defined. Defining both will result in errors.
+
 ### Uninstalling
 
 ```bash
@@ -299,6 +311,17 @@ ct install --namespace polaris --charts ./helm/polaris
 | features.realmOverrides | object | `{}` | Features to enable or disable per realm. This field is a map of maps. The realm name is the key, and the value is a map of feature names to values. If a feature is not present in the map, the default value from the 'defaults' field is used. |
 | fileIo | object | `{"type":"default"}` | Polaris FileIO configuration. |
 | fileIo.type | string | `"default"` | The type of file IO to use. Two built-in types are supported: default and wasb. The wasb one translates WASB paths to ABFS ones. |
+| gateway.addresses | list | `[]` | Optional addresses to request for the Gateway. |
+| gateway.annotations | object | `{}` | Annotations to add to the Gateway. |
+| gateway.className | string | `""` | The name of the GatewayClass to use. |
+| gateway.enabled | bool | `false` | Specifies whether a Gateway should be created. |
+| gateway.listeners | list | `[{"name":"http","port":80,"protocol":"HTTP"}]` | Gateway listeners configuration. |
+| httproute.annotations | object | `{}` | Annotations to add to the HTTPRoute. |
+| httproute.enabled | bool | `false` | Specifies whether an HTTPRoute should be created. |
+| httproute.gatewayName | string | `""` | Name of the Gateway resource to attach to. |
+| httproute.gatewayNamespace | string | `"default"` | Namespace where the Gateway is deployed. |
+| httproute.hosts | list | `["chart-example.local"]` | A list of hostnames that the HTTPRoute should match. |
+| httproute.sectionName | string | `""` | Section name within the gateway to use (optional). |
 | image.configDir | string | `"/deployments/config"` | The path to the directory where the application.properties file, and other configuration files, if any, should be mounted. |
 | image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
 | image.repository | string | `"apache/polaris"` | The image repository to pull from. |

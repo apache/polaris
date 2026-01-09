@@ -90,6 +90,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Validate that only one of ingress or httproute is enabled
+*/}}
+{{- define "polaris.validateRouting" -}}
+{{- if and .Values.ingress.enabled .Values.httproute.enabled }}
+{{- fail "Cannot enable both ingress and httproute. Please enable only one." }}
+{{- end }}
+{{- if and (not .Values.httproute.enabled) .Values.gateway.enabled }}
+{{- fail "In order to use the gateway please enable the httproute and disable the ingress."}}
+{{- end }}
+{{- end }}
+
+{{/*
   Create the name of the service account to use
 */}}
 {{- define "polaris.serviceAccountName" -}}
