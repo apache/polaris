@@ -33,7 +33,7 @@ ACTIVATE_AND_CD = source $(VENV_DIR)/bin/activate && cd $(PYTHON_CLIENT_DIR)
 ## Version information
 BUILD_VERSION := $(shell cat version.txt)
 GIT_COMMIT := $(shell git rev-parse HEAD)
-POETRY_VERSION := $(shell cat client/python/pyproject.toml | grep requires-poetry | sed 's/requires-poetry *= *"\(.*\)"/\1/')
+UV_VERSION := $(shell cat client/python/pyproject.toml | grep -A1 tool.uv | grep -v tool.uv | grep required-version | sed 's/required-version *= *"\([^"]*\)".*/\1/')
 
 ##@ General
 
@@ -45,7 +45,7 @@ help: ## Display this help
 version: ## Display version information
 	@echo "Build version: ${BUILD_VERSION}"
 	@echo "Git commit: ${GIT_COMMIT}"
-	@echo "Poetry version: ${POETRY_VERSION}"
+	@echo "UV version: ${UV_VERSION}"
 
 ##@ Polaris Build
 
@@ -114,13 +114,13 @@ $(VENV_DIR):
 
 .PHONY: client-install-dependencies
 client-install-dependencies: $(VENV_DIR)
-	@echo "Installing Poetry and project dependencies into $(VENV_DIR)..."
+	@echo "Installing UV and project dependencies into $(VENV_DIR)..."
 	@$(VENV_DIR)/bin/pip install --upgrade pip
-	@if [ ! -f "$(VENV_DIR)/bin/poetry" ]; then \
-		$(VENV_DIR)/bin/pip install --upgrade "poetry$(POETRY_VERSION)"; \
+	@if [ ! -f "$(VENV_DIR)/bin/uv" ]; then \
+		$(VENV_DIR)/bin/pip install --upgrade "uv$(UV_VERSION)"; \
 	fi
-	@$(ACTIVATE_AND_CD) && poetry lock && poetry install --all-extras
-	@echo "Poetry and dependencies installed."
+	@$(ACTIVATE_AND_CD) && uv lock && uv sync --active --all-extras
+	@echo "uv and dependencies installed."
 
 .PHONY: client-setup-env
 client-setup-env: $(VENV_DIR) client-install-dependencies
@@ -128,7 +128,7 @@ client-setup-env: $(VENV_DIR) client-install-dependencies
 .PHONY: client-lint
 client-lint: client-setup-env ## Run linting checks for Polaris client
 	@echo "--- Running client linting checks ---"
-	@$(ACTIVATE_AND_CD) && poetry run pre-commit run --files integration_tests/* generate_clients.py apache_polaris/cli/* apache_polaris/cli/command/* apache_polaris/cli/options/* test/*
+	@$(ACTIVATE_AND_CD) && uv run --active pre-commit run --files integration_tests/* generate_clients.py apache_polaris/cli/* apache_polaris/cli/command/* apache_polaris/cli/options/* test/*
 	@echo "--- Client linting checks complete ---"
 
 .PHONY: client-regenerate
@@ -140,7 +140,7 @@ client-regenerate: client-setup-env ## Regenerate the client code
 .PHONY: client-unit-test
 client-unit-test: client-setup-env ## Run client unit tests
 	@echo "--- Running client unit tests ---"
-	@$(ACTIVATE_AND_CD) && poetry run pytest test/
+	@$(ACTIVATE_AND_CD) && uv run --active pytest test/
 	@echo "--- Client unit tests complete ---"
 
 .PHONY: client-integration-test
@@ -157,7 +157,7 @@ client-integration-test: build-server client-setup-env ## Run client integration
 		sleep 2; \
 	done
 	@echo "Polaris is healthy. Starting integration tests..."
-	@$(ACTIVATE_AND_CD) && poetry run pytest integration_tests/
+	@$(ACTIVATE_AND_CD) && uv run --active pytest integration_tests/
 	@echo "--- Client integration tests complete ---"
 	@echo "Tearing down Docker Compose services..."
 	@$(DOCKER) compose -f $(PYTHON_CLIENT_DIR)/docker-compose.yml down || true # Ensure teardown even if tests fail
@@ -177,10 +177,10 @@ client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist o
 			exit 1; \
 		fi; \
 		echo "Building with format: $(FORMAT)"; \
-		$(ACTIVATE_AND_CD) && poetry build --format $(FORMAT); \
+		$(ACTIVATE_AND_CD) && uv build --format $(FORMAT); \
 	else \
 		echo "Building default distribution (sdist and wheel)"; \
-		$(ACTIVATE_AND_CD) && poetry build; \
+		$(ACTIVATE_AND_CD) && uv build; \
 	fi
 	@echo "--- Client distribution build complete ---"
 

@@ -24,7 +24,7 @@ The Apache Polaris Python package provides a client for interacting with the Apa
 
 ### Prerequisites
 - Python 3.10 or later
-- poetry >= 2.1
+- uv >= 0.9.0
 
 ### Installation
 First we need to generate the OpenAPI client code from the OpenAPI specification by running the following command **from the project root directory**:

@@ -16,5 +16,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+import subprocess
+import sys
 
-uv==0.9.22
+
+class GenerateClientsHook(BuildHookInterface):
+    def initialize(self, version, build_data):
+        subprocess.check_call([sys.executable, "generate_clients.py"])
+
