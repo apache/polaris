@@ -26,9 +26,10 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
-import org.apache.polaris.service.events.AfterAttemptTaskEvent;
-import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
+import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
+import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -85,10 +86,14 @@ public class TaskExecutorImplTest {
 
           @Override
           public boolean handleTask(TaskEntity task, CallContext callContext) {
-            var beforeTaskAttemptedEvent =
-                testPolarisEventListener.getLatest(BeforeAttemptTaskEvent.class);
-            Assertions.assertEquals(taskEntity.getId(), beforeTaskAttemptedEvent.taskEntityId());
-            Assertions.assertEquals(attempt, beforeTaskAttemptedEvent.attempt());
+            PolarisEvent beforeTaskAttemptedEvent =
+                testPolarisEventListener.getLatest(PolarisEventType.BEFORE_ATTEMPT_TASK);
+            Assertions.assertEquals(
+                taskEntity.getId(),
+                beforeTaskAttemptedEvent.attributes().getRequired(EventAttributes.TASK_ENTITY_ID));
+            Assertions.assertEquals(
+                attempt,
+                beforeTaskAttemptedEvent.attributes().getRequired(EventAttributes.TASK_ATTEMPT));
             return true;
           }
         });
@@ -99,9 +104,14 @@ public class TaskExecutorImplTest {
         PolarisEventMetadata.builder().realmId(realm).build(),
         attempt);
 
-    var afterAttemptTaskEvent = testPolarisEventListener.getLatest(AfterAttemptTaskEvent.class);
-    Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.taskEntityId());
-    Assertions.assertEquals(attempt, afterAttemptTaskEvent.attempt());
-    Assertions.assertTrue(afterAttemptTaskEvent.success());
+    PolarisEvent afterAttemptTaskEvent =
+        testPolarisEventListener.getLatest(PolarisEventType.AFTER_ATTEMPT_TASK);
+    Assertions.assertEquals(
+        taskEntity.getId(),
+        afterAttemptTaskEvent.attributes().getRequired(EventAttributes.TASK_ENTITY_ID));
+    Assertions.assertEquals(
+        attempt, afterAttemptTaskEvent.attributes().getRequired(EventAttributes.TASK_ATTEMPT));
+    Assertions.assertEquals(
+        true, afterAttemptTaskEvent.attributes().getRequired(EventAttributes.TASK_SUCCESS));
   }
 }

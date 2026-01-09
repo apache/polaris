@@ -29,8 +29,11 @@ import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
-import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.AttributeMap;
+import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
+import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 
 @Decorator
@@ -52,19 +55,23 @@ public class IcebergRestConfigurationEventServiceDelegator
     this.eventMetadataFactory = eventMetadataFactory;
   }
 
-  // Default constructor for CDI
   public IcebergRestConfigurationEventServiceDelegator() {}
 
   @Override
   public Response getConfig(
       String warehouse, RealmContext realmContext, SecurityContext securityContext) {
-    polarisEventListener.onBeforeGetConfig(
-        new IcebergRestCatalogEvents.BeforeGetConfigEvent(
-            eventMetadataFactory.create(), warehouse));
+    polarisEventListener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_GET_CONFIG,
+            eventMetadataFactory.create(),
+            new AttributeMap().put(EventAttributes.WAREHOUSE, warehouse)));
     Response resp = delegate.getConfig(warehouse, realmContext, securityContext);
-    polarisEventListener.onAfterGetConfig(
-        new IcebergRestCatalogEvents.AfterGetConfigEvent(
-            eventMetadataFactory.create(), (ConfigResponse) resp.getEntity()));
+    polarisEventListener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.AFTER_GET_CONFIG,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CONFIG_RESPONSE, (ConfigResponse) resp.getEntity())));
     return resp;
   }
 }

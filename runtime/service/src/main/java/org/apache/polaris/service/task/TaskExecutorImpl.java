@@ -50,10 +50,12 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
-import org.apache.polaris.service.events.AfterAttemptTaskEvent;
-import org.apache.polaris.service.events.BeforeAttemptTaskEvent;
+import org.apache.polaris.service.events.AttributeMap;
+import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
+import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.slf4j.Logger;
@@ -196,9 +198,13 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   protected void handleTask(
       long taskEntityId, CallContext ctx, PolarisEventMetadata eventMetadata, int attempt) {
-    polarisEventListener.onBeforeAttemptTask(
-        new BeforeAttemptTaskEvent(
-            eventMetadataFactory.copy(eventMetadata), taskEntityId, attempt));
+    polarisEventListener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_ATTEMPT_TASK,
+            eventMetadataFactory.copy(eventMetadata),
+            new AttributeMap()
+                .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                .put(EventAttributes.TASK_ATTEMPT, attempt)));
 
     boolean success = false;
     try {
@@ -241,9 +247,14 @@ public class TaskExecutorImpl implements TaskExecutor {
             .log("Unable to execute async task");
       }
     } finally {
-      polarisEventListener.onAfterAttemptTask(
-          new AfterAttemptTaskEvent(
-              eventMetadataFactory.copy(eventMetadata), taskEntityId, attempt, success));
+      polarisEventListener.onEvent(
+          new PolarisEvent(
+              PolarisEventType.AFTER_ATTEMPT_TASK,
+              eventMetadataFactory.copy(eventMetadata),
+              new AttributeMap()
+                  .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                  .put(EventAttributes.TASK_ATTEMPT, attempt)
+                  .put(EventAttributes.TASK_SUCCESS, success)));
     }
   }
 
