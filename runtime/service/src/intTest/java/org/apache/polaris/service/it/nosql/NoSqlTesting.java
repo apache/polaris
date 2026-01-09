@@ -16,25 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.persistence;
+package org.apache.polaris.service.it.nosql;
 
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import java.util.Set;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import java.util.Map;
 
-@ConfigMapping(prefix = "polaris.persistence")
-public interface PersistenceConfiguration {
+public final class NoSqlTesting {
+  private NoSqlTesting() {}
 
-  /**
-   * The type of the persistence to use. Must be a registered {@link
-   * org.apache.polaris.core.persistence.MetaStoreManagerFactory} identifier.
-   */
-  String type();
-
-  @WithDefault("in-memory,nosql")
-  Set<String> autoBootstrapTypes();
-
-  default boolean isAutoBootstrap() {
-    return autoBootstrapTypes().contains(type());
+  public static class PersistenceInMemoryProfile implements QuarkusTestProfile {
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.persistence.type", "nosql", "polaris.persistence.nosql.backend", "InMemory");
+    }
   }
 }
