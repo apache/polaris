@@ -132,7 +132,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         reservedProperties,
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
-        storageAccessConfigProvider);
+        storageAccessConfigProvider,
+        eventAttributesHolder);
   }
 
   protected void doTestInsufficientPrivileges(
@@ -273,7 +274,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             reservedProperties,
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
-            storageAccessConfigProvider);
+            storageAccessConfigProvider,
+            eventAttributesHolder);
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -312,7 +314,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             reservedProperties,
             catalogHandlerUtils,
             emptyExternalCatalogFactory(),
-            storageAccessConfigProvider);
+            storageAccessConfigProvider,
+            eventAttributesHolder);
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),
@@ -1201,7 +1204,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
         reservedProperties,
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
-        storageAccessConfigProvider);
+        storageAccessConfigProvider,
+        eventAttributesHolder);
   }
 
   @Test
@@ -1912,7 +1916,8 @@ public abstract class AbstractIcebergCatalogHandlerAuthzTest extends PolarisAuth
             eventMetadataFactory,
             metaStoreManager,
             callContext,
-            authenticatedRoot) {
+            authenticatedRoot,
+            eventAttributesHolder) {
           @Override
           public Catalog createCallContextCatalog(PolarisResolutionManifest resolvedManifest) {
             Catalog catalog = super.createCallContextCatalog(resolvedManifest);

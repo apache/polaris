@@ -56,4 +56,10 @@ public interface PolarisEventMetadata {
 
   /** The OpenTelemetry context associated with the event, if any. */
   Map<String, String> openTelemetryContext();
+
+  /**
+   * Additional event attributes collected during the request lifecycle. These can include entity
+   * IDs, operation metadata, or any contextual information.
+   */
+  Map<String, Object> eventAttributes();
 }

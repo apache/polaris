@@ -75,7 +75,8 @@ public class IcebergCatalogHandlerFineGrainedDisabledTest extends PolarisAuthzTe
         reservedProperties,
         catalogHandlerUtils,
         emptyExternalCatalogFactory(),
-        storageAccessConfigProvider);
+        storageAccessConfigProvider,
+        eventAttributesHolder);
   }
 
   public static class Profile extends PolarisAuthzTestBase.Profile {

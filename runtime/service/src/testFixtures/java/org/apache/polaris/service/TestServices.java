@@ -79,6 +79,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
@@ -120,7 +121,8 @@ public record TestServices(
     TaskExecutor taskExecutor,
     PolarisEventListener polarisEventListener,
     PolarisEventMetadataFactory eventMetadataFactory,
-    StorageAccessConfigProvider storageAccessConfigProvider) {
+    StorageAccessConfigProvider storageAccessConfigProvider,
+    EventAttributesHolder eventAttributesHolder) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -312,6 +314,7 @@ public record TestServices(
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
       PolarisEventListener polarisEventListener = new TestPolarisEventListener();
+      EventAttributesHolder eventAttributesHolder = new EventAttributesHolder();
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
               diagnostics,
@@ -323,7 +326,8 @@ public record TestServices(
               eventMetadataFactory,
               metaStoreManager,
               callContext,
-              principal);
+              principal,
+              eventAttributesHolder);
 
       ReservedProperties reservedProperties = ReservedProperties.NONE;
 
@@ -350,7 +354,8 @@ public record TestServices(
               catalogHandlerUtils,
               externalCatalogFactory,
               storageAccessConfigProvider,
-              new DefaultMetricsReporter());
+              new DefaultMetricsReporter(),
+              eventAttributesHolder);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;
@@ -361,7 +366,8 @@ public record TestServices(
                 catalogService,
                 polarisEventListener,
                 eventMetadataFactory,
-                new DefaultCatalogPrefixParser());
+                new DefaultCatalogPrefixParser(),
+                eventAttributesHolder);
         finalRestConfigurationService =
             new IcebergRestConfigurationEventServiceDelegator(
                 catalogService, polarisEventListener, eventMetadataFactory);
@@ -407,7 +413,8 @@ public record TestServices(
           taskExecutor,
           polarisEventListener,
           eventMetadataFactory,
-          storageAccessConfigProvider);
+          storageAccessConfigProvider,
+          eventAttributesHolder);
     }
   }
 

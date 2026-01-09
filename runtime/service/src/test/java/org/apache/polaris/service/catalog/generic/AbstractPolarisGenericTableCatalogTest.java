@@ -67,6 +67,7 @@ import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.context.catalog.PolarisPrincipalHolder;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.NoOpPolarisEventListener;
@@ -110,6 +111,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject FileIOFactory fileIOFactory;
   @Inject PolarisPrincipalHolder polarisPrincipalHolder;
+  @Inject EventAttributesHolder eventAttributesHolder;
 
   private PolarisGenericTableCatalog genericTableCatalog;
   private IcebergCatalog icebergCatalog;
@@ -235,7 +237,8 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             storageAccessConfigProvider,
             fileIOFactory,
             new NoOpPolarisEventListener(),
-            eventMetadataFactory);
+            eventMetadataFactory,
+            eventAttributesHolder);
     this.icebergCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

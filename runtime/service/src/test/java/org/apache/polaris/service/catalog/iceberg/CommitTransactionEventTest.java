@@ -35,6 +35,7 @@ import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -128,6 +129,31 @@ public class CommitTransactionEventTest {
     assertThatThrownBy(
             () -> testEventListener.getLatest(IcebergRestCatalogEvents.AfterUpdateTableEvent.class))
         .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void testLoadTableResponsesInCommitTransaction() {
+    TestServices testServices = createTestServices();
+    createCatalogAndNamespace(testServices, Map.of(), catalogLocation);
+
+    String table1Name = "test-table-5";
+    String table2Name = "test-table-6";
+    executeTransactionTest(false, table1Name, table2Name, testServices);
+
+    TestPolarisEventListener testEventListener =
+        (TestPolarisEventListener) testServices.polarisEventListener();
+
+    // Verify that AfterUpdateTable events contain LoadTableResponse objects
+    IcebergRestCatalogEvents.AfterUpdateTableEvent event =
+        testEventListener.getLatest(IcebergRestCatalogEvents.AfterUpdateTableEvent.class);
+
+    // Verify event's LoadTableResponse
+    assertThat(event.sourceTable()).isEqualTo(table2Name);
+    assertThat(event.loadTableResponse()).isNotNull();
+    LoadTableResponse response2 = event.loadTableResponse();
+    assertThat(response2.tableMetadata()).isNotNull();
+    assertThat(response2.tableMetadata().properties())
+        .containsEntry(propertyName, "value2");
   }
 
   private void createCatalogAndNamespace(

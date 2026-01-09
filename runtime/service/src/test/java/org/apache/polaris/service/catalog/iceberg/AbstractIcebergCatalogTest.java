@@ -139,6 +139,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -243,6 +244,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
   @Inject FileIOFactory fileIOFactory;
   @Inject TaskFileIOSupplier taskFileIOSupplier;
   @Inject PolarisPrincipal authenticatedRoot;
+  @Inject EventAttributesHolder eventAttributesHolder;
 
   private IcebergCatalog catalog;
   private String realmName;
@@ -441,7 +443,8 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         storageAccessConfigProvider,
         fileIOFactory,
         polarisEventListener,
-        eventMetadataFactory);
+        eventMetadataFactory,
+        eventAttributesHolder);
   }
 
   @Test

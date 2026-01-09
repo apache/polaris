@@ -34,6 +34,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -55,6 +56,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final PolarisMetaStoreManager metaStoreManager;
   private final CallContext callContext;
   private final PolarisPrincipal principal;
+  private final EventAttributesHolder eventAttributesHolder;
 
   @Inject
   public PolarisCallContextCatalogFactory(
@@ -67,7 +69,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       PolarisEventMetadataFactory eventMetadataFactory,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
-      PolarisPrincipal principal) {
+      PolarisPrincipal principal,
+      EventAttributesHolder eventAttributesHolder) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.taskExecutor = taskExecutor;
@@ -78,6 +81,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     this.metaStoreManager = metaStoreManager;
     this.callContext = callContext;
     this.principal = principal;
+    this.eventAttributesHolder = eventAttributesHolder;
   }
 
   @Override
@@ -101,7 +105,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener,
-            eventMetadataFactory);
+            eventMetadataFactory,
+            eventAttributesHolder);
 
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getBaseLocation();

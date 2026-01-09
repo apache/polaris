@@ -130,6 +130,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.validation.IcebergPropertiesValidation;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -170,6 +171,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private final PolarisPrincipal principal;
   private final PolarisEventListener polarisEventListener;
   private final PolarisEventMetadataFactory eventMetadataFactory;
+  private final EventAttributesHolder eventAttributesHolder;
   private final AtomicBoolean loggedPrefixOverlapWarning = new AtomicBoolean(false);
 
   private String ioImplClassName;
@@ -202,7 +204,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       StorageAccessConfigProvider storageAccessConfigProvider,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener,
-      PolarisEventMetadataFactory eventMetadataFactory) {
+      PolarisEventMetadataFactory eventMetadataFactory,
+      EventAttributesHolder eventAttributesHolder) {
     this.diagnostics = diagnostics;
     this.resolverFactory = resolverFactory;
     this.callContext = callContext;
@@ -218,6 +221,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     this.metaStoreManager = metaStoreManager;
     this.polarisEventListener = polarisEventListener;
     this.eventMetadataFactory = eventMetadataFactory;
+    this.eventAttributesHolder = eventAttributesHolder;
   }
 
   @Override

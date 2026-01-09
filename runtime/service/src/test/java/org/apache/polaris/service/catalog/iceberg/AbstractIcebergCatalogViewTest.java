@@ -58,6 +58,7 @@ import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -115,6 +116,7 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
   @Inject RealmConfig realmConfig;
   @Inject StorageAccessConfigProvider storageAccessConfigProvider;
   @Inject FileIOFactory fileIOFactory;
+  @Inject EventAttributesHolder eventAttributesHolder;
 
   private IcebergCatalog catalog;
 
@@ -206,7 +208,8 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener,
-            eventMetadataFactory);
+            eventMetadataFactory,
+            eventAttributesHolder);
     Map<String, String> properties =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")

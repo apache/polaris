@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.tracing.RequestIdFilter;
 import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
 import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
@@ -41,6 +42,7 @@ public class PolarisEventMetadataFactory {
   @Inject Clock clock;
   @Inject CurrentIdentityAssociation currentIdentityAssociation;
   @Inject Instance<RealmContext> realmContext;
+  @Inject Instance<EventAttributesHolder> eventAttributesHolder;
 
   /**
    * Creates a new event metadata object.
@@ -55,6 +57,7 @@ public class PolarisEventMetadataFactory {
         .user(getUser())
         .requestId(getRequestId())
         .openTelemetryContext(getOpenTelemetryContext())
+        .eventAttributes(eventAttributesHolder.get().getAll())
         .build();
   }
 
@@ -69,6 +72,7 @@ public class PolarisEventMetadataFactory {
         .from(original)
         .timestamp(clock.instant())
         .openTelemetryContext(getOpenTelemetryContext())
+        .eventAttributes(eventAttributesHolder.get().getAll())
         .build();
   }
 
