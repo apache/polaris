@@ -75,7 +75,9 @@ checkstyle {
 tasks.withType<Checkstyle>().configureEach { tasks.findByName("jandex")?.let { mustRunAfter(it) } }
 
 tasks.withType(JavaCompile::class.java).configureEach {
-  options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
+  options.compilerArgs.addAll(
+    listOf("-Xlint:unchecked", "-Xlint:deprecation", "-XDaddTypeAnnotationsToSymbol=true")
+  )
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
   options.errorprone.excludedPaths =
