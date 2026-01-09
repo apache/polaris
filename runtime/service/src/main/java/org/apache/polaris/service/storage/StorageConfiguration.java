@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Date;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.polaris.service.storage.aws.S3AccessConfig;
@@ -56,6 +57,21 @@ public interface StorageConfiguration extends S3AccessConfig {
    */
   @WithName("aws.secret-key")
   Optional<String> awsSecretKey();
+
+  @WithName("aws")
+  Map<String, StorageConfig> storages();
+
+  interface StorageConfig {
+    @WithName("access-key")
+    Optional<String> awsAccessKey();
+
+    @WithName("secret-key")
+    Optional<String> awsSecretKey();
+
+    default boolean isPresent() {
+      return awsAccessKey().isPresent() && awsSecretKey().isPresent();
+    }
+  }
 
   /**
    * The GCP access token to use for authentication. If not present, the default credentials
@@ -95,6 +111,18 @@ public interface StorageConfiguration extends S3AccessConfig {
     } else {
       return DefaultCredentialsProvider.builder().build();
     }
+  }
+
+  default AwsCredentialsProvider stsCredentials(String storageName) {
+    if (storageName != null && storages().containsKey(storageName)) {
+      StorageConfig storageConfig = storages().get(storageName);
+      if (storageConfig.awsAccessKey().isPresent() && storageConfig.awsSecretKey().isPresent()) {
+        return StaticCredentialsProvider.create(
+            AwsBasicCredentials.create(
+                storageConfig.awsAccessKey().get(), storageConfig.awsSecretKey().get()));
+      }
+    }
+    return stsCredentials();
   }
 
   default Supplier<GoogleCredentials> gcpCredentialsSupplier(Clock clock) {
