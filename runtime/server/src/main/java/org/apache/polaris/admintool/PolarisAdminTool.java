@@ -16,16 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.config;
+package org.apache.polaris.admintool;
 
-import io.smallrye.config.ConfigMapping;
+import io.quarkus.picocli.runtime.annotations.TopCommand;
+import org.apache.polaris.version.PolarisVersionProvider;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.HelpCommand;
 
-@ConfigMapping(prefix = "polaris.persistence")
-public interface QuarkusPersistenceConfiguration {
+@TopCommand
+@Command(
+    mixinStandardHelpOptions = true,
+    versionProvider = PolarisVersionProvider.class,
+    description = "Polaris administration & maintenance tool",
+    subcommands = {
+      HelpCommand.class,
+      BootstrapCommand.class,
+      PurgeCommand.class,
+    })
+public class PolarisAdminTool extends BaseMetaStoreCommand {
 
-  /**
-   * The type of the persistence to use. Must be a registered {@link
-   * org.apache.polaris.core.persistence.MetaStoreManagerFactory} identifier.
-   */
-  String type();
+  @Override
+  public Integer call() {
+    spec.commandLine().usage(spec.commandLine().getOut());
+    return 0;
+  }
 }

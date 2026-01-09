@@ -21,12 +21,16 @@ set -euo pipefail
 
 # Get the directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR/../admin"
+cd "$SCRIPT_DIR/../server"
 
 # Get the Java command
 JAVA_CMD="${JAVA_HOME:+${JAVA_HOME%/}/bin/java}"
 JAVA_CMD="${JAVA_CMD:-$(command -v java)}"
 [ -x "$JAVA_CMD" ] || { echo "Java not found – set JAVA_HOME or add java to PATH." >&2; exit 1; }
 
-# Launch Quarkus
-exec "$JAVA_CMD" ${POLARIS_JAVA_OPTS:-} -jar quarkus-run.jar "$@"
+# Show the usage when no argument is provided
+if [ "$#" -eq 0 ]; then
+  set -- --help
+fi
+
+exec "$JAVA_CMD" ${POLARIS_JAVA_OPTS:-} -Dquarkus.profile=cli -jar quarkus-run.jar "$@"
