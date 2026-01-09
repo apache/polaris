@@ -19,6 +19,9 @@
 
 # Getting Started with Apache Polaris and MinIO
 
+> [!WARNING]
+> Disclaimer: This getting-started example uses MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes.
+
 ## Overview
 
 This example uses MinIO as a storage provider with Polaris.
