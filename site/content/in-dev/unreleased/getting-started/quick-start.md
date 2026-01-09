@@ -21,6 +21,10 @@ Title: Quickstart
 type: docs
 weight: 99
 ---
+{{< alert warning >}}
+Disclaimer: This getting-start example uses MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receives updates or security fixes.
+{{< /alert >}}
+
 Use this guide to quickly start running Polaris. This is not intended for production use.
 
 ## Prerequisites
