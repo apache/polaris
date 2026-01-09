@@ -207,7 +207,7 @@ jobs:
           source "${LIBS_DIR}/_exec.sh"
 
           # Publish artifacts to staging repository
-          exec_process ./gradlew publishToApache closeApacheStagingRepository -Prelease -PuseGpgAgent --info 2>&1 | tee gradle_publish_output.txt
+          exec_process ./gradlew publishToApache closeApacheStagingRepository -Prelease -PuseGpgAgent --info 2>&1 | tee gradle_publish_output.txt ; test ${PIPESTATUS[0]} -eq 0
 
           # Extract staging repository ID from Gradle output
           if grep -q "Created staging repository" gradle_publish_output.txt; then
