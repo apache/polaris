@@ -77,7 +77,8 @@ class PolarisEventTest {
             new AttributeMap().put(EventAttributes.CATALOG_NAME, TEST_CATALOG));
 
     assertThat(event.attributes().size()).isEqualTo(1);
-    assertThat(event.attributes().get(EventAttributes.CATALOG_NAME)).contains(TEST_CATALOG);
+    assertThat(event.attributes().getRequired(EventAttributes.CATALOG_NAME))
+        .isEqualTo(TEST_CATALOG);
   }
 
   @Test

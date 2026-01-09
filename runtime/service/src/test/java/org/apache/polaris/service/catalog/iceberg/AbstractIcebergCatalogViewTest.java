@@ -258,18 +258,21 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);
-    Assertions.assertThat(beforeRefreshEvent.attributes().get(EventAttributes.VIEW_IDENTIFIER))
-        .hasValue(TestData.TABLE);
+    Assertions.assertThat(
+            beforeRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
+        .isEqualTo(TestData.TABLE);
 
     PolarisEvent afterRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.AFTER_REFRESH_VIEW);
-    Assertions.assertThat(afterRefreshEvent.attributes().get(EventAttributes.VIEW_IDENTIFIER))
-        .hasValue(TestData.TABLE);
+    Assertions.assertThat(
+            afterRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
+        .isEqualTo(TestData.TABLE);
 
     PolarisEvent beforeCommitEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_COMMIT_VIEW);
-    Assertions.assertThat(beforeCommitEvent.attributes().get(EventAttributes.VIEW_IDENTIFIER))
-        .hasValue(TestData.TABLE);
+    Assertions.assertThat(
+            beforeCommitEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
+        .isEqualTo(TestData.TABLE);
     Assertions.assertThat(
             beforeCommitEvent
                 .attributes()
@@ -285,8 +288,9 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
 
     PolarisEvent afterCommitEvent =
         testPolarisEventListener.getLatest(PolarisEventType.AFTER_COMMIT_VIEW);
-    Assertions.assertThat(afterCommitEvent.attributes().get(EventAttributes.VIEW_IDENTIFIER))
-        .hasValue(TestData.TABLE);
+    Assertions.assertThat(
+            afterCommitEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
+        .isEqualTo(TestData.TABLE);
     Assertions.assertThat(
             afterCommitEvent
                 .attributes()

@@ -109,7 +109,15 @@ final class AllowedAttributeTypes {
     return isSubtypeOfAllowedType(rawType);
   }
 
+  private static final ClassValue<Boolean> ALLOWED_CACHE =
+      new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+          return ALLOWED_TYPES.stream().anyMatch(t -> t.isAssignableFrom(type));
+        }
+      };
+
   private static boolean isSubtypeOfAllowedType(Class<?> rawType) {
-    return ALLOWED_TYPES.stream().anyMatch(t -> t.isAssignableFrom(rawType));
+    return ALLOWED_CACHE.get(rawType);
   }
 }

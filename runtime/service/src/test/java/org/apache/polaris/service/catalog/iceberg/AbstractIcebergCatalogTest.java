@@ -2364,13 +2364,15 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_TABLE);
-    Assertions.assertThat(beforeRefreshEvent.attributes().get(EventAttributes.TABLE_IDENTIFIER))
-        .hasValue(TestData.TABLE);
+    Assertions.assertThat(
+            beforeRefreshEvent.attributes().getRequired(EventAttributes.TABLE_IDENTIFIER))
+        .isEqualTo(TestData.TABLE);
 
     PolarisEvent afterRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.AFTER_REFRESH_TABLE);
-    Assertions.assertThat(afterRefreshEvent.attributes().get(EventAttributes.TABLE_IDENTIFIER))
-        .hasValue(TestData.TABLE);
+    Assertions.assertThat(
+            afterRefreshEvent.attributes().getRequired(EventAttributes.TABLE_IDENTIFIER))
+        .isEqualTo(TestData.TABLE);
   }
 
   private static PageToken nextRequest(Page<?> previousPage) {
