@@ -227,22 +227,7 @@ jobs:
           release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart"
 
           # Retry logic for SVN checkout (Apache SVN can have transient connectivity issues)
-          max_attempts=5
-          attempt=1
-          while true; do
-            if exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" "${release_helm_dir}"; then
-              break
-            fi
-            if [[ $attempt -ge $max_attempts ]]; then
-              echo "ERROR: SVN checkout failed after ${max_attempts} attempts"
-              exit 1
-            fi
-            echo "WARNING: SVN checkout failed (attempt ${attempt}/${max_attempts}), retrying in 60 seconds..."
-            # Clean up any partial checkout before retrying
-            rm -rf "${release_helm_dir}"
-            sleep 60
-            ((attempt++))
-          done
+          exec_process_with_retries 5 60 "${release_helm_dir}" svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" "${release_helm_dir}"
 
           exec_process cd "${release_helm_dir}"
           exec_process helm repo index .
