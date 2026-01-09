@@ -37,6 +37,7 @@ import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Request filter that returns a 429 Too Many Requests if the rate limiter says so */
 @Provider
 @PreMatching
 @Priority(FilterPriorities.RATE_LIMITER_FILTER)
@@ -58,6 +59,7 @@ public class RateLimiterFilter implements ContainerRequestFilter {
     this.eventMetadataFactory = eventMetadataFactory;
   }
 
+  /** Returns a 429 if the rate limiter says so. Otherwise, forwards the request along. */
   @Override
   public void filter(ContainerRequestContext ctx) throws IOException {
     if (!rateLimiter.canProceed()) {

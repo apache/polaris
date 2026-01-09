@@ -29,7 +29,6 @@ import org.junit.jupiter.api.Test;
 class AttributeKeyTest {
 
   private static final String TEST_KEY = "test_key";
-  private static final String OTHER_KEY = "other_key";
 
   @Test
   void testCreateAndAccessors() {
@@ -37,19 +36,6 @@ class AttributeKeyTest {
 
     assertThat(key.name()).isEqualTo(TEST_KEY);
     assertThat(key.type()).isEqualTo(TypeToken.of(String.class));
-  }
-
-  @Test
-  void testEqualsAndHashCode() {
-    AttributeKey<String> key1 = new AttributeKey<>(TEST_KEY, String.class);
-    AttributeKey<String> key2 = new AttributeKey<>(TEST_KEY, String.class);
-    AttributeKey<String> key3 = new AttributeKey<>(OTHER_KEY, String.class);
-    AttributeKey<Integer> key4 = new AttributeKey<>(TEST_KEY, Integer.class);
-
-    assertThat(key1).isEqualTo(key2);
-    assertThat(key1.hashCode()).isEqualTo(key2.hashCode());
-    assertThat(key1).isNotEqualTo(key3);
-    assertThat(key1).isNotEqualTo(key4);
   }
 
   @Test

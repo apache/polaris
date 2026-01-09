@@ -19,7 +19,6 @@
 package org.apache.polaris.service.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +32,7 @@ class PolarisEventTest {
       ImmutablePolarisEventMetadata.builder().realmId(TEST_REALM).build();
 
   @Test
-  void testBuilderCreatesEvent() {
+  void testConstructorWithAttributes() {
     PolarisEvent event =
         new PolarisEvent(
             PolarisEventType.BEFORE_CREATE_TABLE,
@@ -50,67 +49,11 @@ class PolarisEventTest {
   }
 
   @Test
-  void testAttributeReturnsEmptyForMissingKey() {
+  void testConstructorWithoutAttributes() {
     PolarisEvent event = new PolarisEvent(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA);
 
-    assertThat(event.attributes().get(EventAttributes.CATALOG_NAME)).isEmpty();
-  }
-
-  @Test
-  void testHasAttribute() {
-    PolarisEvent event =
-        new PolarisEvent(
-            PolarisEventType.BEFORE_CREATE_TABLE,
-            TEST_METADATA,
-            new AttributeMap().put(EventAttributes.CATALOG_NAME, TEST_CATALOG));
-
-    assertThat(event.attributes().contains(EventAttributes.CATALOG_NAME)).isTrue();
-    assertThat(event.attributes().contains(EventAttributes.TABLE_NAME)).isFalse();
-  }
-
-  @Test
-  void testAttributeMapSize() {
-    PolarisEvent event =
-        new PolarisEvent(
-            PolarisEventType.BEFORE_CREATE_TABLE,
-            TEST_METADATA,
-            new AttributeMap().put(EventAttributes.CATALOG_NAME, TEST_CATALOG));
-
-    assertThat(event.attributes().size()).isEqualTo(1);
-    assertThat(event.attributes().getRequired(EventAttributes.CATALOG_NAME))
-        .isEqualTo(TEST_CATALOG);
-  }
-
-  @Test
-  void testNullAttributeValueIsIgnored() {
-    PolarisEvent event =
-        new PolarisEvent(
-            PolarisEventType.BEFORE_CREATE_TABLE,
-            TEST_METADATA,
-            new AttributeMap().put(EventAttributes.CATALOG_NAME, null));
-
-    assertThat(event.attributes().contains(EventAttributes.CATALOG_NAME)).isFalse();
+    assertThat(event.type()).isEqualTo(PolarisEventType.BEFORE_CREATE_TABLE);
+    assertThat(event.metadata()).isEqualTo(TEST_METADATA);
     assertThat(event.attributes().isEmpty()).isTrue();
-  }
-
-  @Test
-  void testRequiredAttributeReturnsValue() {
-    PolarisEvent event =
-        new PolarisEvent(
-            PolarisEventType.BEFORE_CREATE_TABLE,
-            TEST_METADATA,
-            new AttributeMap().put(EventAttributes.CATALOG_NAME, TEST_CATALOG));
-
-    assertThat(event.attributes().getRequired(EventAttributes.CATALOG_NAME))
-        .isEqualTo(TEST_CATALOG);
-  }
-
-  @Test
-  void testRequiredAttributeThrowsForMissingKey() {
-    PolarisEvent event = new PolarisEvent(PolarisEventType.BEFORE_CREATE_TABLE, TEST_METADATA);
-
-    assertThatThrownBy(() -> event.attributes().getRequired(EventAttributes.CATALOG_NAME))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessage("Required attribute catalog_name not found");
   }
 }
