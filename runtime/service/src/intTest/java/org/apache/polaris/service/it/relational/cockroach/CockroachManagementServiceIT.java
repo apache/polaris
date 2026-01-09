@@ -16,23 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.persistence.relational.jdbc;
+package org.apache.polaris.service.it.relational.cockroach;
 
-import java.util.Optional;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.TestProfile;
+import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
+import org.apache.polaris.test.commons.CockroachRelationalJdbcProfile;
 
-public interface RelationalJdbcConfiguration {
-  // max retries before giving up
-  Optional<Integer> maxRetries();
-
-  // max retry duration
-  Optional<Long> maxDurationInMs();
-
-  // initial delay
-  Optional<Long> initialDelayInMs();
-
-  /**
-   * Explicitly configured database type. If not specified, the database type will be inferred from
-   * the JDBC connection metadata. Supported values: "postgresql", "cockroachdb", "h2"
-   */
-  Optional<String> databaseType();
-}
+@TestProfile(CockroachRelationalJdbcProfile.class)
+@QuarkusIntegrationTest
+public class CockroachManagementServiceIT extends PolarisManagementServiceIntegrationTest {}
