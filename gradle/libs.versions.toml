@@ -18,7 +18,7 @@
 #
 
 [versions]
-checkstyle = "10.25.0"
+checkstyle = "13.0.0"
 hadoop = "3.4.2"
 iceberg = "1.10.1" # Ensure to update the iceberg version in regtests to keep regtests up-to-date
 immutables = "2.12.1"
