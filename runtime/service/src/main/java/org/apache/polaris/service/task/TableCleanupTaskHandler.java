@@ -22,13 +22,14 @@ import static org.apache.polaris.core.config.FeatureConfiguration.TABLE_METADATA
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
@@ -58,6 +59,8 @@ public class TableCleanupTaskHandler implements TaskHandler {
   private final Clock clock;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
+  private static final String TASK_PERSISTENCE_BATCH_SIZE_CONFIG_KEY =
+      "TABLE_CLEANUP_TASK_PERSISTENCE_BATCH_SIZE";
 
   public TableCleanupTaskHandler(
       TaskExecutor taskExecutor,
@@ -111,6 +114,9 @@ public class TableCleanupTaskHandler implements TaskHandler {
           metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
       PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
 
+      int taskPersistenceBatchSize =
+          callContext.getRealmConfig().getConfig(TASK_PERSISTENCE_BATCH_SIZE_CONFIG_KEY, 100);
+
       Stream<TaskEntity> manifestCleanupTasks =
           getManifestTaskStream(
               cleanupTask,
@@ -124,24 +130,24 @@ public class TableCleanupTaskHandler implements TaskHandler {
           getMetadataTaskStream(
               cleanupTask, tableMetadata, tableEntity, metaStoreManager, callContext);
 
-      List<TaskEntity> taskEntities =
-          Stream.concat(manifestCleanupTasks, metadataFileCleanupTasks).toList();
+      // Process tasks in batches to avoid holding all tasks in memory
+      Stream<TaskEntity> allTasks = Stream.concat(manifestCleanupTasks, metadataFileCleanupTasks);
+      int totalTasksCreated =
+          processTasks(
+              allTasks,
+              taskPersistenceBatchSize,
+              metaStoreManager,
+              polarisCallContext,
+              tableEntity);
 
-      List<PolarisBaseEntity> createdTasks =
-          metaStoreManager
-              .createEntitiesIfNotExist(polarisCallContext, null, taskEntities)
-              .getEntities();
-      if (createdTasks != null) {
+      if (totalTasksCreated > 0) {
         LOGGER
             .atInfo()
             .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
             .addKeyValue("metadataLocation", tableEntity.getMetadataLocation())
-            .addKeyValue("taskCount", taskEntities.size())
+            .addKeyValue("taskCount", totalTasksCreated)
             .log(
                 "Successfully queued tasks to delete manifests, previous metadata, and statistics files - deleting table metadata file");
-        for (PolarisBaseEntity createdTask : createdTasks) {
-          taskExecutor.addTaskHandlerContext(createdTask.getId(), polarisCallContext);
-        }
 
         fileIO.deleteFile(tableEntity.getMetadataLocation());
 
@@ -149,6 +155,53 @@ public class TableCleanupTaskHandler implements TaskHandler {
       }
     }
     return false;
+  }
+
+  private int processTasks(
+      Stream<TaskEntity> taskStream,
+      int batchSize,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext polarisCallContext,
+      IcebergTableLikeEntity tableEntity) {
+    int totalCount = 0;
+    Iterator<TaskEntity> iterator = taskStream.iterator();
+    List<TaskEntity> batch = new ArrayList<>(batchSize);
+
+    while (iterator.hasNext()) {
+      batch.add(iterator.next());
+      if (batch.size() >= batchSize) {
+        createAndRegisterTasks(batch, metaStoreManager, polarisCallContext, tableEntity);
+        totalCount += batch.size();
+        batch.clear();
+      }
+    }
+
+    // Create remaining tasks
+    if (!batch.isEmpty()) {
+      createAndRegisterTasks(batch, metaStoreManager, polarisCallContext, tableEntity);
+      totalCount += batch.size();
+    }
+
+    return totalCount;
+  }
+
+  private void createAndRegisterTasks(
+      List<TaskEntity> batch,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext polarisCallContext,
+      IcebergTableLikeEntity tableEntity) {
+    List<PolarisBaseEntity> createdTasks =
+        metaStoreManager.createEntitiesIfNotExist(polarisCallContext, null, batch).getEntities();
+    if (createdTasks != null) {
+      for (PolarisBaseEntity createdTask : createdTasks) {
+        taskExecutor.addTaskHandlerContext(createdTask.getId(), polarisCallContext);
+      }
+      LOGGER
+          .atDebug()
+          .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
+          .addKeyValue("batchSize", batch.size())
+          .log("Created and registered batch of cleanup tasks");
+    }
   }
 
   private Stream<TaskEntity> getManifestTaskStream(
@@ -161,13 +214,14 @@ public class TableCleanupTaskHandler implements TaskHandler {
     // read the manifest list for each snapshot. dedupe the manifest files and schedule a
     // cleanupTask
     // for each manifest file and its data files to be deleted
+    // Use a Set to track seen paths for deduplication without materializing all ManifestFile
+    // objects
+    Set<String> seenPaths = new HashSet<>();
     return tableMetadata.snapshots().stream()
         .flatMap(sn -> sn.allManifests(fileIO).stream())
-        // distinct by manifest path, since multiple snapshots will contain the same
-        // manifest
-        .collect(Collectors.toMap(ManifestFile::path, Function.identity(), (mf1, mf2) -> mf1))
-        .values()
-        .stream()
+        // distinct by manifest path, since multiple snapshots will contain the same manifest
+        // Use stateful filter to dedupe while streaming
+        .filter(mf -> seenPaths.add(mf.path()))
         .filter(mf -> TaskUtils.exists(mf.path(), fileIO))
         .map(
             mf -> {
@@ -210,7 +264,28 @@ public class TableCleanupTaskHandler implements TaskHandler {
       CallContext callContext) {
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     int batchSize = callContext.getRealmConfig().getConfig(TABLE_METADATA_CLEANUP_BATCH_SIZE);
-    return getMetadataFileBatches(tableMetadata, batchSize).stream()
+
+    // Stream all metadata files without materializing them all at once
+    Iterator<String> metadataFiles =
+        Stream.of(
+                tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
+                tableMetadata.snapshots().stream().map(Snapshot::manifestListLocation),
+                tableMetadata.statisticsFiles().stream().map(StatisticsFile::path),
+                tableMetadata.partitionStatisticsFiles().stream()
+                    .map(PartitionStatisticsFile::path))
+            .flatMap(Function.identity())
+            .iterator();
+
+    // Create an iterator that yields TaskEntity batches
+    return Stream.generate(
+            () -> {
+              List<String> metadataBatch = new ArrayList<>(batchSize);
+              for (int i = 0; i < batchSize && metadataFiles.hasNext(); i++) {
+                metadataBatch.add(metadataFiles.next());
+              }
+              return metadataBatch;
+            })
+        .takeWhile(batch -> !batch.isEmpty())
         .map(
             metadataBatch -> {
               String taskName =
@@ -237,23 +312,5 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
                   .build();
             });
-  }
-
-  private List<List<String>> getMetadataFileBatches(TableMetadata tableMetadata, int batchSize) {
-    List<List<String>> result = new ArrayList<>();
-    List<String> metadataFiles =
-        Stream.of(
-                tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
-                tableMetadata.snapshots().stream().map(Snapshot::manifestListLocation),
-                tableMetadata.statisticsFiles().stream().map(StatisticsFile::path),
-                tableMetadata.partitionStatisticsFiles().stream()
-                    .map(PartitionStatisticsFile::path))
-            .flatMap(s -> s)
-            .toList();
-
-    for (int i = 0; i < metadataFiles.size(); i += batchSize) {
-      result.add(metadataFiles.subList(i, Math.min(i + batchSize, metadataFiles.size())));
-    }
-    return result;
   }
 }
