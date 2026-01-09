@@ -19,6 +19,8 @@
 
 package org.apache.polaris.service.catalog.io;
 
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -187,6 +189,24 @@ public class StorageAccessConfigProvider {
       builder.activatedRoles(Optional.of(rolesString));
     }
 
+    // Extract OpenTelemetry trace ID for end-to-end correlation
+    // This enables correlation between credential vending (CloudTrail), catalog operations
+    // (Polaris events), and metrics reports from compute engines
+    builder.traceId(getCurrentTraceId());
+
     return builder.build();
+  }
+
+  /**
+   * Extracts the current OpenTelemetry trace ID from the active span context.
+   *
+   * @return the trace ID if a valid span context exists, empty otherwise
+   */
+  private Optional<String> getCurrentTraceId() {
+    SpanContext spanContext = Span.current().getSpanContext();
+    if (spanContext.isValid()) {
+      return Optional.of(spanContext.getTraceId());
+    }
+    return Optional.empty();
   }
 }

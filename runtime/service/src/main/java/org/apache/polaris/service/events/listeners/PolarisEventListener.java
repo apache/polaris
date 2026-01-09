@@ -424,4 +424,10 @@ public interface PolarisEventListener {
   // ============= Rate Limiting Events =============
 
   default void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {}
+
+  // ============= Metrics Reporting Events =============
+
+  default void onBeforeReportMetrics(IcebergRestCatalogEvents.BeforeReportMetricsEvent event) {}
+
+  default void onAfterReportMetrics(IcebergRestCatalogEvents.AfterReportMetricsEvent event) {}
 }

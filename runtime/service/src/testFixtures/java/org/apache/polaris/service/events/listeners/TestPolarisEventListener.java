@@ -846,4 +846,14 @@ public class TestPolarisEventListener implements PolarisEventListener {
   public void onBeforeLimitRequestRate(BeforeLimitRequestRateEvent event) {
     recordEvent(event);
   }
+
+  @Override
+  public void onBeforeReportMetrics(IcebergRestCatalogEvents.BeforeReportMetricsEvent event) {
+    recordEvent(event);
+  }
+
+  @Override
+  public void onAfterReportMetrics(IcebergRestCatalogEvents.AfterReportMetricsEvent event) {
+    recordEvent(event);
+  }
 }
