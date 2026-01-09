@@ -30,6 +30,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Supplier;
@@ -59,6 +60,11 @@ public class StorageConfigurationTest {
       @Override
       public Optional<String> awsSecretKey() {
         return Optional.of(TEST_SECRET_KEY);
+      }
+
+      @Override
+      public Map<String, StorageConfig> storages() {
+        return Map.of();
       }
 
       @Override
@@ -123,6 +129,11 @@ public class StorageConfigurationTest {
       @Override
       public Optional<String> awsSecretKey() {
         return Optional.empty();
+      }
+
+      @Override
+      public Map<String, StorageConfig> storages() {
+        return Map.of();
       }
 
       @Override
