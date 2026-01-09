@@ -181,6 +181,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setConsentUrl(azureConfig.getConsentUrl())
             .setStorageType(AZURE)
             .setAllowedLocations(azureConfig.getAllowedLocations())
+            .setHierarchical(azureConfig.isHierarchical())
             .build();
       }
       if (configInfo instanceof GcpStorageConfigurationInfo) {
@@ -330,6 +331,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .tenantId(azureConfigModel.getTenantId())
                     .multiTenantAppName(azureConfigModel.getMultiTenantAppName())
                     .consentUrl(azureConfigModel.getConsentUrl())
+                    .hierarchical(azureConfigModel.getHierarchical())
                     .build();
             break;
           case GCS:
