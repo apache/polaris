@@ -46,6 +46,9 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install Poetry
+        run: make client-install-poetry
+
       - name: Generate snapshot version
         id: version
         run: |
