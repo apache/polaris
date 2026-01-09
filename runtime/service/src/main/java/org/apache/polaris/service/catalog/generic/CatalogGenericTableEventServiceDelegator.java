@@ -132,14 +132,14 @@ public class CatalogGenericTableEventServiceDelegator
     LoadGenericTableResponse loadResponse = (LoadGenericTableResponse) resp.getEntity();
 
     // Attach intermediate data produced during request processing
-    beforeEvent.putIntermediate(LoadGenericTableResponse.class, loadResponse);
+    beforeEvent.getMetadata().putIntermediate(LoadGenericTableResponse.class, loadResponse);
 
     // Create the after-event and propagate intermediate data
     var afterEvent =
         new CatalogGenericTableServiceEvents.AfterLoadGenericTableEvent(
             beforeEvent.getMetadata(), catalogName, namespace, loadResponse.getTable());
 
-    afterEvent.putIntermediate(LoadGenericTableResponse.class, loadResponse);
+    afterEvent.getMetadata().putIntermediate(LoadGenericTableResponse.class, loadResponse);
 
     polarisEventListener.onAfterLoadGenericTable(afterEvent);
 
