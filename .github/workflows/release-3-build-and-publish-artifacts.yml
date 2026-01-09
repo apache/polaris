@@ -154,8 +154,7 @@ jobs:
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }}
           git_user_signingkey: true
           git_commit_gpgsign: true
 
@@ -350,31 +349,25 @@ jobs:
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
         with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          gpg_private_key: ${{ secrets.POLARIS_GPG_PRIVATE_KEY }}
           git_user_signingkey: true
           git_commit_gpgsign: true
 
       - name: Create Helm package
-        env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          echo "::add-mask::$GPG_PASSPHRASE"
-
           source "${LIBS_DIR}/_exec.sh"
 
           # Make sure these files are always deleted
-          trap "rm -f /tmp/secring.gpg /tmp/pubring.gpg /tmp/passphrase" EXIT
+          trap "rm -f /tmp/secring.gpg /tmp/pubring.gpg" EXIT
 
-          echo "$GPG_PASSPHRASE" > /tmp/passphrase
-          gpg --batch --pinentry-mode loopback --passphrase-file /tmp/passphrase --export-secret-keys > /tmp/secring.gpg
+          gpg --batch --pinentry-mode loopback --export-secret-keys > /tmp/secring.gpg
           gpg --batch --pinentry-mode loopback --export > /tmp/pubring.gpg
 
           exec_process cd helm
           # Prerequisite for reproducible helm packages: file modification time must be deterministic
           # Works with helm since version 4.0.0
           exec_process find polaris -exec touch -d "1980-01-01 00:00:00" {} +
-          exec_process helm package polaris --sign --key "." --keyring /tmp/secring.gpg --passphrase-file /tmp/passphrase
+          exec_process helm package polaris --sign --key "." --keyring /tmp/secring.gpg
           exec_process helm verify polaris-${version_without_rc}.tgz --keyring /tmp/pubring.gpg
 
           calculate_sha512 polaris-${version_without_rc}.tgz
