@@ -220,7 +220,8 @@ public class FileIOFactoryTest {
             services.storageAccessConfigProvider(),
             services.fileIOFactory(),
             services.polarisEventListener(),
-            services.eventMetadataFactory());
+            services.eventMetadataFactory(),
+            services.eventAttributesHolder());
     polarisCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

@@ -88,6 +88,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.catalog.policy.PolicyCatalog;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
@@ -204,6 +205,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CallContext callContext;
   @Inject protected RealmConfig realmConfig;
   @Inject protected RealmContextHolder realmContextHolder;
+  @Inject protected EventAttributesHolder eventAttributesHolder;
 
   protected IcebergCatalog baseCatalog;
   protected PolarisGenericTableCatalog genericTableCatalog;
@@ -495,7 +497,8 @@ public abstract class PolarisAuthzTestBase {
             storageAccessConfigProvider,
             fileIOFactory,
             polarisEventListener,
-            eventMetadataFactory);
+            eventMetadataFactory,
+            eventAttributesHolder);
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -513,7 +516,7 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisCallContextCatalogFactory() {
-      this(null, null, null, null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
@@ -527,7 +530,8 @@ public abstract class PolarisAuthzTestBase {
         PolarisEventMetadataFactory eventMetadataFactory,
         PolarisMetaStoreManager metaStoreManager,
         CallContext callContext,
-        PolarisPrincipal principal) {
+        PolarisPrincipal principal,
+        EventAttributesHolder eventAttributesHolder) {
       super(
           diagnostics,
           resolverFactory,
@@ -538,7 +542,8 @@ public abstract class PolarisAuthzTestBase {
           eventMetadataFactory,
           metaStoreManager,
           callContext,
-          principal);
+          principal,
+          eventAttributesHolder);
     }
 
     @Override

@@ -45,6 +45,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterCheckExistsNamespaceEvent;
 import org.apache.polaris.service.events.IcebergRestCatalogEvents.AfterCheckExistsTableEvent;
@@ -98,6 +99,8 @@ import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
 
+import java.util.List;
+
 @Decorator
 @Priority(1000)
 public class IcebergRestCatalogEventServiceDelegator
@@ -107,6 +110,7 @@ public class IcebergRestCatalogEventServiceDelegator
   @Inject PolarisEventListener polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
+  @Inject EventAttributesHolder eventAttributesHolder;
 
   // Constructor for testing - allows manual dependency injection
   @VisibleForTesting
@@ -114,11 +118,13 @@ public class IcebergRestCatalogEventServiceDelegator
       IcebergCatalogAdapter delegate,
       PolarisEventListener polarisEventListener,
       PolarisEventMetadataFactory eventMetadataFactory,
-      CatalogPrefixParser prefixParser) {
+      CatalogPrefixParser prefixParser,
+      EventAttributesHolder eventAttributesHolder) {
     this.delegate = delegate;
     this.polarisEventListener = polarisEventListener;
     this.eventMetadataFactory = eventMetadataFactory;
     this.prefixParser = prefixParser;
+    this.eventAttributesHolder = eventAttributesHolder;
   }
 
   // Default constructor for CDI
@@ -629,7 +635,10 @@ public class IcebergRestCatalogEventServiceDelegator
     polarisEventListener.onAfterCommitTransaction(
         new IcebergRestCatalogEvents.AfterCommitTransactionEvent(
             eventMetadataFactory.create(), catalogName, commitTransactionRequest));
-    for (UpdateTableRequest req : commitTransactionRequest.tableChanges()) {
+    List<LoadTableResponse> loadTableResponses = eventAttributesHolder.getAs("commitTransaction.loadTableResponses", List.class).get();
+    for (int i = 0; i < commitTransactionRequest.tableChanges().size(); i++) {
+      UpdateTableRequest req = commitTransactionRequest.tableChanges().get(i);
+      LoadTableResponse loadTableResponse = loadTableResponses.get(i);
       polarisEventListener.onAfterUpdateTable(
           new AfterUpdateTableEvent(
               eventMetadataFactory.create(),
@@ -637,7 +646,7 @@ public class IcebergRestCatalogEventServiceDelegator
               req.identifier().namespace(),
               req.identifier().name(),
               req,
-              null));
+              loadTableResponse));
     }
     return resp;
   }

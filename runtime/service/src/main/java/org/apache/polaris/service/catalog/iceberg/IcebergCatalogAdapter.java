@@ -69,6 +69,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
+import org.apache.polaris.service.context.EventAttributesHolder;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -105,6 +106,7 @@ public class IcebergCatalogAdapter
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
   private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final PolarisMetricsReporter metricsReporter;
+  private final EventAttributesHolder eventAttributesHolder;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -122,7 +124,8 @@ public class IcebergCatalogAdapter
       CatalogHandlerUtils catalogHandlerUtils,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       StorageAccessConfigProvider storageAccessConfigProvider,
-      PolarisMetricsReporter metricsReporter) {
+      PolarisMetricsReporter metricsReporter,
+      EventAttributesHolder eventAttributesHolder) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -139,6 +142,7 @@ public class IcebergCatalogAdapter
     this.externalCatalogFactories = externalCatalogFactories;
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.metricsReporter = metricsReporter;
+    this.eventAttributesHolder = eventAttributesHolder;
   }
 
   /**
@@ -187,7 +191,8 @@ public class IcebergCatalogAdapter
         reservedProperties,
         catalogHandlerUtils,
         externalCatalogFactories,
-        storageAccessConfigProvider);
+        storageAccessConfigProvider,
+        eventAttributesHolder);
   }
 
   @Override
