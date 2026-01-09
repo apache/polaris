@@ -25,7 +25,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.annotation.Nullable;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class PolarisEvent {
   public static final String EMPTY_MAP_STRING = "{}";
@@ -33,6 +35,9 @@ public class PolarisEvent {
   // to serialize/deserialize properties
   // TODO: Look into using the CDI-managed `ObjectMapper` object
   private static final ObjectMapper MAPPER = JsonMapper.builder().build();
+
+  // Request-scoped intermediate data attached to this event.
+  @JsonIgnore private final Map<Class<?>, Object> intermediateData = new HashMap<>();
 
   // catalog id
   private final String catalogId;
@@ -57,6 +62,16 @@ public class PolarisEvent {
 
   // Which resource was operated on
   private final String resourceIdentifier;
+
+  // Attach an intermediate object to this event.
+  public <T> void putIntermediate(Class<T> type, T value) {
+    intermediateData.put(type, value);
+  }
+
+  // Retrieve an intermediate object attached to this event.
+  public <T> Optional<T> getIntermediate(Class<T> type) {
+    return Optional.ofNullable(type.cast(intermediateData.get(type)));
+  }
 
   // Additional parameters that were not earlier recorded
   private String additionalProperties;
