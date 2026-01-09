@@ -91,6 +91,7 @@ mongodb-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version = "5
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.57.0" }
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.37.0" }
+nessie-bom = { module = "org.projectnessie.nessie:nessie-bom", version = "0.106.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.8" }
