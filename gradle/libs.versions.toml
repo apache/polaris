@@ -76,7 +76,7 @@ jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.14.2" }
 junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version = "2.3.0" }
-keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.7" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version = "26.0.8" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.24" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.16.1" }
 microprofile-fault-tolerance-api = { module = "org.eclipse.microprofile.fault-tolerance:microprofile-fault-tolerance-api", version = "4.1.2" }
