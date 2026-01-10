@@ -31,6 +31,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import java.time.Clock;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -48,6 +49,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactoryImpl;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -271,7 +273,7 @@ public class ServiceProducers {
    */
   public void maybeBootstrap(
       @Observes Startup event,
-      MetaStoreManagerFactory factory,
+      Bootstrapper bootstrapper,
       PersistenceConfiguration config,
       RealmContextConfiguration realmContextConfiguration) {
     var rootCredentialsSet = RootCredentialsSet.fromEnvironment();
@@ -285,7 +287,13 @@ public class ServiceProducers {
           RootCredentialsSet.ENVIRONMENT_VARIABLE,
           RootCredentialsSet.SYSTEM_PROPERTY);
 
-      var result = factory.bootstrapRealms(realmIds, rootCredentialsSet);
+      HashMap<String, PrincipalSecretsResult> result = new HashMap<>();
+      for (String realmId : realmIds) {
+        PrincipalSecretsResult r = bootstrapper.bootstrapRealm(realmId, rootCredentialsSet);
+        if (r != null) {
+          result.put(realmId, r);
+        }
+      }
 
       result.forEach(
           (realm, secrets) -> {
