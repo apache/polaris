@@ -112,14 +112,14 @@ class Parser(object):
                     )
                 if option.children:
                     children_subparser = option_parser.add_subparsers(
-                        dest=f"{option.name}_subcommand", required=False
+                        dest=f"{option.name}_subcommand", required=True
                     )
                     recurse_options(children_subparser, option.children)
 
         parser = TreeHelpParser(description="Polaris CLI")
         add_arguments(parser, Parser._ROOT_ARGUMENTS)
 
-        subparser = parser.add_subparsers(dest="command", required=False)
+        subparser = parser.add_subparsers(dest="command", required=True)
         recurse_options(subparser, OptionTree.get_tree())
         return parser
 
