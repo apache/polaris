@@ -215,10 +215,8 @@ class InMemoryStorageIntegrationTest {
     }
 
     @Override
-    public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
-      @SuppressWarnings("unchecked")
-      T confgValue = (T) defaults.get(configName);
-      return confgValue;
+    public @Nullable Object getConfigValue(@Nonnull RealmContext realmContext, String configName) {
+      return defaults.get(configName);
     }
   }
 }
