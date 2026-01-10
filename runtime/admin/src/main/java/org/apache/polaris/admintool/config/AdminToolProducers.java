@@ -28,6 +28,8 @@ import java.time.Clock;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -74,5 +76,11 @@ public class AdminToolProducers {
   public PolarisConfigurationStore configurationStore() {
     // A configuration store is not required when running the admin tool.
     return new PolarisConfigurationStore() {};
+  }
+
+  @Produces
+  public RealmConfig dummyRealmConfig(PolarisConfigurationStore configurationStore) {
+    // Use "unknown" realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
+    return new RealmConfigImpl(configurationStore, () -> "unknown");
   }
 }
