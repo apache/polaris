@@ -112,13 +112,16 @@ $(VENV_DIR):
 	@python3 -m venv $(VENV_DIR)
 	@echo "Virtual environment created."
 
-.PHONY: client-install-dependencies
-client-install-dependencies: $(VENV_DIR)
-	@echo "Installing Poetry and project dependencies into $(VENV_DIR)..."
-	@$(VENV_DIR)/bin/pip install --upgrade pip
+.PHONY: client-install-poetry
+client-install-poetry: $(VENV_DIR) ## Install Poetry into the virtual environment
+	@$(VENV_DIR)/bin/pip install --upgrade pip -q
 	@if [ ! -f "$(VENV_DIR)/bin/poetry" ]; then \
-		$(VENV_DIR)/bin/pip install --upgrade "poetry$(POETRY_VERSION)"; \
+		$(VENV_DIR)/bin/pip install --upgrade "poetry$(POETRY_VERSION)" -q; \
 	fi
+
+.PHONY: client-install-dependencies
+client-install-dependencies: client-install-poetry
+	@echo "Installing project dependencies into $(VENV_DIR)..."
 	@$(ACTIVATE_AND_CD) && poetry lock && poetry install --all-extras
 	@echo "Poetry and dependencies installed."
 
@@ -130,6 +133,20 @@ client-lint: client-setup-env ## Run linting checks for Polaris client
 	@echo "--- Running client linting checks ---"
 	@$(ACTIVATE_AND_CD) && poetry run pre-commit run --files integration_tests/* generate_clients.py apache_polaris/cli/* apache_polaris/cli/command/* apache_polaris/cli/options/* test/*
 	@echo "--- Client linting checks complete ---"
+
+.PHONY: client-get-version
+client-get-version: ## Get Python client version (requires poetry to be installed)
+	@$(ACTIVATE_AND_CD) && poetry version --short
+
+.PHONY: client-set-version
+client-set-version: client-setup-env ## Set Python client version using poetry. Usage: make client-set-version VERSION=<version>
+	@echo "--- Setting client version ---"
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required. Usage: make client-set-version VERSION=<version>" >&2; \
+		exit 1; \
+	fi
+	@$(ACTIVATE_AND_CD) && poetry version "$(VERSION)"
+	@echo "--- Client version set to $(VERSION) ---"
 
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code
