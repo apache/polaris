@@ -33,7 +33,6 @@ import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -75,7 +74,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject Instance<DataSource> dataSource;
   @Inject RelationalJdbcConfiguration relationalJdbcConfiguration;
-  @Inject PolarisConfigurationStore configurationStore;
+  @Inject RealmConfig realmConfig;
 
   protected JdbcMetaStoreManagerFactory() {}
 
@@ -103,8 +102,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     final int schemaVersion =
         JdbcBasePersistenceImpl.loadSchemaVersion(
             datasourceOperations,
-            configurationStore.getConfiguration(
-                realmContext, BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
+            realmConfig.getConfig(BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
     sessionSupplierMap.put(
         realmId,
         () ->
@@ -155,10 +153,7 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
       if (!metaStoreManagerMap.containsKey(realm)) {
         DatasourceOperations datasourceOperations = getDatasourceOperations();
         int currentSchemaVersion =
-            JdbcBasePersistenceImpl.loadSchemaVersion(
-                datasourceOperations,
-                configurationStore.getConfiguration(
-                    realmContext, BehaviorChangeConfiguration.SCHEMA_VERSION_FALL_BACK_ON_DNE));
+            JdbcBasePersistenceImpl.loadSchemaVersion(datasourceOperations, true);
         int requestedSchemaVersion = JdbcBootstrapUtils.getRequestedSchemaVersion(bootstrapOptions);
         int effectiveSchemaVersion =
             JdbcBootstrapUtils.getRealmBootstrapSchemaVersion(
