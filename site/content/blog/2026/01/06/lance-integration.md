@@ -77,9 +77,9 @@ making it particularly flexible for organizing Lance tables in complex data arch
 
 ## What is the Generic Table API in Apache Polaris?
 
-Apache Polaris is primarily known as an open-source catalog for Apache Iceberg. 
-However, Apache Polaris also provides the **Generic Table API**,
-a flexible framework for managing non-Iceberg table formats such as Delta, Apache Hudi, Lance, and others.
+Apache Polaris is best known as an open-source catalog for Apache Iceberg.
+In addition, Apache Polaris also offers the [**Generic Table API**]({{% ref "../../../../in-dev/unreleased/generic-table.md" %}})
+that can be used for managing non-Iceberg table formats such as Delta, Apache Hudi, Lance, and others.
 
 ### Generic Table Definition
 
@@ -100,14 +100,15 @@ and table names must be unique within a namespace regardless of format.
 
 Apache Polaris provides separate API endpoints for generic tables and Iceberg tables:
 
-| Operation | Iceberg Table API Endpoint                         | Generic Table API Endpoint                                 |
-|-----------|----------------------------------------------------|------------------------------------------------------------|
-| Create    | `POST .../namespaces/{namespace}/tables`           | `POST .../namespaces/{namespace}/generic-tables`           |
-| Load      | `GET .../namespaces/{namespace}/tables/{table}`    | `GET .../namespaces/{namespace}/generic-tables/{table}`    |
-| Drop      | `DELETE .../namespaces/{namespace}/tables/{table}` | `DELETE .../namespaces/{namespace}/generic-tables/{table}` |
-| List      | `GET .../namespaces/{namespace}/tables`            | `GET .../namespaces/{namespace}/generic-tables`            |
+| Operation    | Iceberg Table API Endpoint                         | Generic Table API Endpoint                                 |
+|--------------|----------------------------------------------------|------------------------------------------------------------|
+| Create Table | `POST .../namespaces/{namespace}/tables`           | `POST .../namespaces/{namespace}/generic-tables`           |
+| Load Table   | `GET .../namespaces/{namespace}/tables/{table}`    | `GET .../namespaces/{namespace}/generic-tables/{table}`    |
+| Drop Table   | `DELETE .../namespaces/{namespace}/tables/{table}` | `DELETE .../namespaces/{namespace}/generic-tables/{table}` |
+| List Tables  | `GET .../namespaces/{namespace}/tables`            | `GET .../namespaces/{namespace}/generic-tables`            |
 
-This separation ensures clear boundaries between table formats while allowing them to coexist in the same catalog and namespace structure.
+The Iceberg Table APIs handle the management of Iceberg tables, while the Generic Table APIs manage Generic (non-Iceberg) tables.
+This clear separation enforces well-defined boundaries between table formats, while still allowing them to coexist within the same catalog and namespace structure.
 
 ## Lance Integration with Generic Table API
 
