@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
     realm_id TEXT NOT NULL,
     idempotency_key TEXT NOT NULL,
     operation_type TEXT NOT NULL,
-    resource_id TEXT NOT NULL,
+    resource_id TEXT NOT NULL,            -- normalized request-derived resource identifier (not a generated entity id)
 
     -- Finalization/replay
     http_status INTEGER,                 -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
