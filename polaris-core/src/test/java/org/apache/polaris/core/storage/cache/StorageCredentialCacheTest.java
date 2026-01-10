@@ -228,11 +228,11 @@ public class StorageCredentialCacheTest {
                 new PolarisConfigurationStore() {
                   @SuppressWarnings("unchecked")
                   @Override
-                  public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
+                  public <T> T getConfiguration(@Nonnull RealmContext ctx, String configName) {
                     if (configName.equals(
                         FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL
                             .key())) {
-                      return "true";
+                      return (T) "true";
                     }
                     return null;
                   }
