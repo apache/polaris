@@ -1056,7 +1056,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .anyMatch(tag -> tag.key().equals("polaris:roles") && tag.value().equals("admin,reader"));
     // Verify trace_id is included
     Assertions.assertThat(capturedRequest.tags())
-        .anyMatch(tag -> tag.key().equals("polaris:trace_id") && tag.value().equals("abc123def456"));
+        .anyMatch(
+            tag -> tag.key().equals("polaris:trace_id") && tag.value().equals("abc123def456"));
 
     // Verify transitive tag keys are set
     Assertions.assertThat(capturedRequest.transitiveTagKeys())
