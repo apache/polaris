@@ -20,6 +20,7 @@ package org.apache.polaris.core.storage;
 
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /**
  * Context information for credential vending operations. This context is used to provide metadata
@@ -33,10 +34,11 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *   <li>{@code namespace} - The namespace/database being accessed (e.g., "db.schema")
  *   <li>{@code tableName} - The name of the table being accessed
  *   <li>{@code activatedRoles} - Comma-separated list of activated principal roles
+ *   <li>{@code traceId} - OpenTelemetry trace ID for end-to-end correlation
  * </ul>
  *
- * <p>These values appear in cloud provider audit logs (e.g., AWS CloudTrail), enabling correlation
- * between catalog operations and data access events.
+ * <p>These values appear in cloud provider audit logs (e.g., AWS CloudTrail), enabling
+ * deterministic correlation between catalog operations and data access events.
  */
 @PolarisImmutable
 public interface CredentialVendingContext {
@@ -48,6 +50,7 @@ public interface CredentialVendingContext {
   String TAG_KEY_TABLE = "polaris:table";
   String TAG_KEY_PRINCIPAL = "polaris:principal";
   String TAG_KEY_ROLES = "polaris:roles";
+  String TAG_KEY_TRACE_ID = "polaris:trace_id";
 
   /** The name of the catalog that is vending credentials. */
   Optional<String> catalogName();
@@ -66,6 +69,19 @@ public interface CredentialVendingContext {
    * the cache key when session tags are enabled.
    */
   Optional<String> activatedRoles();
+
+  /**
+   * The OpenTelemetry trace ID for end-to-end correlation. This enables correlation between
+   * credential vending (CloudTrail), catalog operations (Polaris events), and metrics reports from
+   * compute engines.
+   *
+   * <p>This field is marked as {@link Value.Auxiliary} to exclude it from {@code equals()} and
+   * {@code hashCode()} methods. This is critical for cache key comparison - including trace ID
+   * would prevent cache hits since every request has a unique trace ID. The trace ID is for
+   * correlation/audit purposes only and should not affect credential caching behavior.
+   */
+  @Value.Auxiliary
+  Optional<String> traceId();
 
   /**
    * Creates a new builder for CredentialVendingContext.
@@ -94,6 +110,8 @@ public interface CredentialVendingContext {
     Builder tableName(Optional<String> tableName);
 
     Builder activatedRoles(Optional<String> activatedRoles);
+
+    Builder traceId(Optional<String> traceId);
 
     CredentialVendingContext build();
   }

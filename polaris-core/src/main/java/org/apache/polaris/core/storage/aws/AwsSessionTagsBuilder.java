@@ -77,6 +77,11 @@ public final class AwsSessionTagsBuilder {
             .key(CredentialVendingContext.TAG_KEY_TABLE)
             .value(truncateTagValue(context.tableName().orElse(TAG_VALUE_UNKNOWN)))
             .build());
+    tags.add(
+        Tag.builder()
+            .key(CredentialVendingContext.TAG_KEY_TRACE_ID)
+            .value(truncateTagValue(context.traceId().orElse(TAG_VALUE_UNKNOWN)))
+            .build());
 
     return tags;
   }
