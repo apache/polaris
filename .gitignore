@@ -20,8 +20,6 @@
 regtests/derby.log
 regtests/metastore_db
 regtests/output/
-# This file, if checked in after running for example regtests, contains unmanaged dependencies that eventually
-# cause unnecessary "security alerts" like https://github.com/apache/polaris/pull/718.
 client/python/uv.lock
 
 # Python stuff
