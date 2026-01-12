@@ -41,15 +41,15 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 |===
 | Date | Time
 
-| 2026-01-08 | 9:00 AM PST, 18:00 CET
+| 2026-01-08 | 09:00 PST, 18:00 CET
 
-| 2026-01-22 | 9:00 AM PST, 18:00 CET
+| 2026-01-22 | 09:00 PST, 18:00 CET
 
-| 2026-02-05 | 9:00 AM PST, 18:00 CET
+| 2026-02-05 | 09:00 PST, 18:00 CET
 
-| 2026-02-19 | 9:00 AM PST, 18:00 CET
+| 2026-02-19 | 09:00 PST, 18:00 CET
 
-| 2026-03-05 | 9:00 AM PST, 18:00 CET
+| 2026-03-05 | 09:00 PST, 18:00 CET
 
 | ... |
 |===
