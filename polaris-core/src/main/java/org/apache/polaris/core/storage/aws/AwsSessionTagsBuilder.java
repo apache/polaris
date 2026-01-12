@@ -43,11 +43,32 @@ public final class AwsSessionTagsBuilder {
    * Builds a list of AWS STS session tags from the principal name and credential vending context.
    * These tags will appear in CloudTrail events for correlation purposes.
    *
+   * <p>This overload includes trace ID in the session tags. Use {@link #buildSessionTags(String,
+   * CredentialVendingContext, boolean)} to control trace ID inclusion.
+   *
    * @param principalName the name of the principal requesting credentials
    * @param context the credential vending context containing catalog, namespace, table, and roles
    * @return a list of STS Tags to attach to the AssumeRole request
+   * @deprecated Use {@link #buildSessionTags(String, CredentialVendingContext, boolean)} instead
    */
+  @Deprecated
   public static List<Tag> buildSessionTags(String principalName, CredentialVendingContext context) {
+    return buildSessionTags(principalName, context, true);
+  }
+
+  /**
+   * Builds a list of AWS STS session tags from the principal name and credential vending context.
+   * These tags will appear in CloudTrail events for correlation purposes.
+   *
+   * @param principalName the name of the principal requesting credentials
+   * @param context the credential vending context containing catalog, namespace, table, and roles
+   * @param includeTraceId whether to include the trace ID as a session tag. When false, the trace
+   *     ID tag is omitted, which allows better credential caching since trace IDs are unique per
+   *     request.
+   * @return a list of STS Tags to attach to the AssumeRole request
+   */
+  public static List<Tag> buildSessionTags(
+      String principalName, CredentialVendingContext context, boolean includeTraceId) {
     List<Tag> tags = new ArrayList<>();
 
     // Always include all tags with "unknown" placeholder for missing values
@@ -77,11 +98,17 @@ public final class AwsSessionTagsBuilder {
             .key(CredentialVendingContext.TAG_KEY_TABLE)
             .value(truncateTagValue(context.tableName().orElse(TAG_VALUE_UNKNOWN)))
             .build());
-    tags.add(
-        Tag.builder()
-            .key(CredentialVendingContext.TAG_KEY_TRACE_ID)
-            .value(truncateTagValue(context.traceId().orElse(TAG_VALUE_UNKNOWN)))
-            .build());
+
+    // Only include trace ID if explicitly enabled
+    // When disabled, this allows credential caching to work effectively since trace IDs
+    // are unique per request and would otherwise prevent any cache hits
+    if (includeTraceId) {
+      tags.add(
+          Tag.builder()
+              .key(CredentialVendingContext.TAG_KEY_TRACE_ID)
+              .value(truncateTagValue(context.traceId().orElse(TAG_VALUE_UNKNOWN)))
+              .build());
+    }
 
     return tags;
   }

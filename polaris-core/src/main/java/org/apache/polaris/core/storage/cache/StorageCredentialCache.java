@@ -129,6 +129,8 @@ public class StorageCredentialCache {
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
     boolean includeSessionTags =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
+    boolean includeTraceIdInSessionTags =
+        realmConfig.getConfig(FeatureConfiguration.INCLUDE_TRACE_ID_IN_SESSION_TAGS);
 
     // When session tags are enabled, the cache key needs to include:
     // 1. The credential vending context to avoid returning cached credentials with different
@@ -141,6 +143,12 @@ public class StorageCredentialCache {
     // When session tags are disabled, use empty context to ensure consistent cache key behavior
     CredentialVendingContext contextForCacheKey =
         includeSessionTags ? credentialVendingContext : CredentialVendingContext.empty();
+    // Include trace ID in cache key ONLY when it affects the vended credentials (via session tags).
+    // This ensures cache correctness: credentials with different trace IDs are correctly treated
+    // as different cache entries when (and only when) trace IDs affect the credentials.
+    // When trace IDs are not included in session tags, excluding them from the cache key
+    // allows efficient caching across requests with different trace IDs.
+    boolean includeTraceIdInCacheKey = includeSessionTags && includeTraceIdInSessionTags;
     StorageCredentialCacheKey key =
         StorageCredentialCacheKey.of(
             realmContext.getRealmIdentifier(),
@@ -150,7 +158,8 @@ public class StorageCredentialCache {
             allowedWriteLocations,
             refreshCredentialsEndpoint,
             includePrincipalInCacheKey ? Optional.of(polarisPrincipal) : Optional.empty(),
-            contextForCacheKey);
+            contextForCacheKey,
+            includeTraceIdInCacheKey);
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");

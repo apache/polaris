@@ -76,9 +76,10 @@ public interface CredentialVendingContext {
    * compute engines.
    *
    * <p>This field is marked as {@link Value.Auxiliary} to exclude it from {@code equals()} and
-   * {@code hashCode()} methods. This is critical for cache key comparison - including trace ID
-   * would prevent cache hits since every request has a unique trace ID. The trace ID is for
-   * correlation/audit purposes only and should not affect credential caching behavior.
+   * {@code hashCode()} methods by default. When the {@code INCLUDE_TRACE_ID_IN_SESSION_TAGS}
+   * feature is enabled, trace IDs DO affect the vended credentials (via session tags), so they must
+   * be explicitly included in the cache key. See {@link
+   * org.apache.polaris.core.storage.cache.StorageCredentialCacheKey} for how this is handled.
    */
   @Value.Auxiliary
   Optional<String> traceId();
