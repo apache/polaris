@@ -403,13 +403,22 @@ ns = PolarisNamespace({
 We are excited about this collaboration between the Lance and Apache Polaris communities.
 Our integration with the Generic Table API opens up new possibilities for managing AI-native workloads in the open multimodal lakehouse.
 
-Looking ahead, we plan to continue improving the Generic Table API based on our learnings from the Lance Namespace specification.
-For example, Lance Namespace already supports credentials vending end-to-end and is 
-integrated with any engine that uses the Lance Rust/Python/Java SDKs,
-allowing namespace servers to provide temporary credentials for accessing table data.
-We would like to collaborate with the Apache Polaris community to add credentials vending support to the Generic Table API,
-enabling secure, fine-grained access control for Lance tables stored in AWS S3, Azure Blob Storage, and Google Cloud Storage.
-This would allow Apache Polaris to fully manage credentials for Lance tables, just as it does for Iceberg tables today.
+Looking ahead, we plan to continue improving the Generic Table API based on our learnings from the Lance Namespace specification:
+
+- **Credentials Vending:** Lance Namespace already supports credentials vending end-to-end and is
+  integrated with any engine that uses the Lance Rust/Python/Java SDKs,
+  allowing namespace servers to provide temporary credentials for accessing table data.
+  We would like to collaborate with the Apache Polaris community to add credentials vending support to the Generic Table API,
+  enabling secure, fine-grained access control for Lance tables stored in AWS S3, Azure Blob Storage, and Google Cloud Storage.
+  This would allow Apache Polaris to fully manage credentials for Lance tables, just as it does for Iceberg tables today.
+
+- **OAuth Integration:** We plan to integrate with various OAuth workflows for better client connectivity and auth token refresh,
+  making it easier for applications to maintain secure, long-lived connections to Apache Polaris.
+
+- **Table Commit Path:** Formats like Delta Lake and Lance do not go through the catalog for commits after initial table creation.
+  This creates challenges for centralized governance over table update operations.
+  We will continue to evolve the Generic Table API to integrate better with these formats at the commit code path,
+  enabling finer-grained control and governance over table modifications.
 
 We welcome contributions and feedback from the community.
 Join us in building the future of AI-native data management in the open multimodal lakehouse!
