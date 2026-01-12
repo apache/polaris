@@ -61,6 +61,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `topologySpreadConstraints` support in Helm chart.
 - Added `priorityClassName` support in Helm chart.
 - Added support for including principal name in subscoped credentials. `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` (default: false) can be used to toggle this feature. If enabled, cached credentials issued to one principal will no longer be available for others.
+- Added support for optionally including OpenTelemetry trace IDs in AWS STS session tags (when session tags are enabled). `INCLUDE_TRACE_ID_IN_SESSION_TAGS` (default: false) can be used to toggle this feature.
 - Added support for [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) to the Helm Chart. 
 
 ### Changes
