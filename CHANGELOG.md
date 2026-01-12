@@ -63,6 +63,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `priorityClassName` support in Helm chart.
 - Added support for including principal name in subscoped credentials. `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` (default: false) can be used to toggle this feature. If enabled, cached credentials issued to one principal will no longer be available for others.
 - Added support for [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) to the Helm Chart. 
+- Added `hierarchical` flag to `AzureStorageConfigInfo` to allow more precise SAS token down-scoping in ADLS when
+  the [hierarchical namespace](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-namespace)
+  feature is enabled in Azure.
 
 ### Changes
 
