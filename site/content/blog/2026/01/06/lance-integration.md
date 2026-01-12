@@ -69,8 +69,11 @@ Here are some example systems and how they are mapped in Lance Namespace:
 | System         | Structure                                      | Lance Namespace Mapping                     |
 |----------------|------------------------------------------------|---------------------------------------------|
 | Directory      | `/data/users.lance`                            | Table `["users"]`                           |
-| Hive Metastore | `database.table`                               | Table `["default", "orders"]`               |
+| Hive Metastore | `default.orders`                               | Table `["default", "orders"]`               |
 | Apache Polaris | `/my-catalog/namespaces/team_a/tables/vectors` | Table `["my-catalog", "team_a", "vectors"]` |
+
+For Directory namespace, only the `.lance` table directories are tracked as tables,
+while the parent directory (e.g., `/data`) serves as the root path for the namespace.
 
 Apache Polaris supports arbitrary namespace nesting, 
 making it particularly flexible for organizing Lance tables in complex data architectures.
@@ -118,10 +121,11 @@ and the `base-location` pointing to the Lance table root directory.
 ### Table Identification
 
 A table in Apache Polaris is identified as a Lance table when:
+
 - It is registered as a Generic Table
 - The `format` field is set to `lance`
 - The `base-location` points to a valid Lance table root directory
-- The `properties` contain `table_type=lance` for consistency
+- The `properties` contain `table_type=lance` for consistency with other Lance Namespace implementations (e.g., REST, Unity Catalog)
 
 ### Supported Operations
 
@@ -136,7 +140,7 @@ The Lance Namespace Apache Polaris implementation supports the following operati
 | DeclareTable      | Declare a new table exists at a given location          |
 | ListTables        | List all Lance tables in a namespace                    |
 | DescribeTable     | Get table metadata and location                         |
-| DeregisterTable   | Deregister a table from the namespace (no data removal) |
+| DeregisterTable   | Deregister a table from the namespace without deleting the underlying data (similar to DROP TABLE without PURGE) |
 
 ## Using Lance with Apache Polaris
 
@@ -145,9 +149,12 @@ and access them from any engine that supports Lance.
 Whether you're ingesting data with Spark, running feature engineering with Ray,
 building RAG applications with LanceDB, or analyzing with Trino,
 all these engines can work with the same Lance tables managed through Apache Polaris.
+For more information on getting started with Apache Polaris, see the [Apache Polaris Getting Started Guide](https://polaris.apache.org/in-dev/unreleased/getting-started/).
 
 Let's walk through a complete end-to-end workflow using the [BeIR/quora](https://huggingface.co/datasets/BeIR/quora)
 dataset from Hugging Face to build a question-answering system.
+The examples below work against a locally deployed Apache Polaris instance with the endpoint set to `http://localhost:8181`.
+You can update the endpoint to match your deployed Apache Polaris service.
 
 ### Step 1: Ingest Data with Apache Spark
 
@@ -417,4 +424,4 @@ Join us in building the future of AI-native data management in the open multimod
 - [Lance Spark Connector](https://github.com/lance-format/lance-spark) - Apache Spark integration
 - [Lance Ray](https://github.com/lance-format/lance-ray) - Lance Ray integration
 - [Lance Trino Connector](https://github.com/lance-format/lance-trino) - Lance Trino integration
-- [Lance Trino Connector](https://github.com/lance-format/lance-duckdb) - Lance DuckDB integration
+- [Lance DuckDB Connector](https://github.com/lance-format/lance-duckdb) - Lance DuckDB integration
