@@ -180,7 +180,9 @@ jobs:
           source "${LIBS_DIR}/_exec.sh"
 
           dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
-          exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
+
+          # Retry logic for SVN checkout (Apache SVN can have transient connectivity issues)
+          exec_process_with_retries 5 60 "${dist_dev_dir}" svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
           version_dir="${dist_dev_dir}/${version_without_rc}"
           exec_process mkdir -p "${version_dir}"
@@ -386,7 +388,9 @@ jobs:
           source "${LIBS_DIR}/_exec.sh"
 
           dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
-          exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
+
+          # Retry logic for SVN checkout (Apache SVN can have transient connectivity issues)
+          exec_process_with_retries 5 60 "${dist_dev_dir}" svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${APACHE_DIST_URL}${APACHE_DIST_PATH}" "${dist_dev_dir}"
 
           exec_process mkdir -p "${dist_dev_dir}/helm-chart/${version_without_rc}"
           exec_process cp helm/polaris-${version_without_rc}.tgz* "${dist_dev_dir}/helm-chart/${version_without_rc}/"

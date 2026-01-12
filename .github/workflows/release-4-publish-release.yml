@@ -226,7 +226,8 @@ jobs:
           release_helm_dir="${RELEASEY_DIR}/polaris-dist-release-helm-chart"
           release_helm_url="${APACHE_DIST_URL}/release/incubator/polaris/helm-chart"
 
-          exec_process svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" "${release_helm_dir}"
+          # Retry logic for SVN checkout (Apache SVN can have transient connectivity issues)
+          exec_process_with_retries 5 60 "${release_helm_dir}" svn checkout --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive "${release_helm_url}" "${release_helm_dir}"
 
           exec_process cd "${release_helm_dir}"
           exec_process helm repo index .
