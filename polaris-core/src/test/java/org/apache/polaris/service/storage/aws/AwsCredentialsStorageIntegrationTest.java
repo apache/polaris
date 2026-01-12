@@ -1014,14 +1014,15 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         ArgumentCaptor.forClass(AssumeRoleRequest.class);
     Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
 
-    // Roles are included in context (not extracted from principal) to be part of cache key
+    // Roles are included in context (not extracted from principal) to be part of cache key.
+    // Note: traceId is NOT set because INCLUDE_TRACE_ID_IN_SESSION_TAGS is disabled (default).
+    // In production, StorageAccessConfigProvider only populates traceId when that flag is enabled.
     CredentialVendingContext context =
         CredentialVendingContext.builder()
             .catalogName(Optional.of("test-catalog"))
             .namespace(Optional.of("db.schema"))
             .tableName(Optional.of("my_table"))
             .activatedRoles(Optional.of("admin,reader"))
-            .traceId(Optional.of("abc123def456"))
             .build();
 
     new AwsCredentialsStorageIntegration(
@@ -1041,7 +1042,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             context);
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
-    // 5 tags are included when session tags enabled but trace_id disabled (default)
+    // 5 tags are included when session tags enabled but trace_id not in context
     Assertions.assertThat(capturedRequest.tags()).hasSize(5);
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:catalog") && tag.value().equals("test-catalog"));
@@ -1055,8 +1056,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     // Roles are sorted alphabetically and joined with comma
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:roles") && tag.value().equals("admin,reader"));
-    // Verify trace_id is NOT included when INCLUDE_TRACE_ID_IN_SESSION_TAGS is not set (defaults to
-    // false)
+    // Verify trace_id is NOT included when not present in context
     Assertions.assertThat(capturedRequest.tags())
         .noneMatch(tag -> tag.key().equals("polaris:trace_id"));
 
@@ -1102,6 +1102,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         ArgumentCaptor.forClass(AssumeRoleRequest.class);
     Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
 
+    // When INCLUDE_TRACE_ID_IN_SESSION_TAGS is enabled, StorageAccessConfigProvider populates
+    // traceId in the context. The presence of traceId in the context determines whether it's
+    // included in session tags (and in the cache key, since it's a normal field).
     CredentialVendingContext context =
         CredentialVendingContext.builder()
             .catalogName(Optional.of("test-catalog"))

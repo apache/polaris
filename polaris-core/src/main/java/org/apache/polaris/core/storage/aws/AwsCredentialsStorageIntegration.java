@@ -100,8 +100,6 @@ public class AwsCredentialsStorageIntegration
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL);
     boolean includeSessionTags =
         realmConfig.getConfig(FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL);
-    boolean includeTraceIdInSessionTags =
-        realmConfig.getConfig(FeatureConfiguration.INCLUDE_TRACE_ID_IN_SESSION_TAGS);
 
     String roleSessionName =
         includePrincipalNameInSubscopedCredential
@@ -127,11 +125,12 @@ public class AwsCredentialsStorageIntegration
                       .toJson())
               .durationSeconds(storageCredentialDurationSeconds);
 
-      // Add session tags when the feature is enabled
+      // Add session tags when the feature is enabled.
+      // Note: The trace ID is controlled at the source (StorageAccessConfigProvider).
+      // If INCLUDE_TRACE_ID_IN_SESSION_TAGS is enabled, the context will contain the trace ID.
       if (includeSessionTags) {
         List<Tag> sessionTags =
-            buildSessionTags(
-                polarisPrincipal.getName(), credentialVendingContext, includeTraceIdInSessionTags);
+            buildSessionTags(polarisPrincipal.getName(), credentialVendingContext);
         if (!sessionTags.isEmpty()) {
           request.tags(sessionTags);
           // Mark all tags as transitive for role chaining support

@@ -20,7 +20,6 @@ package org.apache.polaris.core.storage;
 
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
 
 /**
  * Context information for credential vending operations. This context is used to provide metadata
@@ -75,13 +74,13 @@ public interface CredentialVendingContext {
    * credential vending (CloudTrail), catalog operations (Polaris events), and metrics reports from
    * compute engines.
    *
-   * <p>This field is marked as {@link Value.Auxiliary} to exclude it from {@code equals()} and
-   * {@code hashCode()} methods by default. When the {@code INCLUDE_TRACE_ID_IN_SESSION_TAGS}
-   * feature is enabled, trace IDs DO affect the vended credentials (via session tags), so they must
-   * be explicitly included in the cache key. See {@link
-   * org.apache.polaris.core.storage.cache.StorageCredentialCacheKey} for how this is handled.
+   * <p>This field is only populated when the {@code INCLUDE_TRACE_ID_IN_SESSION_TAGS} feature flag
+   * is enabled. When populated, the trace ID is included in AWS STS session tags and becomes part
+   * of the credential cache key (since it affects the vended credentials).
+   *
+   * <p>When the flag is disabled (default), this field is left empty ({@code Optional.empty()}),
+   * which allows efficient credential caching across requests with different trace IDs.
    */
-  @Value.Auxiliary
   Optional<String> traceId();
 
   /**

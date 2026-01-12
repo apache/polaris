@@ -189,10 +189,18 @@ public class StorageAccessConfigProvider {
       builder.activatedRoles(Optional.of(rolesString));
     }
 
-    // Extract OpenTelemetry trace ID for end-to-end correlation
-    // This enables correlation between credential vending (CloudTrail), catalog operations
-    // (Polaris events), and metrics reports from compute engines
-    builder.traceId(getCurrentTraceId());
+    // Only include trace ID when the feature flag is enabled.
+    // When enabled, trace IDs are included in AWS STS session tags and become part of the
+    // credential cache key (since they affect the vended credentials).
+    // When disabled (default), trace IDs are not included, allowing efficient credential
+    // caching across requests with different trace IDs.
+    boolean includeTraceIdInSessionTags =
+        storageCredentialsVendor
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.INCLUDE_TRACE_ID_IN_SESSION_TAGS);
+    if (includeTraceIdInSessionTags) {
+      builder.traceId(getCurrentTraceId());
+    }
 
     return builder.build();
   }
