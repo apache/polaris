@@ -72,6 +72,7 @@ EXCLUDE_PATHS = [
     Path("setup.py"),
     Path(".DS_Store"),
     Path("Makefile"),
+    Path("poetry.lock"),
     Path("uv.lock"),
     Path("docker-compose.yml"),
     Path(".pre-commit-config.yaml"),
