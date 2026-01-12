@@ -28,7 +28,12 @@ public final class NoSqlTesting {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.persistence.type", "nosql", "polaris.persistence.nosql.backend", "InMemory");
+          "polaris.persistence.type",
+          "nosql",
+          "polaris.persistence.nosql.backend",
+          "InMemory",
+          "polaris.persistence.auto-bootstrap-types",
+          "nosql");
     }
   }
 }

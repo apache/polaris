@@ -74,6 +74,7 @@ public class TestPersistenceDistCacheInvalidationsIntegration {
           .put("quarkus.management.host", "127.0.0.1")
           .put("quarkus.management.enabled", "true")
           .put("polaris.persistence.type", "nosql")
+          .put("polaris.persistence.auto-bootstrap-types", "nosql")
           .put("polaris.persistence.nosql.backend", "InMemory")
           .put(
               "polaris.persistence.distributed-cache-invalidations.valid-tokens", "token1," + TOKEN)
