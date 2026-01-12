@@ -24,6 +24,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -44,14 +45,22 @@ public class Bootstrapper {
   @Identifier("task-executor")
   private ExecutorService executor;
 
-  PrincipalSecretsResult bootstrapRealm(String realmId, RootCredentialsSet rootCredentialsSet) {
-    Task t = new Task(realmContextHolder, realmId, rootCredentialsSet, factory);
-    try {
-      // Submit an async task to ensure it runs in a fresh RequestContext
-      return executor.submit(t).get(2, TimeUnit.MINUTES);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+  Map<String, PrincipalSecretsResult> bootstrapRealms(
+      Iterable<String> realmIds, RootCredentialsSet rootCredentialsSet) {
+    HashMap<String, PrincipalSecretsResult> result = new HashMap<>();
+    for (String realmId : realmIds) {
+      Task t = new Task(realmContextHolder, realmId, rootCredentialsSet, factory);
+      try {
+        // Submit an async task per realm to ensure it runs in a fresh RequestContext.
+        // Note: simultaneous bootstrap of multiple realms is an edge case - no need
+        // to optimize for fast concurrent completion.
+        result.putAll(executor.submit(t).get(2, TimeUnit.MINUTES));
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
+
+    return result;
   }
 
   private record Task(
@@ -59,17 +68,15 @@ public class Bootstrapper {
       String realmId,
       RootCredentialsSet rootCredentialsSet,
       MetaStoreManagerFactory factory)
-      implements Callable<PrincipalSecretsResult> {
+      implements Callable<Map<String, PrincipalSecretsResult>> {
 
     @Override
     @ActivateRequestContext
-    public PrincipalSecretsResult call() {
+    public Map<String, PrincipalSecretsResult> call() {
       // Note: each call to this method runs in a new CDI request context.
       // Make the realm ID effective in the current request context.
       realmContextHolder.set(() -> realmId);
-      Map<String, PrincipalSecretsResult> res =
-          factory.bootstrapRealms(Collections.singleton(realmId), rootCredentialsSet);
-      return res.get(realmId);
+      return factory.bootstrapRealms(Collections.singleton(realmId), rootCredentialsSet);
     }
   }
 }
