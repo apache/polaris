@@ -31,8 +31,8 @@ for arg in "$@"; do
 done
 
 if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
-  rm -f "${dir}"/poetry.lock
-  rm -f "${dir}/client/python/poetry.lock"
+  rm -f "${dir}"/uv.lock
+  rm -f "${dir}/client/python/uv.lock"
 
   is_first_time=false
   if [ ! -d "${dir}/polaris-venv" ]; then
@@ -47,7 +47,7 @@ if [ ! -d "${dir}"/polaris-venv ] || [ "$repair" == true ]; then
   pip install --upgrade pip
   pip install --upgrade -r regtests/requirements.txt
 
-  (cd "${dir}/client/python" && poetry install)
+  (cd "${dir}/client/python" && uv sync --active --all-extras)
 
   deactivate
 
