@@ -41,7 +41,9 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
-import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,23 +77,16 @@ public class CommitTransactionEventTest {
     // emitted
     TestPolarisEventListener testEventListener =
         (TestPolarisEventListener) testServices.polarisEventListener();
-    assertThat(
-            testEventListener.getLatest(
-                IcebergRestCatalogEvents.BeforeCommitTransactionEvent.class))
-        .isNotNull();
-    assertThat(
-            testEventListener
-                .getLatest(IcebergRestCatalogEvents.BeforeUpdateTableEvent.class)
-                .sourceTable())
+    assertThat(testEventListener.getLatest(PolarisEventType.BEFORE_COMMIT_TRANSACTION)).isNotNull();
+    PolarisEvent beforeUpdateEvent =
+        testEventListener.getLatest(PolarisEventType.BEFORE_UPDATE_TABLE);
+    assertThat(beforeUpdateEvent.attributes().getRequired(EventAttributes.TABLE_NAME))
         .isEqualTo(table2Name);
 
-    assertThat(
-            testEventListener.getLatest(IcebergRestCatalogEvents.AfterCommitTransactionEvent.class))
-        .isNotNull();
-    assertThat(
-            testEventListener
-                .getLatest(IcebergRestCatalogEvents.AfterUpdateTableEvent.class)
-                .sourceTable())
+    assertThat(testEventListener.getLatest(PolarisEventType.AFTER_COMMIT_TRANSACTION)).isNotNull();
+    PolarisEvent afterUpdateEvent =
+        testEventListener.getLatest(PolarisEventType.AFTER_UPDATE_TABLE);
+    assertThat(afterUpdateEvent.attributes().getRequired(EventAttributes.TABLE_NAME))
         .isEqualTo(table2Name);
   }
 
@@ -110,23 +105,15 @@ public class CommitTransactionEventTest {
 
     // Verify that all BeforeCommitTransaction and BeforeUpdateTable events were emitted,
     // and that the AfterCommitTransaction and AfterUpdateTable events were not emitted
-    assertThat(
-            testEventListener.getLatest(
-                IcebergRestCatalogEvents.BeforeCommitTransactionEvent.class))
-        .isNotNull();
-    assertThat(
-            testEventListener
-                .getLatest(IcebergRestCatalogEvents.BeforeUpdateTableEvent.class)
-                .sourceTable())
+    assertThat(testEventListener.getLatest(PolarisEventType.BEFORE_COMMIT_TRANSACTION)).isNotNull();
+    PolarisEvent beforeUpdateEvent =
+        testEventListener.getLatest(PolarisEventType.BEFORE_UPDATE_TABLE);
+    assertThat(beforeUpdateEvent.attributes().getRequired(EventAttributes.TABLE_NAME))
         .isEqualTo(table4Name);
 
-    assertThatThrownBy(
-            () ->
-                testEventListener.getLatest(
-                    IcebergRestCatalogEvents.AfterCommitTransactionEvent.class))
+    assertThatThrownBy(() -> testEventListener.getLatest(PolarisEventType.AFTER_COMMIT_TRANSACTION))
         .isInstanceOf(IllegalStateException.class);
-    assertThatThrownBy(
-            () -> testEventListener.getLatest(IcebergRestCatalogEvents.AfterUpdateTableEvent.class))
+    assertThatThrownBy(() -> testEventListener.getLatest(PolarisEventType.AFTER_UPDATE_TABLE))
         .isInstanceOf(IllegalStateException.class);
   }
 
