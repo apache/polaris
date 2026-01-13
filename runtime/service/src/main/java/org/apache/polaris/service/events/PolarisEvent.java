@@ -18,10 +18,18 @@
  */
 package org.apache.polaris.service.events;
 
-/** Represents an event emitted by Polaris. */
-public interface PolarisEvent {
+/**
+ * Represents an event emitted by Polaris. Events have a type, metadata, and a map of typed
+ * attributes
+ */
+public record PolarisEvent(
+    PolarisEventType type, PolarisEventMetadata metadata, AttributeMap attributes) {
 
-  PolarisEventType type();
+  public PolarisEvent {
+    attributes = new AttributeMap(attributes);
+  }
 
-  PolarisEventMetadata metadata();
+  public PolarisEvent(PolarisEventType type, PolarisEventMetadata metadata) {
+    this(type, metadata, new AttributeMap());
+  }
 }

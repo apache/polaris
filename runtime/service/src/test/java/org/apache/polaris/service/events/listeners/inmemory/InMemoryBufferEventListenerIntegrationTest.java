@@ -198,7 +198,7 @@ class InMemoryBufferEventListenerIntegrationTest {
     assertThat(e1.getCatalogId()).isEqualTo(catalogName);
     assertThat(e1.getResourceType()).isEqualTo(PolarisEvent.ResourceType.CATALOG);
     assertThat(e1.getResourceIdentifier()).isEqualTo(catalogName);
-    assertThat(e1.getEventType()).isEqualTo("AfterCreateCatalogEvent");
+    assertThat(e1.getEventType()).isEqualTo("AFTER_CREATE_CATALOG");
     assertThat(e1.getPrincipalName()).isEqualTo("root");
     assertThat(e1.getRequestId()).isEqualTo("12345");
     assertThat(e1.getAdditionalPropertiesAsMap())
@@ -211,7 +211,7 @@ class InMemoryBufferEventListenerIntegrationTest {
     assertThat(e2.getCatalogId()).isEqualTo(catalogName);
     assertThat(e2.getResourceType()).isEqualTo(PolarisEvent.ResourceType.TABLE);
     assertThat(e2.getResourceIdentifier()).isEqualTo("db1.t1");
-    assertThat(e2.getEventType()).isEqualTo("AfterCreateTableEvent");
+    assertThat(e2.getEventType()).isEqualTo("AFTER_CREATE_TABLE");
     assertThat(e2.getPrincipalName()).isEqualTo("root");
     assertThat(e2.getRequestId()).isEqualTo("456789");
     assertThat(e2.getAdditionalPropertiesAsMap())

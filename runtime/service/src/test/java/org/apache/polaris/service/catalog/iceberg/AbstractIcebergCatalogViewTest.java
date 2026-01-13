@@ -58,8 +58,10 @@ import org.apache.polaris.service.catalog.Profiles;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
-import org.apache.polaris.service.events.IcebergRestCatalogEvents;
+import org.apache.polaris.service.events.EventAttributes;
+import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
+import org.apache.polaris.service.events.PolarisEventType;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -254,9 +256,11 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
     view.updateProperties().set(key, valOld).commit();
     view.updateProperties().set(key, valNew).commit();
 
-    var beforeRefreshEvent =
-        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.BeforeRefreshViewEvent.class);
-    Assertions.assertThat(beforeRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
+    PolarisEvent beforeRefreshEvent =
+        testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_VIEW);
+    Assertions.assertThat(
+            beforeRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
+        .isEqualTo(TestData.TABLE);
 
     var afterRefreshEvent =
         testPolarisEventListener.getLatest(IcebergRestCatalogEvents.AfterRefreshViewEvent.class);
