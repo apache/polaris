@@ -42,4 +42,9 @@ public class RelationalJdbcAdminProfile extends RelationalJdbcProfile {
     return List.of(
         new TestResourceEntry(PostgresRelationalJdbcLifeCycleManagement.class, Map.of()));
   }
+
+  @Override
+  public String getConfigProfile() {
+    return "cli";
+  }
 }

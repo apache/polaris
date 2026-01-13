@@ -32,38 +32,26 @@ description = "Apache Polaris Binary Distribution"
 
 apply<PublishingHelperPlugin>()
 
-val adminProject = project(":polaris-admin")
 val serverProject = project(":polaris-server")
 
-// Configurations to resolve artifacts from other projects
-val adminDistribution by
-  configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-  }
-
+// Configuration to resolve artifacts from server project
 val serverDistribution by
   configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
   }
 
-dependencies {
-  adminDistribution(project(":polaris-admin", "distributionElements"))
-  serverDistribution(project(":polaris-server", "distributionElements"))
-}
+dependencies { serverDistribution(project(":polaris-server", "distributionElements")) }
 
 distributions {
   main {
     distributionBaseName.set("polaris-bin")
     contents {
-      // Copy admin distribution contents
-      into("admin") { from(adminDistribution) { exclude("quarkus-app-dependencies.txt") } }
-
-      // Copy server distribution contents
+      // Copy server distribution contents (contains both server and admin tool functionality)
       into("server") { from(serverDistribution) { exclude("quarkus-app-dependencies.txt") } }
 
       // Copy scripts to bin directory
+      // Both server and admin scripts now use the unified server JAR
       into("bin") {
         from("bin/server")
         from("bin/admin")

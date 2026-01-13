@@ -33,8 +33,8 @@ dependencies {
 
   runtimeOnly(project(":polaris-relational-jdbc"))
 
-  implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
+  implementation(project(":polaris-runtime-defaults"))
 
   compileOnly(project(":polaris-immutables"))
   annotationProcessor(project(":polaris-immutables", configuration = "processor"))

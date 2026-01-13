@@ -21,6 +21,7 @@ package org.apache.polaris.service.config;
 import static java.lang.String.format;
 
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import io.quarkus.runtime.configuration.ConfigUtils;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.Startup;
@@ -75,6 +76,10 @@ public class ProductionReadinessChecks {
       @Observes Startup event,
       Instance<ProductionReadinessCheck> checks,
       ReadinessConfiguration config) {
+    // Skip production readiness checks in CLI mode - they're only relevant for server deployments
+    if (ConfigUtils.isProfileActive("cli")) {
+      return;
+    }
     List<Error> errors = checks.stream().flatMap(check -> check.getErrors().stream()).toList();
     if (!errors.isEmpty()) {
       var utf8 = Charset.defaultCharset().equals(StandardCharsets.UTF_8);
