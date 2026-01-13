@@ -50,6 +50,7 @@ public interface CredentialVendingContext {
   String TAG_KEY_PRINCIPAL = "polaris:principal";
   String TAG_KEY_ROLES = "polaris:roles";
   String TAG_KEY_TRACE_ID = "polaris:trace_id";
+  String TAG_KEY_REQUEST_ID = "polaris:request_id";
 
   /** The name of the catalog that is vending credentials. */
   Optional<String> catalogName();
@@ -84,6 +85,19 @@ public interface CredentialVendingContext {
   Optional<String> traceId();
 
   /**
+   * The request ID for end-to-end correlation. This enables correlation between credential vending
+   * (CloudTrail), catalog operations (Polaris events), and service logs.
+   *
+   * <p>This field is only populated when the {@code INCLUDE_REQUEST_ID_IN_SESSION_TAGS} feature
+   * flag is enabled. When populated, it becomes part of the credential cache key (since it affects
+   * the vended credentials).
+   *
+   * <p>When the flag is disabled (default), this field is left empty ({@code Optional.empty()}),
+   * which allows efficient credential caching across requests with different request IDs.
+   */
+  Optional<String> requestId();
+
+  /**
    * Creates a new builder for CredentialVendingContext.
    *
    * @return a new builder instance
@@ -112,6 +126,8 @@ public interface CredentialVendingContext {
     Builder activatedRoles(Optional<String> activatedRoles);
 
     Builder traceId(Optional<String> traceId);
+
+    Builder requestId(Optional<String> requestId);
 
     CredentialVendingContext build();
   }

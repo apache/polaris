@@ -126,8 +126,10 @@ public class AwsCredentialsStorageIntegration
               .durationSeconds(storageCredentialDurationSeconds);
 
       // Add session tags when the feature is enabled.
-      // Note: The trace ID is controlled at the source (StorageAccessConfigProvider).
-      // If INCLUDE_TRACE_ID_IN_SESSION_TAGS is enabled, the context will contain the trace ID.
+      // Note: The trace ID and request ID are controlled at the source
+      // (StorageAccessConfigProvider).
+      // If INCLUDE_TRACE_ID_IN_SESSION_TAGS / INCLUDE_REQUEST_ID_IN_SESSION_TAGS are enabled, the
+      // context will contain the corresponding values.
       if (includeSessionTags) {
         List<Tag> sessionTags =
             buildSessionTags(polarisPrincipal.getName(), credentialVendingContext);

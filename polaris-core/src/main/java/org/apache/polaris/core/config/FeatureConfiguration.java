@@ -118,6 +118,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> INCLUDE_REQUEST_ID_IN_SESSION_TAGS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("INCLUDE_REQUEST_ID_IN_SESSION_TAGS")
+          .description(
+              "If set to true (and INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL is also true), the request ID\n"
+                  + "will be included as a session tag in AWS STS AssumeRole requests. This enables\n"
+                  + "correlation between service logs, catalog operations (Polaris events), and credential vending\n"
+                  + "(CloudTrail).\n"
+                  + "WARNING: Enabling this feature may significantly reduce or disable credential caching because\n"
+                  + "request IDs are typically unique per request. This may increase latency and STS API costs.\n"
+                  + "Consider leaving this disabled unless request-level correlation is critical.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")

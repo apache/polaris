@@ -168,6 +168,75 @@ public class StorageCredentialCacheTest {
     Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
   }
 
+  @Test
+  public void testCacheMissWhenSessionTagsEnabledAndRequestIdDiffers() {
+    // Enable session tags so CredentialVendingContext participates in the cache key.
+    Mockito.when(storageCredentialsVendor.getRealmConfig())
+        .thenReturn(
+            new RealmConfigImpl(
+                new PolarisConfigurationStore() {
+                  @SuppressWarnings("unchecked")
+                  @Override
+                  public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
+                    if (configName.equals(
+                        FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key())) {
+                      return "true";
+                    }
+                    return null;
+                  }
+                },
+                () -> "realm"));
+
+    ScopedCredentialsResult scopedCreds = getFakeScopedCreds(1, /* expireSoon= */ false).get(0);
+    Mockito.when(
+            storageCredentialsVendor.getSubscopedCredsForEntity(
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anySet(),
+                Mockito.anySet(),
+                Mockito.any(),
+                Mockito.any(),
+                Mockito.any()))
+        .thenReturn(scopedCreds);
+
+    PolarisEntity polarisEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("principal", Map.of(), Set.of());
+
+    CredentialVendingContext context1 =
+        CredentialVendingContext.builder().requestId(Optional.of("req-1")).build();
+    CredentialVendingContext context2 =
+        CredentialVendingContext.builder().requestId(Optional.of("req-2")).build();
+
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        Set.of("s3://bucket1/path"),
+        Set.of("s3://bucket3/path"),
+        polarisPrincipal,
+        Optional.empty(),
+        context1);
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+
+    // Different requestId => different context => different cache key when session tags enabled.
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        Set.of("s3://bucket1/path"),
+        Set.of("s3://bucket3/path"),
+        polarisPrincipal,
+        Optional.empty(),
+        context2);
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(2);
+
+    // Restore default realm config to avoid affecting other tests.
+    Mockito.when(storageCredentialsVendor.getRealmConfig()).thenReturn(realmConfig);
+  }
+
   private void testCacheForAnotherPrincipal(boolean hitExpected) {
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
