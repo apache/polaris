@@ -93,6 +93,24 @@ public class TokenBucketTest {
     Assertions.assertEquals(maxTokens, numAcquired.get());
   }
 
+  @Test
+  void testFractionalTokenAccrual() {
+    MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
+    TokenBucket tokenBucket = new TokenBucket(1, 1, clock);
+
+    assertCanAcquire(tokenBucket, 1);
+    assertCannotAcquire(tokenBucket);
+
+    for (int i = 0; i < 9; i++) {
+      clock.add(Duration.ofMillis(100));
+      assertCannotAcquire(tokenBucket);
+    }
+
+    // Add enough time to exceed 1 token even with floating point rounding.
+    clock.add(Duration.ofMillis(200));
+    Assertions.assertTrue(tokenBucket.tryAcquire());
+  }
+
   private void assertCanAcquire(TokenBucket tokenBucket, int times) {
     for (int i = 0; i < times; i++) {
       Assertions.assertTrue(tokenBucket.tryAcquire());
