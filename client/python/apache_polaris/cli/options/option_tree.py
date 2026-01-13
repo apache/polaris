@@ -264,6 +264,11 @@ class OptionTree:
                                 Hints.Catalogs.Create.MULTI_TENANT_APP_NAME,
                             ),
                             Argument(
+                                Arguments.HIERARCHICAL,
+                                bool,
+                                Hints.Catalogs.Create.HIERARCHICAL,
+                            ),
+                            Argument(
                                 Arguments.CONSENT_URL,
                                 str,
                                 Hints.Catalogs.Create.CONSENT_URL,
