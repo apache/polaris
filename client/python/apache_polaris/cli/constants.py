@@ -144,6 +144,7 @@ class Arguments:
     USER_ARN = "user_arn"
     TENANT_ID = "tenant_id"
     MULTI_TENANT_APP_NAME = "multi_tenant_app_name"
+    HIERARCHICAL = "hierarchical"
     CONSENT_URL = "consent_url"
     SERVICE_ACCOUNT = "service_account"
     CATALOG_ROLE = "catalog_role"
@@ -265,6 +266,7 @@ class Hints:
             MULTI_TENANT_APP_NAME = (
                 "(Only for Azure) The app name to use when connecting to Azure Storage"
             )
+            HIERARCHICAL = "(Only for Azure) Indicates whether the referenced Azure storage location(s) support hierarchical namespaces"
             CONSENT_URL = "(Only for Azure) A consent URL granting permissions for the Azure Storage location"
 
             SERVICE_ACCOUNT = (
