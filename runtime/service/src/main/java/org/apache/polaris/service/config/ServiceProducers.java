@@ -271,7 +271,7 @@ public class ServiceProducers {
    */
   public void maybeBootstrap(
       @Observes Startup event,
-      MetaStoreManagerFactory factory,
+      Bootstrapper bootstrapper,
       PersistenceConfiguration config,
       RealmContextConfiguration realmContextConfiguration) {
     var rootCredentialsSet = RootCredentialsSet.fromEnvironment();
@@ -285,7 +285,7 @@ public class ServiceProducers {
           RootCredentialsSet.ENVIRONMENT_VARIABLE,
           RootCredentialsSet.SYSTEM_PROPERTY);
 
-      var result = factory.bootstrapRealms(realmIds, rootCredentialsSet);
+      var result = bootstrapper.bootstrapRealms(realmIds, rootCredentialsSet);
 
       result.forEach(
           (realm, secrets) -> {
