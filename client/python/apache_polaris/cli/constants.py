@@ -266,7 +266,7 @@ class Hints:
             MULTI_TENANT_APP_NAME = (
                 "(Only for Azure) The app name to use when connecting to Azure Storage"
             )
-            HIERARCHICAL = "(Optional for Azure) Indicates whether the referenced Azure storage location(s) support hierarchical namespaces"
+            HIERARCHICAL = "(Only for Azure) Indicates whether the referenced Azure storage location(s) support hierarchical namespaces"
             CONSENT_URL = "(Only for Azure) A consent URL granting permissions for the Azure Storage location"
 
             SERVICE_ACCOUNT = (
