@@ -37,13 +37,20 @@ import org.apache.polaris.service.context.catalog.RealmContextHolder;
 /** Utility class for running per-realm bootstrap tasks each in a fresh Request Context. */
 @ApplicationScoped
 class Bootstrapper {
-  @Inject private RealmContextHolder realmContextHolder;
-  @Inject private MetaStoreManagerFactory factory;
+  private final ExecutorService executor;
+  private final RealmContextHolder realmContextHolder;
+  private final MetaStoreManagerFactory factory;
 
-  // Note: this executor is expected to NOT propagate CDI contexts to tasks.
   @Inject
-  @Identifier("task-executor")
-  private ExecutorService executor;
+  Bootstrapper(
+      // Note: this executor is expected to NOT propagate CDI contexts to tasks.
+      @Identifier("task-executor") ExecutorService executor,
+      RealmContextHolder realmContextHolder,
+      MetaStoreManagerFactory factory) {
+    this.executor = executor;
+    this.realmContextHolder = realmContextHolder;
+    this.factory = factory;
+  }
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
       Iterable<String> realmIds, RootCredentialsSet rootCredentialsSet) {
