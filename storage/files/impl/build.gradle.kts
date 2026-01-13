@@ -45,9 +45,6 @@ dependencies {
   implementation(libs.jakarta.validation.api)
   implementation(libs.jakarta.enterprise.cdi.api)
 
-  implementation(platform(libs.nessie.bom))
-  implementation("org.projectnessie.nessie:nessie-storage-uri")
-
   runtimeOnly("org.apache.iceberg:iceberg-aws")
   runtimeOnly(platform(libs.awssdk.bom))
   runtimeOnly("software.amazon.awssdk:sts")

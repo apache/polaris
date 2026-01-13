@@ -58,7 +58,6 @@ import org.apache.polaris.storage.files.api.FileType;
 import org.apache.polaris.storage.files.api.ImmutablePurgeStats;
 import org.apache.polaris.storage.files.api.PurgeSpec;
 import org.apache.polaris.storage.files.api.PurgeStats;
-import org.projectnessie.storage.uri.StorageUri;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
