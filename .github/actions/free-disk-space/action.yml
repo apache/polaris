@@ -70,6 +70,18 @@ runs:
         sudo rm -rf /usr/local/lib/android
         # 483M	/usr/local/lib/node_modules
         sudo rm -rf /usr/local/lib/node_modules
+        
+        # Haskell
+        sudo rm -rf /usr/local/.ghcup
+        # Chromium
+        sudo rm -rf /usr/local/share/chromium
+        # Microsoft/Edge
+        sudo rm -rf /opt/microsoft
+        # Google Chrome
+        sudo rm -rf /opt/google
+        # Powershell
+        sudo rm -rf /usr/local/share/powershell
+
     - name: Disk usage
       shell: bash
       run: df -h
