@@ -18,7 +18,7 @@
 # under the License.
 #
 title: Getting Started with Apache Polaris, Prometheus and Jaeger
-linkTitle: Using Polaris with telemetry tools
+linkTitle: Using telemetry tools
 type: docs
 weight: 401
 ---
@@ -37,9 +37,6 @@ This example requires `jq` to be installed on your machine.
 2. Start the docker compose group by running the following command from the root of the repository:
 
     ```shell
-    export ASSETS_PATH=$(pwd)/getting-started/assets/
-    export CLIENT_ID=root
-    export CLIENT_SECRET=s3cr3t
     docker compose -f getting-started/telemetry/docker-compose.yml up
     ```
 

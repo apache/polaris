@@ -30,7 +30,8 @@ services:
       jaeger:
         condition: service_healthy
     environment:
-      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,${CLIENT_ID},${CLIENT_SECRET}
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      quarkus.otel.sdk.disabled: false
       quarkus.otel.exporter.otlp.endpoint: http://jaeger:4317
       # Resource attributes (added to all traces)
       quarkus.otel.resource.attributes[0]: polaris.app=polaris-getting-started
@@ -60,10 +61,10 @@ services:
       polaris:
         condition: service_healthy
     environment:
-      - CLIENT_ID=${CLIENT_ID}
-      - CLIENT_SECRET=${CLIENT_SECRET}
+      - CLIENT_ID=root
+      - CLIENT_SECRET=s3cr3t
     volumes:
-      - ${ASSETS_PATH}/polaris/:/polaris
+      - ../assets/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   prometheus:
