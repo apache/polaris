@@ -41,8 +41,8 @@ RUN python3 -m venv /home/spark/venv && \
     . /home/spark/venv/bin/activate && \
     pip install -r /tmp/requirements.txt -r /tmp/notebook_requirements.txt && \
     cd client/python && \
-    poetry lock && \
-    poetry install --all-extras
+    uv lock && \
+    uv sync --active --all-extras
 
 EXPOSE 8888
 CMD ["/home/spark/venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--NotebookApp.token=''"]
