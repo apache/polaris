@@ -79,6 +79,7 @@ class CatalogsCommand(Command):
     region: str
     tenant_id: str
     multi_tenant_app_name: str
+    hierarchical: bool
     consent_url: str
     service_account: str
     catalog_name: str
@@ -235,7 +236,12 @@ class CatalogsCommand(Command):
         )
 
     def _has_azure_storage_info(self) -> bool:
-        return bool(self.tenant_id or self.multi_tenant_app_name or self.consent_url)
+        return bool(
+            self.tenant_id
+            or self.multi_tenant_app_name
+            or self.consent_url
+            or self.hierarchical
+        )
 
     def _has_gcs_storage_info(self) -> bool:
         return bool(self.service_account)
@@ -265,6 +271,7 @@ class CatalogsCommand(Command):
                 tenant_id=self.tenant_id,
                 multi_tenant_app_name=self.multi_tenant_app_name,
                 consent_url=self.consent_url,
+                hierarchical=self.hierarchical,
             )
         elif self.storage_type == StorageType.GCS.value:
             config = GcpStorageConfigInfo(

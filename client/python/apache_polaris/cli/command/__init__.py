@@ -59,6 +59,7 @@ class Command(ABC):
                 region=options_get(Arguments.REGION),
                 tenant_id=options_get(Arguments.TENANT_ID),
                 multi_tenant_app_name=options_get(Arguments.MULTI_TENANT_APP_NAME),
+                hierarchical=options_get(Arguments.HIERARCHICAL),
                 consent_url=options_get(Arguments.CONSENT_URL),
                 service_account=options_get(Arguments.SERVICE_ACCOUNT),
                 catalog_name=options_get(Arguments.CATALOG),
