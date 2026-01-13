@@ -70,7 +70,6 @@ dependencies {
 
   testFixturesApi(platform(libs.nessie.bom))
   testImplementation("org.projectnessie.nessie:nessie-object-storage-mock")
-  testFixturesApi("org.projectnessie.nessie:nessie-catalog-format-iceberg")
 
   testFixturesApi("com.fasterxml.jackson.core:jackson-core")
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
