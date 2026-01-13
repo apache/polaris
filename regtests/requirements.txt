@@ -17,4 +17,4 @@
 # under the License.
 #
 
-uv==0.9.22
+uv==0.9.24
