@@ -36,7 +36,7 @@ import org.apache.polaris.service.context.catalog.RealmContextHolder;
 
 /** Utility class for running per-realm bootstrap tasks each in a fresh Request Context. */
 @ApplicationScoped
-public class Bootstrapper {
+class Bootstrapper {
   @Inject private RealmContextHolder realmContextHolder;
   @Inject private MetaStoreManagerFactory factory;
 
