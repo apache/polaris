@@ -583,32 +583,6 @@ public class IcebergRestCatalogEvents {
     }
   }
 
-  // Legacy events
-  public record BeforeCommitViewEvent(
-      PolarisEventMetadata metadata,
-      String catalogName,
-      TableIdentifier identifier,
-      ViewMetadata metadataBefore,
-      ViewMetadata metadataAfter)
-      implements PolarisEvent {
-    @Override
-    public PolarisEventType type() {
-      return PolarisEventType.BEFORE_COMMIT_VIEW;
-    }
-  }
-
-  public record AfterCommitViewEvent(
-      PolarisEventMetadata metadata,
-      String catalogName,
-      TableIdentifier identifier,
-      ViewMetadata metadataBefore,
-      ViewMetadata metadataAfter)
-      implements PolarisEvent {
-    @Override
-    public PolarisEventType type() {
-      return PolarisEventType.AFTER_COMMIT_VIEW;
-    }
-  }
 
   public record BeforeRefreshTableEvent(
       PolarisEventMetadata metadata, String catalogName, TableIdentifier tableIdentifier)

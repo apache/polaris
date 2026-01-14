@@ -294,9 +294,6 @@ public interface PolarisEventListener {
 
   default void onAfterCreateView(IcebergRestCatalogEvents.AfterCreateViewEvent event) {}
 
-  default void onBeforeCommitView(IcebergRestCatalogEvents.BeforeCommitViewEvent event) {}
-
-  default void onAfterCommitView(IcebergRestCatalogEvents.AfterCommitViewEvent event) {}
 
   default void onBeforeRefreshView(IcebergRestCatalogEvents.BeforeRefreshViewEvent event) {}
 
