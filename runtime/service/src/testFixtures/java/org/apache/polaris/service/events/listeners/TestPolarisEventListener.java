@@ -20,6 +20,7 @@ package org.apache.polaris.service.events.listeners;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import org.apache.polaris.service.events.PolarisEvent;
 import org.apache.polaris.service.events.PolarisEventType;
 
@@ -28,7 +29,8 @@ public class TestPolarisEventListener implements PolarisEventListener {
   private final Map<PolarisEventType, PolarisEvent> latestEvents = new ConcurrentHashMap<>();
 
   @Override
-  public void onEvent(PolarisEvent event) {
+  public void onEvent(PolarisEventType eventType, Supplier<PolarisEvent> eventSupplier) {
+    PolarisEvent event = eventSupplier.get();
     latestEvents.put(event.type(), event);
   }
 
