@@ -18,7 +18,7 @@
 # under the License.
 #
 title: Getting Started with Apache Polaris, Prometheus and Jaeger
-linkTitle: Using telemetry tools
+linkTitle: Using Telemetry Tools
 type: docs
 weight: 401
 ---
