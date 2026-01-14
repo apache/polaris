@@ -25,6 +25,7 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.time.Clock;
+import java.util.UUID;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
@@ -80,7 +81,8 @@ public class AdminToolProducers {
 
   @Produces
   public RealmConfig dummyRealmConfig(PolarisConfigurationStore configurationStore) {
-    // Use "unknown" realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
-    return new RealmConfigImpl(configurationStore, () -> "unknown");
+    // Use a random realm ID for RealmConfig since the PolarisConfigurationStore is empty anyway
+    String absentId = UUID.randomUUID().toString();
+    return new RealmConfigImpl(configurationStore, () -> absentId);
   }
 }
