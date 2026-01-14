@@ -39,10 +39,6 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageCredentialsVendor;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.apache.polaris.service.tracing.RequestIdFilter;
-import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
-import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
-import org.jboss.resteasy.reactive.server.jaxrs.ContainerRequestContextImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,19 +202,6 @@ public class StorageAccessConfigProvider {
       builder.traceId(getCurrentTraceId());
     }
 
-    // Only include request ID when the feature flag is enabled.
-    // When enabled, request IDs are included in AWS STS session tags and become part of the
-    // credential cache key (since they affect the vended credentials).
-    // When disabled (default), request IDs are not included, allowing efficient credential
-    // caching across requests with different request IDs.
-    boolean includeRequestIdInSessionTags =
-        storageCredentialsVendor
-            .getRealmConfig()
-            .getConfig(FeatureConfiguration.INCLUDE_REQUEST_ID_IN_SESSION_TAGS);
-    if (includeRequestIdInSessionTags) {
-      builder.requestId(getCurrentRequestId());
-    }
-
     return builder.build();
   }
 
@@ -231,23 +214,6 @@ public class StorageAccessConfigProvider {
     SpanContext spanContext = Span.current().getSpanContext();
     if (spanContext.isValid()) {
       return Optional.of(spanContext.getTraceId());
-    }
-    return Optional.empty();
-  }
-
-  /**
-   * Extracts the current request ID from the active RESTEasy Reactive request context.
-   *
-   * <p>Note: avoid injecting ContainerRequestContext here because some tests may run with no active
-   * request scope.
-   */
-  private Optional<String> getCurrentRequestId() {
-    // See org.jboss.resteasy.reactive.server.injection.ContextProducers
-    ResteasyReactiveRequestContext context = CurrentRequestManager.get();
-    if (context != null) {
-      ContainerRequestContextImpl request = context.getContainerRequestContext();
-      String requestId = (String) request.getProperty(RequestIdFilter.REQUEST_ID_KEY);
-      return Optional.ofNullable(requestId);
     }
     return Optional.empty();
   }

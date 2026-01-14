@@ -62,8 +62,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `priorityClassName` support in Helm chart.
 - Added support for including principal name in subscoped credentials. `INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL` (default: false) can be used to toggle this feature. If enabled, cached credentials issued to one principal will no longer be available for others.
 - Added support for including OpenTelemetry trace IDs in AWS STS session tags. This requires session tags to be enabled via `INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL` and can be toggled with `INCLUDE_TRACE_ID_IN_SESSION_TAGS` (default: false). Note: enabling trace IDs disables credential caching (each request has a unique trace ID), which may increase STS calls and latency.
-- Added support for including request IDs in AWS STS session tags. This requires session tags to be enabled via `INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL` and can be toggled with `INCLUDE_REQUEST_ID_IN_SESSION_TAGS` (default: false). When enabled, the request ID is included as the `polaris:request_id` session tag, enabling correlation between service logs, catalog operations, and credential vending (CloudTrail). Note: enabling request IDs may significantly reduce or disable credential caching (each request has a unique ID), which may increase STS calls and latency.
-- Added support for [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) to the Helm Chart.
+- Added support for [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) to the Helm Chart. 
 
 ### Changes
 

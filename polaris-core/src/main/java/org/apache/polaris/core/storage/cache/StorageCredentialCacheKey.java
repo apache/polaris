@@ -58,15 +58,14 @@ public interface StorageCredentialCacheKey {
 
   /**
    * The credential vending context for session tags. When session tags are enabled, this contains
-   * the catalog, namespace, table, roles, and optionally trace ID / request ID information. When
-   * session tags are disabled, this should be {@link CredentialVendingContext#empty()} to ensure
-   * consistent cache key behavior.
+   * the catalog, namespace, table, roles, and optionally trace ID information. When session tags
+   * are disabled, this should be {@link CredentialVendingContext#empty()} to ensure consistent
+   * cache key behavior.
    *
-   * <p>The trace ID and request ID in the context are only populated when the {@code
-   * INCLUDE_TRACE_ID_IN_SESSION_TAGS} / {@code INCLUDE_REQUEST_ID_IN_SESSION_TAGS} feature flags
-   * are enabled (controlled at the source). When populated, they become part of the cache key
-   * comparison (since they affect the vended credentials via session tags). When empty, credentials
-   * can be cached efficiently across requests.
+   * <p>The trace ID in the context is only populated when the {@code
+   * INCLUDE_TRACE_ID_IN_SESSION_TAGS} feature flag is enabled. When populated, it becomes part of
+   * the cache key comparison (since it affects the vended credentials via session tags). When
+   * empty, credentials can be cached efficiently across requests with different trace IDs.
    */
   @Value.Parameter(order = 9)
   CredentialVendingContext credentialVendingContext();
