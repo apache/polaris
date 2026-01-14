@@ -184,8 +184,10 @@ kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/
 ```
 
 With that installed, you can enable and configure the `gateway` values. This will make it possible to use the HTTPRoute resource, enable and configure the `httproute` values.
-[!NOTE]
+
+{{< alert note >}}
 Only one of HTTPRoute or Ingress can be defined. Defining both will result in errors.
+{{< /alert >}}
 
 ### Uninstalling
 
