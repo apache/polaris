@@ -18,7 +18,7 @@
 # under the License.
 #
 title: Deploying Polaris locally
-linkTitle: Local deployment
+linkTitle: Local Deployment
 type: docs
 weight: 200
 ---
