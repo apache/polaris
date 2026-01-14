@@ -52,6 +52,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The EclipseLink Persistence implementation has been completely removed.
 - The default request ID header name has changed from `Polaris-Request-Id` to `X-Request-ID`.
 - The (Before/After)CommitTableEvent has been removed.
+- The (Before/After)CommitViewEvent has been removed.
 
 ### New Features
 
