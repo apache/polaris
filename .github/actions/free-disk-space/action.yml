@@ -1,0 +1,96 @@
+# Copyright (C) 2020 Dremio
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: 'Free disk space'
+description: 'Free runner disk space'
+runs:
+  using: "composite"
+  steps:
+    - name: Disk usage
+      shell: bash
+      run: df -h
+      # (as of 2026-01-13)
+      # Filesystem      Size  Used Avail Use% Mounted on
+      # /dev/root        72G   54G   18G  76% /
+      # tmpfs           7.9G   84K  7.9G   1% /dev/shm
+      # tmpfs           3.2G  1.2M  3.2G   1% /run
+      # tmpfs           5.0M     0  5.0M   0% /run/lock
+      # /dev/sda16      881M   62M  758M   8% /boot
+      # /dev/sda15      105M  6.2M   99M   6% /boot/efi
+      # tmpfs           1.6G   12K  1.6G   1% /run/user/1001
+    #- name: opt-hostedtoolcache
+    #  run: du -sh /opt/hostedtoolcache/*
+    #- name: usr-share
+    #  run: du -sh /usr/share/*
+    #- name: usr-local-lib
+    #  run: du -sh /usr/local/lib/*
+    #- name: docker images
+    #  run: docker image ls -a
+    - name: Delete unneeded files
+      shell: bash
+      run: |
+        # 1.7G	/opt/hostedtoolcache/CodeQL
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        # 520M	/opt/hostedtoolcache/PyPy
+        sudo rm -rf /opt/hostedtoolcache/PyPy
+        # 1.9G	/opt/hostedtoolcache/Python
+        sudo rm -rf /opt/hostedtoolcache/Python
+        # 217M	/opt/hostedtoolcache/Ruby
+        sudo rm -rf /opt/hostedtoolcache/Ruby
+        # 1.1G	/opt/hostedtoolcache/go
+        sudo rm -rf /opt/hostedtoolcache/go
+        # 574M	/opt/hostedtoolcache/node
+        sudo rm -rf /opt/hostedtoolcache/node
+
+        # 496M	/usr/share/az_12.5.0
+        sudo rm -rf /usr/share/az_*
+        # 60M	/usr/share/doc
+        sudo rm -rf /usr/share/doc
+        # 109M	/usr/share/man
+        sudo rm -rf /usr/share/man
+        # 4.0G	/usr/share/dotnet
+        sudo rm -rf /usr/share/dotnet
+        # 788M	/usr/share/miniconda
+        sudo rm -rf /usr/share/miniconda
+        # 3.2G	/usr/share/swift
+        sudo rm -rf /usr/share/swift
+
+        # 12G	/usr/local/lib/android
+        sudo rm -rf /usr/local/lib/android
+        # 483M	/usr/local/lib/node_modules
+        sudo rm -rf /usr/local/lib/node_modules
+        
+        # Haskell
+        sudo rm -rf /usr/local/.ghcup
+        # Chromium
+        sudo rm -rf /usr/local/share/chromium
+        # Microsoft/Edge
+        sudo rm -rf /opt/microsoft
+        # Google Chrome
+        sudo rm -rf /opt/google
+        # Powershell
+        sudo rm -rf /usr/local/share/powershell
+
+    - name: Disk usage
+      shell: bash
+      run: df -h
+      # (as of 2026-01-13)
+      # Filesystem      Size  Used Avail Use% Mounted on
+      # /dev/root        72G   28G   45G  39% /
+      # tmpfs           7.9G   84K  7.9G   1% /dev/shm
+      # tmpfs           3.2G  1.2M  3.2G   1% /run
+      # tmpfs           5.0M     0  5.0M   0% /run/lock
+      # /dev/sda16      881M   62M  758M   8% /boot
+      # /dev/sda15      105M  6.2M   99M   6% /boot/efi
+      # tmpfs           1.6G   12K  1.6G   1% /run/user/1001
