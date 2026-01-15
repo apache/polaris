@@ -461,8 +461,24 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(3)
+                            .hasSize(4)
                             .satisfiesExactly(
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(IamEffect.ALLOW, IamStatement::effect)
+                                        .returns(
+                                            List.of(
+                                                IamAction.create("kms:DescribeKey"),
+                                                IamAction.create("kms:Decrypt")
+                                            ),
+                                            IamStatement::actions)
+                                        .returns(
+                                            List.of(
+                                                IamResource.create(
+                                                    String.format(
+                                                        "arn:aws:kms:%s:%s:key/*",
+                                                        region, accountId))),
+                                            IamStatement::resources),
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
@@ -558,8 +574,24 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(2)
+                            .hasSize(3)
                             .satisfiesExactlyInAnyOrder(
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(IamEffect.ALLOW, IamStatement::effect)
+                                        .returns(
+                                            List.of(
+                                                IamAction.create("kms:DescribeKey"),
+                                                IamAction.create("kms:Decrypt")
+                                            ),
+                                            IamStatement::actions)
+                                        .returns(
+                                            List.of(
+                                                IamResource.create(
+                                                    String.format(
+                                                        "arn:aws:kms:%s:%s:key/*",
+                                                        region, accountId))),
+                                            IamStatement::resources),
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
@@ -789,12 +821,15 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             .containsAll(
                                 List.of(
                                     IamAction.create("kms:DescribeKey"),
-                                    IamAction.create("kms:Decrypt")));
-                        assertThat(stmt.actions())
-                            .doesNotContain(
-                                IamAction.create("kms:Encrypt"),
-                                IamAction.create("kms:GenerateDataKey"),
-                                IamAction.create("kms:GenerateDataKeyWithoutPlaintext"));
+                                    IamAction.create("kms:Decrypt")
+                                )
+                            );
+                        assertThat(stmt.actions()).doesNotContainAnyElementsOf(
+                                List.of(
+                                    IamAction.create("kms:Encrypt"),
+                                    IamAction.create("kms:GenerateDataKey"),
+                                    IamAction.create("kms:GenerateDataKeyWithoutPlaintext")
+                                ));
                         assertThat(stmt.resources())
                             .containsExactlyInAnyOrder(
                                 IamResource.create(allowedKmsKeys.get(0)),
@@ -822,7 +857,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             Optional.empty(),
             CredentialVendingContext.empty());
 
-    // Test with no KMS keys and read-only (should not add KMS statement)
+    // Test with no KMS keys and read-only (should add wildcard KMS access)
     Mockito.reset(stsClient);
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
@@ -830,12 +865,15 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
               AssumeRoleRequest request = invocation.getArgument(0);
               IamPolicy policy = IamPolicy.fromJson(request.policy());
 
-              // Verify no KMS statement exists
+              // Verify wildcard KMS statement exists
               assertThat(policy.statements())
-                  .noneMatch(
-                      stmt ->
-                          stmt.actions().stream()
-                              .anyMatch(action -> action.value().startsWith("kms:")));
+                  .anySatisfy(
+                      stmt -> {
+                        assertThat(stmt.resources())
+                            .contains(
+                                IamResource.create(
+                                    String.format("arn:aws:kms:%s:%s:key/*", region, accountId)));
+                      });
 
               return ASSUME_ROLE_RESPONSE;
             });
@@ -1333,5 +1371,46 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         context))
         .isInstanceOf(software.amazon.awssdk.services.sts.model.StsException.class)
         .hasMessageContaining("sts:TagSession");
+  }
+
+  @Test
+  public void testNoKmsForNonAwsReadOnly() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+
+    // Test with no KMS keys and read-only for non-AWS (should not add any KMS statement)
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+
+              // Verify no KMS statement exists
+              assertThat(policy.statements())
+                  .noneMatch(
+                      stmt ->
+                          stmt.actions().stream()
+                              .anyMatch(action -> action.value().startsWith("kms:")));
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Set.of(),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
   }
 }

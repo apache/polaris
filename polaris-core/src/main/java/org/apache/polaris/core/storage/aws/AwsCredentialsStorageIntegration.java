@@ -299,9 +299,10 @@ public class AwsCredentialsStorageIntegration
 
     boolean hasCurrentKey = kmsKeyArn != null;
     boolean hasAllowedKeys = hasAllowedKmsKeys(allowedKmsKeys);
+    boolean isAwsS3 = region != null && accountId != null;
 
-    if (!hasCurrentKey && !hasAllowedKeys) {
-      // No KMS keys configured, do not add any KMS-related policies.
+    // Nothing to do if no keys are configured and not AWS S3
+    if (!hasCurrentKey && !hasAllowedKeys && !isAwsS3) {
       return;
     }
 
@@ -313,12 +314,19 @@ public class AwsCredentialsStorageIntegration
 
     if (hasAllowedKeys) {
       addAllowedKmsKeyResources(allowedKmsKeys, allowKms);
-    } else if (!canWrite && region != null && accountId != null) {
-      // Only add wildcard KMS access for read-only operations when no specific keys are configured
-      // this check is for minio because it doesn't have region or account id
+    }
+
+    // Only add wildcard KMS access for read-only operations on AWS S3 when no specific keys are
+    // configured. This does not apply to services like Minio where region and accountId are not
+    // available.
+    boolean shouldAddWildcard = !hasCurrentKey && !hasAllowedKeys && !canWrite && isAwsS3;
+    if (shouldAddWildcard) {
       addAllKeysResource(region, accountId, allowKms);
     }
-    policyBuilder.addStatement(allowKms.build());
+
+    if (hasCurrentKey || hasAllowedKeys || shouldAddWildcard) {
+      policyBuilder.addStatement(allowKms.build());
+    }
   }
 
   private static IamStatement.Builder buildBaseKmsStatement(boolean canEncrypt) {
