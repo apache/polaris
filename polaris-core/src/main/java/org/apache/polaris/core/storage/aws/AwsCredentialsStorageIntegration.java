@@ -297,9 +297,15 @@ public class AwsCredentialsStorageIntegration
       String region,
       String accountId) {
 
-    IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
     boolean hasCurrentKey = kmsKeyArn != null;
     boolean hasAllowedKeys = hasAllowedKmsKeys(allowedKmsKeys);
+
+    if (!hasCurrentKey && !hasAllowedKeys) {
+      // No KMS keys configured, do not add any KMS-related policies.
+      return;
+    }
+
+    IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
 
     if (hasCurrentKey) {
       addKmsKeyResource(kmsKeyArn, allowKms);
@@ -307,32 +313,26 @@ public class AwsCredentialsStorageIntegration
 
     if (hasAllowedKeys) {
       addAllowedKmsKeyResources(allowedKmsKeys, allowKms);
-    }
-
-    // Add KMS statement if we have any KMS key configuration
-    if (hasCurrentKey || hasAllowedKeys) {
-      policyBuilder.addStatement(allowKms.build());
-    } else if (!canWrite) {
+    } else if (!canWrite && region != null && accountId != null) {
       // Only add wildcard KMS access for read-only operations when no specific keys are configured
       // this check is for minio because it doesn't have region or account id
-      if (region != null && accountId != null) {
-        addAllKeysResource(region, accountId, allowKms);
-        policyBuilder.addStatement(allowKms.build());
-      }
+      addAllKeysResource(region, accountId, allowKms);
     }
+    policyBuilder.addStatement(allowKms.build());
   }
 
   private static IamStatement.Builder buildBaseKmsStatement(boolean canEncrypt) {
     IamStatement.Builder allowKms =
         IamStatement.builder()
             .effect(IamEffect.ALLOW)
-            .addAction("kms:GenerateDataKeyWithoutPlaintext")
             .addAction("kms:DescribeKey")
-            .addAction("kms:Decrypt")
-            .addAction("kms:GenerateDataKey");
+            .addAction("kms:Decrypt");
 
     if (canEncrypt) {
-      allowKms.addAction("kms:Encrypt");
+      allowKms
+          .addAction("kms:Encrypt")
+          .addAction("kms:GenerateDataKey")
+          .addAction("kms:GenerateDataKeyWithoutPlaintext");
     }
 
     return allowKms;
