@@ -69,12 +69,12 @@ public class OpaTestResource implements QuarkusTestResourceLifecycleManager {
         default allow := false
 
         # Allow root user for all operations
-        allow {
+        allow if {
           input.actor.principal == "root"
         }
 
         # Allow admin user for all operations
-        allow {
+        allow if {
           input.actor.principal == "admin"
         }
         """;
