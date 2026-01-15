@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: "Mapping Legacy and Heterogeneous Datalakes in Apache Polaris"
+title: Mapping Legacy and Heterogeneous Datalakes in Apache Polaris
 date: 2026-01-12
 author: Maninderjit Parmar
 ---
@@ -67,7 +67,7 @@ The Polaris [Notification API](https://github.com/apache/polaris/blob/main/spec/
 
 One of the most robust features of the [Notification API](https://github.com/apache/polaris/blob/main/spec/polaris-catalog-apis/notifications-api.yaml) is its ability to tolerate at-least-once delivery. In complex distributed systems, it is often difficult to guarantee that a message is delivered exactly once.
 
-Because each notification contains the full location of a `metadata.json` file (provided by tools like XTable or TableFlow), operations are idempotent. Sync agents can retry failed requests without the risk of corrupting the state.
+Because each notification contains the full location of a `metadata.json` file for the iceberg format (provided by tools like XTable or TableFlow), operations are idempotent. Sync agents can retry failed requests without the risk of corrupting the state.
 
 ### Implement Event-Driven Change Detection
 
