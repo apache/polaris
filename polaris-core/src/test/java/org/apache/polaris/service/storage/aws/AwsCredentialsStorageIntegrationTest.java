@@ -469,8 +469,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                         .returns(
                                             List.of(
                                                 IamAction.create("kms:DescribeKey"),
-                                                IamAction.create("kms:Decrypt")
-                                            ),
+                                                IamAction.create("kms:Decrypt")),
                                             IamStatement::actions)
                                         .returns(
                                             List.of(
@@ -582,8 +581,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                                         .returns(
                                             List.of(
                                                 IamAction.create("kms:DescribeKey"),
-                                                IamAction.create("kms:Decrypt")
-                                            ),
+                                                IamAction.create("kms:Decrypt")),
                                             IamStatement::actions)
                                         .returns(
                                             List.of(
@@ -821,15 +819,13 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                             .containsAll(
                                 List.of(
                                     IamAction.create("kms:DescribeKey"),
-                                    IamAction.create("kms:Decrypt")
-                                )
-                            );
-                        assertThat(stmt.actions()).doesNotContainAnyElementsOf(
+                                    IamAction.create("kms:Decrypt")));
+                        assertThat(stmt.actions())
+                            .doesNotContainAnyElementsOf(
                                 List.of(
                                     IamAction.create("kms:Encrypt"),
                                     IamAction.create("kms:GenerateDataKey"),
-                                    IamAction.create("kms:GenerateDataKeyWithoutPlaintext")
-                                ));
+                                    IamAction.create("kms:GenerateDataKeyWithoutPlaintext")));
                         assertThat(stmt.resources())
                             .containsExactlyInAnyOrder(
                                 IamResource.create(allowedKmsKeys.get(0)),
