@@ -83,6 +83,7 @@ import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.context.catalog.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.credentials.DefaultPolarisCredentialManager;
 import org.apache.polaris.service.credentials.connection.SigV4ConnectionCredentialVendor;
+import org.apache.polaris.service.events.AttributeMap;
 import org.apache.polaris.service.events.PolarisEventMetadata;
 import org.apache.polaris.service.events.PolarisEventMetadataFactory;
 import org.apache.polaris.service.events.listeners.PolarisEventListener;
@@ -334,6 +335,7 @@ public record TestServices(
       Mockito.when(externalCatalogFactory.select(any())).thenReturn(externalCatalogFactory);
       Mockito.when(externalCatalogFactory.isUnsatisfied()).thenReturn(true);
 
+      AttributeMap attributeMap = new AttributeMap();
       IcebergCatalogAdapter catalogService =
           new IcebergCatalogAdapter(
               diagnostics,
@@ -351,7 +353,8 @@ public record TestServices(
               externalCatalogFactory,
               storageAccessConfigProvider,
               new DefaultMetricsReporter(),
-              Clock.systemUTC());
+              Clock.systemUTC(),
+              attributeMap);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;
@@ -362,7 +365,8 @@ public record TestServices(
                 catalogService,
                 polarisEventListener,
                 eventMetadataFactory,
-                new DefaultCatalogPrefixParser());
+                new DefaultCatalogPrefixParser(),
+                attributeMap);
         finalRestConfigurationService =
             new IcebergRestConfigurationEventServiceDelegator(
                 catalogService, polarisEventListener, eventMetadataFactory);
