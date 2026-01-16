@@ -25,20 +25,29 @@ import java.time.InstantSource;
  * amount of tokens. Each successful "tryAcquire" costs 1 token.
  */
 public class TokenBucket {
-  private final double tokensPerMilli;
-  private final long maxTokens;
+  /** Conversion factor: 1 token = 1000 milli-tokens. */
+  private static final long MILLI_TOKENS_PER_TOKEN = 1000L;
+
+  private static final long MAX_TOKENS_LIMIT = Long.MAX_VALUE / MILLI_TOKENS_PER_TOKEN;
+
+  private final long tokensPerSecond;
+  private final long maxMilliTokens;
   private final InstantSource instantSource;
 
-  private double tokens;
-  private long lastTokenGenerationMillis;
+  private long milliTokens;
+  private long lastUpdateMillis;
 
   public TokenBucket(long tokensPerSecond, long maxTokens, InstantSource instantSource) {
-    this.tokensPerMilli = tokensPerSecond / 1000D;
-    this.maxTokens = maxTokens;
+    if (maxTokens > MAX_TOKENS_LIMIT) {
+      throw new IllegalArgumentException(
+          "maxTokens must be <= " + MAX_TOKENS_LIMIT + " to avoid overflow");
+    }
+    this.tokensPerSecond = tokensPerSecond;
+    this.maxMilliTokens = maxTokens * MILLI_TOKENS_PER_TOKEN;
     this.instantSource = instantSource;
 
-    tokens = maxTokens;
-    lastTokenGenerationMillis = instantSource.millis();
+    milliTokens = maxMilliTokens;
+    lastUpdateMillis = instantSource.millis();
   }
 
   /**
@@ -47,15 +56,22 @@ public class TokenBucket {
    * @return whether a token was successfully acquired and spent
    */
   public synchronized boolean tryAcquire() {
-    // Grant tokens for the time that has passed since our last tryAcquire()
     long t = instantSource.millis();
-    long millisPassed = Math.subtractExact(t, lastTokenGenerationMillis);
-    lastTokenGenerationMillis = t;
-    tokens = Math.min((double) maxTokens, tokens + (millisPassed * tokensPerMilli));
+    long millisPassed = Math.subtractExact(t, lastUpdateMillis);
+    lastUpdateMillis = t;
 
-    // Take a token if they have one available
-    if (tokens >= 1D) {
-      tokens -= 1D;
+    long grant = millisPassed * tokensPerSecond;
+    if (tokensPerSecond != 0 && grant / tokensPerSecond != millisPassed) {
+      // Overflow occurred. If this much time passed, the bucket would be full anyway.
+      milliTokens = maxMilliTokens;
+    } else {
+      // refill tokens
+      milliTokens = Math.min(maxMilliTokens, milliTokens + grant);
+    }
+
+    // Take a token if available (1 token = 1000 milli-tokens)
+    if (milliTokens >= MILLI_TOKENS_PER_TOKEN) {
+      milliTokens -= MILLI_TOKENS_PER_TOKEN;
       return true;
     }
     return false;
