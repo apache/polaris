@@ -130,11 +130,14 @@ public class CommitTransactionEventTest {
         (TestPolarisEventListener) testServices.polarisEventListener();
 
     // Verify that AfterUpdateTable events contain LoadTableResponse objects
-    PolarisEvent afterUpdateTableEvent = testEventListener.getLatest(PolarisEventType.AFTER_UPDATE_TABLE);
+    PolarisEvent afterUpdateTableEvent =
+        testEventListener.getLatest(PolarisEventType.AFTER_UPDATE_TABLE);
 
     // Verify second table's LoadTableResponse
-    assertThat(afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_NAME)).isEqualTo(table2Name);
-    assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.LOAD_TABLE_RESPONSE)).isPresent();
+    assertThat(afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_NAME))
+        .isEqualTo(table2Name);
+    assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.LOAD_TABLE_RESPONSE))
+        .isPresent();
     org.apache.iceberg.rest.responses.LoadTableResponse response2 =
         afterUpdateTableEvent.attributes().getRequired(EventAttributes.LOAD_TABLE_RESPONSE);
     assertThat(response2.tableMetadata()).isNotNull();
