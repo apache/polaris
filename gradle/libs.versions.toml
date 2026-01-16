@@ -87,7 +87,7 @@ opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "
 opentelemetry-instrumentation-bom-alpha = { module = "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha", version= "2.20.1-alpha" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
-postgresql = { module = "org.postgresql:postgresql", version = "42.7.8" }
+postgresql = { module = "org.postgresql:postgresql", version = "42.7.9" }
 quarkus-amazon-services-bom = { module = "io.quarkus.platform:quarkus-amazon-services-bom", version.ref="quarkus" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
 s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "4.11.0" }
