@@ -40,6 +40,14 @@
     "fileMatch": ["(^|/)([\\w-]*)requirements.*\\.txt$"],
   },
 
+  docker: {
+    fileMatch: [
+      "(^|/)Dockerfile$",
+      "(^|/)Dockerfile\\.[^/]*$",
+      "(^|/)Dockerfile-[^/]*$"
+    ]
+  },
+
   packageRules: [
     // Check for updates, do not merge automatically. This rule does effectively nothing, but serves as a
     // reference for the kinds of managers used in Polaris.
