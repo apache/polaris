@@ -19,6 +19,8 @@
 package org.apache.polaris.service.events;
 
 import com.google.common.reflect.TypeToken;
+
+import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -174,6 +176,9 @@ public final class EventAttributes {
   // Transaction attributes
   public static final AttributeKey<CommitTransactionRequest> COMMIT_TRANSACTION_REQUEST =
       new AttributeKey<>("commit_transaction_request", CommitTransactionRequest.class);
+  public static final AttributeKey<List<LoadTableResponse>>
+      LOAD_TABLE_RESPONSES =
+          new AttributeKey<>("commit_transaction_load_table_responses", new TypeToken<>() {});
 
   // Notification attributes
   public static final AttributeKey<NotificationRequest> NOTIFICATION_REQUEST =
