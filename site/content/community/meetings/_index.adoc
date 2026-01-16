@@ -49,6 +49,8 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 
 | 2026-03-05 | 09:00 PST, 18:00 CET
 
+| 2026-03-19 | 09:00 PST, 18:00 CET
+
 | ... |
 |===
 
@@ -59,8 +61,8 @@ https://meet.google.com/pii-faxn-woh[Google Meet Link]
 | Date | Notes | Recording
 
 | 2026-01-08
-|
-|
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.qtqeeolg4g6c[Meeting Notes]
+| https://drive.google.com/file/d/1oU7dT4N9thUBXK8zO-QqE72b7TmcVwYk/view?usp=sharing
 
 | 2025-12-11
 | https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.juoe1e8vb1c6[Meeting Notes]
