@@ -77,6 +77,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
 - Added KMS options to Polaris CLI
 - Changed from Poetry to UV for Python package management 
+- Flattened Events hierarchy and introduced EventAttributes for all events. Additionally, `AttributeMap` is now exposed as a RequestScoped bean to allow intermediate event attributes to be added to events.
 
 ### Deprecations
 
