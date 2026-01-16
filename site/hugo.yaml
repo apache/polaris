@@ -277,6 +277,9 @@ markup:
     style: 'monokai'
     tabWidth: 4
   goldmark:
+    parser:
+      autoHeadingID: true
+      autoHeadingIDType: github
     renderer:
       unsafe: true
 

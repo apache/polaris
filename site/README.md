@@ -23,15 +23,16 @@ This folder contains the source for the Apache Polaris website, built using [Hug
 
 ## Quickstart
 
-Just run the following command to let Hugo serve files from the Polaris `site/`.
+Run the following command from the project root to start the Hugo development server:
 ```bash
 site/bin/run-hugo-in-docker.sh
 ```
 
 Then point your browser to http://localhost:1313/
 
-Then edit files from your IDE - you will see the changes in your browser. When changing the site structure,
-it is often necessary to restart Hugo - just run `site/bin/run-hugo-in-docker.sh` again. 
+Then edit files from your IDE - you will see the changes in your browser. 
+
+When changing the site structure, it is often necessary to restart Hugo - just run `site/bin/run-hugo-in-docker.sh` again. 
 
 ### Dealing with `--userns and --pod cannot be used together` errors
 
