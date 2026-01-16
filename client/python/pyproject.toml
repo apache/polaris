@@ -91,3 +91,13 @@ default-groups = [
 [tool.pip-licenses]
 partial-match = true
 allow-only = "Apache;BSD License;BSD-3-Clause;ISC;MIT;Mozilla Public License;PSF-2.0;Python Software Foundation License;The Unlicense"
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+publish-url = "https://upload.pypi.org/legacy/"
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple"
+publish-url = "https://test.pypi.org/legacy/"
