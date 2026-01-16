@@ -184,6 +184,18 @@ client-build: client-setup-env ## Build client distribution. Pass FORMAT=sdist o
 	fi
 	@echo "--- Client distribution build complete ---"
 
+.PHONY: client-nightly-publish
+client-nightly-publish: client-setup-env ## Build and publish nightly version to Test PyPI
+	@echo "--- Starting nightly publish ---"
+	@$(ACTIVATE_AND_CD) && \
+	CURRENT_VERSION=$$(uv version --short) && \
+	DATE_SUFFIX=$$(date -u +%Y%m%d%H%M%S) && \
+	NIGHTLY_VERSION="$${CURRENT_VERSION}.dev$${DATE_SUFFIX}" && \
+	echo "Publishing nightly version: $${NIGHTLY_VERSION}" && \
+	uv version "$${NIGHTLY_VERSION}" && \
+	uv build --clear && \
+	uv publish --index testpypi
+	@echo "--- Nightly publish complete ---"
 
 .PHONY: client-cleanup
 client-cleanup: ## Cleanup virtual environment and Python cache files
