@@ -51,9 +51,6 @@ public interface StorageCredentialCacheKey {
   Set<String> allowedWriteLocations();
 
   @Value.Parameter(order = 7)
-  Optional<String> refreshCredentialsEndpoint();
-
-  @Value.Parameter(order = 8)
   Optional<String> principalName();
 
   /**
@@ -61,7 +58,7 @@ public interface StorageCredentialCacheKey {
    * the catalog, namespace, table, and roles information. When session tags are disabled, this
    * should be {@link CredentialVendingContext#empty()} to ensure consistent cache key behavior.
    */
-  @Value.Parameter(order = 9)
+  @Value.Parameter(order = 8)
   CredentialVendingContext credentialVendingContext();
 
   static StorageCredentialCacheKey of(
@@ -84,7 +81,6 @@ public interface StorageCredentialCacheKey {
         allowedListAction,
         allowedReadLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint,
         polarisPrincipal.map(PolarisPrincipal::getName),
         credentialVendingContext);
   }
