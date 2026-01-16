@@ -33,10 +33,11 @@ import org.apache.polaris.immutables.PolarisImmutable;
  *   <li>{@code namespace} - The namespace/database being accessed (e.g., "db.schema")
  *   <li>{@code tableName} - The name of the table being accessed
  *   <li>{@code activatedRoles} - Comma-separated list of activated principal roles
+ *   <li>{@code traceId} - OpenTelemetry trace ID for end-to-end correlation
  * </ul>
  *
- * <p>These values appear in cloud provider audit logs (e.g., AWS CloudTrail), enabling correlation
- * between catalog operations and data access events.
+ * <p>These values appear in cloud provider audit logs (e.g., AWS CloudTrail), enabling
+ * deterministic correlation between catalog operations and data access events.
  */
 @PolarisImmutable
 public interface CredentialVendingContext {
@@ -48,6 +49,7 @@ public interface CredentialVendingContext {
   String TAG_KEY_TABLE = "polaris:table";
   String TAG_KEY_PRINCIPAL = "polaris:principal";
   String TAG_KEY_ROLES = "polaris:roles";
+  String TAG_KEY_TRACE_ID = "polaris:trace_id";
 
   /** The name of the catalog that is vending credentials. */
   Optional<String> catalogName();
@@ -66,6 +68,20 @@ public interface CredentialVendingContext {
    * the cache key when session tags are enabled.
    */
   Optional<String> activatedRoles();
+
+  /**
+   * The OpenTelemetry trace ID for end-to-end correlation. This enables correlation between
+   * credential vending (CloudTrail), catalog operations (Polaris events), and metrics reports from
+   * compute engines.
+   *
+   * <p>This field is only populated when the {@code INCLUDE_TRACE_ID_IN_SESSION_TAGS} feature flag
+   * is enabled. When populated, the trace ID is included in AWS STS session tags and becomes part
+   * of the credential cache key (since it affects the vended credentials).
+   *
+   * <p>When the flag is disabled (default), this field is left empty ({@code Optional.empty()}),
+   * which allows efficient credential caching across requests with different trace IDs.
+   */
+  Optional<String> traceId();
 
   /**
    * Creates a new builder for CredentialVendingContext.
@@ -94,6 +110,8 @@ public interface CredentialVendingContext {
     Builder tableName(Optional<String> tableName);
 
     Builder activatedRoles(Optional<String> activatedRoles);
+
+    Builder traceId(Optional<String> traceId);
 
     CredentialVendingContext build();
   }

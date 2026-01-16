@@ -19,6 +19,8 @@
 
 package org.apache.polaris.service.catalog.io;
 
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -187,6 +189,32 @@ public class StorageAccessConfigProvider {
       builder.activatedRoles(Optional.of(rolesString));
     }
 
+    // Only include trace ID when the feature flag is enabled.
+    // When enabled, trace IDs are included in AWS STS session tags and become part of the
+    // credential cache key (since they affect the vended credentials).
+    // When disabled (default), trace IDs are not included, allowing efficient credential
+    // caching across requests with different trace IDs.
+    boolean includeTraceIdInSessionTags =
+        storageCredentialsVendor
+            .getRealmConfig()
+            .getConfig(FeatureConfiguration.INCLUDE_TRACE_ID_IN_SESSION_TAGS);
+    if (includeTraceIdInSessionTags) {
+      builder.traceId(getCurrentTraceId());
+    }
+
     return builder.build();
+  }
+
+  /**
+   * Extracts the current OpenTelemetry trace ID from the active span context.
+   *
+   * @return the trace ID if a valid span context exists, empty otherwise
+   */
+  private Optional<String> getCurrentTraceId() {
+    SpanContext spanContext = Span.current().getSpanContext();
+    if (spanContext.isValid()) {
+      return Optional.of(spanContext.getTraceId());
+    }
+    return Optional.empty();
   }
 }

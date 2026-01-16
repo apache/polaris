@@ -1014,7 +1014,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         ArgumentCaptor.forClass(AssumeRoleRequest.class);
     Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
 
-    // Roles are included in context (not extracted from principal) to be part of cache key
+    // Roles are included in context (not extracted from principal) to be part of cache key.
+    // Note: traceId is NOT set because INCLUDE_TRACE_ID_IN_SESSION_TAGS is disabled (default).
+    // In production, StorageAccessConfigProvider only populates traceId when that flag is enabled.
     CredentialVendingContext context =
         CredentialVendingContext.builder()
             .catalogName(Optional.of("test-catalog"))
@@ -1040,7 +1042,8 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             context);
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
-    Assertions.assertThat(capturedRequest.tags()).isNotEmpty();
+    // 5 tags are included when session tags enabled but trace_id not in context
+    Assertions.assertThat(capturedRequest.tags()).hasSize(5);
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:catalog") && tag.value().equals("test-catalog"));
     Assertions.assertThat(capturedRequest.tags())
@@ -1053,8 +1056,11 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
     // Roles are sorted alphabetically and joined with comma
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:roles") && tag.value().equals("admin,reader"));
+    // Verify trace_id is NOT included when not present in context
+    Assertions.assertThat(capturedRequest.tags())
+        .noneMatch(tag -> tag.key().equals("polaris:trace_id"));
 
-    // Verify transitive tag keys are set
+    // Verify transitive tag keys are set (without trace_id)
     Assertions.assertThat(capturedRequest.transitiveTagKeys())
         .containsExactlyInAnyOrder(
             "polaris:catalog",
@@ -1062,6 +1068,96 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             "polaris:table",
             "polaris:principal",
             "polaris:roles");
+  }
+
+  @Test
+  public void testSessionTagsWithTraceIdWhenBothFlagsEnabled() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+
+    // Create a realm config with both session tags AND trace_id enabled
+    RealmConfig sessionTagsAndTraceIdEnabledConfig =
+        new RealmConfigImpl(
+            new PolarisConfigurationStore() {
+              @SuppressWarnings("unchecked")
+              @Override
+              public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
+                if (configName.equals(
+                    FeatureConfiguration.INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL.key())) {
+                  return "true";
+                }
+                if (configName.equals(
+                    FeatureConfiguration.INCLUDE_TRACE_ID_IN_SESSION_TAGS.key())) {
+                  return "true";
+                }
+                return null;
+              }
+            },
+            () -> "realm");
+
+    ArgumentCaptor<AssumeRoleRequest> requestCaptor =
+        ArgumentCaptor.forClass(AssumeRoleRequest.class);
+    Mockito.when(stsClient.assumeRole(requestCaptor.capture())).thenReturn(ASSUME_ROLE_RESPONSE);
+
+    // When INCLUDE_TRACE_ID_IN_SESSION_TAGS is enabled, StorageAccessConfigProvider populates
+    // traceId in the context. The presence of traceId in the context determines whether it's
+    // included in session tags (and in the cache key, since it's a normal field).
+    CredentialVendingContext context =
+        CredentialVendingContext.builder()
+            .catalogName(Optional.of("test-catalog"))
+            .namespace(Optional.of("db.schema"))
+            .tableName(Optional.of("my_table"))
+            .activatedRoles(Optional.of("admin,reader"))
+            .traceId(Optional.of("abc123def456"))
+            .build();
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            sessionTagsAndTraceIdEnabledConfig,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
+            Set.of(s3Path(bucket, warehouseKeyPrefix)),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            context);
+
+    AssumeRoleRequest capturedRequest = requestCaptor.getValue();
+    // All 6 tags are included when both session tags AND trace_id are enabled
+    Assertions.assertThat(capturedRequest.tags()).hasSize(6);
+    Assertions.assertThat(capturedRequest.tags())
+        .anyMatch(tag -> tag.key().equals("polaris:catalog") && tag.value().equals("test-catalog"));
+    Assertions.assertThat(capturedRequest.tags())
+        .anyMatch(tag -> tag.key().equals("polaris:namespace") && tag.value().equals("db.schema"));
+    Assertions.assertThat(capturedRequest.tags())
+        .anyMatch(tag -> tag.key().equals("polaris:table") && tag.value().equals("my_table"));
+    Assertions.assertThat(capturedRequest.tags())
+        .anyMatch(
+            tag -> tag.key().equals("polaris:principal") && tag.value().equals("test-principal"));
+    Assertions.assertThat(capturedRequest.tags())
+        .anyMatch(tag -> tag.key().equals("polaris:roles") && tag.value().equals("admin,reader"));
+    // Verify trace_id IS included when INCLUDE_TRACE_ID_IN_SESSION_TAGS is true
+    Assertions.assertThat(capturedRequest.tags())
+        .anyMatch(
+            tag -> tag.key().equals("polaris:trace_id") && tag.value().equals("abc123def456"));
+
+    // Verify transitive tag keys include trace_id
+    Assertions.assertThat(capturedRequest.transitiveTagKeys())
+        .containsExactlyInAnyOrder(
+            "polaris:catalog",
+            "polaris:namespace",
+            "polaris:table",
+            "polaris:principal",
+            "polaris:roles",
+            "polaris:trace_id");
   }
 
   @Test
@@ -1154,7 +1250,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             context);
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
-    // All 5 tags are always included; missing values use "unknown" placeholder
+    // 5 tags are included when session tags enabled but trace_id disabled (default)
     Assertions.assertThat(capturedRequest.tags()).hasSize(5);
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:catalog") && tag.value().equals("test-catalog"));
@@ -1168,6 +1264,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .anyMatch(tag -> tag.key().equals("polaris:table") && tag.value().equals("unknown"));
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:roles") && tag.value().equals("unknown"));
+    // trace_id is NOT included when INCLUDE_TRACE_ID_IN_SESSION_TAGS is not set (defaults to false)
+    Assertions.assertThat(capturedRequest.tags())
+        .noneMatch(tag -> tag.key().equals("polaris:trace_id"));
   }
 
   @Test
@@ -1276,7 +1375,7 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             CredentialVendingContext.empty());
 
     AssumeRoleRequest capturedRequest = requestCaptor.getValue();
-    // All 5 tags are always included; missing values use "unknown" placeholder
+    // 5 tags are included when session tags enabled but trace_id disabled (default)
     Assertions.assertThat(capturedRequest.tags()).hasSize(5);
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(
@@ -1290,6 +1389,9 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .anyMatch(tag -> tag.key().equals("polaris:table") && tag.value().equals("unknown"));
     Assertions.assertThat(capturedRequest.tags())
         .anyMatch(tag -> tag.key().equals("polaris:roles") && tag.value().equals("unknown"));
+    // trace_id is NOT included when INCLUDE_TRACE_ID_IN_SESSION_TAGS is not set (defaults to false)
+    Assertions.assertThat(capturedRequest.tags())
+        .noneMatch(tag -> tag.key().equals("polaris:trace_id"));
   }
 
   /**

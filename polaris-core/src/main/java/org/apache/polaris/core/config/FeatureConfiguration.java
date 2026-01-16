@@ -104,6 +104,20 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(false)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> INCLUDE_TRACE_ID_IN_SESSION_TAGS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("INCLUDE_TRACE_ID_IN_SESSION_TAGS")
+          .description(
+              "If set to true (and INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL is also true), the OpenTelemetry\n"
+                  + "trace ID will be included as a session tag in AWS STS AssumeRole requests. This enables\n"
+                  + "end-to-end correlation between catalog operations (Polaris events), credential vending (CloudTrail),\n"
+                  + "and metrics reports from compute engines.\n"
+                  + "WARNING: Enabling this feature completely disables credential caching because every request\n"
+                  + "has a unique trace ID. This may significantly increase latency and STS API costs.\n"
+                  + "Consider leaving this disabled unless end-to-end tracing correlation is critical.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Boolean> ALLOW_SETTING_S3_ENDPOINTS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")
