@@ -76,6 +76,9 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("site/layouts/partials/community_links.html")
   excludes.add("layouts/partials/head.html")
 
+  // Hugo render hook - HTML comments would appear in rendered output
+  excludes.add("site/layouts/_default/_markup/render-heading.html")
+
   // Files copied from OpenAPI Generator (ASLv2 licensed) don't have header
   excludes.add("server-templates/*.mustache")
 

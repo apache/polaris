@@ -1,0 +1,8 @@
+{{- /*
+  Render hook for headings that adds anchor links.
+  See https://gohugo.io/render-hooks/headings/
+*/ -}}
+<h{{ .Level }} id="{{ .Anchor | safeURL }}"{{ with .Attributes }} {{ range $k, $v := . }} {{ $k }}="{{ $v }}"{{ end }}{{ end }}>
+  {{- .Text | safeHTML -}}
+  <a class="heading-anchor" href="#{{ .Anchor | safeURL }}" aria-label="Anchor">#</a>
+</h{{ .Level }}>
