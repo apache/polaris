@@ -25,6 +25,10 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.metrics.CommitReport;
+import org.apache.iceberg.metrics.MetricsReport;
+import org.apache.iceberg.metrics.ScanReport;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.auth.PolarisPrincipal;
@@ -38,6 +42,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     switch (event.type()) {
       case AFTER_CREATE_TABLE -> handleAfterCreateTable(event);
       case AFTER_CREATE_CATALOG -> handleAfterCreateCatalog(event);
+      case AFTER_REPORT_METRICS -> handleAfterReportMetrics(event);
       default -> {
         // Other events not handled by this listener
       }
@@ -87,6 +92,61 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
     if (!openTelemetryContext.isEmpty()) {
       polarisEvent.setAdditionalProperties(openTelemetryContext);
     }
+    processEvent(event.metadata().realmId(), polarisEvent);
+  }
+
+  private void handleAfterReportMetrics(PolarisEvent event) {
+    ReportMetricsRequest request =
+        event.attributes().getRequired(EventAttributes.REPORT_METRICS_REQUEST);
+    String catalogName = event.attributes().getRequired(EventAttributes.CATALOG_NAME);
+    Namespace namespace = event.attributes().getRequired(EventAttributes.NAMESPACE);
+    String tableName = event.attributes().getRequired(EventAttributes.TABLE_NAME);
+
+    org.apache.polaris.core.entity.PolarisEvent polarisEvent =
+        new org.apache.polaris.core.entity.PolarisEvent(
+            catalogName,
+            event.metadata().eventId().toString(),
+            event.metadata().requestId().orElse(null),
+            event.type().name(),
+            event.metadata().timestamp().toEpochMilli(),
+            event.metadata().user().map(PolarisPrincipal::getName).orElse(null),
+            org.apache.polaris.core.entity.PolarisEvent.ResourceType.TABLE,
+            TableIdentifier.of(namespace, tableName).toString());
+
+    var additionalParameters = ImmutableMap.<String, String>builder();
+    MetricsReport report = request.report();
+    if (report instanceof ScanReport scanReport) {
+      additionalParameters.put("report_type", "scan");
+      additionalParameters.put("snapshot_id", String.valueOf(scanReport.snapshotId()));
+      additionalParameters.put("schema_id", String.valueOf(scanReport.schemaId()));
+      Map<String, String> metadata = scanReport.metadata();
+      if (metadata != null) {
+        metadata.forEach(
+            (key, value) -> {
+              if (value != null) {
+                additionalParameters.put("report." + key, value);
+              }
+            });
+      }
+    } else if (report instanceof CommitReport commitReport) {
+      additionalParameters.put("report_type", "commit");
+      additionalParameters.put("snapshot_id", String.valueOf(commitReport.snapshotId()));
+      additionalParameters.put("sequence_number", String.valueOf(commitReport.sequenceNumber()));
+      if (commitReport.operation() != null) {
+        additionalParameters.put("operation", commitReport.operation());
+      }
+      Map<String, String> metadata = commitReport.metadata();
+      if (metadata != null) {
+        metadata.forEach(
+            (key, value) -> {
+              if (value != null) {
+                additionalParameters.put("report." + key, value);
+              }
+            });
+      }
+    }
+    additionalParameters.putAll(event.metadata().openTelemetryContext());
+    polarisEvent.setAdditionalProperties(additionalParameters.build());
     processEvent(event.metadata().realmId(), polarisEvent);
   }
 

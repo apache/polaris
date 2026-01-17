@@ -49,8 +49,14 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.expressions.Expressions;
+import org.apache.iceberg.metrics.ImmutableScanReport;
+import org.apache.iceberg.metrics.ScanMetrics;
+import org.apache.iceberg.metrics.ScanMetricsResult;
+import org.apache.iceberg.metrics.ScanReport;
 import org.apache.iceberg.rest.RESTSessionCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -65,6 +71,7 @@ import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.RestApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -92,6 +99,8 @@ class InMemoryBufferEventListenerIntegrationTest {
           .put("polaris.event-listener.persistence-in-memory-buffer.buffer-time", "100ms")
           .put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true")
           .put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\",\"S3\"]")
+          .put("polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true")
+          .put("polaris.features.\"ENABLE_METRICS_EVENT_EMISSION\"", "true")
           .put("polaris.readiness.ignore-severe-issues", "true")
           .build();
     }
@@ -117,10 +126,32 @@ class InMemoryBufferEventListenerIntegrationTest {
     baseLocation = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(realm + "/");
   }
 
+  /**
+   * Reset the database state before each test to ensure test isolation. The H2 in-memory database
+   * with DB_CLOSE_DELAY=-1 persists state across tests, so we need to clean up catalog-related
+   * entities while preserving the realm and principal entities set up in @BeforeAll.
+   */
+  @BeforeEach
+  public void resetDatabaseState() {
+    if (dataSource.isResolvable()) {
+      try (Connection conn = dataSource.get().getConnection();
+          Statement stmt = conn.createStatement()) {
+        // Set the schema first
+        stmt.execute("SET SCHEMA POLARIS_SCHEMA");
+        // Only delete events - catalogs use unique names and locations so they don't conflict
+        stmt.execute("DELETE FROM EVENTS");
+      } catch (Exception e) {
+        // Ignore errors - tables may not exist yet on first run
+      }
+    }
+  }
+
   @Test
   void testCreateCatalogAndTable() throws IOException {
 
     String catalogName = client.newEntityName("testCreateCatalogAndTable");
+    // Use a unique base location for this catalog to avoid overlap with other catalogs
+    URI catalogBaseLocation = baseLocation.resolve(catalogName + "/");
 
     Catalog catalog =
         PolarisCatalog.builder()
@@ -130,7 +161,7 @@ class InMemoryBufferEventListenerIntegrationTest {
             .setStorageConfigInfo(
                 FileStorageConfigInfo.builder()
                     .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-                    .setAllowedLocations(List.of(baseLocation.toString()))
+                    .setAllowedLocations(List.of(catalogBaseLocation.toString()))
                     .build())
             .build();
 
@@ -220,5 +251,352 @@ class InMemoryBufferEventListenerIntegrationTest {
         .containsEntry("otel.sampled", "true")
         .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
         .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
+  }
+
+  /**
+   * Tests that reportMetrics events are emitted with proper trace context for correlation. This
+   * verifies that compute engine metrics reports can be correlated with other catalog operations
+   * via the OpenTelemetry trace_id.
+   */
+  @Test
+  void testReportMetricsEventWithTraceContext() throws IOException {
+    String catalogName = client.newEntityName("testReportMetrics");
+    // Use a unique base location for this catalog to avoid overlap with other catalogs
+    URI catalogBaseLocation = baseLocation.resolve(catalogName + "/");
+
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setName(catalogName)
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setProperties(CatalogProperties.builder("file:///tmp/").build())
+            .setStorageConfigInfo(
+                FileStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+                    .setAllowedLocations(List.of(catalogBaseLocation.toString()))
+                    .build())
+            .build();
+
+    try (Response response =
+        managementApi
+            .request("v1/catalogs")
+            .header("X-Request-ID", "metrics-test")
+            .post(Entity.json(catalog))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // Create a table first
+    try (RESTSessionCatalog sessionCatalog = new RESTSessionCatalog()) {
+      sessionCatalog.initialize(
+          "polaris_catalog_metrics_test",
+          ImmutableMap.<String, String>builder()
+              .put("uri", endpoints.catalogApiEndpoint().toString())
+              .put(OAuth2Properties.TOKEN, authToken)
+              .put("warehouse", catalogName)
+              .putAll(endpoints.extraHeaders("header."))
+              .build());
+
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      Namespace ns = Namespace.of("metrics_ns");
+      sessionCatalog.createNamespace(sessionContext, ns);
+
+      sessionCatalog
+          .buildTable(
+              sessionContext,
+              TableIdentifier.of(ns, "metrics_table"),
+              new Schema(List.of(Types.NestedField.required(1, "id", Types.IntegerType.get()))))
+          .withSortOrder(SortOrder.unsorted())
+          .withPartitionSpec(PartitionSpec.unpartitioned())
+          .create();
+    }
+
+    // Now send a metrics report via the REST API
+    // Build a minimal ScanReport for testing
+    ScanReport scanReport =
+        ImmutableScanReport.builder()
+            .schemaId(0)
+            .tableName("metrics_ns.metrics_table")
+            .snapshotId(-1L)
+            .addProjectedFieldIds(1)
+            .addProjectedFieldNames("id")
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .build();
+
+    ReportMetricsRequest metricsRequest = ReportMetricsRequest.of(scanReport);
+
+    RestApi catalogApi = client.catalogApi(authToken);
+    try (Response response =
+        catalogApi
+            .request("v1/" + catalogName + "/namespaces/metrics_ns/tables/metrics_table/metrics")
+            .header("X-Request-ID", "metrics-report-123")
+            .post(Entity.json(metricsRequest))) {
+      assertThat(response).returns(204, Response::getStatus);
+    }
+
+    // Query for the AFTER_REPORT_METRICS event
+    String query =
+        "SELECT * FROM polaris_schema.events WHERE realm_id = '"
+            + realm
+            + "' AND event_type = 'AFTER_REPORT_METRICS' ORDER BY timestamp_ms DESC";
+
+    List<PolarisEvent> metricsEvents =
+        await()
+            .atMost(Duration.ofSeconds(10))
+            .until(
+                () -> {
+                  ImmutableList.Builder<PolarisEvent> e = ImmutableList.builder();
+                  try (Connection connection = dataSource.get().getConnection();
+                      Statement statement = connection.createStatement();
+                      ResultSet rs = statement.executeQuery(query)) {
+                    while (rs.next()) {
+                      PolarisEvent event = CONVERTER.fromResultSet(rs);
+                      e.add(event);
+                    }
+                  }
+                  return e.build();
+                },
+                e -> !e.isEmpty());
+
+    PolarisEvent metricsEvent = metricsEvents.getFirst();
+    assertThat(metricsEvent.getCatalogId()).isEqualTo(catalogName);
+    assertThat(metricsEvent.getResourceType()).isEqualTo(PolarisEvent.ResourceType.TABLE);
+    assertThat(metricsEvent.getResourceIdentifier()).isEqualTo("metrics_ns.metrics_table");
+    assertThat(metricsEvent.getEventType()).isEqualTo("AFTER_REPORT_METRICS");
+    assertThat(metricsEvent.getPrincipalName()).isEqualTo("root");
+    assertThat(metricsEvent.getRequestId()).isEqualTo("metrics-report-123");
+
+    // Verify OpenTelemetry trace context is present for correlation
+    assertThat(metricsEvent.getAdditionalPropertiesAsMap())
+        .containsEntry("otel.trace_flags", "01")
+        .containsEntry("otel.sampled", "true")
+        .hasEntrySatisfying("otel.trace_id", value -> assertThat(value).matches("[0-9a-f]{32}"))
+        .hasEntrySatisfying("otel.span_id", value -> assertThat(value).matches("[0-9a-f]{16}"));
+  }
+
+  /**
+   * Tests that ScanReport with trace-id in metadata is properly extracted and stored. This verifies
+   * that compute engines can pass trace context in the report's metadata map for correlation.
+   */
+  @Test
+  void testReportMetricsWithTraceIdInMetadata() throws IOException {
+    String catalogName = client.newEntityName("testMetricsTraceId");
+    // Use a unique base location for this catalog to avoid overlap with other catalogs
+    URI catalogBaseLocation = baseLocation.resolve(catalogName + "/");
+
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setName(catalogName)
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setProperties(CatalogProperties.builder("file:///tmp/").build())
+            .setStorageConfigInfo(
+                FileStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+                    .setAllowedLocations(List.of(catalogBaseLocation.toString()))
+                    .build())
+            .build();
+
+    try (Response response = managementApi.request("v1/catalogs").post(Entity.json(catalog))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // Create a table first
+    try (RESTSessionCatalog sessionCatalog = new RESTSessionCatalog()) {
+      sessionCatalog.initialize(
+          "polaris_catalog_trace_test",
+          ImmutableMap.<String, String>builder()
+              .put("uri", endpoints.catalogApiEndpoint().toString())
+              .put(OAuth2Properties.TOKEN, authToken)
+              .put("warehouse", catalogName)
+              .putAll(endpoints.extraHeaders("header."))
+              .build());
+
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      Namespace ns = Namespace.of("trace_ns");
+      sessionCatalog.createNamespace(sessionContext, ns);
+
+      sessionCatalog
+          .buildTable(
+              sessionContext,
+              TableIdentifier.of(ns, "trace_table"),
+              new Schema(List.of(Types.NestedField.required(1, "id", Types.IntegerType.get()))))
+          .withSortOrder(SortOrder.unsorted())
+          .withPartitionSpec(PartitionSpec.unpartitioned())
+          .create();
+    }
+
+    // Build a ScanReport with trace-id in metadata (as compute engines would do)
+    String clientTraceId = "abcdef1234567890abcdef1234567890";
+    ScanReport scanReport =
+        ImmutableScanReport.builder()
+            .schemaId(0)
+            .tableName("trace_ns.trace_table")
+            .snapshotId(123L)
+            .addProjectedFieldIds(1)
+            .addProjectedFieldNames("id")
+            .filter(Expressions.alwaysTrue())
+            .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+            .putMetadata("trace-id", clientTraceId)
+            .putMetadata("client-app", "spark-test")
+            .build();
+
+    ReportMetricsRequest metricsRequest = ReportMetricsRequest.of(scanReport);
+
+    RestApi catalogApi = client.catalogApi(authToken);
+    try (Response response =
+        catalogApi
+            .request("v1/" + catalogName + "/namespaces/trace_ns/tables/trace_table/metrics")
+            .header("X-Request-ID", "trace-test-456")
+            .post(Entity.json(metricsRequest))) {
+      assertThat(response).returns(204, Response::getStatus);
+    }
+
+    // Query for the AFTER_REPORT_METRICS event
+    String query =
+        "SELECT * FROM polaris_schema.events WHERE realm_id = '"
+            + realm
+            + "' AND event_type = 'AFTER_REPORT_METRICS' AND request_id = 'trace-test-456'";
+
+    List<PolarisEvent> metricsEvents =
+        await()
+            .atMost(Duration.ofSeconds(10))
+            .until(
+                () -> {
+                  ImmutableList.Builder<PolarisEvent> e = ImmutableList.builder();
+                  try (Connection connection = dataSource.get().getConnection();
+                      Statement statement = connection.createStatement();
+                      ResultSet rs = statement.executeQuery(query)) {
+                    while (rs.next()) {
+                      PolarisEvent event = CONVERTER.fromResultSet(rs);
+                      e.add(event);
+                    }
+                  }
+                  return e.build();
+                },
+                e -> !e.isEmpty());
+
+    PolarisEvent metricsEvent = metricsEvents.getFirst();
+    assertThat(metricsEvent.getEventType()).isEqualTo("AFTER_REPORT_METRICS");
+
+    // Verify trace-id from report metadata is extracted with "report." prefix
+    Map<String, String> additionalProps = metricsEvent.getAdditionalPropertiesAsMap();
+    assertThat(additionalProps)
+        .containsEntry("report.trace-id", clientTraceId)
+        .containsEntry("report.client-app", "spark-test")
+        .containsEntry("report_type", "scan")
+        .containsEntry("snapshot_id", "123")
+        .containsEntry("schema_id", "0");
+  }
+
+  /**
+   * Tests that CommitReport metrics are properly extracted and stored. This verifies the commit
+   * metrics path including operation type, sequence number, and commit metrics.
+   */
+  @Test
+  void testReportCommitMetrics() throws IOException {
+    String catalogName = client.newEntityName("testCommitMetrics");
+    // Use a unique base location for this catalog to avoid overlap with other catalogs
+    URI catalogBaseLocation = baseLocation.resolve(catalogName + "/");
+
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setName(catalogName)
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setProperties(CatalogProperties.builder("file:///tmp/").build())
+            .setStorageConfigInfo(
+                FileStorageConfigInfo.builder()
+                    .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+                    .setAllowedLocations(List.of(catalogBaseLocation.toString()))
+                    .build())
+            .build();
+
+    try (Response response = managementApi.request("v1/catalogs").post(Entity.json(catalog))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // Create a table first
+    try (RESTSessionCatalog sessionCatalog = new RESTSessionCatalog()) {
+      sessionCatalog.initialize(
+          "polaris_catalog_commit_test",
+          ImmutableMap.<String, String>builder()
+              .put("uri", endpoints.catalogApiEndpoint().toString())
+              .put(OAuth2Properties.TOKEN, authToken)
+              .put("warehouse", catalogName)
+              .putAll(endpoints.extraHeaders("header."))
+              .build());
+
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      Namespace ns = Namespace.of("commit_ns");
+      sessionCatalog.createNamespace(sessionContext, ns);
+
+      sessionCatalog
+          .buildTable(
+              sessionContext,
+              TableIdentifier.of(ns, "commit_table"),
+              new Schema(List.of(Types.NestedField.required(1, "id", Types.IntegerType.get()))))
+          .withSortOrder(SortOrder.unsorted())
+          .withPartitionSpec(PartitionSpec.unpartitioned())
+          .create();
+    }
+
+    // Build a CommitReport
+    org.apache.iceberg.metrics.CommitReport commitReport =
+        org.apache.iceberg.metrics.ImmutableCommitReport.builder()
+            .tableName("commit_ns.commit_table")
+            .snapshotId(456L)
+            .sequenceNumber(1L)
+            .operation("append")
+            .commitMetrics(
+                org.apache.iceberg.metrics.CommitMetricsResult.from(
+                    org.apache.iceberg.metrics.CommitMetrics.noop(), ImmutableMap.of()))
+            .putMetadata("trace-id", "commit-trace-123")
+            .build();
+
+    ReportMetricsRequest metricsRequest = ReportMetricsRequest.of(commitReport);
+
+    RestApi catalogApi = client.catalogApi(authToken);
+    try (Response response =
+        catalogApi
+            .request("v1/" + catalogName + "/namespaces/commit_ns/tables/commit_table/metrics")
+            .header("X-Request-ID", "commit-test-789")
+            .post(Entity.json(metricsRequest))) {
+      assertThat(response).returns(204, Response::getStatus);
+    }
+
+    // Query for the AFTER_REPORT_METRICS event
+    String query =
+        "SELECT * FROM polaris_schema.events WHERE realm_id = '"
+            + realm
+            + "' AND event_type = 'AFTER_REPORT_METRICS' AND request_id = 'commit-test-789'";
+
+    List<PolarisEvent> metricsEvents =
+        await()
+            .atMost(Duration.ofSeconds(10))
+            .until(
+                () -> {
+                  ImmutableList.Builder<PolarisEvent> e = ImmutableList.builder();
+                  try (Connection connection = dataSource.get().getConnection();
+                      Statement statement = connection.createStatement();
+                      ResultSet rs = statement.executeQuery(query)) {
+                    while (rs.next()) {
+                      PolarisEvent event = CONVERTER.fromResultSet(rs);
+                      e.add(event);
+                    }
+                  }
+                  return e.build();
+                },
+                e -> !e.isEmpty());
+
+    PolarisEvent metricsEvent = metricsEvents.getFirst();
+    assertThat(metricsEvent.getEventType()).isEqualTo("AFTER_REPORT_METRICS");
+    assertThat(metricsEvent.getResourceIdentifier()).isEqualTo("commit_ns.commit_table");
+
+    // Verify commit report data is extracted
+    Map<String, String> additionalProps = metricsEvent.getAdditionalPropertiesAsMap();
+    assertThat(additionalProps)
+        .containsEntry("report_type", "commit")
+        .containsEntry("snapshot_id", "456")
+        .containsEntry("sequence_number", "1")
+        .containsEntry("operation", "append")
+        .containsEntry("report.trace-id", "commit-trace-123");
   }
 }
