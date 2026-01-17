@@ -43,4 +43,17 @@ public class TestPolarisEventListener implements PolarisEventListener {
     }
     return latest;
   }
+
+  /**
+   * Returns the latest event of the specified type, or null if no such event has been recorded.
+   * This is useful for tests that need to verify no event was emitted.
+   */
+  public PolarisEvent getLatestOrNull(PolarisEventType type) {
+    return latestEvents.get(type);
+  }
+
+  /** Returns true if an event of the specified type has been recorded. */
+  public boolean hasEvent(PolarisEventType type) {
+    return latestEvents.containsKey(type);
+  }
 }

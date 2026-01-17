@@ -193,7 +193,11 @@ public enum PolarisEventType {
   AFTER_ATTEMPT_TASK(1401),
 
   // Rate Limiting Events
-  BEFORE_LIMIT_REQUEST_RATE(1500);
+  BEFORE_LIMIT_REQUEST_RATE(1500),
+
+  // Metrics Reporting Events
+  BEFORE_REPORT_METRICS(1600),
+  AFTER_REPORT_METRICS(1601);
 
   private final int code;
 
