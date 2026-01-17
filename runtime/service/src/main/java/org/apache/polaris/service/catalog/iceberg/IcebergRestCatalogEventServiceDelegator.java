@@ -41,6 +41,8 @@ import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -64,6 +66,7 @@ public class IcebergRestCatalogEventServiceDelegator
   @Inject PolarisEventListener polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
+  @Inject RealmConfig realmConfig;
 
   // Constructor for testing - allows manual dependency injection
   @VisibleForTesting
@@ -71,11 +74,13 @@ public class IcebergRestCatalogEventServiceDelegator
       IcebergCatalogAdapter delegate,
       PolarisEventListener polarisEventListener,
       PolarisEventMetadataFactory eventMetadataFactory,
-      CatalogPrefixParser prefixParser) {
+      CatalogPrefixParser prefixParser,
+      RealmConfig realmConfig) {
     this.delegate = delegate;
     this.polarisEventListener = polarisEventListener;
     this.eventMetadataFactory = eventMetadataFactory;
     this.prefixParser = prefixParser;
+    this.realmConfig = realmConfig;
   }
 
   // Default constructor for CDI
@@ -805,8 +810,41 @@ public class IcebergRestCatalogEventServiceDelegator
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return delegate.reportMetrics(
-        prefix, namespace, table, reportMetricsRequest, realmContext, securityContext);
+    // Check if metrics event emission is enabled
+    boolean metricsEventEmissionEnabled =
+        realmConfig.getConfig(FeatureConfiguration.ENABLE_METRICS_EVENT_EMISSION);
+
+    // If metrics event emission is disabled, call delegate directly without emitting events
+    if (!metricsEventEmissionEnabled) {
+      return delegate.reportMetrics(
+          prefix, namespace, table, reportMetricsRequest, realmContext, securityContext);
+    }
+
+    // Emit events when feature is enabled
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    Namespace namespaceObj = decodeNamespace(namespace);
+    polarisEventListener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.BEFORE_REPORT_METRICS,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE, namespaceObj)
+                .put(EventAttributes.TABLE_NAME, table)
+                .put(EventAttributes.REPORT_METRICS_REQUEST, reportMetricsRequest)));
+    Response resp =
+        delegate.reportMetrics(
+            prefix, namespace, table, reportMetricsRequest, realmContext, securityContext);
+    polarisEventListener.onEvent(
+        new PolarisEvent(
+            PolarisEventType.AFTER_REPORT_METRICS,
+            eventMetadataFactory.create(),
+            new AttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE, namespaceObj)
+                .put(EventAttributes.TABLE_NAME, table)
+                .put(EventAttributes.REPORT_METRICS_REQUEST, reportMetricsRequest)));
+    return resp;
   }
 
   @Override
