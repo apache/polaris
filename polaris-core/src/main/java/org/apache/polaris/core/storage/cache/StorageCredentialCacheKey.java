@@ -51,9 +51,6 @@ public interface StorageCredentialCacheKey {
   Set<String> allowedWriteLocations();
 
   @Value.Parameter(order = 7)
-  Optional<String> refreshCredentialsEndpoint();
-
-  @Value.Parameter(order = 8)
   Optional<String> principalName();
 
   /**
@@ -67,7 +64,7 @@ public interface StorageCredentialCacheKey {
    * the cache key comparison (since it affects the vended credentials via session tags). When
    * empty, credentials can be cached efficiently across requests with different trace IDs.
    */
-  @Value.Parameter(order = 9)
+  @Value.Parameter(order = 8)
   CredentialVendingContext credentialVendingContext();
 
   /** Creates a cache key from the provided parameters. */
@@ -91,7 +88,6 @@ public interface StorageCredentialCacheKey {
         allowedListAction,
         allowedReadLocations,
         allowedWriteLocations,
-        refreshCredentialsEndpoint,
         polarisPrincipal.map(PolarisPrincipal::getName),
         credentialVendingContext);
   }

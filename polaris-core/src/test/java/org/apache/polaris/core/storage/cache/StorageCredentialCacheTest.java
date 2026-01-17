@@ -555,6 +555,98 @@ public class StorageCredentialCacheTest {
     return Arrays.asList(polarisEntity1, polarisEntity2, polarisEntity3);
   }
 
+  /**
+   * Test for issue #3292: Verifies that refreshCredentialsEndpoint does not affect cache key.
+   *
+   * <p>During a loadTable operation, credentials are fetched twice:
+   *
+   * <ol>
+   *   <li>First call with refreshCredentialsEndpoint=Optional.empty() (server-side metadata read)
+   *   <li>Second call with refreshCredentialsEndpoint=Optional.of(url) (building client response)
+   * </ol>
+   *
+   * <p>Since refreshCredentialsEndpoint doesn't affect the STS request parameters (it's only added
+   * to the response after credentials are generated), both calls should use the same cache entry,
+   * resulting in only ONE call to the underlying credential vendor.
+   *
+   * @see <a href="https://github.com/apache/polaris/issues/3292">Issue #3292</a>
+   */
+  @Test
+  public void testRefreshCredentialsEndpointDoesNotAffectCacheKey() {
+    // Setup: mock credential vendor to return valid credentials
+    ScopedCredentialsResult mockedCreds =
+        new ScopedCredentialsResult(
+            StorageAccessConfig.builder()
+                .put(StorageAccessProperty.AWS_KEY_ID, "test_access_key")
+                .put(StorageAccessProperty.AWS_SECRET_KEY, "test_secret_key")
+                .put(StorageAccessProperty.AWS_TOKEN, "test_session_token")
+                .put(
+                    StorageAccessProperty.EXPIRATION_TIME,
+                    String.valueOf(System.currentTimeMillis() + 3600000))
+                .put(
+                    StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                    String.valueOf(System.currentTimeMillis() + 3600000))
+                .build());
+
+    Mockito.when(
+            storageCredentialsVendor.getSubscopedCredsForEntity(
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anySet(),
+                Mockito.anySet(),
+                Mockito.any(),
+                Mockito.any(),
+                Mockito.any()))
+        .thenReturn(mockedCreds);
+
+    PolarisEntity polarisEntity =
+        new PolarisEntity(
+            new PolarisBaseEntity(
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "table1"));
+    PolarisPrincipal polarisPrincipal = PolarisPrincipal.of("testPrincipal", Map.of(), Set.of());
+    Set<String> readLocations = Set.of("s3://bucket/table1");
+    Set<String> writeLocations = Set.of("s3://bucket/table1");
+
+    // First call: simulates IcebergCatalog.doRefresh() - no refresh endpoint (server-side read)
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        readLocations,
+        writeLocations,
+        polarisPrincipal,
+        Optional.empty(), // No refresh endpoint for internal server-side read
+        CredentialVendingContext.empty());
+
+    // Second call: simulates buildLoadTableResponseWithDelegationCredentials() - with refresh
+    // endpoint
+    storageCredentialCache.getOrGenerateSubScopeCreds(
+        storageCredentialsVendor,
+        polarisEntity,
+        true,
+        readLocations,
+        writeLocations,
+        polarisPrincipal,
+        Optional.of("https://polaris.example.com/api/catalog/v1/oauth/tokens"), // Client endpoint
+        CredentialVendingContext.empty());
+
+    // Verify: credential vendor should only be called ONCE
+    // The second call should be a cache hit since refreshCredentialsEndpoint
+    // should NOT be part of the cache key
+    Mockito.verify(storageCredentialsVendor, Mockito.times(1))
+        .getSubscopedCredsForEntity(
+            Mockito.any(),
+            Mockito.anyBoolean(),
+            Mockito.anySet(),
+            Mockito.anySet(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any());
+
+    // Cache should only have 1 entry, not 2
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
+  }
+
   @Test
   public void testExtraProperties() {
     ScopedCredentialsResult properties =
