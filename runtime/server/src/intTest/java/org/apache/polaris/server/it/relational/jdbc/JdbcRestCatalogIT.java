@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.relational.jdbc;
+package org.apache.polaris.server.it.relational.jdbc;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogFileIntegrationTest;
 import org.apache.polaris.test.commons.RelationalJdbcProfile;
 
 @TestProfile(RelationalJdbcProfile.class)
 @QuarkusIntegrationTest
-public class JdbcApplicationIT extends PolarisApplicationIntegrationTest {}
+public class JdbcRestCatalogIT extends PolarisRestCatalogFileIntegrationTest {}

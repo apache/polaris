@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.relational.jdbc;
+package org.apache.polaris.server.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTestBase;
-import org.apache.polaris.test.commons.RelationalJdbcProfile;
+import org.apache.polaris.service.it.test.PolarisRestCatalogViewS3IntegrationTestBase;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@TestProfile(RelationalJdbcProfile.class)
 @QuarkusIntegrationTest
-public class JdbcViewFileIT extends PolarisRestCatalogViewFileIntegrationTestBase {}
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_S3_PATH", matches = ".+")
+public class RestCatalogViewS3IT extends PolarisRestCatalogViewS3IntegrationTestBase {}

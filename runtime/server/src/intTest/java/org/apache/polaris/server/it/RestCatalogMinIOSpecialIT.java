@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it;
+package org.apache.polaris.server.it;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.CatalogProperties.TABLE_DEFAULT_PREFIX;

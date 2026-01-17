@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it;
+package org.apache.polaris.server.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisRestCatalogViewAdlsIntegrationTestBase;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.apache.polaris.service.it.test.PolarisPolicyServiceIntegrationTest;
 
 @QuarkusIntegrationTest
-@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_AZURE_PATH", matches = ".+")
-public class RestCatalogViewAdlsIT extends PolarisRestCatalogViewAdlsIntegrationTestBase {}
+public class PolicyServiceIT extends PolarisPolicyServiceIntegrationTest {}

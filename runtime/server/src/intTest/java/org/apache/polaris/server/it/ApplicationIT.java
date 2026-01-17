@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it;
+package org.apache.polaris.server.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
 
 @QuarkusIntegrationTest
-public class ManagementServiceIT extends PolarisManagementServiceIntegrationTest {}
+public class ApplicationIT extends PolarisApplicationIntegrationTest {}

@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it;
+package org.apache.polaris.server.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
+import org.apache.polaris.service.it.test.PolarisRestCatalogGcsIntegrationTestBase;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @QuarkusIntegrationTest
-public class ApplicationIT extends PolarisApplicationIntegrationTest {}
+@EnabledIfEnvironmentVariable(named = "INTEGRATION_TEST_GCS_PATH", matches = ".+")
+public class RestCatalogGcsIT extends PolarisRestCatalogGcsIntegrationTestBase {}
