@@ -191,12 +191,14 @@ class AwsCloudWatchEventListenerTest {
       // Create and send a test event
       TableIdentifier testTable = TableIdentifier.of("test_namespace", "test_table");
       listener.onEvent(
-          new PolarisEvent(
-              PolarisEventType.AFTER_REFRESH_TABLE,
-              PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
-              new AttributeMap()
-                  .put(EventAttributes.CATALOG_NAME, "test_catalog")
-                  .put(EventAttributes.TABLE_IDENTIFIER, testTable)));
+          PolarisEventType.AFTER_REFRESH_TABLE,
+          () ->
+              new PolarisEvent(
+                  PolarisEventType.AFTER_REFRESH_TABLE,
+                  PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
+                  new AttributeMap()
+                      .put(EventAttributes.CATALOG_NAME, "test_catalog")
+                      .put(EventAttributes.TABLE_IDENTIFIER, testTable)));
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))
@@ -253,12 +255,14 @@ class AwsCloudWatchEventListenerTest {
       // Create and send a test event synchronously
       TableIdentifier syncTestTable = TableIdentifier.of("test_namespace", "test_table_sync");
       syncListener.onEvent(
-          new PolarisEvent(
-              PolarisEventType.AFTER_REFRESH_TABLE,
-              PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
-              new AttributeMap()
-                  .put(EventAttributes.CATALOG_NAME, "test_catalog")
-                  .put(EventAttributes.TABLE_IDENTIFIER, syncTestTable)));
+          PolarisEventType.AFTER_REFRESH_TABLE,
+          () ->
+              new PolarisEvent(
+                  PolarisEventType.AFTER_REFRESH_TABLE,
+                  PolarisEventMetadata.builder().realmId(REALM).user(PRINCIPAL).build(),
+                  new AttributeMap()
+                      .put(EventAttributes.CATALOG_NAME, "test_catalog")
+                      .put(EventAttributes.TABLE_IDENTIFIER, syncTestTable)));
 
       Awaitility.await("expected amount of records should be sent to CloudWatch")
           .atMost(Duration.ofSeconds(30))

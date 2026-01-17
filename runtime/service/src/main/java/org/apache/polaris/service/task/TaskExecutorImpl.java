@@ -199,12 +199,14 @@ public class TaskExecutorImpl implements TaskExecutor {
   protected void handleTask(
       long taskEntityId, CallContext ctx, PolarisEventMetadata eventMetadata, int attempt) {
     polarisEventListener.onEvent(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_ATTEMPT_TASK,
-            eventMetadataFactory.copy(eventMetadata),
-            new AttributeMap()
-                .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                .put(EventAttributes.TASK_ATTEMPT, attempt)));
+        PolarisEventType.BEFORE_ATTEMPT_TASK,
+        () ->
+            new PolarisEvent(
+                PolarisEventType.BEFORE_ATTEMPT_TASK,
+                eventMetadataFactory.copy(eventMetadata),
+                new AttributeMap()
+                    .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                    .put(EventAttributes.TASK_ATTEMPT, attempt)));
 
     boolean success = false;
     try {
@@ -247,14 +249,17 @@ public class TaskExecutorImpl implements TaskExecutor {
             .log("Unable to execute async task");
       }
     } finally {
+      boolean finalSuccess = success;
       polarisEventListener.onEvent(
-          new PolarisEvent(
-              PolarisEventType.AFTER_ATTEMPT_TASK,
-              eventMetadataFactory.copy(eventMetadata),
-              new AttributeMap()
-                  .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
-                  .put(EventAttributes.TASK_ATTEMPT, attempt)
-                  .put(EventAttributes.TASK_SUCCESS, success)));
+          PolarisEventType.AFTER_ATTEMPT_TASK,
+          () ->
+              new PolarisEvent(
+                  PolarisEventType.AFTER_ATTEMPT_TASK,
+                  eventMetadataFactory.copy(eventMetadata),
+                  new AttributeMap()
+                      .put(EventAttributes.TASK_ENTITY_ID, taskEntityId)
+                      .put(EventAttributes.TASK_ATTEMPT, attempt)
+                      .put(EventAttributes.TASK_SUCCESS, finalSuccess)));
     }
   }
 

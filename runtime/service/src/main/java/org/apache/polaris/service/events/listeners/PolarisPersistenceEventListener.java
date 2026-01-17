@@ -21,6 +21,7 @@ package org.apache.polaris.service.events.listeners;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Namespace;
@@ -30,17 +31,16 @@ import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.events.PolarisEvent;
+import org.apache.polaris.service.events.PolarisEventType;
 
 public abstract class PolarisPersistenceEventListener implements PolarisEventListener {
 
   @Override
-  public void onEvent(PolarisEvent event) {
-    switch (event.type()) {
-      case AFTER_CREATE_TABLE -> handleAfterCreateTable(event);
-      case AFTER_CREATE_CATALOG -> handleAfterCreateCatalog(event);
-      default -> {
-        // Other events not handled by this listener
-      }
+  public void onEvent(PolarisEventType type, Supplier<PolarisEvent> eventSupplier) {
+    switch (type) {
+      case AFTER_CREATE_TABLE -> handleAfterCreateTable(eventSupplier.get());
+      case AFTER_CREATE_CATALOG -> handleAfterCreateCatalog(eventSupplier.get());
+      default -> {}
     }
   }
 
