@@ -77,9 +77,9 @@ public class PostgresIdempotencyStoreIT {
     try (InputStream is =
         Thread.currentThread()
             .getContextClassLoader()
-            .getResourceAsStream("postgres/schema-v3.sql")) {
+            .getResourceAsStream("postgres/schema-v4.sql")) {
       if (is == null) {
-        throw new IllegalStateException("schema-v3.sql not found on classpath");
+        throw new IllegalStateException("schema-v4.sql not found on classpath");
       }
       ops.executeScript(is);
     }
