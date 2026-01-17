@@ -299,9 +299,16 @@ public class AwsCredentialsStorageIntegration
       String region,
       String accountId) {
 
-    IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
     boolean hasCurrentKey = kmsKeyArn != null;
     boolean hasAllowedKeys = hasAllowedKmsKeys(allowedKmsKeys);
+    boolean isAwsS3 = region != null && accountId != null;
+
+    // Nothing to do if no keys are configured and not AWS S3
+    if (!hasCurrentKey && !hasAllowedKeys && !isAwsS3) {
+      return;
+    }
+
+    IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
 
     if (hasCurrentKey) {
       addKmsKeyResource(kmsKeyArn, allowKms);
@@ -311,16 +318,16 @@ public class AwsCredentialsStorageIntegration
       addAllowedKmsKeyResources(allowedKmsKeys, allowKms);
     }
 
-    // Add KMS statement if we have any KMS key configuration
-    if (hasCurrentKey || hasAllowedKeys) {
+    // Only add wildcard KMS access for read-only operations on AWS S3 when no specific keys are
+    // configured. This does not apply to services like Minio where region and accountId are not
+    // available.
+    boolean shouldAddWildcard = !hasCurrentKey && !hasAllowedKeys && !canWrite && isAwsS3;
+    if (shouldAddWildcard) {
+      addAllKeysResource(region, accountId, allowKms);
+    }
+
+    if (hasCurrentKey || hasAllowedKeys || shouldAddWildcard) {
       policyBuilder.addStatement(allowKms.build());
-    } else if (!canWrite) {
-      // Only add wildcard KMS access for read-only operations when no specific keys are configured
-      // this check is for minio because it doesn't have region or account id
-      if (region != null && accountId != null) {
-        addAllKeysResource(region, accountId, allowKms);
-        policyBuilder.addStatement(allowKms.build());
-      }
     }
   }
 
@@ -328,13 +335,14 @@ public class AwsCredentialsStorageIntegration
     IamStatement.Builder allowKms =
         IamStatement.builder()
             .effect(IamEffect.ALLOW)
-            .addAction("kms:GenerateDataKeyWithoutPlaintext")
             .addAction("kms:DescribeKey")
-            .addAction("kms:Decrypt")
-            .addAction("kms:GenerateDataKey");
+            .addAction("kms:Decrypt");
 
     if (canEncrypt) {
-      allowKms.addAction("kms:Encrypt");
+      allowKms
+          .addAction("kms:Encrypt")
+          .addAction("kms:GenerateDataKey")
+          .addAction("kms:GenerateDataKeyWithoutPlaintext");
     }
 
     return allowKms;
