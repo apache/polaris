@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.persistence.relational.jdbc;
 
+import static org.apache.polaris.core.auth.AuthBootstrapUtil.createPolarisPrincipalForRealm;
+
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -181,8 +183,14 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
         }
         initializeForRealm(
             datasourceOperations, realmContext, bootstrapOptions.rootCredentialsSet());
+
+        PolarisMetaStoreManager metaStoreManager =
+            metaStoreManagerMap.get(realmContext.getRealmIdentifier());
+        BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
+        PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
+
         PrincipalSecretsResult secretsResult =
-            bootstrapServiceAndCreatePolarisPrincipalForRealm(realmContext);
+            createPolarisPrincipalForRealm(metaStoreManager, polarisContext);
         results.put(realm, secretsResult);
       }
     }
@@ -242,36 +250,6 @@ public class JdbcMetaStoreManagerFactory implements MetaStoreManagerFactory {
     }
 
     return entityCacheMap.get(realmContext.getRealmIdentifier());
-  }
-
-  /**
-   * This method bootstraps service for a given realm: i.e. creates all the needed entities in the
-   * metastore and creates a root service principal.
-   */
-  private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
-      RealmContext realmContext) {
-    // While bootstrapping we need to act as a fake privileged context since the real
-    // CallContext may not have been resolved yet.
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerMap.get(realmContext.getRealmIdentifier());
-    BasePersistence metaStore = sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-    PolarisCallContext polarisContext = new PolarisCallContext(realmContext, metaStore);
-
-    Optional<PrincipalEntity> preliminaryRootPrincipal =
-        metaStoreManager.findRootPrincipal(polarisContext);
-    if (preliminaryRootPrincipal.isPresent()) {
-      String overrideMessage =
-          "It appears this metastore manager has already been bootstrapped. "
-              + "To continue bootstrapping, please first purge the metastore with the `purge` command.";
-      LOGGER.error("\n\n {} \n\n", overrideMessage);
-      throw new IllegalArgumentException(overrideMessage);
-    }
-
-    metaStoreManager.bootstrapPolarisService(polarisContext);
-
-    PrincipalEntity rootPrincipal =
-        metaStoreManager.findRootPrincipal(polarisContext).orElseThrow();
-    return metaStoreManager.loadPrincipalSecrets(polarisContext, rootPrincipal.getClientId());
   }
 
   /**
