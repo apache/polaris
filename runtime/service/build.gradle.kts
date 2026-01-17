@@ -31,7 +31,7 @@ dependencies {
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
 
-  runtimeOnly(project(":polaris-relational-jdbc"))
+  implementation(project(":polaris-relational-jdbc"))
 
   implementation(project(":polaris-runtime-defaults"))
   implementation(project(":polaris-runtime-common"))
@@ -56,6 +56,7 @@ dependencies {
   implementation("io.quarkus:quarkus-micrometer-registry-prometheus")
   implementation("io.quarkus:quarkus-oidc")
   implementation("io.quarkus:quarkus-opentelemetry")
+  implementation("io.quarkus:quarkus-scheduler")
   implementation("io.quarkus:quarkus-security")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
   implementation("io.quarkus:quarkus-smallrye-fault-tolerance")
