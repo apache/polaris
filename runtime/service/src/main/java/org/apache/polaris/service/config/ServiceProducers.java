@@ -31,6 +31,8 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -79,6 +81,7 @@ import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
+import org.apache.polaris.service.reporting.CompositeMetricsReporter;
 import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
@@ -273,7 +276,7 @@ public class ServiceProducers {
    */
   public void maybeBootstrap(
       @Observes Startup event,
-      Bootstrapper bootstrapper,
+      MetaStoreManagerFactory factory,
       PersistenceConfiguration config,
       RealmContextConfiguration realmContextConfiguration) {
     var rootCredentialsSet = RootCredentialsSet.fromEnvironment();
@@ -287,7 +290,7 @@ public class ServiceProducers {
           RootCredentialsSet.ENVIRONMENT_VARIABLE,
           RootCredentialsSet.SYSTEM_PROPERTY);
 
-      var result = bootstrapper.bootstrapRealms(realmIds, rootCredentialsSet);
+      var result = factory.bootstrapRealms(realmIds, rootCredentialsSet);
 
       result.forEach(
           (realm, secrets) -> {
@@ -435,6 +438,57 @@ public class ServiceProducers {
   @ApplicationScoped
   public PolarisMetricsReporter metricsReporter(
       MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
-    return reporters.select(Identifier.Literal.of(config.type())).get();
+    String type = config.type();
+
+    if ("composite".equals(type)) {
+      List<String> targets = config.targets();
+      if (targets == null || targets.isEmpty()) {
+        LOGGER.warn(
+            "Composite metrics reporter configured but no targets specified. "
+                + "Falling back to default reporter.");
+        return reporters.select(Identifier.Literal.of("default")).get();
+      }
+
+      List<PolarisMetricsReporter> delegates = new ArrayList<>();
+      for (String target : targets) {
+        if (target == null || target.isBlank()) {
+          continue;
+        }
+        String trimmedTarget = target.trim();
+        // Avoid infinite recursion - don't allow composite as a target
+        if ("composite".equals(trimmedTarget)) {
+          LOGGER.warn("Ignoring 'composite' as a target - would cause infinite recursion");
+          continue;
+        }
+        try {
+          PolarisMetricsReporter delegate =
+              reporters.select(Identifier.Literal.of(trimmedTarget)).get();
+          delegates.add(delegate);
+          LOGGER.info("Added metrics reporter target: {}", trimmedTarget);
+        } catch (Exception e) {
+          LOGGER.error(
+              "Failed to instantiate metrics reporter for target '{}': {}",
+              trimmedTarget,
+              e.getMessage());
+        }
+      }
+
+      if (delegates.isEmpty()) {
+        LOGGER.warn("No valid targets for composite reporter. Falling back to default reporter.");
+        return reporters.select(Identifier.Literal.of("default")).get();
+      }
+
+      return new CompositeMetricsReporter(delegates);
+    }
+
+    try {
+      return reporters.select(Identifier.Literal.of(type)).get();
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to instantiate metrics reporter for type '{}': {}. Falling back to default.",
+          type,
+          e.getMessage());
+      return reporters.select(Identifier.Literal.of("default")).get();
+    }
   }
 }
