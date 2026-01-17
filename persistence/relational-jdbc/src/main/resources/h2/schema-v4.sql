@@ -17,14 +17,14 @@
 -- under the License.
 --
 
+-- Changes from v2:
+--  * Added `events` table
+--  * Added `idempotency_records` table for REST idempotency
 -- Changes from v3:
---   * Added `events` table
---   * Added `idempotency_records` table for REST idempotency
---   * Added `scan_metrics_report` table for scan metrics as first-class entities
---   * Added `scan_metrics_report_roles` junction table for principal roles
---   * Added `commit_metrics_report` table for commit metrics as first-class entities
---   * Added `commit_metrics_report_roles` junction table for principal roles
--- ============================================================================
+--  * Added `scan_metrics_report` table for scan metrics as first-class entities
+--  * Added `scan_metrics_report_roles` junction table for principal roles
+--  * Added `commit_metrics_report` table for commit metrics as first-class entities
+--  * Added `commit_metrics_report_roles` junction table for principal roles
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET SCHEMA POLARIS_SCHEMA;
@@ -127,10 +127,6 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
 
 CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, policy_type_code, policy_catalog_id, policy_id, target_catalog_id, target_id);
 
--- ============================================================================
--- EVENTS TABLE (NEW in v4)
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
     catalog_id TEXT NOT NULL,
@@ -172,36 +168,6 @@ CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
     ON idempotency_records (realm_id, expires_at);
 
 -- ============================================================================
--- IDEMPOTENCY RECORDS TABLE (NEW in v4)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS idempotency_records (
-    realm_id TEXT NOT NULL,
-    idempotency_key TEXT NOT NULL,
-    operation_type TEXT NOT NULL,
-    resource_id TEXT NOT NULL, -- normalized request-derived resource identifier (not a generated entity id)
-
-    -- Finalization/replay
-    http_status INTEGER,       -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
-    error_subtype TEXT,        -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
-    response_summary TEXT,     -- minimal body to reproduce equivalent response (JSON string)
-    response_headers TEXT,     -- small whitelisted headers to replay (JSON string)
-    finalized_at TIMESTAMP,    -- when http_status was written
-
-    -- Liveness/ops
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    heartbeat_at TIMESTAMP,  -- updated by owner while IN_PROGRESS
-    executor_id TEXT,        -- owner pod/worker id
-    expires_at TIMESTAMP,
-
-    PRIMARY KEY (realm_id, idempotency_key)
-);
-
-CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
-    ON idempotency_records (realm_id, expires_at);
-
--- ============================================================================
 -- METRICS TABLES (NEW in v4)
 -- ============================================================================
 
@@ -209,9 +175,10 @@ CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
 CREATE TABLE IF NOT EXISTS scan_metrics_report (
     report_id TEXT NOT NULL,
     realm_id TEXT NOT NULL,
-    catalog_id BIGINT NOT NULL,
+    catalog_id TEXT NOT NULL,
+    catalog_name TEXT NOT NULL,
     namespace TEXT NOT NULL,
-    table_id BIGINT NOT NULL,
+    table_name TEXT NOT NULL,
 
     -- Report metadata
     timestamp_ms BIGINT NOT NULL,
@@ -279,9 +246,10 @@ COMMENT ON TABLE scan_metrics_report_roles IS 'Activated principal roles for sca
 CREATE TABLE IF NOT EXISTS commit_metrics_report (
     report_id TEXT NOT NULL,
     realm_id TEXT NOT NULL,
-    catalog_id BIGINT NOT NULL,
+    catalog_id TEXT NOT NULL,
+    catalog_name TEXT NOT NULL,
     namespace TEXT NOT NULL,
-    table_id BIGINT NOT NULL,
+    table_name TEXT NOT NULL,
 
     -- Report metadata
     timestamp_ms BIGINT NOT NULL,

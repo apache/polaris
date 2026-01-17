@@ -16,20 +16,14 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
--- ============================================================================
--- POLARIS JDBC SCHEMA VERSION 4 (PostgreSQL)
--- ============================================================================
--- This schema is SELF-CONTAINED and can be used for fresh installs.
--- Each schema version includes ALL tables, not just incremental changes.
---
+-- Changes from v2:
+--  * Added `events` table
+--  * Added `idempotency_records` table for REST idempotency
 -- Changes from v3:
---   * Added `events` table
---   * Added `idempotency_records` table for REST idempotency
---   * Added `scan_metrics_report` table for scan metrics as first-class entities
---   * Added `scan_metrics_report_roles` junction table for principal roles
---   * Added `commit_metrics_report` table for commit metrics as first-class entities
---   * Added `commit_metrics_report_roles` junction table for principal roles
--- ============================================================================
+--  * Added `scan_metrics_report` table for scan metrics as first-class entities
+--  * Added `scan_metrics_report_roles` junction table for principal roles
+--  * Added `commit_metrics_report` table for commit metrics as first-class entities
+--  * Added `commit_metrics_report_roles` junction table for principal roles
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET search_path TO POLARIS_SCHEMA;
@@ -133,10 +127,6 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
 
 CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, policy_type_code, policy_catalog_id, policy_id, target_catalog_id, target_id);
 
--- ============================================================================
--- EVENTS TABLE (NEW in v4)
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
     catalog_id TEXT NOT NULL,
@@ -151,10 +141,7 @@ CREATE TABLE IF NOT EXISTS events (
     PRIMARY KEY (event_id)
 );
 
--- ============================================================================
--- IDEMPOTENCY RECORDS TABLE (NEW in v4)
--- ============================================================================
-
+-- Idempotency records (key-only idempotency; durable replay)
 CREATE TABLE IF NOT EXISTS idempotency_records (
     realm_id TEXT NOT NULL,
     idempotency_key TEXT NOT NULL,
@@ -190,9 +177,10 @@ CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
 CREATE TABLE IF NOT EXISTS scan_metrics_report (
     report_id TEXT NOT NULL,
     realm_id TEXT NOT NULL,
-    catalog_id BIGINT NOT NULL,
+    catalog_id TEXT NOT NULL,
+    catalog_name TEXT NOT NULL,
     namespace TEXT NOT NULL,
-    table_id BIGINT NOT NULL,
+    table_name TEXT NOT NULL,
 
     -- Report metadata
     timestamp_ms BIGINT NOT NULL,
@@ -266,9 +254,10 @@ COMMENT ON TABLE scan_metrics_report_roles IS 'Activated principal roles for sca
 CREATE TABLE IF NOT EXISTS commit_metrics_report (
     report_id TEXT NOT NULL,
     realm_id TEXT NOT NULL,
-    catalog_id BIGINT NOT NULL,
+    catalog_id TEXT NOT NULL,
+    catalog_name TEXT NOT NULL,
     namespace TEXT NOT NULL,
-    table_id BIGINT NOT NULL,
+    table_name TEXT NOT NULL,
 
     -- Report metadata
     timestamp_ms BIGINT NOT NULL,
