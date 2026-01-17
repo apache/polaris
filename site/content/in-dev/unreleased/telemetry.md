@@ -191,6 +191,185 @@ polaris.log.mdc.region=us-west-2
 
 MDC context is propagated across threads, including in `TaskExecutor` threads.
 
+## Compute Client Audit Reporting
+
+Polaris supports end-to-end audit correlation between catalog operations, credential vending, and
+compute engine metrics reports. This enables organizations to trace data access from the initial
+catalog request through to actual S3/GCS/Azure storage access.
+
+### Metrics Reporting Endpoint
+
+Compute engines can report scan and commit metrics to Polaris using the standard Iceberg REST
+Catalog metrics endpoint:
+
+```
+POST /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics
+```
+
+**Request Body**: A `ReportMetricsRequest` containing either a `ScanReport` or `CommitReport`:
+
+```json
+{
+  "report-type": "scan-report",
+  "table-name": "my_table",
+  "snapshot-id": 123456789,
+  "schema-id": 0,
+  "projected-field-ids": [1, 2, 3],
+  "projected-field-names": ["id", "name", "value"],
+  "filter": {"type": "always-true"},
+  "metrics": {
+    "result-data-files": {"unit": "count", "value": 10},
+    "total-file-size-bytes": {"unit": "bytes", "value": 1048576}
+  },
+  "metadata": {
+    "trace-id": "abcdef1234567890abcdef1234567890",
+    "client-app": "spark-3.5"
+  }
+}
+```
+
+**Response**: `204 No Content` on success.
+
+The `metadata` map in the report can contain a `trace-id` for correlation with other audit events.
+This trace ID is extracted and stored in the event's `additional_properties` with a `report.` prefix.
+
+### Trace Correlation
+
+When OpenTelemetry is enabled, Polaris captures the `trace_id` at multiple points:
+
+1. **Catalog Operations**: Events like `loadTable`, `createTable` include the OpenTelemetry trace
+   context in their metadata.
+2. **Credential Vending**: When AWS STS session tags are enabled, the `trace_id` is included as a
+   session tag (`polaris:trace_id`) in the vended credentials. This appears in AWS CloudTrail logs.
+3. **Metrics Reports**: When compute engines report scan/commit metrics back to Polaris, the
+   `reportMetrics` events capture both the OpenTelemetry trace context from HTTP headers and any
+   `trace-id` passed in the report's `metadata` map.
+
+### Enabling Session Tags for AWS
+
+To enable session tags (including trace_id) in AWS STS credentials, set the following feature flag:
+
+```properties
+polaris.features."INCLUDE_SESSION_TAGS_IN_SUBSCOPED_CREDENTIAL"=true
+```
+
+This adds the following tags to all STS AssumeRole requests:
+
+- `polaris:catalog` - The catalog name
+- `polaris:namespace` - The namespace being accessed
+- `polaris:table` - The table name
+- `polaris:principal` - The authenticated principal
+- `polaris:roles` - The activated principal roles
+- `polaris:trace_id` - The OpenTelemetry trace ID
+
+These tags appear in AWS CloudTrail logs, enabling correlation with Polaris audit events.
+
+**Note**: Enabling session tags requires the IAM role trust policy to allow the `sts:TagSession`
+action. This feature may also reduce credential caching effectiveness since credentials become
+specific to each table/namespace/role combination.
+
+### Compute Engine Integration
+
+For end-to-end trace correlation, compute engines should propagate the W3C Trace Context headers
+when making requests to Polaris. The standard headers are:
+
+- `traceparent`: Contains the trace ID, parent span ID, and trace flags
+- `tracestate`: Optional vendor-specific trace information
+
+#### Apache Spark
+
+Spark can propagate trace context using the OpenTelemetry Java agent. Add the agent to your Spark
+submit command:
+
+```bash
+spark-submit \
+  --conf "spark.driver.extraJavaOptions=-javaagent:/path/to/opentelemetry-javaagent.jar" \
+  --conf "spark.executor.extraJavaOptions=-javaagent:/path/to/opentelemetry-javaagent.jar" \
+  -Dotel.service.name=spark-app \
+  -Dotel.exporter.otlp.endpoint=http://collector:4317 \
+  your-application.jar
+```
+
+Alternatively, configure the agent via environment variables:
+
+```bash
+export OTEL_SERVICE_NAME=spark-app
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
+export JAVA_TOOL_OPTIONS="-javaagent:/path/to/opentelemetry-javaagent.jar"
+```
+
+#### Trino
+
+Trino supports OpenTelemetry tracing with the following configuration in `config.properties`:
+
+```properties
+tracing.enabled=true
+tracing.exporter.endpoint=http://collector:4317
+```
+
+#### Flink
+
+Flink can be configured with OpenTelemetry using the Java agent:
+
+```bash
+-javaagent:/path/to/opentelemetry-javaagent.jar \
+-Dotel.service.name=flink-job \
+-Dotel.exporter.otlp.endpoint=http://collector:4317
+```
+
+### Correlating Audit Events
+
+With trace correlation enabled, you can join events across systems:
+
+1. **Polaris Events**: Query the events table for operations with a specific `trace_id`
+2. **CloudTrail Logs**: Filter by the `polaris:trace_id` session tag
+3. **Compute Engine Logs**: Search for the same trace ID in engine logs
+
+Example queries to find all Polaris events for a trace:
+
+**PostgreSQL** (using JSON operators):
+```sql
+SELECT * FROM polaris_schema.events
+WHERE additional_properties->>'otel.trace_id' = '<trace-id>'
+   OR additional_properties->>'report.trace-id' = '<trace-id>'
+ORDER BY timestamp_ms;
+```
+
+**H2/Generic SQL** (using LIKE pattern matching):
+```sql
+SELECT * FROM polaris_schema.events
+WHERE additional_properties LIKE '%<trace-id>%'
+ORDER BY timestamp_ms;
+```
+
+### Metrics Event Data
+
+The `AfterReportMetricsEvent` captures the following data in `additional_properties`:
+
+**For ScanReports:**
+- `report_type`: "scan"
+- `snapshot_id`: The snapshot ID being scanned
+- `schema_id`: The schema ID
+- `result_data_files`: Number of data files in the scan result
+- `result_delete_files`: Number of delete files in the scan result
+- `total_file_size_bytes`: Total size of files scanned
+- `scanned_data_manifests`: Number of data manifests scanned
+- `skipped_data_manifests`: Number of data manifests skipped
+- `report.*`: Any metadata from the report's metadata map (e.g., `report.trace-id`)
+
+**For CommitReports:**
+- `report_type`: "commit"
+- `snapshot_id`: The new snapshot ID
+- `sequence_number`: The sequence number
+- `operation`: The operation type (e.g., "append", "overwrite")
+- `added_data_files`: Number of data files added
+- `removed_data_files`: Number of data files removed
+- `added_records`: Number of records added
+- `removed_records`: Number of records removed
+- `added_file_size_bytes`: Total size of files added
+- `removed_file_size_bytes`: Total size of files removed
+- `report.*`: Any metadata from the report's metadata map (e.g., `report.trace-id`)
+
 ## Links
 
 Visit [Using Polaris with telemetry tools]({{% relref "getting-started/using-polaris/telemetry-tools" %}}) to see sample Polaris config with Prometheus and Jaeger.
