@@ -100,6 +100,7 @@ class InMemoryBufferEventListenerIntegrationTest {
           .put("polaris.features.\"ALLOW_INSECURE_STORAGE_TYPES\"", "true")
           .put("polaris.features.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\",\"S3\"]")
           .put("polaris.features.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true")
+          .put("polaris.features.\"ENABLE_METRICS_EVENT_EMISSION\"", "true")
           .put("polaris.readiness.ignore-severe-issues", "true")
           .build();
     }
