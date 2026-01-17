@@ -516,4 +516,23 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "Helps prevent thundering herd when multiple requests fail simultaneously.")
           .defaultValue(0.5)
           .buildFeatureConfiguration();
+
+  /**
+   * Feature flag to control the emission of BEFORE_REPORT_METRICS and AFTER_REPORT_METRICS events
+   * when the Iceberg REST catalog API's reportMetrics() method is called. When disabled (default),
+   * the reportMetrics() method calls the delegate directly without emitting any events. When
+   * enabled, BEFORE_REPORT_METRICS and AFTER_REPORT_METRICS events are emitted, allowing event
+   * listeners to receive metrics report data for use cases like audit logging and metrics
+   * persistence.
+   */
+  public static final FeatureConfiguration<Boolean> ENABLE_METRICS_EVENT_EMISSION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENABLE_METRICS_EVENT_EMISSION")
+          .description(
+              "If set to true, emit BEFORE_REPORT_METRICS and AFTER_REPORT_METRICS events when "
+                  + "the reportMetrics() API is called. This enables event listeners to receive "
+                  + "metrics report data for use cases like audit logging and metrics persistence. "
+                  + "Defaults to false to ensure backward compatibility.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
 }

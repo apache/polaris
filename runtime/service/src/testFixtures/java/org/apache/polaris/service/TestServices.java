@@ -361,7 +361,8 @@ public record TestServices(
                 catalogService,
                 polarisEventListener,
                 eventMetadataFactory,
-                new DefaultCatalogPrefixParser());
+                new DefaultCatalogPrefixParser(),
+                realmConfig);
         finalRestConfigurationService =
             new IcebergRestConfigurationEventServiceDelegator(
                 catalogService, polarisEventListener, eventMetadataFactory);
