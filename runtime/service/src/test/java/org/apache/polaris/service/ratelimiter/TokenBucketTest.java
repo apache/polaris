@@ -93,6 +93,46 @@ public class TokenBucketTest {
     Assertions.assertEquals(maxTokens, numAcquired.get());
   }
 
+  @Test
+  void testFractionalTokenAccrual() {
+    MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
+    TokenBucket tokenBucket = new TokenBucket(1, 1, clock);
+
+    assertCanAcquire(tokenBucket, 1);
+    assertCannotAcquire(tokenBucket);
+
+    for (int i = 0; i < 9; i++) {
+      clock.add(Duration.ofMillis(100));
+      assertCannotAcquire(tokenBucket);
+    }
+
+    // After 900ms total, we should have 0.9 tokens - not enough yet
+    // Add 100ms more to reach exactly 1 token
+    clock.add(Duration.ofMillis(100));
+    Assertions.assertTrue(tokenBucket.tryAcquire());
+  }
+
+  /**
+   * Verifies that the implementation handles large maxTokens values without overflow. The
+   * implementation uses milli-tokens internally, which guarantees precision for fractional accrual
+   * regardless of the current token count (unlike floating point where adding 0.001 to 1e15 would
+   * be lost due to ULP being ~0.22).
+   */
+  @Test
+  void testLargeMaxTokensNoOverflow() {
+    MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
+    // Use a value close to the limit (Long.MAX_VALUE / 1000)
+    long largeMaxTokens = 9_000_000_000_000_000L; // 9e15, within limit
+    TokenBucket tokenBucket = new TokenBucket(1000, largeMaxTokens, clock);
+
+    // Basic operations should work without overflow
+    Assertions.assertTrue(tokenBucket.tryAcquire());
+
+    // Large time jump should saturate at max, not overflow
+    clock.add(Duration.ofDays(365));
+    Assertions.assertTrue(tokenBucket.tryAcquire());
+  }
+
   private void assertCanAcquire(TokenBucket tokenBucket, int times) {
     for (int i = 0; i < times; i++) {
       Assertions.assertTrue(tokenBucket.tryAcquire());
