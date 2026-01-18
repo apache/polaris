@@ -40,6 +40,11 @@
     "managerFilePatterns": ["(^|/)([\\w-]*)requirements.*\\.txt$"],
   },
 
+  dockerfile: {
+    // Update all dockerfiles
+    "ignorePaths": []
+  },
+
   packageRules: [
     // Check for updates, do not merge automatically. This rule does effectively nothing, but serves as a
     // reference for the kinds of managers used in Polaris.
@@ -51,21 +56,19 @@
         "github-actions"],
       automerge: false, // just be explicit (false is the default)
     },
-
     // Reduce update frequency for a few dependencies that have a quite high release frequency.
-    //   awssdk (release frequency: daily)
+    // awssdk (release frequency: daily)
     {
       matchManagers: ["gradle"],
       matchPackageNames: ["software.amazon.awssdk{/,}**"],
       extends: ["schedule:weekly"],
     },
-    //   boto3 (release frequency: multiple times per week)
+    // boto3 (release frequency: multiple times per week)
     {
       matchManagers: ["pip_requirements", "pip_setup", "uv"],
       matchPackageNames: ["boto3{/,}**"],
       extends: ["schedule:weekly"],
     },
-
     // Quarkus platform + plugin together
     {
       groupName: "Quarkus Platform and Group",
@@ -77,6 +80,7 @@
         "io.quarkus:io.quarkus.gradle.plugin",
       ],
     },
+    // Disable update for openapi-generator-cli due to our OpenAPI spec version
     {
       matchPackageNames: ["openapi-generator-cli"],
       enabled: false
