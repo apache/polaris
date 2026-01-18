@@ -19,7 +19,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   extends: [
-    "config:base",
+    "config:recommended",
     // Required to not pin dependencies to _exact_ versions (pip)
     ":preserveSemverRanges",
     "group:monorepos",
@@ -31,21 +31,13 @@
   // Added for posterity how to let Renovate manage version-branches, assuming that release branches
   // have the `release/` prefix.
   // BE CAREFUL WITH THIS OPTION and make sure that the changes work.
-  baseBranches: [
+  baseBranchPatterns: [
     "main",
   ],
 
   pip_requirements: {
     // fileMatch default: (^|/)([\\w-]*)requirements\\.(txt|pip)$
-    "fileMatch": ["(^|/)([\\w-]*)requirements.*\\.txt$"],
-  },
-
-  docker: {
-    fileMatch: [
-      "(^|/)Dockerfile$",
-      "(^|/)Dockerfile\\.[^/]*$",
-      "(^|/)Dockerfile-[^/]*$"
-    ]
+    "managerFilePatterns": ["(^|/)([\\w-]*)requirements.*\\.txt$"],
   },
 
   packageRules: [
@@ -64,13 +56,13 @@
     //   awssdk (release frequency: daily)
     {
       matchManagers: ["gradle"],
-      matchPackagePrefixes: ["software.amazon.awssdk"],
+      matchPackageNames: ["software.amazon.awssdk{/,}**"],
       extends: ["schedule:weekly"],
     },
     //   boto3 (release frequency: multiple times per week)
     {
       matchManagers: ["pip_requirements", "pip_setup", "uv"],
-      matchPackagePrefixes: ["boto3"],
+      matchPackageNames: ["boto3{/,}**"],
       extends: ["schedule:weekly"],
     },
 
