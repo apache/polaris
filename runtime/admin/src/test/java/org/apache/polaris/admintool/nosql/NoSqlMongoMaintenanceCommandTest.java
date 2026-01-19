@@ -30,26 +30,33 @@ import org.junit.jupiter.api.Test;
 @QuarkusMainTest
 class NoSqlMongoMaintenanceCommandTest {
   @Test
-  @Launch(value = {"help", "maintenance"})
+  @Launch(value = {"help", "nosql"})
   void help(LaunchResult result) {
     assertThat(result.getOutput())
         .contains("Commands:")
-        .contains("log  Show Polaris persistence maintenance log.")
-        .contains("run  Run Polaris persistence maintenance.");
+        .contains("maintenance-log   Show Polaris persistence maintenance log.")
+        .contains("maintenance-run   Run Polaris persistence maintenance.");
   }
 
   @Test
-  @Launch(value = {"maintenance"})
+  @Launch(value = {"nosql"})
   void noArg(LaunchResult result) {
     assertThat(result.getOutput())
-        .contains("Polaris NoSql persistence maintenance has multiple subcommands,")
-        .contains("use the 'help maintenance' command.")
+        .contains("Polaris NoSql persistence has multiple subcommands,")
+        .contains("use the 'help nosql' command.")
+        .contains("Information: selected NoSql persistence backend: MongoDb");
+  }
+
+  @Test
+  @Launch(value = {"nosql", "maintenance-info"})
+  void info(LaunchResult result) {
+    assertThat(result.getOutput())
         .contains("Information: selected NoSql persistence backend: MongoDb")
         .contains("Maintenance configuration:");
   }
 
   @Test
-  @Launch(value = {"maintenance", "log"})
+  @Launch(value = {"nosql", "maintenance-log"})
   void logOfNothing(LaunchResult result) {
     assertThat(result.getOutput())
         .contains("Recorded Polaris NoSql persistence maintenance runs:")
@@ -57,7 +64,7 @@ class NoSqlMongoMaintenanceCommandTest {
   }
 
   @Test
-  @Launch(value = {"maintenance", "run"})
+  @Launch(value = {"nosql", "maintenance-run"})
   void run(LaunchResult result) {
     assertThat(result.getOutput())
         .contains("Maintenance configuration:")

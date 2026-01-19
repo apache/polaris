@@ -16,34 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.maintenance;
+package org.apache.polaris.admintool.nosql;
 
+import jakarta.inject.Inject;
+import org.apache.polaris.admintool.nosql.maintenance.NoSqlMaintenanceInfoCommand;
+import org.apache.polaris.admintool.nosql.maintenance.NoSqlMaintenanceLogCommand;
+import org.apache.polaris.admintool.nosql.maintenance.NoSqlMaintenanceRunCommand;
+import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import picocli.CommandLine;
 
 @CommandLine.Command(
-    name = "log",
+    name = "nosql",
+    subcommands = {
+      NoSqlMaintenanceInfoCommand.class,
+      NoSqlMaintenanceLogCommand.class,
+      NoSqlMaintenanceRunCommand.class,
+    },
     mixinStandardHelpOptions = true,
-    description = "Show Polaris persistence maintenance log.")
-public class NoSqlMaintenanceLogCommand extends BaseMaintenanceCommand {
-
-  @CommandLine.Option(
-      names = {"--show-expert"},
-      description = "Show expert values, which only reflect internal operations.")
-  boolean showExpert;
+    description = "Polaris NoSQL persistence.")
+public class NoSqlCommand extends BaseNoSqlCommand {
+  @Inject protected Backend backend;
 
   @Override
   public Integer call() {
-    checkInMemory();
-
-    var infos = maintenanceService.maintenanceRunLog();
-    var out = spec.commandLine().getOut();
-
-    out.println("Recorded Polaris NoSql persistence maintenance runs:");
-    if (!infos.isEmpty()) {
-      infos.forEach(i -> printRunInformation(i, showExpert));
-    } else {
-      out.println("(none)");
-    }
+    printNoSqlInfo();
 
     return 0;
   }
