@@ -249,6 +249,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Long> POLARIS_TASK_TIMEOUT_MILLIS =
+      PolarisConfiguration.<Long>builder()
+          .key("POLARIS_TASK_TIMEOUT_MILLIS")
+          .description(
+              "Polaris task expiry timeout (milliseconds). Older unfinished tasks may not be processed.")
+          .defaultValue(300_000L)
+          .buildFeatureConfiguration();
+
   public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =
       PolarisConfiguration.<Integer>builder()
           .key("STORAGE_CREDENTIAL_DURATION_SECONDS")

@@ -38,6 +38,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -555,9 +556,7 @@ record NoSqlMetaStoreManager(
               long taskAgeTimeout =
                   callCtx
                       .getRealmConfig()
-                      .getConfig(
-                          PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
-                          PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
+                      .getConfig(FeatureConfiguration.POLARIS_TASK_TIMEOUT_MILLIS);
               return taskState == null
                   || taskState.executor == null
                   || clock.millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
