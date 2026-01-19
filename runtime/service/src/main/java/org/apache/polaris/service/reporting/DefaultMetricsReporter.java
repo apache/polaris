@@ -74,4 +74,3 @@ public class DefaultMetricsReporter implements PolarisMetricsReporter {
     reportConsumer.accept(catalogName, table, metricsReport, receivedTimestamp);
   }
 }
-
