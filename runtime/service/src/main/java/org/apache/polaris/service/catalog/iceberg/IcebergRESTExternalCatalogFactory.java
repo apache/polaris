@@ -20,6 +20,8 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.HTTPClient;
@@ -38,7 +40,9 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
 
   @Override
   public Catalog createCatalog(
-      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
     if (!(connectionConfig instanceof IcebergRestConnectionConfigInfoDpo icebergConfig)) {
       throw new IllegalArgumentException(
           "Expected IcebergRestConnectionConfigInfoDpo but got: "
@@ -54,16 +58,27 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
                     .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
                     .build());
 
-    federatedCatalog.initialize(
-        icebergConfig.getRemoteCatalogName(),
-        connectionConfig.asIcebergCatalogProperties(polarisCredentialManager));
+    // Merge properties with precedence:
+    // 1. Start with ExternalCatalog.properties (pass-through for proxy, timeouts, etc.)
+    // 2. Overlay with connectionConfig properties (URI, auth, etc.) which take precedence
+    Map<String, String> mergedProperties = new HashMap<>();
+    if (catalogProperties != null) {
+      mergedProperties.putAll(catalogProperties);
+    }
+    // Connection config properties override catalog properties to ensure required
+    // settings like URI and authentication cannot be accidentally overwritten
+    mergedProperties.putAll(connectionConfig.asIcebergCatalogProperties(polarisCredentialManager));
+
+    federatedCatalog.initialize(icebergConfig.getRemoteCatalogName(), mergedProperties);
 
     return federatedCatalog;
   }
 
   @Override
   public GenericTableCatalog createGenericCatalog(
-      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
     // TODO implement
     throw new UnsupportedOperationException(
         "Generic table federation to this catalog is not supported.");

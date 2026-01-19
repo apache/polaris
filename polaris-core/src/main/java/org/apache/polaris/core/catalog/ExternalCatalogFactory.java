@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.catalog;
 
+import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
@@ -36,11 +37,16 @@ public interface ExternalCatalogFactory {
    * @param connectionConfig the connection configuration
    * @param polarisCredentialManager the credential manager for generating connection credentials
    *     that Polaris uses to access external systems
+   * @param catalogProperties additional properties from the ExternalCatalog entity that should be
+   *     passed through to the underlying catalog (e.g., rest.client.proxy.*, timeout settings).
+   *     These are merged with lower precedence than connection config properties.
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
    */
   Catalog createCatalog(
-      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager);
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties);
 
   /**
    * Creates a generic table catalog for the given connection configuration.
@@ -48,9 +54,13 @@ public interface ExternalCatalogFactory {
    * @param connectionConfig the connection configuration
    * @param polarisCredentialManager the credential manager for generating connection credentials
    *     that Polaris uses to access external systems
+   * @param catalogProperties additional properties from the ExternalCatalog entity that should be
+   *     passed through to the underlying catalog
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
    */
   GenericTableCatalog createGenericCatalog(
-      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager);
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties);
 }

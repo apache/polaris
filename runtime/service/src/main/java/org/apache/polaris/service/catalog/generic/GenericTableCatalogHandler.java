@@ -98,10 +98,13 @@ public class GenericTableCatalogHandler extends CatalogHandler {
           externalCatalogFactories.select(
               Identifier.Literal.of(connectionType.getFactoryIdentifier()));
       if (externalCatalogFactory.isResolvable()) {
+        // Pass through catalog properties (e.g., rest.client.proxy.*, timeout settings)
+        Map<String, String> catalogProperties = resolvedCatalogEntity.getPropertiesAsMap();
         federatedCatalog =
             externalCatalogFactory
                 .get()
-                .createGenericCatalog(connectionConfigInfoDpo, getPolarisCredentialManager());
+                .createGenericCatalog(
+                    connectionConfigInfoDpo, getPolarisCredentialManager(), catalogProperties);
       } else {
         throw new UnsupportedOperationException(
             "External catalog factory for type '" + connectionType + "' is unavailable.");

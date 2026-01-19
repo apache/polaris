@@ -20,6 +20,7 @@ package org.apache.polaris.extensions.federation.hive;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.hive.HiveCatalog;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
@@ -42,7 +43,8 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
   @Override
   public Catalog createCatalog(
       ConnectionConfigInfoDpo connectionConfigInfoDpo,
-      PolarisCredentialManager polarisCredentialManager) {
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
     // Currently, Polaris supports Hive federation only via IMPLICIT authentication.
     // Hence, prior to initializing the configuration, ensure that the catalog uses
     // IMPLICIT authentication.
@@ -76,7 +78,9 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
 
   @Override
   public GenericTableCatalog createGenericCatalog(
-      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
     // TODO implement
     throw new UnsupportedOperationException(
         "Generic table federation to this catalog is not supported.");
