@@ -71,7 +71,6 @@ import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
@@ -108,7 +107,6 @@ public class IcebergCatalogAdapter
   private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final PolarisMetricsReporter metricsReporter;
   private final Clock clock;
-  private final EventAttributeMap eventAttributeMap;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -127,8 +125,7 @@ public class IcebergCatalogAdapter
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       StorageAccessConfigProvider storageAccessConfigProvider,
       PolarisMetricsReporter metricsReporter,
-      Clock clock,
-      EventAttributeMap eventAttributeMap) {
+      Clock clock) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -146,7 +143,6 @@ public class IcebergCatalogAdapter
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.metricsReporter = metricsReporter;
     this.clock = clock;
-    this.eventAttributeMap = eventAttributeMap;
   }
 
   /**
@@ -195,8 +191,7 @@ public class IcebergCatalogAdapter
         reservedProperties,
         catalogHandlerUtils,
         externalCatalogFactories,
-        storageAccessConfigProvider,
-        eventAttributeMap);
+        storageAccessConfigProvider);
   }
 
   @Override
@@ -727,9 +722,6 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    // Validate that the caller is authenticated (consistent with other endpoints)
-    validatePrincipal(securityContext);
-
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));

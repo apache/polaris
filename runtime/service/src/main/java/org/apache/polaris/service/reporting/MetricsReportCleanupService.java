@@ -44,8 +44,8 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  * polaris:
- *   iceberg-metrics:
- *     reporting:
+ *   metrics:
+ *     processor:
  *       type: persistence
  *       retention:
  *         enabled: true
@@ -59,25 +59,25 @@ public class MetricsReportCleanupService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsReportCleanupService.class);
 
-  private final MetricsReportingConfiguration config;
+  private final MetricsProcessorConfiguration config;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final RealmContextConfiguration realmContextConfiguration;
   private final AtomicBoolean running = new AtomicBoolean(false);
 
   @Inject
   public MetricsReportCleanupService(
-      MetricsReportingConfiguration config,
+      MetricsProcessorConfiguration config,
       MetaStoreManagerFactory metaStoreManagerFactory,
       RealmContextConfiguration realmContextConfiguration) {
     this.config = config;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.realmContextConfiguration = realmContextConfiguration;
 
-    if (config.retention().enabled()) {
+    if (config.retention().isPresent() && config.retention().get().enabled()) {
       LOGGER.info(
           "Metrics report cleanup enabled with retention period: {}, cleanup interval: {}",
-          config.retention().retentionPeriod(),
-          config.retention().cleanupInterval());
+          config.retention().get().retentionPeriod(),
+          config.retention().get().cleanupInterval());
     } else {
       LOGGER.debug("Metrics report cleanup is disabled");
     }
@@ -87,9 +87,9 @@ public class MetricsReportCleanupService {
    * Scheduled cleanup job that runs at the configured interval. The actual interval is configured
    * via the retention.cleanup-interval property.
    */
-  @Scheduled(every = "${polaris.iceberg-metrics.reporting.retention.cleanup-interval:6h}")
+  @Scheduled(every = "${polaris.metrics.processor.retention.cleanup-interval:6h}")
   public void cleanupOldMetricsReports() {
-    if (!config.retention().enabled()) {
+    if (config.retention().isEmpty() || !config.retention().get().enabled()) {
       LOGGER.trace("Metrics cleanup is disabled, skipping");
       return;
     }
@@ -108,7 +108,7 @@ public class MetricsReportCleanupService {
   }
 
   private void performCleanup() {
-    Duration retentionPeriod = config.retention().retentionPeriod();
+    Duration retentionPeriod = config.retention().get().retentionPeriod();
     long cutoffTimestamp = Instant.now().minus(retentionPeriod).toEpochMilli();
     List<String> realmIds = realmContextConfiguration.realms();
 
@@ -163,7 +163,7 @@ public class MetricsReportCleanupService {
    *     failed
    */
   public int triggerCleanup() {
-    if (!config.retention().enabled()) {
+    if (config.retention().isEmpty() || !config.retention().get().enabled()) {
       LOGGER.warn("Cannot trigger cleanup: retention is disabled");
       return -1;
     }
@@ -174,7 +174,7 @@ public class MetricsReportCleanupService {
     }
 
     try {
-      Duration retentionPeriod = config.retention().retentionPeriod();
+      Duration retentionPeriod = config.retention().get().retentionPeriod();
       long cutoffTimestamp = Instant.now().minus(retentionPeriod).toEpochMilli();
       List<String> realmIds = realmContextConfiguration.realms();
 
