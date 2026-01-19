@@ -64,6 +64,7 @@ params:
   # at the very right in the navbar.
   active_releases:
     # Mention all active releases here, in semver descending order
+    - "1.3.0"
     - "1.2.0"
     - "1.1.0"
     - "1.0.1"
@@ -104,6 +105,10 @@ menu:
       url: "/in-dev/unreleased/"
       parent: "doc"
       weight: 1
+    - name: "1.3.0"
+      url: "/releases/1.3.0/"
+      parent: "doc"
+      weight: 995
     - name: "1.2.0"
       url: "/releases/1.2.0/"
       parent: "doc"
@@ -277,6 +282,9 @@ markup:
     style: 'monokai'
     tabWidth: 4
   goldmark:
+    parser:
+      autoHeadingID: true
+      autoHeadingIDType: github
     renderer:
       unsafe: true
 
