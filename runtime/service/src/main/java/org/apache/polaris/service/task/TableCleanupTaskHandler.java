@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.task;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.TABLE_METADATA_CLEANUP_BATCH_SIZE;
+
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +58,6 @@ public class TableCleanupTaskHandler implements TaskHandler {
   private final Clock clock;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
-  private static final String BATCH_SIZE_CONFIG_KEY = "TABLE_METADATA_CLEANUP_BATCH_SIZE";
 
   public TableCleanupTaskHandler(
       TaskExecutor taskExecutor,
@@ -208,7 +209,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext) {
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
-    int batchSize = callContext.getRealmConfig().getConfig(BATCH_SIZE_CONFIG_KEY, 10);
+    int batchSize = callContext.getRealmConfig().getConfig(TABLE_METADATA_CLEANUP_BATCH_SIZE);
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {
