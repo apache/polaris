@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.maintenance;
+package org.apache.polaris.admintool.nosql.maintenance;
 
 import static org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig.DEFAULT_COUNT_FROM_LAST_RUN_MULTIPLIER;
 import static org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig.DEFAULT_CREATED_AT_GRACE_TIME;
@@ -30,8 +30,7 @@ import static org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceCo
 import jakarta.inject.Inject;
 import java.io.PrintWriter;
 import java.time.Instant;
-import org.apache.polaris.admintool.BaseCommand;
-import org.apache.polaris.persistence.nosql.api.backend.Backend;
+import org.apache.polaris.admintool.nosql.BaseNoSqlCommand;
 import org.apache.polaris.persistence.nosql.api.obj.ObjTypes;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceConfig;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunInformation;
@@ -40,20 +39,9 @@ import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceRunSpec;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
 
 @SuppressWarnings("CdiInjectionPointsInspection")
-public abstract class BaseMaintenanceCommand extends BaseCommand {
+public abstract class BaseNoSqlMaintenanceCommand extends BaseNoSqlCommand {
   @Inject protected MaintenanceService maintenanceService;
-  @Inject protected Backend backend;
   @Inject protected MaintenanceConfig maintenanceConfig;
-
-  protected void checkInMemory() {
-    if ("InMemory".equals(backend.type())) {
-      var err = spec.commandLine().getErr();
-
-      err.println();
-      err.println("Running persistence-maintenance against InMemory is useless...");
-      err.println();
-    }
-  }
 
   protected MaintenanceRunSpec printRealmStates() {
     var out = spec.commandLine().getOut();
