@@ -37,7 +37,7 @@ public class DefaultMetricsReporterTest {
     TableIdentifier table = TableIdentifier.of("testNamespace", "testTable");
     MetricsReport metricsReport = mock(MetricsReport.class);
 
-    reporter.reportMetric(warehouse, table, metricsReport);
+    reporter.reportMetric(warehouse, table, metricsReport, 0L);
 
     verify(mockConsumer).accept(warehouse, table, metricsReport);
   }

@@ -46,7 +46,8 @@ public class DefaultMetricsReporter implements PolarisMetricsReporter {
   }
 
   @Override
-  public void reportMetric(String catalogName, TableIdentifier table, MetricsReport metricsReport) {
+  public void reportMetric(
+      String catalogName, TableIdentifier table, MetricsReport metricsReport, long timestampMs) {
     reportConsumer.accept(catalogName, table, metricsReport);
   }
 }
