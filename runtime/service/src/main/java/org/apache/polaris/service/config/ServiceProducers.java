@@ -78,6 +78,8 @@ import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
+import org.apache.polaris.service.reporting.MetricsProcessor;
+import org.apache.polaris.service.reporting.MetricsProcessorConfiguration;
 import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
@@ -434,5 +436,45 @@ public class ServiceProducers {
   public PolarisMetricsReporter metricsReporter(
       MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
     return reporters.select(Identifier.Literal.of(config.type())).get();
+  }
+
+  /**
+   * Produces the {@link MetricsProcessor} for metrics processing.
+   *
+   * <p>This producer supports the new configuration path: {@code polaris.metrics.processor.type}
+   *
+   * <p>The processor is selected based on the configured type using CDI {@link Identifier}
+   * annotations. Built-in processors include:
+   *
+   * <ul>
+   *   <li>{@code noop} - Discards all metrics (default)
+   *   <li>{@code logging} - Logs metrics to console
+   *   <li>{@code persistence} - Persists to dedicated database tables
+   * </ul>
+   *
+   * <p>Custom processors can be implemented by creating a CDI bean with an {@code @Identifier}
+   * annotation.
+   *
+   * <p>Note: Implementations will be added in subsequent PRs. This producer provides the CDI
+   * infrastructure for the metrics processing system.
+   */
+  @Produces
+  @ApplicationScoped
+  public MetricsProcessor metricsProcessor(
+      MetricsProcessorConfiguration config, @Any Instance<MetricsProcessor> processors) {
+    String type = config.type();
+    LOGGER.info("Initializing metrics processor: type={}", type);
+
+    try {
+      MetricsProcessor processor = processors.select(Identifier.Literal.of(type)).get();
+      LOGGER.info("Successfully initialized metrics processor: {}", type);
+      return processor;
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to instantiate metrics processor for type '{}': {}. Falling back to noop.",
+          type,
+          e.getMessage());
+      return processors.select(Identifier.Literal.of("noop")).get();
+    }
   }
 }

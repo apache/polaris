@@ -231,8 +231,4 @@ public final class EventAttributes {
       new AttributeKey<>("detach_policy_request", DetachPolicyRequest.class);
   public static final AttributeKey<GetApplicablePoliciesResponse> GET_APPLICABLE_POLICIES_RESPONSE =
       new AttributeKey<>("get_applicable_policies_response", GetApplicablePoliciesResponse.class);
-
-  // Metrics reporting attributes
-  public static final AttributeKey<ReportMetricsRequest> REPORT_METRICS_REQUEST =
-      new AttributeKey<>("report_metrics_request", ReportMetricsRequest.class);
 }
