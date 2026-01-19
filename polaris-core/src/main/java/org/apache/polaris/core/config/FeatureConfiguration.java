@@ -516,5 +516,4 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "Helps prevent thundering herd when multiple requests fail simultaneously.")
           .defaultValue(0.5)
           .buildFeatureConfiguration();
-
 }
