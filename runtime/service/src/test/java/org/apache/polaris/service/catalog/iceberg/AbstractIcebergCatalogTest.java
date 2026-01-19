@@ -2552,7 +2552,7 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
 
     // Verify that getStorageAccessConfig was called with WRITE permissions at least twice:
     // 1. during table creation
-    // 2. during table refresh, to update the FileIO with WRITE credentials
+    // 2. during table refresh, to update the FileIO with WRITE permissions
     Mockito.verify(spiedProvider, Mockito.atLeast(2))
         .getStorageAccessConfig(
             Mockito.eq(tableIdentifier),

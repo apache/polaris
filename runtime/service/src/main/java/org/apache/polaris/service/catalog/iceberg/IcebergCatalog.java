@@ -1411,7 +1411,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             });
 
         // After a refresh, re-load the FileIO with the new table metadata properties to
-        // ensure the right configuration is present for subsequent file system interactions.
+        // ensure the right permissions are present for subsequent file system interactions.
         if (currentMetadata != null) {
           tableFileIO =
               loadFileIOForTableLike(
