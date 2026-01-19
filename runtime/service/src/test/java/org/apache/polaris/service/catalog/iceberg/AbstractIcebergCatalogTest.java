@@ -114,6 +114,7 @@ import org.apache.polaris.core.exceptions.CommitConflictException;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
@@ -124,6 +125,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.core.storage.CredentialVendingContext;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
@@ -2502,5 +2504,67 @@ public abstract class AbstractIcebergCatalogTest extends CatalogTests<IcebergCat
         catalog.dropNamespace(Namespace.of("pagination_namespace_" + i));
       }
     }
+  }
+
+  @Test
+  public void testFileIOIsRefreshedOnTableRefresh() {
+    // Catalog use the spied provider to verify internal behavior
+    StorageAccessConfigProvider spiedProvider = spy(storageAccessConfigProvider);
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
+    TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
+    IcebergCatalog catalog =
+        new IcebergCatalog(
+            diagServices,
+            resolverFactory,
+            metaStoreManager,
+            polarisContext,
+            passthroughView,
+            authenticatedRoot,
+            taskExecutor,
+            spiedProvider,
+            fileIOFactory,
+            polarisEventListener,
+            eventMetadataFactory);
+    catalog.setCatalogFileIo(new InMemoryFileIO());
+    catalog.initialize(
+        CATALOG_NAME,
+        Map.of(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    // Create a table
+    TableIdentifier tableIdentifier = TableIdentifier.of(NS, "refresh_test_table");
+    if (requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+    catalog.buildTable(tableIdentifier, SCHEMA).create();
+
+    // Get the table operations
+    IcebergCatalog.BasePolarisTableOperations operations =
+        (IcebergCatalog.BasePolarisTableOperations)
+            ((BaseTable) catalog.loadTable(tableIdentifier)).operations();
+
+    // Verify initial state
+    assertThat(operations.io()).isNotNull();
+
+    // refresh the table
+    operations.refresh();
+
+    // Verify that getStorageAccessConfig was called with WRITE permissions at least twice:
+    // 1. during table creation
+    // 2. during table refresh, to update the FileIO with WRITE credentials
+    Mockito.verify(spiedProvider, Mockito.atLeast(2))
+        .getStorageAccessConfig(
+            Mockito.eq(tableIdentifier),
+            Mockito.anySet(),
+            Mockito.argThat(
+                actions ->
+                    actions.containsAll(
+                        Set.of(
+                            PolarisStorageActions.READ,
+                            PolarisStorageActions.WRITE,
+                            PolarisStorageActions.LIST))),
+            Mockito.any(),
+            Mockito.any(PolarisResolvedPathWrapper.class));
   }
 }
