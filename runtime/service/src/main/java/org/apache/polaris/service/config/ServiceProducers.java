@@ -80,7 +80,8 @@ import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
-import org.apache.polaris.service.reporting.CompositeMetricsReporter;
+import org.apache.polaris.service.reporting.MetricsProcessor;
+import org.apache.polaris.service.reporting.MetricsProcessorConfiguration;
 import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
@@ -432,61 +433,72 @@ public class ServiceProducers {
     executor.close();
   }
 
+  /**
+   * Produces the legacy {@link PolarisMetricsReporter} for backward compatibility.
+   *
+   * <p>This producer supports the old configuration path: {@code
+   * polaris.iceberg-metrics.reporting.type}
+   *
+   * <p>The reporter is selected based on the configured type using CDI {@link Identifier}
+   * annotations.
+   */
   @Produces
   @ApplicationScoped
   public PolarisMetricsReporter metricsReporter(
       MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
     String type = config.type();
-
-    if ("composite".equals(type)) {
-      List<String> targets = config.targets();
-      if (targets == null || targets.isEmpty()) {
-        LOGGER.warn(
-            "Composite metrics reporter configured but no targets specified. "
-                + "Falling back to default reporter.");
-        return reporters.select(Identifier.Literal.of("default")).get();
-      }
-
-      List<PolarisMetricsReporter> delegates = new ArrayList<>();
-      for (String target : targets) {
-        if (target == null || target.isBlank()) {
-          continue;
-        }
-        String trimmedTarget = target.trim();
-        // Avoid infinite recursion - don't allow composite as a target
-        if ("composite".equals(trimmedTarget)) {
-          LOGGER.warn("Ignoring 'composite' as a target - would cause infinite recursion");
-          continue;
-        }
-        try {
-          PolarisMetricsReporter delegate =
-              reporters.select(Identifier.Literal.of(trimmedTarget)).get();
-          delegates.add(delegate);
-          LOGGER.info("Added metrics reporter target: {}", trimmedTarget);
-        } catch (Exception e) {
-          LOGGER.error(
-              "Failed to instantiate metrics reporter for target '{}': {}",
-              trimmedTarget,
-              e.getMessage());
-        }
-      }
-
-      if (delegates.isEmpty()) {
-        LOGGER.warn("No valid targets for composite reporter. Falling back to default reporter.");
-        return reporters.select(Identifier.Literal.of("default")).get();
-      }
-
-      return new CompositeMetricsReporter(delegates);
-    }
+    LOGGER.info("Initializing legacy metrics reporter: type={}", type);
 
     try {
-      return reporters.select(Identifier.Literal.of(type)).get();
+      PolarisMetricsReporter reporter = reporters.select(Identifier.Literal.of(type)).get();
+      LOGGER.info("Successfully initialized legacy metrics reporter: {}", type);
+      return reporter;
     } catch (Exception e) {
       LOGGER.error(
           "Failed to instantiate metrics reporter for type '{}': {}. Falling back to default.",
           type,
           e.getMessage());
       return reporters.select(Identifier.Literal.of("default")).get();
+    }
+  }
+
+  /**
+   * Produces the new {@link MetricsProcessor} for metrics processing.
+   *
+   * <p>This producer supports the new configuration path: {@code polaris.metrics.processor.type}
+   *
+   * <p>The processor is selected based on the configured type using CDI {@link Identifier}
+   * annotations. If the new configuration is not specified, it falls back to using the legacy
+   * {@link PolarisMetricsReporter} via the "legacy" processor.
+   */
+  @Produces
+  @ApplicationScoped
+  public MetricsProcessor metricsProcessor(
+      MetricsProcessorConfiguration processorConfig,
+      MetricsReportingConfiguration reporterConfig,
+      @Any Instance<MetricsProcessor> processors) {
+    String type = processorConfig.type();
+    LOGGER.info("Initializing metrics processor: type={}", type);
+
+    // If using default "noop" processor but old config is set, use legacy processor
+    if ("noop".equals(type) && !"default".equals(reporterConfig.type())) {
+      LOGGER.info(
+          "New processor config is 'noop' but legacy reporter config is '{}'. "
+              + "Using legacy processor for backward compatibility.",
+          reporterConfig.type());
+      type = "legacy";
+    }
+
+    try {
+      MetricsProcessor processor = processors.select(Identifier.Literal.of(type)).get();
+      LOGGER.info("Successfully initialized metrics processor: {}", type);
+      return processor;
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to instantiate metrics processor for type '{}': {}. Falling back to noop.",
+          type,
+          e.getMessage());
+      return processors.select(Identifier.Literal.of("noop")).get();
     }
   }
 }

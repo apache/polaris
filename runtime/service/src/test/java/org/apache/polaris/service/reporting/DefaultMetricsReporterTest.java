@@ -42,3 +42,4 @@ public class DefaultMetricsReporterTest {
     verify(mockConsumer).accept(warehouse, table, metricsReport);
   }
 }
+

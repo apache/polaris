@@ -810,41 +810,9 @@ public class IcebergRestCatalogEventServiceDelegator
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    // Check if metrics event emission is enabled
-    boolean metricsEventEmissionEnabled =
-        realmConfig.getConfig(FeatureConfiguration.ENABLE_METRICS_EVENT_EMISSION);
-
-    // If metrics event emission is disabled, call delegate directly without emitting events
-    if (!metricsEventEmissionEnabled) {
-      return delegate.reportMetrics(
-          prefix, namespace, table, reportMetricsRequest, realmContext, securityContext);
-    }
-
-    // Emit events when feature is enabled
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    Namespace namespaceObj = decodeNamespace(namespace);
-    polarisEventListener.onEvent(
-        new PolarisEvent(
-            PolarisEventType.BEFORE_REPORT_METRICS,
-            eventMetadataFactory.create(),
-            new AttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE, namespaceObj)
-                .put(EventAttributes.TABLE_NAME, table)
-                .put(EventAttributes.REPORT_METRICS_REQUEST, reportMetricsRequest)));
-    Response resp =
-        delegate.reportMetrics(
-            prefix, namespace, table, reportMetricsRequest, realmContext, securityContext);
-    polarisEventListener.onEvent(
-        new PolarisEvent(
-            PolarisEventType.AFTER_REPORT_METRICS,
-            eventMetadataFactory.create(),
-            new AttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE, namespaceObj)
-                .put(EventAttributes.TABLE_NAME, table)
-                .put(EventAttributes.REPORT_METRICS_REQUEST, reportMetricsRequest)));
-    return resp;
+    // Metrics processing is now handled directly in IcebergCatalogAdapter
+    return delegate.reportMetrics(
+        prefix, namespace, table, reportMetricsRequest, realmContext, securityContext);
   }
 
   @Override

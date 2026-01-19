@@ -21,33 +21,7 @@ package org.apache.polaris.service.reporting;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
 
-/**
- * Interface for reporting Iceberg metrics in Polaris.
- *
- * <p>Implementations of this interface handle the persistence or forwarding of Iceberg metrics
- * reports (such as {@link org.apache.iceberg.metrics.ScanReport} and {@link
- * org.apache.iceberg.metrics.CommitReport}) to various backends.
- *
- * <p>Available implementations:
- *
- * <ul>
- *   <li>{@code default} - Logs metrics to console only (no persistence)
- *   <li>{@code events} - Persists metrics to the events table as JSON
- *   <li>{@code persistence} - Persists metrics to dedicated tables (scan_metrics_report,
- *       commit_metrics_report)
- *   <li>{@code composite} - Delegates to multiple reporters based on configuration
- * </ul>
- *
- * @see MetricsReportingConfiguration
- */
 public interface PolarisMetricsReporter {
-
-  /**
-   * Reports a metrics event for a table operation.
-   *
-   * @param catalogName the name of the catalog containing the table
-   * @param table the identifier of the table the metrics are for
-   * @param metricsReport the Iceberg metrics report (ScanReport or CommitReport)
-   */
-  void reportMetric(String catalogName, TableIdentifier table, MetricsReport metricsReport);
+  public void reportMetric(String catalogName, TableIdentifier table, MetricsReport metricsReport);
 }
+

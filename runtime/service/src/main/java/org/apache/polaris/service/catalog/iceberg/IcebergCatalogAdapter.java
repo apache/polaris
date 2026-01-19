@@ -72,7 +72,14 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
-import org.apache.polaris.service.reporting.PolarisMetricsReporter;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
+import org.apache.polaris.service.reporting.ImmutableMetricsProcessingContext;
+import org.apache.polaris.service.reporting.MetricsProcessor;
+import org.apache.polaris.service.tracing.RequestIdFilter;
+import org.jboss.resteasy.reactive.server.core.CurrentRequestManager;
+import org.jboss.resteasy.reactive.server.core.ResteasyReactiveRequestContext;
+import org.jboss.resteasy.reactive.server.jaxrs.ContainerRequestContextImpl;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -104,7 +111,7 @@ public class IcebergCatalogAdapter
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
   private final StorageAccessConfigProvider storageAccessConfigProvider;
-  private final PolarisMetricsReporter metricsReporter;
+  private final MetricsProcessor metricsProcessor;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -122,7 +129,7 @@ public class IcebergCatalogAdapter
       CatalogHandlerUtils catalogHandlerUtils,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       StorageAccessConfigProvider storageAccessConfigProvider,
-      PolarisMetricsReporter metricsReporter) {
+      MetricsProcessor metricsProcessor) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -138,7 +145,7 @@ public class IcebergCatalogAdapter
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.externalCatalogFactories = externalCatalogFactories;
     this.storageAccessConfigProvider = storageAccessConfigProvider;
-    this.metricsReporter = metricsReporter;
+    this.metricsProcessor = metricsProcessor;
   }
 
   /**
@@ -719,14 +726,76 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     // Validate that the caller is authenticated (consistent with other endpoints)
-    validatePrincipal(securityContext);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
 
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-    metricsReporter.reportMetric(catalogName, tableIdentifier, reportMetricsRequest.report());
+    // Extract context information for metrics processing
+    String realmId = realmContext.getRealmIdentifier();
+    String principalName = principal.getName();
+    Optional<String> requestId = extractRequestId();
+
+    // Extract OpenTelemetry context
+    Optional<String> otelTraceId = Optional.empty();
+    Optional<String> otelSpanId = Optional.empty();
+    Span currentSpan = Span.current();
+    if (currentSpan != null) {
+      SpanContext spanContext = currentSpan.getSpanContext();
+      if (spanContext != null && spanContext.isValid()) {
+        otelTraceId = Optional.of(spanContext.getTraceId());
+        otelSpanId = Optional.of(spanContext.getSpanId());
+      }
+    }
+
+    // Build processing context
+    ImmutableMetricsProcessingContext context =
+        ImmutableMetricsProcessingContext.builder()
+            .catalogName(catalogName)
+            .tableIdentifier(tableIdentifier)
+            .metricsReport(reportMetricsRequest.report())
+            .realmId(realmId)
+            .catalogId(Optional.empty()) // Catalog ID not readily available here
+            .principalName(Optional.of(principalName))
+            .requestId(requestId)
+            .otelTraceId(otelTraceId)
+            .otelSpanId(otelSpanId)
+            .timestampMs(System.currentTimeMillis())
+            .build();
+
+    // Process metrics - errors are logged but don't fail the request
+    try {
+      metricsProcessor.process(context);
+    } catch (Exception e) {
+      LOGGER.error(
+          "Failed to process metrics for table {}.{}: {}",
+          catalogName,
+          tableIdentifier,
+          e.getMessage(),
+          e);
+    }
+
     return Response.status(Response.Status.NO_CONTENT).build();
+  }
+
+  /**
+   * Extracts the request ID from the current request context.
+   *
+   * @return the request ID if available
+   */
+  private Optional<String> extractRequestId() {
+    try {
+      ResteasyReactiveRequestContext context = CurrentRequestManager.get();
+      if (context != null) {
+        ContainerRequestContextImpl request = context.getContainerRequestContext();
+        String requestId = (String) request.getProperty(RequestIdFilter.REQUEST_ID_KEY);
+        return Optional.ofNullable(requestId);
+      }
+    } catch (Exception e) {
+      LOGGER.trace("Could not extract request ID from context: {}", e.getMessage());
+    }
+    return Optional.empty();
   }
 
   @Override
