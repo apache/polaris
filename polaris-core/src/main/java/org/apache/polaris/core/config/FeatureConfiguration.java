@@ -195,6 +195,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_WILDCARD_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_WILDCARD_LOCATION")
+          .description(
+              "Indicates whether asterisks ('*') in configuration values defining allowed"
+                  + " storage locations are processed as meaning 'any location'.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
       PolarisConfiguration.<List<String>>builder()
