@@ -52,6 +52,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The EclipseLink Persistence implementation has been completely removed.
 - The default request ID header name has changed from `Polaris-Request-Id` to `X-Request-ID`.
 - The (Before/After)CommitTableEvent has been removed.
+- The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a
+  `timestampMs` parameter. A backward-compatible default method is provided for existing
+  implementations, but custom implementations should migrate to the new signature.
 
 ### New Features
 
