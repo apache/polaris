@@ -177,7 +177,8 @@ public class FileIOFactoryTest {
         .isInstanceOf(InMemoryFileIO.class);
 
     // 1. BasePolarisCatalog:doCommit: for writing the table during the creation
-    // 2. BasePolarisCatalog:doRefresh: for reading the table during the drop (2 calls: 1 to read, 1 to reload)
+    // 2. BasePolarisCatalog:doRefresh: for reading the table during the drop (2 calls: 1 to read, 1
+    // to reload)
     // 3. TaskFileIOSupplier:apply: for clean up metadata files and merge files
     Mockito.verify(testServices.fileIOFactory(), Mockito.times(4))
         .loadFileIO(Mockito.any(), Mockito.any(), Mockito.any());
