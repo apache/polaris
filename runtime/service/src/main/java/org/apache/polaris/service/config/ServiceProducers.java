@@ -40,6 +40,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
@@ -130,8 +131,9 @@ public class ServiceProducers {
 
   @Produces
   @RequestScoped
-  public RealmConfig realmConfig(CallContext callContext) {
-    return callContext.getRealmConfig();
+  public RealmConfig realmConfig(
+      RealmContext realmContext, PolarisConfigurationStore configurationStore) {
+    return new RealmConfigImpl(configurationStore, realmContext);
   }
 
   @Produces
