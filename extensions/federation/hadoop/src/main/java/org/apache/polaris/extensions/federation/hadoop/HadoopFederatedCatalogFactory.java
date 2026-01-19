@@ -20,6 +20,7 @@ package org.apache.polaris.extensions.federation.hadoop;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.catalog.Catalog;
@@ -58,8 +59,13 @@ public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
     Configuration conf = new Configuration();
     String warehouse = ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
     HadoopCatalog hadoopCatalog = new HadoopCatalog(conf, warehouse);
-    hadoopCatalog.initialize(
-        warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
+    Map<String, String> mergedProperties = new HashMap<>();
+    if (catalogProperties != null) {
+      mergedProperties.putAll(catalogProperties);
+    }
+    mergedProperties.putAll(
+        connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
+    hadoopCatalog.initialize(warehouse, mergedProperties);
     return hadoopCatalog;
   }
 

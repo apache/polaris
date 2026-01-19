@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.HashMap;
@@ -61,13 +62,8 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
     // Merge properties with precedence:
     // 1. Start with ExternalCatalog.properties (pass-through for proxy, timeouts, etc.)
     // 2. Overlay with connectionConfig properties (URI, auth, etc.) which take precedence
-    Map<String, String> mergedProperties = new HashMap<>();
-    if (catalogProperties != null) {
-      mergedProperties.putAll(catalogProperties);
-    }
-    // Connection config properties override catalog properties to ensure required
-    // settings like URI and authentication cannot be accidentally overwritten
-    mergedProperties.putAll(connectionConfig.asIcebergCatalogProperties(polarisCredentialManager));
+    Map<String, String> mergedProperties =
+        mergeCatalogProperties(connectionConfig, polarisCredentialManager, catalogProperties);
 
     federatedCatalog.initialize(icebergConfig.getRemoteCatalogName(), mergedProperties);
 
@@ -82,5 +78,20 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
     // TODO implement
     throw new UnsupportedOperationException(
         "Generic table federation to this catalog is not supported.");
+  }
+
+  @VisibleForTesting
+  static Map<String, String> mergeCatalogProperties(
+      ConnectionConfigInfoDpo connectionConfig,
+      PolarisCredentialManager polarisCredentialManager,
+      Map<String, String> catalogProperties) {
+    Map<String, String> mergedProperties = new HashMap<>();
+    if (catalogProperties != null) {
+      mergedProperties.putAll(catalogProperties);
+    }
+    // Connection config properties override catalog properties to ensure required
+    // settings like URI and authentication cannot be accidentally overwritten.
+    mergedProperties.putAll(connectionConfig.asIcebergCatalogProperties(polarisCredentialManager));
+    return mergedProperties;
   }
 }

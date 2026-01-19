@@ -64,13 +64,13 @@ class IcebergRESTExternalCatalogFactoryTest {
     catalogProperties.put("rest.client.proxy.port", "8080");
     catalogProperties.put("rest.client.proxy.username", "proxyuser");
     catalogProperties.put("rest.client.proxy.password", "proxypass");
-    catalogProperties.put("rest.client.connectTimeoutMs", "5000");
-    catalogProperties.put("rest.client.readTimeoutMs", "30000");
+    catalogProperties.put("rest.client.connection-timeout-ms", "5000");
+    catalogProperties.put("rest.client.socket-timeout-ms", "30000");
 
-    // Act: Test that properties are merged correctly by verifying the merge logic directly
-    Map<String, String> mergedProperties = new HashMap<>();
-    mergedProperties.putAll(catalogProperties);
-    mergedProperties.putAll(connectionConfig.asIcebergCatalogProperties(credentialManager));
+    // Act: Merge with factory helper to ensure production behavior is exercised
+    Map<String, String> mergedProperties =
+        IcebergRESTExternalCatalogFactory.mergeCatalogProperties(
+            connectionConfig, credentialManager, catalogProperties);
 
     // Assert: Proxy and timeout properties from catalog should be present
     assertThat(mergedProperties)
@@ -78,8 +78,8 @@ class IcebergRESTExternalCatalogFactoryTest {
         .containsEntry("rest.client.proxy.port", "8080")
         .containsEntry("rest.client.proxy.username", "proxyuser")
         .containsEntry("rest.client.proxy.password", "proxypass")
-        .containsEntry("rest.client.connectTimeoutMs", "5000")
-        .containsEntry("rest.client.readTimeoutMs", "30000");
+        .containsEntry("rest.client.connection-timeout-ms", "5000")
+        .containsEntry("rest.client.socket-timeout-ms", "30000");
 
     // Assert: Connection config properties (URI, etc.) should also be present
     assertThat(mergedProperties).containsEntry("uri", "https://example.com/api/catalog");
@@ -101,10 +101,9 @@ class IcebergRESTExternalCatalogFactoryTest {
     catalogProperties.put("rest.client.proxy.hostname", "proxy.example.com");
 
     // Act: Test merge logic - connection config properties should win
-    Map<String, String> mergedProperties = new HashMap<>();
-    mergedProperties.putAll(catalogProperties);
-    // Connection config properties override catalog properties
-    mergedProperties.putAll(connectionConfig.asIcebergCatalogProperties(credentialManager));
+    Map<String, String> mergedProperties =
+        IcebergRESTExternalCatalogFactory.mergeCatalogProperties(
+            connectionConfig, credentialManager, catalogProperties);
 
     // Assert: URI from connection config takes precedence (security-critical)
     assertThat(mergedProperties)
@@ -128,9 +127,9 @@ class IcebergRESTExternalCatalogFactoryTest {
     Map<String, String> catalogProperties = new HashMap<>();
 
     // Act: Test merge logic with empty catalog properties
-    Map<String, String> mergedProperties = new HashMap<>();
-    mergedProperties.putAll(catalogProperties);
-    mergedProperties.putAll(connectionConfig.asIcebergCatalogProperties(credentialManager));
+    Map<String, String> mergedProperties =
+        IcebergRESTExternalCatalogFactory.mergeCatalogProperties(
+            connectionConfig, credentialManager, catalogProperties);
 
     // Assert: Only connection config properties should be present
     assertThat(mergedProperties)
@@ -149,12 +148,9 @@ class IcebergRESTExternalCatalogFactoryTest {
             "my-catalog");
 
     // Act: Test merge logic with null catalog properties (as handled in factory)
-    Map<String, String> mergedProperties = new HashMap<>();
-    Map<String, String> catalogProperties = null;
-    if (catalogProperties != null) {
-      mergedProperties.putAll(catalogProperties);
-    }
-    mergedProperties.putAll(connectionConfig.asIcebergCatalogProperties(credentialManager));
+    Map<String, String> mergedProperties =
+        IcebergRESTExternalCatalogFactory.mergeCatalogProperties(
+            connectionConfig, credentialManager, null);
 
     // Assert: Only connection config properties should be present
     assertThat(mergedProperties).containsEntry("uri", "https://example.com/api/catalog");

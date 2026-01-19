@@ -20,6 +20,7 @@ package org.apache.polaris.extensions.federation.hive;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.hive.HiveCatalog;
@@ -71,8 +72,13 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
     // Polaris could support federating to multiple LDAP based Hive metastores. Multiple
     // Kerberos instances are not suitable because Kerberos ties a single identity to the server.
     HiveCatalog hiveCatalog = new HiveCatalog();
-    hiveCatalog.initialize(
-        warehouse, connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
+    Map<String, String> mergedProperties = new HashMap<>();
+    if (catalogProperties != null) {
+      mergedProperties.putAll(catalogProperties);
+    }
+    mergedProperties.putAll(
+        connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
+    hiveCatalog.initialize(warehouse, mergedProperties);
     return hiveCatalog;
   }
 
