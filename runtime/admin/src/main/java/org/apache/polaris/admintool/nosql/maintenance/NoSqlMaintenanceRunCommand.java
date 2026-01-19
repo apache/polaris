@@ -16,17 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.maintenance;
+package org.apache.polaris.admintool.nosql.maintenance;
 
 import jakarta.inject.Inject;
 import org.apache.polaris.persistence.nosql.maintenance.api.MaintenanceService;
 import picocli.CommandLine;
 
 @CommandLine.Command(
-    name = "run",
+    name = "maintenance-run",
     mixinStandardHelpOptions = true,
     description = {"Run Polaris persistence maintenance."})
-public class NoSqlMaintenanceRunCommand extends BaseMaintenanceCommand {
+public class NoSqlMaintenanceRunCommand extends BaseNoSqlMaintenanceCommand {
   @Inject MaintenanceService maintenanceService;
 
   // TODO once there's a fully-tested tasks "client" and 'MaintenanceTaskBehavior', _running_

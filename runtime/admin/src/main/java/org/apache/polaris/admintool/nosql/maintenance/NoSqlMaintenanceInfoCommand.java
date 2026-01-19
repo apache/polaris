@@ -16,32 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool.maintenance;
+package org.apache.polaris.admintool.nosql.maintenance;
 
 import picocli.CommandLine;
 
 @CommandLine.Command(
-    name = "maintenance",
-    subcommands = {
-      NoSqlMaintenanceLogCommand.class,
-      NoSqlMaintenanceRunCommand.class,
-    },
+    name = "maintenance-info",
     mixinStandardHelpOptions = true,
-    description = "Polaris persistence maintenance.")
-public class NoSqlMaintenanceCommand extends BaseMaintenanceCommand {
+    description = "Polaris NoSQL persistence maintenance information.")
+public class NoSqlMaintenanceInfoCommand extends BaseNoSqlMaintenanceCommand {
 
   @Override
   public Integer call() {
-    var out = spec.commandLine().getOut();
-
-    out.println("Polaris NoSql persistence maintenance has multiple subcommands,");
-    out.println("use the 'help maintenance' command.");
-    out.println();
-
-    checkInMemory();
-
-    out.println();
-    out.println("Information: selected NoSql persistence backend: " + backend.type());
+    printNoSqlInfo();
 
     printMaintenanceConfig();
 
