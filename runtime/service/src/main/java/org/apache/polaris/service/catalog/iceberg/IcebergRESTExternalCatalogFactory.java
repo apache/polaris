@@ -41,6 +41,12 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
 
   @Override
   public Catalog createCatalog(
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
+    return createCatalog(connectionConfig, polarisCredentialManager, null);
+  }
+
+  @Override
+  public Catalog createCatalog(
       ConnectionConfigInfoDpo connectionConfig,
       PolarisCredentialManager polarisCredentialManager,
       Map<String, String> catalogProperties) {
@@ -68,6 +74,12 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
     federatedCatalog.initialize(icebergConfig.getRemoteCatalogName(), mergedProperties);
 
     return federatedCatalog;
+  }
+
+  @Override
+  public GenericTableCatalog createGenericCatalog(
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
+    return createGenericCatalog(connectionConfig, polarisCredentialManager, null);
   }
 
   @Override

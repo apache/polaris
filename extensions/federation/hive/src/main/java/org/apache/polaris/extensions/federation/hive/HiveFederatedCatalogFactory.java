@@ -44,6 +44,13 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
   @Override
   public Catalog createCatalog(
       ConnectionConfigInfoDpo connectionConfigInfoDpo,
+      PolarisCredentialManager polarisCredentialManager) {
+    return createCatalog(connectionConfigInfoDpo, polarisCredentialManager, null);
+  }
+
+  @Override
+  public Catalog createCatalog(
+      ConnectionConfigInfoDpo connectionConfigInfoDpo,
       PolarisCredentialManager polarisCredentialManager,
       Map<String, String> catalogProperties) {
     // Currently, Polaris supports Hive federation only via IMPLICIT authentication.
@@ -80,6 +87,12 @@ public class HiveFederatedCatalogFactory implements ExternalCatalogFactory {
         connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
     hiveCatalog.initialize(warehouse, mergedProperties);
     return hiveCatalog;
+  }
+
+  @Override
+  public GenericTableCatalog createGenericCatalog(
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
+    return createGenericCatalog(connectionConfig, polarisCredentialManager, null);
   }
 
   @Override

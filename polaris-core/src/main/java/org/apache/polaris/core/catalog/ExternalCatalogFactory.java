@@ -22,6 +22,8 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Factory interface for creating external catalog handles based on connection configuration.
@@ -31,8 +33,29 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
  */
 public interface ExternalCatalogFactory {
 
+  Logger LOG = LoggerFactory.getLogger(ExternalCatalogFactory.class);
+
   /**
    * Creates a catalog handle for the given connection configuration.
+   *
+   * @deprecated Implement {@link #createCatalog(ConnectionConfigInfoDpo, PolarisCredentialManager,
+   *     Map)} instead to support catalog properties pass-through (e.g., proxy settings).
+   * @param connectionConfig the connection configuration
+   * @param polarisCredentialManager the credential manager for generating connection credentials
+   *     that Polaris uses to access external systems
+   * @return the initialized catalog
+   * @throws IllegalStateException if the connection configuration is invalid
+   */
+  @Deprecated
+  Catalog createCatalog(
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager);
+
+  /**
+   * Creates a catalog handle for the given connection configuration.
+   *
+   * <p>Implementations should override this method to receive catalog properties (e.g.,
+   * rest.client.proxy.*, timeout settings). The default implementation delegates to the deprecated
+   * 2-parameter version and logs a warning if properties are being ignored.
    *
    * @param connectionConfig the connection configuration
    * @param polarisCredentialManager the credential manager for generating connection credentials
@@ -43,13 +66,42 @@ public interface ExternalCatalogFactory {
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
    */
-  Catalog createCatalog(
+  default Catalog createCatalog(
       ConnectionConfigInfoDpo connectionConfig,
       PolarisCredentialManager polarisCredentialManager,
-      Map<String, String> catalogProperties);
+      Map<String, String> catalogProperties) {
+    if (catalogProperties != null && !catalogProperties.isEmpty()) {
+      LOG.warn(
+          "catalogProperties were provided but {} does not override createCatalog with "
+              + "catalogProperties parameter. Properties will be ignored: {}. "
+              + "Consider upgrading the factory implementation.",
+          getClass().getName(),
+          catalogProperties.keySet());
+    }
+    return createCatalog(connectionConfig, polarisCredentialManager);
+  }
 
   /**
    * Creates a generic table catalog for the given connection configuration.
+   *
+   * @deprecated Implement {@link #createGenericCatalog(ConnectionConfigInfoDpo,
+   *     PolarisCredentialManager, Map)} instead to support catalog properties pass-through.
+   * @param connectionConfig the connection configuration
+   * @param polarisCredentialManager the credential manager for generating connection credentials
+   *     that Polaris uses to access external systems
+   * @return the initialized catalog
+   * @throws IllegalStateException if the connection configuration is invalid
+   */
+  @Deprecated
+  GenericTableCatalog createGenericCatalog(
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager);
+
+  /**
+   * Creates a generic table catalog for the given connection configuration.
+   *
+   * <p>Implementations should override this method to receive catalog properties. The default
+   * implementation delegates to the deprecated 2-parameter version and logs a warning if properties
+   * are being ignored.
    *
    * @param connectionConfig the connection configuration
    * @param polarisCredentialManager the credential manager for generating connection credentials
@@ -59,8 +111,18 @@ public interface ExternalCatalogFactory {
    * @return the initialized catalog
    * @throws IllegalStateException if the connection configuration is invalid
    */
-  GenericTableCatalog createGenericCatalog(
+  default GenericTableCatalog createGenericCatalog(
       ConnectionConfigInfoDpo connectionConfig,
       PolarisCredentialManager polarisCredentialManager,
-      Map<String, String> catalogProperties);
+      Map<String, String> catalogProperties) {
+    if (catalogProperties != null && !catalogProperties.isEmpty()) {
+      LOG.warn(
+          "catalogProperties were provided but {} does not override createGenericCatalog with "
+              + "catalogProperties parameter. Properties will be ignored: {}. "
+              + "Consider upgrading the factory implementation.",
+          getClass().getName(),
+          catalogProperties.keySet());
+    }
+    return createGenericCatalog(connectionConfig, polarisCredentialManager);
+  }
 }

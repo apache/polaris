@@ -45,6 +45,13 @@ public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
   @Override
   public Catalog createCatalog(
       ConnectionConfigInfoDpo connectionConfigInfoDpo,
+      PolarisCredentialManager polarisCredentialManager) {
+    return createCatalog(connectionConfigInfoDpo, polarisCredentialManager, null);
+  }
+
+  @Override
+  public Catalog createCatalog(
+      ConnectionConfigInfoDpo connectionConfigInfoDpo,
       PolarisCredentialManager polarisCredentialManager,
       Map<String, String> catalogProperties) {
     // Currently, Polaris supports Hadoop federation only via IMPLICIT authentication.
@@ -56,17 +63,27 @@ public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
         != AuthenticationType.IMPLICIT.getCode()) {
       throw new IllegalStateException("Hadoop federation only supports IMPLICIT authentication.");
     }
-    Configuration conf = new Configuration();
     String warehouse = ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
-    HadoopCatalog hadoopCatalog = new HadoopCatalog(conf, warehouse);
     Map<String, String> mergedProperties = new HashMap<>();
     if (catalogProperties != null) {
       mergedProperties.putAll(catalogProperties);
     }
     mergedProperties.putAll(
         connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
+
+    // Use no-arg constructor + setConf + initialize pattern to avoid double initialization.
+    // The HadoopCatalog(conf, warehouse) constructor internally calls initialize(), so using
+    // it followed by another initialize() call would be redundant.
+    HadoopCatalog hadoopCatalog = new HadoopCatalog();
+    hadoopCatalog.setConf(new Configuration());
     hadoopCatalog.initialize(warehouse, mergedProperties);
     return hadoopCatalog;
+  }
+
+  @Override
+  public GenericTableCatalog createGenericCatalog(
+      ConnectionConfigInfoDpo connectionConfig, PolarisCredentialManager polarisCredentialManager) {
+    return createGenericCatalog(connectionConfig, polarisCredentialManager, null);
   }
 
   @Override
