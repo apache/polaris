@@ -64,4 +64,3 @@ public interface MetricsProcessingContext {
   /** Timestamp when metrics were received (milliseconds since epoch) */
   long timestampMs();
 }
-

@@ -99,4 +99,3 @@ public interface MetricsProcessorConfiguration {
     Duration cleanupInterval();
   }
 }
-
