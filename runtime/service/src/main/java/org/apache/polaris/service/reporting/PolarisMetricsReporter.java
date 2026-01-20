@@ -32,11 +32,16 @@ import org.apache.iceberg.metrics.MetricsReport;
  * <p>The implementation to use is selected via the {@code polaris.iceberg-metrics.reporting.type}
  * configuration property, which defaults to {@code "default"}.
  *
- * <p>Custom implementations that need access to request-scoped context (such as realm information
- * or principal details) should inject the appropriate CDI beans (e.g., {@code RealmContext}, {@code
- * PolarisPrincipalHolder}) rather than expecting this data to be passed as parameters.
+ * <p>Custom implementations that need access to request-scoped context should inject the
+ * appropriate CDI beans rather than expecting this data to be passed as parameters:
  *
- * <p>Example implementation:
+ * <ul>
+ *   <li>{@code RealmContext} - for realm/tenant information
+ *   <li>{@code io.opentelemetry.api.trace.SpanContext} - for OpenTelemetry trace/span IDs
+ *   <li>{@code PolarisPrincipalHolder} - for authenticated principal information
+ * </ul>
+ *
+ * <p>Example implementation with OpenTelemetry correlation:
  *
  * <pre>{@code
  * @ApplicationScoped
@@ -44,11 +49,13 @@ import org.apache.iceberg.metrics.MetricsReport;
  * public class CustomMetricsReporter implements PolarisMetricsReporter {
  *
  *   @Inject RealmContext realmContext;
+ *   @Inject SpanContext spanContext;
  *
  *   @Override
  *   public void reportMetric(
  *       String catalogName, TableIdentifier table, MetricsReport metricsReport, long timestampMs) {
- *     // Send metrics to external system
+ *     String traceId = spanContext.isValid() ? spanContext.getTraceId() : null;
+ *     // Send metrics to external system with trace correlation
  *   }
  * }
  * }</pre>
