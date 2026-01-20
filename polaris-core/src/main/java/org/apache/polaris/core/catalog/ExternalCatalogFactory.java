@@ -22,7 +22,6 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -32,8 +31,6 @@ import org.slf4j.LoggerFactory;
  * specify which connection type they support.
  */
 public interface ExternalCatalogFactory {
-
-  Logger LOG = LoggerFactory.getLogger(ExternalCatalogFactory.class);
 
   /**
    * Creates a catalog handle for the given connection configuration.
@@ -71,12 +68,13 @@ public interface ExternalCatalogFactory {
       PolarisCredentialManager polarisCredentialManager,
       Map<String, String> catalogProperties) {
     if (catalogProperties != null && !catalogProperties.isEmpty()) {
-      LOG.warn(
-          "catalogProperties were provided but {} does not override createCatalog with "
-              + "catalogProperties parameter. Properties will be ignored: {}. "
-              + "Consider upgrading the factory implementation.",
-          getClass().getName(),
-          catalogProperties.keySet());
+      LoggerFactory.getLogger(getClass())
+          .warn(
+              "catalogProperties were provided but {} does not override createCatalog with "
+                  + "catalogProperties parameter. Properties will be ignored: {}. "
+                  + "Consider upgrading the factory implementation.",
+              getClass().getName(),
+              catalogProperties.keySet());
     }
     return createCatalog(connectionConfig, polarisCredentialManager);
   }
@@ -116,12 +114,13 @@ public interface ExternalCatalogFactory {
       PolarisCredentialManager polarisCredentialManager,
       Map<String, String> catalogProperties) {
     if (catalogProperties != null && !catalogProperties.isEmpty()) {
-      LOG.warn(
-          "catalogProperties were provided but {} does not override createGenericCatalog with "
-              + "catalogProperties parameter. Properties will be ignored: {}. "
-              + "Consider upgrading the factory implementation.",
-          getClass().getName(),
-          catalogProperties.keySet());
+      LoggerFactory.getLogger(getClass())
+          .warn(
+              "catalogProperties were provided but {} does not override createGenericCatalog with "
+                  + "catalogProperties parameter. Properties will be ignored: {}. "
+                  + "Consider upgrading the factory implementation.",
+              getClass().getName(),
+              catalogProperties.keySet());
     }
     return createGenericCatalog(connectionConfig, polarisCredentialManager);
   }
