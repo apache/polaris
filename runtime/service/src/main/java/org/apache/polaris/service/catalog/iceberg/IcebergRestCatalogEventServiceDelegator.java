@@ -41,7 +41,6 @@ import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -65,7 +64,6 @@ public class IcebergRestCatalogEventServiceDelegator
   @Inject PolarisEventListener polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
-  @Inject RealmConfig realmConfig;
 
   // Constructor for testing - allows manual dependency injection
   @VisibleForTesting
@@ -73,13 +71,11 @@ public class IcebergRestCatalogEventServiceDelegator
       IcebergCatalogAdapter delegate,
       PolarisEventListener polarisEventListener,
       PolarisEventMetadataFactory eventMetadataFactory,
-      CatalogPrefixParser prefixParser,
-      RealmConfig realmConfig) {
+      CatalogPrefixParser prefixParser) {
     this.delegate = delegate;
     this.polarisEventListener = polarisEventListener;
     this.eventMetadataFactory = eventMetadataFactory;
     this.prefixParser = prefixParser;
-    this.realmConfig = realmConfig;
   }
 
   // Default constructor for CDI

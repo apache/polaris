@@ -30,6 +30,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.function.Function;
@@ -723,7 +724,7 @@ public class IcebergCatalogAdapter
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
     metricsReporter.reportMetric(
-        catalogName, tableIdentifier, reportMetricsRequest.report(), System.currentTimeMillis());
+        catalogName, tableIdentifier, reportMetricsRequest.report(), Instant.now());
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 

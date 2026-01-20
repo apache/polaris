@@ -19,8 +19,6 @@
 package org.apache.polaris.service.config;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -429,46 +427,6 @@ public class ServiceProducers {
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
     executor.close();
-  }
-
-  /**
-   * Produces the current OpenTelemetry {@link SpanContext} for the request.
-   *
-   * <p>This allows custom {@link PolarisMetricsReporter} implementations to access the current
-   * trace and span IDs for correlation with external monitoring systems.
-   *
-   * <p>Example usage in a custom metrics reporter:
-   *
-   * <pre>{@code
-   * @ApplicationScoped
-   * @Identifier("custom")
-   * public class CustomMetricsReporter implements PolarisMetricsReporter {
-   *
-   *   @Inject SpanContext spanContext;
-   *
-   *   @Override
-   *   public void reportMetric(String catalogName, TableIdentifier table,
-   *       MetricsReport metricsReport, long timestampMs) {
-   *     String traceId = spanContext.isValid() ? spanContext.getTraceId() : null;
-   *     String spanId = spanContext.isValid() ? spanContext.getSpanId() : null;
-   *     // Forward metrics with trace correlation...
-   *   }
-   * }
-   * }</pre>
-   *
-   * @return the current span context, or {@link SpanContext#getInvalid()} if no span is active
-   */
-  @Produces
-  @RequestScoped
-  public SpanContext currentSpanContext() {
-    Span currentSpan = Span.current();
-    if (currentSpan != null) {
-      SpanContext spanContext = currentSpan.getSpanContext();
-      if (spanContext != null) {
-        return spanContext;
-      }
-    }
-    return SpanContext.getInvalid();
   }
 
   @Produces

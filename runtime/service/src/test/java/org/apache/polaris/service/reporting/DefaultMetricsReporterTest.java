@@ -21,6 +21,7 @@ package org.apache.polaris.service.reporting;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.junit.jupiter.api.Test;
@@ -30,16 +31,16 @@ public class DefaultMetricsReporterTest {
   @Test
   void testLogging() {
     @SuppressWarnings("unchecked")
-    DefaultMetricsReporter.QuadConsumer<String, TableIdentifier, MetricsReport, Long> mockConsumer =
-        mock(DefaultMetricsReporter.QuadConsumer.class);
+    DefaultMetricsReporter.QuadConsumer<String, TableIdentifier, MetricsReport, Instant>
+        mockConsumer = mock(DefaultMetricsReporter.QuadConsumer.class);
     DefaultMetricsReporter reporter = new DefaultMetricsReporter(mockConsumer);
     String warehouse = "testWarehouse";
     TableIdentifier table = TableIdentifier.of("testNamespace", "testTable");
     MetricsReport metricsReport = mock(MetricsReport.class);
-    long timestampMs = 1234567890L;
+    Instant receivedTimestamp = Instant.ofEpochMilli(1234567890L);
 
-    reporter.reportMetric(warehouse, table, metricsReport, timestampMs);
+    reporter.reportMetric(warehouse, table, metricsReport, receivedTimestamp);
 
-    verify(mockConsumer).accept(warehouse, table, metricsReport, timestampMs);
+    verify(mockConsumer).accept(warehouse, table, metricsReport, receivedTimestamp);
   }
 }

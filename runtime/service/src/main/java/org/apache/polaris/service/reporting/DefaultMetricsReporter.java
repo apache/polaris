@@ -21,6 +21,7 @@ package org.apache.polaris.service.reporting;
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.slf4j.Logger;
@@ -43,7 +44,7 @@ import org.slf4j.LoggerFactory;
 public class DefaultMetricsReporter implements PolarisMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultMetricsReporter.class);
 
-  private final QuadConsumer<String, TableIdentifier, MetricsReport, Long> reportConsumer;
+  private final QuadConsumer<String, TableIdentifier, MetricsReport, Instant> reportConsumer;
 
   /** Functional interface for consuming metrics reports with timestamp. */
   @FunctionalInterface
@@ -54,19 +55,22 @@ public class DefaultMetricsReporter implements PolarisMetricsReporter {
   /** Creates a new DefaultMetricsReporter that logs metrics to the class logger. */
   public DefaultMetricsReporter() {
     this(
-        (catalogName, table, metricsReport, timestampMs) ->
-            LOGGER.info("{}.{} (ts={}): {}", catalogName, table, timestampMs, metricsReport));
+        (catalogName, table, metricsReport, receivedTimestamp) ->
+            LOGGER.info("{}.{} (ts={}): {}", catalogName, table, receivedTimestamp, metricsReport));
   }
 
   @VisibleForTesting
   DefaultMetricsReporter(
-      QuadConsumer<String, TableIdentifier, MetricsReport, Long> reportConsumer) {
+      QuadConsumer<String, TableIdentifier, MetricsReport, Instant> reportConsumer) {
     this.reportConsumer = reportConsumer;
   }
 
   @Override
   public void reportMetric(
-      String catalogName, TableIdentifier table, MetricsReport metricsReport, long timestampMs) {
-    reportConsumer.accept(catalogName, table, metricsReport, timestampMs);
+      String catalogName,
+      TableIdentifier table,
+      MetricsReport metricsReport,
+      Instant receivedTimestamp) {
+    reportConsumer.accept(catalogName, table, metricsReport, receivedTimestamp);
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.reporting;
 
+import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
 
@@ -37,7 +38,8 @@ import org.apache.iceberg.metrics.MetricsReport;
  *
  * <ul>
  *   <li>{@code RealmContext} - for realm/tenant information
- *   <li>{@code io.opentelemetry.api.trace.SpanContext} - for OpenTelemetry trace/span IDs
+ *   <li>{@code io.opentelemetry.api.trace.Span} - for OpenTelemetry trace/span IDs (inject via
+ *       {@code @Inject Span span} or use {@code Span.current()})
  *   <li>{@code PolarisPrincipalHolder} - for authenticated principal information
  * </ul>
  *
@@ -49,11 +51,13 @@ import org.apache.iceberg.metrics.MetricsReport;
  * public class CustomMetricsReporter implements PolarisMetricsReporter {
  *
  *   @Inject RealmContext realmContext;
- *   @Inject SpanContext spanContext;
+ *   @Inject Span span; // or use Span.current()
  *
  *   @Override
  *   public void reportMetric(
- *       String catalogName, TableIdentifier table, MetricsReport metricsReport, long timestampMs) {
+ *       String catalogName, TableIdentifier table, MetricsReport metricsReport,
+ *       Instant receivedTimestamp) {
+ *     SpanContext spanContext = span.getSpanContext();
  *     String traceId = spanContext.isValid() ? spanContext.getTraceId() : null;
  *     // Send metrics to external system with trace correlation
  *   }
@@ -72,10 +76,13 @@ public interface PolarisMetricsReporter {
    * @param table the identifier of the table the metrics are for
    * @param metricsReport the Iceberg metrics report (e.g., {@link
    *     org.apache.iceberg.metrics.ScanReport} or {@link org.apache.iceberg.metrics.CommitReport})
-   * @param timestampMs the timestamp in milliseconds when the metrics were received
+   * @param receivedTimestamp the timestamp when the metrics were received by Polaris
    */
   void reportMetric(
-      String catalogName, TableIdentifier table, MetricsReport metricsReport, long timestampMs);
+      String catalogName,
+      TableIdentifier table,
+      MetricsReport metricsReport,
+      Instant receivedTimestamp);
 
   /**
    * Reports an Iceberg metrics report for a specific table.
@@ -83,12 +90,12 @@ public interface PolarisMetricsReporter {
    * @param catalogName the name of the catalog containing the table
    * @param table the identifier of the table the metrics are for
    * @param metricsReport the Iceberg metrics report
-   * @deprecated Use {@link #reportMetric(String, TableIdentifier, MetricsReport, long)} instead.
+   * @deprecated Use {@link #reportMetric(String, TableIdentifier, MetricsReport, Instant)} instead.
    *     This method is provided for backward compatibility and will be removed in a future release.
    */
   @Deprecated
   default void reportMetric(
       String catalogName, TableIdentifier table, MetricsReport metricsReport) {
-    reportMetric(catalogName, table, metricsReport, System.currentTimeMillis());
+    reportMetric(catalogName, table, metricsReport, Instant.now());
   }
 }

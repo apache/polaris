@@ -53,8 +53,9 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The default request ID header name has changed from `Polaris-Request-Id` to `X-Request-ID`.
 - The (Before/After)CommitTableEvent has been removed.
 - The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a
-  `timestampMs` parameter. A backward-compatible default method is provided for existing
-  implementations, but custom implementations should migrate to the new signature.
+  `receivedTimestamp` parameter of type `java.time.Instant`. A backward-compatible default method
+  is provided for existing implementations, but custom implementations should migrate to the new
+  signature.
 
 ### New Features
 
