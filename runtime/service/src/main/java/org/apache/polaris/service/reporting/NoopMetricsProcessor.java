@@ -59,8 +59,6 @@ public class NoopMetricsProcessor implements MetricsProcessor {
   @Override
   public void process(MetricsProcessingContext context) {
     // Intentionally do nothing - discard all metrics
-    LOGGER.trace(
-        "Discarding metrics for {}.{}", context.catalogName(), context.tableIdentifier());
+    LOGGER.trace("Discarding metrics for {}.{}", context.catalogName(), context.tableIdentifier());
   }
 }
-

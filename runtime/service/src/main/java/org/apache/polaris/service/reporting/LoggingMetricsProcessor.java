@@ -26,8 +26,8 @@ import org.slf4j.LoggerFactory;
 /**
  * A {@link MetricsProcessor} implementation that logs metrics to the console.
  *
- * <p>This processor logs all metrics reports at INFO level, including the full context
- * information such as realm ID, principal, request ID, and OpenTelemetry trace context.
+ * <p>This processor logs all metrics reports at INFO level, including the full context information
+ * such as realm ID, principal, request ID, and OpenTelemetry trace context.
  *
  * <p>This processor is useful for:
  *
@@ -78,4 +78,3 @@ public class LoggingMetricsProcessor implements MetricsProcessor {
         context.metricsReport());
   }
 }
-

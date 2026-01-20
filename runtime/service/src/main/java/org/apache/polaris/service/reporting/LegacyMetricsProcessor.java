@@ -72,7 +72,9 @@ public class LegacyMetricsProcessor implements MetricsProcessor {
   public void process(MetricsProcessingContext context) {
     // Delegate to the legacy reporter with basic parameters
     reporter.reportMetric(
-        context.catalogName(), context.tableIdentifier(), context.metricsReport());
+        context.catalogName(),
+        context.tableIdentifier(),
+        context.metricsReport(),
+        java.time.Instant.ofEpochMilli(context.timestampMs()));
   }
 }
-

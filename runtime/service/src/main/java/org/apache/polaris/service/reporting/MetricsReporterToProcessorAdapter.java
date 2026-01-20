@@ -45,7 +45,10 @@ public class MetricsReporterToProcessorAdapter implements MetricsProcessor {
   public void process(MetricsProcessingContext context) {
     // Delegate to the legacy reporter interface with just the basic parameters
     reporter.reportMetric(
-        context.catalogName(), context.tableIdentifier(), context.metricsReport());
+        context.catalogName(),
+        context.tableIdentifier(),
+        context.metricsReport(),
+        java.time.Instant.ofEpochMilli(context.timestampMs()));
   }
 
   /**
@@ -57,4 +60,3 @@ public class MetricsReporterToProcessorAdapter implements MetricsProcessor {
     return reporter;
   }
 }
-

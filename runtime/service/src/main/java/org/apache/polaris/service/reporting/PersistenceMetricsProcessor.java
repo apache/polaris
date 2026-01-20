@@ -143,7 +143,8 @@ public class PersistenceMetricsProcessor implements MetricsProcessor {
               context.otelSpanId().orElse(null));
 
       jdbcPersistence.writeScanMetricsReport(modelReport);
-      LOGGER.debug("Persisted scan metrics for {}.{}", context.catalogName(), context.tableIdentifier());
+      LOGGER.debug(
+          "Persisted scan metrics for {}.{}", context.catalogName(), context.tableIdentifier());
     } catch (Exception e) {
       LOGGER.error("Failed to persist scan metrics: {}", e.getMessage(), e);
     }
@@ -170,10 +171,10 @@ public class PersistenceMetricsProcessor implements MetricsProcessor {
               context.otelSpanId().orElse(null));
 
       jdbcPersistence.writeCommitMetricsReport(modelReport);
-      LOGGER.debug("Persisted commit metrics for {}.{}", context.catalogName(), context.tableIdentifier());
+      LOGGER.debug(
+          "Persisted commit metrics for {}.{}", context.catalogName(), context.tableIdentifier());
     } catch (Exception e) {
       LOGGER.error("Failed to persist commit metrics: {}", e.getMessage(), e);
     }
   }
 }
-

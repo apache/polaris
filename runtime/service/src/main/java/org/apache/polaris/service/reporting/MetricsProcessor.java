@@ -26,8 +26,8 @@ package org.apache.polaris.service.reporting;
  * systems, or perform custom processing.
  *
  * <p>Processors are discovered via CDI using the {@link io.smallrye.common.annotation.Identifier}
- * annotation. Custom processors can be implemented and registered by annotating them with {@code
- * @ApplicationScoped} and {@code @Identifier("custom-name")}.
+ * annotation. Custom processors can be implemented and registered by annotating them with
+ * {@code @ApplicationScoped} and {@code @Identifier("custom-name")}.
  *
  * <p>Available built-in processors:
  *
@@ -75,4 +75,3 @@ public interface MetricsProcessor {
    */
   void process(MetricsProcessingContext context);
 }
-

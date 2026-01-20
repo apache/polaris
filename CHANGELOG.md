@@ -52,10 +52,11 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The EclipseLink Persistence implementation has been completely removed.
 - The default request ID header name has changed from `Polaris-Request-Id` to `X-Request-ID`.
 - The (Before/After)CommitTableEvent has been removed.
+- The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a
+  `receivedTimestamp` parameter of type `java.time.Instant`.
 
 ### New Features
 
-- Added `ENABLE_METRICS_EVENT_EMISSION` feature flag (default: false) to control the emission of `BEFORE_REPORT_METRICS` and `AFTER_REPORT_METRICS` events when the Iceberg REST catalog API's `reportMetrics()` method is called. When enabled, event listeners can receive metrics report data for use cases like audit logging and metrics persistence. Can be configured via `polaris.features."ENABLE_METRICS_EVENT_EMISSION"=true`.
 - Added `--no-sts` flag to CLI to support S3-compatible storage systems that do not have Security Token Service available.
 - Support credential vending for federated catalogs. `ALLOW_FEDERATED_CATALOGS_CREDENTIAL_VENDING` (default: true) was added to toggle this feature.
 - Enhanced catalog federation with SigV4 authentication support, additional authentication types for credential vending, and location-based access restrictions to block credential vending for remote tables outside allowed location lists.
