@@ -31,7 +31,7 @@ See the [Spark Notebooks Example](../spark/README.md) for a more advanced Spark 
 Start the docker compose group by running the following command from the root of the repository:
 
 ```shell
-docker compose -f getting-started/minio/docker-compose.yml up
+docker compose -f getting-started/ozone/docker-compose.yml up
 ```
 
 Note: this example pulls the `apache/polaris:latest` image, but assumes the image is `1.2.0-incubating` or later. 

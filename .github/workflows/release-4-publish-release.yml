@@ -231,7 +231,6 @@ jobs:
 
           exec_process cd "${release_helm_dir}"
           exec_process helm repo index .
-          exec_process svn add index.yaml
           exec_process svn commit --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive -m "Update Helm index for ${version_without_rc} release"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
