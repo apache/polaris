@@ -20,11 +20,11 @@ package org.apache.polaris.extensions.federation.hadoop;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.hadoop.HadoopCatalog;
+import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.AuthenticationParametersDpo;
@@ -33,14 +33,11 @@ import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.hadoop.HadoopConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Factory class for creating a Hadoop catalog handle based on connection configuration. */
 @ApplicationScoped
 @Identifier(ConnectionType.HADOOP_FACTORY_IDENTIFIER)
 public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
-  private static final Logger LOGGER = LoggerFactory.getLogger(HadoopFederatedCatalogFactory.class);
 
   @Override
   public Catalog createCatalog(
@@ -64,12 +61,10 @@ public class HadoopFederatedCatalogFactory implements ExternalCatalogFactory {
       throw new IllegalStateException("Hadoop federation only supports IMPLICIT authentication.");
     }
     String warehouse = ((HadoopConnectionConfigInfoDpo) connectionConfigInfoDpo).getWarehouse();
-    Map<String, String> mergedProperties = new HashMap<>();
-    if (catalogProperties != null) {
-      mergedProperties.putAll(catalogProperties);
-    }
-    mergedProperties.putAll(
-        connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
+    Map<String, String> mergedProperties =
+        RESTUtil.merge(
+            catalogProperties != null ? catalogProperties : Map.of(),
+            connectionConfigInfoDpo.asIcebergCatalogProperties(polarisCredentialManager));
 
     // Use no-arg constructor + setConf + initialize pattern to avoid double initialization.
     // The HadoopCatalog(conf, warehouse) constructor internally calls initialize(), so using

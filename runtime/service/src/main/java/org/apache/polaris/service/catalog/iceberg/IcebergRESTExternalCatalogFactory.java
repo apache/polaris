@@ -18,15 +18,14 @@
  */
 package org.apache.polaris.service.catalog.iceberg;
 
-import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
 import org.apache.polaris.core.catalog.GenericTableCatalog;
 import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
@@ -65,11 +64,12 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
                     .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
                     .build());
 
-    // Merge properties with precedence:
-    // 1. Start with ExternalCatalog.properties (pass-through for proxy, timeouts, etc.)
-    // 2. Overlay with connectionConfig properties (URI, auth, etc.) which take precedence
+    // Merge properties with precedence: connection config properties override catalog properties
+    // to ensure required settings like URI and authentication cannot be accidentally overwritten.
     Map<String, String> mergedProperties =
-        mergeCatalogProperties(connectionConfig, polarisCredentialManager, catalogProperties);
+        RESTUtil.merge(
+            catalogProperties != null ? catalogProperties : Map.of(),
+            connectionConfig.asIcebergCatalogProperties(polarisCredentialManager));
 
     federatedCatalog.initialize(icebergConfig.getRemoteCatalogName(), mergedProperties);
 
@@ -90,20 +90,5 @@ public class IcebergRESTExternalCatalogFactory implements ExternalCatalogFactory
     // TODO implement
     throw new UnsupportedOperationException(
         "Generic table federation to this catalog is not supported.");
-  }
-
-  @VisibleForTesting
-  static Map<String, String> mergeCatalogProperties(
-      ConnectionConfigInfoDpo connectionConfig,
-      PolarisCredentialManager polarisCredentialManager,
-      Map<String, String> catalogProperties) {
-    Map<String, String> mergedProperties = new HashMap<>();
-    if (catalogProperties != null) {
-      mergedProperties.putAll(catalogProperties);
-    }
-    // Connection config properties override catalog properties to ensure required
-    // settings like URI and authentication cannot be accidentally overwritten.
-    mergedProperties.putAll(connectionConfig.asIcebergCatalogProperties(polarisCredentialManager));
-    return mergedProperties;
   }
 }
