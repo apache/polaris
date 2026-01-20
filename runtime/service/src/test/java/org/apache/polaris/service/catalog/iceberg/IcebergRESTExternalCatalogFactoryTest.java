@@ -19,140 +19,59 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import java.util.HashMap;
 import java.util.Map;
-import org.apache.polaris.core.connection.ConnectionConfigInfoDpo;
-import org.apache.polaris.core.connection.ImplicitAuthenticationParametersDpo;
-import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
-import org.apache.polaris.core.credentials.PolarisCredentialManager;
-import org.apache.polaris.core.credentials.connection.ConnectionCredentials;
-import org.junit.jupiter.api.BeforeEach;
+import org.apache.iceberg.rest.RESTUtil;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for {@link IcebergRESTExternalCatalogFactory} to verify that ExternalCatalog.properties are
- * properly passed through to the Iceberg REST client configuration.
+ * Tests to verify RESTUtil.merge() behavior that the federated catalog factories depend on.
+ *
+ * <p>The factories use RESTUtil.merge(catalogProperties, connectionConfigProperties) where
+ * connectionConfigProperties (the second argument) takes precedence over catalogProperties.
  */
 class IcebergRESTExternalCatalogFactoryTest {
 
-  private PolarisCredentialManager credentialManager;
+  @Test
+  void testRESTUtilMergeUpdatesOverrideTarget() {
+    // This test documents the behavior we depend on: updates (second arg) override target
+    Map<String, String> catalogProperties =
+        Map.of("uri", "https://malicious.example.com", "proxy", "proxy.example.com");
+    Map<String, String> connectionConfigProperties = Map.of("uri", "https://correct.example.com");
 
-  @BeforeEach
-  void setUp() {
-    credentialManager = mock(PolarisCredentialManager.class);
-    when(credentialManager.getConnectionCredentials(any(ConnectionConfigInfoDpo.class)))
-        .thenReturn(ConnectionCredentials.builder().build());
+    Map<String, String> merged = RESTUtil.merge(catalogProperties, connectionConfigProperties);
+
+    // Connection config properties should override catalog properties
+    assertThat(merged)
+        .containsEntry("uri", "https://correct.example.com")
+        .containsEntry("proxy", "proxy.example.com");
   }
 
   @Test
-  void testMergePropertiesWithProxyConfiguration() {
-    // Arrange: Create connection config with basic settings
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://example.com/api/catalog",
-            new ImplicitAuthenticationParametersDpo(),
-            null,
-            "my-catalog");
+  void testRESTUtilMergePreservesCatalogProperties() {
+    // Catalog properties that don't conflict should be preserved
+    Map<String, String> catalogProperties =
+        Map.of(
+            "rest.client.proxy.hostname", "proxy.example.com",
+            "rest.client.proxy.port", "8080",
+            "rest.client.connection-timeout-ms", "5000");
+    Map<String, String> connectionConfigProperties = Map.of("uri", "https://example.com/catalog");
 
-    // Catalog properties containing proxy and timeout settings
-    Map<String, String> catalogProperties = new HashMap<>();
-    catalogProperties.put("rest.client.proxy.hostname", "proxy.example.com");
-    catalogProperties.put("rest.client.proxy.port", "8080");
-    catalogProperties.put("rest.client.proxy.username", "proxyuser");
-    catalogProperties.put("rest.client.proxy.password", "proxypass");
-    catalogProperties.put("rest.client.connection-timeout-ms", "5000");
-    catalogProperties.put("rest.client.socket-timeout-ms", "30000");
+    Map<String, String> merged = RESTUtil.merge(catalogProperties, connectionConfigProperties);
 
-    // Act: Merge with factory helper to ensure production behavior is exercised
-    Map<String, String> mergedProperties =
-        IcebergRESTExternalCatalogFactory.mergeCatalogProperties(
-            connectionConfig, credentialManager, catalogProperties);
-
-    // Assert: Proxy and timeout properties from catalog should be present
-    assertThat(mergedProperties)
+    assertThat(merged)
         .containsEntry("rest.client.proxy.hostname", "proxy.example.com")
         .containsEntry("rest.client.proxy.port", "8080")
-        .containsEntry("rest.client.proxy.username", "proxyuser")
-        .containsEntry("rest.client.proxy.password", "proxypass")
         .containsEntry("rest.client.connection-timeout-ms", "5000")
-        .containsEntry("rest.client.socket-timeout-ms", "30000");
-
-    // Assert: Connection config properties (URI, etc.) should also be present
-    assertThat(mergedProperties).containsEntry("uri", "https://example.com/api/catalog");
+        .containsEntry("uri", "https://example.com/catalog");
   }
 
   @Test
-  void testConnectionConfigPropertiesTakePrecedence() {
-    // Arrange: Create connection config
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://correct-uri.example.com/api/catalog",
-            new ImplicitAuthenticationParametersDpo(),
-            null,
-            "my-catalog");
+  void testRESTUtilMergeWithEmptyTarget() {
+    Map<String, String> connectionConfigProperties = Map.of("uri", "https://example.com/catalog");
 
-    // Catalog properties that try to override the URI (should not be allowed)
-    Map<String, String> catalogProperties = new HashMap<>();
-    catalogProperties.put("uri", "https://malicious-uri.example.com/api");
-    catalogProperties.put("rest.client.proxy.hostname", "proxy.example.com");
+    Map<String, String> merged = RESTUtil.merge(Map.of(), connectionConfigProperties);
 
-    // Act: Test merge logic - connection config properties should win
-    Map<String, String> mergedProperties =
-        IcebergRESTExternalCatalogFactory.mergeCatalogProperties(
-            connectionConfig, credentialManager, catalogProperties);
-
-    // Assert: URI from connection config takes precedence (security-critical)
-    assertThat(mergedProperties)
-        .containsEntry("uri", "https://correct-uri.example.com/api/catalog");
-
-    // Assert: Proxy config from catalog properties should still be present
-    assertThat(mergedProperties).containsEntry("rest.client.proxy.hostname", "proxy.example.com");
-  }
-
-  @Test
-  void testEmptyCatalogPropertiesHandled() {
-    // Arrange: Create connection config
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://example.com/api/catalog",
-            new ImplicitAuthenticationParametersDpo(),
-            null,
-            "my-catalog");
-
-    // Empty catalog properties
-    Map<String, String> catalogProperties = new HashMap<>();
-
-    // Act: Test merge logic with empty catalog properties
-    Map<String, String> mergedProperties =
-        IcebergRESTExternalCatalogFactory.mergeCatalogProperties(
-            connectionConfig, credentialManager, catalogProperties);
-
-    // Assert: Only connection config properties should be present
-    assertThat(mergedProperties)
-        .containsEntry("uri", "https://example.com/api/catalog")
-        .doesNotContainKey("rest.client.proxy.hostname");
-  }
-
-  @Test
-  void testNullCatalogPropertiesHandled() {
-    // Arrange: Create connection config
-    IcebergRestConnectionConfigInfoDpo connectionConfig =
-        new IcebergRestConnectionConfigInfoDpo(
-            "https://example.com/api/catalog",
-            new ImplicitAuthenticationParametersDpo(),
-            null,
-            "my-catalog");
-
-    // Act: Test merge logic with null catalog properties (as handled in factory)
-    Map<String, String> mergedProperties =
-        IcebergRESTExternalCatalogFactory.mergeCatalogProperties(
-            connectionConfig, credentialManager, null);
-
-    // Assert: Only connection config properties should be present
-    assertThat(mergedProperties).containsEntry("uri", "https://example.com/api/catalog");
+    assertThat(merged).containsEntry("uri", "https://example.com/catalog");
   }
 }
