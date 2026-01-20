@@ -516,4 +516,11 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "Helps prevent thundering herd when multiple requests fail simultaneously.")
           .defaultValue(0.5)
           .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> TABLE_METADATA_CLEANUP_BATCH_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("TABLE_METADATA_CLEANUP_BATCH_SIZE")
+          .description("Metadata batch size for tasks that clean up dropped tables' files.")
+          .defaultValue(10)
+          .buildFeatureConfiguration();
 }
