@@ -68,6 +68,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Added `hierarchical` flag to `AzureStorageConfigInfo` to allow more precise SAS token down-scoping in ADLS when
   the [hierarchical namespace](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-namespace)
   feature is enabled in Azure.
+- Relaxed `client_id`, `client_secret` regex/pattern validation on reset endpoint call
 
 ### Changes
 
