@@ -20,6 +20,8 @@
 title: External Identity Providers 
 type: docs
 weight: 550
+robots: noindex
+exclude_search: true
 ---
 
 Apache Polaris supports authentication via external identity providers (IdPs) using OpenID Connect (OIDC) in addition to the internal authentication system. This feature enables flexible identity federation with enterprise IdPs and allows gradual migration or hybrid authentication strategies across realms in Polaris. 

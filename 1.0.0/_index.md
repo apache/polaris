@@ -29,6 +29,8 @@ cascade:
   params:
     show_page_toc: true
 # This file will NOT be copied into a new release's versioned docs folder.
+robots: noindex
+exclude_search: true
 ---
 
 Apache Polaris (Incubating) is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.

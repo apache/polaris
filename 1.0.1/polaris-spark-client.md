@@ -20,6 +20,8 @@
 Title: Polaris Spark Client
 type: docs
 weight: 650
+robots: noindex
+exclude_search: true
 ---
 
 Apache Polaris now provides Catalog support for Generic Tables (non-Iceberg tables), please check out 

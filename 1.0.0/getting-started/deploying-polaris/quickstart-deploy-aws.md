@@ -20,6 +20,8 @@
 Title: Deploying Polaris on Amazon Web Services (AWS)
 type: docs
 weight: 310
+robots: noindex
+exclude_search: true
 ---
 
 Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start an [Amazon RDS for PostgreSQL](https://aws.amazon.com/rds/postgresql/) instance, which will be used as the backend Postgres instance holding all Polaris data.

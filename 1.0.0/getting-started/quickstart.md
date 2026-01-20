@@ -20,6 +20,8 @@
 Title: Quickstart
 type: docs
 weight: 200
+robots: noindex
+exclude_search: true
 ---
 
 Polaris can be deployed via a docker image or as a standalone process. Before starting, be sure that you've satisfied the relevant prerequisites detailed in the previous page.

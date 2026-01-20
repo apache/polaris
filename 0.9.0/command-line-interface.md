@@ -21,6 +21,8 @@ linkTitle: Command Line Interface
 title: Apache Polaris (Incubating) CLI
 type: docs
 weight: 300
+robots: noindex
+exclude_search: true
 ---
 
 In order to help administrators quickly set up and manage their Polaris server, Polaris provides a simple command-line interface (CLI) for common tasks.
