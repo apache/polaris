@@ -39,7 +39,7 @@ services:
       start_period: 40s
 
   polaris:
-    image: apache/polaris:1.3.0-incubating
+    image: apache/polaris:latest
     ports:
       # API port
       - "8181:8181"
