@@ -26,8 +26,7 @@ import org.apache.iceberg.metrics.MetricsReport;
  * SPI interface for reporting Iceberg metrics received by Polaris.
  *
  * <p>Implementations can be used to send metrics to external systems for analysis and monitoring.
- * Custom implementations must be annotated with {@link
- * jakarta.enterprise.context.RequestScoped @RequestScoped} and {@link
+ * Custom implementations can be annotated with appropriate {@code Quarkus} scope and {@link
  * io.smallrye.common.annotation.Identifier @Identifier("my-reporter-type")} for CDI discovery.
  *
  * <p>The implementation to use is selected via the {@code polaris.iceberg-metrics.reporting.type}
