@@ -805,7 +805,6 @@ public class IcebergRestCatalogEventServiceDelegator
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    // Delegate directly to the underlying service.
     return delegate.reportMetrics(
         prefix, namespace, table, reportMetricsRequest, realmContext, securityContext);
   }

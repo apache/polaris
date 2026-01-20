@@ -27,42 +27,13 @@ import org.apache.iceberg.metrics.MetricsReport;
  *
  * <p>Implementations can be used to send metrics to external systems for analysis and monitoring.
  * Custom implementations must be annotated with {@link
- * jakarta.enterprise.context.ApplicationScoped @ApplicationScoped} and {@link
+ * jakarta.enterprise.context.RequestScoped @RequestScoped} and {@link
  * io.smallrye.common.annotation.Identifier @Identifier("my-reporter-type")} for CDI discovery.
  *
  * <p>The implementation to use is selected via the {@code polaris.iceberg-metrics.reporting.type}
  * configuration property, which defaults to {@code "default"}.
  *
- * <p>Custom implementations that need access to request-scoped context should inject the
- * appropriate CDI beans rather than expecting this data to be passed as parameters:
- *
- * <ul>
- *   <li>{@code RealmContext} - for realm/tenant information
- *   <li>{@code io.opentelemetry.api.trace.Span} - for OpenTelemetry trace/span IDs (inject via
- *       {@code @Inject Span span} or use {@code Span.current()})
- *   <li>{@code PolarisPrincipalHolder} - for authenticated principal information
- * </ul>
- *
- * <p>Example implementation with OpenTelemetry correlation:
- *
- * <pre>{@code
- * @ApplicationScoped
- * @Identifier("custom")
- * public class CustomMetricsReporter implements PolarisMetricsReporter {
- *
- *   @Inject RealmContext realmContext;
- *   @Inject Span span; // or use Span.current()
- *
- *   @Override
- *   public void reportMetric(
- *       String catalogName, TableIdentifier table, MetricsReport metricsReport,
- *       Instant receivedTimestamp) {
- *     SpanContext spanContext = span.getSpanContext();
- *     String traceId = spanContext.isValid() ? spanContext.getTraceId() : null;
- *     // Send metrics to external system with trace correlation
- *   }
- * }
- * }</pre>
+ * <p>Implementations can inject other CDI beans for context.
  *
  * @see DefaultMetricsReporter
  * @see MetricsReportingConfiguration
@@ -83,19 +54,4 @@ public interface PolarisMetricsReporter {
       TableIdentifier table,
       MetricsReport metricsReport,
       Instant receivedTimestamp);
-
-  /**
-   * Reports an Iceberg metrics report for a specific table.
-   *
-   * @param catalogName the name of the catalog containing the table
-   * @param table the identifier of the table the metrics are for
-   * @param metricsReport the Iceberg metrics report
-   * @deprecated Use {@link #reportMetric(String, TableIdentifier, MetricsReport, Instant)} instead.
-   *     This method is provided for backward compatibility and will be removed in a future release.
-   */
-  @Deprecated
-  default void reportMetric(
-      String catalogName, TableIdentifier table, MetricsReport metricsReport) {
-    reportMetric(catalogName, table, metricsReport, Instant.now());
-  }
 }
