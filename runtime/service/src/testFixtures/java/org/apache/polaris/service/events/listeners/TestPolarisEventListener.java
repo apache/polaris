@@ -43,5 +43,4 @@ public class TestPolarisEventListener implements PolarisEventListener {
     }
     return latest;
   }
-
 }
