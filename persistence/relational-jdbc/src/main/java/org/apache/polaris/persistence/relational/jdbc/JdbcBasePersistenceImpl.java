@@ -96,6 +96,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
 
+  // Minimum schema version that includes metrics tables (scan_metrics_report, commit_metrics_report)
+  private static final int METRICS_TABLES_MIN_SCHEMA_VERSION = 4;
+
   public JdbcBasePersistenceImpl(
       PolarisDiagnostics diagnostics,
       DatasourceOperations databaseOperations,
@@ -109,6 +112,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.realmId = realmId;
     this.schemaVersion = schemaVersion;
+  }
+
+  /**
+   * Returns true if the current schema version supports metrics persistence tables.
+   *
+   * <p>Metrics tables (scan_metrics_report, commit_metrics_report) were introduced in schema
+   * version 4. On older schemas, metrics persistence operations will be no-ops.
+   *
+   * @return true if schema version >= 4, false otherwise
+   */
+  public boolean supportsMetricsPersistence() {
+    return this.schemaVersion >= METRICS_TABLES_MIN_SCHEMA_VERSION;
   }
 
   @Override
@@ -322,9 +337,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /**
    * Writes a scan metrics report to the database as a first-class entity.
    *
+   * <p>This method requires schema version 4 or higher. On older schemas, this method is a no-op.
+   *
    * @param report the scan metrics report to persist
    */
   public void writeScanMetricsReport(@Nonnull ModelScanMetricsReport report) {
+    if (!supportsMetricsPersistence()) {
+      LOGGER.debug(
+          "Schema version {} does not support metrics tables. Skipping scan metrics write.",
+          schemaVersion);
+      return;
+    }
     try {
       PreparedQuery pq =
           QueryGenerator.generateInsertQueryWithoutRealmId(
@@ -344,9 +367,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /**
    * Writes a commit metrics report to the database as a first-class entity.
    *
+   * <p>This method requires schema version 4 or higher. On older schemas, this method is a no-op.
+   *
    * @param report the commit metrics report to persist
    */
   public void writeCommitMetricsReport(@Nonnull ModelCommitMetricsReport report) {
+    if (!supportsMetricsPersistence()) {
+      LOGGER.debug(
+          "Schema version {} does not support metrics tables. Skipping commit metrics write.",
+          schemaVersion);
+      return;
+    }
     try {
       PreparedQuery pq =
           QueryGenerator.generateInsertQueryWithoutRealmId(
@@ -366,13 +397,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /**
    * Retrieves scan metrics reports for a specific table within a time range.
    *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
+   *
    * @param catalogName the catalog name
    * @param namespace the namespace
    * @param tableName the table name
    * @param startTimeMs start of time range (inclusive), or null for no lower bound
    * @param endTimeMs end of time range (exclusive), or null for no upper bound
    * @param limit maximum number of results to return
-   * @return list of scan metrics reports matching the criteria
+   * @return list of scan metrics reports matching the criteria, or empty list if schema version &lt;
+   *     4
    */
   @Nonnull
   public List<ModelScanMetricsReport> queryScanMetricsReports(
@@ -382,6 +416,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nullable Long startTimeMs,
       @Nullable Long endTimeMs,
       int limit) {
+    if (!supportsMetricsPersistence()) {
+      return Collections.emptyList();
+    }
     try {
       StringBuilder whereClause = new StringBuilder();
       whereClause.append("realm_id = ? AND catalog_name = ? AND namespace = ? AND table_name = ?");
@@ -417,13 +454,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /**
    * Retrieves commit metrics reports for a specific table within a time range.
    *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
+   *
    * @param catalogName the catalog name
    * @param namespace the namespace
    * @param tableName the table name
    * @param startTimeMs start of time range (inclusive), or null for no lower bound
    * @param endTimeMs end of time range (exclusive), or null for no upper bound
    * @param limit maximum number of results to return
-   * @return list of commit metrics reports matching the criteria
+   * @return list of commit metrics reports matching the criteria, or empty list if schema version
+   *     &lt; 4
    */
   @Nonnull
   public List<ModelCommitMetricsReport> queryCommitMetricsReports(
@@ -433,6 +473,9 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nullable Long startTimeMs,
       @Nullable Long endTimeMs,
       int limit) {
+    if (!supportsMetricsPersistence()) {
+      return Collections.emptyList();
+    }
     try {
       List<Object> values = new ArrayList<>(List.of(realmId, catalogName, namespace, tableName));
 
@@ -469,11 +512,17 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /**
    * Retrieves scan metrics reports by OpenTelemetry trace ID.
    *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
+   *
    * @param traceId the OpenTelemetry trace ID
-   * @return list of scan metrics reports with the given trace ID
+   * @return list of scan metrics reports with the given trace ID, or empty list if schema version
+   *     &lt; 4
    */
   @Nonnull
   public List<ModelScanMetricsReport> queryScanMetricsReportsByTraceId(@Nonnull String traceId) {
+    if (!supportsMetricsPersistence()) {
+      return Collections.emptyList();
+    }
     try {
       String sql =
           "SELECT * FROM "
@@ -495,12 +544,18 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /**
    * Retrieves commit metrics reports by OpenTelemetry trace ID.
    *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns an empty list.
+   *
    * @param traceId the OpenTelemetry trace ID
-   * @return list of commit metrics reports with the given trace ID
+   * @return list of commit metrics reports with the given trace ID, or empty list if schema version
+   *     &lt; 4
    */
   @Nonnull
   public List<ModelCommitMetricsReport> queryCommitMetricsReportsByTraceId(
       @Nonnull String traceId) {
+    if (!supportsMetricsPersistence()) {
+      return Collections.emptyList();
+    }
     try {
       String sql =
           "SELECT * FROM "
@@ -522,11 +577,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /**
    * Deletes scan metrics reports older than the specified timestamp.
    *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns 0.
+   *
    * @param olderThanMs timestamp in milliseconds; reports with timestamp_ms less than this will be
    *     deleted
-   * @return the number of reports deleted
+   * @return the number of reports deleted, or 0 if schema version &lt; 4
    */
   public int deleteScanMetricsReportsOlderThan(long olderThanMs) {
+    if (!supportsMetricsPersistence()) {
+      return 0;
+    }
     try {
       String sql =
           "DELETE FROM "
@@ -544,11 +604,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /**
    * Deletes commit metrics reports older than the specified timestamp.
    *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns 0.
+   *
    * @param olderThanMs timestamp in milliseconds; reports with timestamp_ms less than this will be
    *     deleted
-   * @return the number of reports deleted
+   * @return the number of reports deleted, or 0 if schema version &lt; 4
    */
   public int deleteCommitMetricsReportsOlderThan(long olderThanMs) {
+    if (!supportsMetricsPersistence()) {
+      return 0;
+    }
     try {
       String sql =
           "DELETE FROM "
@@ -567,9 +632,11 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   /**
    * Deletes all metrics reports (both scan and commit) older than the specified timestamp.
    *
+   * <p>This method requires schema version 4 or higher. On older schemas, returns 0.
+   *
    * @param olderThanMs timestamp in milliseconds; reports with timestamp_ms less than this will be
    *     deleted
-   * @return the total number of reports deleted (scan + commit)
+   * @return the total number of reports deleted (scan + commit), or 0 if schema version &lt; 4
    */
   public int deleteAllMetricsReportsOlderThan(long olderThanMs) {
     int scanDeleted = deleteScanMetricsReportsOlderThan(olderThanMs);
