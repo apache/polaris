@@ -1180,7 +1180,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         ns ->
             resolutionManifest.addPath(
                 new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE), ns));
-    ResolverStatus status = resolutionManifest.resolveAll();
+    ResolverStatus status = resolutionManifest.resolvePathsOnly();
     if (!status.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       String message =
           "Unable to resolve sibling entities to validate location - " + status.getStatus();
