@@ -212,15 +212,11 @@ public class TableCleanupTaskHandler implements TaskHandler {
       PolarisMetaStoreManager metaStoreManager,
       PolarisCallContext polarisCallContext) {
     // read the manifest list for each snapshot. dedupe the manifest files and schedule a
-    // cleanupTask
-    // for each manifest file and its data files to be deleted
-    // Use a Set to track seen paths for deduplication without materializing all ManifestFile
-    // objects
+    // cleanupTask for each manifest file and its data files to be deleted
     Set<String> seenPaths = new HashSet<>();
     return tableMetadata.snapshots().stream()
         .flatMap(sn -> sn.allManifests(fileIO).stream())
         // distinct by manifest path, since multiple snapshots will contain the same manifest
-        // Use stateful filter to dedupe while streaming
         .filter(mf -> seenPaths.add(mf.path()))
         .filter(mf -> TaskUtils.exists(mf.path(), fileIO))
         .map(
@@ -265,7 +261,6 @@ public class TableCleanupTaskHandler implements TaskHandler {
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     int batchSize = callContext.getRealmConfig().getConfig(TABLE_METADATA_CLEANUP_BATCH_SIZE);
 
-    // Stream all metadata files without materializing them all at once
     Iterator<String> metadataFiles =
         Stream.of(
                 tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
