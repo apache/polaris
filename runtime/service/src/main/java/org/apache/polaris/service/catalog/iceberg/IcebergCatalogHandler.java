@@ -855,14 +855,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         validateRemoteTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
       }
 
+      // Pass tableMetadata to getStorageAccessConfig so table-level properties
+      // can be merged with catalog config BEFORE credential vending (STS token generation)
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider.getStorageAccessConfig(
               tableIdentifier,
               tableLocations,
               actions,
               refreshCredentialsEndpoint,
-              resolvedStoragePath);
+              resolvedStoragePath,
+              tableMetadata != null ? tableMetadata.properties() : null);
+
       Map<String, String> credentialConfig = storageAccessConfig.credentials();
+
       if (delegationModes.contains(VENDED_CREDENTIALS)) {
         if (!credentialConfig.isEmpty()) {
           responseBuilder.addAllConfig(credentialConfig);
@@ -880,6 +885,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
               tableIdentifier);
         }
       }
+
+      // Add extra properties (already merged with table properties in StorageAccessConfigProvider)
       responseBuilder.addAllConfig(storageAccessConfig.extraProperties());
     }
 

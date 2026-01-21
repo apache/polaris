@@ -328,7 +328,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @Nonnull CredentialVendingContext credentialVendingContext,
+      Optional<java.util.Map<String, String>> tableProperties) {
     return delegate.getSubscopedCredsForEntity(
         callCtx,
         catalogId,
@@ -339,7 +340,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
         allowedWriteLocations,
         polarisPrincipal,
         refreshCredentialsEndpoint,
-        credentialVendingContext);
+        credentialVendingContext,
+        tableProperties);
   }
 
   @Override

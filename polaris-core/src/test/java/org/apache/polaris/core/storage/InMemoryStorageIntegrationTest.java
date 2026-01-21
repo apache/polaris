@@ -202,7 +202,8 @@ class InMemoryStorageIntegrationTest {
         @Nonnull Set<String> allowedWriteLocations,
         @Nonnull PolarisPrincipal polarisPrincipal,
         Optional<String> refreshCredentialsEndpoint,
-        @Nonnull CredentialVendingContext credentialVendingContext) {
+        @Nonnull CredentialVendingContext credentialVendingContext,
+        Optional<java.util.Map<String, String>> tableProperties) {
       return null;
     }
   }

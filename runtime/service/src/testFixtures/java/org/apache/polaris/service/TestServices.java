@@ -304,9 +304,15 @@ public record TestServices(
 
       StorageCredentialsVendor storageCredentialsVendor =
           new StorageCredentialsVendor(metaStoreManager, callContext);
+      org.apache.polaris.service.catalog.io.TableStorageConfigurationMerger
+          tableStorageConfigurationMerger =
+              new org.apache.polaris.service.catalog.io.TableStorageConfigurationMerger();
       StorageAccessConfigProvider storageAccessConfigProvider =
           new StorageAccessConfigProvider(
-              storageCredentialCache, storageCredentialsVendor, principal);
+              storageCredentialCache,
+              storageCredentialsVendor,
+              principal,
+              tableStorageConfigurationMerger);
       FileIOFactory fileIOFactory = fileIOFactorySupplier.get();
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);

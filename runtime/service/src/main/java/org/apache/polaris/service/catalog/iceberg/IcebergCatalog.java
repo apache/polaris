@@ -1470,7 +1470,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               tableIdentifier,
               StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
-              new HashMap<>(metadata.properties()),
+              new HashMap<>(metadata.properties()), // Pass table properties for override support
               Set.of(
                   PolarisStorageActions.READ,
                   PolarisStorageActions.WRITE,
@@ -1916,7 +1916,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               identifier,
               StorageUtil.getLocationsUsedByTable(metadata),
               resolvedStorageEntity,
-              tableProperties,
+              tableProperties, // Views use ViewMetadata, not TableMetadata, so use Map-based
+              // version
               Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE));
 
       String newLocation = writeNewMetadataIfRequired(metadata);
@@ -2132,9 +2133,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedStorageEntity,
       Map<String, String> tableProperties,
       Set<PolarisStorageActions> storageActions) {
+    // Pass tableProperties to enable table property overrides for credential vending
     StorageAccessConfig storageAccessConfig =
         storageAccessConfigProvider.getStorageAccessConfig(
-            identifier, readLocations, storageActions, Optional.empty(), resolvedStorageEntity);
+            identifier,
+            readLocations,
+            storageActions,
+            Optional.empty(),
+            resolvedStorageEntity,
+            tableProperties);
     // Reload fileIO based on table specific context
     FileIO fileIO = fileIOFactory.loadFileIO(storageAccessConfig, ioImplClassName, tableProperties);
     // ensure the new fileIO is closed when the catalog is closed

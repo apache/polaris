@@ -694,7 +694,8 @@ record NoSqlMetaStoreManager(
       @Nonnull Set<String> allowedWriteLocations,
       @Nonnull PolarisPrincipal polarisPrincipal,
       Optional<String> refreshCredentialsEndpoint,
-      @Nonnull CredentialVendingContext credentialVendingContext) {
+      @Nonnull CredentialVendingContext credentialVendingContext,
+      Optional<java.util.Map<String, String>> tableProperties) {
 
     checkArgument(
         !allowedReadLocations.isEmpty() || !allowedWriteLocations.isEmpty(),
@@ -726,7 +727,8 @@ record NoSqlMetaStoreManager(
               allowedWriteLocations,
               polarisPrincipal,
               refreshCredentialsEndpoint,
-              credentialVendingContext);
+              credentialVendingContext,
+              tableProperties.orElse(null)); // Convert Optional to nullable for storage integration
       return new ScopedCredentialsResult(creds);
     } catch (Exception ex) {
       return new ScopedCredentialsResult(SUBSCOPE_CREDS_ERROR, ex.getMessage());
