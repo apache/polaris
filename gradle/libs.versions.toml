@@ -95,7 +95,7 @@ scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref =
 scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version = "2.0.17" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.15.0" }
-smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.15.0" }
+smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.15.1" }
 smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.3" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
