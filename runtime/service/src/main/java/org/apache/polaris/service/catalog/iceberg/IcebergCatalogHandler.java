@@ -121,7 +121,7 @@ import org.apache.polaris.service.catalog.common.CatalogUtils;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.context.catalog.CallContextCatalogFactory;
-import org.apache.polaris.service.events.AttributeMap;
+import org.apache.polaris.service.events.EventAttributeMap;
 import org.apache.polaris.service.events.EventAttributes;
 import org.apache.polaris.service.http.IcebergHttpUtil;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -185,7 +185,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   private final ReservedProperties reservedProperties;
   private final CatalogHandlerUtils catalogHandlerUtils;
   private final StorageAccessConfigProvider storageAccessConfigProvider;
-  private final AttributeMap attributeMap;
+  private final EventAttributeMap eventAttributeMap;
 
   // Catalog instance will be initialized after authorizing resolver successfully resolves
   // the catalog entity.
@@ -212,7 +212,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       CatalogHandlerUtils catalogHandlerUtils,
       Instance<ExternalCatalogFactory> externalCatalogFactories,
       StorageAccessConfigProvider storageAccessConfigProvider,
-      AttributeMap attributeMap) {
+      EventAttributeMap eventAttributeMap) {
     super(
         diagnostics,
         callContext,
@@ -229,7 +229,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
     this.reservedProperties = reservedProperties;
     this.catalogHandlerUtils = catalogHandlerUtils;
     this.storageAccessConfigProvider = storageAccessConfigProvider;
-    this.attributeMap = attributeMap;
+    this.eventAttributeMap = eventAttributeMap;
   }
 
   private CatalogEntity getResolvedCatalogEntity() {
@@ -1116,7 +1116,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           result.getReturnStatus(), result.getExtraInformation());
     }
 
-    attributeMap.put(EventAttributes.LOAD_TABLE_RESPONSES, loadTableResponses);
+    eventAttributeMap.put(EventAttributes.LOAD_TABLE_RESPONSES, loadTableResponses);
   }
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
