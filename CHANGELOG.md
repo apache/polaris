@@ -79,6 +79,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
 - Added KMS options to Polaris CLI
 - Changed from Poetry to UV for Python package management 
+- Refined AWS vs non-AWS detection for S3-compatible storage.
 
 ### Deprecations
 

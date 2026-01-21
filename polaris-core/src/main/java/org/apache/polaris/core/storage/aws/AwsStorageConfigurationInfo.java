@@ -125,6 +125,13 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   }
 
   @JsonIgnore
+  public boolean isAwsS3() {
+    String endpoint = getEndpoint();
+    // AWS S3 if no endpoint is specified or if it uses an amazonaws.com endpoint
+    return endpoint == null || endpoint.contains(".amazonaws.com");
+  }
+
+  @JsonIgnore
   @Nullable
   public String getAwsAccountId() {
     String arn = getRoleARN();

@@ -271,9 +271,23 @@ public class AwsCredentialsStorageIntegration
                     arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
-      addKmsKeyPolicy(currentKmsKey, allowedKmsKeys, policyBuilder, true, region, accountId);
+      addKmsKeyPolicy(
+          storageConfigurationInfo,
+          currentKmsKey,
+          allowedKmsKeys,
+          policyBuilder,
+          true,
+          region,
+          accountId);
     } else {
-      addKmsKeyPolicy(currentKmsKey, allowedKmsKeys, policyBuilder, false, region, accountId);
+      addKmsKeyPolicy(
+          storageConfigurationInfo,
+          currentKmsKey,
+          allowedKmsKeys,
+          policyBuilder,
+          false,
+          region,
+          accountId);
     }
     if (!bucketListStatementBuilder.isEmpty()) {
       bucketListStatementBuilder
@@ -292,6 +306,7 @@ public class AwsCredentialsStorageIntegration
   }
 
   private static void addKmsKeyPolicy(
+      AwsStorageConfigurationInfo storageConfigurationInfo,
       String kmsKeyArn,
       List<String> allowedKmsKeys,
       IamPolicy.Builder policyBuilder,
@@ -302,6 +317,7 @@ public class AwsCredentialsStorageIntegration
     IamStatement.Builder allowKms = buildBaseKmsStatement(canWrite);
     boolean hasCurrentKey = kmsKeyArn != null;
     boolean hasAllowedKeys = hasAllowedKmsKeys(allowedKmsKeys);
+    boolean isAwsS3 = storageConfigurationInfo.isAwsS3();
 
     if (hasCurrentKey) {
       addKmsKeyResource(kmsKeyArn, allowKms);
@@ -316,8 +332,9 @@ public class AwsCredentialsStorageIntegration
       policyBuilder.addStatement(allowKms.build());
     } else if (!canWrite) {
       // Only add wildcard KMS access for read-only operations when no specific keys are configured
-      // this check is for minio because it doesn't have region or account id
-      if (region != null && accountId != null) {
+      // this check is for non-AWS S3-compatible storage because it doesn't have region or account
+      // id
+      if (isAwsS3) {
         addAllKeysResource(region, accountId, allowKms);
         policyBuilder.addStatement(allowKms.build());
       }

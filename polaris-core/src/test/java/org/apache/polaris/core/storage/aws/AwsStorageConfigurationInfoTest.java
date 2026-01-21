@@ -127,6 +127,30 @@ public class AwsStorageConfigurationInfoTest {
   }
 
   @Test
+  public void testIsAwsS3() {
+    // Not defined, detail to AWS
+    assertThat(newBuilder().build().isAwsS3()).isTrue();
+    // Valid AWS S3 endpoints
+    assertThat(newBuilder().endpoint("https://s3.us-west-2.amazonaws.com").build().isAwsS3())
+        .isTrue();
+    assertThat(
+            newBuilder().endpoint("https://s3.dualstack.us-west-2.amazonaws.com").build().isAwsS3())
+        .isTrue();
+    assertThat(
+            newBuilder()
+                .endpoint("https://s3-fips.dualstack.us-west-2.amazonaws.com")
+                .build()
+                .isAwsS3())
+        .isTrue();
+    assertThat(newBuilder().endpoint("https://s3-fips.us-west-2.amazonaws.com").build().isAwsS3())
+        .isTrue();
+    // Custom S3-compatible endpoints
+    assertThat(newBuilder().endpoint("http://minio:9000").build().isAwsS3()).isFalse();
+    assertThat(newBuilder().endpoint("https://minio:9000").build().isAwsS3()).isFalse();
+    assertThat(newBuilder().endpoint("http://localhost:9000").build().isAwsS3()).isFalse();
+  }
+
+  @Test
   public void testRoleArnParsing() {
     AwsStorageConfigurationInfo awsConfig =
         AwsStorageConfigurationInfo.builder()
