@@ -332,8 +332,7 @@ public class AwsCredentialsStorageIntegration
       policyBuilder.addStatement(allowKms.build());
     } else if (!canWrite) {
       // Only add wildcard KMS access for read-only operations when no specific keys are configured
-      // this check is for non-AWS S3-compatible storage because it doesn't have region or account
-      // id
+      // this check is for non-AWS S3-compatible storage as policy statements may not be compatible
       if (isAwsS3) {
         addAllKeysResource(region, accountId, allowKms);
         policyBuilder.addStatement(allowKms.build());
