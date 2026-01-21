@@ -1414,8 +1414,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         // TODO: Once we have the "current" table properties pulled into the resolvedEntity
         // then we should use the actual current table properties for IO refresh here
         // instead of the general tableDefaultProperties.
-        String latestLocationDir =
-            latestLocation.substring(0, latestLocation.lastIndexOf('/'));
+        String latestLocationDir = latestLocation.substring(0, latestLocation.lastIndexOf('/'));
         FileIO fileIO =
             loadFileIOForTableLike(
                 tableIdentifier,
@@ -1823,8 +1822,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         // TODO: Once we have the "current" table properties pulled into the resolvedEntity
         // then we should use the actual current table properties for IO refresh here
         // instead of the general tableDefaultProperties.
-        String latestLocationDir =
-            latestLocation.substring(0, latestLocation.lastIndexOf('/'));
+        String latestLocationDir = latestLocation.substring(0, latestLocation.lastIndexOf('/'));
         FileIO fileIO =
             loadFileIOForTableLike(
                 identifier,

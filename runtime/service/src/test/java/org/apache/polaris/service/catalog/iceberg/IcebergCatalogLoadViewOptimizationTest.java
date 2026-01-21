@@ -40,15 +40,13 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
-import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
+import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.view.BaseView;
 import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewOperations;
-import org.apache.iceberg.rest.responses.LoadViewResponse;
-import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -246,7 +244,7 @@ public class IcebergCatalogLoadViewOptimizationTest {
     IcebergCatalog spyCatalog = spy(catalog);
 
     // Act: Load the view
-    //View view = spyCatalog.loadView(VIEW_ID);
+    // View view = spyCatalog.loadView(VIEW_ID);
 
     CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(2, false);
     LoadViewResponse response = catalogHandlerUtils.loadView(spyCatalog, VIEW_ID);
@@ -291,7 +289,6 @@ public class IcebergCatalogLoadViewOptimizationTest {
     // Assert: loadFileIO should be called exactly once per loadView
     verify(spyFactory, times(1)).loadFileIO(any(), any(), any());
   }
-
 
   /**
    * Test that metadata file is read only once during view loading.
