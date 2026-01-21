@@ -78,6 +78,16 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
   public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
       "replace-new-location-prefix-with-catalog-default";
 
+  /**
+   * Property key for enabling case-insensitive mode. When set to "true", all sub-catalog entity
+   * identifiers (namespace, table, view, policy) are normalized to lowercase before persistence and
+   * resolution.
+   *
+   * <p>This property is IMMUTABLE - can only be set at catalog creation and cannot be changed
+   * afterwards.
+   */
+  public static final String ENABLE_CASE_INSENSITIVE_MODE = "enable-case-insensitive-mode";
+
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
     Preconditions.checkState(
@@ -221,6 +231,15 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     return getPropertiesAsMap().get(REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY);
   }
 
+  /**
+   * Check if this catalog is case-insensitive.
+   *
+   * @return true if case-insensitive mode is enabled for this catalog
+   */
+  public boolean isCaseInsensitive() {
+    return Boolean.parseBoolean(getPropertiesAsMap().get(ENABLE_CASE_INSENSITIVE_MODE));
+  }
+
   public @Nullable PolarisStorageConfigurationInfo getStorageConfigurationInfo() {
     String configStr =
         getInternalPropertiesAsMap().get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
@@ -285,6 +304,17 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
     public Builder setReplaceNewLocationPrefixWithCatalogDefault(String value) {
       // Note that this member lives in the main 'properties' map rather than internalProperties.
       properties.put(REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, value);
+      return this;
+    }
+
+    /**
+     * Enable or disable case-insensitive mode for this catalog.
+     *
+     * @param enabled true to enable case-insensitive mode
+     * @return this builder
+     */
+    public Builder setCaseInsensitiveMode(boolean enabled) {
+      properties.put(ENABLE_CASE_INSENSITIVE_MODE, String.valueOf(enabled));
       return this;
     }
 

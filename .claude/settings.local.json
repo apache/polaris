@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew :polaris-service:test:*)",
+      "Bash(./gradlew :polaris-service:compileTestJava:*)",
+      "Bash(export JAVA_HOME=/usr/lib/jvm/java-21)",
+      "Bash(./gradlew:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

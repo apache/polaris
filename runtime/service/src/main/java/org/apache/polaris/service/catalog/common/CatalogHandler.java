@@ -40,6 +40,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -47,6 +48,9 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.service.catalog.identifier.CasePreservingNormalizer;
+import org.apache.polaris.service.catalog.identifier.IdentifierNormalizer;
+import org.apache.polaris.service.catalog.identifier.LowercaseNormalizer;
 import org.apache.polaris.service.types.PolicyIdentifier;
 
 /**
@@ -58,6 +62,11 @@ public abstract class CatalogHandler {
 
   // Initialized in the authorize methods.
   protected PolarisResolutionManifest resolutionManifest = null;
+
+  // Normalizer for identifiers, initialized in initializeNormalizerFromResolvedCatalog() after
+  // catalog resolution. Used for normalizing names from request bodies (e.g., table name in
+  // CreateTableRequest). Namespace/TableIdentifier identifiers are normalized at the adapter layer.
+  protected IdentifierNormalizer identifierNormalizer = CasePreservingNormalizer.INSTANCE;
 
   protected final ResolutionManifestFactory resolutionManifestFactory;
   protected final String catalogName;
@@ -100,6 +109,25 @@ public abstract class CatalogHandler {
 
   /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
   protected abstract void initializeCatalog();
+
+  /**
+   * Initialize the identifier normalizer based on the resolved catalog entity. Should be called
+   * after resolution manifest is resolved but before catalog operations. Used for normalizing names
+   * from request bodies (e.g., table name in CreateTableRequest). Namespace and TableIdentifier
+   * objects are normalized at the adapter layer.
+   */
+  protected void initializeNormalizerFromResolvedCatalog() {
+    if (resolutionManifest != null) {
+      PolarisResolvedPathWrapper catalogPath =
+          resolutionManifest.getResolvedReferenceCatalogEntity();
+      if (catalogPath != null && catalogPath.getRawLeafEntity() != null) {
+        CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
+        if (catalogEntity != null && catalogEntity.isCaseInsensitive()) {
+          this.identifierNormalizer = LowercaseNormalizer.INSTANCE;
+        }
+      }
+    }
+  }
 
   protected void authorizeBasicNamespaceOperationOrThrow(
       PolarisAuthorizableOperation op, Namespace namespace) {

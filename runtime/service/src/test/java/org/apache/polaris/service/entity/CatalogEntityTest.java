@@ -514,4 +514,41 @@ public class CatalogEntityTest {
     b.setHierarchical(true);
     assertThat(MAPPER.writeValueAsString(b.build())).contains("hierarchical");
   }
+
+  @Test
+  public void testCaseInsensitiveModeEnabled() {
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setCaseInsensitiveMode(true)
+            .build();
+
+    assertThat(catalogEntity.isCaseInsensitive()).isTrue();
+    assertThat(catalogEntity.getPropertiesAsMap().get(CatalogEntity.ENABLE_CASE_INSENSITIVE_MODE))
+        .isEqualTo("true");
+  }
+
+  @Test
+  public void testCaseInsensitiveModeDisabled() {
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder()
+            .setName("test-catalog")
+            .setCaseInsensitiveMode(false)
+            .build();
+
+    assertThat(catalogEntity.isCaseInsensitive()).isFalse();
+    assertThat(catalogEntity.getPropertiesAsMap().get(CatalogEntity.ENABLE_CASE_INSENSITIVE_MODE))
+        .isEqualTo("false");
+  }
+
+  @Test
+  public void testCaseInsensitiveModeNotSet() {
+    CatalogEntity catalogEntity =
+        new CatalogEntity.Builder().setName("test-catalog").build();
+
+    // Should default to false (case-sensitive) when not explicitly set
+    assertThat(catalogEntity.isCaseInsensitive()).isFalse();
+    assertThat(catalogEntity.getPropertiesAsMap().get(CatalogEntity.ENABLE_CASE_INSENSITIVE_MODE))
+        .isNull();
+  }
 }

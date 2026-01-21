@@ -260,6 +260,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public ListNamespacesResponse listNamespaces(
       Namespace parent, String pageToken, Integer pageSize) {
+    // Namespace is already normalized at the adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
@@ -277,6 +278,9 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   @Override
   protected void initializeCatalog() {
+    // Initialize the normalizer based on catalog configuration
+    initializeNormalizerFromResolvedCatalog();
+
     CatalogEntity resolvedCatalogEntity = getResolvedCatalogEntity();
     ConnectionConfigInfoDpo connectionConfigInfoDpo =
         resolvedCatalogEntity.getConnectionConfigInfoDpo();
@@ -320,6 +324,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public ListNamespacesResponse listNamespaces(Namespace parent) {
+    // Namespace is already normalized at the adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
@@ -329,6 +334,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   public CreateNamespaceResponse createNamespace(CreateNamespaceRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_NAMESPACE;
 
+    // Namespace is already normalized at the adapter layer
     Namespace namespace = request.namespace();
     if (namespace.isEmpty()) {
       throw new AlreadyExistsException(
@@ -364,6 +370,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public GetNamespaceResponse loadNamespaceMetadata(Namespace namespace) {
+    // Namespace already normalized at adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_NAMESPACE_METADATA;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
@@ -371,6 +378,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void namespaceExists(Namespace namespace) {
+    // Namespace already normalized at adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.NAMESPACE_EXISTS;
 
     // TODO: This authz check doesn't accomplish true authz in terms of blocking the ability
@@ -386,6 +394,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void dropNamespace(Namespace namespace) {
+    // Namespace already normalized at adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_NAMESPACE;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
@@ -394,6 +403,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public UpdateNamespacePropertiesResponse updateNamespaceProperties(
       Namespace namespace, UpdateNamespacePropertiesRequest request) {
+    // Namespace already normalized at adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_NAMESPACE_PROPERTIES;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
@@ -401,6 +411,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public ListTablesResponse listTables(Namespace namespace, String pageToken, Integer pageSize) {
+    // Namespace already normalized at adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
@@ -417,6 +428,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public ListTablesResponse listTables(Namespace namespace) {
+    // Namespace already normalized at adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
@@ -477,11 +489,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
+    // Namespace already normalized at adapter layer
+    String normalizedTableName = identifierNormalizer.normalizeName(request.name());
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, normalizedTableName);
+
     authorizeCreateTableDirect(namespace, request, delegationModes);
 
     request.validate();
-
-    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
     if (baseCatalog.tableExists(tableIdentifier)) {
       throw new AlreadyExistsException("Table already exists: %s", tableIdentifier);
     }
@@ -603,9 +617,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
+    // Namespace already normalized at adapter layer
+    String normalizedTableName = identifierNormalizer.normalizeName(request.name());
+    TableIdentifier ident = TableIdentifier.of(namespace, normalizedTableName);
+
     authorizeCreateTableStaged(namespace, request, delegationModes);
 
-    TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
     return buildLoadTableResponseWithDelegationCredentials(
@@ -625,14 +642,18 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
+    // Namespace already normalized at adapter layer
+    String normalizedTableName = identifierNormalizer.normalizeName(request.name());
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, normalizedTableName);
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, tableIdentifier);
 
     return catalogHandlerUtils.registerTable(baseCatalog, namespace, request);
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
+    // TableIdentifier already normalized at adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.SEND_NOTIFICATIONS;
 
     // For now, just require the full set of privileges on the base Catalog entity, which we can
@@ -780,6 +801,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
       IfNoneMatch ifNoneMatch,
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
+
+    // TableIdentifier already normalized at adapter layer
 
     Set<PolarisStorageActions> actionsRequested =
         authorizeLoadTable(tableIdentifier, delegationModes);
@@ -940,6 +963,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   public LoadTableResponse updateTable(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
 
+    // TableIdentifier already normalized at adapter layer
+
     // Ensure resolution manifest is initialized so we can determine whether
     // fine grained authz model is enabled at the catalog level
     ensureResolutionManifestForTable(tableIdentifier);
@@ -960,6 +985,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
 
   public LoadTableResponse updateTableForStagedCreate(
       TableIdentifier tableIdentifier, UpdateTableRequest request) {
+    // TableIdentifier already normalized at adapter layer
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_TABLE_FOR_STAGED_CREATE;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, tableIdentifier);
 
@@ -972,6 +999,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void dropTableWithoutPurge(TableIdentifier tableIdentifier) {
+    // TableIdentifier already normalized at adapter layer
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
@@ -980,6 +1009,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void dropTableWithPurge(TableIdentifier tableIdentifier) {
+    // TableIdentifier already normalized at adapter layer
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE;
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
@@ -992,6 +1023,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void tableExists(TableIdentifier tableIdentifier) {
+    // TableIdentifier already normalized at adapter layer
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.TABLE_EXISTS;
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
@@ -1001,9 +1034,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void renameTable(RenameTableRequest request) {
+    // TableIdentifiers already normalized at adapter layer
+    TableIdentifier source = request.source();
+    TableIdentifier destination = request.destination();
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.RENAME_TABLE;
     authorizeRenameTableLikeOperationOrThrow(
-        op, PolarisEntitySubType.ICEBERG_TABLE, request.source(), request.destination());
+        op, PolarisEntitySubType.ICEBERG_TABLE, source, destination);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
@@ -1013,17 +1050,19 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void commitTransaction(CommitTransactionRequest commitTransactionRequest) {
+    // TableIdentifiers already normalized at adapter layer
+    List<TableIdentifier> tableIdentifiers =
+        commitTransactionRequest.tableChanges().stream()
+            .map(change -> change.identifier())
+            .toList();
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.COMMIT_TRANSACTION;
     // TODO: The authz actually needs to detect hidden updateForStagedCreate UpdateTableRequests
     // and have some kind of per-item conditional privilege requirement if we want to make it
     // so that only the stageCreate updates need TABLE_CREATE whereas everything else only
     // needs TABLE_WRITE_PROPERTIES.
     authorizeCollectionOfTableLikeOperationOrThrow(
-        op,
-        PolarisEntitySubType.ICEBERG_TABLE,
-        commitTransactionRequest.tableChanges().stream()
-            .map(UpdateTableRequest::identifier)
-            .toList());
+        op, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifiers);
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
       throw new BadRequestException("Cannot update table on static-facade external catalogs.");
@@ -1108,6 +1147,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {
+    // Namespace already normalized at adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
@@ -1128,6 +1168,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public ListTablesResponse listViews(Namespace namespace) {
+    // Namespace already normalized at adapter layer
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_VIEWS;
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
@@ -1135,9 +1176,12 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadViewResponse createView(Namespace namespace, CreateViewRequest request) {
+    // Namespace already normalized at adapter layer
+    String normalizedViewName = identifierNormalizer.normalizeName(request.name());
+    TableIdentifier viewIdentifier = TableIdentifier.of(namespace, normalizedViewName);
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_VIEW;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, viewIdentifier);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
@@ -1147,6 +1191,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {
+    // TableIdentifier already normalized at adapter layer
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_VIEW;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
@@ -1154,6 +1200,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public LoadViewResponse replaceView(TableIdentifier viewIdentifier, UpdateTableRequest request) {
+    // TableIdentifier already normalized at adapter layer
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REPLACE_VIEW;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
@@ -1165,6 +1213,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void dropView(TableIdentifier viewIdentifier) {
+    // TableIdentifier already normalized at adapter layer
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_VIEW;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
@@ -1172,6 +1222,8 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void viewExists(TableIdentifier viewIdentifier) {
+    // TableIdentifier already normalized at adapter layer
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.VIEW_EXISTS;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
@@ -1180,9 +1232,13 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   }
 
   public void renameView(RenameTableRequest request) {
+    // TableIdentifiers already normalized at adapter layer
+    TableIdentifier source = request.source();
+    TableIdentifier destination = request.destination();
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.RENAME_VIEW;
     authorizeRenameTableLikeOperationOrThrow(
-        op, PolarisEntitySubType.ICEBERG_VIEW, request.source(), request.destination());
+        op, PolarisEntitySubType.ICEBERG_VIEW, source, destination);
 
     CatalogEntity catalog = getResolvedCatalogEntity();
     if (catalog.isStaticFacade()) {
