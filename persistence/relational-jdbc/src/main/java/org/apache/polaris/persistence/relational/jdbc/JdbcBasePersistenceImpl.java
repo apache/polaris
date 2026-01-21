@@ -96,7 +96,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   // The max number of components a location can have before the optimized sibling check is not used
   private static final int MAX_LOCATION_COMPONENTS = 40;
 
-  // Minimum schema version that includes metrics tables (scan_metrics_report, commit_metrics_report)
+  // Minimum schema version that includes metrics tables (scan_metrics_report,
+  // commit_metrics_report)
   private static final int METRICS_TABLES_MIN_SCHEMA_VERSION = 4;
 
   public JdbcBasePersistenceImpl(
@@ -405,8 +406,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
    * @param startTimeMs start of time range (inclusive), or null for no lower bound
    * @param endTimeMs end of time range (exclusive), or null for no upper bound
    * @param limit maximum number of results to return
-   * @return list of scan metrics reports matching the criteria, or empty list if schema version &lt;
-   *     4
+   * @return list of scan metrics reports matching the criteria, or empty list if schema version
+   *     &lt; 4
    */
   @Nonnull
   public List<ModelScanMetricsReport> queryScanMetricsReports(
