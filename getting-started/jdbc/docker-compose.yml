@@ -52,7 +52,7 @@ services:
       start_period: 10s
 
   polaris-setup:
-    image: alpine/curl
+    image: alpine/curl:8.17.0
     depends_on:
       polaris:
         condition: service_healthy
@@ -95,7 +95,7 @@ services:
     ]
 
   trino:
-    image: trinodb/trino:latest
+    image: trinodb/trino:479
     depends_on:
       polaris-setup:
         condition: service_completed_successfully

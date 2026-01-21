@@ -20,7 +20,7 @@
 services:
 
   minio:
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     ports:
       # API port
       - "9000:9000"
@@ -66,7 +66,7 @@ services:
       start_period: 10s
 
   setup_bucket:
-    image: quay.io/minio/mc:latest
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
         condition: service_healthy
@@ -81,7 +81,7 @@ services:
         echo Bucket setup complete.;
 
   polaris-setup:
-    image: alpine/curl
+    image: alpine/curl:8.17.0
     depends_on:
       polaris:
         condition: service_healthy
