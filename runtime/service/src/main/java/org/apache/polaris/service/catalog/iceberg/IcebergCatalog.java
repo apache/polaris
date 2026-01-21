@@ -1409,6 +1409,22 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                       Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
+
+        // After a refresh, re-load the FileIO with the new table metadata properties to
+        // ensure the right permissions are present for subsequent file system interactions.
+        if (currentMetadata != null) {
+          tableFileIO =
+              loadFileIOForTableLike(
+                  tableIdentifier,
+                  StorageUtil.getLocationsUsedByTable(currentMetadata),
+                  resolvedEntities,
+                  new HashMap<>(currentMetadata.properties()),
+                  Set.of(
+                      PolarisStorageActions.READ,
+                      PolarisStorageActions.WRITE,
+                      PolarisStorageActions.LIST));
+        }
+
         polarisEventListener.onEvent(
             new PolarisEvent(
                 PolarisEventType.AFTER_REFRESH_TABLE,

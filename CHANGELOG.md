@@ -84,6 +84,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Fixes
 
+- Fixed IcebergCatalog stale FileIO after metadata refresh, resolving AWS assumeRole permission errors.
+
 ### Commits
 
 ## [1.2.0-incubating]
