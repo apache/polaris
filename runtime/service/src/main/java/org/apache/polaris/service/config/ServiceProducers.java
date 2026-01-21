@@ -79,8 +79,6 @@ import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
-import org.apache.polaris.service.reporting.MetricsProcessor;
-import org.apache.polaris.service.reporting.MetricsProcessorConfiguration;
 import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
@@ -275,7 +273,7 @@ public class ServiceProducers {
    */
   public void maybeBootstrap(
       @Observes Startup event,
-      MetaStoreManagerFactory factory,
+      Bootstrapper bootstrapper,
       PersistenceConfiguration config,
       RealmContextConfiguration realmContextConfiguration) {
     var rootCredentialsSet = RootCredentialsSet.fromEnvironment();
@@ -289,7 +287,7 @@ public class ServiceProducers {
           RootCredentialsSet.ENVIRONMENT_VARIABLE,
           RootCredentialsSet.SYSTEM_PROPERTY);
 
-      var result = factory.bootstrapRealms(realmIds, rootCredentialsSet);
+      var result = bootstrapper.bootstrapRealms(realmIds, rootCredentialsSet);
 
       result.forEach(
           (realm, secrets) -> {
@@ -433,72 +431,10 @@ public class ServiceProducers {
     executor.close();
   }
 
-  /**
-   * Produces the legacy {@link PolarisMetricsReporter} for backward compatibility.
-   *
-   * <p>This producer supports the old configuration path: {@code
-   * polaris.iceberg-metrics.reporting.type}
-   *
-   * <p>The reporter is selected based on the configured type using CDI {@link Identifier}
-   * annotations.
-   */
   @Produces
   @ApplicationScoped
   public PolarisMetricsReporter metricsReporter(
       MetricsReportingConfiguration config, @Any Instance<PolarisMetricsReporter> reporters) {
-    String type = config.type();
-    LOGGER.info("Initializing legacy metrics reporter: type={}", type);
-
-    try {
-      PolarisMetricsReporter reporter = reporters.select(Identifier.Literal.of(type)).get();
-      LOGGER.info("Successfully initialized legacy metrics reporter: {}", type);
-      return reporter;
-    } catch (Exception e) {
-      LOGGER.error(
-          "Failed to instantiate metrics reporter for type '{}': {}. Falling back to default.",
-          type,
-          e.getMessage());
-      return reporters.select(Identifier.Literal.of("default")).get();
-    }
-  }
-
-  /**
-   * Produces the new {@link MetricsProcessor} for metrics processing.
-   *
-   * <p>This producer supports the new configuration path: {@code polaris.metrics.processor.type}
-   *
-   * <p>The processor is selected based on the configured type using CDI {@link Identifier}
-   * annotations. If the new configuration is not specified, it falls back to using the legacy
-   * {@link PolarisMetricsReporter} via the "legacy" processor.
-   */
-  @Produces
-  @ApplicationScoped
-  public MetricsProcessor metricsProcessor(
-      MetricsProcessorConfiguration processorConfig,
-      MetricsReportingConfiguration reporterConfig,
-      @Any Instance<MetricsProcessor> processors) {
-    String type = processorConfig.type();
-    LOGGER.info("Initializing metrics processor: type={}", type);
-
-    // If using default "noop" processor but old config is set, use legacy processor
-    if ("noop".equals(type) && !"default".equals(reporterConfig.type())) {
-      LOGGER.info(
-          "New processor config is 'noop' but legacy reporter config is '{}'. "
-              + "Using legacy processor for backward compatibility.",
-          reporterConfig.type());
-      type = "legacy";
-    }
-
-    try {
-      MetricsProcessor processor = processors.select(Identifier.Literal.of(type)).get();
-      LOGGER.info("Successfully initialized metrics processor: {}", type);
-      return processor;
-    } catch (Exception e) {
-      LOGGER.error(
-          "Failed to instantiate metrics processor for type '{}': {}. Falling back to noop.",
-          type,
-          e.getMessage());
-      return processors.select(Identifier.Literal.of("noop")).get();
-    }
+    return reporters.select(Identifier.Literal.of(config.type())).get();
   }
 }
