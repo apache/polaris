@@ -1410,22 +1410,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 new AttributeMap()
                     .put(EventAttributes.CATALOG_NAME, catalogName)
                     .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
-        // TODO: Once we have the "current" table properties pulled into the resolvedEntity
-        // then we should use the actual current table properties for IO refresh here
-        // instead of the general tableDefaultProperties.
-        String latestLocationDir = latestLocation.substring(0, latestLocation.lastIndexOf('/'));
-        FileIO fileIO =
-            loadFileIOForTableLike(
-                tableIdentifier,
-                Set.of(latestLocationDir),
-                resolvedEntities,
-                new HashMap<>(tableDefaultProperties),
-                Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
             getMaxMetadataRefreshRetries(),
-            metadataLocation -> TableMetadataParser.read(fileIO, metadataLocation));
+            metadataLocation -> {
+              // TODO: Once we have the "current" table properties pulled into the resolvedEntity
+              // then we should use the actual current table properties for IO refresh here
+              // instead of the general tableDefaultProperties.
+              String latestLocationDir =
+                  latestLocation.substring(0, latestLocation.lastIndexOf('/'));
+              FileIO fileIO =
+                  loadFileIOForTableLike(
+                      tableIdentifier,
+                      Set.of(latestLocationDir),
+                      resolvedEntities,
+                      new HashMap<>(tableDefaultProperties),
+                      Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+              return TableMetadataParser.read(fileIO, metadataLocation);
+            });
         polarisEventListener.onEvent(
             new PolarisEvent(
                 PolarisEventType.AFTER_REFRESH_TABLE,
@@ -1817,23 +1820,26 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 new AttributeMap()
                     .put(EventAttributes.CATALOG_NAME, catalogName)
                     .put(EventAttributes.VIEW_IDENTIFIER, identifier)));
-        // Create FileIO once outside the retry lambda to avoid redundant storage requests
-        // TODO: Once we have the "current" table properties pulled into the resolvedEntity
-        // then we should use the actual current table properties for IO refresh here
-        // instead of the general tableDefaultProperties.
-        String latestLocationDir = latestLocation.substring(0, latestLocation.lastIndexOf('/'));
-        FileIO fileIO =
-            loadFileIOForTableLike(
-                identifier,
-                Set.of(latestLocationDir),
-                resolvedEntities,
-                new HashMap<>(tableDefaultProperties),
-                Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
             getMaxMetadataRefreshRetries(),
-            metadataLocation -> ViewMetadataParser.read(fileIO.newInputFile(metadataLocation)));
+            metadataLocation -> {
+              // TODO: Once we have the "current" table properties pulled into the resolvedEntity
+              // then we should use the actual current table properties for IO refresh here
+              // instead of the general tableDefaultProperties.
+              String latestLocationDir =
+                  latestLocation.substring(0, latestLocation.lastIndexOf('/'));
+              FileIO fileIO =
+                  loadFileIOForTableLike(
+                      identifier,
+                      Set.of(latestLocationDir),
+                      resolvedEntities,
+                      new HashMap<>(tableDefaultProperties),
+                      Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+              return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
+            });
         polarisEventListener.onEvent(
             new PolarisEvent(
                 PolarisEventType.AFTER_REFRESH_VIEW,
