@@ -221,6 +221,11 @@ class OptionTree:
                                 Hints.Catalogs.Create.STS_UNAVAILABLE,
                             ),
                             Argument(
+                                Arguments.KMS_UNAVAILABLE,
+                                bool,
+                                Hints.Catalogs.Create.KMS_UNAVAILABLE,
+                            ),
+                            Argument(
                                 Arguments.PATH_STYLE_ACCESS,
                                 bool,
                                 Hints.Catalogs.Create.PATH_STYLE_ACCESS,

@@ -67,6 +67,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
   the [hierarchical namespace](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-namespace)
   feature is enabled in Azure.
 - Relaxed `client_id`, `client_secret` regex/pattern validation on reset endpoint call
+- Added support for S3-compatible storage that does not have KMS (use `kmsUavailable: true` in catalog storage configuration)
 
 ### Changes
 

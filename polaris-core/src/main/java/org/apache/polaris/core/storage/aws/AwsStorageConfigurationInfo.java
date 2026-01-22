@@ -113,6 +113,12 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
    */
   public abstract @Nullable Boolean getStsUnavailable();
 
+  /**
+   * Flag indicating whether KMS is available or not. It is modeled in the negative to simplify
+   * support for unset values ({@code null} being interpreted as {@code false}).
+   */
+  public abstract @Nullable Boolean getKmsUnavailable();
+
   /** Endpoint URI for STS API calls */
   @Nullable
   public abstract String getStsEndpoint();

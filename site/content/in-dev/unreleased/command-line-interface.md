@@ -148,6 +148,7 @@ options:
       --endpoint-internal  (Only for S3) The S3 endpoint used by Polaris to use when connecting to S3, if different from the one that clients use
       --sts-endpoint  (Only for S3) The STS endpoint to use when connecting to STS
       --no-sts  (Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)
+      --no-kms  (Only for S3) Indicates that Polaris should not use KMS (e.g. if KMS is not available)
       --path-style-access  (Only for S3) Whether to use path-style-access for S3
       --allowed-location  An allowed location for files tracked by the catalog. Multiple locations can be provided by specifying this option more than once.
       --role-arn  (Only for AWS S3) A role ARN to use when connecting to S3

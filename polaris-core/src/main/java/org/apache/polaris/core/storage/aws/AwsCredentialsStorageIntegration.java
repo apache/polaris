@@ -199,6 +199,10 @@ public class AwsCredentialsStorageIntegration
     return !Boolean.TRUE.equals(storageConfig.getStsUnavailable());
   }
 
+  private boolean shouldUseKms(AwsStorageConfigurationInfo storageConfig) {
+    return !Boolean.TRUE.equals(storageConfig.getKmsUnavailable());
+  }
+
   /**
    * generate an IamPolicy from the input readLocations and writeLocations, optionally with list
    * support. Credentials will be scoped to exactly the resources provided. If read and write
@@ -271,9 +275,13 @@ public class AwsCredentialsStorageIntegration
                     arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
-      addKmsKeyPolicy(currentKmsKey, allowedKmsKeys, policyBuilder, true, region, accountId);
+      if (shouldUseKms(storageConfigurationInfo)) {
+        addKmsKeyPolicy(currentKmsKey, allowedKmsKeys, policyBuilder, true, region, accountId);
+      }
     } else {
-      addKmsKeyPolicy(currentKmsKey, allowedKmsKeys, policyBuilder, false, region, accountId);
+      if (shouldUseKms(storageConfigurationInfo)) {
+        addKmsKeyPolicy(currentKmsKey, allowedKmsKeys, policyBuilder, false, region, accountId);
+      }
     }
     if (!bucketListStatementBuilder.isEmpty()) {
       bucketListStatementBuilder
