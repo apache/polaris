@@ -95,7 +95,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Relaxed the requirements for S3 storage's ARN to allow Polaris to connect to more non-AWS S3 storage appliances. 
 - Added checksum to helm deployment so that it will restart when the configmap has changed.
 - Generic Table is no longer in beta and is generally-available.
-- Added Windows support for Python client
+- Added Windows support for Python client.
 
 ## [1.2.0-incubating]
 
