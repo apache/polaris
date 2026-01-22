@@ -37,6 +37,7 @@ import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.catalog.IdentifierParser;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -63,6 +64,7 @@ public class GenericTableCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final PolarisCredentialManager polarisCredentialManager;
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
+  private final IdentifierParser identifierParser;
 
   @Inject
   public GenericTableCatalogAdapter(
@@ -75,7 +77,8 @@ public class GenericTableCatalogAdapter
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
       PolarisCredentialManager polarisCredentialManager,
-      @Any Instance<ExternalCatalogFactory> externalCatalogFactories) {
+      @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
+      IdentifierParser identifierParser) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -87,6 +90,7 @@ public class GenericTableCatalogAdapter
     this.reservedProperties = reservedProperties;
     this.polarisCredentialManager = polarisCredentialManager;
     this.externalCatalogFactories = externalCatalogFactories;
+    this.identifierParser = identifierParser;
   }
 
   private GenericTableCatalogHandler newHandlerWrapper(
@@ -115,9 +119,12 @@ public class GenericTableCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    TableIdentifier tableIdentifier =
+        identifierParser.parseTableIdentifier(
+            realmContext, prefix, namespace, createGenericTableRequest.getName());
     LoadGenericTableResponse response =
         handler.createGenericTable(
-            TableIdentifier.of(decodeNamespace(namespace), createGenericTableRequest.getName()),
+            tableIdentifier,
             createGenericTableRequest.getFormat(),
             createGenericTableRequest.getBaseLocation(),
             createGenericTableRequest.getDoc(),
@@ -134,7 +141,9 @@ public class GenericTableCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
-    handler.dropGenericTable(TableIdentifier.of(decodeNamespace(namespace), genericTable));
+    TableIdentifier tableIdentifier =
+        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, genericTable);
+    handler.dropGenericTable(tableIdentifier);
     return Response.noContent().build();
   }
 
@@ -147,7 +156,8 @@ public class GenericTableCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
-    ListGenericTablesResponse response = handler.listGenericTables(decodeNamespace(namespace));
+    ListGenericTablesResponse response =
+        handler.listGenericTables(identifierParser.parseNamespace(realmContext, prefix, namespace));
     return Response.ok(response).build();
   }
 
@@ -159,8 +169,9 @@ public class GenericTableCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
-    LoadGenericTableResponse response =
-        handler.loadGenericTable(TableIdentifier.of(decodeNamespace(namespace), genericTable));
+    TableIdentifier tableIdentifier =
+        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, genericTable);
+    LoadGenericTableResponse response = handler.loadGenericTable(tableIdentifier);
     return Response.ok(response).build();
   }
 }
