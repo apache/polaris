@@ -18,27 +18,18 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import java.time.InstantSource;
+import com.google.common.util.concurrent.RateLimiter;
 
 /**
- * General-purpose Token bucket implementation. Acquires tokens at a fixed rate and has a maximum
- * amount of tokens. Each successful "tryAcquire" costs 1 token.
+ * General-purpose Token bucket implementation around Guava's {@link RateLimiter}. Acquires tokens
+ * at a fixed rate and has a maximum amount of tokens. Each successful "tryAcquire" costs 1 token.
  */
+@SuppressWarnings("UnstableApiUsage")
 public class TokenBucket {
-  private final double tokensPerMilli;
-  private final long maxTokens;
-  private final InstantSource instantSource;
+  private final RateLimiter rateLimiter;
 
-  private long tokens;
-  private long lastTokenGenerationMillis;
-
-  public TokenBucket(long tokensPerSecond, long maxTokens, InstantSource instantSource) {
-    this.tokensPerMilli = tokensPerSecond / 1000D;
-    this.maxTokens = maxTokens;
-    this.instantSource = instantSource;
-
-    tokens = maxTokens;
-    lastTokenGenerationMillis = instantSource.millis();
+  public TokenBucket(double permitsPerSecond) {
+    this.rateLimiter = RateLimiter.create(permitsPerSecond);
   }
 
   /**
@@ -47,17 +38,6 @@ public class TokenBucket {
    * @return whether a token was successfully acquired and spent
    */
   public synchronized boolean tryAcquire() {
-    // Grant tokens for the time that has passed since our last tryAcquire()
-    long t = instantSource.millis();
-    long millisPassed = Math.subtractExact(t, lastTokenGenerationMillis);
-    lastTokenGenerationMillis = t;
-    tokens = Math.min(maxTokens, tokens + ((long) (millisPassed * tokensPerMilli)));
-
-    // Take a token if they have one available
-    if (tokens >= 1) {
-      tokens--;
-      return true;
-    }
-    return false;
+    return rateLimiter.tryAcquire();
   }
 }
