@@ -46,15 +46,18 @@ public class RateLimiterFilter implements ContainerRequestFilter {
   private static final Logger LOGGER = LoggerFactory.getLogger(RateLimiterFilter.class);
 
   private final RateLimiter rateLimiter;
+  private final RateLimiterFilterConfiguration configuration;
   private final PolarisEventListener polarisEventListener;
   private final PolarisEventMetadataFactory eventMetadataFactory;
 
   @Inject
   public RateLimiterFilter(
       RateLimiter rateLimiter,
+      RateLimiterFilterConfiguration configuration,
       PolarisEventListener polarisEventListener,
       PolarisEventMetadataFactory eventMetadataFactory) {
     this.rateLimiter = rateLimiter;
+    this.configuration = configuration;
     this.polarisEventListener = polarisEventListener;
     this.eventMetadataFactory = eventMetadataFactory;
   }
@@ -62,6 +65,10 @@ public class RateLimiterFilter implements ContainerRequestFilter {
   /** Returns a 429 if the rate limiter says so. Otherwise, forwards the request along. */
   @Override
   public void filter(ContainerRequestContext ctx) throws IOException {
+    if (!configuration.enabled()) {
+      return;
+    }
+
     if (!rateLimiter.canProceed()) {
       polarisEventListener.onEvent(
           new PolarisEvent(

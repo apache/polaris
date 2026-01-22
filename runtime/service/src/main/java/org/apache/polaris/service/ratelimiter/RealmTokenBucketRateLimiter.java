@@ -18,37 +18,41 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import io.quarkiverse.bucket4j.runtime.RateLimitException;
+import io.quarkiverse.bucket4j.runtime.RateLimited;
 import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.polaris.core.context.RealmContext;
 
 /**
- * Rate limiter that maps the request's realm identifier to its own TokenBucket, with its own
- * capacity.
+ * Default rate limiter implementation using Bucket4J.
+ *
+ * <p>This service uses the "polaris" bucket with per-realm segmentation via {@link
+ * RealmIdentityResolver}.
  */
+@ApplicationScoped
 @Identifier("default")
-@RequestScoped
 public class RealmTokenBucketRateLimiter implements RateLimiter {
 
-  private final TokenBucketFactory tokenBucketFactory;
-  private final RealmContext realmContext;
-
   @Inject
-  public RealmTokenBucketRateLimiter(
-      TokenBucketFactory tokenBucketFactory, RealmContext realmContext) {
-    this.tokenBucketFactory = tokenBucketFactory;
-    this.realmContext = realmContext;
-  }
+  @Identifier("default")
+  RealmTokenBucketRateLimiter self;
 
-  /**
-   * This signifies that a request is being made. That is, the rate limiter should count the request
-   * at this point.
-   *
-   * @return Whether the request is allowed to proceed by the rate limiter
-   */
   @Override
   public boolean canProceed() {
-    return tokenBucketFactory.getOrCreateTokenBucket(realmContext).tryAcquire();
+    try {
+      // call the method through the proxy
+      self.tryAcquire();
+      return true;
+    } catch (RateLimitException e) {
+      return false;
+    }
+  }
+
+  @RateLimited(bucket = "polaris", identityResolver = RealmIdentityResolver.class)
+  public void tryAcquire() {
+    // This method must be public and is intentionally empty.
+    // The rate limiting is handled by the Bucket4J interceptor.
+    // If the rate limit is exceeded, a RateLimitException is thrown.
   }
 }

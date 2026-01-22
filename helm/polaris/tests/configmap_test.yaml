@@ -371,38 +371,28 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.access-control-max-age=PT1H" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.access-control-allow-credentials=false" }
 
-  - it: should configure rate-limiter with default values
+  - it: should configure rate-limiter disabled by default
     asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=no-op" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.enabled=false" }
 
-  - it: should configure rate-limiter no-op
+  - it: should configure rate-limiter enabled with default values
     set:
-      rateLimiter.type: no-op
+      rateLimiter.enabled: true
     asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=no-op" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.enabled=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.rate-limiter.buckets.polaris.limits\\[0\\].permitted-uses=9999" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.rate-limiter.buckets.polaris.limits\\[0\\].period=PT1S" }
 
-  - it: should configure rate-limiter with default token bucket values
-    set:
-      rateLimiter.type: default
-    asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=default" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.type=default" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.requests-per-second=9999" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.window=PT10S" }
-
-  - it: should configure rate-limiter with custom token bucket values
+  - it: should configure rate-limiter with custom values
     set:
       rateLimiter:
-        type: custom
-        tokenBucket:
-          type: custom
-          requestsPerSecond: 1234
-          window: PT5S
+        enabled: true
+        maxRequests: 1234
+        period: PT5S
     asserts:
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=custom" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.type=custom" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.requests-per-second=1234" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.window=PT5S" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.enabled=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.rate-limiter.buckets.polaris.limits\\[0\\].permitted-uses=1234" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.rate-limiter.buckets.polaris.limits\\[0\\].period=PT5S" }
 
   - it: should not include tasks configuration by default
     asserts:

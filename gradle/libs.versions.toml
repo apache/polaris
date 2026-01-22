@@ -99,6 +99,7 @@ smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", ver
 smallrye-jandex = { module = "io.smallrye:jandex", version = "3.5.3" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
+quarkus-bucket4j = { module = "io.quarkiverse.bucket4j:quarkus-bucket4j", version = "1.0.7" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "2.0.3" }
 testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version = "4.1.1" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }

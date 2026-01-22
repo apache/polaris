@@ -75,6 +75,8 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
+  implementation(libs.quarkus.bucket4j)
+
   implementation(libs.smallrye.common.annotation)
   implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)

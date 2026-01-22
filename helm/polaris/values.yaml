@@ -740,17 +740,12 @@ cors:
 
 # -- Polaris rate limiter configuration.
 rateLimiter:
-  # -- The type of rate limiter filter to use. Two built-in types are supported: default and no-op.
-  type: no-op
-  # -- The configuration for the default rate limiter, which uses the token bucket algorithm with
-  # one bucket per realm.
-  tokenBucket:
-    # -- The type of the token bucket rate limiter. Only the default type is supported out of the box.
-    type: default
-    # -- The maximum number of requests per second allowed for each realm.
-    requestsPerSecond: 9999
-    # -- The time window.
-    window: PT10S
+  # -- Whether to enable rate limiting.
+  enabled: false
+  # -- The maximum number of requests allowed per period, for each realm.
+  maxRequests: 9999
+  # -- The time period for the rate limit.
+  period: PT1S
 
 # -- Polaris asynchronous task executor configuration.
 tasks:

@@ -59,12 +59,11 @@ data:
     {{- $_ = set $map "polaris.storage.gcp.lifespan" .Values.storage.secret.gcpTokenLifespan -}}
     {{- end -}}
 
-    {{- /* Rate Limiter */ -}}
-    {{- $_ = set $map "polaris.rate-limiter.filter.type" .Values.rateLimiter.type -}}
-    {{- if ne .Values.rateLimiter.type "no-op" -}}
-    {{- $_ = set $map "polaris.rate-limiter.token-bucket.type" .Values.rateLimiter.tokenBucket.type -}}
-    {{- $_ = set $map "polaris.rate-limiter.token-bucket.requests-per-second" .Values.rateLimiter.tokenBucket.requestsPerSecond -}}
-    {{- $_ = set $map "polaris.rate-limiter.token-bucket.window" .Values.rateLimiter.tokenBucket.window -}}
+    {{- /* Rate Limiter (Bucket4J) */ -}}
+    {{- $_ = set $map "polaris.rate-limiter.filter.enabled" .Values.rateLimiter.enabled -}}
+    {{- if .Values.rateLimiter.enabled -}}
+    {{- $_ = set $map "quarkus.rate-limiter.buckets.polaris.limits[0].permitted-uses" .Values.rateLimiter.maxRequests -}}
+    {{- $_ = set $map "quarkus.rate-limiter.buckets.polaris.limits[0].period" .Values.rateLimiter.period -}}
     {{- end -}}
 
     {{- /* Tasks */ -}}
