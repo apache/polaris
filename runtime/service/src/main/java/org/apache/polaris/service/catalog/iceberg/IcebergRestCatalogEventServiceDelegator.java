@@ -282,7 +282,9 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, createTableRequest.name())
-                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
+                  .put(
+                      EventAttributes.LOAD_TABLE_RESPONSES,
+                      List.of((LoadTableResponse) resp.getEntity()))));
     }
     return resp;
   }
@@ -357,7 +359,9 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.TABLE_NAME, table)
-                .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
+                .put(
+                    EventAttributes.LOAD_TABLE_RESPONSES,
+                    List.of((LoadTableResponse) resp.getEntity()))));
     return resp;
   }
 
@@ -451,7 +455,9 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.TABLE_NAME, registerTableRequest.name())
-                .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
+                .put(
+                    EventAttributes.LOAD_TABLE_RESPONSES,
+                    List.of((LoadTableResponse) resp.getEntity()))));
     return resp;
   }
 
@@ -511,7 +517,9 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.TABLE_NAME, table)
                 .put(EventAttributes.UPDATE_TABLE_REQUEST, commitTableRequest)
-                .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
+                .put(
+                    EventAttributes.LOAD_TABLE_RESPONSES,
+                    List.of((LoadTableResponse) resp.getEntity()))));
     return resp;
   }
 
@@ -804,7 +812,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.NAMESPACE, req.identifier().namespace())
                   .put(EventAttributes.TABLE_NAME, req.identifier().name())
                   .put(EventAttributes.UPDATE_TABLE_REQUEST, req)
-                  .put(EventAttributes.LOAD_TABLE_RESPONSE, loadTableResponse)));
+                  .put(EventAttributes.LOAD_TABLE_RESPONSES, List.of(loadTableResponse))));
     }
     return resp;
   }

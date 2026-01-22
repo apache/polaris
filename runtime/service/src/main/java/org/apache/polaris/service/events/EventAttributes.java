@@ -108,8 +108,8 @@ public final class EventAttributes {
       new AttributeKey<>("register_table_request", RegisterTableRequest.class);
   public static final AttributeKey<RenameTableRequest> RENAME_TABLE_REQUEST =
       new AttributeKey<>("rename_table_request", RenameTableRequest.class);
-  public static final AttributeKey<LoadTableResponse> LOAD_TABLE_RESPONSE =
-      new AttributeKey<>("load_table_response", LoadTableResponse.class);
+  public static final AttributeKey<List<LoadTableResponse>> LOAD_TABLE_RESPONSES =
+      new AttributeKey<>("load_table_responses", new TypeToken<List<LoadTableResponse>>() {});
   public static final AttributeKey<String> ACCESS_DELEGATION_MODE =
       new AttributeKey<>("access_delegation_mode", String.class);
   public static final AttributeKey<String> IF_NONE_MATCH_STRING =
@@ -175,8 +175,6 @@ public final class EventAttributes {
   // Transaction attributes
   public static final AttributeKey<CommitTransactionRequest> COMMIT_TRANSACTION_REQUEST =
       new AttributeKey<>("commit_transaction_request", CommitTransactionRequest.class);
-  public static final AttributeKey<List<LoadTableResponse>> LOAD_TABLE_RESPONSES =
-      new AttributeKey<>("commit_transaction_load_table_responses", new TypeToken<>() {});
 
   // Notification attributes
   public static final AttributeKey<NotificationRequest> NOTIFICATION_REQUEST =
