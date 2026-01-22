@@ -35,6 +35,7 @@ import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -138,8 +139,11 @@ public class CommitTransactionEventTest {
         .isEqualTo(table2Name);
     assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.LOAD_TABLE_RESPONSES))
         .isPresent();
-    org.apache.iceberg.rest.responses.LoadTableResponse response2 =
-        afterUpdateTableEvent.attributes().getRequired(EventAttributes.LOAD_TABLE_RESPONSES);
+    LoadTableResponse response2 =
+        afterUpdateTableEvent
+            .attributes()
+            .getRequired(EventAttributes.LOAD_TABLE_RESPONSES)
+            .getFirst();
     assertThat(response2.tableMetadata()).isNotNull();
     assertThat(response2.tableMetadata().properties()).containsEntry(propertyName, "value2");
   }
