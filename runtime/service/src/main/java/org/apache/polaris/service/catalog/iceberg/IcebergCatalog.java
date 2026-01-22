@@ -1410,7 +1410,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 new AttributeMap()
                     .put(EventAttributes.CATALOG_NAME, catalogName)
                     .put(EventAttributes.TABLE_IDENTIFIER, tableIdentifier)));
-        // Create FileIO once outside the retry lambda to avoid redundant storage requests
         // TODO: Once we have the "current" table properties pulled into the resolvedEntity
         // then we should use the actual current table properties for IO refresh here
         // instead of the general tableDefaultProperties.
