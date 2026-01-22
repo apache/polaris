@@ -351,17 +351,22 @@ public class IcebergRestCatalogEventServiceDelegator
             snapshots,
             realmContext,
             securityContext);
+
+    EventAttributeMap generatedEventAttributes =
+        new EventAttributeMap()
+            .put(EventAttributes.CATALOG_NAME, catalogName)
+            .put(EventAttributes.NAMESPACE, namespaceObj)
+            .put(EventAttributes.TABLE_NAME, table);
+    if (resp.getEntity() != null) {
+      generatedEventAttributes.put(
+          EventAttributes.LOAD_TABLE_RESPONSES, List.of((LoadTableResponse) resp.getEntity()));
+    }
+
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_LOAD_TABLE,
             eventMetadataFactory.create(),
-            new EventAttributeMap()
-                .put(EventAttributes.CATALOG_NAME, catalogName)
-                .put(EventAttributes.NAMESPACE, namespaceObj)
-                .put(EventAttributes.TABLE_NAME, table)
-                .put(
-                    EventAttributes.LOAD_TABLE_RESPONSES,
-                    List.of((LoadTableResponse) resp.getEntity()))));
+            generatedEventAttributes));
     return resp;
   }
 
