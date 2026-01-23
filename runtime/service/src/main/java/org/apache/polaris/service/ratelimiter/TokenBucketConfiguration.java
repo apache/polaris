@@ -20,6 +20,8 @@ package org.apache.polaris.service.ratelimiter;
 
 import io.smallrye.config.ConfigMapping;
 
+import java.time.Duration;
+
 @ConfigMapping(prefix = "polaris.rate-limiter.token-bucket")
 public interface TokenBucketConfiguration {
 
@@ -27,6 +29,10 @@ public interface TokenBucketConfiguration {
    * Number of allowed requests per second per realm. The value <em>must</em> be greater than zero.
    */
   long requestsPerSecond();
+
+  /** This setting is no longer used and will be removed in a future release. */
+  @Deprecated(since = "1.3.0", forRemoval = true)
+  Duration window();
 
   /**
    * The type of the token bucket factory. Must be a registered {@link
