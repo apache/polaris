@@ -36,8 +36,10 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.IdentifierParser;
+import org.apache.polaris.service.catalog.IdentifierParserFactory;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.config.ReservedProperties;
@@ -64,7 +66,7 @@ public class GenericTableCatalogAdapter
   private final CatalogPrefixParser prefixParser;
   private final PolarisCredentialManager polarisCredentialManager;
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
-  private final IdentifierParser identifierParser;
+  private final IdentifierParserFactory identifierParserFactory;
 
   @Inject
   public GenericTableCatalogAdapter(
@@ -78,7 +80,7 @@ public class GenericTableCatalogAdapter
       ReservedProperties reservedProperties,
       PolarisCredentialManager polarisCredentialManager,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
-      IdentifierParser identifierParser) {
+      IdentifierParserFactory identifierParserFactory) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -90,7 +92,7 @@ public class GenericTableCatalogAdapter
     this.reservedProperties = reservedProperties;
     this.polarisCredentialManager = polarisCredentialManager;
     this.externalCatalogFactories = externalCatalogFactories;
-    this.identifierParser = identifierParser;
+    this.identifierParserFactory = identifierParserFactory;
   }
 
   private GenericTableCatalogHandler newHandlerWrapper(
@@ -118,10 +120,14 @@ public class GenericTableCatalogAdapter
       CreateGenericTableRequest createGenericTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(
-            realmContext, prefix, namespace, createGenericTableRequest.getName());
+        parser.parseTableIdentifier(namespace, createGenericTableRequest.getName());
+
+    // Execute handler logic
+    GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.createGenericTable(
             tableIdentifier,
@@ -140,9 +146,13 @@ public class GenericTableCatalogAdapter
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    TableIdentifier tableIdentifier = parser.parseTableIdentifier(namespace, genericTable);
+
+    // Execute handler logic
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
-    TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, genericTable);
     handler.dropGenericTable(tableIdentifier);
     return Response.noContent().build();
   }
@@ -155,9 +165,13 @@ public class GenericTableCatalogAdapter
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
+    // Execute handler logic
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
-    ListGenericTablesResponse response =
-        handler.listGenericTables(identifierParser.parseNamespace(realmContext, prefix, namespace));
+    ListGenericTablesResponse response = handler.listGenericTables(parser.parseNamespace(namespace));
     return Response.ok(response).build();
   }
 
@@ -168,9 +182,13 @@ public class GenericTableCatalogAdapter
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    TableIdentifier tableIdentifier = parser.parseTableIdentifier(namespace, genericTable);
+
+    // Execute handler logic
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
-    TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, genericTable);
     LoadGenericTableResponse response = handler.loadGenericTable(tableIdentifier);
     return Response.ok(response).build();
   }

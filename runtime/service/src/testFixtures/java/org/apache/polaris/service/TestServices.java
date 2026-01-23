@@ -66,9 +66,8 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCacheConfig;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
-import org.apache.polaris.service.catalog.CatalogCaseSensitivityResolver;
 import org.apache.polaris.service.catalog.DefaultCatalogPrefixParser;
-import org.apache.polaris.service.catalog.IdentifierParser;
+import org.apache.polaris.service.catalog.IdentifierParserFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.identifier.IdentifierNormalizerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -332,11 +331,9 @@ public record TestServices(
 
       CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(realmConfig);
       DefaultCatalogPrefixParser prefixParser = new DefaultCatalogPrefixParser();
-      CatalogCaseSensitivityResolver caseSensitivityResolver =
-          new CatalogCaseSensitivityResolver(metaStoreManager, callContext);
       IdentifierNormalizerFactory normalizerFactory = new IdentifierNormalizerFactory();
-      IdentifierParser identifierParser =
-          new IdentifierParser(caseSensitivityResolver, normalizerFactory, prefixParser);
+      IdentifierParserFactory identifierParserFactory =
+          new IdentifierParserFactory(normalizerFactory, resolutionManifestFactory);
 
       @SuppressWarnings("unchecked")
       Instance<ExternalCatalogFactory> externalCatalogFactory = Mockito.mock(Instance.class);
@@ -360,7 +357,7 @@ public record TestServices(
               externalCatalogFactory,
               storageAccessConfigProvider,
               new DefaultMetricsReporter(),
-              identifierParser);
+              identifierParserFactory);
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;

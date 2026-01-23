@@ -59,12 +59,14 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.rest.PolarisResourcePaths;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.IdentifierParser;
+import org.apache.polaris.service.catalog.IdentifierParserFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
@@ -106,7 +108,7 @@ public class IcebergCatalogAdapter
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
   private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final PolarisMetricsReporter metricsReporter;
-  private final IdentifierParser identifierParser;
+  private final IdentifierParserFactory identifierParserFactory;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -125,7 +127,7 @@ public class IcebergCatalogAdapter
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       StorageAccessConfigProvider storageAccessConfigProvider,
       PolarisMetricsReporter metricsReporter,
-      IdentifierParser identifierParser) {
+      IdentifierParserFactory identifierParserFactory) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -142,7 +144,7 @@ public class IcebergCatalogAdapter
     this.externalCatalogFactories = externalCatalogFactories;
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.metricsReporter = metricsReporter;
-    this.identifierParser = identifierParser;
+    this.identifierParserFactory = identifierParserFactory;
   }
 
   /**
@@ -200,11 +202,13 @@ public class IcebergCatalogAdapter
       CreateNamespaceRequest createNamespaceRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     validateIcebergProperties(realmConfig, createNamespaceRequest.properties());
-    // Normalize the namespace for case-insensitive catalogs
     Namespace normalizedNamespace =
-        identifierParser.normalizeNamespace(
-            realmContext, prefix, createNamespaceRequest.namespace());
+        parser.normalizeNamespace(createNamespaceRequest.namespace());
     CreateNamespaceRequest normalizedRequest =
         CreateNamespaceRequest.builder()
             .withNamespace(normalizedNamespace)
@@ -224,9 +228,13 @@ public class IcebergCatalogAdapter
       String parent,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     Optional<Namespace> namespaceOptional =
         Optional.ofNullable(parent)
-            .map(p -> identifierParser.parseNamespace(realmContext, prefix, p));
+            .map(p -> parser.parseNamespace(p));
     return withCatalog(
         securityContext,
         prefix,
@@ -240,7 +248,11 @@ public class IcebergCatalogAdapter
   @Override
   public Response loadNamespaceMetadata(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
+    Namespace ns = parser.parseNamespace(namespace);
     return withCatalog(
         securityContext, prefix, catalog -> Response.ok(catalog.loadNamespaceMetadata(ns)).build());
   }
@@ -273,7 +285,11 @@ public class IcebergCatalogAdapter
   @Override
   public Response namespaceExists(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
+    Namespace ns = parser.parseNamespace(namespace);
     return withCatalog(
         securityContext,
         prefix,
@@ -286,7 +302,11 @@ public class IcebergCatalogAdapter
   @Override
   public Response dropNamespace(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
+    Namespace ns = parser.parseNamespace(namespace);
     return withCatalog(
         securityContext,
         prefix,
@@ -303,8 +323,12 @@ public class IcebergCatalogAdapter
       UpdateNamespacePropertiesRequest updateNamespacePropertiesRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     validateIcebergProperties(realmConfig, updateNamespacePropertiesRequest.updates());
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    Namespace ns = parser.parseNamespace(namespace);
     UpdateNamespacePropertiesRequest revisedRequest =
         UpdateNamespacePropertiesRequest.builder()
             .removeAll(
@@ -338,10 +362,14 @@ public class IcebergCatalogAdapter
       String accessDelegationMode,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     validateIcebergProperties(realmConfig, createTableRequest.properties());
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    Namespace ns = parser.parseNamespace(namespace);
     return withCatalog(
         securityContext,
         prefix,
@@ -375,7 +403,11 @@ public class IcebergCatalogAdapter
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
+    Namespace ns = parser.parseNamespace(namespace);
     return withCatalog(
         securityContext,
         prefix,
@@ -392,10 +424,14 @@ public class IcebergCatalogAdapter
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, table);
+        parser.parseTableIdentifier(namespace, table);
 
     IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchString);
 
@@ -440,8 +476,12 @@ public class IcebergCatalogAdapter
       String table,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, table);
+        parser.parseTableIdentifier(namespace, table);
     return withCatalog(
         securityContext,
         prefix,
@@ -459,8 +499,12 @@ public class IcebergCatalogAdapter
       Boolean purgeRequested,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, table);
+        parser.parseTableIdentifier(namespace, table);
     return withCatalog(
         securityContext,
         prefix,
@@ -481,7 +525,11 @@ public class IcebergCatalogAdapter
       RegisterTableRequest registerTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
+    Namespace ns = parser.parseNamespace(namespace);
     return withCatalog(
         securityContext,
         prefix,
@@ -499,13 +547,14 @@ public class IcebergCatalogAdapter
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    // Normalize source and destination identifiers for case-insensitive catalogs
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier normalizedSource =
-        identifierParser.normalizeTableIdentifier(
-            realmContext, prefix, renameTableRequest.source());
+        parser.normalizeTableIdentifier(renameTableRequest.source());
     TableIdentifier normalizedDestination =
-        identifierParser.normalizeTableIdentifier(
-            realmContext, prefix, renameTableRequest.destination());
+        parser.normalizeTableIdentifier(renameTableRequest.destination());
     RenameTableRequest normalizedRequest =
         RenameTableRequest.builder()
             .withSource(normalizedSource)
@@ -528,6 +577,10 @@ public class IcebergCatalogAdapter
       CommitTableRequest commitTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     commitTableRequest.updates().stream()
         .filter(MetadataUpdate.SetProperties.class::isInstance)
         .map(MetadataUpdate.SetProperties.class::cast)
@@ -541,7 +594,7 @@ public class IcebergCatalogAdapter
                 .map(reservedProperties::removeReservedProperties)
                 .toList());
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, table);
+        parser.parseTableIdentifier(namespace, table);
     return withCatalog(
         securityContext,
         prefix,
@@ -562,13 +615,17 @@ public class IcebergCatalogAdapter
       CreateViewRequest createViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     validateIcebergProperties(realmConfig, createViewRequest.properties());
 
     CreateViewRequest revisedRequest =
         ImmutableCreateViewRequest.copyOf(createViewRequest)
             .withProperties(
                 reservedProperties.removeReservedProperties(createViewRequest.properties()));
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    Namespace ns = parser.parseNamespace(namespace);
     return withCatalog(
         securityContext,
         prefix,
@@ -583,7 +640,11 @@ public class IcebergCatalogAdapter
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
+    Namespace ns = parser.parseNamespace(namespace);
     return withCatalog(
         securityContext,
         prefix,
@@ -597,8 +658,12 @@ public class IcebergCatalogAdapter
       String table,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, table);
+        parser.parseTableIdentifier(namespace, table);
     return withCatalog(
         securityContext,
         prefix,
@@ -623,8 +688,12 @@ public class IcebergCatalogAdapter
       String view,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, view);
+        parser.parseTableIdentifier(namespace, view);
     return withCatalog(
         securityContext, prefix, catalog -> Response.ok(catalog.loadView(tableIdentifier)).build());
   }
@@ -636,8 +705,12 @@ public class IcebergCatalogAdapter
       String view,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, view);
+        parser.parseTableIdentifier(namespace, view);
     return withCatalog(
         securityContext,
         prefix,
@@ -654,8 +727,12 @@ public class IcebergCatalogAdapter
       String view,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, view);
+        parser.parseTableIdentifier(namespace, view);
     return withCatalog(
         securityContext,
         prefix,
@@ -671,13 +748,14 @@ public class IcebergCatalogAdapter
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    // Normalize source and destination identifiers for case-insensitive catalogs
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier normalizedSource =
-        identifierParser.normalizeTableIdentifier(
-            realmContext, prefix, renameTableRequest.source());
+        parser.normalizeTableIdentifier(renameTableRequest.source());
     TableIdentifier normalizedDestination =
-        identifierParser.normalizeTableIdentifier(
-            realmContext, prefix, renameTableRequest.destination());
+        parser.normalizeTableIdentifier(renameTableRequest.destination());
     RenameTableRequest normalizedRequest =
         RenameTableRequest.builder()
             .withSource(normalizedSource)
@@ -700,6 +778,10 @@ public class IcebergCatalogAdapter
       CommitViewRequest commitViewRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     UpdateTableRequest revisedRequest =
         UpdateTableRequest.create(
             commitViewRequest.identifier(),
@@ -708,7 +790,7 @@ public class IcebergCatalogAdapter
                 .map(reservedProperties::removeReservedProperties)
                 .toList());
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, view);
+        parser.parseTableIdentifier(namespace, view);
     return withCatalog(
         securityContext,
         prefix,
@@ -721,6 +803,10 @@ public class IcebergCatalogAdapter
       CommitTransactionRequest commitTransactionRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     commitTransactionRequest.tableChanges().stream()
         .flatMap(updateTableRequest -> updateTableRequest.updates().stream())
         .filter(MetadataUpdate.SetProperties.class::isInstance)
@@ -732,10 +818,8 @@ public class IcebergCatalogAdapter
             commitTransactionRequest.tableChanges().stream()
                 .map(
                     r -> {
-                      // Normalize the identifier for case-insensitive catalogs
                       TableIdentifier normalizedIdentifier =
-                          identifierParser.normalizeTableIdentifier(
-                              realmContext, prefix, r.identifier());
+                          parser.normalizeTableIdentifier(r.identifier());
                       return UpdateTableRequest.create(
                           normalizedIdentifier,
                           r.requirements(),
@@ -761,9 +845,12 @@ public class IcebergCatalogAdapter
       ReportMetricsRequest reportMetricsRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, table);
+        parser.parseTableIdentifier(namespace, table);
 
     metricsReporter.reportMetric(catalogName, tableIdentifier, reportMetricsRequest.report());
     return Response.status(Response.Status.NO_CONTENT).build();
@@ -777,8 +864,12 @@ public class IcebergCatalogAdapter
       NotificationRequest notificationRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+
     TableIdentifier tableIdentifier =
-        identifierParser.parseTableIdentifier(realmContext, prefix, namespace, table);
+        parser.parseTableIdentifier(namespace, table);
     return withCatalog(
         securityContext,
         prefix,

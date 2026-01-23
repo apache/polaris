@@ -36,10 +36,12 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.IdentifierParser;
+import org.apache.polaris.service.catalog.IdentifierParserFactory;
 import org.apache.polaris.service.catalog.api.PolarisCatalogPolicyApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.types.AttachPolicyRequest;
@@ -67,7 +69,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
   private final CatalogPrefixParser prefixParser;
   private final PolarisCredentialManager polarisCredentialManager;
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
-  private final IdentifierParser identifierParser;
+  private final IdentifierParserFactory identifierParserFactory;
 
   @Inject
   public PolicyCatalogAdapter(
@@ -80,7 +82,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       CatalogPrefixParser prefixParser,
       PolarisCredentialManager polarisCredentialManager,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
-      IdentifierParser identifierParser) {
+      IdentifierParserFactory identifierParserFactory) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -91,7 +93,7 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
     this.prefixParser = prefixParser;
     this.polarisCredentialManager = polarisCredentialManager;
     this.externalCatalogFactories = externalCatalogFactories;
-    this.identifierParser = identifierParser;
+    this.identifierParserFactory = identifierParserFactory;
   }
 
   private PolicyCatalogHandler newHandlerWrapper(SecurityContext securityContext, String prefix) {
@@ -118,7 +120,12 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       CreatePolicyRequest createPolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    Namespace ns = parser.parseNamespace(namespace);
+
+    // Execute handler logic
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     LoadPolicyResponse response = handler.createPolicy(ns, createPolicyRequest);
     return Response.ok(response).build();
@@ -133,9 +140,15 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String policyType,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    Namespace ns = parser.parseNamespace(namespace);
+
     PolicyType type =
         policyType != null ? PolicyType.fromName(RESTUtil.decodeString(policyType)) : null;
+
+    // Execute handler logic
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     ListPoliciesResponse response = handler.listPolicies(ns, type);
     return Response.ok(response).build();
@@ -148,8 +161,14 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String policyName,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    Namespace ns = parser.parseNamespace(namespace);
+
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
+
+    // Execute handler logic
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     LoadPolicyResponse response = handler.loadPolicy(identifier);
     return Response.ok(response).build();
@@ -163,8 +182,14 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       UpdatePolicyRequest updatePolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    Namespace ns = parser.parseNamespace(namespace);
+
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
+
+    // Execute handler logic
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     LoadPolicyResponse response = handler.updatePolicy(identifier, updatePolicyRequest);
     return Response.ok(response).build();
@@ -178,8 +203,14 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       Boolean detachAll,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    Namespace ns = parser.parseNamespace(namespace);
+
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
+
+    // Execute handler logic
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     handler.dropPolicy(identifier, detachAll != null && detachAll);
     return Response.noContent().build();
@@ -193,8 +224,14 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       AttachPolicyRequest attachPolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    Namespace ns = parser.parseNamespace(namespace);
+
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
+
+    // Execute handler logic
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     handler.attachPolicy(identifier, attachPolicyRequest);
     return Response.noContent().build();
@@ -208,8 +245,14 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       DetachPolicyRequest detachPolicyRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns = identifierParser.parseNamespace(realmContext, prefix, namespace);
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    Namespace ns = parser.parseNamespace(namespace);
+
     PolicyIdentifier identifier = new PolicyIdentifier(ns, RESTUtil.decodeString(policyName));
+
+    // Execute handler logic
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     handler.detachPolicy(identifier, detachPolicyRequest);
     return Response.noContent().build();
@@ -225,11 +268,16 @@ public class PolicyCatalogAdapter implements PolarisCatalogPolicyApiService, Cat
       String policyType,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    Namespace ns =
-        namespace != null ? identifierParser.parseNamespace(realmContext, prefix, namespace) : null;
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    Namespace ns = namespace != null ? parser.parseNamespace(namespace) : null;
+
     String target = targetName != null ? RESTUtil.decodeString(targetName) : null;
     PolicyType type =
         policyType != null ? PolicyType.fromName(RESTUtil.decodeString(policyType)) : null;
+
+    // Execute handler logic
     PolicyCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     GetApplicablePoliciesResponse response = handler.getApplicablePolicies(ns, target, type);
     return Response.ok(response).build();
