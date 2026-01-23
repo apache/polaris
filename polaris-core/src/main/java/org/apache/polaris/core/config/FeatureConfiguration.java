@@ -195,6 +195,15 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .defaultValue(true)
           .buildFeatureConfiguration();
 
+  public static final FeatureConfiguration<Boolean> ALLOW_WILDCARD_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_WILDCARD_LOCATION")
+          .description(
+              "Indicates whether asterisks ('*') in configuration values defining allowed"
+                  + " storage locations are processed as meaning 'any location'.")
+          .defaultValue(false)
+          .buildFeatureConfiguration();
+
   @SuppressWarnings("deprecation")
   public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
       PolarisConfiguration.<List<String>>builder()
@@ -247,6 +256,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If set to true, Polaris will attempt to delete view metadata files when a view is dropped.")
           .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Long> POLARIS_TASK_TIMEOUT_MILLIS =
+      PolarisConfiguration.<Long>builder()
+          .key("POLARIS_TASK_TIMEOUT_MILLIS")
+          .description(
+              "Polaris task expiry timeout (milliseconds). Older unfinished tasks may not be processed.")
+          .defaultValue(300_000L)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =

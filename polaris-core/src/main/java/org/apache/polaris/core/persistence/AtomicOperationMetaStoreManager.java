@@ -54,7 +54,6 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -558,69 +557,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // success, return the two entities
     return new CreateCatalogResult(catalog, adminRole);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nonnull BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx) {
-    // get meta store we should be using
-    BasePersistence ms = callCtx.getMetaStore();
-
-    // Create a root container entity that can represent the securable for any top-level grants.
-    PolarisBaseEntity rootContainer =
-        new PolarisBaseEntity(
-            PolarisEntityConstants.getNullId(),
-            PolarisEntityConstants.getRootEntityId(),
-            PolarisEntityType.ROOT,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootEntityId(),
-            PolarisEntityConstants.getRootContainerName());
-    this.persistNewEntity(callCtx, ms, rootContainer);
-
-    // Now bootstrap the service by creating the root principal and the service_admin principal
-    // role. The principal role will be granted to that root principal and the root catalog admin
-    // of the root catalog will be granted to that principal role.
-    long rootPrincipalId = ms.generateNewId(callCtx);
-    PrincipalEntity rootPrincipal =
-        new PrincipalEntity.Builder()
-            .setId(rootPrincipalId)
-            .setName(PolarisEntityConstants.getRootPrincipalName())
-            .setCreateTimestamp(System.currentTimeMillis())
-            .build();
-    this.createPrincipal(callCtx, rootPrincipal);
-
-    // now create the account admin principal role
-    long serviceAdminPrincipalRoleId = ms.generateNewId(callCtx);
-    PrincipalRoleEntity serviceAdminPrincipalRole =
-        new PrincipalRoleEntity.Builder()
-            .setId(serviceAdminPrincipalRoleId)
-            .setName(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
-            .setCreateTimestamp(System.currentTimeMillis())
-            .build();
-    this.persistNewEntity(callCtx, ms, serviceAdminPrincipalRole);
-
-    // we also need to grant usage on the account-admin principal to the principal
-    this.persistNewGrantRecord(
-        callCtx,
-        ms,
-        serviceAdminPrincipalRole,
-        rootPrincipal,
-        PolarisPrivilege.PRINCIPAL_ROLE_USAGE);
-
-    // grant SERVICE_MANAGE_ACCESS on the rootContainer to the serviceAdminPrincipalRole
-    this.persistNewGrantRecord(
-        callCtx,
-        ms,
-        rootContainer,
-        serviceAdminPrincipalRole,
-        PolarisPrivilege.SERVICE_MANAGE_ACCESS);
-
-    // TODO: Make idempotent by being able to continue where it left off for the context's realm.
-    // In the meantime, if a realm was only partially initialized before the server crashed,
-    // it's fine to purge the realm and retry the bootstrap.
-
-    // all good
-    return new BaseResult(BaseResult.ReturnStatus.SUCCESS);
   }
 
   @Override
@@ -1536,9 +1472,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               long taskAgeTimeout =
                   callCtx
                       .getRealmConfig()
-                      .getConfig(
-                          PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
-                          PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
+                      .getConfig(FeatureConfiguration.POLARIS_TASK_TIMEOUT_MILLIS);
               return taskState == null
                   || taskState.executor == null
                   || clock.millis() - taskState.lastAttemptStartTime > taskAgeTimeout;
