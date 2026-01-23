@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -646,6 +647,91 @@ class MetricsReportPersistenceTest {
     int deleted = v3Persistence.deleteAllMetricsReportsOlderThan(System.currentTimeMillis());
 
     assertThat(deleted).isEqualTo(0);
+  }
+
+  @Test
+  void testWriteScanMetricsReportWithRoles() {
+    ModelScanMetricsReport report =
+        ImmutableModelScanMetricsReport.builder()
+            .reportId(UUID.randomUUID().toString())
+            .realmId("TEST_REALM")
+            .catalogId("test-catalog")
+            .catalogName("test-catalog")
+            .namespace("db.schema")
+            .tableName("test_table")
+            .timestampMs(System.currentTimeMillis())
+            .snapshotId(12345L)
+            .schemaId(1)
+            .resultDataFiles(10L)
+            .resultDeleteFiles(2L)
+            .totalFileSizeBytes(1024000L)
+            .totalDataManifests(5L)
+            .totalDeleteManifests(1L)
+            .scannedDataManifests(3L)
+            .scannedDeleteManifests(1L)
+            .skippedDataManifests(2L)
+            .skippedDeleteManifests(0L)
+            .skippedDataFiles(5L)
+            .skippedDeleteFiles(0L)
+            .totalPlanningDurationMs(150L)
+            .equalityDeleteFiles(1L)
+            .positionalDeleteFiles(1L)
+            .indexedDeleteFiles(0L)
+            .totalDeleteFileSizeBytes(10240L)
+            .principalName("test-user")
+            .requestId("req-123")
+            .otelTraceId("trace-abc")
+            .otelSpanId("span-xyz")
+            .reportTraceId("report-trace-roles")
+            .roles(Set.of("admin", "data_engineer", "analyst"))
+            .build();
+
+    // Should not throw - roles are written to junction table
+    persistence.writeScanMetricsReport(report);
+  }
+
+  @Test
+  void testWriteCommitMetricsReportWithRoles() {
+    ModelCommitMetricsReport report =
+        ImmutableModelCommitMetricsReport.builder()
+            .reportId(UUID.randomUUID().toString())
+            .realmId("TEST_REALM")
+            .catalogId("test-catalog")
+            .catalogName("test-catalog")
+            .namespace("db.schema")
+            .tableName("test_table")
+            .timestampMs(System.currentTimeMillis())
+            .snapshotId(12345L)
+            .sequenceNumber(1L)
+            .operation("append")
+            .addedDataFiles(5L)
+            .removedDataFiles(0L)
+            .totalDataFiles(100L)
+            .addedDeleteFiles(0L)
+            .removedDeleteFiles(0L)
+            .totalDeleteFiles(2L)
+            .addedEqualityDeleteFiles(0L)
+            .removedEqualityDeleteFiles(0L)
+            .addedPositionalDeleteFiles(0L)
+            .removedPositionalDeleteFiles(0L)
+            .addedRecords(1000L)
+            .removedRecords(0L)
+            .totalRecords(50000L)
+            .addedFileSizeBytes(102400L)
+            .removedFileSizeBytes(0L)
+            .totalFileSizeBytes(5120000L)
+            .totalDurationMs(250L)
+            .attempts(1)
+            .principalName("test-user")
+            .requestId("req-456")
+            .otelTraceId("trace-def")
+            .otelSpanId("span-uvw")
+            .reportTraceId("report-trace-roles")
+            .roles(Set.of("admin", "data_engineer"))
+            .build();
+
+    // Should not throw - roles are written to junction table
+    persistence.writeCommitMetricsReport(report);
   }
 
   /**
