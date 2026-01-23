@@ -81,6 +81,8 @@ import org.apache.iceberg.util.LocationUtil;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.Tasks;
 import org.apache.iceberg.view.BaseMetastoreViewCatalog;
+import org.apache.iceberg.view.BaseView;
+import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewBuilder;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewMetadataParser;
@@ -808,6 +810,24 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   @Override
   protected ViewOperations newViewOps(TableIdentifier identifier) {
     return new BasePolarisViewOperations(catalogFileIO, identifier);
+  }
+
+  /**
+   * Override to fix a bug in {@link BaseMetastoreViewCatalog#loadView} where {@link #newViewOps} is
+   * called twice, causing redundant metadata fetches. This implementation reuses the same {@link
+   * ViewOperations} instance.
+   */
+  @Override
+  public View loadView(TableIdentifier identifier) {
+    if (isValidIdentifier(identifier)) {
+      ViewOperations ops = newViewOps(identifier);
+      if (ops.current() == null) {
+        throw new NoSuchViewException("View does not exist: %s", identifier);
+      }
+      return new BaseView(ops, ViewUtil.fullViewName(name(), identifier));
+    }
+
+    throw new NoSuchViewException("Invalid view identifier: %s", identifier);
   }
 
   @Override
