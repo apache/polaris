@@ -24,8 +24,10 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
+import org.immutables.value.Value;
 
 /** Model class for commit_metrics_report table - stores commit metrics as first-class entities. */
 @PolarisImmutable
@@ -180,6 +182,15 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   @Nullable
   String getMetadata();
+
+  /**
+   * Returns the activated principal roles associated with this report. This is populated from the
+   * junction table commit_metrics_report_roles.
+   */
+  @Value.Default
+  default Set<String> getRoles() {
+    return Set.of();
+  }
 
   @Override
   default ModelCommitMetricsReport fromResultSet(ResultSet rs) throws SQLException {

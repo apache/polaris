@@ -86,8 +86,8 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
     
     -- Additional metadata (for extensibility)
     metadata JSONB DEFAULT '{}'::JSONB,
-    
-    PRIMARY KEY (report_id)
+
+    PRIMARY KEY (realm_id, report_id)
 );
 
 COMMENT ON TABLE scan_metrics_report IS 'Scan metrics reports as first-class entities';
@@ -102,6 +102,17 @@ COMMENT ON COLUMN scan_metrics_report.report_trace_id IS 'Trace ID from report m
 -- when analytics APIs are introduced. Currently only timestamp index is needed for retention cleanup.
 CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp
     ON scan_metrics_report(realm_id, timestamp_ms DESC);
+
+-- Junction table for scan metrics report roles
+CREATE TABLE IF NOT EXISTS scan_metrics_report_roles (
+    realm_id TEXT NOT NULL,
+    report_id TEXT NOT NULL,
+    role_name TEXT NOT NULL,
+    PRIMARY KEY (realm_id, report_id, role_name),
+    FOREIGN KEY (realm_id, report_id) REFERENCES scan_metrics_report(realm_id, report_id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE scan_metrics_report_roles IS 'Activated principal roles for scan metrics reports';
 
 
 -- Commit Metrics Report Entity Table
@@ -161,7 +172,7 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
     -- Additional metadata (for extensibility)
     metadata JSONB DEFAULT '{}'::JSONB,
 
-    PRIMARY KEY (report_id)
+    PRIMARY KEY (realm_id, report_id)
 );
 
 COMMENT ON TABLE commit_metrics_report IS 'Commit metrics reports as first-class entities';
@@ -176,3 +187,13 @@ COMMENT ON COLUMN commit_metrics_report.otel_trace_id IS 'OpenTelemetry trace ID
 CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp
     ON commit_metrics_report(realm_id, timestamp_ms DESC);
 
+-- Junction table for commit metrics report roles
+CREATE TABLE IF NOT EXISTS commit_metrics_report_roles (
+    realm_id TEXT NOT NULL,
+    report_id TEXT NOT NULL,
+    role_name TEXT NOT NULL,
+    PRIMARY KEY (realm_id, report_id, role_name),
+    FOREIGN KEY (realm_id, report_id) REFERENCES commit_metrics_report(realm_id, report_id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE commit_metrics_report_roles IS 'Activated principal roles for commit metrics reports';

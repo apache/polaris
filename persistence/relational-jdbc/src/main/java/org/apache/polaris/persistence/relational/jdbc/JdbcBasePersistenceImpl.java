@@ -359,6 +359,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       if (updated == 0) {
         throw new SQLException("Scan metrics report was not inserted.");
       }
+
+      // Insert roles into junction table
+      for (String role : report.getRoles()) {
+        PreparedQuery roleQuery =
+            QueryGenerator.generateInsertQueryWithoutRealmId(
+                List.of("realm_id", "report_id", "role_name"),
+                "SCAN_METRICS_REPORT_ROLES",
+                List.of(report.getRealmId(), report.getReportId(), role));
+        datasourceOperations.executeUpdate(roleQuery);
+      }
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write scan metrics report due to %s", e.getMessage()), e);
@@ -388,6 +398,16 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       int updated = datasourceOperations.executeUpdate(pq);
       if (updated == 0) {
         throw new SQLException("Commit metrics report was not inserted.");
+      }
+
+      // Insert roles into junction table
+      for (String role : report.getRoles()) {
+        PreparedQuery roleQuery =
+            QueryGenerator.generateInsertQueryWithoutRealmId(
+                List.of("realm_id", "report_id", "role_name"),
+                "COMMIT_METRICS_REPORT_ROLES",
+                List.of(report.getRealmId(), report.getReportId(), role));
+        datasourceOperations.executeUpdate(roleQuery);
       }
     } catch (SQLException e) {
       throw new RuntimeException(
