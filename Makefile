@@ -21,6 +21,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 ## Variables
+PYTHON ?= python3
 BUILD_IMAGE ?= true
 DOCKER ?= docker
 MINIKUBE_PROFILE ?= minikube
@@ -109,7 +110,7 @@ spotless-apply: check-dependencies ## Apply code formatting using Spotless Gradl
 # Target to create the virtual environment directory
 $(VENV_DIR):
 	@echo "Setting up Python virtual environment at $(VENV_DIR)..."
-	@python3 -m venv $(VENV_DIR)
+	@$(PYTHON) -m venv $(VENV_DIR)
 	@echo "Virtual environment created."
 
 .PHONY: client-install-dependencies
@@ -134,7 +135,7 @@ client-lint: client-setup-env ## Run linting checks for Polaris client
 .PHONY: client-regenerate
 client-regenerate: client-setup-env ## Regenerate the client code
 	@echo "--- Regenerating client code ---"
-	@$(ACTIVATE_AND_CD) && python3 -B generate_clients.py
+	@$(ACTIVATE_AND_CD) && $(PYTHON) -B generate_clients.py
 	@echo "--- Client code regeneration complete ---"
 
 .PHONY: client-unit-test
@@ -219,7 +220,7 @@ helm-doc-generate: DEPENDENCIES := helm-docs
 helm-doc-generate: check-dependencies ## Generate Helm chart documentation
 	@echo "--- Generating Helm documentation ---"
 	@helm-docs --chart-search-root=helm
-	@python3 helm/polaris/tools/prepare_helm_readme.py helm/polaris/README.md site/content/in-dev/unreleased/helm.md
+	@$(PYTHON) helm/polaris/tools/prepare_helm_readme.py helm/polaris/README.md site/content/in-dev/unreleased/helm.md
 	@echo "--- Helm documentation generated and copied ---"
 
 helm-unittest: DEPENDENCIES := helm
