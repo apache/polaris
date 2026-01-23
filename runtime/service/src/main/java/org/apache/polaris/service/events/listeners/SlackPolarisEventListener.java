@@ -48,7 +48,7 @@ public class SlackPolarisEventListener implements PolarisEventListener {
 
 
     /**
-     * Slack UI URL: https://api.slack.com/apps/A0AAMG88TH7/incoming-webhooks?success=1
+     * Slack UI URL: https://api.slack.com/apps/A0AA070U6PR/incoming-webhooks?success=1
      *
      * export CATALOG_NAME=catalog1
      * export RESTRICTED_CATALOG_NAME=restricted-catalog1
