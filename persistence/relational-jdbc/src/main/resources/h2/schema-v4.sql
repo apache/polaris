@@ -90,10 +90,9 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
 COMMENT ON TABLE scan_metrics_report IS 'Scan metrics reports as first-class entities';
 
 -- Indexes for scan_metrics_report
-CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp ON scan_metrics_report(timestamp_ms);
-CREATE INDEX IF NOT EXISTS idx_scan_report_table ON scan_metrics_report(catalog_name, namespace, table_name);
-CREATE INDEX IF NOT EXISTS idx_scan_report_trace ON scan_metrics_report(otel_trace_id);
-CREATE INDEX IF NOT EXISTS idx_scan_report_realm ON scan_metrics_report(realm_id);
+-- Note: Additional indexes for query patterns (by table, trace_id, principal) can be added
+-- when analytics APIs are introduced. Currently only timestamp index is needed for retention cleanup.
+CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp ON scan_metrics_report(realm_id, timestamp_ms);
 
 -- Commit Metrics Report Entity Table
 CREATE TABLE IF NOT EXISTS commit_metrics_report (
@@ -158,9 +157,7 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
 COMMENT ON TABLE commit_metrics_report IS 'Commit metrics reports as first-class entities';
 
 -- Indexes for commit_metrics_report
-CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(timestamp_ms);
-CREATE INDEX IF NOT EXISTS idx_commit_report_table ON commit_metrics_report(catalog_name, namespace, table_name);
-CREATE INDEX IF NOT EXISTS idx_commit_report_trace ON commit_metrics_report(otel_trace_id);
-CREATE INDEX IF NOT EXISTS idx_commit_report_operation ON commit_metrics_report(operation);
-CREATE INDEX IF NOT EXISTS idx_commit_report_realm ON commit_metrics_report(realm_id);
+-- Note: Additional indexes for query patterns (by table, trace_id, principal, operation, snapshot)
+-- can be added when analytics APIs are introduced. Currently only timestamp index is needed for retention cleanup.
+CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(realm_id, timestamp_ms);
 

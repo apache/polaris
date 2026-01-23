@@ -98,16 +98,10 @@ COMMENT ON COLUMN scan_metrics_report.otel_trace_id IS 'OpenTelemetry trace ID f
 COMMENT ON COLUMN scan_metrics_report.report_trace_id IS 'Trace ID from report metadata';
 
 -- Indexes for scan_metrics_report
-CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp 
-    ON scan_metrics_report(timestamp_ms DESC);
-CREATE INDEX IF NOT EXISTS idx_scan_report_table 
-    ON scan_metrics_report(catalog_name, namespace, table_name);
-CREATE INDEX IF NOT EXISTS idx_scan_report_trace 
-    ON scan_metrics_report(otel_trace_id) WHERE otel_trace_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_scan_report_principal 
-    ON scan_metrics_report(principal_name) WHERE principal_name IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_scan_report_realm
-    ON scan_metrics_report(realm_id);
+-- Note: Additional indexes for query patterns (by table, trace_id, principal) can be added
+-- when analytics APIs are introduced. Currently only timestamp index is needed for retention cleanup.
+CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp
+    ON scan_metrics_report(realm_id, timestamp_ms DESC);
 
 
 -- Commit Metrics Report Entity Table
@@ -177,18 +171,8 @@ COMMENT ON COLUMN commit_metrics_report.operation IS 'Commit operation type: app
 COMMENT ON COLUMN commit_metrics_report.otel_trace_id IS 'OpenTelemetry trace ID from HTTP headers';
 
 -- Indexes for commit_metrics_report
+-- Note: Additional indexes for query patterns (by table, trace_id, principal, operation, snapshot)
+-- can be added when analytics APIs are introduced. Currently only timestamp index is needed for retention cleanup.
 CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp
-    ON commit_metrics_report(timestamp_ms DESC);
-CREATE INDEX IF NOT EXISTS idx_commit_report_table
-    ON commit_metrics_report(catalog_name, namespace, table_name);
-CREATE INDEX IF NOT EXISTS idx_commit_report_trace
-    ON commit_metrics_report(otel_trace_id) WHERE otel_trace_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_commit_report_principal
-    ON commit_metrics_report(principal_name) WHERE principal_name IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_commit_report_operation
-    ON commit_metrics_report(operation);
-CREATE INDEX IF NOT EXISTS idx_commit_report_realm
-    ON commit_metrics_report(realm_id);
-CREATE INDEX IF NOT EXISTS idx_commit_report_snapshot
-    ON commit_metrics_report(snapshot_id);
+    ON commit_metrics_report(realm_id, timestamp_ms DESC);
 
