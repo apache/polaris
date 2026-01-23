@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -732,6 +733,221 @@ class MetricsReportPersistenceTest {
 
     // Should not throw - roles are written to junction table
     persistence.writeCommitMetricsReport(report);
+  }
+
+  @Test
+  void testScanMetricsReportRolesAreReadBack() {
+    String reportId = UUID.randomUUID().toString();
+    String otelTraceId = "otel-trace-roles-read-" + UUID.randomUUID();
+    Set<String> expectedRoles = Set.of("admin", "data_engineer", "analyst");
+
+    ModelScanMetricsReport report =
+        ImmutableModelScanMetricsReport.builder()
+            .reportId(reportId)
+            .realmId("TEST_REALM")
+            .catalogId("test-catalog")
+            .catalogName("test-catalog")
+            .namespace("db.schema")
+            .tableName("test_table")
+            .timestampMs(System.currentTimeMillis())
+            .snapshotId(12345L)
+            .schemaId(1)
+            .resultDataFiles(10L)
+            .resultDeleteFiles(2L)
+            .totalFileSizeBytes(1024000L)
+            .totalDataManifests(5L)
+            .totalDeleteManifests(1L)
+            .scannedDataManifests(3L)
+            .scannedDeleteManifests(1L)
+            .skippedDataManifests(2L)
+            .skippedDeleteManifests(0L)
+            .skippedDataFiles(5L)
+            .skippedDeleteFiles(0L)
+            .totalPlanningDurationMs(150L)
+            .equalityDeleteFiles(1L)
+            .positionalDeleteFiles(1L)
+            .indexedDeleteFiles(0L)
+            .totalDeleteFileSizeBytes(10240L)
+            .principalName("test-user")
+            .requestId("req-123")
+            .otelTraceId(otelTraceId)
+            .otelSpanId("span-xyz")
+            .reportTraceId("report-trace-123")
+            .roles(expectedRoles)
+            .build();
+
+    persistence.writeScanMetricsReport(report);
+
+    // Query by otel trace ID and verify roles are returned
+    List<ModelScanMetricsReport> results =
+        persistence.queryScanMetricsReportsByTraceId(otelTraceId);
+
+    assertThat(results).hasSize(1);
+    assertThat(results.get(0).getReportId()).isEqualTo(reportId);
+    assertThat(results.get(0).getRoles()).containsExactlyInAnyOrderElementsOf(expectedRoles);
+  }
+
+  @Test
+  void testCommitMetricsReportRolesAreReadBack() {
+    String reportId = UUID.randomUUID().toString();
+    String otelTraceId = "otel-trace-commit-roles-read-" + UUID.randomUUID();
+    Set<String> expectedRoles = Set.of("admin", "data_engineer");
+
+    ModelCommitMetricsReport report =
+        ImmutableModelCommitMetricsReport.builder()
+            .reportId(reportId)
+            .realmId("TEST_REALM")
+            .catalogId("test-catalog")
+            .catalogName("test-catalog")
+            .namespace("db.schema")
+            .tableName("test_table")
+            .timestampMs(System.currentTimeMillis())
+            .snapshotId(12345L)
+            .sequenceNumber(1L)
+            .operation("append")
+            .addedDataFiles(5L)
+            .removedDataFiles(0L)
+            .totalDataFiles(100L)
+            .addedDeleteFiles(0L)
+            .removedDeleteFiles(0L)
+            .totalDeleteFiles(2L)
+            .addedEqualityDeleteFiles(0L)
+            .removedEqualityDeleteFiles(0L)
+            .addedPositionalDeleteFiles(0L)
+            .removedPositionalDeleteFiles(0L)
+            .addedRecords(1000L)
+            .removedRecords(0L)
+            .totalRecords(50000L)
+            .addedFileSizeBytes(102400L)
+            .removedFileSizeBytes(0L)
+            .totalFileSizeBytes(5120000L)
+            .totalDurationMs(250L)
+            .attempts(1)
+            .principalName("test-user")
+            .requestId("req-456")
+            .otelTraceId(otelTraceId)
+            .otelSpanId("span-uvw")
+            .reportTraceId("report-trace-456")
+            .roles(expectedRoles)
+            .build();
+
+    persistence.writeCommitMetricsReport(report);
+
+    // Query by otel trace ID and verify roles are returned
+    List<ModelCommitMetricsReport> results =
+        persistence.queryCommitMetricsReportsByTraceId(otelTraceId);
+
+    assertThat(results).hasSize(1);
+    assertThat(results.get(0).getReportId()).isEqualTo(reportId);
+    assertThat(results.get(0).getRoles()).containsExactlyInAnyOrderElementsOf(expectedRoles);
+  }
+
+  @Test
+  void testScanMetricsReportWithEmptyRoles() {
+    String reportId = UUID.randomUUID().toString();
+    String otelTraceId = "otel-trace-empty-roles-" + UUID.randomUUID();
+
+    ModelScanMetricsReport report =
+        ImmutableModelScanMetricsReport.builder()
+            .reportId(reportId)
+            .realmId("TEST_REALM")
+            .catalogId("test-catalog")
+            .catalogName("test-catalog")
+            .namespace("db.schema")
+            .tableName("test_table")
+            .timestampMs(System.currentTimeMillis())
+            .snapshotId(12345L)
+            .schemaId(1)
+            .resultDataFiles(10L)
+            .resultDeleteFiles(2L)
+            .totalFileSizeBytes(1024000L)
+            .totalDataManifests(5L)
+            .totalDeleteManifests(1L)
+            .scannedDataManifests(3L)
+            .scannedDeleteManifests(1L)
+            .skippedDataManifests(2L)
+            .skippedDeleteManifests(0L)
+            .skippedDataFiles(5L)
+            .skippedDeleteFiles(0L)
+            .totalPlanningDurationMs(150L)
+            .equalityDeleteFiles(1L)
+            .positionalDeleteFiles(1L)
+            .indexedDeleteFiles(0L)
+            .totalDeleteFileSizeBytes(10240L)
+            .principalName("test-user")
+            .requestId("req-123")
+            .otelTraceId(otelTraceId)
+            .otelSpanId("span-xyz")
+            .reportTraceId("report-trace-empty")
+            // No roles set - uses default empty set
+            .build();
+
+    persistence.writeScanMetricsReport(report);
+
+    // Query by otel trace ID and verify empty roles
+    List<ModelScanMetricsReport> results =
+        persistence.queryScanMetricsReportsByTraceId(otelTraceId);
+
+    assertThat(results).hasSize(1);
+    assertThat(results.get(0).getRoles()).isEmpty();
+  }
+
+  @Test
+  void testScanMetricsReportRolesViaTimeRangeQuery() {
+    String reportId = UUID.randomUUID().toString();
+    long timestamp = System.currentTimeMillis();
+    Set<String> expectedRoles = Set.of("role1", "role2");
+
+    ModelScanMetricsReport report =
+        ImmutableModelScanMetricsReport.builder()
+            .reportId(reportId)
+            .realmId("TEST_REALM")
+            .catalogId("test-catalog-roles-query")
+            .catalogName("test-catalog-roles-query")
+            .namespace("db.schema")
+            .tableName("test_table_roles")
+            .timestampMs(timestamp)
+            .snapshotId(12345L)
+            .schemaId(1)
+            .resultDataFiles(10L)
+            .resultDeleteFiles(2L)
+            .totalFileSizeBytes(1024000L)
+            .totalDataManifests(5L)
+            .totalDeleteManifests(1L)
+            .scannedDataManifests(3L)
+            .scannedDeleteManifests(1L)
+            .skippedDataManifests(2L)
+            .skippedDeleteManifests(0L)
+            .skippedDataFiles(5L)
+            .skippedDeleteFiles(0L)
+            .totalPlanningDurationMs(150L)
+            .equalityDeleteFiles(1L)
+            .positionalDeleteFiles(1L)
+            .indexedDeleteFiles(0L)
+            .totalDeleteFileSizeBytes(10240L)
+            .principalName("test-user")
+            .requestId("req-123")
+            .otelTraceId("trace-abc")
+            .otelSpanId("span-xyz")
+            .reportTraceId("report-trace-time-query")
+            .roles(expectedRoles)
+            .build();
+
+    persistence.writeScanMetricsReport(report);
+
+    // Query by time range and verify roles are returned
+    List<ModelScanMetricsReport> results =
+        persistence.queryScanMetricsReports(
+            "test-catalog-roles-query",
+            "db.schema",
+            "test_table_roles",
+            timestamp - 1000,
+            timestamp + 1000,
+            100);
+
+    assertThat(results).hasSize(1);
+    assertThat(results.get(0).getReportId()).isEqualTo(reportId);
+    assertThat(results.get(0).getRoles()).containsExactlyInAnyOrderElementsOf(expectedRoles);
   }
 
   /**
