@@ -38,6 +38,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.LocationBasedEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -91,89 +92,6 @@ record NoSqlMetaStoreManager(
   }
 
   // Realms
-
-  @Nonnull
-  @Override
-  public BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx) {
-    bootstrapPolarisServiceInternal(ms(callCtx));
-    return new BaseResult(BaseResult.ReturnStatus.SUCCESS);
-  }
-
-  Optional<CreatePrincipalResult> bootstrapPolarisServiceInternal(NoSqlMetaStore ms) {
-    // This function is idempotent, already existing entities will not be created again.
-
-    // Create the root-container, if not already present
-    var rootContainer =
-        ms.lookupRoot()
-            .orElseGet(
-                () -> {
-                  var newRoot =
-                      new PolarisBaseEntity(
-                          PolarisEntityConstants.getNullId(),
-                          PolarisEntityConstants.getRootEntityId(),
-                          PolarisEntityType.ROOT,
-                          PolarisEntitySubType.NULL_SUBTYPE,
-                          PolarisEntityConstants.getRootEntityId(),
-                          PolarisEntityConstants.getRootContainerName());
-                  ms.createEntity(newRoot);
-                  return newRoot;
-                });
-
-    // Create the root-principal, if not already present
-    var rootPrincipal =
-        ms.lookupEntityByName(
-            0L,
-            0L,
-            PolarisEntityType.PRINCIPAL.getCode(),
-            PolarisEntityConstants.getRootPrincipalName());
-    var createPrincipalResult = Optional.<CreatePrincipalResult>empty();
-    if (rootPrincipal == null) {
-      var rootPrincipalId = ms.generateNewId();
-      rootPrincipal =
-          new PolarisBaseEntity(
-              PolarisEntityConstants.getNullId(),
-              rootPrincipalId,
-              PolarisEntityType.PRINCIPAL,
-              PolarisEntitySubType.NULL_SUBTYPE,
-              PolarisEntityConstants.getRootEntityId(),
-              PolarisEntityConstants.getRootPrincipalName());
-
-      createPrincipalResult = Optional.of(ms.createPrincipal(rootPrincipal, rootCredentialsSet));
-    }
-
-    // Create the service-admin principal-role, if not already present
-    var serviceAdminPrincipalRole =
-        ms.lookupEntityByName(
-            0L,
-            0L,
-            PolarisEntityType.PRINCIPAL_ROLE.getCode(),
-            PolarisEntityConstants.getNameOfPrincipalServiceAdminRole());
-    if (serviceAdminPrincipalRole == null) {
-      // now create the account admin principal role
-      var serviceAdminPrincipalRoleId = ms.generateNewId();
-      serviceAdminPrincipalRole =
-          new PolarisBaseEntity(
-              PolarisEntityConstants.getNullId(),
-              serviceAdminPrincipalRoleId,
-              PolarisEntityType.PRINCIPAL_ROLE,
-              PolarisEntitySubType.NULL_SUBTYPE,
-              PolarisEntityConstants.getRootEntityId(),
-              PolarisEntityConstants.getNameOfPrincipalServiceAdminRole());
-      ms.createEntity(serviceAdminPrincipalRole);
-    }
-
-    // Persisting already existing grants is an idempotent operation
-    ms.persistGrantsOrRevokes(
-        true,
-        // we also need to grant usage on the account-admin principal to the principal
-        new SecurableGranteePrivilegeTuple(
-            serviceAdminPrincipalRole, rootPrincipal, PolarisPrivilege.PRINCIPAL_ROLE_USAGE),
-        // grant SERVICE_MANAGE_ACCESS on the rootContainer to the serviceAdminPrincipalRole
-        new SecurableGranteePrivilegeTuple(
-            rootContainer, serviceAdminPrincipalRole, PolarisPrivilege.SERVICE_MANAGE_ACCESS));
-
-    return createPrincipalResult;
-  }
 
   @Nonnull
   @Override
@@ -555,9 +473,7 @@ record NoSqlMetaStoreManager(
               long taskAgeTimeout =
                   callCtx
                       .getRealmConfig()
-                      .getConfig(
-                          PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
-                          PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
+                      .getConfig(FeatureConfiguration.POLARIS_TASK_TIMEOUT_MILLIS);
               return taskState == null
                   || taskState.executor == null
                   || clock.millis() - taskState.lastAttemptStartTime > taskAgeTimeout;

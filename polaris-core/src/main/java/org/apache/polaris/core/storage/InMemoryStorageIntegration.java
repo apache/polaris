@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.storage;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_WILDCARD_LOCATION;
+
 import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.List;
@@ -75,7 +77,7 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
     List<StorageLocation> allowedLocations =
         allowedLocationStrings.stream().map(StorageLocation::of).collect(Collectors.toList());
 
-    boolean allowWildcardLocation = realmConfig.getConfig("ALLOW_WILDCARD_LOCATION", false);
+    boolean allowWildcardLocation = realmConfig.getConfig(ALLOW_WILDCARD_LOCATION);
 
     if (allowWildcardLocation && allowedLocationStrings.contains("*")) {
       return locations.stream()

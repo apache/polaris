@@ -30,7 +30,7 @@ cascade:
 {{% blocks/feature icon="fa-solid fa-graduation-cap" title="Learn, Connect and Collaborate" %}}
 [cols="2,3"]
 |===
-| link:https://join.slack.com/t/apache-polaris/shared_invite/zt-3g6ybemmu-Jq_rKus_TaSGXCS3N0DrQw[Slack]
+| link:https://join.slack.com/t/apache-polaris/shared_invite/zt-3niqssi92-s2IQMbe1jJ89ayZ4jQv2EQ[Slack]
 | Public chat, open to everybody
 
 | link:{{% ref "meetings" %}}[Community Meetings]
