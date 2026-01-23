@@ -17,13 +17,25 @@
 -- under the License.
 --
 
+-- ============================================================================
+-- POLARIS JDBC SCHEMA VERSION 4
+-- ============================================================================
+-- This schema is SELF-CONTAINED and can be used for fresh installs.
+-- Each schema version includes ALL tables, not just incremental changes.
+--
 -- Changes from v3:
---  * Added `scan_metrics_report` table for scan metrics as first-class entities
---  * Added `commit_metrics_report` table for commit metrics as first-class entities
+--   * Added `scan_metrics_report` table for scan metrics as first-class entities
+--   * Added `scan_metrics_report_roles` junction table for principal roles
+--   * Added `commit_metrics_report` table for commit metrics as first-class entities
+--   * Added `commit_metrics_report_roles` junction table for principal roles
+-- ============================================================================
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET search_path TO POLARIS_SCHEMA;
 
+-- ============================================================================
+-- VERSION TABLE
+-- ============================================================================
 CREATE TABLE IF NOT EXISTS version (
     version_key TEXT PRIMARY KEY,
     version_value INTEGER NOT NULL
@@ -34,11 +46,150 @@ ON CONFLICT (version_key) DO UPDATE
 SET version_value = EXCLUDED.version_value;
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
 
--- Include all tables from v3
--- (entities, grant_records, principal_authentication_data, policy_mapping_record, events)
--- These are assumed to already exist from v3 migration
+-- ============================================================================
+-- CORE TABLES (from v1)
+-- ============================================================================
 
--- Scan Metrics Report Entity Table
+-- Entities table: stores all Polaris entities (catalogs, namespaces, tables, etc.)
+CREATE TABLE IF NOT EXISTS entities (
+    realm_id TEXT NOT NULL,
+    catalog_id BIGINT NOT NULL,
+    id BIGINT NOT NULL,
+    parent_id BIGINT NOT NULL,
+    name TEXT NOT NULL,
+    entity_version INT NOT NULL,
+    type_code INT NOT NULL,
+    sub_type_code INT NOT NULL,
+    create_timestamp BIGINT NOT NULL,
+    drop_timestamp BIGINT NOT NULL,
+    purge_timestamp BIGINT NOT NULL,
+    to_purge_timestamp BIGINT NOT NULL,
+    last_update_timestamp BIGINT NOT NULL,
+    properties JSONB not null default '{}'::JSONB,
+    internal_properties JSONB not null default '{}'::JSONB,
+    grant_records_version INT NOT NULL,
+    location_without_scheme TEXT,
+    PRIMARY KEY (realm_id, id),
+    CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
+CREATE INDEX IF NOT EXISTS idx_locations
+    ON entities USING btree (realm_id, parent_id, location_without_scheme)
+    WHERE location_without_scheme IS NOT NULL;
+
+COMMENT ON TABLE entities IS 'all the entities';
+COMMENT ON COLUMN entities.realm_id IS 'realm_id used for multi-tenancy';
+COMMENT ON COLUMN entities.catalog_id IS 'catalog id';
+COMMENT ON COLUMN entities.id IS 'entity id';
+COMMENT ON COLUMN entities.parent_id IS 'entity id of parent';
+COMMENT ON COLUMN entities.name IS 'entity name';
+COMMENT ON COLUMN entities.entity_version IS 'version of the entity';
+COMMENT ON COLUMN entities.type_code IS 'type code';
+COMMENT ON COLUMN entities.sub_type_code IS 'sub type of entity';
+COMMENT ON COLUMN entities.create_timestamp IS 'creation time of entity';
+COMMENT ON COLUMN entities.drop_timestamp IS 'time of drop of entity';
+COMMENT ON COLUMN entities.purge_timestamp IS 'time to start purging entity';
+COMMENT ON COLUMN entities.last_update_timestamp IS 'last time the entity is touched';
+COMMENT ON COLUMN entities.properties IS 'entities properties json';
+COMMENT ON COLUMN entities.internal_properties IS 'entities internal properties json';
+COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant records change on the entity';
+
+-- Grant records table: stores privilege grants
+CREATE TABLE IF NOT EXISTS grant_records (
+    realm_id TEXT NOT NULL,
+    securable_catalog_id BIGINT NOT NULL,
+    securable_id BIGINT NOT NULL,
+    grantee_catalog_id BIGINT NOT NULL,
+    grantee_id BIGINT NOT NULL,
+    privilege_code INTEGER,
+    PRIMARY KEY (realm_id, securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
+);
+
+COMMENT ON TABLE grant_records IS 'grant records for entities';
+COMMENT ON COLUMN grant_records.securable_catalog_id IS 'catalog id of the securable';
+COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
+COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
+COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
+COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
+
+-- Principal authentication data table
+CREATE TABLE IF NOT EXISTS principal_authentication_data (
+    realm_id TEXT NOT NULL,
+    principal_id BIGINT NOT NULL,
+    principal_client_id VARCHAR(255) NOT NULL,
+    main_secret_hash VARCHAR(255) NOT NULL,
+    secondary_secret_hash VARCHAR(255) NOT NULL,
+    secret_salt VARCHAR(255) NOT NULL,
+    PRIMARY KEY (realm_id, principal_client_id)
+);
+
+COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';
+
+-- Policy mapping record table (from v2)
+CREATE TABLE IF NOT EXISTS policy_mapping_record (
+    realm_id TEXT NOT NULL,
+    target_catalog_id BIGINT NOT NULL,
+    target_id BIGINT NOT NULL,
+    policy_type_code INTEGER NOT NULL,
+    policy_catalog_id BIGINT NOT NULL,
+    policy_id BIGINT NOT NULL,
+    parameters JSONB NOT NULL DEFAULT '{}'::JSONB,
+    PRIMARY KEY (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, policy_type_code, policy_catalog_id, policy_id, target_catalog_id, target_id);
+
+-- ============================================================================
+-- EVENTS TABLE (from v3)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS events (
+    realm_id TEXT NOT NULL,
+    catalog_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    request_id TEXT,
+    event_type TEXT NOT NULL,
+    timestamp_ms BIGINT NOT NULL,
+    principal_name TEXT,
+    resource_type TEXT NOT NULL,
+    resource_identifier TEXT NOT NULL,
+    additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
+    PRIMARY KEY (event_id)
+);
+
+-- Idempotency records (from v3)
+CREATE TABLE IF NOT EXISTS idempotency_records (
+    realm_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    operation_type TEXT NOT NULL,
+    resource_id TEXT NOT NULL,
+
+    -- Finalization/replay
+    http_status INTEGER,
+    error_subtype TEXT,
+    response_summary TEXT,
+    response_headers TEXT,
+    finalized_at TIMESTAMP,
+
+    -- Liveness/ops
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    heartbeat_at TIMESTAMP,
+    executor_id TEXT,
+    expires_at TIMESTAMP,
+
+    PRIMARY KEY (realm_id, idempotency_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
+    ON idempotency_records (realm_id, expires_at);
+
+-- ============================================================================
+-- METRICS TABLES (NEW in v4)
+-- ============================================================================
+
+-- Scan Metrics Report Table
 CREATE TABLE IF NOT EXISTS scan_metrics_report (
     report_id TEXT NOT NULL,
     realm_id TEXT NOT NULL,
