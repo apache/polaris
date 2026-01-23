@@ -19,25 +19,24 @@
 
 services:
 
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+  rustfs:
+    image: rustfs/rustfs:1.0.0-alpha.80
     ports:
-      # API port
-      - "9000:9000"
-      # UI port
-      - "9001:9001"
+      - "9000:9000" # S3 API port
+      - "9001:9001" # Console port
     environment:
-      MINIO_ROOT_USER: minio_root
-      MINIO_ROOT_PASSWORD: m1n1opwd
-    command:
-      - "server"
-      - "/data"
-      - "--console-address"
-      - ":9001"
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
     healthcheck:
-      test: ["CMD", "curl", "http://127.0.0.1:9000/minio/health/live"]
-      interval: 1s
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9000/health && curl -f http://127.0.0.1:9001/rustfs/console/health"]
+      interval: 30s
       timeout: 10s
+      retries: 3
+      start_period: 40s
 
   polaris:
     image: apache/polaris:latest
@@ -47,19 +46,19 @@ services:
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
     depends_on:
-      minio:
+      rustfs:
         condition: service_healthy
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
       AWS_REGION: us-west-2
-      AWS_ACCESS_KEY_ID: minio_root
-      AWS_SECRET_ACCESS_KEY: m1n1opwd
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
       polaris.realm-context.realms: POLARIS
       quarkus.otel.sdk.disabled: "true"
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8182/q/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8182/q/health"]
       interval: 2s
       timeout: 10s
       retries: 10
@@ -68,14 +67,14 @@ services:
   setup_bucket:
     image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
-      minio:
+      rustfs:
         condition: service_healthy
     entrypoint: "/bin/sh"
     command:
       - "-c"
       - >-
-        echo Creating MinIO bucket...;
-        mc alias set pol http://minio:9000 minio_root m1n1opwd;
+        echo Creating RustFS bucket...;
+        mc alias set pol http://rustfs:9000 rustfsadmin rustfsadmin;
         mc mb pol/bucket123;
         mc ls pol;
         echo Bucket setup complete.;
@@ -100,7 +99,7 @@ services:
         echo Creating catalog...;
         export STORAGE_CONFIG_INFO='{"storageType":"S3",
           "endpoint":"http://localhost:9000",
-          "endpointInternal":"http://minio:9000",
+          "endpointInternal":"http://rustfs:9000",
           "pathStyleAccess":true}';
         export STORAGE_LOCATION='s3://bucket123';
         /polaris/create-catalog.sh POLARIS $$TOKEN;
