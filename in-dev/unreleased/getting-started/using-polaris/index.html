@@ -122,7 +122,7 @@ this catalog should be stored in.</p><p>Additionally, if Polaris is running some
 </span></span><span style=display:flex><span><span style=color:#66d9ef>CREATE</span> NAMESPACE <span style=color:#66d9ef>IF</span> <span style=color:#66d9ef>NOT</span> <span style=color:#66d9ef>EXISTS</span> quickstart_namespace;
 </span></span><span style=display:flex><span><span style=color:#66d9ef>CREATE</span> NAMESPACE <span style=color:#66d9ef>IF</span> <span style=color:#66d9ef>NOT</span> <span style=color:#66d9ef>EXISTS</span> quickstart_namespace.<span style=color:#66d9ef>schema</span>;
 </span></span><span style=display:flex><span>USE NAMESPACE quickstart_namespace.<span style=color:#66d9ef>schema</span>;
-</span></span><span style=display:flex><span><span style=color:#66d9ef>CREATE</span> <span style=color:#66d9ef>TABLE</span> <span style=color:#66d9ef>IF</span> <span style=color:#66d9ef>NOT</span> <span style=color:#66d9ef>EXISTS</span> quickstart_table (id BIGINT, <span style=color:#66d9ef>data</span> STRING) <span style=color:#66d9ef>USING</span> ICEBERG;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>CREATE</span> <span style=color:#66d9ef>TABLE</span> IF <span style=color:#66d9ef>NOT</span> <span style=color:#66d9ef>EXISTS</span> quickstart_table (id BIGINT, <span style=color:#66d9ef>data</span> STRING) <span style=color:#66d9ef>USING</span> ICEBERG;
 </span></span></code></pre></div><p>We can now use this table like any other:</p><pre tabindex=0><code>INSERT INTO quickstart_table VALUES (1, &#39;some data&#39;);
 SELECT * FROM quickstart_table;
 . . .
