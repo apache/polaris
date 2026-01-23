@@ -489,6 +489,180 @@ class MetricsReportPersistenceTest {
     assertThat(results.get(0).getReportId()).isEqualTo(recentReport.getReportId());
   }
 
+  // ==================== Schema Version < 4 Tests ====================
+  // These tests verify graceful degradation when metrics tables don't exist
+
+  @Test
+  void testSupportsMetricsPersistence_SchemaV4() {
+    assertThat(persistence.supportsMetricsPersistence()).isTrue();
+  }
+
+  @Test
+  void testSupportsMetricsPersistence_SchemaV3() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+    assertThat(v3Persistence.supportsMetricsPersistence()).isFalse();
+  }
+
+  @Test
+  void testSupportsMetricsPersistence_SchemaV1() {
+    JdbcBasePersistenceImpl v1Persistence = createPersistenceWithSchemaVersion(1);
+    assertThat(v1Persistence.supportsMetricsPersistence()).isFalse();
+  }
+
+  @Test
+  void testWriteScanMetricsReport_OlderSchema_IsNoOp() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+
+    ModelScanMetricsReport report =
+        ImmutableModelScanMetricsReport.builder()
+            .reportId(UUID.randomUUID().toString())
+            .realmId("TEST_REALM")
+            .catalogId("test-catalog")
+            .catalogName("test-catalog")
+            .namespace("db")
+            .tableName("test_table")
+            .timestampMs(System.currentTimeMillis())
+            .resultDataFiles(1L)
+            .resultDeleteFiles(0L)
+            .totalFileSizeBytes(100L)
+            .totalDataManifests(1L)
+            .totalDeleteManifests(0L)
+            .scannedDataManifests(1L)
+            .scannedDeleteManifests(0L)
+            .skippedDataManifests(0L)
+            .skippedDeleteManifests(0L)
+            .skippedDataFiles(0L)
+            .skippedDeleteFiles(0L)
+            .totalPlanningDurationMs(10L)
+            .equalityDeleteFiles(0L)
+            .positionalDeleteFiles(0L)
+            .indexedDeleteFiles(0L)
+            .totalDeleteFileSizeBytes(0L)
+            .build();
+
+    // Should not throw - silently ignored on older schemas
+    v3Persistence.writeScanMetricsReport(report);
+  }
+
+  @Test
+  void testWriteCommitMetricsReport_OlderSchema_IsNoOp() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+
+    ModelCommitMetricsReport report =
+        ImmutableModelCommitMetricsReport.builder()
+            .reportId(UUID.randomUUID().toString())
+            .realmId("TEST_REALM")
+            .catalogId("test-catalog")
+            .catalogName("test-catalog")
+            .namespace("db")
+            .tableName("test_table")
+            .timestampMs(System.currentTimeMillis())
+            .snapshotId(12345L)
+            .operation("append")
+            .addedDataFiles(1L)
+            .removedDataFiles(0L)
+            .totalDataFiles(1L)
+            .addedDeleteFiles(0L)
+            .removedDeleteFiles(0L)
+            .totalDeleteFiles(0L)
+            .addedEqualityDeleteFiles(0L)
+            .removedEqualityDeleteFiles(0L)
+            .addedPositionalDeleteFiles(0L)
+            .removedPositionalDeleteFiles(0L)
+            .addedRecords(100L)
+            .removedRecords(0L)
+            .totalRecords(100L)
+            .addedFileSizeBytes(1000L)
+            .removedFileSizeBytes(0L)
+            .totalFileSizeBytes(1000L)
+            .totalDurationMs(50L)
+            .attempts(1)
+            .build();
+
+    // Should not throw - silently ignored on older schemas
+    v3Persistence.writeCommitMetricsReport(report);
+  }
+
+  @Test
+  void testQueryScanMetricsReports_OlderSchema_ReturnsEmptyList() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+
+    var results =
+        v3Persistence.queryScanMetricsReports("catalog", "namespace", "table", null, null, 10);
+
+    assertThat(results).isEmpty();
+  }
+
+  @Test
+  void testQueryCommitMetricsReports_OlderSchema_ReturnsEmptyList() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+
+    var results =
+        v3Persistence.queryCommitMetricsReports("catalog", "namespace", "table", null, null, 10);
+
+    assertThat(results).isEmpty();
+  }
+
+  @Test
+  void testQueryScanMetricsReportsByTraceId_OlderSchema_ReturnsEmptyList() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+
+    var results = v3Persistence.queryScanMetricsReportsByTraceId("trace-123");
+
+    assertThat(results).isEmpty();
+  }
+
+  @Test
+  void testQueryCommitMetricsReportsByTraceId_OlderSchema_ReturnsEmptyList() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+
+    var results = v3Persistence.queryCommitMetricsReportsByTraceId("trace-123");
+
+    assertThat(results).isEmpty();
+  }
+
+  @Test
+  void testDeleteScanMetricsReportsOlderThan_OlderSchema_ReturnsZero() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+
+    int deleted = v3Persistence.deleteScanMetricsReportsOlderThan(System.currentTimeMillis());
+
+    assertThat(deleted).isEqualTo(0);
+  }
+
+  @Test
+  void testDeleteCommitMetricsReportsOlderThan_OlderSchema_ReturnsZero() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+
+    int deleted = v3Persistence.deleteCommitMetricsReportsOlderThan(System.currentTimeMillis());
+
+    assertThat(deleted).isEqualTo(0);
+  }
+
+  @Test
+  void testDeleteAllMetricsReportsOlderThan_OlderSchema_ReturnsZero() {
+    JdbcBasePersistenceImpl v3Persistence = createPersistenceWithSchemaVersion(3);
+
+    int deleted = v3Persistence.deleteAllMetricsReportsOlderThan(System.currentTimeMillis());
+
+    assertThat(deleted).isEqualTo(0);
+  }
+
+  /**
+   * Creates a JdbcBasePersistenceImpl with the specified schema version. This uses the same
+   * datasource but with a different reported schema version to test graceful degradation.
+   */
+  private JdbcBasePersistenceImpl createPersistenceWithSchemaVersion(int schemaVersion) {
+    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
+    return new JdbcBasePersistenceImpl(
+        diagServices,
+        datasourceOperations,
+        RANDOM_SECRETS,
+        Mockito.mock(),
+        "TEST_REALM",
+        schemaVersion);
+  }
+
   private static class TestJdbcConfiguration implements RelationalJdbcConfiguration {
     @Override
     public Optional<Integer> maxRetries() {
