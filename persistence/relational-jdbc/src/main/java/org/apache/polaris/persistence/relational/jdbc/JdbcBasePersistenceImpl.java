@@ -28,11 +28,13 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -68,7 +70,10 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageLocation;
+import org.apache.polaris.persistence.relational.jdbc.models.Converter;
 import org.apache.polaris.persistence.relational.jdbc.models.EntityNameLookupRecordConverter;
+import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelCommitMetricsReport;
+import org.apache.polaris.persistence.relational.jdbc.models.ImmutableModelScanMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReport;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelCommitMetricsReportConverter;
 import org.apache.polaris.persistence.relational.jdbc.models.ModelEntity;
@@ -350,25 +355,32 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       return;
     }
     try {
-      PreparedQuery pq =
-          QueryGenerator.generateInsertQueryWithoutRealmId(
-              ModelScanMetricsReport.ALL_COLUMNS,
-              ModelScanMetricsReport.TABLE_NAME,
-              report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
-      int updated = datasourceOperations.executeUpdate(pq);
-      if (updated == 0) {
-        throw new SQLException("Scan metrics report was not inserted.");
-      }
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            PreparedQuery pq =
+                QueryGenerator.generateInsertQueryWithoutRealmId(
+                    ModelScanMetricsReport.ALL_COLUMNS,
+                    ModelScanMetricsReport.TABLE_NAME,
+                    report.toMap(datasourceOperations.getDatabaseType()).values().stream()
+                        .toList());
+            int updated = datasourceOperations.execute(connection, pq);
+            if (updated == 0) {
+              throw new SQLException("Scan metrics report was not inserted.");
+            }
 
-      // Insert roles into junction table
-      for (String role : report.getRoles()) {
-        PreparedQuery roleQuery =
-            QueryGenerator.generateInsertQueryWithoutRealmId(
-                List.of("realm_id", "report_id", "role_name"),
-                "SCAN_METRICS_REPORT_ROLES",
-                List.of(report.getRealmId(), report.getReportId(), role));
-        datasourceOperations.executeUpdate(roleQuery);
-      }
+            // Insert roles into junction table (filter out null/blank values)
+            for (String role : report.getRoles()) {
+              if (role != null && !role.isBlank()) {
+                PreparedQuery roleQuery =
+                    QueryGenerator.generateInsertQueryWithoutRealmId(
+                        List.of("realm_id", "report_id", "role_name"),
+                        "SCAN_METRICS_REPORT_ROLES",
+                        List.of(report.getRealmId(), report.getReportId(), role));
+                datasourceOperations.execute(connection, roleQuery);
+              }
+            }
+            return true;
+          });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write scan metrics report due to %s", e.getMessage()), e);
@@ -390,28 +402,133 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       return;
     }
     try {
-      PreparedQuery pq =
-          QueryGenerator.generateInsertQueryWithoutRealmId(
-              ModelCommitMetricsReport.ALL_COLUMNS,
-              ModelCommitMetricsReport.TABLE_NAME,
-              report.toMap(datasourceOperations.getDatabaseType()).values().stream().toList());
-      int updated = datasourceOperations.executeUpdate(pq);
-      if (updated == 0) {
-        throw new SQLException("Commit metrics report was not inserted.");
-      }
+      datasourceOperations.runWithinTransaction(
+          connection -> {
+            PreparedQuery pq =
+                QueryGenerator.generateInsertQueryWithoutRealmId(
+                    ModelCommitMetricsReport.ALL_COLUMNS,
+                    ModelCommitMetricsReport.TABLE_NAME,
+                    report.toMap(datasourceOperations.getDatabaseType()).values().stream()
+                        .toList());
+            int updated = datasourceOperations.execute(connection, pq);
+            if (updated == 0) {
+              throw new SQLException("Commit metrics report was not inserted.");
+            }
 
-      // Insert roles into junction table
-      for (String role : report.getRoles()) {
-        PreparedQuery roleQuery =
-            QueryGenerator.generateInsertQueryWithoutRealmId(
-                List.of("realm_id", "report_id", "role_name"),
-                "COMMIT_METRICS_REPORT_ROLES",
-                List.of(report.getRealmId(), report.getReportId(), role));
-        datasourceOperations.executeUpdate(roleQuery);
-      }
+            // Insert roles into junction table (filter out null/blank values)
+            for (String role : report.getRoles()) {
+              if (role != null && !role.isBlank()) {
+                PreparedQuery roleQuery =
+                    QueryGenerator.generateInsertQueryWithoutRealmId(
+                        List.of("realm_id", "report_id", "role_name"),
+                        "COMMIT_METRICS_REPORT_ROLES",
+                        List.of(report.getRealmId(), report.getReportId(), role));
+                datasourceOperations.execute(connection, roleQuery);
+              }
+            }
+            return true;
+          });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to write commit metrics report due to %s", e.getMessage()), e);
+    }
+  }
+
+  /** Simple converter to extract role_name from ResultSet. */
+  private static final RoleNameConverter ROLE_NAME_CONVERTER = new RoleNameConverter();
+
+  /** Converter class that extracts just the role_name column from a ResultSet. */
+  private static class RoleNameConverter implements Converter<String> {
+    @Override
+    public String fromResultSet(java.sql.ResultSet rs) throws SQLException {
+      return rs.getString("role_name");
+    }
+
+    @Override
+    public Map<String, Object> toMap(DatabaseType databaseType) {
+      throw new UnsupportedOperationException("RoleNameConverter is read-only");
+    }
+  }
+
+  /**
+   * Loads roles from the scan_metrics_report_roles junction table for the given reports.
+   *
+   * @param reports the reports to populate with roles
+   * @return new list with roles populated
+   */
+  private List<ModelScanMetricsReport> loadScanMetricsReportRoles(
+      List<ModelScanMetricsReport> reports) {
+    if (reports.isEmpty()) {
+      return reports;
+    }
+    try {
+      // Build a map of reportId -> Set<String> roles
+      Map<String, Set<String>> rolesByReportId = new HashMap<>();
+      for (ModelScanMetricsReport report : reports) {
+        String sql =
+            "SELECT role_name FROM "
+                + QueryGenerator.getFullyQualifiedTableName("SCAN_METRICS_REPORT_ROLES")
+                + " WHERE realm_id = ? AND report_id = ?";
+        PreparedQuery query = new PreparedQuery(sql, List.of(realmId, report.getReportId()));
+        List<String> roles = datasourceOperations.executeSelect(query, ROLE_NAME_CONVERTER);
+        if (roles != null && !roles.isEmpty()) {
+          rolesByReportId.put(report.getReportId(), new HashSet<>(roles));
+        }
+      }
+
+      // Rebuild reports with roles populated
+      return reports.stream()
+          .<ModelScanMetricsReport>map(
+              r ->
+                  ImmutableModelScanMetricsReport.builder()
+                      .from(r)
+                      .roles(rolesByReportId.getOrDefault(r.getReportId(), Set.of()))
+                      .build())
+          .toList();
+    } catch (SQLException e) {
+      LOGGER.warn("Failed to load roles for scan metrics reports: {}", e.getMessage(), e);
+      return reports; // Return reports without roles on error
+    }
+  }
+
+  /**
+   * Loads roles from the commit_metrics_report_roles junction table for the given reports.
+   *
+   * @param reports the reports to populate with roles
+   * @return new list with roles populated
+   */
+  private List<ModelCommitMetricsReport> loadCommitMetricsReportRoles(
+      List<ModelCommitMetricsReport> reports) {
+    if (reports.isEmpty()) {
+      return reports;
+    }
+    try {
+      // Build a map of reportId -> Set<String> roles
+      Map<String, Set<String>> rolesByReportId = new HashMap<>();
+      for (ModelCommitMetricsReport report : reports) {
+        String sql =
+            "SELECT role_name FROM "
+                + QueryGenerator.getFullyQualifiedTableName("COMMIT_METRICS_REPORT_ROLES")
+                + " WHERE realm_id = ? AND report_id = ?";
+        PreparedQuery query = new PreparedQuery(sql, List.of(realmId, report.getReportId()));
+        List<String> roles = datasourceOperations.executeSelect(query, ROLE_NAME_CONVERTER);
+        if (roles != null && !roles.isEmpty()) {
+          rolesByReportId.put(report.getReportId(), new HashSet<>(roles));
+        }
+      }
+
+      // Rebuild reports with roles populated
+      return reports.stream()
+          .<ModelCommitMetricsReport>map(
+              r ->
+                  ImmutableModelCommitMetricsReport.builder()
+                      .from(r)
+                      .roles(rolesByReportId.getOrDefault(r.getReportId(), Set.of()))
+                      .build())
+          .toList();
+    } catch (SQLException e) {
+      LOGGER.warn("Failed to load roles for commit metrics reports: {}", e.getMessage(), e);
+      return reports; // Return reports without roles on error
     }
   }
 
@@ -465,7 +582,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PreparedQuery query = new PreparedQuery(sql, values);
       var results =
           datasourceOperations.executeSelect(query, new ModelScanMetricsReportConverter());
-      return results == null ? Collections.emptyList() : results;
+      if (results == null || results.isEmpty()) {
+        return Collections.emptyList();
+      }
+      return loadScanMetricsReportRoles(results);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to query scan metrics reports due to %s", e.getMessage()), e);
@@ -523,7 +643,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PreparedQuery query = new PreparedQuery(sql, values);
       var results =
           datasourceOperations.executeSelect(query, new ModelCommitMetricsReportConverter());
-      return results == null ? Collections.emptyList() : results;
+      if (results == null || results.isEmpty()) {
+        return Collections.emptyList();
+      }
+      return loadCommitMetricsReportRoles(results);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format("Failed to query commit metrics reports due to %s", e.getMessage()), e);
@@ -553,7 +676,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PreparedQuery query = new PreparedQuery(sql, List.of(realmId, traceId));
       var results =
           datasourceOperations.executeSelect(query, new ModelScanMetricsReportConverter());
-      return results == null ? Collections.emptyList() : results;
+      if (results == null || results.isEmpty()) {
+        return Collections.emptyList();
+      }
+      return loadScanMetricsReportRoles(results);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(
@@ -586,7 +712,10 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       PreparedQuery query = new PreparedQuery(sql, List.of(realmId, traceId));
       var results =
           datasourceOperations.executeSelect(query, new ModelCommitMetricsReportConverter());
-      return results == null ? Collections.emptyList() : results;
+      if (results == null || results.isEmpty()) {
+        return Collections.emptyList();
+      }
+      return loadCommitMetricsReportRoles(results);
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(
