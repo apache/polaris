@@ -22,15 +22,20 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.catalog.IdentifierParser;
+import org.apache.polaris.service.catalog.IdentifierParserFactory;
 
-/**
- * A common interface for adapters between the REST interface and {@link CatalogHandler}
- * implementations
- */
 public interface CatalogAdapter {
+  CatalogPrefixParser getPrefixParser();
+
+  IdentifierParserFactory getIdentifierParserFactory();
+
   default Namespace decodeNamespace(String namespace) {
     return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
   }
@@ -41,5 +46,27 @@ public interface CatalogAdapter {
       return polarisPrincipal;
     }
     throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
+  }
+
+  default IdentifierParser createParser(
+      RealmContext realmContext, String prefix, SecurityContext securityContext) {
+    PolarisPrincipal principal = validatePrincipal(securityContext);
+    String catalogName = getPrefixParser().prefixToCatalogName(realmContext, prefix);
+    return getIdentifierParserFactory().createParser(principal, catalogName);
+  }
+
+  default Namespace parseNamespace(
+      RealmContext realmContext, String prefix, String namespace, SecurityContext securityContext) {
+    return createParser(realmContext, prefix, securityContext).parseNamespace(namespace);
+  }
+
+  default TableIdentifier parseTableIdentifier(
+      RealmContext realmContext,
+      String prefix,
+      String namespace,
+      String table,
+      SecurityContext securityContext) {
+    return createParser(realmContext, prefix, securityContext)
+        .parseTableIdentifier(namespace, table);
   }
 }

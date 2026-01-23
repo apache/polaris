@@ -24,6 +24,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -95,6 +96,16 @@ public class GenericTableCatalogAdapter
     this.identifierParserFactory = identifierParserFactory;
   }
 
+  @Override
+  public CatalogPrefixParser getPrefixParser() {
+    return prefixParser;
+  }
+
+  @Override
+  public IdentifierParserFactory getIdentifierParserFactory() {
+    return identifierParserFactory;
+  }
+
   private GenericTableCatalogHandler newHandlerWrapper(
       SecurityContext securityContext, String prefix) {
     FeatureConfiguration.enforceFeatureEnabledOrThrow(
@@ -120,13 +131,10 @@ public class GenericTableCatalogAdapter
       CreateGenericTableRequest createGenericTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisPrincipal principal = validatePrincipal(securityContext);
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
     TableIdentifier tableIdentifier =
-        parser.parseTableIdentifier(namespace, createGenericTableRequest.getName());
+        parseTableIdentifier(
+            realmContext, prefix, namespace, createGenericTableRequest.getName(), securityContext);
 
-    // Execute handler logic
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     LoadGenericTableResponse response =
         handler.createGenericTable(
@@ -146,12 +154,9 @@ public class GenericTableCatalogAdapter
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisPrincipal principal = validatePrincipal(securityContext);
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
-    TableIdentifier tableIdentifier = parser.parseTableIdentifier(namespace, genericTable);
+    TableIdentifier tableIdentifier =
+        parseTableIdentifier(realmContext, prefix, namespace, genericTable, securityContext);
 
-    // Execute handler logic
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     handler.dropGenericTable(tableIdentifier);
     return Response.noContent().build();
@@ -165,13 +170,10 @@ public class GenericTableCatalogAdapter
       Integer pageSize,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisPrincipal principal = validatePrincipal(securityContext);
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
+    Namespace ns = parseNamespace(realmContext, prefix, namespace, securityContext);
 
-    // Execute handler logic
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
-    ListGenericTablesResponse response = handler.listGenericTables(parser.parseNamespace(namespace));
+    ListGenericTablesResponse response = handler.listGenericTables(ns);
     return Response.ok(response).build();
   }
 
@@ -182,12 +184,9 @@ public class GenericTableCatalogAdapter
       String genericTable,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    PolarisPrincipal principal = validatePrincipal(securityContext);
-    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    IdentifierParser parser = identifierParserFactory.createParser(principal, catalogName);
-    TableIdentifier tableIdentifier = parser.parseTableIdentifier(namespace, genericTable);
+    TableIdentifier tableIdentifier =
+        parseTableIdentifier(realmContext, prefix, namespace, genericTable, securityContext);
 
-    // Execute handler logic
     GenericTableCatalogHandler handler = newHandlerWrapper(securityContext, prefix);
     LoadGenericTableResponse response = handler.loadGenericTable(tableIdentifier);
     return Response.ok(response).build();

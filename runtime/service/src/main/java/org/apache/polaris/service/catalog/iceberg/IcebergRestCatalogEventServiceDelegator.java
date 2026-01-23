@@ -43,6 +43,7 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.catalog.IdentifierParserFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.events.AttributeMap;
@@ -80,6 +81,16 @@ public class IcebergRestCatalogEventServiceDelegator
 
   // Default constructor for CDI
   public IcebergRestCatalogEventServiceDelegator() {}
+
+  @Override
+  public CatalogPrefixParser getPrefixParser() {
+    return delegate.getPrefixParser();
+  }
+
+  @Override
+  public IdentifierParserFactory getIdentifierParserFactory() {
+    return delegate.getIdentifierParserFactory();
+  }
 
   @Override
   public Response createNamespace(

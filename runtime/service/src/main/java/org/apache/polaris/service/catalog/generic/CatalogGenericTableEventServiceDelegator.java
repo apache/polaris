@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.CatalogPrefixParser;
+import org.apache.polaris.service.catalog.IdentifierParserFactory;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 import org.apache.polaris.service.catalog.common.CatalogAdapter;
 import org.apache.polaris.service.events.AttributeMap;
@@ -47,6 +48,16 @@ public class CatalogGenericTableEventServiceDelegator
   @Inject PolarisEventListener polarisEventListener;
   @Inject PolarisEventMetadataFactory eventMetadataFactory;
   @Inject CatalogPrefixParser prefixParser;
+
+  @Override
+  public CatalogPrefixParser getPrefixParser() {
+    return delegate.getPrefixParser();
+  }
+
+  @Override
+  public IdentifierParserFactory getIdentifierParserFactory() {
+    return delegate.getIdentifierParserFactory();
+  }
 
   @Override
   public Response createGenericTable(
