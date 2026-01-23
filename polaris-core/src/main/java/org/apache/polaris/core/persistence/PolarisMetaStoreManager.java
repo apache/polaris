@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.AuthBootstrapUtil;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
 import org.apache.polaris.core.entity.LocationBasedEntity;
@@ -73,7 +74,10 @@ public interface PolarisMetaStoreManager
    * @return the result of the bootstrap attempt
    */
   @Nonnull
-  BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx);
+  default BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx) {
+    AuthBootstrapUtil.createPolarisPrincipalForRealm(this, callCtx);
+    return new BaseResult(BaseResult.ReturnStatus.SUCCESS);
+  }
 
   /**
    * Purge all metadata associated with the Polaris service, resetting the metastore to the state it
