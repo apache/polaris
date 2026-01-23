@@ -46,7 +46,7 @@ public abstract class PolarisPersistenceEventListener implements PolarisEventLis
 
   private void handleAfterCreateTable(PolarisEvent event) {
     LoadTableResponse loadTableResponse =
-        event.attributes().getRequired(EventAttributes.LOAD_TABLE_RESPONSES).getFirst();
+        event.attributes().getRequired(EventAttributes.LOAD_TABLE_RESPONSE);
     TableMetadata tableMetadata = loadTableResponse.tableMetadata();
     String catalogName = event.attributes().getRequired(EventAttributes.CATALOG_NAME);
     Namespace namespace = event.attributes().getRequired(EventAttributes.NAMESPACE);

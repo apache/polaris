@@ -1047,7 +1047,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
         new TransactionWorkspaceMetaStoreManager(diagnostics, metaStoreManager);
     ((IcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
-    List<LoadTableResponse> loadTableResponses = new ArrayList<>();
+    List<TableMetadata> tableMetadataObjs = new ArrayList<>();
     commitTransactionRequest.tableChanges().stream()
         .forEach(
             change -> {
@@ -1099,9 +1099,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
                 tableOps.commit(currentMetadata, updatedMetadata);
               }
 
-              LoadTableResponse loadTableResponse =
-                  LoadTableResponse.builder().withTableMetadata(updatedMetadata).build();
-              loadTableResponses.add(loadTableResponse);
+              tableMetadataObjs.add(updatedMetadata);
             });
 
     // Commit the collected updates in a single atomic operation
@@ -1116,7 +1114,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           result.getReturnStatus(), result.getExtraInformation());
     }
 
-    eventAttributeMap.put(EventAttributes.LOAD_TABLE_RESPONSES, loadTableResponses);
+    eventAttributeMap.put(EventAttributes.TABLE_METADATA, tableMetadataObjs);
   }
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {

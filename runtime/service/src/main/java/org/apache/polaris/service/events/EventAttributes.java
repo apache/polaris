@@ -21,6 +21,8 @@ package org.apache.polaris.service.events;
 import com.google.common.reflect.TypeToken;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -108,8 +110,10 @@ public final class EventAttributes {
       new AttributeKey<>("register_table_request", RegisterTableRequest.class);
   public static final AttributeKey<RenameTableRequest> RENAME_TABLE_REQUEST =
       new AttributeKey<>("rename_table_request", RenameTableRequest.class);
-  public static final AttributeKey<List<LoadTableResponse>> LOAD_TABLE_RESPONSES =
-      new AttributeKey<>("load_table_responses", new TypeToken<List<LoadTableResponse>>() {});
+  public static final AttributeKey<LoadTableResponse> LOAD_TABLE_RESPONSE =
+      new AttributeKey<>("load_table_responses", LoadTableResponse.class);
+    public static final AttributeKey<List<TableMetadata>> TABLE_METADATA =
+        new AttributeKey<>("table_metadatas", new TypeToken<List<TableMetadata>>() {});
   public static final AttributeKey<String> ACCESS_DELEGATION_MODE =
       new AttributeKey<>("access_delegation_mode", String.class);
   public static final AttributeKey<String> IF_NONE_MATCH_STRING =

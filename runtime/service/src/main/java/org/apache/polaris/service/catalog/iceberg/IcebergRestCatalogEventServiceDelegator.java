@@ -27,6 +27,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
@@ -282,9 +284,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.CATALOG_NAME, catalogName)
                   .put(EventAttributes.NAMESPACE, namespaceObj)
                   .put(EventAttributes.TABLE_NAME, createTableRequest.name())
-                  .put(
-                      EventAttributes.LOAD_TABLE_RESPONSES,
-                      List.of((LoadTableResponse) resp.getEntity()))));
+                  .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
     }
     return resp;
   }
@@ -359,7 +359,7 @@ public class IcebergRestCatalogEventServiceDelegator
             .put(EventAttributes.TABLE_NAME, table);
     if (resp.getEntity() != null) {
       generatedEventAttributes.put(
-          EventAttributes.LOAD_TABLE_RESPONSES, List.of((LoadTableResponse) resp.getEntity()));
+          EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity());
     }
 
     polarisEventListener.onEvent(
@@ -460,9 +460,7 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.TABLE_NAME, registerTableRequest.name())
-                .put(
-                    EventAttributes.LOAD_TABLE_RESPONSES,
-                    List.of((LoadTableResponse) resp.getEntity()))));
+                .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
     return resp;
   }
 
@@ -522,9 +520,7 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.TABLE_NAME, table)
                 .put(EventAttributes.UPDATE_TABLE_REQUEST, commitTableRequest)
-                .put(
-                    EventAttributes.LOAD_TABLE_RESPONSES,
-                    List.of((LoadTableResponse) resp.getEntity()))));
+                .put(EventAttributes.TABLE_METADATA, List.of(((LoadTableResponse) resp.getEntity()).tableMetadata()))));
     return resp;
   }
 
@@ -800,13 +796,13 @@ public class IcebergRestCatalogEventServiceDelegator
             new EventAttributeMap()
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.COMMIT_TRANSACTION_REQUEST, commitTransactionRequest)));
-    List<LoadTableResponse> loadTableResponses =
-        eventAttributeMap.getRequired(EventAttributes.LOAD_TABLE_RESPONSES);
+    List<TableMetadata> tableMetadataList =
+        eventAttributeMap.getRequired(EventAttributes.TABLE_METADATA);
     for (int i = 0; i < commitTransactionRequest.tableChanges().size(); i++) {
       UpdateTableRequest req = commitTransactionRequest.tableChanges().get(i);
-      LoadTableResponse loadTableResponse =
-          loadTableResponses != null && i < loadTableResponses.size()
-              ? loadTableResponses.get(i)
+      TableMetadata tableMetadata =
+          tableMetadataList != null && i < tableMetadataList.size()
+              ? tableMetadataList.get(i)
               : null;
       polarisEventListener.onEvent(
           new PolarisEvent(
@@ -817,7 +813,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.NAMESPACE, req.identifier().namespace())
                   .put(EventAttributes.TABLE_NAME, req.identifier().name())
                   .put(EventAttributes.UPDATE_TABLE_REQUEST, req)
-                  .put(EventAttributes.LOAD_TABLE_RESPONSES, List.of(loadTableResponse))));
+                  .put(EventAttributes.TABLE_METADATA, tableMetadata != null ? List.of(tableMetadata) : null)));
     }
     return resp;
   }
