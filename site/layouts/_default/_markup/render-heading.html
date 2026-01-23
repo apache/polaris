@@ -4,5 +4,5 @@
 */ -}}
 <h{{ .Level }} id="{{ .Anchor | safeURL }}"{{ with .Attributes }} {{ range $k, $v := . }} {{ $k }}="{{ $v }}"{{ end }}{{ end }}>
   {{- .Text | safeHTML -}}
-  <a class="heading-anchor" href="#{{ .Anchor | safeURL }}" aria-label="Anchor">#</a>
+  <a class="heading-anchor" href="#{{ .Anchor | safeURL }}" aria-label="Anchor">🔗</a>
 </h{{ .Level }}>
