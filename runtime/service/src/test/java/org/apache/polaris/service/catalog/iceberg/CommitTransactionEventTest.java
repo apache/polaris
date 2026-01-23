@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.MetadataUpdate;
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -35,7 +36,6 @@ import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
-import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -137,15 +137,12 @@ public class CommitTransactionEventTest {
     // Verify second table's LoadTableResponse
     assertThat(afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_NAME))
         .isEqualTo(table2Name);
-    assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.LOAD_TABLE_RESPONSES))
-        .isPresent();
-    LoadTableResponse response2 =
-        afterUpdateTableEvent
-            .attributes()
-            .getRequired(EventAttributes.LOAD_TABLE_RESPONSES)
-            .getFirst();
-    assertThat(response2.tableMetadata()).isNotNull();
-    assertThat(response2.tableMetadata().properties()).containsEntry(propertyName, "value2");
+    assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.TABLE_METADATA)).isPresent();
+    assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.TABLE_METADATA)).isNotEmpty();
+    TableMetadata metadata =
+        afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_METADATA).getFirst();
+    assertThat(metadata).isNotNull();
+    assertThat(metadata.properties()).containsEntry(propertyName, "value2");
   }
 
   private void createCatalogAndNamespace(

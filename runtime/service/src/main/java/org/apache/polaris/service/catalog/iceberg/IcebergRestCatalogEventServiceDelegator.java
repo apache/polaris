@@ -27,7 +27,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
-
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
@@ -520,7 +519,9 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.NAMESPACE, namespaceObj)
                 .put(EventAttributes.TABLE_NAME, table)
                 .put(EventAttributes.UPDATE_TABLE_REQUEST, commitTableRequest)
-                .put(EventAttributes.TABLE_METADATA, List.of(((LoadTableResponse) resp.getEntity()).tableMetadata()))));
+                .put(
+                    EventAttributes.TABLE_METADATA,
+                    List.of(((LoadTableResponse) resp.getEntity()).tableMetadata()))));
     return resp;
   }
 
@@ -813,7 +814,9 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.NAMESPACE, req.identifier().namespace())
                   .put(EventAttributes.TABLE_NAME, req.identifier().name())
                   .put(EventAttributes.UPDATE_TABLE_REQUEST, req)
-                  .put(EventAttributes.TABLE_METADATA, tableMetadata != null ? List.of(tableMetadata) : null)));
+                  .put(
+                      EventAttributes.TABLE_METADATA,
+                      tableMetadata != null ? List.of(tableMetadata) : null)));
     }
     return resp;
   }
