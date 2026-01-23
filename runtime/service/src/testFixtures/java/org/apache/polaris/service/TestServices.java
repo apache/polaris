@@ -350,7 +350,8 @@ public record TestServices(
               catalogHandlerUtils,
               externalCatalogFactory,
               storageAccessConfigProvider,
-              new DefaultMetricsReporter());
+              new DefaultMetricsReporter(),
+              Clock.systemUTC());
 
       // Optionally wrap with event delegator
       IcebergRestCatalogApiService finalRestCatalogService = catalogService;

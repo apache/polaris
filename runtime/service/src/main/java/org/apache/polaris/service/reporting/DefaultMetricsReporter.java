@@ -21,32 +21,56 @@ package org.apache.polaris.service.reporting;
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.commons.lang3.function.TriConsumer;
+import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Default implementation of {@link PolarisMetricsReporter} that logs metrics to the configured
+ * logger.
+ *
+ * <p>This implementation is selected when {@code polaris.iceberg-metrics.reporting.type} is set to
+ * {@code "default"} (the default value).
+ *
+ * <p>By default, logging is disabled. To enable metrics logging, set the logger level for {@code
+ * org.apache.polaris.service.reporting} to {@code INFO} in your logging configuration.
+ *
+ * @see PolarisMetricsReporter
+ */
 @ApplicationScoped
 @Identifier("default")
 public class DefaultMetricsReporter implements PolarisMetricsReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultMetricsReporter.class);
 
-  private final TriConsumer<String, TableIdentifier, MetricsReport> reportConsumer;
+  private final QuadConsumer<String, TableIdentifier, MetricsReport, Instant> reportConsumer;
 
+  /** Functional interface for consuming metrics reports with timestamp. */
+  @FunctionalInterface
+  interface QuadConsumer<T1, T2, T3, T4> {
+    void accept(T1 t1, T2 t2, T3 t3, T4 t4);
+  }
+
+  /** Creates a new DefaultMetricsReporter that logs metrics to the class logger. */
   public DefaultMetricsReporter() {
     this(
-        (catalogName, table, metricsReport) ->
-            LOGGER.info("{}.{}: {}", catalogName, table, metricsReport));
+        (catalogName, table, metricsReport, receivedTimestamp) ->
+            LOGGER.info("{}.{} (ts={}): {}", catalogName, table, receivedTimestamp, metricsReport));
   }
 
   @VisibleForTesting
-  DefaultMetricsReporter(TriConsumer<String, TableIdentifier, MetricsReport> reportConsumer) {
+  DefaultMetricsReporter(
+      QuadConsumer<String, TableIdentifier, MetricsReport, Instant> reportConsumer) {
     this.reportConsumer = reportConsumer;
   }
 
   @Override
-  public void reportMetric(String catalogName, TableIdentifier table, MetricsReport metricsReport) {
-    reportConsumer.accept(catalogName, table, metricsReport);
+  public void reportMetric(
+      String catalogName,
+      TableIdentifier table,
+      MetricsReport metricsReport,
+      Instant receivedTimestamp) {
+    reportConsumer.accept(catalogName, table, metricsReport, receivedTimestamp);
   }
 }

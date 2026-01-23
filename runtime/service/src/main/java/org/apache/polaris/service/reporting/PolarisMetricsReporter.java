@@ -18,9 +18,39 @@
  */
 package org.apache.polaris.service.reporting;
 
+import java.time.Instant;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.metrics.MetricsReport;
 
+/**
+ * SPI interface for reporting Iceberg metrics received by Polaris.
+ *
+ * <p>Implementations can be used to send metrics to external systems for analysis and monitoring.
+ * Custom implementations can be annotated with appropriate {@code Quarkus} scope and {@link
+ * io.smallrye.common.annotation.Identifier @Identifier("my-reporter-type")} for CDI discovery.
+ *
+ * <p>The implementation to use is selected via the {@code polaris.iceberg-metrics.reporting.type}
+ * configuration property, which defaults to {@code "default"}.
+ *
+ * <p>Implementations can inject other CDI beans for context.
+ *
+ * @see DefaultMetricsReporter
+ * @see MetricsReportingConfiguration
+ */
 public interface PolarisMetricsReporter {
-  public void reportMetric(String catalogName, TableIdentifier table, MetricsReport metricsReport);
+
+  /**
+   * Reports an Iceberg metrics report for a specific table.
+   *
+   * @param catalogName the name of the catalog containing the table
+   * @param table the identifier of the table the metrics are for
+   * @param metricsReport the Iceberg metrics report (e.g., {@link
+   *     org.apache.iceberg.metrics.ScanReport} or {@link org.apache.iceberg.metrics.CommitReport})
+   * @param receivedTimestamp the timestamp when the metrics were received by Polaris
+   */
+  void reportMetric(
+      String catalogName,
+      TableIdentifier table,
+      MetricsReport metricsReport,
+      Instant receivedTimestamp);
 }

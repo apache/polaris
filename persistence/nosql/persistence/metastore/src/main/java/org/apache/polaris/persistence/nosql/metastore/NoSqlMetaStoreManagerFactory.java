@@ -20,6 +20,7 @@ package org.apache.polaris.persistence.nosql.metastore;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static org.apache.polaris.core.auth.AuthBootstrapUtil.createPolarisPrincipalForRealm;
 import static org.apache.polaris.persistence.nosql.coretypes.refs.References.realmReferenceNames;
 import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.ACTIVE;
 import static org.apache.polaris.persistence.nosql.realms.api.RealmDefinition.RealmStatus.CREATED;
@@ -37,21 +38,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.persistence.nosql.api.Persistence;
@@ -275,9 +271,8 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
             rootCredentialsSet,
             clock);
 
-    var secretsResult =
-        bootstrapServiceAndCreatePolarisPrincipalForRealm(
-            realmId, metaStoreManager, metaStore, rootCredentialsSet);
+    PolarisCallContext ctx = new PolarisCallContext(() -> realmId, metaStore);
+    var secretsResult = createPolarisPrincipalForRealm(metaStoreManager, ctx);
 
     realmManagement.update(
         realmDesc, RealmDefinition.builder().from(realmDesc).status(ACTIVE).build());
@@ -285,71 +280,5 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
     LOGGER.info("Realm '{}' has been successfully bootstrapped.", realmId);
 
     return secretsResult;
-  }
-
-  /**
-   * This method bootstraps service for a given realm: i.e., creates all the required entities in
-   * the metastore and creates a root service principal. After that, we rotate the root principal
-   * credentials and print them to stdout
-   */
-  private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
-      String realmId,
-      NoSqlMetaStoreManager metaStoreManager,
-      NoSqlMetaStore metaStore,
-      RootCredentialsSet rootCredentialsSet) {
-    var createPrincipalResult = metaStoreManager.bootstrapPolarisServiceInternal(metaStore);
-
-    var rootPrincipal =
-        createPrincipalResult
-            .map(result -> (PolarisBaseEntity) result.getPrincipal())
-            .orElseGet(
-                () ->
-                    metaStoreManager
-                        .readEntityByName(
-                            metaStore,
-                            null,
-                            PolarisEntityType.PRINCIPAL,
-                            PolarisEntityConstants.getRootPrincipalName())
-                        .getEntity());
-
-    var clientId =
-        PolarisEntity.of(rootPrincipal)
-            .getInternalPropertiesAsMap()
-            .get(PolarisEntityConstants.getClientIdPropertyName());
-    checkState(clientId != null, "Root principal has no client-ID");
-    var secrets = metaStore.loadPrincipalSecrets(clientId);
-
-    var principalSecrets = createPrincipalResult.map(CreatePrincipalResult::getPrincipalSecrets);
-    if (principalSecrets.isPresent()) {
-      LOGGER.debug(
-          "Root principal created for realm '{}', directly returning credentials for client-ID '{}'",
-          realmId,
-          principalSecrets.get().getPrincipalClientId());
-      return new PrincipalSecretsResult(principalSecrets.get());
-    }
-
-    var providedCredentials = rootCredentialsSet.credentials().get(realmId);
-    if (providedCredentials != null) {
-      LOGGER.debug(
-          "Root principal for realm '{}' already exists, credentials provided externally, returning credentials for client-ID '{}'",
-          realmId,
-          providedCredentials.clientId());
-      return new PrincipalSecretsResult(
-          new PolarisPrincipalSecrets(
-              rootPrincipal.getId(),
-              providedCredentials.clientId(),
-              providedCredentials.clientSecret(),
-              providedCredentials.clientSecret()));
-    }
-
-    // Have to rotate the secrets to retain the idempotency of this function
-    var result =
-        metaStoreManager.rotatePrincipalSecrets(
-            metaStore, secrets.getPrincipalId(), false, secrets.getMainSecretHash());
-    LOGGER.debug(
-        "Rotating credentials for root principal for realm '{}', client-ID is '{}'",
-        realmId,
-        result.getPrincipalSecrets().getPrincipalClientId());
-    return result;
   }
 }
