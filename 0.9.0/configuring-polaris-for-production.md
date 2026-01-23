@@ -21,6 +21,8 @@ title: Configuring Apache Polaris (Incubating) for Production
 linkTitle: Deploying In Production
 type: docs
 weight: 600
+robots: noindex
+exclude_search: true
 ---
 
 The default `polaris-server.yml` configuration is intended for development and testing. When deploying Polaris in production, there are several best practices to keep in mind.

@@ -20,6 +20,8 @@
 Title: Access Control
 type: docs
 weight: 500
+robots: noindex
+exclude_search: true
 ---
 
 This section provides information about how access control works for Apache Polaris (Incubating).

@@ -20,6 +20,8 @@
 Title: Realm
 type: docs
 weight: 350
+robots: noindex
+exclude_search: true
 ---
 
 This page explains what a realm is and what it is used for in Polaris.

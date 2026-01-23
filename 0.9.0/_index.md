@@ -29,6 +29,8 @@ cascade:
   params:
     show_page_toc: true
 # This file will NOT be copied into a new release's versioned docs folder.
+robots: noindex
+exclude_search: true
 ---
 
 Check out the [Quick Start]({{% ref "quickstart" %}}) page to get started.

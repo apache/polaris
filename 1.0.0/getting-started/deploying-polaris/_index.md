@@ -20,6 +20,8 @@
 Title: Deploying Polaris on Cloud Providers
 type: docs
 weight: 300
+robots: noindex
+exclude_search: true
 ---
 
 We will now demonstrate how to deploy Polaris locally, as well as with all supported Cloud Providers: Amazon Web Services (AWS), Azure, and Google Cloud Platform (GCP).

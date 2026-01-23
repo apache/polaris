@@ -20,6 +20,8 @@
 Title: Deploying Polaris on MinIO
 type: docs
 weight: 350
+robots: noindex
+exclude_search: true
 ---
 
 In this guide we walk through setting up a simple Polaris Server with local [MinIO](https://www.min.io/) storage.

@@ -20,6 +20,8 @@
 title: Policy
 type: docs
 weight: 425
+robots: noindex
+exclude_search: true
 ---
 
 The Polaris Policy framework empowers organizations to centrally define, manage, and enforce fine-grained governance, lifecycle, and operational rules across all data resources in the catalog.

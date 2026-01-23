@@ -20,6 +20,8 @@
 Title: Deploying Polaris on Azure
 type: docs
 weight: 320
+robots: noindex
+exclude_search: true
 ---
 
 Build and launch Polaris using the AWS Startup Script at the location provided in the command below. This script will start an [Azure Database for PostgreSQL - Flexible Server](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/overview) instance, which will be used as the backend Postgres instance holding all Polaris data.

@@ -20,6 +20,8 @@
 title: Metastores
 type: docs
 weight: 700
+robots: noindex
+exclude_search: true
 ---
 
 This page explains how to configure and use Polaris metastores with either the recommended Relational JDBC or the

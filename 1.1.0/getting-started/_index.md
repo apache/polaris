@@ -20,4 +20,6 @@
 title: 'Getting Started'
 type: docs
 weight: 101
+robots: noindex
+exclude_search: true
 ---

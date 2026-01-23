@@ -20,6 +20,8 @@
 title: Generic Table (Beta)
 type: docs
 weight: 435
+robots: noindex
+exclude_search: true
 ---
 
 The Generic Table in Apache Polaris is designed to provide support for non-Iceberg tables across different table formats includes delta, csv etc. It currently provides the following capabilities:

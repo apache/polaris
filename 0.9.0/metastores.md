@@ -21,6 +21,8 @@ title: Metastores
 linkTitle: Metastores
 type: docs
 weight: 700
+robots: noindex
+exclude_search: true
 ---
 
 This page documents important configurations for connecting to production database through [EclipseLink](https://eclipse.dev/eclipselink/).
