@@ -67,8 +67,8 @@ public interface CatalogsMaintenanceConfig {
   String DEFAULT_IMMEDIATE_TASKS_RETAIN = "false";
   String DEFAULT_CATALOGS_HISTORY_RETAIN = "false";
   String DEFAULT_CATALOG_ROLES_RETAIN = "false";
-  String DEFAULT_CATALOG_POLICIES_RETAIN = "ageDays < 30 || commits <= 1";
-  String DEFAULT_CATALOG_STATE_RETAIN = "ageDays < 30 || commits <= 1";
+  String DEFAULT_CATALOG_POLICIES_RETAIN = "false";
+  String DEFAULT_CATALOG_STATE_RETAIN = "false";
 
   @WithDefault(DEFAULT_PRINCIPALS_RETAIN)
   Optional<String> principalsRetain();
