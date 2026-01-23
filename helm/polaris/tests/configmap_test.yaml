@@ -396,7 +396,6 @@ tests:
         tokenBucket:
           type: custom
           requestsPerSecond: 1234
-          window: PT5S
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=custom" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.type=custom" }
