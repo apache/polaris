@@ -19,8 +19,8 @@
 package org.apache.polaris.service.ratelimiter;
 
 import io.smallrye.config.ConfigMapping;
-
 import java.time.Duration;
+import java.util.Optional;
 
 @ConfigMapping(prefix = "polaris.rate-limiter.token-bucket")
 public interface TokenBucketConfiguration {
@@ -32,7 +32,7 @@ public interface TokenBucketConfiguration {
 
   /** This setting is no longer used and will be removed in a future release. */
   @Deprecated(since = "1.3.0", forRemoval = true)
-  Duration window();
+  Optional<Duration> window();
 
   /**
    * The type of the token bucket factory. Must be a registered {@link
