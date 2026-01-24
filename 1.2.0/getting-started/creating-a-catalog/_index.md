@@ -21,6 +21,8 @@ title: Creating a Catalog
 linkTitle: Creating a Catalog
 type: docs
 weight: 300
+robots: noindex
+exclude_search: true
 ---
 
 The following Object Storage providers can be configured as storage backends for your Polaris catalog:

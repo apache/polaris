@@ -21,6 +21,8 @@ title: Creating a catalog on Google Cloud Storage (GCS)
 linkTitle: GCS
 type: docs
 weight: 200
+robots: noindex
+exclude_search: true
 ---
 
 For the `polaris catalogs create` [command]({{% ref "../../command-line-interface#create" %}}) there are few `gcs` only options

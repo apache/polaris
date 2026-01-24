@@ -22,6 +22,8 @@ linkTitle: 'Catalog API ↗'
 weight: 200
 params:
   show_page_toc: false
+robots: noindex
+exclude_search: true
 ---
 
 {{< redoc-polaris "generated/bundled-polaris-catalog-service.yaml" >}}

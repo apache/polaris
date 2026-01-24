@@ -21,6 +21,8 @@ title: Authentification Development Details
 linkTitle: Development Details
 type: docs
 weight: 301
+robots: noindex
+exclude_search: true
 ---
 
 ## Developer Architecture Notes
