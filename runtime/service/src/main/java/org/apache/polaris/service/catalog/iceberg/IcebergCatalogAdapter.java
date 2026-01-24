@@ -30,6 +30,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.time.Clock;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.function.Function;
@@ -105,6 +106,7 @@ public class IcebergCatalogAdapter
   private final Instance<ExternalCatalogFactory> externalCatalogFactories;
   private final StorageAccessConfigProvider storageAccessConfigProvider;
   private final PolarisMetricsReporter metricsReporter;
+  private final Clock clock;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -122,7 +124,8 @@ public class IcebergCatalogAdapter
       CatalogHandlerUtils catalogHandlerUtils,
       @Any Instance<ExternalCatalogFactory> externalCatalogFactories,
       StorageAccessConfigProvider storageAccessConfigProvider,
-      PolarisMetricsReporter metricsReporter) {
+      PolarisMetricsReporter metricsReporter,
+      Clock clock) {
     this.diagnostics = diagnostics;
     this.realmContext = realmContext;
     this.callContext = callContext;
@@ -139,6 +142,7 @@ public class IcebergCatalogAdapter
     this.externalCatalogFactories = externalCatalogFactories;
     this.storageAccessConfigProvider = storageAccessConfigProvider;
     this.metricsReporter = metricsReporter;
+    this.clock = clock;
   }
 
   /**
@@ -722,7 +726,8 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-    metricsReporter.reportMetric(catalogName, tableIdentifier, reportMetricsRequest.report());
+    metricsReporter.reportMetric(
+        catalogName, tableIdentifier, reportMetricsRequest.report(), clock.instant());
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 

@@ -149,12 +149,15 @@ options:
       --sts-endpoint  (Only for S3) The STS endpoint to use when connecting to STS
       --no-sts  (Only for S3) Indicates that Polaris should not use STS (e.g. if STS is not available)
       --path-style-access  (Only for S3) Whether to use path-style-access for S3
+      --current-kms-key  (Only for AWS S3) The AWS KMS key ARN to be used for encrypting new S3 data
+      --allowed-kms-key  (Only for AWS S3) AWS KMS key ARN(s) that this catalog and its clients are allowed to use for reading S3 data (zero or more)
       --allowed-location  An allowed location for files tracked by the catalog. Multiple locations can be provided by specifying this option more than once.
       --role-arn  (Only for AWS S3) A role ARN to use when connecting to S3
       --region  (Only for S3) The region to use when connecting to S3
       --external-id  (Only for S3) The external ID to use when connecting to S3
       --tenant-id  (Required for Azure) A tenant ID to use when connecting to Azure Storage
       --multi-tenant-app-name  (Only for Azure) The app name to use when connecting to Azure Storage
+      --hierarchical  (Only for Azure) Indicates whether the referenced Azure storage location(s) support hierarchical namespaces
       --consent-url  (Only for Azure) A consent URL granting permissions for the Azure Storage location
       --service-account  (Only for GCS) The service account to use when connecting to GCS
       --property  A key/value pair such as: tag=value. Multiple can be provided by specifying this option more than once
