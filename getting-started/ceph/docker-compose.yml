@@ -134,7 +134,7 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: ${RGW_ACCESS_KEY}
       AWS_SECRET_ACCESS_KEY: ${RGW_SECRET_KEY}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
+      AWS_ENDPOINT_URL: ${S3_ENDPOINT_URL}
       AWS_REGION: ${S3_REGION}
       S3_POLARIS_BUCKET: ${S3_POLARIS_BUCKET}
     entrypoint: "/bin/sh"
@@ -145,7 +145,7 @@ services:
         echo ">>> Waiting for RGW to become ready...";
         sleep 5;
         echo ">>> Create bucket if not exist...";
-        aws --endpoint-url ${S3_ENDPOINT_URL} s3 mb s3://${S3_POLARIS_BUCKET} || true;
+        aws s3 mb s3://${S3_POLARIS_BUCKET} || true;
         tail -f /dev/null;
 
   polaris:

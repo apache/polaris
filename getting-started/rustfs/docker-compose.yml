@@ -72,13 +72,14 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: rustfsadmin
       AWS_SECRET_ACCESS_KEY: rustfsadmin
+      AWS_ENDPOINT_URL: http://rustfs:9000
     entrypoint: "/bin/sh"
     command:
       - "-c"
       - >-
         echo Creating RustFS bucket...;
-        aws --endpoint-url http://rustfs:9000 s3 mb s3://bucket123;
-        aws --endpoint-url http://rustfs:9000 s3 ls;
+        aws s3 mb s3://bucket123;
+        aws s3 ls;
         echo Bucket setup complete.;
 
   polaris-setup:
