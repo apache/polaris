@@ -128,14 +128,14 @@ services:
       - osd1
 
   setup_bucket:
-    image: peakcom/s5cmd:v2.3.0
+    image: amazon/aws-cli:2.33.6
     depends_on:
       - rgw1
     environment:
       AWS_ACCESS_KEY_ID: ${RGW_ACCESS_KEY}
       AWS_SECRET_ACCESS_KEY: ${RGW_SECRET_KEY}
       S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
-      S3_REGION: ${S3_REGION}
+      AWS_REGION: ${S3_REGION}
       S3_POLARIS_BUCKET: ${S3_POLARIS_BUCKET}
     entrypoint: "/bin/sh"
     command:
@@ -145,7 +145,7 @@ services:
         echo ">>> Waiting for RGW to become ready...";
         sleep 5;
         echo ">>> Create bucket if not exist...";
-        /s5cmd --endpoint-url ${S3_ENDPOINT_URL} mb s3://${S3_POLARIS_BUCKET} || true;
+        aws --endpoint-url ${S3_ENDPOINT_URL} s3 mb s3://${S3_POLARIS_BUCKET} || true;
         tail -f /dev/null;
 
   polaris:
