@@ -97,7 +97,7 @@ Read [here]({{% ref "./configuration.md" %}}) more about configuring polaris ser
 These examples assume the Polaris CLI is on the PATH and so can be invoked just by the command `polaris`. You can add the CLI to your PATH environment variable with a command like the following:
 
 ```
-export PATH="~/polaris:$PATH"
+export PATH="$HOME/polaris:$PATH"
 ```
 
 Alternatively, you can run the CLI by providing a path to it, such as with the following invocation:
