@@ -54,8 +54,10 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - The `gcpServiceAccount` configuration value now affects Polaris behavior (enables service account impersonation). This value was previously defined but unused. This change may affect existing deployments that have populated this property.
 - (Before/After)UpdateTableEvent is emitted for all table updates within a transaction.
-- Added KMS options to Polaris CLI
-- Changed from Poetry to UV for Python package management
+- Added KMS options to Polaris CLI.
+- Changed from Poetry to UV for Python package management.
+- Exclude KMS policies when KMS is not being used for S3.
+- Improved default KMS permission handling to better distinguish read-only and read-write access.
 
 ### Deprecations
 
