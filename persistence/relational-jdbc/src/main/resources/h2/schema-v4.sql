@@ -1,0 +1,309 @@
+--
+-- Licensed to the Apache Software Foundation (ASF) under one
+-- or more contributor license agreements.  See the NOTICE file--
+--  distributed with this work for additional information
+-- regarding copyright ownership.  The ASF licenses this file
+-- to you under the Apache License, Version 2.0 (the
+-- "License"). You may not use this file except in compliance
+-- with the License.  You may obtain a copy of the License at
+--
+--  http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing,
+-- software distributed under the License is distributed on an
+-- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-- KIND, either express or implied.  See the License for the
+-- specific language governing permissions and limitations
+-- under the License.
+--
+
+-- ============================================================================
+-- POLARIS JDBC SCHEMA VERSION 4 (H2)
+-- ============================================================================
+-- This schema is SELF-CONTAINED and can be used for fresh installs.
+-- Each schema version includes ALL tables, not just incremental changes.
+--
+-- Changes from v3:
+--   * Added `scan_metrics_report` table for scan metrics as first-class entities
+--   * Added `scan_metrics_report_roles` junction table for principal roles
+--   * Added `commit_metrics_report` table for commit metrics as first-class entities
+--   * Added `commit_metrics_report_roles` junction table for principal roles
+-- ============================================================================
+
+CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
+SET SCHEMA POLARIS_SCHEMA;
+
+-- ============================================================================
+-- VERSION TABLE
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS version (
+    version_key VARCHAR PRIMARY KEY,
+    version_value INTEGER NOT NULL
+);
+
+MERGE INTO version (version_key, version_value)
+    KEY (version_key)
+    VALUES ('version', 4);
+
+COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
+
+-- ============================================================================
+-- CORE TABLES (from v1)
+-- ============================================================================
+
+-- Entities table: stores all Polaris entities (catalogs, namespaces, tables, etc.)
+CREATE TABLE IF NOT EXISTS entities (
+    realm_id TEXT NOT NULL,
+    catalog_id BIGINT NOT NULL,
+    id BIGINT NOT NULL,
+    parent_id BIGINT NOT NULL,
+    name TEXT NOT NULL,
+    entity_version INT NOT NULL,
+    type_code INT NOT NULL,
+    sub_type_code INT NOT NULL,
+    create_timestamp BIGINT NOT NULL,
+    drop_timestamp BIGINT NOT NULL,
+    purge_timestamp BIGINT NOT NULL,
+    to_purge_timestamp BIGINT NOT NULL,
+    last_update_timestamp BIGINT NOT NULL,
+    properties TEXT NOT NULL DEFAULT '{}',
+    internal_properties TEXT NOT NULL DEFAULT '{}',
+    grant_records_version INT NOT NULL,
+    location_without_scheme TEXT,
+    PRIMARY KEY (realm_id, id),
+    CONSTRAINT constraint_name UNIQUE (realm_id, catalog_id, parent_id, type_code, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_locations ON entities(realm_id, catalog_id, location_without_scheme);
+CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
+
+COMMENT ON TABLE entities IS 'all the entities';
+COMMENT ON COLUMN entities.catalog_id IS 'catalog id';
+COMMENT ON COLUMN entities.id IS 'entity id';
+COMMENT ON COLUMN entities.parent_id IS 'entity id of parent';
+COMMENT ON COLUMN entities.name IS 'entity name';
+COMMENT ON COLUMN entities.entity_version IS 'version of the entity';
+COMMENT ON COLUMN entities.type_code IS 'type code';
+COMMENT ON COLUMN entities.sub_type_code IS 'sub type of entity';
+COMMENT ON COLUMN entities.create_timestamp IS 'creation time of entity';
+COMMENT ON COLUMN entities.drop_timestamp IS 'time of drop of entity';
+COMMENT ON COLUMN entities.purge_timestamp IS 'time to start purging entity';
+COMMENT ON COLUMN entities.last_update_timestamp IS 'last time the entity is touched';
+COMMENT ON COLUMN entities.properties IS 'entities properties json';
+COMMENT ON COLUMN entities.internal_properties IS 'entities internal properties json';
+COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant records change on the entity';
+
+-- Grant records table: stores privilege grants
+CREATE TABLE IF NOT EXISTS grant_records (
+    realm_id TEXT NOT NULL,
+    securable_catalog_id BIGINT NOT NULL,
+    securable_id BIGINT NOT NULL,
+    grantee_catalog_id BIGINT NOT NULL,
+    grantee_id BIGINT NOT NULL,
+    privilege_code INTEGER,
+    PRIMARY KEY (realm_id, securable_catalog_id, securable_id, grantee_catalog_id, grantee_id, privilege_code)
+);
+
+COMMENT ON TABLE grant_records IS 'grant records for entities';
+COMMENT ON COLUMN grant_records.securable_catalog_id IS 'catalog id of the securable';
+COMMENT ON COLUMN grant_records.securable_id IS 'entity id of the securable';
+COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee';
+COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
+COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
+
+-- Principal authentication data table
+CREATE TABLE IF NOT EXISTS principal_authentication_data (
+    realm_id TEXT NOT NULL,
+    principal_id BIGINT NOT NULL,
+    principal_client_id VARCHAR(255) NOT NULL,
+    main_secret_hash VARCHAR(255) NOT NULL,
+    secondary_secret_hash VARCHAR(255) NOT NULL,
+    secret_salt VARCHAR(255) NOT NULL,
+    PRIMARY KEY (realm_id, principal_client_id)
+);
+
+COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';
+
+-- Policy mapping record table (from v2)
+CREATE TABLE IF NOT EXISTS policy_mapping_record (
+    realm_id TEXT NOT NULL,
+    target_catalog_id BIGINT NOT NULL,
+    target_id BIGINT NOT NULL,
+    policy_type_code INTEGER NOT NULL,
+    policy_catalog_id BIGINT NOT NULL,
+    policy_id BIGINT NOT NULL,
+    parameters TEXT NOT NULL DEFAULT '{}',
+    PRIMARY KEY (realm_id, target_catalog_id, target_id, policy_type_code, policy_catalog_id, policy_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, policy_type_code, policy_catalog_id, policy_id, target_catalog_id, target_id);
+
+-- ============================================================================
+-- EVENTS TABLE (from v3)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS events (
+    realm_id TEXT NOT NULL,
+    catalog_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    request_id TEXT,
+    event_type TEXT NOT NULL,
+    timestamp_ms BIGINT NOT NULL,
+    principal_name TEXT,
+    resource_type TEXT NOT NULL,
+    resource_identifier TEXT NOT NULL,
+    additional_properties TEXT NOT NULL,
+    PRIMARY KEY (event_id)
+);
+
+-- ============================================================================
+-- METRICS TABLES (NEW in v4)
+-- ============================================================================
+
+-- Scan Metrics Report Table
+CREATE TABLE IF NOT EXISTS scan_metrics_report (
+    report_id TEXT NOT NULL,
+    realm_id TEXT NOT NULL,
+    catalog_id TEXT NOT NULL,
+    catalog_name TEXT NOT NULL,
+    namespace TEXT NOT NULL,
+    table_name TEXT NOT NULL,
+    
+    -- Report metadata
+    timestamp_ms BIGINT NOT NULL,
+    principal_name TEXT,
+    request_id TEXT,
+    
+    -- Trace correlation
+    otel_trace_id TEXT,
+    otel_span_id TEXT,
+    report_trace_id TEXT,
+    
+    -- Scan context
+    snapshot_id BIGINT,
+    schema_id INTEGER,
+    filter_expression TEXT,
+    projected_field_ids TEXT,
+    projected_field_names TEXT,
+    
+    -- Scan metrics
+    result_data_files BIGINT DEFAULT 0,
+    result_delete_files BIGINT DEFAULT 0,
+    total_file_size_bytes BIGINT DEFAULT 0,
+    total_data_manifests BIGINT DEFAULT 0,
+    total_delete_manifests BIGINT DEFAULT 0,
+    scanned_data_manifests BIGINT DEFAULT 0,
+    scanned_delete_manifests BIGINT DEFAULT 0,
+    skipped_data_manifests BIGINT DEFAULT 0,
+    skipped_delete_manifests BIGINT DEFAULT 0,
+    skipped_data_files BIGINT DEFAULT 0,
+    skipped_delete_files BIGINT DEFAULT 0,
+    total_planning_duration_ms BIGINT DEFAULT 0,
+    
+    -- Equality/positional delete metrics
+    equality_delete_files BIGINT DEFAULT 0,
+    positional_delete_files BIGINT DEFAULT 0,
+    indexed_delete_files BIGINT DEFAULT 0,
+    total_delete_file_size_bytes BIGINT DEFAULT 0,
+    
+    -- Additional metadata (for extensibility)
+    metadata TEXT DEFAULT '{}',
+
+    PRIMARY KEY (realm_id, report_id)
+);
+
+COMMENT ON TABLE scan_metrics_report IS 'Scan metrics reports as first-class entities';
+
+-- Indexes for scan_metrics_report
+-- Note: Additional indexes for query patterns (by table, trace_id, principal) can be added
+-- when analytics APIs are introduced. Currently only timestamp index is needed for retention cleanup.
+CREATE INDEX IF NOT EXISTS idx_scan_report_timestamp ON scan_metrics_report(realm_id, timestamp_ms);
+
+-- Junction table for scan metrics report roles
+CREATE TABLE IF NOT EXISTS scan_metrics_report_roles (
+    realm_id TEXT NOT NULL,
+    report_id TEXT NOT NULL,
+    role_name TEXT NOT NULL,
+    PRIMARY KEY (realm_id, report_id, role_name),
+    FOREIGN KEY (realm_id, report_id) REFERENCES scan_metrics_report(realm_id, report_id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE scan_metrics_report_roles IS 'Activated principal roles for scan metrics reports';
+
+-- Commit Metrics Report Entity Table
+CREATE TABLE IF NOT EXISTS commit_metrics_report (
+    report_id TEXT NOT NULL,
+    realm_id TEXT NOT NULL,
+    catalog_id TEXT NOT NULL,
+    catalog_name TEXT NOT NULL,
+    namespace TEXT NOT NULL,
+    table_name TEXT NOT NULL,
+    
+    -- Report metadata
+    timestamp_ms BIGINT NOT NULL,
+    principal_name TEXT,
+    request_id TEXT,
+    
+    -- Trace correlation
+    otel_trace_id TEXT,
+    otel_span_id TEXT,
+    report_trace_id TEXT,
+    
+    -- Commit context
+    snapshot_id BIGINT NOT NULL,
+    sequence_number BIGINT,
+    operation TEXT NOT NULL,
+    
+    -- File metrics
+    added_data_files BIGINT DEFAULT 0,
+    removed_data_files BIGINT DEFAULT 0,
+    total_data_files BIGINT DEFAULT 0,
+    added_delete_files BIGINT DEFAULT 0,
+    removed_delete_files BIGINT DEFAULT 0,
+    total_delete_files BIGINT DEFAULT 0,
+    
+    -- Equality delete files
+    added_equality_delete_files BIGINT DEFAULT 0,
+    removed_equality_delete_files BIGINT DEFAULT 0,
+    
+    -- Positional delete files
+    added_positional_delete_files BIGINT DEFAULT 0,
+    removed_positional_delete_files BIGINT DEFAULT 0,
+    
+    -- Record metrics
+    added_records BIGINT DEFAULT 0,
+    removed_records BIGINT DEFAULT 0,
+    total_records BIGINT DEFAULT 0,
+    
+    -- Size metrics
+    added_file_size_bytes BIGINT DEFAULT 0,
+    removed_file_size_bytes BIGINT DEFAULT 0,
+    total_file_size_bytes BIGINT DEFAULT 0,
+    
+    -- Duration and attempts
+    total_duration_ms BIGINT DEFAULT 0,
+    attempts INTEGER DEFAULT 1,
+    
+    -- Additional metadata (for extensibility)
+    metadata TEXT DEFAULT '{}',
+
+    PRIMARY KEY (realm_id, report_id)
+);
+
+COMMENT ON TABLE commit_metrics_report IS 'Commit metrics reports as first-class entities';
+
+-- Indexes for commit_metrics_report
+-- Note: Additional indexes for query patterns (by table, trace_id, principal, operation, snapshot)
+-- can be added when analytics APIs are introduced. Currently only timestamp index is needed for retention cleanup.
+CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(realm_id, timestamp_ms);
+
+-- Junction table for commit metrics report roles
+CREATE TABLE IF NOT EXISTS commit_metrics_report_roles (
+    realm_id TEXT NOT NULL,
+    report_id TEXT NOT NULL,
+    role_name TEXT NOT NULL,
+    PRIMARY KEY (realm_id, report_id, role_name),
+    FOREIGN KEY (realm_id, report_id) REFERENCES commit_metrics_report(realm_id, report_id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE commit_metrics_report_roles IS 'Activated principal roles for commit metrics reports';
