@@ -103,17 +103,15 @@ public class AwsCredentialsStorageIntegration
 
     String roleSessionName =
         includePrincipalNameInSubscopedCredential
-            ? "polaris-" + polarisPrincipal.getName()
+            ? AwsRoleSessionNameSanitizer.sanitize("polaris-" + polarisPrincipal.getName())
             : "PolarisAwsCredentialsStorageIntegration";
-    String cappedRoleSessionName =
-        roleSessionName.substring(0, Math.min(roleSessionName.length(), 64));
 
     if (shouldUseSts(storageConfig)) {
       AssumeRoleRequest.Builder request =
           AssumeRoleRequest.builder()
               .externalId(storageConfig.getExternalId())
               .roleArn(storageConfig.getRoleARN())
-              .roleSessionName(cappedRoleSessionName)
+              .roleSessionName(roleSessionName)
               .policy(
                   policyString(
                           storageConfig,

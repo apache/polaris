@@ -969,6 +969,84 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             CredentialVendingContext.empty());
   }
 
+  @Test
+  public void testGetSubscopedCredsPrincipalNameWithInvalidCharacters() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    // Principal name with spaces and parentheses - invalid for AWS STS
+    PolarisPrincipal polarisPrincipalWithInvalidChars =
+        PolarisPrincipal.of("Invalid Principal (local)", Map.of(), Set.of());
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleRequest.class)
+                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                  .returns(externalId, AssumeRoleRequest::externalId)
+                  .returns(roleARN, AssumeRoleRequest::roleArn)
+                  // Spaces and parentheses should be replaced with underscores
+                  .returns("polaris-Invalid_Principal__local_", AssumeRoleRequest::roleSessionName);
+              return ASSUME_ROLE_RESPONSE;
+            });
+    String warehouseDir = "s3://bucket/path/to/warehouse";
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(warehouseDir)
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            PRINCIPAL_INCLUDER_REALM_CONFIG,
+            true,
+            Set.of(warehouseDir + "/namespace/table"),
+            Set.of(warehouseDir + "/namespace/table"),
+            polarisPrincipalWithInvalidChars,
+            Optional.of("/namespace/table/credentials"),
+            CredentialVendingContext.empty());
+  }
+
+  @Test
+  public void testGetSubscopedCredsPrincipalNameWithSpecialCharacters() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    // Principal name with slashes and colons
+    PolarisPrincipal polarisPrincipalWithSpecialChars =
+        PolarisPrincipal.of("service/account:readonly", Map.of(), Set.of());
+
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              assertThat(invocation.getArguments()[0])
+                  .isInstanceOf(AssumeRoleRequest.class)
+                  .asInstanceOf(InstanceOfAssertFactories.type(AssumeRoleRequest.class))
+                  .returns(externalId, AssumeRoleRequest::externalId)
+                  .returns(roleARN, AssumeRoleRequest::roleArn)
+                  // Slashes and colons should be replaced with underscores
+                  .returns("polaris-service_account_readonly", AssumeRoleRequest::roleSessionName);
+              return ASSUME_ROLE_RESPONSE;
+            });
+    String warehouseDir = "s3://bucket/path/to/warehouse";
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(warehouseDir)
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            PRINCIPAL_INCLUDER_REALM_CONFIG,
+            true,
+            Set.of(warehouseDir + "/namespace/table"),
+            Set.of(warehouseDir + "/namespace/table"),
+            polarisPrincipalWithSpecialChars,
+            Optional.of("/namespace/table/credentials"),
+            CredentialVendingContext.empty());
+  }
+
   private static @Nonnull String s3Arn(String partition, String bucket, String keyPrefix) {
     String bucketArn = "arn:" + partition + ":s3:::" + bucket;
     if (keyPrefix == null) {
