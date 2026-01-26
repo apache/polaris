@@ -65,18 +65,21 @@ services:
       start_period: 10s
 
   setup_bucket:
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    image: amazon/aws-cli:2.33.6
     depends_on:
       rustfs:
         condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: rustfsadmin
+      AWS_SECRET_ACCESS_KEY: rustfsadmin
+      AWS_ENDPOINT_URL: http://rustfs:9000
     entrypoint: "/bin/sh"
     command:
       - "-c"
       - >-
         echo Creating RustFS bucket...;
-        mc alias set pol http://rustfs:9000 rustfsadmin rustfsadmin;
-        mc mb pol/bucket123;
-        mc ls pol;
+        aws s3 mb s3://bucket123;
+        aws s3 ls;
         echo Bucket setup complete.;
 
   polaris-setup:
