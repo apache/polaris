@@ -351,21 +351,15 @@ public class IcebergRestCatalogEventServiceDelegator
             realmContext,
             securityContext);
 
-    EventAttributeMap generatedEventAttributes =
-        new EventAttributeMap()
-            .put(EventAttributes.CATALOG_NAME, catalogName)
-            .put(EventAttributes.NAMESPACE, namespaceObj)
-            .put(EventAttributes.TABLE_NAME, table);
-    if (resp.getEntity() != null) {
-      generatedEventAttributes.put(
-          EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity());
-    }
-
     polarisEventListener.onEvent(
         new PolarisEvent(
             PolarisEventType.AFTER_LOAD_TABLE,
             eventMetadataFactory.create(),
-            generatedEventAttributes));
+            new EventAttributeMap()
+                .put(EventAttributes.CATALOG_NAME, catalogName)
+                .put(EventAttributes.NAMESPACE, namespaceObj)
+                .put(EventAttributes.TABLE_NAME, table)
+                .put(EventAttributes.LOAD_TABLE_RESPONSE, (LoadTableResponse) resp.getEntity())));
     return resp;
   }
 
@@ -521,7 +515,7 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.UPDATE_TABLE_REQUEST, commitTableRequest)
                 .put(
                     EventAttributes.TABLE_METADATA,
-                    List.of(((LoadTableResponse) resp.getEntity()).tableMetadata()))));
+                    ((LoadTableResponse) resp.getEntity()).tableMetadata())));
     return resp;
   }
 
@@ -798,7 +792,7 @@ public class IcebergRestCatalogEventServiceDelegator
                 .put(EventAttributes.CATALOG_NAME, catalogName)
                 .put(EventAttributes.COMMIT_TRANSACTION_REQUEST, commitTransactionRequest)));
     List<TableMetadata> tableMetadataList =
-        eventAttributeMap.getRequired(EventAttributes.TABLE_METADATA);
+        eventAttributeMap.getRequired(EventAttributes.TABLE_METADATAS);
     for (int i = 0; i < commitTransactionRequest.tableChanges().size(); i++) {
       UpdateTableRequest req = commitTransactionRequest.tableChanges().get(i);
       TableMetadata tableMetadata =
@@ -814,9 +808,7 @@ public class IcebergRestCatalogEventServiceDelegator
                   .put(EventAttributes.NAMESPACE, req.identifier().namespace())
                   .put(EventAttributes.TABLE_NAME, req.identifier().name())
                   .put(EventAttributes.UPDATE_TABLE_REQUEST, req)
-                  .put(
-                      EventAttributes.TABLE_METADATA,
-                      tableMetadata != null ? List.of(tableMetadata) : null)));
+                  .put(EventAttributes.TABLE_METADATA, tableMetadata)));
     }
     return resp;
   }

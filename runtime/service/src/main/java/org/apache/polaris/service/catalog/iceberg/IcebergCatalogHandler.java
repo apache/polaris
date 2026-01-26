@@ -1114,7 +1114,7 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
           result.getReturnStatus(), result.getExtraInformation());
     }
 
-    eventAttributeMap.put(EventAttributes.TABLE_METADATA, tableMetadataObjs);
+    eventAttributeMap.put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
   }
 
   public ListTablesResponse listViews(Namespace namespace, String pageToken, Integer pageSize) {

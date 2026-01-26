@@ -140,7 +140,7 @@ public class CommitTransactionEventTest {
     assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.TABLE_METADATA)).isPresent();
     assertThat(afterUpdateTableEvent.attributes().get(EventAttributes.TABLE_METADATA)).isNotEmpty();
     TableMetadata metadata =
-        afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_METADATA).getFirst();
+        afterUpdateTableEvent.attributes().getRequired(EventAttributes.TABLE_METADATA);
     assertThat(metadata).isNotNull();
     assertThat(metadata.properties()).containsEntry(propertyName, "value2");
   }
