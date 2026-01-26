@@ -66,4 +66,3 @@ public class QuarkusApplicationVersionTest {
         .isEqualTo("Apache Polaris Server (incubating)");
   }
 }
-
