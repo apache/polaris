@@ -1,4 +1,4 @@
----
+#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,22 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: "Apache Polaris"
-title: "Getting Started"
-weight: 10
-cascade:
-    type: guides
-menus:
-    main:
-        parent: Guides
-        weight: 2
----
 
-Please see the [quickstart guide](../../in-dev/unreleased/getting-started) for more information.
+set -euo pipefail
 
-<!--
-```shell
-cd "$SITE_TEST_GUIDE_DIR"
-docker compose up
-```
--->
+script_dir="$(cd -- "$(dirname "$0")" && pwd)"
+cd "${script_dir}"
+
+python3 -m ruff format .
+python3 -m ruff check --fix .
