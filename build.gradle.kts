@@ -115,6 +115,9 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("node_modules/**")
 
   // Guides testing
+  excludes.add("site/content/guides/ceph/**/*.keyring")
+  excludes.add("site/it/.idea")
+  excludes.add("/venv")
   excludes.add("/getting-started") // it's a symlink
 
   // Python
