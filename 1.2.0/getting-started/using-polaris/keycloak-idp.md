@@ -21,6 +21,8 @@ title: Getting Started with Apache Polaris, External Authentication and Keycloak
 linkTitle: Using Keycloak IDP
 type: docs
 weight: 400
+robots: noindex
+exclude_search: true
 ---
 
 ## Overview

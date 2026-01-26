@@ -22,6 +22,8 @@ linkTitle: 'Management API ↗'
 weight: 100
 params:
   show_page_toc: false
+robots: noindex
+exclude_search: true
 ---
 
 {{< redoc-polaris "polaris-management-service.yml" >}}

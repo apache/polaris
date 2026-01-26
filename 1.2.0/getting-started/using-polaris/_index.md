@@ -20,6 +20,8 @@
 Title: Using Polaris
 type: docs
 weight: 401
+robots: noindex
+exclude_search: true
 ---
 
 ## Setup

@@ -21,6 +21,8 @@ title: Creating a catalog on MinIO
 linkTitle: MinIO
 type: docs
 weight: 200
+robots: noindex
+exclude_search: true
 ---
 
 When creating a catalog based on MinIO storage it is important to configure the `endpoint` property to point

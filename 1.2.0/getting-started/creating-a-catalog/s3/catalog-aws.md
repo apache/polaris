@@ -21,6 +21,8 @@ title: Creating a catalog on AWS S3
 linkTitle: AWS
 type: docs
 weight: 100
+robots: noindex
+exclude_search: true
 ---
 
 When creating a catalog based on AWS S3 storage only the `role-arn` is a required parameter. However, usually

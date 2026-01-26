@@ -21,6 +21,8 @@ title: Getting Started with Apache Polaris
 linkTitle: Getting Started
 type: docs
 weight: 101
+robots: noindex
+exclude_search: true
 ---
 
 The fastest way to get started is with our Docker Compose examples. Each example provides a complete working environment with detailed instructions.

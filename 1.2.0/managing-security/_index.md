@@ -21,6 +21,8 @@ title: Managing Security
 linkTitle: Managing Security
 type: docs
 weight: 550
+robots: noindex
+exclude_search: true
 ---
 
 ## [Access Control]({{< relref "access-control" >}})
