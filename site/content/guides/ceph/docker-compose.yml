@@ -61,7 +61,8 @@ services:
     volumes:
       - ./ceph-conf:/etc/ceph
     depends_on:
-      - mon1
+      mon1:
+        condition: service_started
     ports:
       - ${DASHBOARD_PORT}:${INTERNAL_DASHBOARD_PORT}
 
@@ -93,7 +94,8 @@ services:
       - ./ceph-conf:/etc/ceph
       - ./bootstrap-osd:/var/lib/ceph/bootstrap-osd
     depends_on:
-      - mon1
+      mon1:
+        condition: service_started
 
   rgw1:
     image: quay.io/ceph/ceph:v20.2.0
@@ -125,12 +127,21 @@ services:
     volumes:
       - ./ceph-conf:/etc/ceph
     depends_on:
-      - osd1
+      osd1:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:7480/"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 5s
 
   setup_bucket:
     image: amazon/aws-cli:2.33.8
+    restart: "no"
     depends_on:
-      - rgw1
+      rgw1:
+        condition: service_healthy
     environment:
       AWS_ACCESS_KEY_ID: ${RGW_ACCESS_KEY}
       AWS_SECRET_ACCESS_KEY: ${RGW_SECRET_KEY}
@@ -142,11 +153,8 @@ services:
       - "-c"
       - >-
         set -ex;
-        echo ">>> Waiting for RGW to become ready...";
-        sleep 5;
         echo ">>> Create bucket if not exist...";
-        aws s3 mb s3://${S3_POLARIS_BUCKET} || true;
-        tail -f /dev/null;
+        aws s3 mb s3://${S3_POLARIS_BUCKET};
 
   polaris:
     image: apache/polaris:latest
@@ -156,7 +164,8 @@ services:
       # Optional, allows attaching a debugger to the Polaris JVM
       - "5005:5005"
     depends_on:
-      - rgw1
+      rgw1:
+        condition: service_started
     environment:
       JAVA_DEBUG: true
       JAVA_DEBUG_PORT: "*:5005"
@@ -175,6 +184,7 @@ services:
 
   polaris-setup:
     image: alpine/curl:8.17.0
+    restart: "no"
     depends_on:
       polaris:
         condition: service_healthy

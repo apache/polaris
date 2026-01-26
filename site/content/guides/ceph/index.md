@@ -54,6 +54,12 @@ The services are started **in sequence**:
 
 Note: this example pulls the `apache/polaris:latest` image, but assumes the image is `1.2.0-incubating` or later. 
 
+<!-- Guide testing: go to the guide's directory, instead of the workspace directory
+```shell
+cd "$SITE_TEST_GUIDE_DIR"
+```
+-->
+
 ### 1. Copy the example environment file
 ```shell
 cp dot-env.example .env
@@ -75,7 +81,7 @@ docker compose up -d rgw1
 ```
 #### Check status
 ```shell
-docker exec --interactive --tty ceph-mon1-1 ceph -s
+docker exec ceph-mon1-1 ceph -s
 ```
 You should see something like:
 ```

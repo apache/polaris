@@ -34,6 +34,12 @@ menus:
 
 This example requires `jq` to be installed on your machine.
 
+<!-- Guide testing: do not exercise the expensive Docker compose setup.
+```shell
+exit 0
+```
+-->
+
 1. If such an image is not already present, build the Polaris image with support for JDBC persistence and
    the Postgres JDBC driver:
 
