@@ -77,8 +77,6 @@ import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.persistence.PersistenceConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilterConfiguration;
-import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
-import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.reporting.MetricsReportingConfiguration;
 import org.apache.polaris.service.reporting.PolarisMetricsReporter;
 import org.apache.polaris.service.secrets.SecretsManagerConfiguration;
@@ -345,12 +343,6 @@ public class ServiceProducers {
   public RateLimiter rateLimiter(
       RateLimiterFilterConfiguration config, @Any Instance<RateLimiter> rateLimiters) {
     return rateLimiters.select(Identifier.Literal.of(config.type())).get();
-  }
-
-  @Produces
-  public TokenBucketFactory tokenBucketFactory(
-      TokenBucketConfiguration config, @Any Instance<TokenBucketFactory> tokenBucketFactories) {
-    return tokenBucketFactories.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces

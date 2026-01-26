@@ -19,9 +19,14 @@
 package org.apache.polaris.service.ratelimiter;
 
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 
 @ConfigMapping(prefix = "polaris.rate-limiter.filter")
 public interface RateLimiterFilterConfiguration {
+
+  /** Whether the rate limiter filter is enabled. Defaults to false. */
+  @WithDefault("false")
+  boolean enabled();
 
   /**
    * The type of the rate limiter. Must be a registered {@link

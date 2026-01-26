@@ -18,19 +18,22 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import io.smallrye.config.ConfigMapping;
-import java.time.Duration;
+import io.quarkiverse.bucket4j.runtime.resolver.IdentityResolver;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
+import org.apache.polaris.core.context.RealmContext;
 
-@ConfigMapping(prefix = "polaris.rate-limiter.token-bucket")
-public interface TokenBucketConfiguration {
+/**
+ * Identity resolver for Bucket4J rate limiting that uses the realm identifier for population
+ * segmentation. This ensures each realm gets its own rate limit bucket.
+ */
+@RequestScoped
+public class RealmIdentityResolver implements IdentityResolver {
 
-  long requestsPerSecond();
+  @Inject RealmContext realmContext;
 
-  Duration window();
-
-  /**
-   * The type of the token bucket factory. Must be a registered {@link
-   * org.apache.polaris.service.ratelimiter.TokenBucketFactory} identifier.
-   */
-  String type();
+  @Override
+  public String getIdentityKey() {
+    return realmContext.getRealmIdentifier();
+  }
 }
