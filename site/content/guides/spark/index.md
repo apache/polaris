@@ -37,6 +37,12 @@ A Jupyter notebook is used to run PySpark.
 
 If a Polaris image is not already present locally, build one with the following command:
 
+<!-- Guide testing: does not work without AWS.
+```shell
+exit 0
+```
+-->
+
 ```shell
 ./gradlew \
   :polaris-server:assemble \
