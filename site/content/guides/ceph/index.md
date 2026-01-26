@@ -1,23 +1,35 @@
-<!--
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
- 
-   http://www.apache.org/licenses/LICENSE-2.0
- 
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
--->
-
-# Getting Started with Apache Polaris and Ceph
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+linkTitle: "Storage: Ceph"
+title: "Getting Started with Apache Polaris and Ceph"
+weight: 200
+tags:
+  - ceph
+  - object storage
+cascade:
+    type: guides
+menus:
+    main:
+        parent: Guides
+        weight: 200
+---
 
 ## Overview
 
@@ -28,7 +40,7 @@ It does not include STS (Security Token Service) or temporary credentials.
 All access to the Ceph RGW (RADOS Gateway) and Polaris integration uses static S3-style credentials (as configured via radosgw-admin user create).
 
 Spark is used as a query engine. This example assumes a local Spark installation.
-See the [Spark Notebooks Example](../spark/README.md) for a more advanced Spark setup.
+See the [Spark Notebooks Example](../spark/) for a more advanced Spark setup.
 
 ## Starting the Example
 
@@ -44,7 +56,7 @@ Note: this example pulls the `apache/polaris:latest` image, but assumes the imag
 
 ### 1. Copy the example environment file
 ```shell
-cp .env.example .env
+cp dot-env.example .env
 ```
 
 ### 2. Start the docker compose group by running the following command:
@@ -57,7 +69,7 @@ docker compose up -d
 docker exec ceph-mon1-1 ceph -s
 ```
 You should see something like:
-```yaml
+```
 cluster:
   id:     b2f59c4b-5f14-4f8c-a9b7-3b7998c76a0e
   health: HEALTH_WARN

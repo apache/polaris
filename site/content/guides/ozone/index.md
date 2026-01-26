@@ -1,37 +1,49 @@
-<!--
-  Licensed to the Apache Software Foundation (ASF) under one
-  or more contributor license agreements.  See the NOTICE file
-  distributed with this work for additional information
-  regarding copyright ownership.  The ASF licenses this file
-  to you under the Apache License, Version 2.0 (the
-  "License"); you may not use this file except in compliance
-  with the License.  You may obtain a copy of the License at
- 
-   http://www.apache.org/licenses/LICENSE-2.0
- 
-  Unless required by applicable law or agreed to in writing,
-  software distributed under the License is distributed on an
-  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  KIND, either express or implied.  See the License for the
-  specific language governing permissions and limitations
-  under the License.
--->
-
-# Getting Started with Apache Polaris and Apache Ozone
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+linkTitle: "Storage: Apache Ozone"
+title: "Getting Started with Apache Polaris and Apache Ozone"
+weight: 200
+tags:
+  - ozone
+  - object storage
+cascade:
+    type: guides
+menus:
+    main:
+        parent: Guides
+        weight: 200
+---
 
 ## Overview
 
 This example uses [Apache Ozone](https://ozone.apache.org/) as a storage provider with Polaris.
 
 Spark is used as a query engine. This example assumes a local Spark installation.
-See the [Spark Notebooks Example](../spark/README.md) for a more advanced Spark setup.
+See the [Spark Notebooks Example](../spark) for a more advanced Spark setup.
 
 ## Starting the Example
 
 Start the docker compose group by running the following command from the root of the repository:
 
 ```shell
-docker compose -f getting-started/ozone/docker-compose.yml up
+docker compose -f site/content/guides/ozone/docker-compose.yml up
 ```
 
 Note: this example pulls the `apache/polaris:latest` image, but assumes the image is `1.2.0-incubating` or later. 
