@@ -746,6 +746,82 @@ class AwsCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
   }
 
   @Test
+  public void testKmsUnavailablePolicyLogic() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String region = "us-east-2";
+    String currentKmsKey = "arn:aws:kms:us-east-1:012345678901:key/current-key";
+    // Test with kmsUnavailable=true and write permissions - should NOT add KMS policies
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+              assertThat(policy.statements())
+                  .noneMatch(
+                      stmt ->
+                          stmt.actions().stream()
+                              .anyMatch(action -> action.value().startsWith("kms:")));
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region(region)
+                .currentKmsKey(currentKmsKey)
+                .kmsUnavailable(true)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+
+    // Test with kmsUnavailable=true and read-only permissions - should NOT add KMS policies
+    Mockito.reset(stsClient);
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              AssumeRoleRequest request = invocation.getArgument(0);
+              IamPolicy policy = IamPolicy.fromJson(request.policy());
+              assertThat(policy.statements())
+                  .noneMatch(
+                      stmt ->
+                          stmt.actions().stream()
+                              .anyMatch(action -> action.value().startsWith("kms:")));
+              return ASSUME_ROLE_RESPONSE;
+            });
+
+    new AwsCredentialsStorageIntegration(
+            AwsStorageConfigurationInfo.builder()
+                .addAllowedLocation(s3Path(bucket, warehouseKeyPrefix))
+                .roleARN(roleARN)
+                .externalId(externalId)
+                .region(region)
+                .kmsUnavailable(true)
+                .build(),
+            stsClient)
+        .getSubscopedCreds(
+            EMPTY_REALM_CONFIG,
+            true,
+            Set.of(s3Path(bucket, warehouseKeyPrefix + "/table")),
+            Set.of(),
+            POLARIS_PRINCIPAL,
+            Optional.empty(),
+            CredentialVendingContext.empty());
+  }
+
+  @Test
   public void testKmsKeyPolicyLogic() {
     StsClient stsClient = Mockito.mock(StsClient.class);
     String roleARN = "arn:aws:iam::012345678901:role/jdoe";

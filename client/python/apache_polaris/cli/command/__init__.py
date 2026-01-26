@@ -77,6 +77,7 @@ class Command(ABC):
                 endpoint_internal=options_get(Arguments.ENDPOINT_INTERNAL),
                 sts_endpoint=options_get(Arguments.STS_ENDPOINT),
                 sts_unavailable=options_get(Arguments.STS_UNAVAILABLE),
+                kms_unavailable=options_get(Arguments.KMS_UNAVAILABLE),
                 path_style_access=options_get(Arguments.PATH_STYLE_ACCESS),
                 current_kms_key=options_get(Arguments.KMS_KEY_CURRENT),
                 allowed_kms_keys=options_get(Arguments.KMS_KEY_ALLOWED),
