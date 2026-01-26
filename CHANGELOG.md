@@ -34,7 +34,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.
 
 ### Breaking changes
-
+- The (Before/After)CommitViewEvent has been removed.
 - The (Before/After)CommitTableEvent has been removed.
 - The (Before/After)CommitViewEvent has been removed.
 - The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a `receivedTimestamp` parameter of type `java.time.Instant`.
@@ -91,8 +91,6 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 - The EclipseLink Persistence implementation has been completely removed.
 - The default request ID header name has changed from `Polaris-Request-Id` to `X-Request-ID`.
-- The (Before/After)CommitTableEvent has been removed.
-- The (Before/After)CommitViewEvent has been removed.
 
 ### New Features
 

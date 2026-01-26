@@ -262,8 +262,11 @@ public abstract class AbstractIcebergCatalogViewTest extends ViewCatalogTests<Ic
             beforeRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
         .isEqualTo(TestData.TABLE);
 
-    var afterRefreshEvent =
-        testPolarisEventListener.getLatest(IcebergRestCatalogEvents.AfterRefreshViewEvent.class);
-    Assertions.assertThat(afterRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
+    PolarisEvent afterRefreshEvent =
+        testPolarisEventListener.getLatest(PolarisEventType.AFTER_REFRESH_VIEW);
+    Assertions.assertThat(
+            afterRefreshEvent.attributes().getRequired(EventAttributes.VIEW_IDENTIFIER))
+        .isEqualTo(TestData.TABLE);
+
   }
 }
