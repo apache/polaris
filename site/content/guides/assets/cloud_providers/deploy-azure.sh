@@ -75,7 +75,7 @@ az role assignment create \
 export AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)
 export STORAGE_LOCATION="abfss://$STORAGE_CONTAINER_NAME@$STORAGE_ACCOUNT_NAME.dfs.core.windows.net/quickstart_catalog"
 
-cat >> getting-started/assets/trino-config/catalog/iceberg.properties << EOF
+cat >> site/content/guides/assets/trino-config/catalog/iceberg.properties << EOF
 fs.native-azure.enabled=true
 azure.auth-type=DEFAULT
 EOF
@@ -84,4 +84,4 @@ EOF
        -Dquarkus.container-image.build=true \
        --no-build-cache
 
-docker compose -p polaris -f getting-started/jdbc/docker-compose-bootstrap-db.yml -f getting-started/jdbc/docker-compose.yml up -d
+docker compose -p polaris -f site/content/guides/jdbc/docker-compose-bootstrap-db.yml -f site/content/guides/jdbc/docker-compose.yml up -d

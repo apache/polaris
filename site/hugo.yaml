@@ -131,6 +131,11 @@ menu:
       parent: "doc"
       weight: 1000
 
+    - name: "Guides"
+      identifier: "Guides"
+      url: "/guides"
+      weight: 120
+
     - name: "Tools"
       identifier: "tools"
       url: "/tools"
