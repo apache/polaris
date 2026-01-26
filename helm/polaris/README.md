@@ -416,7 +416,6 @@ ct install --namespace polaris --charts ./helm/polaris
 | rateLimiter.tokenBucket | object | `{"requestsPerSecond":9999,"type":"default","window":"PT10S"}` | The configuration for the default rate limiter, which uses the token bucket algorithm with one bucket per realm. |
 | rateLimiter.tokenBucket.requestsPerSecond | int | `9999` | The maximum number of requests per second allowed for each realm. |
 | rateLimiter.tokenBucket.type | string | `"default"` | The type of the token bucket rate limiter. Only the default type is supported out of the box. |
-| rateLimiter.tokenBucket.window | string | `"PT10S"` | The time window. |
 | rateLimiter.type | string | `"no-op"` | The type of rate limiter filter to use. Two built-in types are supported: default and no-op. |
 | readinessProbe | object | `{"failureThreshold":3,"initialDelaySeconds":5,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":10}` | Configures the readiness probe for polaris pods. |
 | readinessProbe.failureThreshold | int | `3` | Minimum consecutive failures for the probe to be considered failed after having succeeded. Minimum value is 1. |
