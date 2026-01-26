@@ -1852,7 +1852,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
-      
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug(
           "doCommit for view {} with metadataBefore {}, metadataAfter {}",
@@ -1950,7 +1949,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(identifier, entity);
       }
-
     }
 
     protected String writeNewMetadataIfRequired(ViewMetadata metadata) {

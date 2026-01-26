@@ -34,6 +34,7 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.
 
 ### Breaking changes
+
 - The (Before/After)CommitViewEvent has been removed.
 - The (Before/After)CommitTableEvent has been removed.
 - The `PolarisMetricsReporter.reportMetric()` method signature has been extended to include a `receivedTimestamp` parameter of type `java.time.Instant`.
