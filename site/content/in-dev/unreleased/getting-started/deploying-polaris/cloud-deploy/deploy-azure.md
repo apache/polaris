@@ -35,8 +35,21 @@ The requirements to run the script below are:
 export ASSETS_PATH=$(pwd)/getting-started/assets/
 export CLIENT_ID=root
 export CLIENT_SECRET=s3cr3t
+export POSTGRES_PASSWORD=your_secure_password  # Optional: If not set, a random password will be generated
 ./getting-started/assets/cloud_providers/deploy-azure.sh
 ```
+
+### Environment Variables
+
+The deployment script accepts the following environment variables:
+
+* **`ASSETS_PATH`** (required): Path to the getting-started assets directory
+* **`CLIENT_ID`** (required): Client ID for Polaris authentication
+* **`CLIENT_SECRET`** (required): Client secret for Polaris authentication
+* **`POSTGRES_PASSWORD`** (optional): Password for the PostgreSQL database
+  * If not provided, a random 16-character password will be automatically generated
+  * Cannot be set to `postgres` for security reasons
+  * The generated or provided password will be displayed in the script output
 
 ## Next Steps
 Congrats, you now have a running instance of Polaris! For further information regarding how to use Polaris,
