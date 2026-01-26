@@ -31,6 +31,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 
 ### Upgrade notes
 
+- The custom token-bucket based rate limiter has been replaced with Guava's rate limiter implementation.
+
 ### Breaking changes
 
 - The (Before/After)CommitTableEvent has been removed.
@@ -59,6 +61,8 @@ request adding CHANGELOG notes for breaking (!) changes and possibly other secti
 - Improved default KMS permission handling to better distinguish read-only and read-write access.
 
 ### Deprecations
+
+- The configuration option `polaris.rate-limiter.token-bucket.window` is no longer supported and should be removed.
 
 ### Fixes
 

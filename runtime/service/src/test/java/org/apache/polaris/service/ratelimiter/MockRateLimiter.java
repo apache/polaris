@@ -16,34 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.ratelimiter;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import org.apache.polaris.core.context.RealmContext;
+import jakarta.enterprise.context.RequestScoped;
 
-@ApplicationScoped
-@Identifier("default")
-public class DefaultTokenBucketFactory implements TokenBucketFactory {
-
-  private final long requestsPerSecond;
-  private final Map<String, TokenBucket> perRealmBuckets = new ConcurrentHashMap<>();
-
-  @Inject
-  public DefaultTokenBucketFactory(TokenBucketConfiguration configuration) {
-    this(configuration.requestsPerSecond());
-  }
-
-  public DefaultTokenBucketFactory(long requestsPerSecond) {
-    this.requestsPerSecond = requestsPerSecond;
-  }
+@Identifier("mock")
+@RequestScoped
+public class MockRateLimiter implements RateLimiter {
+  public static volatile boolean allowProceed = false;
 
   @Override
-  public TokenBucket getOrCreateTokenBucket(RealmContext realmContext) {
-    String realmId = realmContext.getRealmIdentifier();
-    return perRealmBuckets.computeIfAbsent(realmId, k -> new TokenBucket(requestsPerSecond));
+  public boolean canProceed() {
+    return allowProceed;
   }
 }
