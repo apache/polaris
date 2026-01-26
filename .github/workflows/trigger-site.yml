@@ -17,7 +17,7 @@
 # under the License.
 #
 
-name: "Tigger Site Publishing"
+name: "Trigger Site Publishing"
 on:
   push:
     branches: [ "versioned_docs" ]
