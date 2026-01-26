@@ -38,9 +38,9 @@ This example requires `jq` to be installed on your machine.
 
     ```shell
     ./gradlew \
-      :polaris-server:assemble \
-      :polaris-server:quarkusAppPartsBuild --rerun \
-      -Dquarkus.container-image.build=true
+       :polaris-server:assemble \
+       :polaris-server:quarkusAppPartsBuild --rerun \
+       -Dquarkus.container-image.build=true
     ```
 
 2. Start the docker compose group by running the following command from the root of the repository:
