@@ -16,6 +16,9 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
+-- Changes from v2:
+--  * Added `events` table
+--  * Added `idempotency_records` table for REST idempotency
 -- Changes from v3:
 --  * Added `scan_metrics_report` table for scan metrics as first-class entities
 --  * Added `scan_metrics_report_roles` junction table for principal roles

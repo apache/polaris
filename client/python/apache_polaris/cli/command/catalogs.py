@@ -93,6 +93,7 @@ class CatalogsCommand(Command):
     endpoint_internal: str
     sts_endpoint: str
     sts_unavailable: bool
+    kms_unavailable: bool
     path_style_access: bool
     current_kms_key: str
     allowed_kms_keys: List[str]
@@ -189,7 +190,8 @@ class CatalogsCommand(Command):
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_CURRENT)},"
                     f" {Argument.to_flag_name(Arguments.KMS_KEY_ALLOWED)},"
                     f" {Argument.to_flag_name(Arguments.STS_ENDPOINT)},"
-                    f" {Argument.to_flag_name(Arguments.STS_UNAVAILABLE)}, and"
+                    f" {Argument.to_flag_name(Arguments.STS_UNAVAILABLE)},"
+                    f" {Argument.to_flag_name(Arguments.KMS_UNAVAILABLE)}, and"
                     f" {Argument.to_flag_name(Arguments.PATH_STYLE_ACCESS)}"
                 )
         elif self.storage_type == StorageType.AZURE.value:
@@ -260,6 +262,7 @@ class CatalogsCommand(Command):
                 endpoint_internal=self.endpoint_internal,
                 sts_endpoint=self.sts_endpoint,
                 sts_unavailable=self.sts_unavailable,
+                kms_unavailable=self.kms_unavailable,
                 path_style_access=self.path_style_access,
                 current_kms_key=self.current_kms_key,
                 allowed_kms_keys=self.allowed_kms_keys,

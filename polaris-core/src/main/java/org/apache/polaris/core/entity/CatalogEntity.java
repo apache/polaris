@@ -171,6 +171,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
             .setPathStyleAccess(awsConfig.getPathStyleAccess())
             .setStsUnavailable(awsConfig.getStsUnavailable())
             .setEndpointInternal(awsConfig.getEndpointInternal())
+            .setKmsUnavailable(awsConfig.getKmsUnavailable())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -320,6 +321,7 @@ public class CatalogEntity extends PolarisEntity implements LocationBasedEntity 
                     .pathStyleAccess(awsConfigModel.getPathStyleAccess())
                     .stsUnavailable(awsConfigModel.getStsUnavailable())
                     .endpointInternal(awsConfigModel.getEndpointInternal())
+                    .kmsUnavailable(awsConfigModel.getKmsUnavailable())
                     .build();
             config = awsConfig;
             break;

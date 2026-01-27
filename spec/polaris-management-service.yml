@@ -1149,6 +1149,10 @@ components:
                 Whether S3 requests to files in this catalog should use 'path-style addressing for buckets'.
               example: true
               default: false
+            kmsUnavailable:
+              type: boolean
+              description: >-
+                if set to `true`, instructs Polaris Servers to avoid adding KMS key policies.
 
     AzureStorageConfigInfo:
       type: object
