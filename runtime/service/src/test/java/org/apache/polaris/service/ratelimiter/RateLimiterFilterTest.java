@@ -28,7 +28,6 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response.Status;
-import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -46,7 +45,6 @@ import org.apache.polaris.service.test.TestMetricsUtil;
 import org.hawkular.agent.prometheus.types.MetricFamily;
 import org.hawkular.agent.prometheus.types.Summary;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,12 +70,8 @@ public class RateLimiterFilterTest {
     @Override
     public Map<String, String> getConfigOverrides() {
       return ImmutableMap.<String, String>builder()
-          .put("polaris.rate-limiter.filter.type", "default")
+          .put("polaris.rate-limiter.filter.type", "mock")
           .put("polaris.rate-limiter.token-bucket.type", "default")
-          .put(
-              "polaris.rate-limiter.token-bucket.requests-per-second",
-              String.valueOf(REQUESTS_PER_SECOND))
-          .put("polaris.rate-limiter.token-bucket.window", WINDOW.toString())
           .put("polaris.metrics.tags.environment", "prod")
           .put("polaris.metrics.realm-id-tag.enable-in-api-metrics", "true")
           .put("polaris.metrics.realm-id-tag.enable-in-http-metrics", "true")
@@ -89,9 +83,6 @@ public class RateLimiterFilterTest {
     }
   }
 
-  private static final long REQUESTS_PER_SECOND = 5;
-  private static final Duration WINDOW = Duration.ofSeconds(10);
-
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry meterRegistry;
   @Inject PolarisEventListener polarisEventListener;
@@ -101,6 +92,7 @@ public class RateLimiterFilterTest {
 
   @BeforeAll
   public void createFixture(TestEnvironment testEnv, TestInfo testInfo) {
+    MockRateLimiter.allowProceed = true;
     this.testEnv = testEnv;
     fixture = helper.createFixture(testEnv, testInfo);
   }
@@ -113,14 +105,8 @@ public class RateLimiterFilterTest {
   }
 
   @BeforeEach
-  @AfterEach
-  public void resetRateLimiter() {
-    MockTokenBucketFactory.CLOCK.add(
-        WINDOW.multipliedBy(2)); // Clear any counters from before/after this test
-  }
-
-  @BeforeEach
   public void resetMeterRegistry() {
+    MockRateLimiter.allowProceed = true;
     meterRegistry.clear();
   }
 
@@ -129,12 +115,15 @@ public class RateLimiterFilterTest {
     Consumer<Status> requestAsserter =
         TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm);
 
-    for (int i = 0; i < REQUESTS_PER_SECOND * WINDOW.toSeconds(); i++) {
+    for (int i = 0; i < 3; i++) {
+      MockRateLimiter.allowProceed = true;
       requestAsserter.accept(Status.OK);
+      MockRateLimiter.allowProceed = false;
+      requestAsserter.accept(Status.TOO_MANY_REQUESTS);
     }
-    requestAsserter.accept(Status.TOO_MANY_REQUESTS);
 
     // Ensure that a different realm identifier gets a separate limit
+    MockRateLimiter.allowProceed = true;
     Consumer<Status> requestAsserter2 =
         TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm + "2");
     requestAsserter2.accept(Status.OK);
@@ -145,10 +134,12 @@ public class RateLimiterFilterTest {
     Consumer<Status> requestAsserter =
         TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm);
 
-    for (int i = 0; i < REQUESTS_PER_SECOND * WINDOW.toSeconds(); i++) {
+    for (int i = 0; i < 3; i++) {
+      MockRateLimiter.allowProceed = true;
       requestAsserter.accept(Status.OK);
+      MockRateLimiter.allowProceed = false;
+      requestAsserter.accept(Status.TOO_MANY_REQUESTS);
     }
-    requestAsserter.accept(Status.TOO_MANY_REQUESTS);
 
     PolarisEvent event =
         ((TestPolarisEventListener) polarisEventListener)
@@ -182,7 +173,7 @@ public class RateLimiterFilterTest {
               assertThat(metric)
                   .asInstanceOf(type(Summary.class))
                   .extracting(Summary::getSampleCount)
-                  .isEqualTo(1L);
+                  .isEqualTo(3L);
             });
 
     assertThat(metrics.get("polaris_principal_roles_listPrincipalRoles_seconds").getMetrics())
@@ -200,7 +191,7 @@ public class RateLimiterFilterTest {
               assertThat(metric)
                   .asInstanceOf(type(Summary.class))
                   .extracting(Summary::getSampleCount)
-                  .isEqualTo(REQUESTS_PER_SECOND * WINDOW.toSeconds());
+                  .isEqualTo(3L);
             });
   }
 }

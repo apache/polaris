@@ -30,3 +30,5 @@ if [[ -d content/releases ]] ; then
 fi
 
 git worktree add content/releases versioned-docs
+
+(cd content/releases ; git pull)

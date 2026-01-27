@@ -17,25 +17,18 @@
 -- under the License.
 --
 
--- ============================================================================
--- POLARIS JDBC SCHEMA VERSION 4 (H2)
--- ============================================================================
--- This schema is SELF-CONTAINED and can be used for fresh installs.
--- Each schema version includes ALL tables, not just incremental changes.
---
+-- Changes from v2:
+--  * Added `events` table
+--  * Added `idempotency_records` table for REST idempotency
 -- Changes from v3:
---   * Added `scan_metrics_report` table for scan metrics as first-class entities
---   * Added `scan_metrics_report_roles` junction table for principal roles
---   * Added `commit_metrics_report` table for commit metrics as first-class entities
---   * Added `commit_metrics_report_roles` junction table for principal roles
--- ============================================================================
+--  * Added `scan_metrics_report` table for scan metrics as first-class entities
+--  * Added `scan_metrics_report_roles` junction table for principal roles
+--  * Added `commit_metrics_report` table for commit metrics as first-class entities
+--  * Added `commit_metrics_report_roles` junction table for principal roles
 
 CREATE SCHEMA IF NOT EXISTS POLARIS_SCHEMA;
 SET SCHEMA POLARIS_SCHEMA;
 
--- ============================================================================
--- VERSION TABLE
--- ============================================================================
 CREATE TABLE IF NOT EXISTS version (
     version_key VARCHAR PRIMARY KEY,
     version_value INTEGER NOT NULL
@@ -45,13 +38,9 @@ MERGE INTO version (version_key, version_value)
     KEY (version_key)
     VALUES ('version', 4);
 
+-- H2 supports COMMENT, but some modes may ignore it
 COMMENT ON TABLE version IS 'the version of the JDBC schema in use';
 
--- ============================================================================
--- CORE TABLES (from v1)
--- ============================================================================
-
--- Entities table: stores all Polaris entities (catalogs, namespaces, tables, etc.)
 CREATE TABLE IF NOT EXISTS entities (
     realm_id TEXT NOT NULL,
     catalog_id BIGINT NOT NULL,
@@ -75,9 +64,12 @@ CREATE TABLE IF NOT EXISTS entities (
 );
 
 CREATE INDEX IF NOT EXISTS idx_locations ON entities(realm_id, catalog_id, location_without_scheme);
+
+-- TODO: create indexes based on all query pattern.
 CREATE INDEX IF NOT EXISTS idx_entities ON entities (realm_id, catalog_id, id);
 
 COMMENT ON TABLE entities IS 'all the entities';
+
 COMMENT ON COLUMN entities.catalog_id IS 'catalog id';
 COMMENT ON COLUMN entities.id IS 'entity id';
 COMMENT ON COLUMN entities.parent_id IS 'entity id of parent';
@@ -93,7 +85,6 @@ COMMENT ON COLUMN entities.properties IS 'entities properties json';
 COMMENT ON COLUMN entities.internal_properties IS 'entities internal properties json';
 COMMENT ON COLUMN entities.grant_records_version IS 'the version of grant records change on the entity';
 
--- Grant records table: stores privilege grants
 CREATE TABLE IF NOT EXISTS grant_records (
     realm_id TEXT NOT NULL,
     securable_catalog_id BIGINT NOT NULL,
@@ -111,7 +102,6 @@ COMMENT ON COLUMN grant_records.grantee_catalog_id IS 'catalog id of the grantee
 COMMENT ON COLUMN grant_records.grantee_id IS 'id of the grantee';
 COMMENT ON COLUMN grant_records.privilege_code IS 'privilege code';
 
--- Principal authentication data table
 CREATE TABLE IF NOT EXISTS principal_authentication_data (
     realm_id TEXT NOT NULL,
     principal_id BIGINT NOT NULL,
@@ -124,7 +114,6 @@ CREATE TABLE IF NOT EXISTS principal_authentication_data (
 
 COMMENT ON TABLE principal_authentication_data IS 'authentication data for client';
 
--- Policy mapping record table (from v2)
 CREATE TABLE IF NOT EXISTS policy_mapping_record (
     realm_id TEXT NOT NULL,
     target_catalog_id BIGINT NOT NULL,
@@ -137,10 +126,6 @@ CREATE TABLE IF NOT EXISTS policy_mapping_record (
 );
 
 CREATE INDEX IF NOT EXISTS idx_policy_mapping_record ON policy_mapping_record (realm_id, policy_type_code, policy_catalog_id, policy_id, target_catalog_id, target_id);
-
--- ============================================================================
--- EVENTS TABLE (from v3)
--- ============================================================================
 
 CREATE TABLE IF NOT EXISTS events (
     realm_id TEXT NOT NULL,
@@ -156,6 +141,32 @@ CREATE TABLE IF NOT EXISTS events (
     PRIMARY KEY (event_id)
 );
 
+CREATE TABLE IF NOT EXISTS idempotency_records (
+    realm_id TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    operation_type TEXT NOT NULL,
+    resource_id TEXT NOT NULL, -- normalized request-derived resource identifier (not a generated entity id)
+
+    -- Finalization/replay
+    http_status INTEGER,       -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
+    error_subtype TEXT,        -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
+    response_summary TEXT,     -- minimal body to reproduce equivalent response (JSON string)
+    response_headers TEXT,     -- small whitelisted headers to replay (JSON string)
+    finalized_at TIMESTAMP,    -- when http_status was written
+
+    -- Liveness/ops
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    heartbeat_at TIMESTAMP,  -- updated by owner while IN_PROGRESS
+    executor_id TEXT,        -- owner pod/worker id
+    expires_at TIMESTAMP,
+
+    PRIMARY KEY (realm_id, idempotency_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
+    ON idempotency_records (realm_id, expires_at);
+
 -- ============================================================================
 -- METRICS TABLES (NEW in v4)
 -- ============================================================================
@@ -168,24 +179,24 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
     catalog_name TEXT NOT NULL,
     namespace TEXT NOT NULL,
     table_name TEXT NOT NULL,
-    
+
     -- Report metadata
     timestamp_ms BIGINT NOT NULL,
     principal_name TEXT,
     request_id TEXT,
-    
+
     -- Trace correlation
     otel_trace_id TEXT,
     otel_span_id TEXT,
     report_trace_id TEXT,
-    
+
     -- Scan context
     snapshot_id BIGINT,
     schema_id INTEGER,
     filter_expression TEXT,
     projected_field_ids TEXT,
     projected_field_names TEXT,
-    
+
     -- Scan metrics
     result_data_files BIGINT DEFAULT 0,
     result_delete_files BIGINT DEFAULT 0,
@@ -199,13 +210,13 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report (
     skipped_data_files BIGINT DEFAULT 0,
     skipped_delete_files BIGINT DEFAULT 0,
     total_planning_duration_ms BIGINT DEFAULT 0,
-    
+
     -- Equality/positional delete metrics
     equality_delete_files BIGINT DEFAULT 0,
     positional_delete_files BIGINT DEFAULT 0,
     indexed_delete_files BIGINT DEFAULT 0,
     total_delete_file_size_bytes BIGINT DEFAULT 0,
-    
+
     -- Additional metadata (for extensibility)
     metadata TEXT DEFAULT '{}',
 
@@ -230,6 +241,7 @@ CREATE TABLE IF NOT EXISTS scan_metrics_report_roles (
 
 COMMENT ON TABLE scan_metrics_report_roles IS 'Activated principal roles for scan metrics reports';
 
+
 -- Commit Metrics Report Entity Table
 CREATE TABLE IF NOT EXISTS commit_metrics_report (
     report_id TEXT NOT NULL,
@@ -238,22 +250,22 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
     catalog_name TEXT NOT NULL,
     namespace TEXT NOT NULL,
     table_name TEXT NOT NULL,
-    
+
     -- Report metadata
     timestamp_ms BIGINT NOT NULL,
     principal_name TEXT,
     request_id TEXT,
-    
+
     -- Trace correlation
     otel_trace_id TEXT,
     otel_span_id TEXT,
     report_trace_id TEXT,
-    
+
     -- Commit context
     snapshot_id BIGINT NOT NULL,
     sequence_number BIGINT,
     operation TEXT NOT NULL,
-    
+
     -- File metrics
     added_data_files BIGINT DEFAULT 0,
     removed_data_files BIGINT DEFAULT 0,
@@ -261,29 +273,29 @@ CREATE TABLE IF NOT EXISTS commit_metrics_report (
     added_delete_files BIGINT DEFAULT 0,
     removed_delete_files BIGINT DEFAULT 0,
     total_delete_files BIGINT DEFAULT 0,
-    
+
     -- Equality delete files
     added_equality_delete_files BIGINT DEFAULT 0,
     removed_equality_delete_files BIGINT DEFAULT 0,
-    
+
     -- Positional delete files
     added_positional_delete_files BIGINT DEFAULT 0,
     removed_positional_delete_files BIGINT DEFAULT 0,
-    
+
     -- Record metrics
     added_records BIGINT DEFAULT 0,
     removed_records BIGINT DEFAULT 0,
     total_records BIGINT DEFAULT 0,
-    
+
     -- Size metrics
     added_file_size_bytes BIGINT DEFAULT 0,
     removed_file_size_bytes BIGINT DEFAULT 0,
     total_file_size_bytes BIGINT DEFAULT 0,
-    
+
     -- Duration and attempts
     total_duration_ms BIGINT DEFAULT 0,
     attempts INTEGER DEFAULT 1,
-    
+
     -- Additional metadata (for extensibility)
     metadata TEXT DEFAULT '{}',
 

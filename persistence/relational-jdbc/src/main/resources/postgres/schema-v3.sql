@@ -134,31 +134,3 @@ CREATE TABLE IF NOT EXISTS events (
     additional_properties JSONB NOT NULL DEFAULT '{}'::JSONB,
     PRIMARY KEY (event_id)
 );
-
--- Idempotency records (key-only idempotency; durable replay)
-CREATE TABLE IF NOT EXISTS idempotency_records (
-    realm_id TEXT NOT NULL,
-    idempotency_key TEXT NOT NULL,
-    operation_type TEXT NOT NULL,
-    resource_id TEXT NOT NULL,
-
-    -- Finalization/replay
-    http_status INTEGER,                 -- NULL while IN_PROGRESS; set only on finalized 2xx/terminal 4xx
-    error_subtype TEXT,                  -- optional: e.g., already_exists, namespace_not_empty, idempotency_replay_failed
-    response_summary TEXT,               -- minimal body to reproduce equivalent response (JSON string)
-    response_headers TEXT,               -- small whitelisted headers to replay (JSON string)
-    finalized_at TIMESTAMP,              -- when http_status was written
-
-    -- Liveness/ops
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    heartbeat_at TIMESTAMP,              -- updated by owner while IN_PROGRESS
-    executor_id TEXT,                    -- owner pod/worker id
-    expires_at TIMESTAMP,
-
-    PRIMARY KEY (realm_id, idempotency_key)
-);
-
--- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_idemp_realm_expires
-    ON idempotency_records (realm_id, expires_at);

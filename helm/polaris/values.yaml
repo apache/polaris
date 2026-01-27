@@ -747,10 +747,8 @@ rateLimiter:
   tokenBucket:
     # -- The type of the token bucket rate limiter. Only the default type is supported out of the box.
     type: default
-    # -- The maximum number of requests per second allowed for each realm.
+    # -- The maximum number of requests (permits) per second allowed for each realm.
     requestsPerSecond: 9999
-    # -- The time window.
-    window: PT10S
 
 # -- Polaris asynchronous task executor configuration.
 tasks:

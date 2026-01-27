@@ -388,7 +388,6 @@ tests:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=default" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.type=default" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.requests-per-second=9999" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.window=PT10S" }
 
   - it: should configure rate-limiter with custom token bucket values
     set:
@@ -397,12 +396,10 @@ tests:
         tokenBucket:
           type: custom
           requestsPerSecond: 1234
-          window: PT5S
     asserts:
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=custom" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.type=custom" }
       - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.requests-per-second=1234" }
-      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.window=PT5S" }
 
   - it: should not include tasks configuration by default
     asserts:

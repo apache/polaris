@@ -19,9 +19,6 @@
 
 # Getting Started with Apache Polaris and RustFS
 
-> [!WARNING]
-> Disclaimer: This getting-started example uses mc from MinIO OSS for local testing only. MinIO OSS is in maintenance mode, and MinIO container images may no longer receive updates or security fixes. For production setups, [rc](https://github.com/rustfs/cli) should be used.
-
 ## Overview
 
 This example uses [RustFS](https://rustfs.com/) as a storage provider with Polaris.
