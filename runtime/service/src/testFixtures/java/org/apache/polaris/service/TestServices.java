@@ -23,8 +23,6 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
@@ -41,8 +39,8 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.catalog.ExternalCatalogFactory;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.credentials.PolarisCredentialManager;
@@ -109,7 +107,7 @@ public record TestServices(
     IcebergRestCatalogApi restApi,
     IcebergRestConfigurationApi restConfigurationApi,
     IcebergCatalogAdapter catalogAdapter,
-    PolarisConfigurationStore configurationStore,
+    RealmConfigurationSource configurationSource,
     PolarisDiagnostics polarisDiagnostics,
     StorageCredentialCache storageCredentialCache,
     ResolverFactory resolverFactory,
@@ -128,21 +126,6 @@ public record TestServices(
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
-
-  private static class MockedConfigurationStore implements PolarisConfigurationStore {
-    private final Map<String, Object> defaults;
-
-    public MockedConfigurationStore(Map<String, Object> defaults) {
-      this.defaults = Map.copyOf(defaults);
-    }
-
-    @Override
-    public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
-      @SuppressWarnings("unchecked")
-      T confgValue = (T) defaults.get(configName);
-      return confgValue;
-    }
-  }
 
   public static Builder builder() {
     return new Builder();
@@ -211,7 +194,7 @@ public record TestServices(
     }
 
     public TestServices build() {
-      PolarisConfigurationStore configurationStore = new MockedConfigurationStore(config);
+      RealmConfigurationSource configurationSource = RealmConfigurationSource.global(config);
       PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
 
       // Application level
@@ -233,7 +216,7 @@ public record TestServices(
 
       BasePersistence metaStoreSession = metaStoreManagerFactory.getOrCreateSession(realmContext);
       CallContext callContext =
-          new PolarisCallContext(realmContext, metaStoreSession, configurationStore);
+          new PolarisCallContext(realmContext, metaStoreSession, configurationSource);
       RealmConfig realmConfig = callContext.getRealmConfig();
 
       PolarisMetaStoreManager metaStoreManager =
@@ -416,7 +399,7 @@ public record TestServices(
           restApi,
           restConfigurationApi,
           catalogService,
-          configurationStore,
+          configurationSource,
           diagnostics,
           storageCredentialCache,
           resolverFactory,
@@ -437,6 +420,6 @@ public record TestServices(
 
   public PolarisCallContext newCallContext() {
     BasePersistence metaStore = metaStoreManagerFactory.getOrCreateSession(realmContext);
-    return new PolarisCallContext(realmContext, metaStore, configurationStore);
+    return new PolarisCallContext(realmContext, metaStore, configurationSource);
   }
 }

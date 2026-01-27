@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.storage.cache;
 
+import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
+
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,9 +32,9 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -54,8 +56,7 @@ import org.mockito.Mockito;
 public class StorageCredentialCacheTest {
   private final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
   private final RealmContext realmContext = () -> "testRealm";
-  private final RealmConfig realmConfig =
-      new RealmConfigImpl(new PolarisConfigurationStore() {}, realmContext);
+  private final RealmConfig realmConfig = new RealmConfigImpl(EMPTY_CONFIG, realmContext);
   private final StorageCredentialsVendor storageCredentialsVendor;
   private StorageCredentialCache storageCredentialCache;
 
@@ -225,18 +226,10 @@ public class StorageCredentialCacheTest {
     Mockito.when(storageCredentialsVendor.getRealmConfig())
         .thenReturn(
             new RealmConfigImpl(
-                new PolarisConfigurationStore() {
-                  @SuppressWarnings("unchecked")
-                  @Override
-                  public String getConfiguration(@Nonnull RealmContext ctx, String configName) {
-                    if (configName.equals(
-                        FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL
-                            .key())) {
-                      return "true";
-                    }
-                    return null;
-                  }
-                },
+                RealmConfigurationSource.global(
+                    Map.of(
+                        FeatureConfiguration.INCLUDE_PRINCIPAL_NAME_IN_SUBSCOPED_CREDENTIAL.key(),
+                        "true")),
                 () -> "realm"));
 
     testCacheForAnotherPrincipal(false);

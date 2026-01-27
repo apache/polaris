@@ -25,7 +25,7 @@ import jakarta.inject.Inject;
 import java.util.List;
 import java.util.UUID;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.BaseResolverTest;
@@ -48,7 +48,7 @@ public class TestNoSqlResolver extends BaseResolverTest {
   @Identifier("nosql")
   MetaStoreManagerFactory metaStoreManagerFactory;
 
-  @Inject PolarisConfigurationStore configurationStore;
+  @Inject RealmConfigurationSource configurationSource;
   @Inject MonotonicClock monotonicClock;
 
   PolarisMetaStoreManager metaStoreManager;
@@ -73,7 +73,7 @@ public class TestNoSqlResolver extends BaseResolverTest {
       metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
       var session = metaStoreManagerFactory.getOrCreateSession(realmContext);
 
-      callCtx = new PolarisCallContext(realmContext, session, configurationStore);
+      callCtx = new PolarisCallContext(realmContext, session, configurationSource);
 
       tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx, startTime, false);
     }

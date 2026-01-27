@@ -26,12 +26,14 @@ import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
-public class DefaultConfigurationStore implements PolarisConfigurationStore {
+public class DefaultConfigurationStore
+    implements PolarisConfigurationStore, RealmConfigurationSource {
   Logger LOGGER = LoggerFactory.getLogger(DefaultConfigurationStore.class);
 
   private final Map<String, Object> defaults;
@@ -47,15 +49,18 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   }
 
   @Override
-  public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
+  public @Nullable Object getConfigValue(@Nonnull RealmContext realmContext, String configName) {
     String realm = realmContext.getRealmIdentifier();
     LOGGER.debug("Get configuration value for {} with realm {}", configName, realm);
+    return Optional.ofNullable(realmOverrides.getOrDefault(realm, Map.of()).get(configName))
+        .orElseGet(() -> getDefaultConfiguration(configName));
+  }
+
+  @Override
+  public <T> @Nullable T getConfiguration(@Nonnull RealmContext realmContext, String configName) {
     @SuppressWarnings("unchecked")
-    T confgValue =
-        (T)
-            Optional.ofNullable(realmOverrides.getOrDefault(realm, Map.of()).get(configName))
-                .orElseGet(() -> getDefaultConfiguration(configName));
-    return confgValue;
+    T value = (T) getConfigValue(realmContext, configName);
+    return value;
   }
 
   private <T> @Nullable T getDefaultConfiguration(String configName) {
